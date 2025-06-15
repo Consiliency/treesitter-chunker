@@ -265,7 +265,8 @@ serialization. Metadata property names are checked because they become key
 attribute values. Graph attribute names are not validated; malformed names can
 still produce unusable XML (treesitter-chunker#452). Pretty export no longer
 rejects malformed graph attribute names before writing; use valid names until
-that issue adds deliberate validation. The package-level
+[treesitter-chunker#452](https://github.com/Consiliency/treesitter-chunker/issues/452)
+adds deliberate validation. The package-level
 `chunker.export.GraphMLExporter` is a separate structured exporter.
 The error identifies the Unicode code point and XML location without echoing
 the full caller value. This includes NUL, other forbidden C0 controls, unpaired
