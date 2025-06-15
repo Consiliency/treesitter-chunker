@@ -263,7 +263,9 @@ including compact, pretty and `use_yed=False` output, reject XML 1.0-forbidden
 characters in element text, tail and attribute values with `ValueError` before
 serialization. Metadata property names are checked because they become key
 attribute values. Graph attribute names are not validated; malformed names can
-still produce unusable XML (treesitter-chunker#452). The package-level
+still produce unusable XML (treesitter-chunker#452). Pretty export no longer
+rejects malformed graph attribute names before writing; use valid names until
+that issue adds deliberate validation. The package-level
 `chunker.export.GraphMLExporter` is a separate structured exporter.
 The error identifies the Unicode code point and XML location without echoing
 the full caller value. This includes NUL, other forbidden C0 controls, unpaired

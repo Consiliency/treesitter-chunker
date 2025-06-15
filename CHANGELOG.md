@@ -65,6 +65,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and CR in caller IDs, directed endpoints and other attribute values on Python
   3.11/3.12, retaining the encoding-free XML declaration and existing pretty text
   newline normalization (treesitter-chunker#450). Indentation may differ.
+  Pretty export no longer rejects malformed graph attribute names before writing;
+  deliberate name validation remains treesitter-chunker#452.
   Compact Windows CRLF text transport and the separate package-level exporter
   remain tracked as treesitter-chunker#488 and treesitter-chunker#489.
 
