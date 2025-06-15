@@ -2739,6 +2739,17 @@
             "run_id": "20261013-call-token-dedupe-487"
           },
           "transition": "committed"
+        },
+        {
+          "at": "2026-10-13T05:47:18Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "code_rounds_used": 0,
+            "design_acceptance": "/mnt/workspace/users/viperjuice/evidence/treesitter-chunker/call-token-dedupe-487/20261013/design-acceptance.json",
+            "plan_rounds_used": 1,
+            "reviewed_plan_head": "510300b8d74ff53b9e6ec8f5ef1a5be011848f32"
+          },
+          "transition": "executing"
         }
       ],
       "owner_skill": "codex-plan-detailed",
@@ -2746,10 +2757,10 @@
       "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/c4d39d91e7ec/codex-call-token-dedupe-487/20261013.md",
       "roadmap_ref": null,
       "slug": "call-token-dedupe-487",
-      "status": "committed",
+      "status": "executing",
       "task_summary": "Preserve distinct relationship reference tokens (treesitter-chunker#487)",
       "type": "detailed",
-      "updated_at": "2026-10-13T05:33:41.403370+00:00"
+      "updated_at": "2026-10-13T05:47:18Z"
     }
   ],
   "schema_version": 1
