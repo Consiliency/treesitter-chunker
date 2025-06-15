@@ -8,10 +8,16 @@ automation:
 ## Task
 
 Repair treesitter-chunker#450 independently after accepted treesitter-chunker#480
-at base b9be38a3b8159dd24497963314028a1630608b19. This is a bounded follow-up
+and treesitter-chunker#486, at base
+db7a9401c4d2e924d15281e9cad2dedb75f5d622. This is a bounded follow-up
 to EXPORT in specs/phase-plans-v3.md, not whole-phase acceptance. The artifact is
 plans/detailed-graphml-pretty-whitespace-450.md in the private owned worktree.
-This plan is a proposal; no implementation or planning verification was run.
+This plan is a proposal; no implementation or acceptance verification was run.
+R1 collected all four manual opinions before reconciliation. The revised proposal
+addresses declaration compatibility, Windows text transport, mutation criteria
+and focused module selection; R2 reviews this exact revision independently.
+Read-only source inspection and a Python 3.12.14 transport reproduction informed
+the revision; neither establishes native Windows acceptance.
 
 ## Research summary
 
@@ -31,11 +37,17 @@ XML character rejection, yEd fallback and deliberate CR-to-LF text normalization
 
 - GraphMLExporter.export_string: after existing character validation, indent the
   freshly built ElementTree with ET.indent(root, space="  ") when pretty_print is
-  true, then serialize that tree directly. Retain an XML declaration on pretty
-  output using ET.tostring(..., encoding="unicode", xml_declaration=True); compact
-  output stays on its existing declaration-free serialization route. Remove the
-  unused minidom import. No additional serialization abstraction is needed.
-- Pretty layout and XML declaration spelling can change. Decoded supported
+  true, then serialize that tree directly. Before indenting, normalize each
+  non-None element.text with replace("\r\n", "\n").replace("\r", "\n") in
+  the fresh tree. This retains minidom's existing XML text normalization before
+  Windows text-mode writing and avoids introducing doubled decoded CRLF breaks.
+  Do not change node/edge properties, caller inputs or compact serialization.
+  Prefix the literal '<?xml version="1.0" ?>\n' and append a trailing '\n' to
+  ET.tostring(root, encoding="unicode"). Retain the existing declaration with
+  no encoding label: an encoding-labelled unicode declaration can break readers
+  such as lxml. Compact output retains its declaration-free existing route.
+  Remove the unused minidom import; no new serialization abstraction is needed.
+- Pretty indentation and empty-element layout can change. Decoded supported
   attributes, graph topology, labels, key declarations and file UTF-8 remain the
   compatibility contract, not minidom's exact formatting. Generated containers
   have element-only content; caller text lives in leaves. ET.indent must not
@@ -44,8 +56,10 @@ XML character rejection, yEd fallback and deliberate CR-to-LF text normalization
 ### chunker/export/graphml_yed_exporter.py (modify)
 
 - Apply the same bounded serializer change to the use_yed=True tree, including
-  the declaration policy and removal of minidom. Keep use_yed=False delegation,
-  namespaces, graphics, styling and existing caller text handling unchanged.
+  pretty-only text normalization, literal declaration and removal of minidom.
+  Keep use_yed=False delegation, namespaces, graphics and styling unchanged.
+  File writing remains inherited and unchanged; treesitter-chunker#488 tracks
+  the existing compact Windows CRLF-text defect separately.
 
 ### tests/test_graphml_exporter.py (modify)
 
@@ -57,14 +71,30 @@ XML character rejection, yEd fallback and deliberate CR-to-LF text normalization
   distinct properties to catch a collision, overwrite or endpoint substitution.
 - Assert repeat stability, node/edge counts, ordinary labels/data and key
   resolution, directed graph declaration and yEd-only graphics on its route.
-  Exported bytes decode as UTF-8 to the same serialization; use ordinary file
-  paths on every host. No physical whitespace-named Windows file is necessary.
+  Include non-ASCII caller data and parse actual UTF-8 file bytes. File transport
+  retains native newline translation. For these attribute fixtures (no CR/CRLF
+  leaf text), compare read_bytes().replace(b"\r\n", b"\n") with the string's
+  UTF-8 encoding; assert decoded attribute/data values separately without
+  normalizing them. Use ordinary file paths; no whitespace-named Windows file.
+  Assert pretty's exact first declaration line and trailing LF on strings,
+  and absence of a declaration on compact strings and files.
 - Exercise graph id and metadata key attribute values containing the same
   separator, preserving decoded values and key references. This covers XML
   attribute values, not arbitrary XML attribute names or GraphML XSD validity.
-- Preserve whitespace-only caller leaf text (for example space-TAB-space), with
-  explicit expectations independent of the exporter. Keep existing tests'
-  established CR-to-LF text normalization; do not promise new text-byte fidelity.
+- Name the ID matrix test_graphml_attribute_whitespace_ids and graph/key matrix
+  test_graphml_attribute_whitespace_graph_keys: each collects 36 cases, with
+  the same three routes, separators, formatting modes and string/file targets.
+- Name test_graphml_text_normalization: four caller leaves (space-TAB-space,
+  A\rB, A\nB, A\r\nB), three routes, pretty/compact, string/file = 48 cases.
+  Assert caller node/edge data plus yEd labels where applicable. Pretty strings
+  contain no physical CR and reparse to CRLF->LF then CR->LF expectations;
+  pretty files reparse to the same expected values on every host. Whitespace-only
+  leaf content remains exact. For compact strings retain ordinary XML newline
+  normalization. Compact Windows files explicitly retain the existing extra LF
+  for CRLF leaves (treesitter-chunker#488); do not pretend this is a new guarantee
+  or silently repair it here. Never normalize decoded assertion values.
+  These text cases are controls for the minidom mutations, but discriminate
+  omission of the planned pretty-only text normalization.
 - No mocks of exporters, parsers, XML serializers or the code under test. Parse
   real output with ElementTree and identify expected values from caller inputs.
 
@@ -72,8 +102,12 @@ XML character rejection, yEd fallback and deliberate CR-to-LF text normalization
 
 - Replace the Python 3.11/3.12 compact-output workaround with the repaired
   pretty/compact attribute contract and explain pretty formatting can change.
-  State decoded attribute whitespace is preserved while existing XML text
-  normalization remains. Keep treesitter-chunker#452 name validation and
+  Scope claims to the two direct modules and non-validating XML attribute
+  parsing; whitespace IDs are not an XSD NMTOKEN conformance claim. Preserve
+  the declaration without an encoding label and explain pretty text newline
+  normalization. Record compact Windows text transport (treesitter-chunker#488)
+  and the separate package exporter's serializer (treesitter-chunker#489) as
+  existing limits. Keep treesitter-chunker#452 name validation and
   treesitter-chunker#453 reader label mapping separate.
 - Add the bounded fix to Unreleased, reserved for 6.0.0. No release or tag.
 
@@ -85,8 +119,9 @@ XML character rejection, yEd fallback and deliberate CR-to-LF text normalization
 
 ## Dependencies and order
 
-1. Finish exact-head acceptance, merge and owned pruning of treesitter-chunker#480.
-   Start a new private WORKTREE_ROOT branch from fresh accepted origin/main.
+1. treesitter-chunker#480 and treesitter-chunker#486 are merged. The owned plan
+   branch incorporates accepted origin/main without rewriting historical review
+   commits; its candidate diff remains only the plan and manifest addition.
    Record inherited disk TMPDIR/tempfile metadata; create unique disposable
    scratch there with tempfile, not literal /tmp (treesitter-chunker#481).
 2. Write/register this plan and open a supported draft before implementation.
@@ -99,10 +134,21 @@ XML character rejection, yEd fallback and deliberate CR-to-LF text normalization
    under actual Python 3.11 and 3.12. Compact output must pass. Then make only
    the scoped serializer/doc changes and run the contracts on both interpreters.
 4. Mutations reintroduce_minidom_plain_pretty and reintroduce_minidom_yed_pretty
-   independently restore the accepted serializer at the named site. The first
-   must fail plain and delegated pretty contracts; the second must fail yEd
-   pretty contracts. Each must fail under both 3.11 and 3.12; compact controls
-   remain green. Restore exact candidate bytes after each and require passing
+   independently restore BOTH the minidom import and full accepted pretty body
+   at the named site. Under both actual 3.11/3.12, each 36-case attribute matrix
+   must have exactly 12 plain/delegated pretty semantic assertion failures for
+   the plain mutation, or exactly six yEd pretty failures for the yEd mutation.
+   The other routes, all compact cases and all 48 text controls must pass.
+   A NameError, collection/import error, infrastructure failure or arbitrary
+   nonzero exit is not a mutation kill. Record exact failing node IDs/assertions.
+   Also run omit_pretty_text_normalization_plain and
+   omit_pretty_text_normalization_yed independently: each removes only its
+   pretty normalization loop. CR/CRLF pretty string checks must fail the
+   physical-CR assertion for the affected routes on both interpreters;
+   native Windows pretty CRLF file decoded-text checks must also fail there.
+   Unaffected routes and compact controls remain green. These latter two sites
+   establish one additional normalization fault family, not per-host faults.
+   Restore exact candidate bytes after each and require passing
    restoration. These are two source sites for one serializer fault family,
    not independent faults per parametrization or host. Bind interpreter,
    exporter/test/fixture bytes, actual exit, raw logs and restored digests.
@@ -120,16 +166,25 @@ XML character rejection, yEd fallback and deliberate CR-to-LF text normalization
 ## Verification
 
 - uv sync --locked --all-extras
-- uv run --locked --all-extras pytest tests/test_graphml_exporter.py -k graphml_attribute_whitespace -q
+- uv run --locked --all-extras pytest tests/test_graphml_exporter.py -k 'graphml_attribute_whitespace or graphml_text_normalization' -q
+- Collect exactly 120 new cases (36 ID + 36 graph/key + 48 text). Record collected
+  node IDs and exact semantic failure sets for each mutation, not just an exit.
 - The same narrow command on checksum/source-bound private locked environments
   running actual Python 3.11 and 3.12, before/after both named mutations. Do not
   modify the main environment to switch interpreters. New environments and
   pytest --basetemp use unique inherited private disk scratch with final cleanup.
-- uv run --locked --all-extras pytest tests/test_graphml_exporter.py tests/test_phase12_integration.py tests/test_export_integration_advanced.py -q
+  For each version use a private owned environment with
+  UV_PROJECT_ENVIRONMENT=<owned-version-venv> uv sync --locked --all-extras --python <3.11-or-3.12>;
+  run its bin/python -m pytest from this checkout with PYTHONPATH set to it.
+  Record sys.version and executable, uv.lock/source/test/fixture digests and exit.
+- uv run --locked --all-extras pytest tests/test_graphml_exporter.py tests/test_graphml_yed_export_contract.py tests/test_phase12_integration.py -q
 - Repository Ruff, Black, committed-baseline mypy, CI smoke and Linux platform
   core commands from CONTRIBUTING.md, then locked refresh and automation suite.
-- Native Windows exact-head narrow/focused modules and
+- Native Windows exact-head 120-case narrow test, both direct GraphML modules'
+  focused tests including tests/test_graphml_yed_export_contract.py, and
   scripts/run_windows_preflight.py; exact Linux/macOS/Windows hosted checks.
+  The standing preflight alone contains no GraphML tests and cannot establish
+  this repair. Bind actual Windows interpreter, newline transport and raw logs.
 - Strict MkDocs into a unique private temporary output. Record the actual
   outcomes and retained evidence, then remove only owned disposable scratch.
 
@@ -140,10 +195,11 @@ XML character rejection, yEd fallback and deliberate CR-to-LF text normalization
   output, preserve graph/key attribute values and caller whitespace-only leaf
   text, and retain ordinary declarations/data/styles. Proven by the named narrow
   test under actual Python 3.11 and 3.12 and current locked environment.
-- [ ] Both named source-site mutations fail their expected pretty routes on
+- [ ] All four named source-site mutations fail their expected pretty contracts on
   actual 3.11 and 3.12; compact controls pass; exact restorations pass. Actual
   exits/raw logs/interpreter and source/test/fixture hashes establish one fault
-  family without inflated counts.
+  families without inflated counts. There are two serializer sites and two
+  normalization sites; neither parametrizations nor hosts add fault families.
 - [ ] Fresh original six/refresh/full, native Windows/standing, exact hosted
   checks, four complete CODE opinions, final supplemental Astra and verified
   standalone archive qualify this unchanged bounded candidate before merge.
@@ -154,4 +210,7 @@ No blanket arbitrary-ID/XSD conformance, XML name validation, reader-specific
 label mapping, text CR byte-fidelity, graphical layout, native admission or
 whole-phase acceptance. No percentage gate, parser pins, goldens, type baseline,
 consumer locks, protected state, manual broker/checkpoint edits or release.
+The package-level chunker.export.GraphMLExporter in chunker/export/formats/graph.py
+still uses minidom (treesitter-chunker#489). Compact Windows CRLF leaf transport
+remains treesitter-chunker#488. Neither defect is silently repaired by this slice.
 Agent-harness#1271 governs formal operational-evidence amendments separately.
