@@ -13,9 +13,11 @@ db7a9401c4d2e924d15281e9cad2dedb75f5d622. This is a bounded follow-up
 to EXPORT in specs/phase-plans-v3.md, not whole-phase acceptance. The artifact is
 plans/detailed-graphml-pretty-whitespace-450.md in the private owned worktree.
 This plan is a proposal; no implementation or acceptance verification was run.
-R1 collected all four manual opinions before reconciliation. The revised proposal
+R1 and R2 each collected all four manual opinions before reconciliation. The proposal
 addresses declaration compatibility, Windows text transport, mutation criteria
-and focused module selection; R2 reviews this exact revision independently.
+and focused module selection. R2's remaining blocking feedback requires exact
+normalization-mutation failure sets and an explicit native Windows mutation gate;
+R3 reviews this final revised proposal independently.
 Read-only source inspection and a Python 3.12.14 transport reproduction informed
 the revision; neither establishes native Windows acceptance.
 
@@ -72,10 +74,11 @@ XML character rejection, yEd fallback and deliberate CR-to-LF text normalization
 - Assert repeat stability, node/edge counts, ordinary labels/data and key
   resolution, directed graph declaration and yEd-only graphics on its route.
   Include non-ASCII caller data and parse actual UTF-8 file bytes. File transport
-  retains native newline translation. For these attribute fixtures (no CR/CRLF
-  leaf text), compare read_bytes().replace(b"\r\n", b"\n") with the string's
-  UTF-8 encoding; assert decoded attribute/data values separately without
-  normalizing them. Use ordinary file paths; no whitespace-named Windows file.
+  retains native newline translation. For these attribute fixtures, first assert
+  all caller/generated leaf inputs contain no CR; then compare read_bytes() with
+  output.replace("\n", os.linesep).encode("utf-8"), translating only the expected
+  transport side. Assert decoded attribute/data values separately without any
+  normalization. Use ordinary file paths; no whitespace-named Windows file.
   Assert pretty's exact first declaration line and trailing LF on strings,
   and absence of a declaration on compact strings and files.
 - Exercise graph id and metadata key attribute values containing the same
@@ -88,8 +91,11 @@ XML character rejection, yEd fallback and deliberate CR-to-LF text normalization
   A\rB, A\nB, A\r\nB), three routes, pretty/compact, string/file = 48 cases.
   Assert caller node/edge data plus yEd labels where applicable. Pretty strings
   contain no physical CR and reparse to CRLF->LF then CR->LF expectations;
-  pretty files reparse to the same expected values on every host. Whitespace-only
-  leaf content remains exact. For compact strings retain ordinary XML newline
+  pretty files reparse to the same expected values on every host. The physical-CR
+  assertion applies only to string-target cases, not also to file-target cases;
+  file cases assert actual bytes and decoded values. The space-TAB-space caller
+  leaf remains exact; CR/CRLF leaves deliberately follow normalization.
+  For compact strings retain ordinary XML newline
   normalization. Compact Windows files explicitly retain the existing extra LF
   for CRLF leaves (treesitter-chunker#488); do not pretend this is a new guarantee
   or silently repair it here. Never normalize decoded assertion values.
@@ -131,7 +137,10 @@ XML character rejection, yEd fallback and deliberate CR-to-LF text normalization
    heartbeat only, no model/silence deadline. Final supplemental Astra decides
    design acceptance. Do not claim governed supplier/native-fill/IF acceptance.
 3. Add tests and reproduce the pretty-only collisions on unchanged production
-   under actual Python 3.11 and 3.12. Compact output must pass. Then make only
+   under actual Python 3.11 and 3.12: exactly 36 semantic attribute failures
+   (18 per matrix: all three pretty routes, separators and targets) and 84 passes.
+   Compact and text controls pass. Record actual patch versions; a green 3.13+
+   run is not a red reproduction. Then make only
    the scoped serializer/doc changes and run the contracts on both interpreters.
 4. Mutations reintroduce_minidom_plain_pretty and reintroduce_minidom_yed_pretty
    independently restore BOTH the minidom import and full accepted pretty body
@@ -143,14 +152,22 @@ XML character rejection, yEd fallback and deliberate CR-to-LF text normalization
    nonzero exit is not a mutation kill. Record exact failing node IDs/assertions.
    Also run omit_pretty_text_normalization_plain and
    omit_pretty_text_normalization_yed independently: each removes only its
-   pretty normalization loop. CR/CRLF pretty string checks must fail the
-   physical-CR assertion for the affected routes on both interpreters;
-   native Windows pretty CRLF file decoded-text checks must also fail there.
-   Unaffected routes and compact controls remain green. These latter two sites
+   pretty normalization loop. On POSIX 3.11 and 3.12, exactly four text cases fail
+   for the plain mutation (plain/delegated x CR/CRLF x pretty x string), or exactly
+   two for yEd (yEd x CR/CRLF x pretty x string), at the physical-CR assertion.
+   All attribute matrices and other text cases pass: 4 failed/116 passed or
+   2 failed/118 passed across the full 120-case selection. File cases remain
+   green on POSIX because XML parsing normalizes physical CR/CRLF on read.
+   On actual native Windows Python 3.12, require these same string failures plus
+   exactly two pretty CRLF file decoded-text failures for plain/delegated or
+   one for yEd: 6 failed/114 passed or 3 failed/117 passed. Windows lone-CR file
+   cases remain green. File-target cases do not repeat the string physical-CR
+   assertion. Bind concrete route/input/mode/target node IDs to each failing set.
+   All compact and unaffected cases pass. These latter two sites
    establish one additional normalization fault family, not per-host faults.
    Restore exact candidate bytes after each and require passing
-   restoration. These are two source sites for one serializer fault family,
-   not independent faults per parametrization or host. Bind interpreter,
+   restoration. There are two fault families (serializer and normalization),
+   each at two source sites, not per parametrization or host. Bind interpreter,
    exporter/test/fixture bytes, actual exit, raw logs and restored digests.
 5. Commit clean candidate. Run fresh runner-sealed original six checks, locked
    dependency refresh/full suite, native Windows compiler-independent contract
@@ -170,7 +187,7 @@ XML character rejection, yEd fallback and deliberate CR-to-LF text normalization
 - Collect exactly 120 new cases (36 ID + 36 graph/key + 48 text). Record collected
   node IDs and exact semantic failure sets for each mutation, not just an exit.
 - The same narrow command on checksum/source-bound private locked environments
-  running actual Python 3.11 and 3.12, before/after both named mutations. Do not
+  running actual Python 3.11 and 3.12, before/after all four named mutations. Do not
   modify the main environment to switch interpreters. New environments and
   pytest --basetemp use unique inherited private disk scratch with final cleanup.
   For each version use a private owned environment with
@@ -185,6 +202,12 @@ XML character rejection, yEd fallback and deliberate CR-to-LF text normalization
   scripts/run_windows_preflight.py; exact Linux/macOS/Windows hosted checks.
   The standing preflight alone contains no GraphML tests and cannot establish
   this repair. Bind actual Windows interpreter, newline transport and raw logs.
+- Native Windows Python 3.12 must additionally run both normalization-omission
+  mutations independently against all 120 cases, meet the exact 6/114 and 3/117
+  failure/pass sets above, and pass an exact-byte restoration after each.
+  Bind original/mutated/restored source digests, interpreter, collected/failing
+  node IDs, semantic assertion locations, actual exits and raw logs. This native
+  negative check is a required acceptance gate, not a POSIX transport simulation.
 - Strict MkDocs into a unique private temporary output. Record the actual
   outcomes and retained evidence, then remove only owned disposable scratch.
 
@@ -197,8 +220,10 @@ XML character rejection, yEd fallback and deliberate CR-to-LF text normalization
   test under actual Python 3.11 and 3.12 and current locked environment.
 - [ ] All four named source-site mutations fail their expected pretty contracts on
   actual 3.11 and 3.12; compact controls pass; exact restorations pass. Actual
-  exits/raw logs/interpreter and source/test/fixture hashes establish one fault
-  families without inflated counts. There are two serializer sites and two
+  The two native Windows Python 3.12 omission runs meet their exact semantic
+  failure sets and pass exact restorations. Actual exits/raw logs/interpreter
+  and source/test/fixture hashes establish two fault families without inflated
+  counts. There are two serializer sites and two
   normalization sites; neither parametrizations nor hosts add fault families.
 - [ ] Fresh original six/refresh/full, native Windows/standing, exact hosted
   checks, four complete CODE opinions, final supplemental Astra and verified
