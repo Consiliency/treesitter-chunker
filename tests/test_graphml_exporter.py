@@ -1106,6 +1106,170 @@ def test_xml_legal_characters_and_relationships_round_trip(parsed_xml_graph, pre
         assert data.text == value.replace("\r", "\n")
 
 
+@pytest.mark.parametrize("pretty", [False, True], ids=["compact", "pretty"])
+@pytest.mark.parametrize("file_output", [False, True], ids=["string", "file"])
+@pytest.mark.parametrize("separator", ["\t", "\n", "\r"], ids=["tab", "lf", "cr"])
+def test_graphml_attribute_whitespace_ids(
+    graphml_whitespace_graph, pretty, file_output, separator, tmp_path
+):
+    exporter, chunks, options, route = graphml_whitespace_graph
+    caller_ids = (f"caller{separator}parent", "caller parent")
+    original = [(chunk.chunk_id, chunk.content) for chunk in chunks]
+    for chunk, caller_id in zip(chunks, caller_ids, strict=True):
+        chunk.node_id = caller_id
+    exporter.add_chunks(chunks)
+    exporter.add_relationship(chunks[0], chunks[1], "CALLS", {"note": "forward 中文"})
+    exporter.add_relationship(chunks[1], chunks[0], "CALLS", {"note": "reverse 😀"})
+    for node in exporter.nodes.values():
+        node.properties["caller"] = "ordinary 中文 &<>"
+        assert all("\r" not in str(value) for value in node.properties.values())
+    root, _ = graphml_contract_output(exporter, options, pretty, file_output, tmp_path)
+    ns = "{http://graphml.graphdrawing.org/xmlns}"
+    graph = root.find(f"{ns}graph")
+    assert graph is not None and graph.get("edgedefault") == "directed"
+    nodes = graph.findall(f"{ns}node")
+    assert len(nodes) == 2
+    assert {node.get("id") for node in nodes} == set(caller_ids)
+    edges = graph.findall(f"{ns}edge")
+    assert len(edges) == 2
+    assert {(edge.get("source"), edge.get("target")) for edge in edges} == {
+        caller_ids,
+        caller_ids[::-1],
+    }
+    assert {
+        (edge.get("source"), edge.find(f"{ns}data[@key='e_note']").text)
+        for edge in edges
+    } == {(caller_ids[0], "forward 中文"), (caller_ids[1], "reverse 😀")}
+    keys = [key.get("id") for key in root.findall(f"{ns}key")]
+    assert len(keys) == len(set(keys))
+    assert all(data.get("key") in keys for data in root.iter(f"{ns}data"))
+    for node in nodes:
+        assert node.find(f"{ns}data[@key='node_label']").text == "function_definition"
+        assert node.find(f"{ns}data[@key='n_caller']").text == "ordinary 中文 &<>"
+        shape = node.find(f"{ns}data/{{http://www.yworks.com/xml/graphml}}ShapeNode")
+        assert (shape is not None) == (route == "yed")
+    assert [(chunk.chunk_id, chunk.content) for chunk in chunks] == original
+
+
+@pytest.mark.parametrize("pretty", [False, True], ids=["compact", "pretty"])
+@pytest.mark.parametrize("file_output", [False, True], ids=["string", "file"])
+@pytest.mark.parametrize("separator", ["\t", "\n", "\r"], ids=["tab", "lf", "cr"])
+def test_graphml_attribute_whitespace_graph_keys(
+    graphml_whitespace_graph, pretty, file_output, separator, tmp_path
+):
+    exporter, chunks, options, _ = graphml_whitespace_graph
+    caller_key = f"caller{separator}key"
+    graph_id = f"graph{separator}中文"
+    exporter.graph_attrs["id"] = graph_id
+    exporter.add_chunks(chunks)
+    for chunk in chunks:
+        exporter.nodes[chunk.node_id].properties[caller_key] = "node 中文"
+    exporter.add_relationship(chunks[0], chunks[1], "CALLS", {caller_key: "edge 😀"})
+    root, _ = graphml_contract_output(exporter, options, pretty, file_output, tmp_path)
+    ns = "{http://graphml.graphdrawing.org/xmlns}"
+    graph = root.find(f"{ns}graph")
+    assert graph is not None and graph.get("id") == graph_id
+    keys = {key.get("id"): key for key in root.findall(f"{ns}key")}
+    for prefix, target, expected in [
+        ("n", "node", "node 中文"),
+        ("e", "edge", "edge 😀"),
+    ]:
+        key_id = f"{prefix}_{caller_key}"
+        assert keys[key_id].get("attr.name") == caller_key
+        assert keys[key_id].get("for") == target
+        for element in graph.findall(f"{ns}{target}"):
+            data = {item.get("key"): item.text for item in element.findall(f"{ns}data")}
+            assert data[key_id] == expected
+    assert {node.get("id") for node in graph.findall(f"{ns}node")} == {
+        chunk.node_id for chunk in chunks
+    }
+    edge = graph.find(f"{ns}edge")
+    assert (edge.get("source"), edge.get("target")) == tuple(
+        chunk.node_id for chunk in chunks
+    )
+    assert all(data.get("key") in keys for data in root.iter(f"{ns}data"))
+
+
+@pytest.mark.parametrize("pretty", [False, True], ids=["compact", "pretty"])
+@pytest.mark.parametrize("file_output", [False, True], ids=["string", "file"])
+@pytest.mark.parametrize(
+    ("caller", "normalized"),
+    [(" \t ", " \t "), ("A\rB", "A\nB"), ("A\nB", "A\nB"), ("A\r\nB", "A\nB")],
+    ids=["space-tab", "cr", "lf", "crlf"],
+)
+def test_graphml_text_normalization(
+    graphml_whitespace_graph, pretty, file_output, caller, normalized, tmp_path
+):
+    exporter, chunks, options, route = graphml_whitespace_graph
+    exporter.add_chunks(chunks)
+    for chunk in chunks:
+        exporter.nodes[chunk.node_id].properties["caller"] = caller
+        exporter.nodes[chunk.node_id].properties["name"] = caller
+    exporter.add_relationship(chunks[0], chunks[1], caller, {"caller": caller})
+    root, output = graphml_contract_output(
+        exporter, options, pretty, file_output, tmp_path
+    )
+    if not file_output:
+        if pretty:
+            assert "\r" not in output
+        elif "\r" in caller:
+            assert caller in output
+    expected = (
+        "A\n\nB"
+        if file_output and not pretty and os.name == "nt" and caller == "A\r\nB"
+        else normalized
+    )
+    ns = "{http://graphml.graphdrawing.org/xmlns}"
+    graph = root.find(f"{ns}graph")
+    assert graph is not None
+    for node in graph.findall(f"{ns}node"):
+        data = {item.get("key"): item.text for item in node.findall(f"{ns}data")}
+        assert data["n_caller"] == expected and data["n_name"] == expected
+        if route == "yed":
+            label = node.find(
+                f"{ns}data/{{http://www.yworks.com/xml/graphml}}ShapeNode/{{http://www.yworks.com/xml/graphml}}NodeLabel"
+            )
+            assert label.text == f"function_definition\\n{expected}"
+    edge = graph.find(f"{ns}edge")
+    data = {item.get("key"): item.text for item in edge.findall(f"{ns}data")}
+    assert data["e_caller"] == expected and data["edge_label"] == expected
+    if route == "yed":
+        label = edge.find(
+            f"{ns}data/{{http://www.yworks.com/xml/graphml}}PolyLineEdge/{{http://www.yworks.com/xml/graphml}}EdgeLabel"
+        )
+        assert label.text == expected
+    assert all(node.properties["caller"] == caller for node in exporter.nodes.values())
+    assert exporter.edges[0].relationship_type == caller
+
+
+@pytest.fixture(params=["plain", "yed", "delegated"])
+def graphml_whitespace_graph(request, parsed_same_span):
+    chunks = [
+        chunk for chunk in parsed_same_span if chunk.node_type == "function_definition"
+    ]
+    assert [chunk.metadata["signature"]["name"] for chunk in chunks] == ["f", "g"]
+    exporter = GraphMLExporter() if request.param == "plain" else GraphMLyEdExporter()
+    options = {"use_yed": False} if request.param == "delegated" else {}
+    return exporter, chunks, options, request.param
+
+
+def graphml_contract_output(exporter, options, pretty, file_output, tmp_path):
+    output = exporter.export_string(pretty_print=pretty, **options)
+    assert output == exporter.export_string(pretty_print=pretty, **options)
+    if pretty:
+        assert output.splitlines()[0] == '<?xml version="1.0" ?>'
+        assert output.endswith("\n")
+    else:
+        assert not output.startswith("<?xml")
+    payload = output
+    if file_output:
+        path = tmp_path / "caller.graphml"
+        exporter.export(path, pretty_print=pretty, **options)
+        payload = path.read_bytes()
+        assert payload == output.replace("\n", os.linesep).encode("utf-8")
+    return ET.fromstring(payload), output
+
+
 @pytest.mark.parametrize("with_edges", [False, True], ids=["no-edges", "edges"])
 @pytest.mark.parametrize(
     "basename",

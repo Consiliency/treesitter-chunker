@@ -269,11 +269,21 @@ The error identifies the Unicode code point and XML location without echoing
 the full caller value. This includes NUL, other forbidden C0 controls, unpaired
 surrogates, U+FFFE and U+FFFF. No caller characters are silently deleted.
 
-Legal Unicode, XML metacharacters, tab, newline and carriage return remain
-supported, subject to XML whitespace normalization. On Python 3.11/3.12, pretty
-output can additionally normalize whitespace inside caller IDs; that existing
-defect is tracked separately as treesitter-chunker#450. Use compact output when
-those IDs must retain their whitespace on those versions.
+The two direct modules preserve legal Unicode, XML metacharacters and physical
+tab, newline and carriage return in attribute values through pretty and compact
+output, including Python 3.11/3.12 (treesitter-chunker#450). This is a decoded
+attribute-value contract with non-validating XML readers; whitespace-containing
+IDs do not establish GraphML XSD conformance. Pretty output retains its XML
+declaration without an encoding label and its trailing newline. Indentation and
+empty-element layout may differ from earlier output.
+
+Pretty text leaves retain XML newline normalization: CRLF and lone CR become LF;
+space-TAB-space leaves stay intact. Caller inputs are unchanged. UTF-8 files
+retain native newline translation. Compact Windows files can still turn CRLF
+caller text into two decoded LF characters (treesitter-chunker#488); this differs
+from compact string output and is outside the attribute repair. The separate
+package-level `chunker.export.GraphMLExporter` still has the Python 3.11/3.12
+attribute-whitespace defect (treesitter-chunker#489).
 
 File export rejected by this character check leaves an existing file unchanged
 and creates no new file.
