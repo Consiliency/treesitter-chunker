@@ -1,0 +1,20 @@
+[project]
+name            = "treesitter_chunker"
+version         = "0.1.0"
+description     = "Semantic code chunker using Tree‑sitter"
+readme          = "README.md"
+requires-python = ">=3.10"
+authors         = [{ name = "Consiliency", email = "dev@consiliency.com" }]
+
+dependencies = [
+    "tree_sitter",
+    "rich",
+    "typer",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[build-system]
+requires      = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
