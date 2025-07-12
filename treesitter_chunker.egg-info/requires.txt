@@ -1,0 +1,6 @@
+tree_sitter
+rich
+typer
+
+[dev]
+pytest

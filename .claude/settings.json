@@ -1,0 +1,44 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(uv:*)",
+      "Bash(git:*)",
+      "Bash(pytest:*)",
+      "Bash(ruff:*)",
+      "Bash(mypy:*)",
+      "Bash(npm:*)",
+      "Bash(node:*)",
+      "Bash(pip:*)",
+      "Bash(cd:*)",
+      "Bash(ls:*)",
+      "Bash(pwd)",
+      "Bash(mkdir:*)",
+      "Bash(cat:*)",
+      "Bash(echo:*)",
+      "Bash(chmod:*)",
+      "Bash(which:*)",
+      "Bash(find:*)",
+      "Read(*)",
+      "Write(*)",
+      "Edit(*)",
+      "MultiEdit(*)",
+      "Glob(*)",
+      "Grep(*)",
+      "LS(*)",
+      "TodoWrite(*)",
+      "Task(*)",
+      "exit_plan_mode(*)"
+    ],
+    "deny": [
+      "Bash(rm -rf /)",
+      "Bash(sudo:*)",
+      "Bash(rm -rf ~)",
+      "Bash(curl:*)",
+      "Bash(wget:*)"
+    ]
+  },
+  "additionalDirectories": [
+    "/home/jenner/code/treesitter-chunker-worktrees"
+  ]
+}
