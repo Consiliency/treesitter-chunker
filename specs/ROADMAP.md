@@ -48,13 +48,13 @@ This document outlines the development roadmap for the tree-sitter-chunker proje
 
 ## Phase 2: Language Support System
 
-### 2.1 Language Configuration Framework
+### 2.1 Language Configuration Framework ✅ *[Completed: 2025-01-13]*
 # Branch: feature/lang-config | Can Start: Immediately | Blocks: All language modules (2.2)
-- [ ] **Create Language Configuration Classes**
-  - [ ] Design `LanguageConfig` base class
-  - [ ] Define configuration attributes (chunk_types, ignore_types, etc.)
-  - [ ] Support configuration inheritance for language families
-  - [ ] Add configuration validation
+- [x] **Create Language Configuration Classes**
+  - [x] Design `LanguageConfig` base class
+  - [x] Define configuration attributes (chunk_types, ignore_types, etc.)
+  - [x] Support configuration inheritance for language families
+  - [x] Add configuration validation
 
 ### 2.2 Language-Specific Implementations
 # Dependencies: Requires Phase 2.1 (Language Configuration Framework) to be merged first
@@ -509,7 +509,7 @@ When merging to main:
 ### 4. Branch Status Tracking
 <!-- Each branch adds ONE line here. DO NOT modify other branches' lines -->
 <!-- Format: - [branch-name]: [status] | [last-updated] | [developer] -->
-- feature/lang-config: Not Started | 2025-01-12 | TBD
+- feature/lang-config: Completed | 2025-01-13 | Jenner
 - feature/plugin-arch: Not Started | 2025-01-12 | TBD
 - feature/cli-enhance: Not Started | 2025-01-12 | TBD
 - feature/export-json: Not Started | 2025-01-12 | TBD
@@ -521,7 +521,7 @@ When merging to main:
 
 1. **High Priority** (Essential for MVP)
    - Phase 1.1: Parser Module Redesign ✅ **COMPLETED & TESTED**
-   - Phase 2.1: Language Configuration Framework ← **NEXT FOCUS** (Blocks 5 language modules)
+   - Phase 2.1: Language Configuration Framework ✅ **COMPLETED** (Unblocked 5 language modules)
    - Phase 2.2: Language-Specific Implementations (Can parallelize after 2.1)
    - Phase 3.1: Context-Aware Chunking (Requires at least one language module)
 
@@ -598,3 +598,27 @@ This roadmap is a living document and should be updated as the project evolves. 
   - Thread-safe pooling enables efficient concurrent processing
   - Large file parsing (1000+ functions) completes in < 1 second
 - **Phase 1.1 Status**: Fully implemented, tested, and production-ready
+
+**2025-01-13**: Completed Phase 2.1 (Language Configuration Framework)
+- Implemented comprehensive language configuration system:
+  - `chunker/languages/base.py`: Core framework with LanguageConfig, CompositeLanguageConfig, ChunkRule, and LanguageConfigRegistry
+  - `chunker/languages/python.py`: Example implementation for Python language
+  - Integrated with `chunker/chunker.py` to use configurations instead of hardcoded chunk types
+  - Supports advanced features: inheritance, chunk rules with priorities, file extensions, ignore types
+- Created extensive test coverage with 25+ new tests:
+  - `test_language_config.py`: Extended with ChunkRule, LanguageConfig, and thread safety tests
+  - `test_language_integration.py`: Extended with chunker integration and Python-specific tests
+  - `test_composite_config_advanced.py`: New file testing complex inheritance patterns
+- **Key Features Implemented**:
+  - ✅ Abstract base class with validation
+  - ✅ Configuration attributes (chunk_types, ignore_types, file_extensions)
+  - ✅ Inheritance support with CompositeLanguageConfig
+  - ✅ Thread-safe registry with singleton pattern
+  - ✅ Advanced chunk rules with parent type checking
+  - ✅ Backward compatibility with hardcoded defaults
+- **Testing Results**:
+  - All 25+ new tests passing
+  - Verified thread safety with concurrent access
+  - Tested complex inheritance including diamond patterns
+  - Validated Unicode support and error handling
+- **Phase 2.1 Status**: Fully implemented, tested, and ready to unblock 5 language modules
