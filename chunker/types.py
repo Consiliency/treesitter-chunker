@@ -1,5 +1,5 @@
-"""Common data types for the chunker."""
-
+"""Common types used across the chunker modules."""
+from __future__ import annotations
 from dataclasses import dataclass
 
 

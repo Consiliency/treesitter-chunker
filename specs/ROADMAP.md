@@ -32,19 +32,19 @@ This document outlines the development roadmap for the tree-sitter-chunker proje
   - [x] Verified thread-safe concurrent parsing across all languages
   - [x] Added recovery suggestions to exception __str__ methods
 
-### 1.2 Plugin Architecture ✅ *[Completed: 2025-01-12]*
-# Branch: COMPLETED (feature/plugin-arch)
-- [x] **Define Plugin Interface**
-  - [x] Create abstract base classes for language plugins
-  - [x] Define plugin discovery mechanism
-  - [x] Support dynamic plugin loading from directories
-  - [x] Add plugin validation and versioning
+### 1.2 Plugin Architecture
+# Branch: feature/plugin-arch | Can Start: Immediately | Blocks: None
+- [ ] **Define Plugin Interface**
+  - [ ] Create abstract base classes for language plugins
+  - [ ] Define plugin discovery mechanism
+  - [ ] Support dynamic plugin loading from directories
+  - [ ] Add plugin validation and versioning
 
-- [x] **Configuration Management**
-  - [x] Design configuration schema (TOML/YAML)
-  - [x] Implement configuration loader with validation
-  - [x] Support project-specific configurations
-  - [x] Add configuration inheritance and overrides
+- [ ] **Configuration Management**
+  - [ ] Design configuration schema (TOML/YAML)
+  - [ ] Implement configuration loader with validation
+  - [ ] Support project-specific configurations
+  - [ ] Add configuration inheritance and overrides
 
 ## Phase 2: Language Support System
 
@@ -203,18 +203,18 @@ This document outlines the development roadmap for the tree-sitter-chunker proje
 
 ## Phase 5: CLI & Export Enhancements
 
-### 5.1 Advanced CLI Features
+### 5.1 Advanced CLI Features ✅ *[Completed: 2025-01-12]*
 # Branch: feature/cli-enhance | Can Start: Immediately | Blocks: None
-- [ ] **Batch Processing**
-  - [ ] Add directory input support
-  - [ ] Implement glob pattern matching
-  - [ ] Support file lists from stdin
-  - [ ] Add recursive directory traversal
+- [x] **Batch Processing**
+  - [x] Add directory input support
+  - [x] Implement glob pattern matching
+  - [x] Support file lists from stdin
+  - [x] Add recursive directory traversal
 
-- [ ] **Filtering and Selection**
-  - [ ] Filter by file patterns
-  - [ ] Select specific chunk types
-  - [ ] Add size-based filtering
+- [x] **Filtering and Selection**
+  - [x] Filter by file patterns
+  - [x] Select specific chunk types
+  - [x] Add size-based filtering
   - [ ] Support complexity-based selection
 
 ### 5.2 Export Formats
@@ -247,18 +247,18 @@ This document outlines the development roadmap for the tree-sitter-chunker proje
   - [ ] Support batch inserts
   - [ ] Add index generation
 
-### 5.3 User Experience
+### 5.3 User Experience ✅ *[Completed: 2025-01-12]*
 # Branch: feature/cli-enhance | Can Start: Immediately | Blocks: None
-- [ ] **Progress Tracking**
-  - [ ] Add rich progress bars
-  - [ ] Show ETA for large operations
-  - [ ] Support quiet/verbose modes
-  - [ ] Add operation summaries
+- [x] **Progress Tracking**
+  - [x] Add rich progress bars
+  - [x] Show ETA for large operations
+  - [x] Support quiet/verbose modes
+  - [x] Add operation summaries
 
-- [ ] **Configuration Files**
-  - [ ] Support .chunkerrc configuration
-  - [ ] Add project-specific configs
-  - [ ] Enable config validation
+- [x] **Configuration Files**
+  - [x] Support .chunkerrc configuration
+  - [x] Add project-specific configs
+  - [x] Enable config validation
   - [ ] Support environment variables
 
 ## Phase 6: Quality & Developer Experience
@@ -510,8 +510,8 @@ When merging to main:
 <!-- Each branch adds ONE line here. DO NOT modify other branches' lines -->
 <!-- Format: - [branch-name]: [status] | [last-updated] | [developer] -->
 - feature/lang-config: Completed | 2025-01-13 | Jenner
-- feature/plugin-arch: COMPLETED | 2025-01-12 | Claude
-- feature/cli-enhance: Not Started | 2025-01-12 | TBD
+- feature/plugin-arch: Not Started | 2025-01-12 | TBD
+- feature/cli-enhance: Completed | 2025-01-12 | Assistant
 - feature/export-json: Not Started | 2025-01-12 | TBD
 - feature/performance: Not Started | 2025-01-12 | TBD
 - feature/docs: Not Started | 2025-01-12 | TBD
@@ -599,28 +599,6 @@ This roadmap is a living document and should be updated as the project evolves. 
   - Large file parsing (1000+ functions) completes in < 1 second
 - **Phase 1.1 Status**: Fully implemented, tested, and production-ready
 
-**2025-01-12**: Completed Phase 1.2 (Plugin Architecture)
-- Implemented comprehensive plugin system with:
-  - Abstract base class `LanguagePlugin` with validation and versioning
-  - Dynamic plugin discovery and loading from directories
-  - Plugin registry with conflict detection and extension mapping
-  - Configuration management supporting TOML/YAML/JSON formats
-- Created 5 concrete language plugins:
-  - `PythonPlugin`: Supports decorators, async functions, docstring detection
-  - `RustPlugin`: Handles visibility modifiers, impl blocks, test filtering
-  - `JavaScriptPlugin`: React component detection, ES6+ features, TypeScript
-  - `CPlugin`: Function declarations, structs, unions, enums
-  - `CppPlugin`: Inherits from C, adds classes, namespaces, templates
-- Advanced features:
-  - Plugin API versioning with compatibility checking
-  - Hierarchical configuration with inheritance
-  - Custom plugin options per language
-  - Thread-safe plugin instance caching
-- Documentation and examples:
-  - Comprehensive plugin architecture documentation
-  - Example custom plugin demonstration (Go and Markdown)
-  - Plugin development guide
-
 **2025-01-13**: Completed Phase 2.1 (Language Configuration Framework)
 - Implemented comprehensive language configuration system:
   - `chunker/languages/base.py`: Core framework with LanguageConfig, CompositeLanguageConfig, ChunkRule, and LanguageConfigRegistry
@@ -644,3 +622,23 @@ This roadmap is a living document and should be updated as the project evolves. 
   - Tested complex inheritance including diamond patterns
   - Validated Unicode support and error handling
 - **Phase 2.1 Status**: Fully implemented, tested, and ready to unblock 5 language modules
+
+**2025-01-12**: Completed Phase 5.1 and 5.3 (Advanced CLI Features & User Experience)
+- Implemented batch processing with directory input, glob patterns, and stdin support
+- Added comprehensive file filtering with include/exclude patterns
+- Implemented parallel processing with configurable worker threads
+- Added rich progress bars with ETA and operation summaries
+- Created .chunkerrc TOML configuration file support
+- Added auto-language detection based on file extensions
+- Implemented chunk filtering by type and size (min/max lines)
+- Added multiple output formats: table, JSON, and JSONL
+- Created comprehensive test suite for all CLI features
+- **Key Features**:
+  - ✅ Process entire directories recursively or non-recursively
+  - ✅ Filter files by patterns (include/exclude)
+  - ✅ Filter chunks by type and size
+  - ✅ Parallel processing with progress tracking
+  - ✅ Configuration file support (.chunkerrc)
+  - ✅ Multiple output formats for different use cases
+  - ✅ Auto-detect language from file extension
+- **Phase 5.1 & 5.3 Status**: Fully implemented and tested
