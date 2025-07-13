@@ -1,6 +1,10 @@
 tree_sitter
 rich
 typer
+pyarrow>=11.0.0
+toml
+pyyaml
 
 [dev]
 pytest
+psutil

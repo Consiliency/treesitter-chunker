@@ -2,8 +2,37 @@ from __future__ import annotations
 from typing import Set, Optional
 from tree_sitter import Node
 
+from .base import LanguageConfig
 from .plugin_base import LanguagePlugin
 from ..types import CodeChunk
+
+
+class CConfig(LanguageConfig):
+    """Language configuration for C."""
+    
+    @property
+    def language_id(self) -> str:
+        return "c"
+    
+    @property
+    def chunk_types(self) -> Set[str]:
+        """C-specific chunk types."""
+        return {
+            "function_definition",
+            "struct_specifier",
+            "union_specifier",
+            "enum_specifier",
+            "type_definition",
+        }
+    
+    @property
+    def file_extensions(self) -> Set[str]:
+        return {".c", ".h"}
+
+
+# Register the C configuration
+from . import language_config_registry
+language_config_registry.register(CConfig())
 
 
 class CPlugin(LanguagePlugin):

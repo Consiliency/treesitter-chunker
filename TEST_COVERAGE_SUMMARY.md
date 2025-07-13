@@ -1,5 +1,13 @@
 # Test Coverage Summary for Language Configuration Framework
 
+## Recent Updates (2025-01-13)
+
+### Rust Test Isolation Fix (✅ COMPLETED)
+- **Issue**: Rust tests were passing individually but failing in full test suite
+- **Cause**: Module-level config registration causing singleton conflicts
+- **Fix**: Moved config registration to setup_method/teardown_method pattern
+- **Result**: All 10 Rust tests now pass both individually and in full suite
+
 ## Implemented Tests
 
 ### 1. ChunkRule Advanced Features (✅ COMPLETED)

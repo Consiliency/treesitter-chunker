@@ -23,21 +23,44 @@ class ASTCache:
     
     def _init_db(self):
         """Initialize cache database schema."""
-        with self._get_connection() as conn:
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS file_cache (
-                    file_path TEXT PRIMARY KEY,
-                    file_hash TEXT NOT NULL,
-                    file_size INTEGER NOT NULL,
-                    mtime REAL NOT NULL,
-                    language TEXT NOT NULL,
-                    chunks_data BLOB NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_file_hash ON file_cache(file_hash)
-            """)
+        try:
+            with self._get_connection() as conn:
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS file_cache (
+                        file_path TEXT NOT NULL,
+                        file_hash TEXT NOT NULL,
+                        file_size INTEGER NOT NULL,
+                        mtime REAL NOT NULL,
+                        language TEXT NOT NULL,
+                        chunks_data BLOB NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        PRIMARY KEY (file_path, language)
+                    )
+                """)
+                conn.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_file_hash ON file_cache(file_hash)
+                """)
+        except sqlite3.DatabaseError:
+            # Database is corrupted, remove and recreate
+            if self.db_path.exists():
+                self.db_path.unlink()
+            # Try again
+            with self._get_connection() as conn:
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS file_cache (
+                        file_path TEXT NOT NULL,
+                        file_hash TEXT NOT NULL,
+                        file_size INTEGER NOT NULL,
+                        mtime REAL NOT NULL,
+                        language TEXT NOT NULL,
+                        chunks_data BLOB NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        PRIMARY KEY (file_path, language)
+                    )
+                """)
+                conn.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_file_hash ON file_cache(file_hash)
+                """)
     
     @contextmanager
     def _get_connection(self):
@@ -67,9 +90,14 @@ class ASTCache:
                 cached_hash, cached_mtime, chunks_data = result
                 # Check if file has changed
                 if cached_hash == metadata.hash and cached_mtime == metadata.mtime:
-                    # Deserialize chunks
-                    chunks_dicts = pickle.loads(chunks_data)
-                    return [CodeChunk(**chunk_dict) for chunk_dict in chunks_dicts]
+                    try:
+                        # Deserialize chunks
+                        chunks_dicts = pickle.loads(chunks_data)
+                        return [CodeChunk(**chunk_dict) for chunk_dict in chunks_dicts]
+                    except (pickle.UnpicklingError, EOFError, AttributeError, ImportError, IndexError):
+                        # Corrupted pickle data, invalidate this entry
+                        self.invalidate_cache(path)
+                        return None
         
         return None
     
