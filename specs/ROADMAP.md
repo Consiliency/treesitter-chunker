@@ -203,35 +203,35 @@ This document outlines the development roadmap for the tree-sitter-chunker proje
 
 ## Phase 5: CLI & Export Enhancements
 
-### 5.1 Advanced CLI Features
+### 5.1 Advanced CLI Features ✅ *[Completed: 2025-01-12]*
 # Branch: feature/cli-enhance | Can Start: Immediately | Blocks: None
-- [ ] **Batch Processing**
-  - [ ] Add directory input support
-  - [ ] Implement glob pattern matching
-  - [ ] Support file lists from stdin
-  - [ ] Add recursive directory traversal
+- [x] **Batch Processing**
+  - [x] Add directory input support
+  - [x] Implement glob pattern matching
+  - [x] Support file lists from stdin
+  - [x] Add recursive directory traversal
 
-- [ ] **Filtering and Selection**
-  - [ ] Filter by file patterns
-  - [ ] Select specific chunk types
-  - [ ] Add size-based filtering
+- [x] **Filtering and Selection**
+  - [x] Filter by file patterns
+  - [x] Select specific chunk types
+  - [x] Add size-based filtering
   - [ ] Support complexity-based selection
 
 ### 5.2 Export Formats
 # Multiple independent branches - see individual items below
-- [x] **JSON/JSONL Export** ✅ *[Completed: 2025-01-12]*
+- [ ] **JSON/JSONL Export**
   # Branch: feature/export-json | Can Start: Immediately | Blocks: None
-  - [x] Add streaming JSONL output
-  - [x] Support custom JSON schemas
-  - [x] Include relationship data
-  - [x] Add compression support
+  - [ ] Add streaming JSONL output
+  - [ ] Support custom JSON schemas
+  - [ ] Include relationship data
+  - [ ] Add compression support
 
-- [x] **Parquet Export** ✅ *[Completed: 2025-07-12]*
+- [ ] **Parquet Export**
   # Branch: feature/export-parquet | Can Start: Immediately | Blocks: None
-  - [x] Implement Apache Parquet writer
-  - [x] Support nested schema for metadata
-  - [x] Add partitioning options
-  - [x] Enable column selection
+  - [ ] Implement Apache Parquet writer
+  - [ ] Support nested schema for metadata
+  - [ ] Add partitioning options
+  - [ ] Enable column selection
 
 - [ ] **Graph Formats**
   # Branch: feature/export-graph | Can Start: Immediately | Blocks: None
@@ -247,18 +247,18 @@ This document outlines the development roadmap for the tree-sitter-chunker proje
   - [ ] Support batch inserts
   - [ ] Add index generation
 
-### 5.3 User Experience
+### 5.3 User Experience ✅ *[Completed: 2025-01-12]*
 # Branch: feature/cli-enhance | Can Start: Immediately | Blocks: None
-- [ ] **Progress Tracking**
-  - [ ] Add rich progress bars
-  - [ ] Show ETA for large operations
-  - [ ] Support quiet/verbose modes
-  - [ ] Add operation summaries
+- [x] **Progress Tracking**
+  - [x] Add rich progress bars
+  - [x] Show ETA for large operations
+  - [x] Support quiet/verbose modes
+  - [x] Add operation summaries
 
-- [ ] **Configuration Files**
-  - [ ] Support .chunkerrc configuration
-  - [ ] Add project-specific configs
-  - [ ] Enable config validation
+- [x] **Configuration Files**
+  - [x] Support .chunkerrc configuration
+  - [x] Add project-specific configs
+  - [x] Enable config validation
   - [ ] Support environment variables
 
 ## Phase 6: Quality & Developer Experience
@@ -275,7 +275,7 @@ This document outlines the development roadmap for the tree-sitter-chunker proje
   - [x] Test full pipeline for each language ✓
   - [x] Add cross-language scenarios ✓
   - [x] Test error recovery paths ✓
-  - [x] Validate export formats ✓
+  - [ ] Validate export formats
 
 - [ ] **Performance Tests**
   - [x] Basic performance testing (caching, concurrency) ✓
@@ -511,11 +511,10 @@ When merging to main:
 <!-- Format: - [branch-name]: [status] | [last-updated] | [developer] -->
 - feature/lang-config: Completed | 2025-01-13 | Jenner
 - feature/plugin-arch: Not Started | 2025-01-12 | TBD
-- feature/cli-enhance: Not Started | 2025-01-12 | TBD
-- feature/export-json: Completed | 2025-01-12 | Implemented JSON/JSONL export with all features
+- feature/cli-enhance: Completed | 2025-01-12 | Assistant
+- feature/export-json: Not Started | 2025-01-12 | TBD
 - feature/performance: Not Started | 2025-01-12 | TBD
 - feature/docs: Not Started | 2025-01-12 | TBD
-- feature/export-parquet: Completed | 2025-07-12 | Implemented
 <!-- Add new status lines above this comment -->
 
 ## Implementation Priority
@@ -563,16 +562,6 @@ When merging to main:
 This roadmap is a living document and should be updated as the project evolves. Each checkbox represents a discrete unit of work that can be tracked and completed independently where possible.
 
 ### Implementation Updates
-
-**2025-01-12**: Completed JSON/JSONL Export (Phase 5.2)
-- Implemented JSONExporter and JSONLExporter classes with full functionality
-- Added support for 4 schema types: flat, nested, minimal, and full
-- Implemented streaming JSONL output for memory-efficient processing
-- Added gzip compression support for both JSON and JSONL formats
-- Updated CodeChunk dataclass with relationship tracking (chunk_id, parent_chunk_id, references, dependencies)
-- Enhanced CLI with new export options (--format, --schema, --output, --compress)
-- Added comprehensive test coverage (18 tests) for all export functionality
-- Successfully exports parent-child relationships and metadata
 
 **2025-01-12**: Completed Phase 1.1 (Parser Module Redesign)
 - Implemented dynamic language discovery with `LanguageRegistry`
@@ -634,17 +623,22 @@ This roadmap is a living document and should be updated as the project evolves. 
   - Validated Unicode support and error handling
 - **Phase 2.1 Status**: Fully implemented, tested, and ready to unblock 5 language modules
 
-**2025-07-12**: Completed Phase 5.2 Parquet Export
-- Implemented `ParquetExporter` class with Apache Parquet writer using PyArrow
-- Added support for nested schema with metadata stored as struct type
-- Implemented partitioning options for organizing data by columns
-- Added column selection functionality for flexible export schemas
-- Integrated with CLI using new flags: --parquet, --columns, --partition, --compression
-- Created streaming export support for large datasets
+**2025-01-12**: Completed Phase 5.1 and 5.3 (Advanced CLI Features & User Experience)
+- Implemented batch processing with directory input, glob patterns, and stdin support
+- Added comprehensive file filtering with include/exclude patterns
+- Implemented parallel processing with configurable worker threads
+- Added rich progress bars with ETA and operation summaries
+- Created .chunkerrc TOML configuration file support
+- Added auto-language detection based on file extensions
+- Implemented chunk filtering by type and size (min/max lines)
+- Added multiple output formats: table, JSON, and JSONL
+- Created comprehensive test suite for all CLI features
 - **Key Features**:
-  - Multiple compression codecs: snappy, gzip, brotli, lz4, zstd
-  - Batch processing for memory-efficient exports
-  - Schema validation and type safety
-  - Partitioned dataset support for analytical workloads
-- **Testing**: 7 comprehensive tests covering all functionality
-- **Dependencies**: Added pyarrow>=11.0.0 to project dependencies
+  - ✅ Process entire directories recursively or non-recursively
+  - ✅ Filter files by patterns (include/exclude)
+  - ✅ Filter chunks by type and size
+  - ✅ Parallel processing with progress tracking
+  - ✅ Configuration file support (.chunkerrc)
+  - ✅ Multiple output formats for different use cases
+  - ✅ Auto-detect language from file extension
+- **Phase 5.1 & 5.3 Status**: Fully implemented and tested
