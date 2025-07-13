@@ -16,37 +16,20 @@ from .base import (
 # Phase 1.2 exports (Plugin system)
 from .plugin_base import LanguagePlugin
 
-# Try to import plugin implementations if available
-_plugin_exports = []
-try:
-    from .python import PythonPlugin
-    _plugin_exports.append("PythonPlugin")
-except ImportError:
-    pass
+# Import plugin implementations
+from .python import PythonPlugin
+from .rust import RustPlugin
+from .javascript import JavaScriptPlugin
+from .c import CPlugin
+from .cpp import CppPlugin
 
-try:
-    from .rust import RustPlugin
-    _plugin_exports.append("RustPlugin")
-except ImportError:
-    pass
-
-try:
-    from .javascript import JavaScriptPlugin
-    _plugin_exports.append("JavaScriptPlugin")
-except ImportError:
-    pass
-
-try:
-    from .c import CPlugin
-    _plugin_exports.append("CPlugin")
-except ImportError:
-    pass
-
-try:
-    from .cpp import CppPlugin
-    _plugin_exports.append("CppPlugin")
-except ImportError:
-    pass
+_plugin_exports = [
+    "PythonPlugin",
+    "RustPlugin", 
+    "JavaScriptPlugin",
+    "CPlugin",
+    "CppPlugin",
+]
 
 __all__ = [
     # Phase 2.1 exports

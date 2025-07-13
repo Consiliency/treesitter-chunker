@@ -1,37 +1,10 @@
 from __future__ import annotations
 from pathlib import Path
-from dataclasses import dataclass, field
 from tree_sitter import Node
-import hashlib
 
 from .parser import get_parser
 from .languages import language_config_registry
-
-@dataclass
-class CodeChunk:
-    language: str
-    file_path: str
-    node_type: str
-    start_line: int
-    end_line: int
-    byte_start: int
-    byte_end: int
-    parent_context: str
-    content: str
-    chunk_id: str = ""
-    parent_chunk_id: str | None = None
-    references: list[str] = field(default_factory=list)
-    dependencies: list[str] = field(default_factory=list)
-    
-    def generate_id(self) -> str:
-        """Generate a unique ID for this chunk based on its content and location."""
-        id_string = f"{self.file_path}:{self.start_line}:{self.end_line}:{self.content}"
-        return hashlib.sha256(id_string.encode()).hexdigest()[:16]
-    
-    def __post_init__(self):
-        """Generate chunk ID if not provided."""
-        if not self.chunk_id:
-            self.chunk_id = self.generate_id()
+from .types import CodeChunk
 
 def _walk(node: Node, source: bytes, language: str, parent_ctx: str | None = None,
           parent_chunk: CodeChunk | None = None) -> list[CodeChunk]:

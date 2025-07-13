@@ -16,7 +16,9 @@ from rich.console import Console
 
 from chunker import chunk_file
 from chunker.export import JSONExporter, JSONLExporter, SchemaType
-from chunker.exporters import ParquetExporter, list_languages, ChunkerError
+from chunker.exporters import ParquetExporter
+from chunker.parser import list_languages
+from chunker.exceptions import ChunkerError
 
 app = typer.Typer(help="Tree‑sitter‑based code‑chunker CLI")
 console = Console()

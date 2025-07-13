@@ -25,6 +25,12 @@ __all__ = [
     "StreamingChunker",
     "ParallelChunker",
     "CodeChunk",
+    # Plugin system
+    "PluginManager",
+    "ChunkerConfig",
+    "LanguagePlugin",
+    "PluginConfig",
+    "get_plugin_manager",
 ]
 
 from .parser import (
@@ -41,3 +47,6 @@ from .exceptions import (
 from .streaming import chunk_file_streaming, StreamingChunker
 from .parallel import chunk_files_parallel, chunk_directory_parallel, ParallelChunker
 from .cache import ASTCache
+from .plugin_manager import PluginManager, get_plugin_manager
+from .config import ChunkerConfig
+from .languages.plugin_base import LanguagePlugin, PluginConfig

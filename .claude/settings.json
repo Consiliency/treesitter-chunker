@@ -37,8 +37,5 @@
       "Bash(curl:*)",
       "Bash(wget:*)"
     ]
-  },
-  "additionalDirectories": [
-    "/home/jenner/code/treesitter-chunker-worktrees"
-  ]
+  }
 }

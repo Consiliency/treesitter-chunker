@@ -3,7 +3,7 @@ from typing import Set, Optional
 from tree_sitter import Node
 
 from .plugin_base import LanguagePlugin
-from ..chunker import CodeChunk
+from ..types import CodeChunk
 
 
 class CPlugin(LanguagePlugin):

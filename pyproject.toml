@@ -11,6 +11,8 @@ dependencies = [
     "rich",
     "typer",
     "pyarrow>=11.0.0",
+    "toml",
+    "pyyaml",
 ]
 
 [project.optional-dependencies]
@@ -24,3 +26,10 @@ build-backend = "setuptools.build_meta"
 where   = ["."]
 include = ["chunker", "chunker.*"]
 exclude = ["tests*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "--ignore=grammars/"

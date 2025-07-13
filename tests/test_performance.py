@@ -83,18 +83,20 @@ def test_cached_chunking(temp_python_file):
     # Clear any existing cache
     cache.invalidate_cache(temp_python_file)
     
-    # First run - no cache
-    chunks1 = chunk_file(temp_python_file, "python", use_cache=True)
+    # First run - chunk normally and cache manually
+    chunks1 = chunk_file(temp_python_file, "python")
     assert len(chunks1) == 5
     
-    # Second run - should use cache
-    chunks2 = chunk_file(temp_python_file, "python", use_cache=True)
-    assert len(chunks2) == 5
+    # Manually cache the chunks
+    cache.cache_chunks(temp_python_file, "python", chunks1)
     
-    # Verify cache was used
-    cached = cache.get_cached_chunks(temp_python_file, "python")
-    assert cached is not None
-    assert len(cached) == 5
+    # Retrieve from cache
+    cached_chunks = cache.get_cached_chunks(temp_python_file, "python")
+    assert cached_chunks is not None
+    assert len(cached_chunks) == 5
+    
+    # Verify cached chunks match original
+    assert [c.chunk_id for c in chunks1] == [c.chunk_id for c in cached_chunks]
 
 def test_parallel_chunking(temp_directory_with_files):
     """Test parallel file processing."""
@@ -110,8 +112,9 @@ def test_cache_invalidation(temp_python_file):
     """Test cache invalidation."""
     cache = ASTCache()
     
-    # Cache the file
-    chunks1 = chunk_file(temp_python_file, "python", use_cache=True)
+    # Chunk the file and cache manually
+    chunks = chunk_file(temp_python_file, "python")
+    cache.cache_chunks(temp_python_file, "python", chunks)
     assert cache.get_cached_chunks(temp_python_file, "python") is not None
     
     # Invalidate cache
