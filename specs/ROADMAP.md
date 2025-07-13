@@ -219,12 +219,12 @@ This document outlines the development roadmap for the tree-sitter-chunker proje
 
 ### 5.2 Export Formats
 # Multiple independent branches - see individual items below
-- [ ] **JSON/JSONL Export**
+- [x] **JSON/JSONL Export** ✅ *[Completed: 2025-01-12]*
   # Branch: feature/export-json | Can Start: Immediately | Blocks: None
-  - [ ] Add streaming JSONL output
-  - [ ] Support custom JSON schemas
-  - [ ] Include relationship data
-  - [ ] Add compression support
+  - [x] Add streaming JSONL output
+  - [x] Support custom JSON schemas
+  - [x] Include relationship data
+  - [x] Add compression support
 
 - [ ] **Parquet Export**
   # Branch: feature/export-parquet | Can Start: Immediately | Blocks: None
@@ -512,7 +512,7 @@ When merging to main:
 - feature/lang-config: Completed | 2025-01-13 | Jenner
 - feature/plugin-arch: Not Started | 2025-01-12 | TBD
 - feature/cli-enhance: Not Started | 2025-01-12 | TBD
-- feature/export-json: Not Started | 2025-01-12 | TBD
+- feature/export-json: Completed | 2025-01-12 | Implemented JSON/JSONL export with all features
 - feature/performance: Not Started | 2025-01-12 | TBD
 - feature/docs: Not Started | 2025-01-12 | TBD
 <!-- Add new status lines above this comment -->
@@ -562,6 +562,16 @@ When merging to main:
 This roadmap is a living document and should be updated as the project evolves. Each checkbox represents a discrete unit of work that can be tracked and completed independently where possible.
 
 ### Implementation Updates
+
+**2025-01-12**: Completed JSON/JSONL Export (Phase 5.2)
+- Implemented JSONExporter and JSONLExporter classes with full functionality
+- Added support for 4 schema types: flat, nested, minimal, and full
+- Implemented streaming JSONL output for memory-efficient processing
+- Added gzip compression support for both JSON and JSONL formats
+- Updated CodeChunk dataclass with relationship tracking (chunk_id, parent_chunk_id, references, dependencies)
+- Enhanced CLI with new export options (--format, --schema, --output, --compress)
+- Added comprehensive test coverage (18 tests) for all export functionality
+- Successfully exports parent-child relationships and metadata
 
 **2025-01-12**: Completed Phase 1.1 (Parser Module Redesign)
 - Implemented dynamic language discovery with `LanguageRegistry`
