@@ -11,3 +11,8 @@ __pycache__/
 # Test & tooling
 .coverage
 pytest_cache/
+
+# Generated files
+generated_config.yaml
+generated_config.toml
+generated_config.json

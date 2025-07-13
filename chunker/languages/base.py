@@ -4,11 +4,11 @@ This module provides the foundational classes and interfaces for defining
 language-specific chunking configurations.
 """
 
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Set, Dict, List, Optional, Any, Type
 import logging
-
 logger = logging.getLogger(__name__)
 
 
@@ -26,6 +26,21 @@ class ChunkRule:
     include_children: bool = True
     priority: int = 0
     metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+# Backward compatibility - PluginConfig from Phase 1.2
+@dataclass
+class PluginConfig:
+    """Configuration for a language plugin."""
+    enabled: bool = True
+    chunk_types: Optional[Set[str]] = None
+    min_chunk_size: int = 1
+    max_chunk_size: Optional[int] = None
+    custom_options: Dict[str, Any] = None
+
+    def __post_init__(self):
+        if self.custom_options is None:
+            self.custom_options = {}
 
 
 class LanguageConfig(ABC):

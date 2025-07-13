@@ -1,0 +1,22 @@
+[chunker]
+plugin_dirs = ["./plugins", "~/.chunker/plugins"]
+enabled_languages = ["python", "rust", "javascript", "c", "cpp"]
+
+[chunker.default_plugin_config]
+min_chunk_size = 3
+max_chunk_size = 500
+
+[languages.python]
+enabled = true
+chunk_types = ["function_definition", "class_definition", "async_function_definition"]
+include_docstrings = true
+
+[languages.rust]
+enabled = true
+chunk_types = ["function_item", "impl_item", "struct_item", "enum_item", "trait_item"]
+include_tests = false
+
+[languages.javascript]
+enabled = true
+chunk_types = ["function_declaration", "method_definition", "class_declaration", "arrow_function"]
+include_jsx = true
