@@ -1,22 +1,12 @@
 from __future__ import annotations
 from pathlib import Path
-from dataclasses import dataclass
 from tree_sitter import Node
+from typing import Optional
 
 from .parser import get_parser
 from .languages import language_config_registry
-
-@dataclass
-class CodeChunk:
-    language: str
-    file_path: str
-    node_type: str
-    start_line: int
-    end_line: int
-    byte_start: int
-    byte_end: int
-    parent_context: str
-    content: str
+from .cache import ASTCache
+from .types import CodeChunk
 
 def _walk(node: Node, source: bytes, language: str, parent_ctx: str | None = None) -> list[CodeChunk]:
     """Walk the AST and extract chunks based on language configuration."""
@@ -61,12 +51,28 @@ def _walk(node: Node, source: bytes, language: str, parent_ctx: str | None = Non
     
     return chunks
 
-def chunk_file(path: str | Path, language: str) -> list[CodeChunk]:
+def chunk_file(path: str | Path, language: str, use_cache: bool = False) -> list[CodeChunk]:
     """Parse the file and return a list of `CodeChunk`."""
+    file_path = Path(path)
+    
+    # Check cache first if enabled
+    if use_cache:
+        cache = ASTCache()
+        cached_chunks = cache.get_cached_chunks(file_path, language)
+        if cached_chunks is not None:
+            return cached_chunks
+    
+    # Parse the file
     parser = get_parser(language)
-    src = Path(path).read_bytes()
+    src = file_path.read_bytes()
     tree = parser.parse(src)
     chunks = _walk(tree.root_node, src, language)
     for c in chunks:
         c.file_path = str(path)
+    
+    # Cache the results if enabled
+    if use_cache and chunks:
+        cache = ASTCache()
+        cache.cache_chunks(file_path, language, chunks)
+    
     return chunks
