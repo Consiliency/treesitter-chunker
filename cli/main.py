@@ -14,7 +14,9 @@ from rich.progress import Progress, BarColumn, TimeRemainingColumn, MofNComplete
 from rich.table import Table
 from rich.console import Console
 
-from chunker import chunk_file, list_languages, ChunkerError
+from chunker import chunk_file
+from chunker.export import JSONExporter, JSONLExporter, SchemaType
+from chunker.exporters import ParquetExporter, list_languages, ChunkerError
 
 app = typer.Typer(help="Tree‑sitter‑based code‑chunker CLI")
 console = Console()
