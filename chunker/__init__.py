@@ -17,6 +17,14 @@ __all__ = [
     "LanguageNotFoundError",
     "ParserError",
     "LibraryNotFoundError",
+    # Performance features
+    "chunk_file_streaming",
+    "chunk_files_parallel",
+    "chunk_directory_parallel",
+    "ASTCache",
+    "StreamingChunker",
+    "ParallelChunker",
+    "CodeChunk",
 ]
 
 from .parser import (
@@ -24,8 +32,12 @@ from .parser import (
     return_parser, clear_cache
 )
 from .chunker import chunk_file
+from .types import CodeChunk
 from .factory import ParserConfig
 from .exceptions import (
     ChunkerError, LanguageNotFoundError, 
     ParserError, LibraryNotFoundError
 )
+from .streaming import chunk_file_streaming, StreamingChunker
+from .parallel import chunk_files_parallel, chunk_directory_parallel, ParallelChunker
+from .cache import ASTCache
