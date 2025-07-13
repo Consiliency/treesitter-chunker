@@ -1,0 +1,29 @@
+# Tree-sitter Chunker Configuration File
+# This file can be placed in the project root or home directory
+
+# Chunk filtering
+chunk_types = ["function_definition", "class_definition", "method_definition"]
+min_chunk_size = 3  # Minimum lines
+max_chunk_size = 200  # Maximum lines
+
+# File filtering patterns
+include_patterns = ["*.py", "*.js", "*.ts", "*.c", "*.cpp", "*.rs"]
+exclude_patterns = ["*test*", "*__pycache__*", "*.min.js", "build/*", "dist/*"]
+
+# Processing options
+parallel_workers = 4  # Number of parallel workers for batch processing
+
+# Language mappings (for auto-detection)
+[language_mappings]
+py = "python"
+js = "javascript"
+ts = "javascript"
+jsx = "javascript"
+tsx = "javascript"
+c = "c"
+h = "c"
+cpp = "cpp"
+cc = "cpp"
+cxx = "cpp"
+hpp = "cpp"
+rs = "rust"
