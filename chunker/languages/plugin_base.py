@@ -12,7 +12,7 @@ from tree_sitter import Node, Parser
 from pathlib import Path
 import logging
 
-from ..chunker import CodeChunk
+from ..types import CodeChunk
 from .base import LanguageConfig, PluginConfig as BasePluginConfig
 
 logger = logging.getLogger(__name__)

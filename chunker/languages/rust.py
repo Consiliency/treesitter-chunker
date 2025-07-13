@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Set, Optional
 from tree_sitter import Node
 
-from .base import LanguagePlugin
+from .plugin_base import LanguagePlugin
 
 
 class RustPlugin(LanguagePlugin):

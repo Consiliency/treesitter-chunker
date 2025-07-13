@@ -9,7 +9,8 @@ from pathlib import Path
 from typing import Dict, List, Type, Optional, Set, Any
 from tree_sitter import Parser
 
-from .languages.base import LanguagePlugin, PluginConfig
+from .languages.base import PluginConfig
+from .languages.plugin_base import LanguagePlugin
 from .parser import get_parser
 
 logger = logging.getLogger(__name__)
