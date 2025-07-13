@@ -1,13 +1,13 @@
 from __future__ import annotations
 import json
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 import typer
 from rich import print
 
 from chunker import chunk_file
-from chunker.export import JSONExporter, JSONLExporter, SchemaType
+from chunker.exporters import ParquetExporter
 
 app = typer.Typer(help="Tree‑sitter‑based code‑chunker CLI")
 
@@ -16,55 +16,34 @@ def chunk(
     file: Path = typer.Argument(..., exists=True, readable=True),
     language: str = typer.Option(..., "--lang", "-l", help="Language name (e.g. python)"),
     json_out: bool = typer.Option(False, "--json", help="Output JSON instead of Rich table"),
-    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output file path"),
-    format: str = typer.Option("table", "--format", "-f", help="Output format: table, json, jsonl"),
-    schema: str = typer.Option("flat", "--schema", "-s", help="JSON schema type: flat, nested, minimal, full"),
-    compress: bool = typer.Option(False, "--compress", "-c", help="Compress output with gzip"),
+    parquet_out: Optional[Path] = typer.Option(None, "--parquet", "-p", help="Output to Parquet file"),
+    parquet_columns: Optional[List[str]] = typer.Option(None, "--columns", "-c", help="Columns to include in Parquet output"),
+    parquet_partition: Optional[List[str]] = typer.Option(None, "--partition", help="Columns to partition by"),
+    parquet_compression: str = typer.Option("snappy", "--compression", help="Parquet compression (snappy, gzip, brotli, lz4, zstd)"),
 ):
     """Chunk a single source file."""
     chunks = chunk_file(file, language)
     
-    # Handle different output formats
-    if format == "table" and not json_out:
+    if parquet_out:
+        exporter = ParquetExporter(
+            columns=parquet_columns,
+            partition_by=parquet_partition,
+            compression=parquet_compression
+        )
+        exporter.export(chunks, parquet_out)
+        print(f"[green]✓[/green] Exported {len(chunks)} chunks to {parquet_out}")
+    elif json_out:
+        print(json.dumps([c.__dict__ for c in chunks], indent=2))
+    else:
         from rich.table import Table
         tbl = Table(title=f"Chunks in {file}")
         tbl.add_column("#", justify="right")
-        tbl.add_column("ID")
         tbl.add_column("Node")
         tbl.add_column("Lines")
         tbl.add_column("Parent")
         for i, c in enumerate(chunks, 1):
-            tbl.add_row(
-                str(i), 
-                c.chunk_id[:8] + "...", 
-                c.node_type, 
-                f"{c.start_line}-{c.end_line}", 
-                c.parent_context
-            )
+            tbl.add_row(str(i), c.node_type, f"{c.start_line}-{c.end_line}", c.parent_context)
         print(tbl)
-    elif format == "json" or json_out:
-        schema_type = SchemaType[schema.upper()]
-        exporter = JSONExporter(schema_type)
-        
-        if output:
-            exporter.export(chunks, output, compress=compress)
-            print(f"[green]✓[/green] Exported {len(chunks)} chunks to {output}")
-        else:
-            print(exporter.export_to_string(chunks))
-    elif format == "jsonl":
-        schema_type = SchemaType[schema.upper()]
-        exporter = JSONLExporter(schema_type)
-        
-        if output:
-            exporter.export(chunks, output, compress=compress)
-            print(f"[green]✓[/green] Exported {len(chunks)} chunks to {output}")
-        else:
-            # For stdout, write directly
-            import sys
-            exporter.export(chunks, sys.stdout)
-    else:
-        print(f"[red]Error:[/red] Unknown format: {format}")
-        raise typer.Exit(1)
 
 if __name__ == "__main__":
     app()

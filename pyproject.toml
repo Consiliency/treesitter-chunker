@@ -10,6 +10,7 @@ dependencies = [
     "tree_sitter",
     "rich",
     "typer",
+    "pyarrow>=11.0.0",
 ]
 
 [project.optional-dependencies]

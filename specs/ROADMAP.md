@@ -226,12 +226,12 @@ This document outlines the development roadmap for the tree-sitter-chunker proje
   - [x] Include relationship data
   - [x] Add compression support
 
-- [ ] **Parquet Export**
+- [x] **Parquet Export** ✅ *[Completed: 2025-07-12]*
   # Branch: feature/export-parquet | Can Start: Immediately | Blocks: None
-  - [ ] Implement Apache Parquet writer
-  - [ ] Support nested schema for metadata
-  - [ ] Add partitioning options
-  - [ ] Enable column selection
+  - [x] Implement Apache Parquet writer
+  - [x] Support nested schema for metadata
+  - [x] Add partitioning options
+  - [x] Enable column selection
 
 - [ ] **Graph Formats**
   # Branch: feature/export-graph | Can Start: Immediately | Blocks: None
@@ -275,7 +275,7 @@ This document outlines the development roadmap for the tree-sitter-chunker proje
   - [x] Test full pipeline for each language ✓
   - [x] Add cross-language scenarios ✓
   - [x] Test error recovery paths ✓
-  - [ ] Validate export formats
+  - [x] Validate export formats ✓
 
 - [ ] **Performance Tests**
   - [x] Basic performance testing (caching, concurrency) ✓
@@ -515,6 +515,7 @@ When merging to main:
 - feature/export-json: Completed | 2025-01-12 | Implemented JSON/JSONL export with all features
 - feature/performance: Not Started | 2025-01-12 | TBD
 - feature/docs: Not Started | 2025-01-12 | TBD
+- feature/export-parquet: Completed | 2025-07-12 | Implemented
 <!-- Add new status lines above this comment -->
 
 ## Implementation Priority
@@ -632,3 +633,18 @@ This roadmap is a living document and should be updated as the project evolves. 
   - Tested complex inheritance including diamond patterns
   - Validated Unicode support and error handling
 - **Phase 2.1 Status**: Fully implemented, tested, and ready to unblock 5 language modules
+
+**2025-07-12**: Completed Phase 5.2 Parquet Export
+- Implemented `ParquetExporter` class with Apache Parquet writer using PyArrow
+- Added support for nested schema with metadata stored as struct type
+- Implemented partitioning options for organizing data by columns
+- Added column selection functionality for flexible export schemas
+- Integrated with CLI using new flags: --parquet, --columns, --partition, --compression
+- Created streaming export support for large datasets
+- **Key Features**:
+  - Multiple compression codecs: snappy, gzip, brotli, lz4, zstd
+  - Batch processing for memory-efficient exports
+  - Schema validation and type safety
+  - Partitioned dataset support for analytical workloads
+- **Testing**: 7 comprehensive tests covering all functionality
+- **Dependencies**: Added pyarrow>=11.0.0 to project dependencies
