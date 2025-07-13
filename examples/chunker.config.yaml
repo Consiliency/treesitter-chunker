@@ -1,0 +1,18 @@
+chunker:
+  enabled_languages:
+  - javascript
+  - python
+  - rust
+  plugin_dirs:
+  - ./plugins
+  - ~/.chunker/plugins
+  default_plugin_config:
+    max_chunk_size: 100
+    min_chunk_size: 3
+languages:
+  python:
+    enabled: true
+    chunk_types:
+    - function_definition
+    - class_definition
+    include_docstrings: true
