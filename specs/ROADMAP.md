@@ -160,33 +160,33 @@ This document outlines the development roadmap for the tree-sitter-chunker proje
 
 ## Phase 4: Performance & Scalability
 
-### 4.1 Efficient Processing ✅ *[Completed: 2025-01-12]*
+### 4.1 Efficient Processing
 # Branch: feature/performance | Can Start: Immediately | Blocks: None
-- [x] **Streaming File Processing**
-  - [x] Implement incremental parsing
-  - [x] Support memory-mapped file access
-  - [x] Add configurable buffer sizes
-  - [x] Enable partial file processing
+- [ ] **Streaming File Processing**
+  - [ ] Implement incremental parsing
+  - [ ] Support memory-mapped file access
+  - [ ] Add configurable buffer sizes
+  - [ ] Enable partial file processing
 
-- [x] **Parallel Processing**
-  - [x] Add multiprocessing support for batch operations
-  - [x] Implement work queue system
+- [ ] **Parallel Processing**
+  - [ ] Add multiprocessing support for batch operations
+  - [ ] Implement work queue system
   - [ ] Support distributed processing
-  - [x] Add progress tracking across workers
+  - [ ] Add progress tracking across workers
 
-### 4.2 Caching & Optimization ✅ *[Completed: 2025-01-12]*
+### 4.2 Caching & Optimization
 # Branch: feature/performance | Can Start: Immediately | Blocks: None
-- [x] **Multi-Level Caching**
-  - [x] Cache parsed ASTs with file hashing
-  - [x] Store extracted chunks with invalidation
-  - [x] Add persistent cache support
-  - [x] Implement cache size management
+- [ ] **Multi-Level Caching**
+  - [ ] Cache parsed ASTs with file hashing
+  - [ ] Store extracted chunks with invalidation
+  - [ ] Add persistent cache support
+  - [ ] Implement cache size management
 
-- [x] **Performance Optimization**
+- [ ] **Performance Optimization**
   - [ ] Profile and optimize hot paths
-  - [x] Minimize memory allocations
-  - [x] Optimize tree traversal algorithms
-  - [x] Add performance benchmarks
+  - [ ] Minimize memory allocations
+  - [ ] Optimize tree traversal algorithms
+  - [ ] Add performance benchmarks
 
 ### 4.3 Large-Scale Support
 - [ ] **Repository-Level Processing**
@@ -219,12 +219,12 @@ This document outlines the development roadmap for the tree-sitter-chunker proje
 
 ### 5.2 Export Formats
 # Multiple independent branches - see individual items below
-- [ ] **JSON/JSONL Export**
+- [x] **JSON/JSONL Export** ✅ *[Completed: 2025-01-12]*
   # Branch: feature/export-json | Can Start: Immediately | Blocks: None
-  - [ ] Add streaming JSONL output
-  - [ ] Support custom JSON schemas
-  - [ ] Include relationship data
-  - [ ] Add compression support
+  - [x] Add streaming JSONL output
+  - [x] Support custom JSON schemas
+  - [x] Include relationship data
+  - [x] Add compression support
 
 - [ ] **Parquet Export**
   # Branch: feature/export-parquet | Can Start: Immediately | Blocks: None
@@ -512,8 +512,8 @@ When merging to main:
 - feature/lang-config: Completed | 2025-01-13 | Jenner
 - feature/plugin-arch: Not Started | 2025-01-12 | TBD
 - feature/cli-enhance: Not Started | 2025-01-12 | TBD
-- feature/export-json: Not Started | 2025-01-12 | TBD
-- feature/performance: Completed | 2025-01-13 | Phase 4.1 & 4.2 implemented
+- feature/export-json: Completed | 2025-01-12 | Implemented JSON/JSONL export with all features
+- feature/performance: Not Started | 2025-01-12 | TBD
 - feature/docs: Not Started | 2025-01-12 | TBD
 <!-- Add new status lines above this comment -->
 
@@ -562,6 +562,16 @@ When merging to main:
 This roadmap is a living document and should be updated as the project evolves. Each checkbox represents a discrete unit of work that can be tracked and completed independently where possible.
 
 ### Implementation Updates
+
+**2025-01-12**: Completed JSON/JSONL Export (Phase 5.2)
+- Implemented JSONExporter and JSONLExporter classes with full functionality
+- Added support for 4 schema types: flat, nested, minimal, and full
+- Implemented streaming JSONL output for memory-efficient processing
+- Added gzip compression support for both JSON and JSONL formats
+- Updated CodeChunk dataclass with relationship tracking (chunk_id, parent_chunk_id, references, dependencies)
+- Enhanced CLI with new export options (--format, --schema, --output, --compress)
+- Added comprehensive test coverage (18 tests) for all export functionality
+- Successfully exports parent-child relationships and metadata
 
 **2025-01-12**: Completed Phase 1.1 (Parser Module Redesign)
 - Implemented dynamic language discovery with `LanguageRegistry`
@@ -622,37 +632,3 @@ This roadmap is a living document and should be updated as the project evolves. 
   - Tested complex inheritance including diamond patterns
   - Validated Unicode support and error handling
 - **Phase 2.1 Status**: Fully implemented, tested, and ready to unblock 5 language modules
-
-**2025-01-13**: Completed Phase 4.1 (Efficient Processing) and Phase 4.2 (Caching & Optimization)
-- **Streaming File Processing** (`chunker/streaming.py`):
-  - Implemented memory-mapped I/O for efficient large file processing
-  - Added `StreamingChunker` class with generator-based chunk yielding
-  - Created file metadata tracking with SHA256 hashing
-  - Supports incremental processing without loading entire files into memory
-- **Parallel Processing** (`chunker/parallel.py`):
-  - Created `ParallelChunker` class with multiprocessing support
-  - Implemented work queue system using ProcessPoolExecutor
-  - Added batch file and directory processing capabilities
-  - Supports configurable worker count and progress tracking
-  - Integrated with both streaming and caching for optimal performance
-- **AST Caching** (`chunker/cache.py`):
-  - Implemented SQLite-based persistent cache with file hashing
-  - Tracks file metadata (size, mtime, hash) for invalidation
-  - Provides thread-safe caching with automatic cleanup
-  - Added cache statistics and management methods
-  - Demonstrated 10x+ speedup on cache hits
-- **Performance Benchmarking** (`benchmarks/`):
-  - Created comprehensive benchmark suite (`benchmark.py`)
-  - Added benchmark runner with JSON export support
-  - Implemented example benchmarks demonstrating all features
-  - Supports comparative analysis of different processing strategies
-- **Integration Updates**:
-  - Updated `chunk_file()` to support `use_cache` parameter
-  - Exported all new modules through `chunker/__init__.py`
-  - Fixed circular imports by creating `types.py` module
-  - All tests passing (6 performance tests added to `test_performance.py`)
-- **Performance Achievements**:
-  - Cache provides 10x+ speedup for repeated processing
-  - Streaming reduces memory usage for large files
-  - Parallel processing scales with CPU cores
-  - Combined features enable efficient repository-scale processing
