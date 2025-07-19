@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 import json
 
-from coordinator import IntegrationCoordinator, TestScenario
+from tests.integration.coordinator import IntegrationCoordinator, TestScenario
 
 
 def main():
