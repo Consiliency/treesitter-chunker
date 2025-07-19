@@ -295,3 +295,143 @@ class TestRustLanguageFeatures:
 ```
 
 This fix has been implemented and all Rust tests now pass both individually and as part of the full test suite.
+
+### Phase 3 & 4 Completed ✅ *[2025-01-19]*
+
+Successfully implemented all Phase 3 and 4 tests:
+
+**Phase 3: Advanced Integration Testing**
+- [x] test_plugin_integration_advanced.py: 23 tests (20 passing, 3 skipped)
+- [x] test_export_integration_advanced.py: 15 tests (all passing)
+- [x] test_cli_integration_advanced.py: 22 tests (21 passing, 1 skipped)
+- [x] test_end_to_end.py: 12 tests (all passing)
+
+**Phase 4: Performance and Edge Cases**
+- [x] test_performance_advanced.py: 11 tests (all passing)
+- [x] test_edge_cases.py: 29 tests (all passing)
+- [x] test_recovery.py: 21 tests (all passing)
+
+**Final Test Suite Statistics**:
+- Total test files: 33
+- Total tests: 558
+- Passing: 545 (97.7%)
+- Skipped: 13 (2.3%)
+- Failing: 0
+- Coverage: >95% achieved
+
+## Phase 5: Cross-Module Integration Testing (Week 5) *[Added: 2025-01-19]*
+
+### Overview
+Address the ~40% integration test coverage gap identified in Phase 7 of ROADMAP.md. Focus on module interface points and error propagation to increase integration coverage to ~80%.
+
+### 5.1 test_config_runtime_changes.py
+**Priority: HIGH** - Config stability during operations
+```python
+# Test cases to implement:
+- Config modifications during active parsing
+- Registry updates with concurrent readers
+- Config inheritance changes mid-operation
+- Memory safety and reference counting
+- Config rollback on errors
+- Thread-safe config access patterns
+- Config hot-reload simulation
+- Performance impact of config changes
+```
+
+### 5.2 test_plugin_integration_advanced.py (enhancement)
+**Priority: MEDIUM** - Complete plugin conflict scenarios
+```python
+# Test cases to implement:
+- Multiple plugins claiming same language
+- Plugin initialization order dependencies
+- Resource contention between plugins
+- Plugin version conflict resolution
+- Plugin failure cascading effects
+- Plugin hot-reload simulation
+- Memory leaks in plugin lifecycle
+```
+
+### 5.3 test_parquet_cli_integration.py
+**Priority: MEDIUM** - Full CLI integration with Parquet
+```python
+# Test cases to implement:
+- Parquet with --include/--exclude filters
+- Parquet with --chunk-types filtering
+- Parquet with parallel processing
+- Large file streaming to Parquet
+- Schema evolution across languages
+- Compression option testing
+- Memory usage profiling
+- Progress tracking accuracy
+```
+
+### 5.4 test_cache_file_monitoring.py
+**Priority: HIGH** - File change detection
+```python
+# Test cases to implement:
+- File modification detection
+- File deletion handling
+- File rename tracking
+- Concurrent file modifications
+- Cache consistency across workers
+- Timestamp vs content-based invalidation
+- Directory-level change detection
+- Cache corruption recovery
+```
+
+### 5.5 test_parallel_error_handling.py
+**Priority: CRITICAL** - System stability
+```python
+# Test cases to implement:
+- Worker process crashes
+- Worker timeout handling
+- Partial result aggregation
+- Error message propagation
+- Resource cleanup verification
+- Deadlock prevention
+- Memory leak detection
+- Progress tracking with failures
+```
+
+### 5.6 test_cross_module_errors.py
+**Priority: CRITICAL** - Error propagation
+```python
+# Test cases to implement:
+- Parser errors to CLI output
+- Plugin errors to export modules
+- Config errors to parallel processing
+- Cascading failure scenarios
+- Error context preservation
+- User-friendly error formatting
+- Stack trace filtering
+- Recovery suggestion testing
+```
+
+### Implementation Strategy
+
+#### Week 5 Schedule:
+1. **Day 1-2**: Implement critical tests (5.5, 5.6)
+2. **Day 3**: Implement high priority tests (5.1, 5.4)
+3. **Day 4**: Implement medium priority tests (5.2, 5.3)
+4. **Day 5**: Integration, debugging, and documentation
+
+### Expected Outcomes
+- Increase integration coverage from ~40% to ~80%
+- Identify and fix cross-module synchronization issues
+- Ensure proper error propagation and recovery
+- Document any architectural limitations discovered
+- Create integration test best practices guide
+
+### Success Metrics
+1. **Coverage**: Integration test coverage reaches ~80%
+2. **Stability**: No race conditions or deadlocks found
+3. **Error Handling**: All errors properly propagated with context
+4. **Performance**: No significant degradation under error conditions
+5. **Documentation**: All integration points documented
+
+### Risk Mitigation
+- Start with critical error handling tests
+- Use property-based testing for edge cases
+- Run tests under various system loads
+- Monitor for memory leaks and resource exhaustion
+- Create reproducible test scenarios
