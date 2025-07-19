@@ -1,133 +1,155 @@
 """Interface definitions for Phase 7 integration tests.
 
 These interfaces ensure consistent cross-module testing across all parallel worktrees.
-The integration coordinator worktree will implement the full versions of these interfaces.
+The integration coordinator worktree implements the full versions of these interfaces.
 """
 
+import time
 from typing import Any, Dict, List, Optional
 
 
 class ErrorPropagationMixin:
-    """Mixin for tracking error propagation across module boundaries.
-    
-    This interface ensures consistent error context tracking and verification
-    across all integration tests.
-    """
+    """Mixin for tracking error propagation across module boundaries."""
     
     def capture_cross_module_error(self, source_module: str, target_module: str, 
                                    error: Exception) -> Dict[str, Any]:
-        """Capture error with full context for cross-module propagation testing.
-        
-        Args:
-            source_module: Module where error originated (e.g., 'chunker.parallel')
-            target_module: Module receiving the error (e.g., 'cli.main')
-            error: The original exception
-            
-        Returns:
-            Dictionary with error context including timestamp and metadata
-        """
-        # TO BE IMPLEMENTED BY COORDINATOR WORKTREE
-        raise NotImplementedError("Coordinator worktree will implement this")
+        """Capture error with full context."""
+        return {
+            'source_module': source_module,
+            'target_module': target_module,
+            'operation': self.__class__.__name__,
+            'original_error': error,
+            'error_type': type(error).__name__,
+            'error_message': str(error),
+            'timestamp': time.time(),
+            'context_data': {
+                'traceback': self._get_traceback(error),
+                'call_stack': self._get_call_stack()
+            }
+        }
     
     def verify_error_context(self, error: Dict[str, Any], 
                             expected_context: Dict[str, Any]) -> None:
-        """Verify error contains expected context information.
-        
-        Args:
-            error: Captured error dictionary
-            expected_context: Expected context keys and values
-            
-        Raises:
-            AssertionError: If context doesn't match expectations
-        """
-        # TO BE IMPLEMENTED BY COORDINATOR WORKTREE
-        raise NotImplementedError("Coordinator worktree will implement this")
+        """Verify error has expected context."""
+        for key, value in expected_context.items():
+            assert key in error, f'Missing context key: {key}'
+            if key != 'timestamp':  # Don't check exact timestamp
+                assert error[key] == value, f'Context mismatch for {key}: {error[key]} != {value}'
+    
+    def _get_traceback(self, error: Exception) -> List[str]:
+        """Extract traceback information."""
+        import traceback
+        return traceback.format_exception(type(error), error, error.__traceback__)
+    
+    def _get_call_stack(self) -> List[str]:
+        """Get current call stack."""
+        import inspect
+        return [f'{frame.filename}:{frame.lineno} in {frame.function}' 
+                for frame in inspect.stack()[2:]]  # Skip this method and caller
 
 
 class ConfigChangeObserver:
-    """Observer for configuration changes during runtime.
-    
-    This interface tracks configuration changes and their effects on
-    different modules during active operations.
-    """
+    """Observer for configuration changes during runtime."""
     
     def __init__(self):
-        """Initialize observer with empty state."""
-        # TO BE IMPLEMENTED BY COORDINATOR WORKTREE
-        pass
+        self._observers = []
+        self._change_log = []
+        self._module_config_map = {
+            'chunk_types': ['chunker', 'languages'],
+            'parser_timeout': ['parser', 'factory'],
+            'cache_dir': ['cache', 'streaming'],
+            'num_workers': ['parallel'],
+            'plugin_dirs': ['plugin_manager'],
+        }
         
     def on_config_change(self, config_key: str, old_value: Any, 
                         new_value: Any) -> Dict[str, Any]:
-        """Record a configuration change event.
-        
-        Args:
-            config_key: Configuration key that changed
-            old_value: Previous value
-            new_value: New value
-            
-        Returns:
-            Change event dictionary with timestamp and affected modules
-        """
-        # TO BE IMPLEMENTED BY COORDINATOR WORKTREE
-        raise NotImplementedError("Coordinator worktree will implement this")
+        """Record config change event."""
+        event = {
+            'config_path': config_key,
+            'old_value': old_value,
+            'new_value': new_value,
+            'affected_modules': self.get_affected_modules(config_key),
+            'timestamp': time.time()
+        }
+        self._change_log.append(event)
+        self._notify_observers(event)
+        return event
     
     def get_affected_modules(self, config_key: str) -> List[str]:
-        """Determine which modules are affected by a config change.
+        """Determine which modules are affected by config change."""
+        # Check direct mappings
+        if config_key in self._module_config_map:
+            return self._module_config_map[config_key]
         
-        Args:
-            config_key: Configuration key that changed
-            
-        Returns:
-            List of affected module names
-        """
-        # TO BE IMPLEMENTED BY COORDINATOR WORKTREE
-        raise NotImplementedError("Coordinator worktree will implement this")
+        # Check nested keys (e.g., 'languages.python.chunk_types')
+        for key, modules in self._module_config_map.items():
+            if key in config_key:
+                return modules
+        
+        # Default: all modules potentially affected
+        return ['parser', 'chunker', 'cache', 'parallel', 'plugin_manager']
+    
+    def register_observer(self, callback):
+        """Register callback for config changes."""
+        self._observers.append(callback)
+    
+    def _notify_observers(self, event: Dict[str, Any]):
+        """Notify all registered observers."""
+        for observer in self._observers:
+            observer(event)
+    
+    def get_change_log(self) -> List[Dict[str, Any]]:
+        """Get all recorded changes."""
+        return self._change_log.copy()
 
 
 class ResourceTracker:
-    """Track resource allocation and cleanup across modules.
-    
-    This interface ensures proper resource lifecycle management and
-    helps detect resource leaks in error scenarios.
-    """
+    """Track resource allocation and cleanup across modules."""
     
     def __init__(self):
-        """Initialize tracker with empty resource registry."""
-        # TO BE IMPLEMENTED BY COORDINATOR WORKTREE
-        pass
+        self._resources = {}
+        self._allocation_order = []
         
     def track_resource(self, module: str, resource_type: str, 
                       resource_id: str) -> Dict[str, Any]:
-        """Track a new resource allocation.
-        
-        Args:
-            module: Module that allocated the resource
-            resource_type: Type of resource (e.g., 'process', 'file_handle')
-            resource_id: Unique identifier for the resource
-            
-        Returns:
-            Resource tracking record
-        """
-        # TO BE IMPLEMENTED BY COORDINATOR WORKTREE
-        raise NotImplementedError("Coordinator worktree will implement this")
+        """Track a new resource allocation."""
+        resource = {
+            'resource_id': resource_id,
+            'resource_type': resource_type,
+            'owner_module': module,
+            'created_at': time.time(),
+            'state': 'active',
+            'metadata': {}
+        }
+        self._resources[resource_id] = resource
+        self._allocation_order.append(resource_id)
+        return resource
     
     def release_resource(self, resource_id: str) -> None:
-        """Mark a resource as released.
-        
-        Args:
-            resource_id: Resource to mark as released
-        """
-        # TO BE IMPLEMENTED BY COORDINATOR WORKTREE
-        raise NotImplementedError("Coordinator worktree will implement this")
+        """Mark resource as released."""
+        if resource_id in self._resources:
+            self._resources[resource_id]['state'] = 'released'
+            self._resources[resource_id]['released_at'] = time.time()
     
     def verify_cleanup(self, module: str) -> List[Dict[str, Any]]:
-        """Verify all resources for a module are properly cleaned up.
-        
-        Args:
-            module: Module to check for resource leaks
-            
-        Returns:
-            List of leaked resources (empty if all cleaned up)
-        """
-        # TO BE IMPLEMENTED BY COORDINATOR WORKTREE
-        raise NotImplementedError("Coordinator worktree will implement this")
+        """Verify all resources for module are cleaned up."""
+        leaked = []
+        for resource in self._resources.values():
+            if resource['owner_module'] == module and resource['state'] == 'active':
+                leaked.append(resource)
+        return leaked
+    
+    def get_resource_state(self, resource_id: str) -> Optional[Dict[str, Any]]:
+        """Get current state of a resource."""
+        return self._resources.get(resource_id)
+    
+    def get_all_resources(self, module: Optional[str] = None, 
+                         state: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Get resources filtered by module and/or state."""
+        resources = list(self._resources.values())
+        if module:
+            resources = [r for r in resources if r['owner_module'] == module]
+        if state:
+            resources = [r for r in resources if r['state'] == state]
+        return resources

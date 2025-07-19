@@ -11,9 +11,17 @@ from .interfaces import (
     ResourceTracker,
 )
 from .fixtures import *
+from .coordinator import (
+    IntegrationCoordinator,
+    TestScenario,
+    TestResult,
+)
 
 __all__ = [
     'ErrorPropagationMixin',
     'ConfigChangeObserver', 
     'ResourceTracker',
+    'IntegrationCoordinator',
+    'TestScenario',
+    'TestResult',
 ]

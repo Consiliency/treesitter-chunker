@@ -1,0 +1,175 @@
+{
+  "scenarios": [
+    {
+      "name": "parallel_worker_crash",
+      "description": "Test worker process crash recovery in parallel processing",
+      "worktree": "parallel-errors",
+      "test_file": "tests/test_parallel_error_handling.py::test_worker_process_crash_recovery",
+      "dependencies": [],
+      "timeout": 120,
+      "tags": ["parallel", "error-handling", "critical"]
+    },
+    {
+      "name": "parallel_worker_timeout",
+      "description": "Test worker timeout handling",
+      "worktree": "parallel-errors",
+      "test_file": "tests/test_parallel_error_handling.py::test_worker_timeout_handling",
+      "dependencies": [],
+      "timeout": 180,
+      "tags": ["parallel", "error-handling", "timeout"]
+    },
+    {
+      "name": "parallel_partial_results",
+      "description": "Test partial results on failure",
+      "worktree": "parallel-errors",
+      "test_file": "tests/test_parallel_error_handling.py::test_partial_results_on_failure",
+      "dependencies": [],
+      "timeout": 120,
+      "tags": ["parallel", "error-handling"]
+    },
+    {
+      "name": "parallel_resource_cleanup",
+      "description": "Test resource cleanup after errors",
+      "worktree": "parallel-errors",
+      "test_file": "tests/test_parallel_error_handling.py::test_resource_cleanup_after_errors",
+      "dependencies": ["parallel_worker_crash"],
+      "timeout": 120,
+      "tags": ["parallel", "resources", "cleanup"]
+    },
+    {
+      "name": "cross_module_parser_error",
+      "description": "Test parser error propagation to CLI",
+      "worktree": "cross-module-errors",
+      "test_file": "tests/test_cross_module_errors.py::test_parser_error_to_cli",
+      "dependencies": [],
+      "timeout": 60,
+      "tags": ["cross-module", "error-handling", "parser"]
+    },
+    {
+      "name": "cross_module_plugin_error",
+      "description": "Test plugin error propagation to export",
+      "worktree": "cross-module-errors",
+      "test_file": "tests/test_cross_module_errors.py::test_plugin_error_to_export",
+      "dependencies": [],
+      "timeout": 60,
+      "tags": ["cross-module", "error-handling", "plugin"]
+    },
+    {
+      "name": "cross_module_cascading",
+      "description": "Test cascading failure scenario",
+      "worktree": "cross-module-errors",
+      "test_file": "tests/test_cross_module_errors.py::test_cascading_failure_scenario",
+      "dependencies": ["cross_module_parser_error"],
+      "timeout": 90,
+      "tags": ["cross-module", "error-handling", "cascading"]
+    },
+    {
+      "name": "config_runtime_parsing",
+      "description": "Test config change during parsing",
+      "worktree": "config-runtime",
+      "test_file": "tests/test_config_runtime_changes.py::test_config_change_during_parsing",
+      "dependencies": [],
+      "timeout": 60,
+      "tags": ["config", "runtime", "parsing"]
+    },
+    {
+      "name": "config_concurrent_updates",
+      "description": "Test concurrent config updates",
+      "worktree": "config-runtime",
+      "test_file": "tests/test_config_runtime_changes.py::test_registry_concurrent_updates",
+      "dependencies": [],
+      "timeout": 120,
+      "tags": ["config", "runtime", "concurrency"]
+    },
+    {
+      "name": "config_thread_safety",
+      "description": "Test thread-safe access patterns",
+      "worktree": "config-runtime",
+      "test_file": "tests/test_config_runtime_changes.py::test_thread_safe_access_patterns",
+      "dependencies": ["config_concurrent_updates"],
+      "timeout": 90,
+      "tags": ["config", "thread-safety"]
+    },
+    {
+      "name": "cache_file_modification",
+      "description": "Test file modification detection",
+      "worktree": "cache-monitoring",
+      "test_file": "tests/test_cache_file_monitoring.py::test_file_modification_detection",
+      "dependencies": [],
+      "timeout": 60,
+      "tags": ["cache", "file-monitoring"]
+    },
+    {
+      "name": "cache_concurrent_modifications",
+      "description": "Test concurrent file modifications",
+      "worktree": "cache-monitoring",
+      "test_file": "tests/test_cache_file_monitoring.py::test_concurrent_file_modifications",
+      "dependencies": [],
+      "timeout": 120,
+      "tags": ["cache", "concurrency", "file-monitoring"]
+    },
+    {
+      "name": "cache_worker_consistency",
+      "description": "Test cache consistency across workers",
+      "worktree": "cache-monitoring",
+      "test_file": "tests/test_cache_file_monitoring.py::test_cache_consistency_across_workers",
+      "dependencies": ["cache_concurrent_modifications"],
+      "timeout": 150,
+      "tags": ["cache", "parallel", "consistency"]
+    },
+    {
+      "name": "parquet_filter_integration",
+      "description": "Test Parquet export with include/exclude filters",
+      "worktree": "parquet-cli",
+      "test_file": "tests/test_parquet_cli_integration.py::test_parquet_with_include_exclude_filters",
+      "dependencies": [],
+      "timeout": 90,
+      "tags": ["parquet", "cli", "export"]
+    },
+    {
+      "name": "parquet_parallel_export",
+      "description": "Test Parquet export with parallel processing",
+      "worktree": "parquet-cli",
+      "test_file": "tests/test_parquet_cli_integration.py::test_parquet_with_parallel_processing",
+      "dependencies": [],
+      "timeout": 120,
+      "tags": ["parquet", "parallel", "export"]
+    },
+    {
+      "name": "parquet_large_file_streaming",
+      "description": "Test large file streaming to Parquet",
+      "worktree": "parquet-cli",
+      "test_file": "tests/test_parquet_cli_integration.py::test_large_file_streaming_to_parquet",
+      "dependencies": ["parquet_parallel_export"],
+      "timeout": 300,
+      "tags": ["parquet", "streaming", "performance"]
+    },
+    {
+      "name": "plugin_conflict_resolution",
+      "description": "Test plugin conflict resolution",
+      "worktree": "plugin-enhance",
+      "test_file": "tests/test_plugin_integration_advanced.py::TestPluginLifecycle::test_plugin_conflict_resolution",
+      "dependencies": [],
+      "timeout": 60,
+      "tags": ["plugin", "conflicts"]
+    },
+    {
+      "name": "plugin_hot_reload",
+      "description": "Test plugin hot reloading",
+      "worktree": "plugin-enhance",
+      "test_file": "tests/test_plugin_integration_advanced.py::TestPluginLifecycle::test_plugin_hot_reloading",
+      "dependencies": [],
+      "timeout": 90,
+      "tags": ["plugin", "hot-reload"]
+    },
+    {
+      "name": "plugin_resource_contention",
+      "description": "Test plugin resource contention",
+      "worktree": "plugin-enhance",
+      "test_file": "tests/test_plugin_integration_advanced.py::test_plugin_resource_contention",
+      "dependencies": ["plugin_conflict_resolution"],
+      "timeout": 120,
+      "tags": ["plugin", "resources", "concurrency"]
+    }
+  ]
+}
