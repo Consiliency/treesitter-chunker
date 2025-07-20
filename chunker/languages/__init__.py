@@ -22,6 +22,9 @@ from .rust import RustPlugin
 from .javascript import JavaScriptPlugin
 from .c import CPlugin
 from .cpp import CppPlugin
+from .go_plugin import GoPlugin
+from .ruby_plugin import RubyPlugin
+from .java_plugin import JavaPlugin
 
 _plugin_exports = [
     "PythonPlugin",
@@ -29,6 +32,9 @@ _plugin_exports = [
     "JavaScriptPlugin",
     "CPlugin",
     "CppPlugin",
+    "GoPlugin",
+    "RubyPlugin",
+    "JavaPlugin",
 ]
 
 __all__ = [
@@ -47,5 +53,20 @@ __all__ = [
 # Auto-import language configurations to register them
 try:
     from . import python  # noqa: F401
+except ImportError:
+    pass
+
+try:
+    from . import go_plugin  # noqa: F401
+except ImportError:
+    pass
+
+try:
+    from . import ruby_plugin  # noqa: F401
+except ImportError:
+    pass
+
+try:
+    from . import java_plugin  # noqa: F401
 except ImportError:
     pass
