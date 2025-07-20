@@ -88,10 +88,7 @@ class IntegrationCoordinator(ErrorPropagationMixin):
         if not git_dir.exists():
             return False
             
-        # Check virtual environment
-        venv_path = worktree_path / '.venv'
-        if not venv_path.exists():
-            return False
+        # No need to check virtual environment - using shared venv via uv
             
         # Check grammars are built
         build_dir = worktree_path / 'build'
@@ -117,30 +114,23 @@ class IntegrationCoordinator(ErrorPropagationMixin):
                 capture_output=True
             )
             
-            # Set up virtual environment
+            # No need to create venv - using shared venv via uv
+            
+            # Install dependencies using uv (shared venv)
             subprocess.run(
-                ['python', '-m', 'venv', '.venv'],
+                ['uv', 'pip', 'install', '-e', '.[dev]'],
                 cwd=worktree_path,
                 check=True
             )
             
-            # Install dependencies
-            pip_path = worktree_path / '.venv' / 'bin' / 'pip'
+            # Fetch and build grammars using uv
             subprocess.run(
-                [str(pip_path), 'install', '-e', '.[dev]'],
-                cwd=worktree_path,
-                check=True
-            )
-            
-            # Fetch and build grammars
-            python_path = worktree_path / '.venv' / 'bin' / 'python'
-            subprocess.run(
-                [str(python_path), 'scripts/fetch_grammars.py'],
+                ['uv', 'run', 'python', 'scripts/fetch_grammars.py'],
                 cwd=worktree_path,
                 check=True
             )
             subprocess.run(
-                [str(python_path), 'scripts/build_lib.py'],
+                ['uv', 'run', 'python', 'scripts/build_lib.py'],
                 cwd=worktree_path,
                 check=True
             )
@@ -199,7 +189,6 @@ class IntegrationCoordinator(ErrorPropagationMixin):
     def run_scenario(self, scenario: TestScenario) -> TestResult:
         """Run a single test scenario."""
         worktree_path = self.base_path / scenario.worktree
-        python_path = worktree_path / '.venv' / 'bin' / 'python'
         
         # Track test execution
         resource_id = f'test_{scenario.name}_{time.time()}'
@@ -212,9 +201,9 @@ class IntegrationCoordinator(ErrorPropagationMixin):
         start_time = time.time()
         
         try:
-            # Run the test
+            # Run the test using uv
             result = subprocess.run(
-                [str(python_path), '-m', 'pytest', scenario.test_file, '-v'],
+                ['uv', 'run', 'python', '-m', 'pytest', scenario.test_file, '-v'],
                 cwd=worktree_path,
                 capture_output=True,
                 text=True,
