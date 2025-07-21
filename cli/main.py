@@ -23,6 +23,10 @@ from chunker.exceptions import ChunkerError
 app = typer.Typer(help="Tree‑sitter‑based code‑chunker CLI")
 console = Console()
 
+# Import debug commands
+from .debug import commands as debug_commands
+app.add_typer(debug_commands.app, name="debug", help="Debug and visualization tools")
+
 def load_config(config_path: Optional[Path] = None) -> Dict[str, Any]:
     """Load configuration from .chunkerrc file."""
     config = {}

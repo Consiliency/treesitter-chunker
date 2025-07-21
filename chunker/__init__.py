@@ -45,6 +45,15 @@ __all__ = [
     "ChunkingProfile",
     "get_profile",
     "list_profiles",
+    # Debug tools
+    "ASTVisualizer",
+    "QueryDebugger",
+    "ChunkDebugger",
+    "NodeExplorer",
+    "start_repl",
+    "render_ast_graph",
+    "print_ast_tree",
+    "highlight_chunk_boundaries",
 ]
 
 from .parser import (
@@ -83,3 +92,15 @@ from .analysis import (
 # Configuration system for strategies
 from .config.strategy_config import StrategyConfig
 from .config.profiles import ChunkingProfile, get_profile, list_profiles
+
+# Debug tools
+from .debug import (
+    ASTVisualizer,
+    QueryDebugger,
+    ChunkDebugger,
+    NodeExplorer,
+    start_repl,
+    render_ast_graph,
+    print_ast_tree,
+    highlight_chunk_boundaries
+)
