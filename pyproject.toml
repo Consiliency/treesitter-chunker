@@ -13,6 +13,7 @@ dependencies = [
     "pyarrow>=11.0.0",
     "toml",
     "pyyaml",
+    "chardet",
 ]
 
 [project.optional-dependencies]

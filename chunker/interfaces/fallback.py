@@ -8,7 +8,7 @@ Tree-sitter grammars for all file types.
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Optional, Pattern
+from typing import List, Optional, Pattern, Tuple, Dict, Any
 import re
 
 from .base import ChunkingStrategy
