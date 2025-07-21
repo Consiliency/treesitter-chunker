@@ -31,6 +31,20 @@ __all__ = [
     "LanguagePlugin",
     "PluginConfig",
     "get_plugin_manager",
+    # Enhanced chunking strategies
+    "SemanticChunker",
+    "HierarchicalChunker",
+    "AdaptiveChunker",
+    "CompositeChunker",
+    # Analysis tools
+    "ComplexityAnalyzer",
+    "CouplingAnalyzer",
+    "SemanticAnalyzer",
+    # Configuration system
+    "StrategyConfig",
+    "ChunkingProfile",
+    "get_profile",
+    "list_profiles",
     # Debug tools
     "ASTVisualizer",
     "QueryDebugger",
@@ -59,6 +73,27 @@ from .cache import ASTCache
 from .plugin_manager import PluginManager, get_plugin_manager
 from .config import ChunkerConfig
 from .languages.plugin_base import LanguagePlugin, PluginConfig
+
+# Enhanced chunking strategies
+from .strategies import (
+    SemanticChunker,
+    HierarchicalChunker,
+    AdaptiveChunker,
+    CompositeChunker
+)
+
+# Analysis tools
+from .analysis import (
+    ComplexityAnalyzer,
+    CouplingAnalyzer,
+    SemanticAnalyzer
+)
+
+# Configuration system for strategies
+from .config.strategy_config import StrategyConfig
+from .config.profiles import ChunkingProfile, get_profile, list_profiles
+
+# Debug tools
 from .debug import (
     ASTVisualizer,
     QueryDebugger,

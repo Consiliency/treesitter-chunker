@@ -51,12 +51,17 @@ def _walk(node: Node, source: bytes, language: str, parent_ctx: str | None = Non
     
     return chunks
 
-def chunk_file(path: str | Path, language: str) -> list[CodeChunk]:
-    """Parse the file and return a list of `CodeChunk`."""
+def chunk_text(text: str, language: str, file_path: str = "") -> list[CodeChunk]:
+    """Parse text and return a list of `CodeChunk`."""
     parser = get_parser(language)
-    src = Path(path).read_bytes()
+    src = text.encode()
     tree = parser.parse(src)
     chunks = _walk(tree.root_node, src, language)
     for c in chunks:
-        c.file_path = str(path)
+        c.file_path = file_path
     return chunks
+
+def chunk_file(path: str | Path, language: str) -> list[CodeChunk]:
+    """Parse the file and return a list of `CodeChunk`."""
+    src = Path(path).read_text()
+    return chunk_text(src, language, str(path))

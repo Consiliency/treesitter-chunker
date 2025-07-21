@@ -1,0 +1,132 @@
+"""Go language plugin."""
+
+from typing import Set, List
+from tree_sitter import Node
+from .plugin_base import LanguagePlugin
+from .base import LanguageConfig, ChunkRule, language_config_registry
+
+
+class GoPlugin(LanguagePlugin):
+    """Plugin for Go language support."""
+
+    @property
+    def language_name(self) -> str:
+        return "go"
+
+    @property
+    def file_extensions(self) -> List[str]:
+        return [".go"]
+
+    def get_chunk_node_types(self) -> Set[str]:
+        return {
+            "function_declaration",
+            "method_declaration", 
+            "type_declaration",
+            "type_spec",
+            "const_declaration",
+            "var_declaration",
+        }
+
+    def get_scope_node_types(self) -> Set[str]:
+        return {
+            "source_file",
+            "function_declaration",
+            "method_declaration",
+            "block",
+            "if_statement",
+            "for_statement",
+            "switch_statement",
+        }
+
+    def should_chunk_node(self, node: Node) -> bool:
+        """Determine if node should be chunked."""
+        if node.type not in self.get_chunk_node_types():
+            return False
+            
+        # Skip anonymous functions
+        if node.type == "function_declaration":
+            name_node = node.child_by_field_name("name")
+            if not name_node or not name_node.text:
+                return False
+        
+        # For type specs, only chunk complex types
+        if node.type == "type_spec":
+            for child in node.children:
+                if child.type in ["struct_type", "interface_type"]:
+                    return True
+            return False
+            
+        return True
+
+    def extract_display_name(self, node: Node, source: bytes) -> str:
+        """Extract display name for chunk."""
+        if node.type in ["function_declaration", "method_declaration"]:
+            name_node = node.child_by_field_name("name")
+            if name_node:
+                name = name_node.text.decode('utf-8')
+                
+                # For methods, include receiver type
+                if node.type == "method_declaration":
+                    params = node.child_by_field_name("parameters")
+                    if params and params.child_count > 0:
+                        receiver = params.children[0]
+                        if receiver.type == "parameter_declaration":
+                            type_node = receiver.child_by_field_name("type")
+                            if type_node:
+                                receiver_type = type_node.text.decode('utf-8')
+                                return f"({receiver_type}) {name}"
+                
+                return name
+                
+        elif node.type in ["type_declaration", "type_spec"]:
+            name_node = node.child_by_field_name("name") 
+            if name_node:
+                return name_node.text.decode('utf-8')
+                
+        return node.text.decode('utf-8')[:50]
+
+
+# Register Go configuration
+go_config = LanguageConfig(
+    name="go",
+    file_extensions=[".go"],
+    chunk_rules=[
+        ChunkRule(
+            name="functions",
+            node_types=["function_declaration", "method_declaration"],
+            min_lines=1,
+            max_lines=500,
+            include_context=True,
+        ),
+        ChunkRule(
+            name="types", 
+            node_types=["type_declaration", "type_spec"],
+            min_lines=1,
+            max_lines=300,
+            include_context=True,
+        ),
+        ChunkRule(
+            name="constants",
+            node_types=["const_declaration"],
+            min_lines=1,
+            max_lines=100,
+            include_context=False,
+        ),
+        ChunkRule(
+            name="variables",
+            node_types=["var_declaration"],
+            min_lines=1,
+            max_lines=50,
+            include_context=False,
+        ),
+    ],
+    scope_node_types=[
+        "source_file",
+        "function_declaration",
+        "method_declaration",
+        "block",
+    ],
+)
+
+# Register the configuration
+language_config_registry.register(go_config)
