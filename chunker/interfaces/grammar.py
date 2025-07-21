@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 
 class GrammarStatus(Enum):

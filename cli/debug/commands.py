@@ -1,0 +1,324 @@
+"""
+Debug CLI commands for Tree-sitter chunker.
+"""
+
+from pathlib import Path
+from typing import Optional, List
+
+import typer
+from rich.console import Console
+
+from chunker.debug import (
+    ASTVisualizer,
+    QueryDebugger,
+    ChunkDebugger,
+    NodeExplorer,
+    start_repl,
+    render_ast_graph,
+    print_ast_tree,
+    highlight_chunk_boundaries
+)
+from chunker.chunker import chunk_file
+from chunker.parser import list_languages
+
+app = typer.Typer(help="Debug and visualization tools for Tree-sitter chunker")
+console = Console()
+
+
+@app.command()
+def repl(
+    language: Optional[str] = typer.Option(None, "--lang", "-l", help="Initial language to use"),
+    file: Optional[Path] = typer.Option(None, "--file", "-f", help="Initial file to load")
+):
+    """Start interactive debugging REPL."""
+    console.print("[bold cyan]Starting Tree-sitter Debug REPL...[/bold cyan]")
+    
+    # Start REPL
+    from chunker.debug.interactive.repl import DebugREPL
+    repl_instance = DebugREPL()
+    
+    # Set initial language if provided
+    if language:
+        repl_instance._set_language(language)
+        
+    # Load initial file if provided
+    if file:
+        repl_instance._load_file(str(file))
+        
+    repl_instance.start()
+
+
+@app.command()
+def ast(
+    file: Path = typer.Argument(..., exists=True, readable=True),
+    language: Optional[str] = typer.Option(None, "--lang", "-l", help="Language (auto-detect if not specified)"),
+    format: str = typer.Option("tree", "--format", "-f", help="Output format: tree, graph, json"),
+    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output file (for graph format)"),
+    max_depth: Optional[int] = typer.Option(None, "--depth", "-d", help="Maximum tree depth to display"),
+    highlight: Optional[str] = typer.Option(None, "--highlight", "-h", help="Node types to highlight (comma-separated)"),
+    chunks: bool = typer.Option(False, "--chunks", "-c", help="Show chunk boundaries"),
+    no_positions: bool = typer.Option(False, "--no-positions", help="Hide position information")
+):
+    """Visualize AST for a source file."""
+    # Auto-detect language
+    if not language:
+        ext_map = {
+            '.py': 'python',
+            '.js': 'javascript',
+            '.c': 'c',
+            '.cpp': 'cpp',
+            '.rs': 'rust'
+        }
+        language = ext_map.get(file.suffix.lower())
+        if not language:
+            console.print("[red]Could not detect language. Please specify with --lang[/red]")
+            raise typer.Exit(1)
+    
+    # Get chunks if requested
+    chunks_list = None
+    if chunks:
+        try:
+            chunks_list = chunk_file(str(file), language)
+        except Exception as e:
+            console.print(f"[yellow]Warning: Could not get chunks: {e}[/yellow]")
+    
+    # Parse highlight nodes
+    highlight_nodes = None
+    if highlight:
+        highlight_nodes = set(n.strip() for n in highlight.split(','))
+    
+    try:
+        if format == "tree":
+            print_ast_tree(
+                str(file),
+                language,
+                chunks=chunks_list,
+                max_depth=max_depth,
+                show_positions=not no_positions,
+                highlight_nodes=highlight_nodes
+            )
+        elif format == "graph":
+            if output:
+                render_ast_graph(
+                    str(file),
+                    language,
+                    output_path=str(output),
+                    chunks=chunks_list,
+                    highlight_nodes=highlight_nodes
+                )
+                console.print(f"[green]Graph saved to: {output}[/green]")
+            else:
+                # Print graph source
+                source = render_ast_graph(
+                    str(file),
+                    language,
+                    chunks=chunks_list,
+                    highlight_nodes=highlight_nodes
+                )
+                console.print(source)
+        elif format == "json":
+            visualizer = ASTVisualizer(language)
+            json_output = visualizer.visualize_file(
+                str(file),
+                output_format="json",
+                chunks=chunks_list,
+                max_depth=max_depth
+            )
+            print(json_output)
+        else:
+            console.print(f"[red]Unknown format: {format}[/red]")
+            raise typer.Exit(1)
+            
+    except Exception as e:
+        console.print(f"[red]Error visualizing AST: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@app.command()
+def query(
+    query_string: str = typer.Argument(..., help="Tree-sitter query string"),
+    file: Optional[Path] = typer.Option(None, "--file", "-f", help="Source file to query"),
+    code: Optional[str] = typer.Option(None, "--code", "-c", help="Inline code to query"),
+    language: str = typer.Option(..., "--lang", "-l", help="Programming language"),
+    show_ast: bool = typer.Option(False, "--ast", help="Show AST before query results"),
+    no_captures: bool = typer.Option(False, "--no-captures", help="Hide capture details"),
+    no_highlight: bool = typer.Option(False, "--no-highlight", help="Don't highlight matches in source")
+):
+    """Debug a Tree-sitter query."""
+    # Get source code
+    if file:
+        with open(file, 'r', encoding='utf-8') as f:
+            source_code = f.read()
+    elif code:
+        source_code = code
+    else:
+        console.print("[red]Please provide either --file or --code[/red]")
+        raise typer.Exit(1)
+    
+    # Debug query
+    try:
+        debugger = QueryDebugger(language)
+        debugger.debug_query(
+            query_string,
+            source_code,
+            show_ast=show_ast,
+            show_captures=not no_captures,
+            highlight_matches=not no_highlight
+        )
+    except Exception as e:
+        console.print(f"[red]Query error: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@app.command()
+def chunks(
+    file: Path = typer.Argument(..., exists=True, readable=True),
+    language: Optional[str] = typer.Option(None, "--lang", "-l", help="Language (auto-detect if not specified)"),
+    show_decisions: bool = typer.Option(True, "--decisions/--no-decisions", help="Show chunking decisions"),
+    show_overlap: bool = typer.Option(True, "--overlap/--no-overlap", help="Check for overlapping chunks"),
+    show_gaps: bool = typer.Option(True, "--gaps/--no-gaps", help="Check for coverage gaps"),
+    max_size: Optional[int] = typer.Option(None, "--max-size", help="Flag chunks exceeding this size"),
+    min_size: Optional[int] = typer.Option(None, "--min-size", help="Flag chunks below this size"),
+    visualize: bool = typer.Option(False, "--visualize", "-v", help="Visualize chunk boundaries"),
+    side_by_side: bool = typer.Option(False, "--side-by-side", help="Show original and chunked side by side")
+):
+    """Analyze and debug chunking decisions."""
+    # Auto-detect language
+    if not language:
+        ext_map = {
+            '.py': 'python',
+            '.js': 'javascript',
+            '.c': 'c',
+            '.cpp': 'cpp',
+            '.rs': 'rust'
+        }
+        language = ext_map.get(file.suffix.lower())
+        if not language:
+            console.print("[red]Could not detect language. Please specify with --lang[/red]")
+            raise typer.Exit(1)
+    
+    try:
+        if visualize:
+            # Show chunk visualization
+            highlight_chunk_boundaries(
+                str(file),
+                language,
+                show_stats=True,
+                show_side_by_side=side_by_side
+            )
+        else:
+            # Run chunk analysis
+            debugger = ChunkDebugger(language)
+            debugger.analyze_file(
+                str(file),
+                show_decisions=show_decisions,
+                show_overlap=show_overlap,
+                show_gaps=show_gaps,
+                max_chunk_size=max_size,
+                min_chunk_size=min_size
+            )
+    except Exception as e:
+        console.print(f"[red]Error analyzing chunks: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@app.command()
+def explore(
+    file: Optional[Path] = typer.Option(None, "--file", "-f", help="Source file to explore"),
+    code: Optional[str] = typer.Option(None, "--code", "-c", help="Inline code to explore"),
+    language: str = typer.Option(..., "--lang", "-l", help="Programming language")
+):
+    """Interactively explore AST nodes."""
+    # Get source code
+    if file:
+        with open(file, 'r', encoding='utf-8') as f:
+            source_code = f.read()
+    elif code:
+        source_code = code
+    else:
+        console.print("[red]Please provide either --file or --code[/red]")
+        raise typer.Exit(1)
+    
+    try:
+        explorer = NodeExplorer(language)
+        explorer.explore_code(source_code)
+    except Exception as e:
+        console.print(f"[red]Error starting explorer: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@app.command()
+def validate(
+    file: Path = typer.Argument(..., exists=True, readable=True),
+    language: Optional[str] = typer.Option(None, "--lang", "-l", help="Language (auto-detect if not specified)"),
+    show_errors: bool = typer.Option(True, "--errors/--no-errors", help="Show parse errors"),
+    show_missing: bool = typer.Option(True, "--missing/--no-missing", help="Show missing nodes")
+):
+    """Validate parsing and identify errors."""
+    # Auto-detect language
+    if not language:
+        ext_map = {
+            '.py': 'python',
+            '.js': 'javascript',
+            '.c': 'c',
+            '.cpp': 'cpp',
+            '.rs': 'rust'
+        }
+        language = ext_map.get(file.suffix.lower())
+        if not language:
+            console.print("[red]Could not detect language. Please specify with --lang[/red]")
+            raise typer.Exit(1)
+    
+    try:
+        from chunker.parser import get_parser
+        
+        # Parse file
+        with open(file, 'rb') as f:
+            content = f.read()
+            
+        parser = get_parser(language)
+        tree = parser.parse(content)
+        
+        # Check for errors
+        has_errors = False
+        error_nodes = []
+        missing_nodes = []
+        
+        def check_node(node):
+            nonlocal has_errors
+            if node.has_error:
+                has_errors = True
+                error_nodes.append(node)
+            if node.is_missing:
+                missing_nodes.append(node)
+            for child in node.children:
+                check_node(child)
+                
+        check_node(tree.root_node)
+        
+        if not has_errors and not missing_nodes:
+            console.print(f"[green]✓ File parsed successfully with no errors[/green]")
+        else:
+            console.print(f"[red]✗ Parse errors found[/red]")
+            
+            if show_errors and error_nodes:
+                console.print(f"\n[bold]Error nodes ({len(error_nodes)}):[/bold]")
+                for node in error_nodes[:10]:  # Show first 10
+                    console.print(
+                        f"  • {node.type} at {node.start_point[0]}:{node.start_point[1]}"
+                    )
+                    
+            if show_missing and missing_nodes:
+                console.print(f"\n[bold]Missing nodes ({len(missing_nodes)}):[/bold]")
+                for node in missing_nodes[:10]:  # Show first 10
+                    console.print(
+                        f"  • {node.type} at {node.start_point[0]}:{node.start_point[1]}"
+                    )
+                    
+    except Exception as e:
+        console.print(f"[red]Error validating file: {e}[/red]")
+        raise typer.Exit(1)
+
+
+if __name__ == "__main__":
+    app()
