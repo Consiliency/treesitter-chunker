@@ -2,8 +2,55 @@ from __future__ import annotations
 from typing import Set, Optional
 from tree_sitter import Node
 
+from .base import LanguageConfig, ChunkRule
 from .plugin_base import LanguagePlugin
 from ..types import CodeChunk
+
+
+class JavaScriptConfig(LanguageConfig):
+    """Language configuration for JavaScript."""
+    
+    @property
+    def language_id(self) -> str:
+        return "javascript"
+    
+    @property
+    def chunk_types(self) -> Set[str]:
+        """JavaScript-specific chunk types."""
+        return {
+            # Functions
+            "function_declaration",
+            "function_expression",
+            "arrow_function",
+            "generator_function_declaration",
+            
+            # Classes
+            "class_declaration",
+            "method_definition",
+            
+            # Modules
+            "export_statement",
+            "import_statement",
+            
+            # Variables with functions
+            "variable_declarator",
+        }
+    
+    @property
+    def file_extensions(self) -> Set[str]:
+        return {".js", ".jsx", ".mjs", ".cjs"}
+    
+    def __init__(self):
+        super().__init__()
+        
+        # Ignore certain node types
+        self.add_ignore_type("comment")
+        self.add_ignore_type("template_string")
+
+
+# Register the JavaScript configuration
+from . import language_config_registry
+language_config_registry.register(JavaScriptConfig(), aliases=["js", "jsx"])
 
 
 class JavaScriptPlugin(LanguagePlugin):
