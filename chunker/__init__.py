@@ -31,6 +31,15 @@ __all__ = [
     "LanguagePlugin",
     "PluginConfig",
     "get_plugin_manager",
+    # Debug tools
+    "ASTVisualizer",
+    "QueryDebugger",
+    "ChunkDebugger",
+    "NodeExplorer",
+    "start_repl",
+    "render_ast_graph",
+    "print_ast_tree",
+    "highlight_chunk_boundaries",
 ]
 
 from .parser import (
@@ -50,3 +59,13 @@ from .cache import ASTCache
 from .plugin_manager import PluginManager, get_plugin_manager
 from .config import ChunkerConfig
 from .languages.plugin_base import LanguagePlugin, PluginConfig
+from .debug import (
+    ASTVisualizer,
+    QueryDebugger,
+    ChunkDebugger,
+    NodeExplorer,
+    start_repl,
+    render_ast_graph,
+    print_ast_tree,
+    highlight_chunk_boundaries
+)

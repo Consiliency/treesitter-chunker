@@ -13,10 +13,12 @@ dependencies = [
     "pyarrow>=11.0.0",
     "toml",
     "pyyaml",
+    "pygments",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest", "psutil"]
+viz = ["graphviz"]
 
 [build-system]
 requires      = ["setuptools>=61.0", "wheel"]
