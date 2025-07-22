@@ -1,6 +1,7 @@
 """Common types used across the chunker modules."""
 from __future__ import annotations
 from dataclasses import dataclass, field
+from typing import Dict, Any
 import hashlib
 
 
@@ -19,6 +20,7 @@ class CodeChunk:
     parent_chunk_id: str | None = None
     references: list[str] = field(default_factory=list)
     dependencies: list[str] = field(default_factory=list)
+    metadata: Dict[str, Any] = field(default_factory=dict)
     
     def generate_id(self) -> str:
         """Generate a unique ID for this chunk based on its content and location."""

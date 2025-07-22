@@ -18,7 +18,7 @@ from chunker.exceptions import (
     LanguageNotFoundError,
     ParserConfigError
 )
-from chunker.config import ChunkerConfig
+from chunker.chunker_config import ChunkerConfig
 from chunker.languages import language_config_registry
 from chunker.export import JSONExporter, JSONLExporter, SchemaType
 

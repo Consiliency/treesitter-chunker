@@ -99,7 +99,7 @@ class TestIntegrationCoordinator:
         result = coordinator.setup_worktree("test-worktree", "test-branch")
         
         assert result is True
-        assert mock_run.call_count == 5  # git worktree, venv, pip, fetch, build
+        assert mock_run.call_count == 4  # git worktree, pip, fetch, build
         
         # Check resource was tracked
         resources = coordinator.resource_tracker.get_all_resources()

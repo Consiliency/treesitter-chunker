@@ -144,11 +144,17 @@ class AdaptiveChunker(ChunkingStrategy):
         """Create chunks with sizes adapted to code complexity."""
         chunks = []
         
+        # Store file_metrics temporarily for access in _create_chunk
+        self._current_file_metrics = file_metrics
+        
         # Use a sliding window approach with adaptive boundaries
         self._adaptive_traverse(
             ast, source, file_path, language, file_metrics, chunks, 
             parent_context="", depth=0
         )
+        
+        # Clean up
+        self._current_file_metrics = None
         
         return chunks
     
@@ -297,6 +303,10 @@ class AdaptiveChunker(ChunkingStrategy):
     def _should_create_chunk(self, node: Node, metrics: AdaptiveMetrics,
                             ideal_size: int, line_count: int, depth: int) -> bool:
         """Determine if a node should become a chunk."""
+        # Skip module node when preserve_boundaries is enabled
+        if self.config.get('preserve_boundaries', True) and node.type == 'module':
+            return False
+            
         # Always chunk major boundaries
         if node.type in self.natural_boundaries:
             if line_count >= self.config['min_chunk_size']:
@@ -358,7 +368,8 @@ class AdaptiveChunker(ChunkingStrategy):
                 'coupling': metrics.coupling_score,
                 'cohesion': metrics.semantic_cohesion,
                 'density': metrics.token_density,
-                'ideal_size': self._calculate_ideal_chunk_size(metrics, {}),
+                'ideal_size': self._calculate_ideal_chunk_size(metrics, 
+                                                               getattr(self, '_current_file_metrics', {})),
             },
             'name': self._extract_name(node),
         }
@@ -424,6 +435,10 @@ class AdaptiveChunker(ChunkingStrategy):
         # Identify outliers
         balanced = []
         for i, chunk in enumerate(chunks):
+            # Skip chunks that were merged
+            if chunk is None:
+                continue
+                
             size = sizes[i]
             
             # Split very large chunks
