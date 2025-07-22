@@ -86,47 +86,62 @@ class GoPlugin(LanguagePlugin):
         return node.text.decode('utf-8')[:50]
 
 
-# Register Go configuration
-go_config = LanguageConfig(
-    name="go",
-    file_extensions=[".go"],
-    chunk_rules=[
-        ChunkRule(
-            name="functions",
-            node_types=["function_declaration", "method_declaration"],
-            min_lines=1,
-            max_lines=500,
-            include_context=True,
-        ),
-        ChunkRule(
-            name="types", 
-            node_types=["type_declaration", "type_spec"],
-            min_lines=1,
-            max_lines=300,
-            include_context=True,
-        ),
-        ChunkRule(
-            name="constants",
-            node_types=["const_declaration"],
-            min_lines=1,
-            max_lines=100,
-            include_context=False,
-        ),
-        ChunkRule(
-            name="variables",
-            node_types=["var_declaration"],
-            min_lines=1,
-            max_lines=50,
-            include_context=False,
-        ),
-    ],
-    scope_node_types=[
-        "source_file",
-        "function_declaration",
-        "method_declaration",
-        "block",
-    ],
-)
+class GoConfig(LanguageConfig):
+    """Language configuration for Go."""
+    
+    @property
+    def language_id(self) -> str:
+        return "go"
+    
+    @property
+    def chunk_types(self) -> Set[str]:
+        """Go-specific chunk types."""
+        return {
+            "function_declaration",
+            "method_declaration",
+            "type_declaration",
+            "type_spec",
+            "interface_type",
+            "const_declaration",
+            "var_declaration",
+        }
+    
+    @property
+    def file_extensions(self) -> Set[str]:
+        return {".go"}
+    
+    @property
+    def ignore_types(self) -> Set[str]:
+        """Types to ignore during traversal."""
+        return {
+            "comment",
+            "line_comment",
+            "block_comment",
+        }
+    
+    def __init__(self):
+        super().__init__()
+        # Add Go-specific chunk rules
+        self._chunk_rules = [
+            ChunkRule(
+                node_types={"function_declaration", "method_declaration"},
+                metadata={"name": "functions", "min_lines": 1, "max_lines": 500, "include_context": True},
+            ),
+            ChunkRule(
+                node_types={"type_declaration", "type_spec"},
+                metadata={"name": "types", "min_lines": 1, "max_lines": 300, "include_context": True},
+            ),
+            ChunkRule(
+                node_types={"const_declaration"},
+                metadata={"name": "constants", "min_lines": 1, "max_lines": 100, "include_context": False},
+            ),
+            ChunkRule(
+                node_types={"var_declaration"},
+                metadata={"name": "variables", "min_lines": 1, "max_lines": 50, "include_context": False},
+            ),
+        ]
 
-# Register the configuration
-language_config_registry.register(go_config)
+
+# Register Go configuration
+go_config = GoConfig()
+language_config_registry.register(go_config, aliases=["golang"])

@@ -54,6 +54,23 @@ __all__ = [
     "render_ast_graph",
     "print_ast_tree",
     "highlight_chunk_boundaries",
+    # Custom rules
+    "BaseCustomRule",
+    "BaseRegexRule",
+    "BaseCommentBlockRule",
+    "MetadataRule",
+    "DefaultRuleEngine",
+    "TodoCommentRule",
+    "CopyrightHeaderRule",
+    "DocstringRule",
+    "ImportBlockRule",
+    "CustomMarkerRule",
+    "SectionHeaderRule",
+    "ConfigurationBlockRule",
+    "LanguageSpecificCommentRule",
+    "DebugStatementRule",
+    "TestAnnotationRule",
+    "get_builtin_rules",
 ]
 
 from .parser import (
@@ -71,7 +88,7 @@ from .streaming import chunk_file_streaming, StreamingChunker
 from .parallel import chunk_files_parallel, chunk_directory_parallel, ParallelChunker
 from .cache import ASTCache
 from .plugin_manager import PluginManager, get_plugin_manager
-from .config import ChunkerConfig
+from .chunker_config import ChunkerConfig
 from .languages.plugin_base import LanguagePlugin, PluginConfig
 
 # Enhanced chunking strategies
@@ -103,4 +120,24 @@ from .debug import (
     render_ast_graph,
     print_ast_tree,
     highlight_chunk_boundaries
+)
+
+# Custom rules
+from .rules import (
+    BaseCustomRule,
+    BaseRegexRule,
+    BaseCommentBlockRule,
+    MetadataRule,
+    DefaultRuleEngine,
+    TodoCommentRule,
+    CopyrightHeaderRule,
+    DocstringRule,
+    ImportBlockRule,
+    CustomMarkerRule,
+    SectionHeaderRule,
+    ConfigurationBlockRule,
+    LanguageSpecificCommentRule,
+    DebugStatementRule,
+    TestAnnotationRule,
+    get_builtin_rules
 )

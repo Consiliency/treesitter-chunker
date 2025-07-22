@@ -23,8 +23,8 @@ from .javascript import JavaScriptPlugin
 from .c import CPlugin
 from .cpp import CppPlugin
 from .go_plugin import GoPlugin
-from .ruby_plugin import RubyPlugin
-from .java_plugin import JavaPlugin
+# from .ruby_plugin import RubyPlugin  # Temporarily disabled - needs fix
+# from .java_plugin import JavaPlugin  # Temporarily disabled - needs fix
 
 _plugin_exports = [
     "PythonPlugin",
@@ -33,8 +33,8 @@ _plugin_exports = [
     "CPlugin",
     "CppPlugin",
     "GoPlugin",
-    "RubyPlugin",
-    "JavaPlugin",
+    # "RubyPlugin",  # Temporarily disabled
+    # "JavaPlugin",  # Temporarily disabled
 ]
 
 __all__ = [
@@ -61,12 +61,13 @@ try:
 except ImportError:
     pass
 
-try:
-    from . import ruby_plugin  # noqa: F401
-except ImportError:
-    pass
+# Temporarily disabled - needs fix
+# try:
+#     from . import ruby_plugin  # noqa: F401
+# except ImportError:
+#     pass
 
-try:
-    from . import java_plugin  # noqa: F401
-except ImportError:
-    pass
+# try:
+#     from . import java_plugin  # noqa: F401
+# except ImportError:
+#     pass
