@@ -92,11 +92,14 @@ chunker/exporters/__init__.py
 chunker/exporters/parquet.py
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 chunker/fallback/README.md
 >>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
 =======
 >>>>>>> 0533abd (Implement Phase 9 semantic chunk merging)
+=======
+>>>>>>> 0a01ed2 (Implement Phase 9 overlapping fallback chunking)
 chunker/fallback/__init__.py
 chunker/fallback/base.py
 chunker/fallback/fallback_manager.py
@@ -111,6 +114,7 @@ chunker/grammar/builder.py
 chunker/grammar/manager.py
 chunker/grammar/repository.py
 chunker/grammar/validator.py
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -130,6 +134,8 @@ chunker/interfaces/README.md
 >>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
 =======
 >>>>>>> 0533abd (Implement Phase 9 semantic chunk merging)
+=======
+>>>>>>> 0a01ed2 (Implement Phase 9 overlapping fallback chunking)
 chunker/interfaces/__init__.py
 chunker/interfaces/base.py
 chunker/interfaces/context.py
@@ -164,6 +170,7 @@ chunker/languages/rust.py
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 <<<<<<< HEAD
 chunker/metadata/__init__.py
@@ -180,6 +187,8 @@ chunker/performance/README.md
 >>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
 =======
 >>>>>>> 0533abd (Implement Phase 9 semantic chunk merging)
+=======
+>>>>>>> 0a01ed2 (Implement Phase 9 overlapping fallback chunking)
 chunker/performance/__init__.py
 chunker/performance/enhanced_chunker.py
 chunker/performance/cache/__init__.py
@@ -193,16 +202,20 @@ chunker/performance/optimization/memory_pool.py
 chunker/performance/optimization/monitor.py
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 chunker/strategies/README.md
 >>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
 =======
 >>>>>>> 0533abd (Implement Phase 9 semantic chunk merging)
+=======
+>>>>>>> 0a01ed2 (Implement Phase 9 overlapping fallback chunking)
 chunker/strategies/__init__.py
 chunker/strategies/adaptive.py
 chunker/strategies/composite.py
 chunker/strategies/hierarchical.py
 chunker/strategies/semantic.py
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 =======
@@ -251,6 +264,8 @@ specs/ROADMAP.md
 >>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
 =======
 >>>>>>> 0533abd (Implement Phase 9 semantic chunk merging)
+=======
+>>>>>>> 0a01ed2 (Implement Phase 9 overlapping fallback chunking)
 tests/test_adaptive_chunker.py
 tests/test_c_language.py
 tests/test_cache.py
@@ -278,6 +293,7 @@ tests/test_hierarchical_chunker.py
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 <<<<<<< HEAD
 =======
@@ -291,6 +307,8 @@ tests/test_hierarchy.py
 >>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
 =======
 >>>>>>> 0533abd (Implement Phase 9 semantic chunk merging)
+=======
+>>>>>>> 0a01ed2 (Implement Phase 9 overlapping fallback chunking)
 tests/test_integration.py
 tests/test_java_language.py
 tests/test_javascript_language.py

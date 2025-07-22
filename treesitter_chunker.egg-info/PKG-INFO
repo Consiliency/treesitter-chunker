@@ -43,6 +43,7 @@ Requires-Dist: pytest; extra == "dev"
 Requires-Dist: psutil; extra == "dev"
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 Provides-Extra: viz
 Requires-Dist: graphviz; extra == "viz"
 =======
@@ -70,6 +71,10 @@ Dynamic: requires-python
 Provides-Extra: viz
 Requires-Dist: graphviz; extra == "viz"
 >>>>>>> 0533abd (Implement Phase 9 semantic chunk merging)
+=======
+Provides-Extra: viz
+Requires-Dist: graphviz; extra == "viz"
+>>>>>>> 0a01ed2 (Implement Phase 9 overlapping fallback chunking)
 
 # Tree-sitter Chunker
 
