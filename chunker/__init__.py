@@ -61,6 +61,49 @@ __all__ = [
     "ChunkHierarchyBuilder",
     "HierarchyNavigator",
     "ChunkHierarchy",
+    # Custom rules
+    "BaseCustomRule",
+    "BaseRegexRule",
+    "BaseCommentBlockRule",
+    "MetadataRule",
+    "DefaultRuleEngine",
+    "TodoCommentRule",
+    "CopyrightHeaderRule",
+    "DocstringRule",
+    "ImportBlockRule",
+    "CustomMarkerRule",
+    "SectionHeaderRule",
+    "ConfigurationBlockRule",
+    "LanguageSpecificCommentRule",
+    "DebugStatementRule",
+    "TestAnnotationRule",
+    "get_builtin_rules",
+    # Metadata extraction
+    "BaseMetadataExtractor",
+    "BaseComplexityAnalyzer",
+    "PythonMetadataExtractor",
+    "PythonComplexityAnalyzer",
+    "JavaScriptMetadataExtractor",
+    "JavaScriptComplexityAnalyzer",
+    "SignatureInfo",
+    "ComplexityMetrics",
+    # Repository processing
+    "RepoProcessor",
+    "GitAwareProcessor",
+    "RepoProcessorImpl",
+    "GitAwareProcessorImpl",
+    "FileChunkResult",
+    "RepoChunkResult",
+    "GitignoreMatcher",
+    "load_gitignore_patterns",
+    # Semantic merging
+    "TreeSitterRelationshipAnalyzer",
+    "TreeSitterSemanticMerger",
+    "MergeConfig",
+    # Overlapping fallback chunker
+    "OverlappingFallbackChunker",
+    "OverlapStrategy",
+    "OverlapConfig",
 ]
 
 from .parser import (
@@ -118,3 +161,67 @@ from .token import TiktokenCounter, TokenAwareChunker
 # Hierarchy features
 from .hierarchy import ChunkHierarchyBuilder, HierarchyNavigator
 from .interfaces.hierarchy import ChunkHierarchy
+
+# Custom rules
+from .rules import (
+    BaseCustomRule,
+    BaseRegexRule,
+    BaseCommentBlockRule,
+    MetadataRule,
+    DefaultRuleEngine,
+    TodoCommentRule,
+    CopyrightHeaderRule,
+    DocstringRule,
+    ImportBlockRule,
+    CustomMarkerRule,
+    SectionHeaderRule,
+    ConfigurationBlockRule,
+    LanguageSpecificCommentRule,
+    DebugStatementRule,
+    TestAnnotationRule,
+    get_builtin_rules
+)
+
+# Metadata extraction
+from .metadata import (
+    BaseMetadataExtractor,
+    BaseComplexityAnalyzer
+)
+from .metadata.languages import (
+    PythonMetadataExtractor,
+    PythonComplexityAnalyzer,
+    JavaScriptMetadataExtractor,
+    JavaScriptComplexityAnalyzer
+)
+from .interfaces.metadata import (
+    SignatureInfo,
+    ComplexityMetrics
+)
+
+# Repository processing
+from .interfaces.repo import (
+    RepoProcessor,
+    GitAwareProcessor,
+    FileChunkResult,
+    RepoChunkResult
+)
+from .repo import (
+    RepoProcessorImpl,
+    GitAwareProcessorImpl,
+    GitignoreMatcher,
+    load_gitignore_patterns
+)
+
+# Semantic merging
+from .semantic import (
+    TreeSitterRelationshipAnalyzer,
+    TreeSitterSemanticMerger,
+    MergeConfig
+)
+
+# Overlapping fallback chunker
+from .fallback.overlapping import (
+    OverlappingFallbackChunker,
+    OverlapStrategy,
+    OverlapConfig
+)

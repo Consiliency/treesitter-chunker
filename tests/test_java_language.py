@@ -2,7 +2,11 @@
 
 import pytest
 from chunker.parser import get_parser, list_languages
+<<<<<<< HEAD
 from chunker.chunker import chunk_text
+=======
+from chunker.chunker import chunk_file, chunk_text
+>>>>>>> 0533abd (Implement Phase 9 semantic chunk merging)
 from chunker.languages import language_config_registry
 
 

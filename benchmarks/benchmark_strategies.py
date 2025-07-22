@@ -12,7 +12,7 @@ from chunker.strategies import (
     AdaptiveChunker,
     CompositeChunker
 )
-from chunker.config import get_profile, ChunkingProfile
+from chunker.chunker_config import get_profile, ChunkingProfile
 
 
 def benchmark_strategy(strategy, ast, source, file_path, language, runs=5):

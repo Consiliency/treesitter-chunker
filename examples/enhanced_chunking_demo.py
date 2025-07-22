@@ -10,7 +10,7 @@ from chunker.strategies import (
     AdaptiveChunker,
     CompositeChunker
 )
-from chunker.config import (
+from chunker.chunker_config import (
     StrategyConfig,
     get_profile,
     load_strategy_config,

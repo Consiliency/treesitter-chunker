@@ -86,7 +86,6 @@ class GoPlugin(LanguagePlugin):
         return node.text.decode('utf-8')[:50]
 
 
-<<<<<<< HEAD
 # Create Go configuration class
 class GoConfig(LanguageConfig):
     """Go language configuration."""
@@ -150,50 +149,3 @@ class GoConfig(LanguageConfig):
 # Register the configuration
 go_config = GoConfig()
 language_config_registry.register(go_config)
-=======
-# Register Go configuration
-# TODO: Fix this to use the proper ChunkRule interface
-# go_config = LanguageConfig(
-#     name="go",
-#     file_extensions=[".go"],
-#     chunk_rules=[
-#         ChunkRule(
-#             name="functions",
-#             node_types=["function_declaration", "method_declaration"],
-#             min_lines=1,
-#             max_lines=500,
-#             include_context=True,
-#         ),
-#         ChunkRule(
-#             name="types", 
-#             node_types=["type_declaration", "type_spec"],
-#             min_lines=1,
-#             max_lines=300,
-#             include_context=True,
-#         ),
-#         ChunkRule(
-#             name="constants",
-#             node_types=["const_declaration"],
-#             min_lines=1,
-#             max_lines=100,
-#             include_context=False,
-#         ),
-#         ChunkRule(
-#             name="variables",
-#             node_types=["var_declaration"],
-#             min_lines=1,
-#             max_lines=50,
-#             include_context=False,
-#         ),
-#     ],
-#     scope_node_types=[
-#         "source_file",
-#         "function_declaration",
-#         "method_declaration",
-#         "block",
-#     ],
-# )
-
-# # Register the configuration
-# language_config_registry.register(go_config)
->>>>>>> 437636e (Implement Phase 9 chunk hierarchy building)

@@ -27,6 +27,10 @@ console = Console()
 from .debug import commands as debug_commands
 app.add_typer(debug_commands.app, name="debug", help="Debug and visualization tools")
 
+# Import repo commands
+from .repo_command import app as repo_app
+app.add_typer(repo_app, name="repo", help="Repository processing commands")
+
 def load_config(config_path: Optional[Path] = None) -> Dict[str, Any]:
     """Load configuration from .chunkerrc file."""
     config = {}

@@ -1,0 +1,23 @@
+# Build requirements for treesitter-chunker
+# These are needed to build wheels and distributions
+
+# Core build tools
+build>=0.10.0
+wheel>=0.40.0
+setuptools>=61.0
+setuptools-scm>=6.2
+
+# Cross-platform wheel building
+cibuildwheel>=2.16.0
+
+# Platform-specific tools
+delocate>=0.10.0; sys_platform == 'darwin'  # macOS wheel repair
+auditwheel>=5.0; sys_platform == 'linux'    # Linux wheel repair  
+delvewheel>=1.0; sys_platform == 'win32'    # Windows wheel repair
+
+# Upload tools
+twine>=4.0.0
+
+# Testing tools for packaging
+check-wheel-contents>=0.4.0
+check-manifest>=0.49
