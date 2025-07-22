@@ -91,9 +91,12 @@ chunker/export/relationships/tracker.py
 chunker/exporters/__init__.py
 chunker/exporters/parquet.py
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 chunker/fallback/README.md
 >>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
+=======
+>>>>>>> 0533abd (Implement Phase 9 semantic chunk merging)
 chunker/fallback/__init__.py
 chunker/fallback/base.py
 chunker/fallback/fallback_manager.py
@@ -110,6 +113,7 @@ chunker/grammar/repository.py
 chunker/grammar/validator.py
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 <<<<<<< HEAD
 =======
@@ -124,6 +128,8 @@ chunker/hierarchy/navigator.py
 =======
 chunker/interfaces/README.md
 >>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
+=======
+>>>>>>> 0533abd (Implement Phase 9 semantic chunk merging)
 chunker/interfaces/__init__.py
 chunker/interfaces/base.py
 chunker/interfaces/context.py
@@ -157,6 +163,7 @@ chunker/languages/ruby_plugin.py
 chunker/languages/rust.py
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 <<<<<<< HEAD
 chunker/metadata/__init__.py
@@ -171,6 +178,8 @@ chunker/metadata/languages/python.py
 =======
 chunker/performance/README.md
 >>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
+=======
+>>>>>>> 0533abd (Implement Phase 9 semantic chunk merging)
 chunker/performance/__init__.py
 chunker/performance/enhanced_chunker.py
 chunker/performance/cache/__init__.py
@@ -183,14 +192,18 @@ chunker/performance/optimization/incremental.py
 chunker/performance/optimization/memory_pool.py
 chunker/performance/optimization/monitor.py
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 chunker/strategies/README.md
 >>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
+=======
+>>>>>>> 0533abd (Implement Phase 9 semantic chunk merging)
 chunker/strategies/__init__.py
 chunker/strategies/adaptive.py
 chunker/strategies/composite.py
 chunker/strategies/hierarchical.py
 chunker/strategies/semantic.py
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
 cli/main.py
@@ -236,6 +249,8 @@ scripts/package.py
 scripts/setup-worktree-env.sh
 specs/ROADMAP.md
 >>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
+=======
+>>>>>>> 0533abd (Implement Phase 9 semantic chunk merging)
 tests/test_adaptive_chunker.py
 tests/test_c_language.py
 tests/test_cache.py
@@ -262,6 +277,7 @@ tests/test_go_language.py
 tests/test_hierarchical_chunker.py
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 <<<<<<< HEAD
 =======
@@ -273,6 +289,8 @@ tests/test_hierarchy.py
 >>>>>>> origin/main
 =======
 >>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
+=======
+>>>>>>> 0533abd (Implement Phase 9 semantic chunk merging)
 tests/test_integration.py
 tests/test_java_language.py
 tests/test_javascript_language.py

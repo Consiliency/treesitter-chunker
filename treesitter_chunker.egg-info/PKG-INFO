@@ -42,6 +42,7 @@ Provides-Extra: dev
 Requires-Dist: pytest; extra == "dev"
 Requires-Dist: psutil; extra == "dev"
 <<<<<<< HEAD
+<<<<<<< HEAD
 Provides-Extra: viz
 Requires-Dist: graphviz; extra == "viz"
 =======
@@ -65,6 +66,10 @@ Dynamic: home-page
 Dynamic: license-file
 Dynamic: requires-python
 >>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
+=======
+Provides-Extra: viz
+Requires-Dist: graphviz; extra == "viz"
+>>>>>>> 0533abd (Implement Phase 9 semantic chunk merging)
 
 # Tree-sitter Chunker
 

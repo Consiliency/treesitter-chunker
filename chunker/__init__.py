@@ -96,6 +96,10 @@ __all__ = [
     "RepoChunkResult",
     "GitignoreMatcher",
     "load_gitignore_patterns",
+    # Semantic merging
+    "TreeSitterRelationshipAnalyzer",
+    "TreeSitterSemanticMerger",
+    "MergeConfig",
 ]
 
 from .parser import (
@@ -202,4 +206,11 @@ from .repo import (
     GitAwareProcessorImpl,
     GitignoreMatcher,
     load_gitignore_patterns
+)
+
+# Semantic merging
+from .semantic import (
+    TreeSitterRelationshipAnalyzer,
+    TreeSitterSemanticMerger,
+    MergeConfig
 )

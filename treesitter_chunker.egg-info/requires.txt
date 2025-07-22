@@ -7,15 +7,19 @@ pyyaml
 pygments
 chardet
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 
 [all]
 treesitter-chunker[dev,docs,viz]
 >>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
+=======
+>>>>>>> 0533abd (Implement Phase 9 semantic chunk merging)
 
 [dev]
 pytest
 psutil
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
 build
@@ -31,6 +35,8 @@ sphinx
 sphinx-rtd-theme
 sphinx-autodoc-typehints
 >>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
+=======
+>>>>>>> 0533abd (Implement Phase 9 semantic chunk merging)
 
 [viz]
 graphviz
