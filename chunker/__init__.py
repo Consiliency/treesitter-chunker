@@ -54,6 +54,13 @@ __all__ = [
     "render_ast_graph",
     "print_ast_tree",
     "highlight_chunk_boundaries",
+    # Token counting integration
+    "TiktokenCounter",
+    "TokenAwareChunker",
+    # Hierarchy features
+    "ChunkHierarchyBuilder",
+    "HierarchyNavigator",
+    "ChunkHierarchy",
 ]
 
 from .parser import (
@@ -71,7 +78,7 @@ from .streaming import chunk_file_streaming, StreamingChunker
 from .parallel import chunk_files_parallel, chunk_directory_parallel, ParallelChunker
 from .cache import ASTCache
 from .plugin_manager import PluginManager, get_plugin_manager
-from .config import ChunkerConfig
+from .chunker_config import ChunkerConfig
 from .languages.plugin_base import LanguagePlugin, PluginConfig
 
 # Enhanced chunking strategies
@@ -104,3 +111,10 @@ from .debug import (
     print_ast_tree,
     highlight_chunk_boundaries
 )
+
+# Token counting integration
+from .token import TiktokenCounter, TokenAwareChunker
+
+# Hierarchy features
+from .hierarchy import ChunkHierarchyBuilder, HierarchyNavigator
+from .interfaces.hierarchy import ChunkHierarchy

@@ -122,56 +122,132 @@ class JavaPlugin(LanguagePlugin):
         return node.text.decode('utf-8')[:50]
 
 
-# Register Java configuration
-java_config = LanguageConfig(
-    name="java",
-    file_extensions=[".java"],
-    chunk_rules=[
-        ChunkRule(
-            name="classes",
-            node_types=[
-                "class_declaration",
-                "interface_declaration",
-                "enum_declaration",
-                "annotation_type_declaration",
-                "record_declaration"
-            ],
-            min_lines=1,
-            max_lines=2000,
-            include_context=True,
-        ),
-        ChunkRule(
-            name="methods",
-            node_types=["method_declaration", "constructor_declaration"],
-            min_lines=1,
-            max_lines=500,
-            include_context=True,
-        ),
-        ChunkRule(
-            name="fields",
-            node_types=["field_declaration"],
-            min_lines=1,
-            max_lines=50,
-            include_context=True,
-        ),
-        ChunkRule(
-            name="static_blocks",
-            node_types=["static_initializer"],
-            min_lines=2,  # Skip empty blocks
-            max_lines=200,
-            include_context=True,
-        ),
-    ],
-    scope_node_types=[
-        "program",
-        "class_declaration",
-        "interface_declaration",
-        "enum_declaration",
-        "method_declaration",
-        "constructor_declaration",
-        "block",
-    ],
-)
+<<<<<<< HEAD
+# Create Java configuration class
+class JavaConfig(LanguageConfig):
+    """Java language configuration."""
+    
+    def __init__(self):
+        super().__init__()
+        self._chunk_rules = [
+            ChunkRule(
+                node_types={
+                    "class_declaration",
+                    "interface_declaration",
+                    "enum_declaration",
+                    "annotation_type_declaration",
+                    "record_declaration"
+                },
+                include_children=True,
+                priority=1,
+                metadata={"name": "classes", "min_lines": 1, "max_lines": 2000}
+            ),
+            ChunkRule(
+                node_types={"method_declaration", "constructor_declaration"},
+                include_children=True,
+                priority=1,
+                metadata={"name": "methods", "min_lines": 1, "max_lines": 500}
+            ),
+            ChunkRule(
+                node_types={"field_declaration"},
+                include_children=True,
+                priority=1,
+                metadata={"name": "fields", "min_lines": 1, "max_lines": 50}
+            ),
+            ChunkRule(
+                node_types={"static_initializer"},
+                include_children=True,
+                priority=1,
+                metadata={"name": "static_blocks", "min_lines": 2, "max_lines": 200}
+            ),
+        ]
+        
+        self._scope_node_types = {
+            "program",
+            "class_declaration",
+            "interface_declaration",
+            "enum_declaration",
+            "method_declaration",
+            "constructor_declaration",
+            "block",
+        }
+        
+        self._file_extensions = {".java"}
+        
+    @property
+    def language_id(self) -> str:
+        """Return the Java language identifier."""
+        return "java"
+    
+    @property
+    def chunk_types(self) -> Set[str]:
+        """Return the set of node types that should be treated as chunks."""
+        chunk_types = set()
+        for rule in self._chunk_rules:
+            chunk_types.update(rule.node_types)
+        return chunk_types
+    
+    @property
+    def file_extensions(self) -> Set[str]:
+        """Return Java file extensions."""
+        return self._file_extensions
 
 # Register the configuration
+java_config = JavaConfig()
 language_config_registry.register(java_config)
+=======
+# Register Java configuration
+# TODO: Fix this to use the proper ChunkRule interface
+# java_config = LanguageConfig(
+#     name="java",
+#     file_extensions=[".java"],
+#     chunk_rules=[
+#         ChunkRule(
+#             name="classes",
+#             node_types=[
+#                 "class_declaration",
+#                 "interface_declaration",
+#                 "enum_declaration",
+#                 "annotation_type_declaration",
+#                 "record_declaration"
+#             ],
+#             min_lines=1,
+#             max_lines=2000,
+#             include_context=True,
+#         ),
+#         ChunkRule(
+#             name="methods",
+#             node_types=["method_declaration", "constructor_declaration"],
+#             min_lines=1,
+#             max_lines=500,
+#             include_context=True,
+#         ),
+#         ChunkRule(
+#             name="fields",
+#             node_types=["field_declaration"],
+#             min_lines=1,
+#             max_lines=50,
+#             include_context=True,
+#         ),
+#         ChunkRule(
+#             name="static_blocks",
+#             node_types=["static_initializer"],
+#             min_lines=2,  # Skip empty blocks
+#             max_lines=200,
+#             include_context=True,
+#         ),
+#     ],
+#     scope_node_types=[
+#         "program",
+#         "class_declaration",
+#         "interface_declaration",
+#         "enum_declaration",
+#         "method_declaration",
+#         "constructor_declaration",
+#         "block",
+#     ],
+# )
+# 
+# # Register the configuration
+# language_config_registry.register(java_config)
+>>>>>>> 437636e (Implement Phase 9 chunk hierarchy building)

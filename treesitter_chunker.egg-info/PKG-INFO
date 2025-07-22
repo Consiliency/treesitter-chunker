@@ -11,9 +11,13 @@ Requires-Dist: typer
 Requires-Dist: pyarrow>=11.0.0
 Requires-Dist: toml
 Requires-Dist: pyyaml
+Requires-Dist: pygments
+Requires-Dist: chardet
 Provides-Extra: dev
 Requires-Dist: pytest; extra == "dev"
 Requires-Dist: psutil; extra == "dev"
+Provides-Extra: viz
+Requires-Dist: graphviz; extra == "viz"
 
 # Tree-sitter Chunker
 

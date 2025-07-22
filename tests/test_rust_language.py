@@ -5,7 +5,7 @@ from pathlib import Path
 from chunker.chunker import chunk_file
 from chunker.parser import get_parser
 from chunker.languages import LanguageConfig, language_config_registry
-from chunker.config import ChunkerConfig
+from chunker.chunker_config import ChunkerConfig
 
 
 class RustConfig(LanguageConfig):
