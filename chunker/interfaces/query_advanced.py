@@ -1,7 +1,7 @@
 """Advanced query interface for Phase 10 - searching and filtering chunks."""
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Optional, Any, Callable
+from typing import List, Dict, Optional, Any, Callable, Tuple
 from dataclasses import dataclass
 from enum import Enum
 

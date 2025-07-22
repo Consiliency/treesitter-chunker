@@ -104,6 +104,32 @@ __all__ = [
     "OverlappingFallbackChunker",
     "OverlapStrategy",
     "OverlapConfig",
+    # Smart context (Phase 10)
+    "SmartContextProvider",
+    "TreeSitterSmartContextProvider",
+    "ContextMetadata",
+    "ContextStrategy",
+    "RelevanceContextStrategy",
+    "HybridContextStrategy",
+    "ContextCache",
+    "InMemoryContextCache",
+    # Advanced query (Phase 10)
+    "ChunkQueryAdvanced",
+    "NaturalLanguageQueryEngine",
+    "QueryIndexAdvanced",
+    "AdvancedQueryIndex",
+    "SmartQueryOptimizer",
+    "QueryType",
+    "QueryResult",
+    # Optimization (Phase 10)
+    "ChunkOptimizer",
+    "TreeSitterChunkOptimizer",
+    "OptimizationMetrics",
+    "OptimizationConfig",
+    "SizeOptimizer",
+    "ContextOptimizer",
+    "PerformanceOptimizer",
+    "CompositeOptimizer",
     # Multi-language processing
     "MultiLanguageProcessor",
     "LanguageDetector",
@@ -247,6 +273,47 @@ from .fallback.overlapping import (
     OverlappingFallbackChunker,
     OverlapStrategy,
     OverlapConfig
+)
+
+# Smart context (Phase 10)
+from .interfaces.smart_context import (
+    SmartContextProvider,
+    ContextMetadata,
+    ContextStrategy,
+    ContextCache
+)
+from .smart_context import (
+    TreeSitterSmartContextProvider,
+    RelevanceContextStrategy,
+    HybridContextStrategy,
+    InMemoryContextCache
+)
+
+# Advanced query (Phase 10)
+from .interfaces.query_advanced import (
+    ChunkQueryAdvanced,
+    QueryIndexAdvanced,
+    QueryType,
+    QueryResult
+)
+from .query_advanced import (
+    NaturalLanguageQueryEngine,
+    AdvancedQueryIndex,
+    SmartQueryOptimizer
+)
+
+# Optimization (Phase 10)
+from .interfaces.optimization import (
+    ChunkOptimizer,
+    OptimizationMetrics,
+    OptimizationConfig
+)
+from .optimization import (
+    TreeSitterChunkOptimizer,
+    SizeOptimizer,
+    ContextOptimizer,
+    PerformanceOptimizer,
+    CompositeOptimizer
 )
 
 # Multi-language processing
