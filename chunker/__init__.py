@@ -63,6 +63,13 @@ __all__ = [
     "JavaScriptComplexityAnalyzer",
     "SignatureInfo",
     "ComplexityMetrics",
+    # Token counting integration
+    "TiktokenCounter",
+    "TokenAwareChunker",
+    # Hierarchy features
+    "ChunkHierarchyBuilder",
+    "HierarchyNavigator",
+    "ChunkHierarchy",
 ]
 
 from .parser import (
@@ -80,12 +87,7 @@ from .streaming import chunk_file_streaming, StreamingChunker
 from .parallel import chunk_files_parallel, chunk_directory_parallel, ParallelChunker
 from .cache import ASTCache
 from .plugin_manager import PluginManager, get_plugin_manager
-
-# Import ChunkerConfig from config.py, avoiding the config/ directory
-# Commented out due to namespace conflict with config/ directory
-# import chunker.config as config_module
-# ChunkerConfig = config_module.ChunkerConfig
-
+from .chunker_config import ChunkerConfig
 from .languages.plugin_base import LanguagePlugin, PluginConfig
 
 # Enhanced chunking strategies
@@ -134,3 +136,10 @@ from .interfaces.metadata import (
     SignatureInfo,
     ComplexityMetrics
 )
+
+# Token counting integration
+from .token import TiktokenCounter, TokenAwareChunker
+
+# Hierarchy features
+from .hierarchy import ChunkHierarchyBuilder, HierarchyNavigator
+from .interfaces.hierarchy import ChunkHierarchy

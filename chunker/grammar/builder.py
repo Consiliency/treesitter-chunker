@@ -8,7 +8,7 @@ import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from tree_sitter import Language
+# from tree_sitter import Language  # Not needed with gcc compilation
 
 from ..interfaces.grammar import GrammarBuilder
 from ..exceptions import ChunkerError
@@ -130,11 +130,29 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
         try:
             logger.info(f"Building {language}...")
             
-            # Compile the grammar
-            Language.build_library(
+            # Gather C source files
+            c_files = []
+            src_dir = lang_path / "src"
+            if src_dir.exists():
+                for src in src_dir.glob("*.c"):
+                    c_files.append(str(src))
+            
+            if not c_files:
+                raise BuildError(f"No C source files found in {src_dir}")
+            
+            # Compile using gcc
+            import subprocess
+            cmd = [
+                "gcc",
+                "-shared",
+                "-fPIC",
+                "-o",
                 str(lib_path),
-                [str(lang_path)]
-            )
+            ] + c_files
+            
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode != 0:
+                raise BuildError(f"Compilation failed: {result.stderr}")
             
             if lib_path.exists():
                 logger.info(f"Successfully built {language} at {lib_path}")

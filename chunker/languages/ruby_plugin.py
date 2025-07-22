@@ -112,52 +112,67 @@ class RubyPlugin(LanguagePlugin):
                     
         return node.text.decode('utf-8')[:50]
 
-
-# TODO: Fix Ruby configuration - commenting out for now to allow tests to run
-# The LanguageConfig constructor doesn't match the expected signature
-"""ruby_config = LanguageConfig(
-    name="ruby",
-    file_extensions=[".rb", ".rake", ".gemspec", ".ru"],
-    chunk_rules=[
-        ChunkRule(
-            name="methods",
-            node_types=["method", "singleton_method"],
-            min_lines=1,
-            max_lines=300,
-            include_context=True,
-        ),
-        ChunkRule(
-            name="classes",
-            node_types=["class", "singleton_class"],
-            min_lines=1,
-            max_lines=1000,
-            include_context=True,
-        ),
-        ChunkRule(
-            name="modules",
-            node_types=["module"],
-            min_lines=1,
-            max_lines=1000,
-            include_context=True,
-        ),
-        ChunkRule(
-            name="dsl_blocks",
-            node_types=["block"],
-            min_lines=1,
-            max_lines=500,
-            include_context=True,
-            # Custom filter will be applied in should_chunk_node
-        ),
-    ],
-    scope_node_types=[
-        "program",
-        "class",
-        "module",
-        "method",
-        "singleton_method",
-        "block",
-    ],
-)
+class RubyConfig(LanguageConfig):
+    """Ruby language configuration."""
+    
+    def __init__(self):
+        super().__init__()
+        self._chunk_rules = [
+            ChunkRule(
+                node_types={"method", "singleton_method"},
+                include_children=True,
+                priority=1,
+                metadata={"name": "methods", "min_lines": 1, "max_lines": 300}
+            ),
+            ChunkRule(
+                node_types={"class", "singleton_class"},
+                include_children=True,
+                priority=1,
+                metadata={"name": "classes", "min_lines": 1, "max_lines": 1000}
+            ),
+            ChunkRule(
+                node_types={"module"},
+                include_children=True,
+                priority=1,
+                metadata={"name": "modules", "min_lines": 1, "max_lines": 1000}
+            ),
+            ChunkRule(
+                node_types={"block"},
+                include_children=True,
+                priority=1,
+                metadata={"name": "dsl_blocks", "min_lines": 1, "max_lines": 500}
+            ),
+        ]
+        
+        self._scope_node_types = {
+            "program",
+            "class",
+            "module",
+            "method",
+            "singleton_method",
+            "block",
+        }
+        
+        self._file_extensions = {".rb", ".rake", ".gemspec", ".ru"}
+        
+    @property
+    def language_id(self) -> str:
+        """Return the Ruby language identifier."""
+        return "ruby"
+    
+    @property
+    def chunk_types(self) -> Set[str]:
+        """Return the set of node types that should be treated as chunks."""
+        chunk_types = set()
+        for rule in self._chunk_rules:
+            chunk_types.update(rule.node_types)
+        return chunk_types
+    
+    @property
+    def file_extensions(self) -> Set[str]:
+        """Return Ruby file extensions."""
+        return self._file_extensions
 
 # Register the configuration
-language_config_registry.register(ruby_config)"""
+ruby_config = RubyConfig()
+language_config_registry.register(ruby_config)

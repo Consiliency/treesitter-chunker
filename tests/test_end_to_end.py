@@ -15,7 +15,7 @@ from typing import List, Dict, Any
 import pytest
 
 from chunker import chunk_file, chunk_directory_parallel, ParallelChunker, CodeChunk
-from chunker.config import ChunkerConfig
+from chunker.chunker_config import ChunkerConfig
 from chunker.export import JSONExporter, JSONLExporter, SchemaType
 
 

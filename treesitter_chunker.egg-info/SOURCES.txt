@@ -65,6 +65,15 @@ chunker/grammar/builder.py
 chunker/grammar/manager.py
 chunker/grammar/repository.py
 chunker/grammar/validator.py
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+chunker/hierarchy/__init__.py
+chunker/hierarchy/builder.py
+chunker/hierarchy/navigator.py
+>>>>>>> 437636e (Implement Phase 9 chunk hierarchy building)
+>>>>>>> origin/main
 chunker/interfaces/__init__.py
 chunker/interfaces/base.py
 chunker/interfaces/context.py
@@ -96,12 +105,15 @@ chunker/languages/python.py
 chunker/languages/ruby.py
 chunker/languages/ruby_plugin.py
 chunker/languages/rust.py
+<<<<<<< HEAD
 chunker/metadata/__init__.py
 chunker/metadata/extractor.py
 chunker/metadata/metrics.py
 chunker/metadata/languages/__init__.py
 chunker/metadata/languages/javascript.py
 chunker/metadata/languages/python.py
+=======
+>>>>>>> origin/main
 chunker/performance/__init__.py
 chunker/performance/enhanced_chunker.py
 chunker/performance/cache/__init__.py
@@ -142,6 +154,13 @@ tests/test_factory.py
 tests/test_fallback_chunking.py
 tests/test_go_language.py
 tests/test_hierarchical_chunker.py
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+tests/test_hierarchy.py
+>>>>>>> 437636e (Implement Phase 9 chunk hierarchy building)
+>>>>>>> origin/main
 tests/test_integration.py
 tests/test_java_language.py
 tests/test_javascript_language.py
