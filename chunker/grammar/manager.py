@@ -176,7 +176,7 @@ class TreeSitterGrammarManager(GrammarManager):
             self._save_config()
             
             # Build using tree-sitter CLI or custom build script
-            from ..scripts.build_lib import build_language
+            from .builder import build_language
             
             logger.info(f"Building grammar '{name}'...")
             success = build_language(name, str(grammar.path), str(self.build_dir))

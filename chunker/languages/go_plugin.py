@@ -1,4 +1,4 @@
-"""Go language plugin."""
+"""Language plugin."""
 
 from typing import Set, List
 from tree_sitter import Node
@@ -91,6 +91,51 @@ class GoConfig(LanguageConfig):
     
     @property
     def language_id(self) -> str:
+# Create Go configuration class
+class GoConfig(LanguageConfig):
+    """Go language configuration."""
+    
+    def __init__(self):
+        super().__init__()
+        self._chunk_rules = [
+            ChunkRule(
+                node_types={"function_declaration", "method_declaration"},
+                include_children=True,
+                priority=1,
+                metadata={"name": "functions", "min_lines": 1, "max_lines": 500}
+            ),
+            ChunkRule(
+                node_types={"type_declaration", "type_spec"},
+                include_children=True,
+                priority=1,
+                metadata={"name": "types", "min_lines": 1, "max_lines": 300}
+            ),
+            ChunkRule(
+                node_types={"const_declaration"},
+                include_children=True,
+                priority=1,
+                metadata={"name": "constants", "min_lines": 1, "max_lines": 100}
+            ),
+            ChunkRule(
+                node_types={"var_declaration"},
+                include_children=True,
+                priority=1,
+                metadata={"name": "variables", "min_lines": 1, "max_lines": 50}
+            ),
+        ]
+        
+        self._scope_node_types = {
+            "source_file",
+            "function_declaration",
+            "method_declaration",
+            "block",
+        }
+        
+        self._file_extensions = {".go"}
+        
+    @property
+    def language_id(self) -> str:
+        """Return the Go language identifier."""
         return "go"
     
     @property
@@ -145,3 +190,17 @@ class GoConfig(LanguageConfig):
 # Register Go configuration
 go_config = GoConfig()
 language_config_registry.register(go_config, aliases=["golang"])
+        """Return the set of node types that should be treated as chunks."""
+        chunk_types = set()
+        for rule in self._chunk_rules:
+            chunk_types.update(rule.node_types)
+        return chunk_types
+    
+    @property
+    def file_extensions(self) -> Set[str]:
+        """Return Go file extensions."""
+        return self._file_extensions
+
+# Register the configuration
+go_config = GoConfig()
+language_config_registry.register(go_config)

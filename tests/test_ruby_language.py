@@ -2,7 +2,7 @@
 
 import pytest
 from chunker.parser import get_parser, list_languages
-from chunker.chunker import CodeChunker
+from chunker.chunker import chunk_text
 from chunker.languages import language_config_registry
 
 
@@ -37,11 +37,7 @@ class User
   end
 end
 '''
-        parser = get_parser("ruby")
-        tree = parser.parse(code.encode())
-        
-        chunker = CodeChunker()
-        chunks = chunker.chunk(tree, code.encode(), "user.rb")
+        chunks = chunk_text(code, "ruby", "user.rb")
         
         # Should find class and methods
         assert len(chunks) >= 5  # class + attr_accessor + methods
@@ -81,11 +77,7 @@ module Authentication
   end
 end
 '''
-        parser = get_parser("ruby")
-        tree = parser.parse(code.encode())
-        
-        chunker = CodeChunker()
-        chunks = chunker.chunk(tree, code.encode(), "authentication.rb")
+        chunks = chunk_text(code, "ruby", "authentication.rb")
         
         # Should find modules and methods
         module_chunks = [c for c in chunks if c.node_type == "module"]
@@ -126,11 +118,7 @@ namespace :db do
   end
 end
 '''
-        parser = get_parser("ruby")
-        tree = parser.parse(code.encode())
-        
-        chunker = CodeChunker()
-        chunks = chunker.chunk(tree, code.encode(), "user_spec.rb")
+        chunks = chunk_text(code, "ruby", "user_spec.rb")
         
         # Should find RSpec blocks
         block_chunks = [c for c in chunks if c.node_type == "block"]
@@ -155,11 +143,7 @@ class Book
   end
 end
 '''
-        parser = get_parser("ruby")
-        tree = parser.parse(code.encode())
-        
-        chunker = CodeChunker()
-        chunks = chunker.chunk(tree, code.encode(), "book.rb")
+        chunks = chunk_text(code, "ruby", "book.rb")
         
         # Should find attr_* declarations
         call_chunks = [c for c in chunks if c.node_type == "call"]
@@ -193,11 +177,7 @@ class Configuration
   end
 end
 '''
-        parser = get_parser("ruby")
-        tree = parser.parse(code.encode())
-        
-        chunker = CodeChunker()
-        chunks = chunker.chunk(tree, code.encode(), "configuration.rb")
+        chunks = chunk_text(code, "ruby", "configuration.rb")
         
         # Should find singleton class and methods
         singleton_methods = [c for c in chunks if c.node_type == "singleton_method"]

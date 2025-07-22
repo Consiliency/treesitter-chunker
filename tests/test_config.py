@@ -7,7 +7,7 @@ import tempfile
 import shutil
 import os
 
-from chunker.config import ChunkerConfig
+from chunker.chunker_config import ChunkerConfig
 from chunker.languages.base import PluginConfig
 
 

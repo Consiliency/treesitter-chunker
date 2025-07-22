@@ -2,7 +2,7 @@
 
 import pytest
 from chunker.parser import get_parser, list_languages
-from chunker.chunker import CodeChunker
+from chunker.chunker import chunk_text
 from chunker.languages import language_config_registry
 
 
@@ -35,11 +35,7 @@ func main() {
     fmt.Println(greet("World"))
 }
 '''
-        parser = get_parser("go")
-        tree = parser.parse(code.encode())
-        
-        chunker = CodeChunker()
-        chunks = chunker.chunk(tree, code.encode(), "main.go")
+        chunks = chunk_text(code, "go", "main.go")
         
         # Should find 3 functions
         assert len(chunks) == 3
@@ -79,11 +75,7 @@ func (u *User) Validate() error {
     return nil
 }
 '''
-        parser = get_parser("go")
-        tree = parser.parse(code.encode())
-        
-        chunker = CodeChunker()
-        chunks = chunker.chunk(tree, code.encode(), "user.go")
+        chunks = chunk_text(code, "go", "user.go")
         
         # Should find struct and methods
         assert len(chunks) >= 4  # 1 struct + 3 methods
@@ -124,11 +116,7 @@ type DetailedProduct struct {
     Tags        []string
 }
 '''
-        parser = get_parser("go")
-        tree = parser.parse(code.encode())
-        
-        chunker = CodeChunker()
-        chunks = chunker.chunk(tree, code.encode(), "models.go")
+        chunks = chunk_text(code, "go", "models.go")
         
         # Should find multiple type declarations
         type_chunks = [c for c in chunks if "type" in c.node_type]
@@ -167,11 +155,7 @@ var (
     Config    *AppConfig
 )
 '''
-        parser = get_parser("go")
-        tree = parser.parse(code.encode())
-        
-        chunker = CodeChunker()
-        chunks = chunker.chunk(tree, code.encode(), "config.go")
+        chunks = chunk_text(code, "go", "config.go")
         
         # Should find const and var declarations
         const_chunks = [c for c in chunks if c.node_type == "const_declaration"]
