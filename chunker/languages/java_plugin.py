@@ -121,6 +121,7 @@ class JavaPlugin(LanguagePlugin):
                 
         return node.text.decode('utf-8')[:50]
 
+
 class JavaConfig(LanguageConfig):
     """Java language configuration."""
     
