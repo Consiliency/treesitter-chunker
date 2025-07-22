@@ -123,13 +123,10 @@ __all__ = [
     "QueryResult",
     # Optimization (Phase 10)
     "ChunkOptimizer",
-    "TreeSitterChunkOptimizer",
+    "ChunkBoundaryAnalyzer",
     "OptimizationMetrics",
     "OptimizationConfig",
-    "SizeOptimizer",
-    "ContextOptimizer",
-    "PerformanceOptimizer",
-    "CompositeOptimizer",
+    "OptimizationStrategy",
     # Multi-language processing
     "MultiLanguageProcessor",
     "LanguageDetector",
@@ -304,16 +301,14 @@ from .query_advanced import (
 
 # Optimization (Phase 10)
 from .interfaces.optimization import (
-    ChunkOptimizer,
+    ChunkOptimizer as ChunkOptimizerInterface,
     OptimizationMetrics,
-    OptimizationConfig
+    OptimizationConfig,
+    OptimizationStrategy
 )
 from .optimization import (
-    TreeSitterChunkOptimizer,
-    SizeOptimizer,
-    ContextOptimizer,
-    PerformanceOptimizer,
-    CompositeOptimizer
+    ChunkOptimizer,
+    ChunkBoundaryAnalyzer
 )
 
 # Multi-language processing

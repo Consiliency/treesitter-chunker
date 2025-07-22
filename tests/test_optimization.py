@@ -135,7 +135,7 @@ class TestChunkOptimizer:
             sample_chunks,
             model="gpt-4",
             max_tokens=50,
-            strategy=OptimizationStrategy.PRESERVE_STRUCTURE
+            strategy=OptimizationStrategy.BALANCED
         )
         
         assert isinstance(metrics, OptimizationMetrics)
