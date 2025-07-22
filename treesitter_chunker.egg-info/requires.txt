@@ -6,10 +6,31 @@ toml
 pyyaml
 pygments
 chardet
+<<<<<<< HEAD
+=======
+
+[all]
+treesitter-chunker[dev,docs,viz]
+>>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
 
 [dev]
 pytest
 psutil
+<<<<<<< HEAD
+=======
+build
+wheel
+twine
+pytest-cov
+black
+ruff
+mypy
+
+[docs]
+sphinx
+sphinx-rtd-theme
+sphinx-autodoc-typehints
+>>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
 
 [viz]
 graphviz

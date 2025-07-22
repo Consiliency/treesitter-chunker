@@ -1,10 +1,29 @@
 [project]
-name            = "treesitter_chunker"
+name            = "treesitter-chunker"
 version         = "0.1.0"
-description     = "Semantic code chunker using Tree-sitter"
+description     = "Semantic code chunker using Tree-sitter for intelligent code analysis"
 readme          = "README.md"
 requires-python = ">=3.10"
+license         = { text = "MIT" }
 authors         = [{ name = "Consiliency", email = "dev@consiliency.com" }]
+maintainers     = [{ name = "Consiliency", email = "dev@consiliency.com" }]
+keywords        = ["tree-sitter", "code-analysis", "chunking", "parsing", "ast", "semantic-analysis"]
+classifiers     = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Code Generators",
+    "Topic :: Text Processing :: Linguistic",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+]
 
 dependencies = [
     "tree_sitter",
@@ -36,18 +55,45 @@ dev = [
     "types-setuptools",
     "types-pyyaml",
     "types-toml",
+    "build",
+    "wheel",
+    "twine",
 ]
 viz = ["graphviz"]
 profile = ["memory-profiler>=0.61.0", "line-profiler>=4.1.0"]
+docs = ["sphinx", "sphinx-rtd-theme", "sphinx-autodoc-typehints"]
+all = ["treesitter-chunker[dev,viz,docs,profile]"]
+
+[project.urls]
+Homepage = "https://github.com/Consiliency/treesitter-chunker"
+Documentation = "https://treesitter-chunker.readthedocs.io"
+Repository = "https://github.com/Consiliency/treesitter-chunker"
+Issues = "https://github.com/Consiliency/treesitter-chunker/issues"
+Changelog = "https://github.com/Consiliency/treesitter-chunker/blob/main/CHANGELOG.md"
+
+[project.scripts]
+treesitter-chunker = "cli.main:app"
+tsc = "cli.main:app"
 
 [build-system]
-requires      = ["setuptools>=61.0", "wheel"]
+requires = [
+    "setuptools>=61.0",
+    "wheel",
+    "setuptools-scm[toml]>=6.2",
+]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where   = ["."]
-include = ["chunker", "chunker.*"]
-exclude = ["tests*"]
+include = ["chunker", "chunker.*", "cli", "cli.*"]
+exclude = ["tests*", "benchmarks*", "examples*", "docs*", "scripts*", "grammars*"]
+
+[tool.setuptools.package-data]
+chunker = ["py.typed"]
+"*" = ["*.so", "*.dll", "*.dylib", "*.pyi"]
+
+[tool.setuptools_scm]
+write_to = "chunker/_version.py"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -229,3 +275,36 @@ ignore_missing_imports = true
 [tool.bandit]
 exclude_dirs = ["tests", "venv", ".venv", "build", "dist", "grammars"]
 skips = ["B101", "B601", "B602", "B603", "B607"]
+
+[tool.cibuildwheel]
+# Build for multiple platforms
+build = ["cp310-*", "cp311-*", "cp312-*"]
+skip = ["*-musllinux_i686", "*-win32", "pp*"]
+
+# Platform-specific build settings
+[tool.cibuildwheel.linux]
+archs = ["x86_64", "aarch64"]
+before-all = [
+    "yum install -y tree-sitter || apt-get update && apt-get install -y tree-sitter || true"
+]
+manylinux-x86_64-image = "manylinux2014"
+manylinux-aarch64-image = "manylinux2014"
+
+[tool.cibuildwheel.macos]
+archs = ["x86_64", "arm64", "universal2"]
+before-all = [
+    "brew install tree-sitter || true"
+]
+
+[tool.cibuildwheel.windows]
+archs = ["AMD64"]
+before-build = [
+    "pip install delvewheel"
+]
+repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel}"
+
+# Test configuration
+[tool.cibuildwheel.test]
+test-command = "python -m pytest {project}/tests/test_parser.py::TestParserAPI::test_get_parser_basic"
+test-extras = ["dev"]
+test-skip = ["*-macosx_arm64", "*-macosx_universal2:arm64"]

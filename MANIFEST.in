@@ -1,0 +1,54 @@
+# Include documentation
+include README.md
+include LICENSE
+include CHANGELOG.md
+include CONTRIBUTING.md
+
+# Include configuration files
+include pyproject.toml
+include setup.py
+include requirements*.txt
+
+# Include grammar build scripts
+recursive-include scripts *.py
+include scripts/fetch_grammars.py
+include scripts/build_lib.py
+include scripts/build_grammars.py
+
+# Include pre-built grammar library if available
+include build/my-languages.so
+include build/my-languages.dll
+include build/my-languages.dylib
+
+# Include example configurations
+include examples/chunker.config.toml
+include examples/chunker.config.yaml
+
+# Include type stubs
+recursive-include chunker *.pyi
+
+# Include test fixtures for development
+recursive-include tests/fixtures *.py *.js *.rs *.c *.cpp *.java *.go *.rb
+
+# Exclude unnecessary files
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude __pycache__
+global-exclude .git*
+global-exclude .DS_Store
+global-exclude *.swp
+global-exclude *~
+
+# Exclude development directories
+prune .github
+prune .vscode
+prune .idea
+prune docs/_build
+prune htmlcov
+prune .pytest_cache
+prune .mypy_cache
+prune .tox
+prune dist
+prune grammars/*/test
+prune grammars/*/examples
+prune grammars/*/.git

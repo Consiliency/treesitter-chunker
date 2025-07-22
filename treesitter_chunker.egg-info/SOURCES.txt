@@ -1,5 +1,43 @@
+.chunkerrc.example
+CHANGELOG.md
+CLAUDE.md
+IMPLEMENTATION_SUMMARY.md
+LICENSE
+MANIFEST.in
 README.md
+README_GRAMMARS.md
+SMART_CONTEXT_IMPLEMENTATION.md
+TEST_COVERAGE_SUMMARY.md
+TEST_IMPLEMENTATION_PROGRESS.md
+TEST_INTEGRATION_COVERAGE_SUMMARY.md
+WORKTREE_INTEGRATION_COMMANDS.md
+WORKTREE_SETUP_CHECKLIST.md
+api-reference.md
+architecture.md
+configuration.md
+cookbook.md
+dev.sh
+example_parquet_usage.py
+export-formats.md
+getting-started.md
+index.md
+performance-guide.md
+plugin-development.md
 pyproject.toml
+requirements-build.txt
+run_coordinator_setup.sh
+setup.py
+user-guide.md
+uv.lock
+.claude/settings.json
+benchmarks/__init__.py
+benchmarks/benchmark.py
+benchmarks/benchmark_strategies.py
+benchmarks/example_benchmark.py
+benchmarks/run_benchmarks.py
+benchmarks/performance/benchmark_batch.py
+benchmarks/performance/benchmark_caching.py
+benchmarks/performance/benchmark_incremental.py
 chunker/__init__.py
 chunker/cache.py
 chunker/chunker.py
@@ -9,6 +47,7 @@ chunker/factory.py
 chunker/parallel.py
 chunker/parser.py
 chunker/plugin_manager.py
+chunker/py.typed
 chunker/registry.py
 chunker/streaming.py
 chunker/types.py
@@ -51,6 +90,10 @@ chunker/export/relationships/__init__.py
 chunker/export/relationships/tracker.py
 chunker/exporters/__init__.py
 chunker/exporters/parquet.py
+<<<<<<< HEAD
+=======
+chunker/fallback/README.md
+>>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
 chunker/fallback/__init__.py
 chunker/fallback/base.py
 chunker/fallback/fallback_manager.py
@@ -66,6 +109,7 @@ chunker/grammar/manager.py
 chunker/grammar/repository.py
 chunker/grammar/validator.py
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 <<<<<<< HEAD
 =======
@@ -77,6 +121,9 @@ chunker/hierarchy/navigator.py
 >>>>>>> 437636e (Implement Phase 9 chunk hierarchy building)
 >>>>>>> origin/main
 >>>>>>> origin/main
+=======
+chunker/interfaces/README.md
+>>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
 chunker/interfaces/__init__.py
 chunker/interfaces/base.py
 chunker/interfaces/context.py
@@ -109,6 +156,7 @@ chunker/languages/ruby.py
 chunker/languages/ruby_plugin.py
 chunker/languages/rust.py
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 <<<<<<< HEAD
 chunker/metadata/__init__.py
@@ -120,6 +168,9 @@ chunker/metadata/languages/python.py
 =======
 >>>>>>> origin/main
 >>>>>>> origin/main
+=======
+chunker/performance/README.md
+>>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
 chunker/performance/__init__.py
 chunker/performance/enhanced_chunker.py
 chunker/performance/cache/__init__.py
@@ -131,11 +182,60 @@ chunker/performance/optimization/batch.py
 chunker/performance/optimization/incremental.py
 chunker/performance/optimization/memory_pool.py
 chunker/performance/optimization/monitor.py
+<<<<<<< HEAD
+=======
+chunker/strategies/README.md
+>>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
 chunker/strategies/__init__.py
 chunker/strategies/adaptive.py
 chunker/strategies/composite.py
 chunker/strategies/hierarchical.py
 chunker/strategies/semantic.py
+<<<<<<< HEAD
+=======
+cli/main.py
+cli/debug/__init__.py
+cli/debug/commands.py
+docs/PLUGIN_ARCHITECTURE.md
+docs/STRUCTURED_EXPORT.md
+docs/WORKTREE_DEVELOPMENT.md
+examples/blog_codebase.cypher
+examples/chunker.config.toml
+examples/chunker.config.yaml
+examples/custom_plugin_example.py
+examples/dependency_visualization.py
+examples/enhanced_chunking_demo.py
+examples/example.py
+examples/fallback_demo.py
+examples/manage_grammars.py
+examples/neo4j_export_example.py
+examples/performance_demo.py
+examples/plugin_demo.py
+examples/debug/README.md
+examples/debug/debug_workflow_example.py
+examples/sample_codebase/app.py
+examples/sample_codebase/base.py
+examples/sample_codebase/posts.py
+examples/sample_codebase/users.py
+examples/sample_project/app.py
+examples/sample_project/config.py
+examples/sample_project/database.py
+examples/sample_project/models.py
+examples/sample_project/services.py
+examples/visualizations/dependencies.dot
+examples/visualizations/dependencies.graphml
+examples/visualizations/dependencies.png
+examples/visualizations/dependencies.svg
+profiling/profile_chunker.py
+scripts/build_grammars.py
+scripts/build_lib.py
+scripts/build_wheels.py
+scripts/fetch_grammars.py
+scripts/launch-claude-sessions.sh
+scripts/package.py
+scripts/setup-worktree-env.sh
+specs/ROADMAP.md
+>>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
 tests/test_adaptive_chunker.py
 tests/test_c_language.py
 tests/test_cache.py
@@ -161,6 +261,7 @@ tests/test_fallback_chunking.py
 tests/test_go_language.py
 tests/test_hierarchical_chunker.py
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 <<<<<<< HEAD
 =======
@@ -170,6 +271,8 @@ tests/test_hierarchy.py
 >>>>>>> 437636e (Implement Phase 9 chunk hierarchy building)
 >>>>>>> origin/main
 >>>>>>> origin/main
+=======
+>>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
 tests/test_integration.py
 tests/test_java_language.py
 tests/test_javascript_language.py
@@ -197,8 +300,34 @@ tests/test_semantic_chunker.py
 tests/test_streaming.py
 tests/test_structured_export_integration.py
 tests/test_types.py
+tests/integration/COORDINATOR_USAGE.md
+tests/integration/README.md
+tests/integration/__init__.py
+tests/integration/conftest.py
+tests/integration/coordinator.py
+tests/integration/fixtures.py
+tests/integration/interfaces.py
+tests/integration/run_coordinator.py
+tests/integration/scenarios.json
+tests/integration/test_coordinator.py
+tests/integration/test_fixtures.py
+tests/integration/test_interfaces.py
+tests/integration/context/__init__.py
+tests/integration/context/test_chunker_with_context.py
+tests/integration/context/test_full_context_extraction.py
+tests/integration/grammar/test_grammar_integration.py
+tests/unit/context/__init__.py
+tests/unit/context/test_context_extractor.py
+tests/unit/context/test_context_factory.py
+tests/unit/context/test_context_filter.py
+tests/unit/context/test_scope_analyzer.py
+tests/unit/context/test_symbol_resolver.py
+tests/unit/grammar/test_manager.py
+tests/unit/grammar/test_repository.py
 treesitter_chunker.egg-info/PKG-INFO
 treesitter_chunker.egg-info/SOURCES.txt
 treesitter_chunker.egg-info/dependency_links.txt
+treesitter_chunker.egg-info/entry_points.txt
+treesitter_chunker.egg-info/not-zip-safe
 treesitter_chunker.egg-info/requires.txt
 treesitter_chunker.egg-info/top_level.txt

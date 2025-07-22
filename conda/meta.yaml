@@ -1,0 +1,91 @@
+{% set name = "treesitter-chunker" %}
+{% set version = "0.1.0" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
+  sha256: PLACEHOLDER_SHA256  # Will be updated when package is published
+
+build:
+  noarch: python
+  number: 0
+  entry_points:
+    - treesitter-chunker = cli.main:app
+    - tsc = cli.main:app
+  script: |
+    {{ PYTHON }} -m pip install . -vv
+    {{ PYTHON }} scripts/fetch_grammars.py
+    {{ PYTHON }} scripts/build_lib.py
+
+requirements:
+  build:
+    - python >=3.10
+    - pip
+    - setuptools >=61.0
+    - wheel
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+  host:
+    - python >=3.10
+    - pip
+    - setuptools >=61.0
+    - wheel
+    - tree-sitter
+  run:
+    - python >=3.10
+    - tree-sitter
+    - rich
+    - typer
+    - pyarrow >=11.0.0
+    - toml
+    - pyyaml
+    - pygments
+    - chardet
+
+test:
+  imports:
+    - chunker
+    - chunker.parser
+    - chunker.chunker
+    - chunker.registry
+    - chunker.factory
+  commands:
+    - treesitter-chunker --help
+    - treesitter-chunker --version
+    - tsc --help
+  source_files:
+    - tests/
+  requires:
+    - pytest
+    - psutil
+
+about:
+  home: https://github.com/Consiliency/treesitter-chunker
+  license: MIT
+  license_family: MIT
+  license_file: LICENSE
+  summary: Semantic code chunker using Tree-sitter for intelligent code analysis
+  description: |
+    TreeSitter Chunker is a powerful Python library that uses Tree-sitter
+    parsers to intelligently split source code into semantically meaningful
+    chunks. It supports multiple programming languages and provides various
+    chunking strategies optimized for different use cases.
+
+    Features:
+    - Multi-language support (Python, JavaScript, TypeScript, C, C++, Rust, Go, Java, Ruby)
+    - Semantic chunking based on AST analysis
+    - Configurable chunking strategies
+    - Export to multiple formats (JSON, Parquet, Neo4j)
+    - Performance optimizations with caching and parallel processing
+    - Extensible plugin architecture
+    - CLI and programmatic interfaces
+
+  doc_url: https://treesitter-chunker.readthedocs.io
+  dev_url: https://github.com/Consiliency/treesitter-chunker
+
+extra:
+  recipe-maintainers:
+    - consiliency

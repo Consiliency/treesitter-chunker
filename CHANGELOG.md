@@ -1,0 +1,43 @@
+# Changelog
+
+All notable changes to treesitter-chunker will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+- Initial release of treesitter-chunker
+- Multi-language support (Python, JavaScript, TypeScript, C, C++, Rust, Go, Java, Ruby)
+- Multiple chunking strategies (semantic, hierarchical, adaptive, composite)
+- Export formats (JSON, JSONL, Parquet, Neo4j)
+- Performance optimizations with caching and parallel processing
+- Plugin architecture for language extensions
+- Comprehensive CLI interface
+- Debug and visualization tools
+- Cross-platform support (Windows, macOS, Linux)
+- Docker images (standard and Alpine)
+- Package distribution via PyPI, Conda, and Homebrew
+
+### Changed
+- N/A (initial release)
+
+### Deprecated
+- N/A (initial release)
+
+### Removed
+- N/A (initial release)
+
+### Fixed
+- N/A (initial release)
+
+### Security
+- N/A (initial release)
+
+## [0.1.0] - 2024-XX-XX
+
+Initial public release.
+
+[Unreleased]: https://github.com/Consiliency/treesitter-chunker/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/Consiliency/treesitter-chunker/releases/tag/v0.1.0

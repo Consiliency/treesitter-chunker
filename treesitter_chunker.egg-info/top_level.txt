@@ -1,1 +1,3 @@
 chunker
+cli
+treesitter_chunker
