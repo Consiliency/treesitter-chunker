@@ -57,6 +57,10 @@ __all__ = [
     # Token counting integration
     "TiktokenCounter",
     "TokenAwareChunker",
+    # Hierarchy features
+    "ChunkHierarchyBuilder",
+    "HierarchyNavigator",
+    "ChunkHierarchy",
 ]
 
 from .parser import (
@@ -110,3 +114,7 @@ from .debug import (
 
 # Token counting integration
 from .token import TiktokenCounter, TokenAwareChunker
+
+# Hierarchy features
+from .hierarchy import ChunkHierarchyBuilder, HierarchyNavigator
+from .interfaces.hierarchy import ChunkHierarchy

@@ -113,6 +113,7 @@ class RubyPlugin(LanguagePlugin):
         return node.text.decode('utf-8')[:50]
 
 
+<<<<<<< HEAD
 # Create Ruby configuration class
 class RubyConfig(LanguageConfig):
     """Ruby language configuration."""
@@ -178,3 +179,53 @@ class RubyConfig(LanguageConfig):
 # Register the configuration
 ruby_config = RubyConfig()
 language_config_registry.register(ruby_config)
+=======
+# Register Ruby configuration
+# TODO: Fix this to use the proper ChunkRule interface
+# ruby_config = LanguageConfig(
+#     name="ruby",
+#     file_extensions=[".rb", ".rake", ".gemspec", ".ru"],
+#     chunk_rules=[
+#         ChunkRule(
+#             name="methods",
+#             node_types=["method", "singleton_method"],
+#             min_lines=1,
+#             max_lines=300,
+#             include_context=True,
+#         ),
+#         ChunkRule(
+#             name="classes",
+#             node_types=["class", "singleton_class"],
+#             min_lines=1,
+#             max_lines=1000,
+#             include_context=True,
+#         ),
+#         ChunkRule(
+#             name="modules",
+#             node_types=["module"],
+#             min_lines=1,
+#             max_lines=1000,
+#             include_context=True,
+#         ),
+#         ChunkRule(
+#             name="dsl_blocks",
+#             node_types=["block"],
+#             min_lines=1,
+#             max_lines=500,
+#             include_context=True,
+#             # Custom filter will be applied in should_chunk_node
+#         ),
+#     ],
+#     scope_node_types=[
+#         "program",
+#         "class",
+#         "module",
+#         "method",
+#         "singleton_method",
+#         "block",
+#     ],
+# )
+# 
+# # Register the configuration
+# language_config_registry.register(ruby_config)
+>>>>>>> 437636e (Implement Phase 9 chunk hierarchy building)
