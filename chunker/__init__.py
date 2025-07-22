@@ -104,6 +104,14 @@ __all__ = [
     "OverlappingFallbackChunker",
     "OverlapStrategy",
     "OverlapConfig",
+    # Advanced query (Phase 10)
+    "ChunkQueryAdvanced",
+    "NaturalLanguageQueryEngine",
+    "QueryIndexAdvanced",
+    "AdvancedQueryIndex",
+    "SmartQueryOptimizer",
+    "QueryType",
+    "QueryResult",
 ]
 
 from .parser import (
@@ -224,4 +232,17 @@ from .fallback.overlapping import (
     OverlappingFallbackChunker,
     OverlapStrategy,
     OverlapConfig
+)
+
+# Advanced query (Phase 10)
+from .interfaces.query_advanced import (
+    ChunkQueryAdvanced,
+    QueryIndexAdvanced,
+    QueryType,
+    QueryResult
+)
+from .query_advanced import (
+    NaturalLanguageQueryEngine,
+    AdvancedQueryIndex,
+    SmartQueryOptimizer
 )
