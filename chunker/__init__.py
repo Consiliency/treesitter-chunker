@@ -104,6 +104,19 @@ __all__ = [
     "OverlappingFallbackChunker",
     "OverlapStrategy",
     "OverlapConfig",
+    # Incremental processing (Phase 10)
+    "IncrementalProcessor",
+    "ChunkCache",
+    "ChangeDetector",
+    "IncrementalIndex",
+    "ChunkChange",
+    "ChunkDiff",
+    "CacheEntry",
+    "ChangeType",
+    "DefaultIncrementalProcessor",
+    "DefaultChunkCache",
+    "DefaultChangeDetector",
+    "SimpleIncrementalIndex",
 ]
 
 from .parser import (
@@ -224,4 +237,22 @@ from .fallback.overlapping import (
     OverlappingFallbackChunker,
     OverlapStrategy,
     OverlapConfig
+)
+
+# Incremental processing (Phase 10)
+from .interfaces.incremental import (
+    IncrementalProcessor,
+    ChunkCache,
+    ChangeDetector,
+    IncrementalIndex,
+    ChunkChange,
+    ChunkDiff,
+    CacheEntry,
+    ChangeType
+)
+from .incremental import (
+    DefaultIncrementalProcessor,
+    DefaultChunkCache,
+    DefaultChangeDetector,
+    SimpleIncrementalIndex
 )
