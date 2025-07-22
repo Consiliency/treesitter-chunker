@@ -140,7 +140,7 @@ __all__ = [
     "MultiLanguageProcessorImpl",
     "LanguageDetectorImpl",
     "ProjectAnalyzerImpl",
-    # Incremental processing
+    # Incremental processing (Phase 10)
     "IncrementalProcessor",
     "ChunkCache",
     "ChangeDetector",
@@ -331,7 +331,7 @@ from .multi_language import (
     ProjectAnalyzerImpl
 )
 
-# Incremental processing
+# Incremental processing (Phase 10)
 from .interfaces.incremental import (
     IncrementalProcessor,
     ChunkCache,
