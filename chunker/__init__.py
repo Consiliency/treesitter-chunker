@@ -113,6 +113,14 @@ __all__ = [
     "HybridContextStrategy",
     "ContextCache",
     "InMemoryContextCache",
+    # Advanced query (Phase 10)
+    "ChunkQueryAdvanced",
+    "NaturalLanguageQueryEngine",
+    "QueryIndexAdvanced",
+    "AdvancedQueryIndex",
+    "SmartQueryOptimizer",
+    "QueryType",
+    "QueryResult",
 ]
 
 from .parser import (
@@ -247,4 +255,17 @@ from .smart_context import (
     RelevanceContextStrategy,
     HybridContextStrategy,
     InMemoryContextCache
+)
+
+# Advanced query (Phase 10)
+from .interfaces.query_advanced import (
+    ChunkQueryAdvanced,
+    QueryIndexAdvanced,
+    QueryType,
+    QueryResult
+)
+from .query_advanced import (
+    NaturalLanguageQueryEngine,
+    AdvancedQueryIndex,
+    SmartQueryOptimizer
 )
