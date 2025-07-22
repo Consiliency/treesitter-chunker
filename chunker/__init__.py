@@ -104,6 +104,15 @@ __all__ = [
     "OverlappingFallbackChunker",
     "OverlapStrategy",
     "OverlapConfig",
+    # Optimization (Phase 10)
+    "ChunkOptimizer",
+    "TreeSitterChunkOptimizer",
+    "OptimizationMetrics",
+    "OptimizationConfig",
+    "SizeOptimizer",
+    "ContextOptimizer",
+    "PerformanceOptimizer",
+    "CompositeOptimizer",
 ]
 
 from .parser import (
@@ -224,4 +233,18 @@ from .fallback.overlapping import (
     OverlappingFallbackChunker,
     OverlapStrategy,
     OverlapConfig
+)
+
+# Optimization (Phase 10)
+from .interfaces.optimization import (
+    ChunkOptimizer,
+    OptimizationMetrics,
+    OptimizationConfig
+)
+from .optimization import (
+    TreeSitterChunkOptimizer,
+    SizeOptimizer,
+    ContextOptimizer,
+    PerformanceOptimizer,
+    CompositeOptimizer
 )
