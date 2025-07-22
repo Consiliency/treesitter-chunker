@@ -130,6 +130,29 @@ __all__ = [
     "ContextOptimizer",
     "PerformanceOptimizer",
     "CompositeOptimizer",
+    # Multi-language processing
+    "MultiLanguageProcessor",
+    "LanguageDetector",
+    "ProjectAnalyzer",
+    "LanguageRegion",
+    "CrossLanguageReference",
+    "EmbeddedLanguageType",
+    "MultiLanguageProcessorImpl",
+    "LanguageDetectorImpl",
+    "ProjectAnalyzerImpl",
+    # Incremental processing
+    "IncrementalProcessor",
+    "ChunkCache",
+    "ChangeDetector",
+    "IncrementalIndex",
+    "ChunkChange",
+    "ChunkDiff",
+    "CacheEntry",
+    "ChangeType",
+    "DefaultIncrementalProcessor",
+    "DefaultChunkCache",
+    "DefaultChangeDetector",
+    "SimpleIncrementalIndex",
 ]
 
 from .parser import (
@@ -291,4 +314,37 @@ from .optimization import (
     ContextOptimizer,
     PerformanceOptimizer,
     CompositeOptimizer
+)
+
+# Multi-language processing
+from .interfaces.multi_language import (
+    MultiLanguageProcessor,
+    LanguageDetector,
+    ProjectAnalyzer,
+    LanguageRegion,
+    CrossLanguageReference,
+    EmbeddedLanguageType
+)
+from .multi_language import (
+    MultiLanguageProcessorImpl,
+    LanguageDetectorImpl,
+    ProjectAnalyzerImpl
+)
+
+# Incremental processing
+from .interfaces.incremental import (
+    IncrementalProcessor,
+    ChunkCache,
+    ChangeDetector,
+    IncrementalIndex,
+    ChunkChange,
+    ChunkDiff,
+    CacheEntry,
+    ChangeType
+)
+from .incremental import (
+    DefaultIncrementalProcessor,
+    DefaultChunkCache,
+    DefaultChangeDetector,
+    SimpleIncrementalIndex
 )
