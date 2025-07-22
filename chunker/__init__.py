@@ -104,6 +104,42 @@ __all__ = [
     "OverlappingFallbackChunker",
     "OverlapStrategy",
     "OverlapConfig",
+    # Smart context (Phase 10)
+    "SmartContextProvider",
+    "TreeSitterSmartContextProvider",
+    "ContextMetadata",
+    "ContextStrategy",
+    "RelevanceContextStrategy",
+    "HybridContextStrategy",
+    "ContextCache",
+    "InMemoryContextCache",
+    # Advanced query (Phase 10)
+    "ChunkQueryAdvanced",
+    "NaturalLanguageQueryEngine",
+    "QueryIndexAdvanced",
+    "AdvancedQueryIndex",
+    "SmartQueryOptimizer",
+    "QueryType",
+    "QueryResult",
+    # Optimization (Phase 10)
+    "ChunkOptimizer",
+    "TreeSitterChunkOptimizer",
+    "OptimizationMetrics",
+    "OptimizationConfig",
+    "SizeOptimizer",
+    "ContextOptimizer",
+    "PerformanceOptimizer",
+    "CompositeOptimizer",
+    # Multi-language processing
+    "MultiLanguageProcessor",
+    "LanguageDetector",
+    "ProjectAnalyzer",
+    "LanguageRegion",
+    "CrossLanguageReference",
+    "EmbeddedLanguageType",
+    "MultiLanguageProcessorImpl",
+    "LanguageDetectorImpl",
+    "ProjectAnalyzerImpl",
     # Incremental processing (Phase 10)
     "IncrementalProcessor",
     "ChunkCache",
@@ -237,6 +273,62 @@ from .fallback.overlapping import (
     OverlappingFallbackChunker,
     OverlapStrategy,
     OverlapConfig
+)
+
+# Smart context (Phase 10)
+from .interfaces.smart_context import (
+    SmartContextProvider,
+    ContextMetadata,
+    ContextStrategy,
+    ContextCache
+)
+from .smart_context import (
+    TreeSitterSmartContextProvider,
+    RelevanceContextStrategy,
+    HybridContextStrategy,
+    InMemoryContextCache
+)
+
+# Advanced query (Phase 10)
+from .interfaces.query_advanced import (
+    ChunkQueryAdvanced,
+    QueryIndexAdvanced,
+    QueryType,
+    QueryResult
+)
+from .query_advanced import (
+    NaturalLanguageQueryEngine,
+    AdvancedQueryIndex,
+    SmartQueryOptimizer
+)
+
+# Optimization (Phase 10)
+from .interfaces.optimization import (
+    ChunkOptimizer,
+    OptimizationMetrics,
+    OptimizationConfig
+)
+from .optimization import (
+    TreeSitterChunkOptimizer,
+    SizeOptimizer,
+    ContextOptimizer,
+    PerformanceOptimizer,
+    CompositeOptimizer
+)
+
+# Multi-language processing
+from .interfaces.multi_language import (
+    MultiLanguageProcessor,
+    LanguageDetector,
+    ProjectAnalyzer,
+    LanguageRegion,
+    CrossLanguageReference,
+    EmbeddedLanguageType
+)
+from .multi_language import (
+    MultiLanguageProcessorImpl,
+    LanguageDetectorImpl,
+    ProjectAnalyzerImpl
 )
 
 # Incremental processing (Phase 10)
