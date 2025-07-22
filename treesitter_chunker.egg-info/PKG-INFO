@@ -1,10 +1,35 @@
 Metadata-Version: 2.4
-Name: treesitter_chunker
+Name: treesitter-chunker
 Version: 0.1.0
-Summary: Semantic code chunker using Tree-sitter
+Summary: Semantic code chunker using Tree-sitter for intelligent code analysis
+Home-page: https://github.com/Consiliency/treesitter-chunker
+Author: Consiliency
 Author-email: Consiliency <dev@consiliency.com>
+Maintainer-email: Consiliency <dev@consiliency.com>
+License: MIT
+Project-URL: Homepage, https://github.com/Consiliency/treesitter-chunker
+Project-URL: Documentation, https://treesitter-chunker.readthedocs.io
+Project-URL: Repository, https://github.com/Consiliency/treesitter-chunker
+Project-URL: Issues, https://github.com/Consiliency/treesitter-chunker/issues
+Project-URL: Changelog, https://github.com/Consiliency/treesitter-chunker/blob/main/CHANGELOG.md
+Keywords: tree-sitter,code-analysis,chunking,parsing,ast,semantic-analysis
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Software Development :: Code Generators
+Classifier: Topic :: Text Processing :: Linguistic
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Operating System :: OS Independent
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Operating System :: MacOS :: MacOS X
+Classifier: Operating System :: Microsoft :: Windows
 Requires-Python: >=3.10
 Description-Content-Type: text/markdown
+License-File: LICENSE
 Requires-Dist: tree_sitter
 Requires-Dist: rich
 Requires-Dist: typer
@@ -16,8 +41,30 @@ Requires-Dist: chardet
 Provides-Extra: dev
 Requires-Dist: pytest; extra == "dev"
 Requires-Dist: psutil; extra == "dev"
+<<<<<<< HEAD
 Provides-Extra: viz
 Requires-Dist: graphviz; extra == "viz"
+=======
+Requires-Dist: build; extra == "dev"
+Requires-Dist: wheel; extra == "dev"
+Requires-Dist: twine; extra == "dev"
+Requires-Dist: pytest-cov; extra == "dev"
+Requires-Dist: black; extra == "dev"
+Requires-Dist: ruff; extra == "dev"
+Requires-Dist: mypy; extra == "dev"
+Provides-Extra: viz
+Requires-Dist: graphviz; extra == "viz"
+Provides-Extra: docs
+Requires-Dist: sphinx; extra == "docs"
+Requires-Dist: sphinx-rtd-theme; extra == "docs"
+Requires-Dist: sphinx-autodoc-typehints; extra == "docs"
+Provides-Extra: all
+Requires-Dist: treesitter-chunker[dev,docs,viz]; extra == "all"
+Dynamic: author
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: requires-python
+>>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
 
 # Tree-sitter Chunker
 
