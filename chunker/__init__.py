@@ -104,6 +104,15 @@ __all__ = [
     "OverlappingFallbackChunker",
     "OverlapStrategy",
     "OverlapConfig",
+    # Smart context (Phase 10)
+    "SmartContextProvider",
+    "TreeSitterSmartContextProvider",
+    "ContextMetadata",
+    "ContextStrategy",
+    "RelevanceContextStrategy",
+    "HybridContextStrategy",
+    "ContextCache",
+    "InMemoryContextCache",
 ]
 
 from .parser import (
@@ -224,4 +233,18 @@ from .fallback.overlapping import (
     OverlappingFallbackChunker,
     OverlapStrategy,
     OverlapConfig
+)
+
+# Smart context (Phase 10)
+from .interfaces.smart_context import (
+    SmartContextProvider,
+    ContextMetadata,
+    ContextStrategy,
+    ContextCache
+)
+from .smart_context import (
+    TreeSitterSmartContextProvider,
+    RelevanceContextStrategy,
+    HybridContextStrategy,
+    InMemoryContextCache
 )
