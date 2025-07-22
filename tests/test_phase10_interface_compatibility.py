@@ -18,7 +18,7 @@ from chunker.interfaces.multi_language import (
     MultiLanguageProcessor, LanguageRegion, CrossLanguageReference
 )
 from chunker.interfaces.incremental import (
-    IncrementalProcessor, ChunkCache, ChunkDiff, ChangeType
+    IncrementalProcessor, ChunkCache, ChunkDiff, ChangeType, ChunkChange
 )
 
 from chunker.types import CodeChunk
@@ -323,8 +323,8 @@ async function fetchUsers() {
                 # Find dependencies based on function calls
                 for other in chunks:
                     if other.chunk_id != chunk.chunk_id:
-                        if any(name in chunk.content for name in ["calculate_sum", "calculate_average"]):
-                            if name in other.content:
+                        for name in ["calculate_sum", "calculate_average"]:
+                            if name in chunk.content and name in other.content:
                                 deps.append((other, ContextMetadata(0.9, "dependency", 1, 80)))
                 return deps
             

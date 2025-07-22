@@ -1,7 +1,7 @@
 """Incremental processing interface for efficient chunk updates."""
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Optional, Set, Tuple
+from typing import List, Dict, Optional, Set, Tuple, Any
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
