@@ -2,7 +2,7 @@
 
 import pytest
 from chunker.parser import get_parser, list_languages
-from chunker.chunker import CodeChunker
+from chunker.chunker import chunk_text
 from chunker.languages import language_config_registry
 
 
@@ -51,11 +51,7 @@ public class User {
     }
 }
 '''
-        parser = get_parser("java")
-        tree = parser.parse(code.encode())
-        
-        chunker = CodeChunker()
-        chunks = chunker.chunk(tree, code.encode(), "User.java")
+        chunks = chunk_text(code, "java", "User.java")
         
         # Should find class, fields, constructor, and methods
         assert len(chunks) >= 7
@@ -98,11 +94,7 @@ public interface UserRepository {
     List<User> findAll(int offset, int limit);
 }
 '''
-        parser = get_parser("java")
-        tree = parser.parse(code.encode())
-        
-        chunker = CodeChunker()
-        chunks = chunker.chunk(tree, code.encode(), "UserRepository.java")
+        chunks = chunk_text(code, "java", "UserRepository.java")
         
         # Should find interface and methods
         interface_chunks = [c for c in chunks if c.node_type == "interface_declaration"]
@@ -139,11 +131,7 @@ public enum UserRole {
     }
 }
 '''
-        parser = get_parser("java")
-        tree = parser.parse(code.encode())
-        
-        chunker = CodeChunker()
-        chunks = chunker.chunk(tree, code.encode(), "UserRole.java")
+        chunks = chunk_text(code, "java", "UserRole.java")
         
         # Should find enum, field, constructor, and methods
         enum_chunks = [c for c in chunks if c.node_type == "enum_declaration"]
@@ -186,11 +174,7 @@ public class UserController {
     }
 }
 '''
-        parser = get_parser("java")
-        tree = parser.parse(code.encode())
-        
-        chunker = CodeChunker()
-        chunks = chunker.chunk(tree, code.encode(), "UserController.java")
+        chunks = chunk_text(code, "java", "UserController.java")
         
         # Should find class and annotated methods
         class_chunks = [c for c in chunks if c.node_type == "class_declaration"]
@@ -229,11 +213,7 @@ public class OuterClass {
     }
 }
 '''
-        parser = get_parser("java")
-        tree = parser.parse(code.encode())
-        
-        chunker = CodeChunker()
-        chunks = chunker.chunk(tree, code.encode(), "OuterClass.java")
+        chunks = chunk_text(code, "java", "OuterClass.java")
         
         # Should find outer class and nested classes
         class_chunks = [c for c in chunks if c.node_type == "class_declaration"]

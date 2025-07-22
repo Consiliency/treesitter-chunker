@@ -4,7 +4,12 @@ typer
 pyarrow>=11.0.0
 toml
 pyyaml
+pygments
+chardet
 
 [dev]
 pytest
 psutil
+
+[viz]
+graphviz
