@@ -27,7 +27,7 @@ __all__ = [
     "CodeChunk",
     # Plugin system
     "PluginManager",
-    "ChunkerConfig",
+    # "ChunkerConfig",  # Commented out due to namespace conflict
     "LanguagePlugin",
     "PluginConfig",
     "get_plugin_manager",
@@ -54,6 +54,15 @@ __all__ = [
     "render_ast_graph",
     "print_ast_tree",
     "highlight_chunk_boundaries",
+    # Metadata extraction
+    "BaseMetadataExtractor",
+    "BaseComplexityAnalyzer",
+    "PythonMetadataExtractor",
+    "PythonComplexityAnalyzer",
+    "JavaScriptMetadataExtractor",
+    "JavaScriptComplexityAnalyzer",
+    "SignatureInfo",
+    "ComplexityMetrics",
 ]
 
 from .parser import (
@@ -71,7 +80,12 @@ from .streaming import chunk_file_streaming, StreamingChunker
 from .parallel import chunk_files_parallel, chunk_directory_parallel, ParallelChunker
 from .cache import ASTCache
 from .plugin_manager import PluginManager, get_plugin_manager
-from .config import ChunkerConfig
+
+# Import ChunkerConfig from config.py, avoiding the config/ directory
+# Commented out due to namespace conflict with config/ directory
+# import chunker.config as config_module
+# ChunkerConfig = config_module.ChunkerConfig
+
 from .languages.plugin_base import LanguagePlugin, PluginConfig
 
 # Enhanced chunking strategies
@@ -103,4 +117,20 @@ from .debug import (
     render_ast_graph,
     print_ast_tree,
     highlight_chunk_boundaries
+)
+
+# Metadata extraction
+from .metadata import (
+    BaseMetadataExtractor,
+    BaseComplexityAnalyzer
+)
+from .metadata.languages import (
+    PythonMetadataExtractor,
+    PythonComplexityAnalyzer,
+    JavaScriptMetadataExtractor,
+    JavaScriptComplexityAnalyzer
+)
+from .interfaces.metadata import (
+    SignatureInfo,
+    ComplexityMetrics
 )

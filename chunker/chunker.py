@@ -5,9 +5,10 @@ from tree_sitter import Node
 from .parser import get_parser
 from .languages import language_config_registry
 from .types import CodeChunk
+from .metadata import MetadataExtractorFactory
 
 def _walk(node: Node, source: bytes, language: str, parent_ctx: str | None = None,
-          parent_chunk: CodeChunk | None = None) -> list[CodeChunk]:
+          parent_chunk: CodeChunk | None = None, extractor=None, analyzer=None) -> list[CodeChunk]:
     """Walk the AST and extract chunks based on language configuration."""
     # Get language configuration
     config = language_config_registry.get(language)
@@ -42,26 +43,103 @@ def _walk(node: Node, source: bytes, language: str, parent_ctx: str | None = Non
             content=text,
             parent_chunk_id=parent_chunk.chunk_id if parent_chunk else None,
         )
+        
+        # Extract metadata if extractors are available
+        if extractor or analyzer:
+            metadata = {}
+            
+            if extractor:
+                # Extract signature
+                signature = extractor.extract_signature(node, source)
+                if signature:
+                    metadata['signature'] = {
+                        'name': signature.name,
+                        'parameters': signature.parameters,
+                        'return_type': signature.return_type,
+                        'decorators': signature.decorators,
+                        'modifiers': signature.modifiers,
+                    }
+                
+                # Extract docstring
+                docstring = extractor.extract_docstring(node, source)
+                if docstring:
+                    metadata['docstring'] = docstring
+                
+                # Extract dependencies
+                dependencies = extractor.extract_dependencies(node, source)
+                metadata['dependencies'] = sorted(list(dependencies)) if dependencies else []
+                current_chunk.dependencies = sorted(list(dependencies)) if dependencies else []
+                
+                # Extract imports
+                imports = extractor.extract_imports(node, source)
+                if imports:
+                    metadata['imports'] = imports
+                
+                # Extract exports
+                exports = extractor.extract_exports(node, source)
+                if exports:
+                    metadata['exports'] = sorted(list(exports))
+                    
+            if analyzer:
+                # Calculate complexity metrics
+                complexity = analyzer.analyze_complexity(node, source)
+                metadata['complexity'] = {
+                    'cyclomatic': complexity.cyclomatic,
+                    'cognitive': complexity.cognitive,
+                    'nesting_depth': complexity.nesting_depth,
+                    'lines_of_code': complexity.lines_of_code,
+                    'logical_lines': complexity.logical_lines,
+                }
+            
+            current_chunk.metadata = metadata
+        
         chunks.append(current_chunk)
         parent_ctx = node.type  # nested functions, etc.
     
     # Walk children with current chunk as parent
     for child in node.children:
-        chunks.extend(_walk(child, source, language, parent_ctx, current_chunk or parent_chunk))
+        chunks.extend(_walk(child, source, language, parent_ctx, current_chunk or parent_chunk, extractor, analyzer))
     
     return chunks
 
-def chunk_text(text: str, language: str, file_path: str = "") -> list[CodeChunk]:
-    """Parse text and return a list of `CodeChunk`."""
+def chunk_text(text: str, language: str, file_path: str = "", extract_metadata: bool = True) -> list[CodeChunk]:
+    """Parse text and return a list of `CodeChunk`.
+    
+    Args:
+        text: Source code text to chunk
+        language: Programming language
+        file_path: Path to the file (optional)
+        extract_metadata: Whether to extract metadata (default: True)
+        
+    Returns:
+        List of CodeChunk objects with optional metadata
+    """
     parser = get_parser(language)
     src = text.encode()
     tree = parser.parse(src)
-    chunks = _walk(tree.root_node, src, language)
+    
+    # Create metadata extractors if requested
+    extractor = None
+    analyzer = None
+    if extract_metadata:
+        extractor = MetadataExtractorFactory.create_extractor(language)
+        analyzer = MetadataExtractorFactory.create_analyzer(language)
+    
+    chunks = _walk(tree.root_node, src, language, extractor=extractor, analyzer=analyzer)
     for c in chunks:
         c.file_path = file_path
     return chunks
 
-def chunk_file(path: str | Path, language: str) -> list[CodeChunk]:
-    """Parse the file and return a list of `CodeChunk`."""
+def chunk_file(path: str | Path, language: str, extract_metadata: bool = True) -> list[CodeChunk]:
+    """Parse the file and return a list of `CodeChunk`.
+    
+    Args:
+        path: Path to the file to chunk
+        language: Programming language
+        extract_metadata: Whether to extract metadata (default: True)
+        
+    Returns:
+        List of CodeChunk objects with optional metadata
+    """
     src = Path(path).read_text()
-    return chunk_text(src, language, str(path))
+    return chunk_text(src, language, str(path), extract_metadata=extract_metadata)
