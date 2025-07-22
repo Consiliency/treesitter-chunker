@@ -7,11 +7,11 @@ import tempfile
 from pathlib import Path
 from chunker import (
     PluginManager, 
-    ChunkerConfig, 
     LanguagePlugin,
     PluginConfig,
     get_plugin_manager
 )
+from chunker.chunker_config import ChunkerConfig
 from chunker.languages import PythonPlugin, RustPlugin, JavaScriptPlugin
 
 
