@@ -15,16 +15,15 @@ class RubyPlugin(LanguagePlugin):
 
     @property
     def file_extensions(self) -> List[str]:
-        return [".rb", ".rake", ".gemspec", ".ru"]
+        return [".rb", ".rake", ".gemspec", "Rakefile", "Gemfile"]
 
     def get_chunk_node_types(self) -> Set[str]:
         return {
             "method",
             "singleton_method",
             "class",
-            "module", 
-            "singleton_class",
-            "block",  # For DSL blocks
+            "module",
+            "do_block",
             "lambda",
         }
 
@@ -35,13 +34,12 @@ class RubyPlugin(LanguagePlugin):
             "module",
             "method",
             "singleton_method",
+            "do_block",
             "block",
-            "lambda",
             "if",
             "unless",
             "case",
             "while",
-            "until",
             "for",
             "begin",
         }
@@ -51,66 +49,80 @@ class RubyPlugin(LanguagePlugin):
         if node.type not in self.get_chunk_node_types():
             return False
             
-        # Special handling for blocks - only chunk DSL blocks
-        if node.type == "block":
-            parent = node.parent
-            if parent and parent.type == "call":
-                method_node = parent.child_by_field_name("method")
-                if method_node:
-                    method_name = method_node.text.decode('utf-8')
-                    # Common DSL methods
-                    if method_name in ["describe", "context", "it", "before", "after",
-                                     "namespace", "resources", "scope", "task", 
-                                     "configure", "setup", "teardown"]:
-                        return True
-            return False
-            
-        # Skip anonymous lambdas
+        # For blocks, only chunk larger ones
+        if node.type in ["do_block", "block"]:
+            # Count non-trivial lines
+            line_count = node.end_point[0] - node.start_point[0] + 1
+            if line_count < 5:  # Skip small blocks
+                return False
+                
+        # Skip inline lambdas
         if node.type == "lambda":
-            # Ruby lambdas are typically anonymous
-            return False
-            
+            if node.end_point[0] == node.start_point[0]:  # Single line
+                return False
+                
         return True
 
     def extract_display_name(self, node: Node, source: bytes) -> str:
         """Extract display name for chunk."""
-        if node.type in ["method", "singleton_method"]:
-            name_node = node.child_by_field_name("name")
-            if name_node:
-                return name_node.text.decode('utf-8')
-                
-        elif node.type == "class":
-            name_node = node.child_by_field_name("name")
-            if name_node:
-                name = name_node.text.decode('utf-8')
-                # Check for superclass
-                superclass = node.child_by_field_name("superclass")
-                if superclass:
-                    return f"{name} < {superclass.text.decode('utf-8')}"
-                return name
-                
+        if node.type == "class":
+            # Find constant node for class name
+            for child in node.children:
+                if child.type == "constant":
+                    return f"class {child.text.decode('utf-8')}"
+                elif child.type == "scope_resolution":
+                    # Handle nested classes like Module::Class
+                    return f"class {child.text.decode('utf-8')}"
+                    
         elif node.type == "module":
+            # Find constant node for module name
+            for child in node.children:
+                if child.type == "constant":
+                    return f"module {child.text.decode('utf-8')}"
+                elif child.type == "scope_resolution":
+                    return f"module {child.text.decode('utf-8')}"
+                    
+        elif node.type in ["method", "singleton_method"]:
             name_node = node.child_by_field_name("name")
             if name_node:
-                return name_node.text.decode('utf-8')
+                method_name = name_node.text.decode('utf-8')
+                if node.type == "singleton_method":
+                    object_node = node.child_by_field_name("object")
+                    if object_node:
+                        return f"def {object_node.text.decode('utf-8')}.{method_name}"
+                    return f"def self.{method_name}"
+                return f"def {method_name}"
                 
-        elif node.type == "block":
-            # For DSL blocks, include the method call
+        elif node.type == "do_block":
+            # Try to get context from the method call
             parent = node.parent
-            if parent and parent.type == "call":
+            if parent and parent.type == "method_call":
                 method_node = parent.child_by_field_name("method")
                 if method_node:
-                    method_name = method_node.text.decode('utf-8')
-                    # Try to get first argument (often a description)
-                    args_node = parent.child_by_field_name("arguments")
-                    if args_node and args_node.child_count > 0:
-                        first_arg = args_node.children[0]
-                        if first_arg.type in ["string", "symbol"]:
-                            arg_text = first_arg.text.decode('utf-8').strip('"\'')
-                            return f"{method_name} {arg_text}"
-                    return method_name
-                    
+                    return f"{method_node.text.decode('utf-8')} do...end"
+            return "do...end block"
+            
+        elif node.type == "lambda":
+            # Check if it's a stabby lambda
+            if node.text.startswith(b"->"):
+                # Extract parameters if any
+                params_node = node.child_by_field_name("parameters")
+                if params_node:
+                    return f"-> {params_node.text.decode('utf-8')} {{ ... }}"
+                return "-> { ... }"
+            else:
+                # Traditional lambda
+                args_node = node.child_by_field_name("arguments")
+                if args_node and args_node.child_count > 0:
+                    # Try to get first argument for context
+                    first_arg = args_node.children[0]
+                    if first_arg.type in ["string", "symbol"]:
+                        arg_text = first_arg.text.decode('utf-8').strip('"\'')
+                        return f"{method_name} {arg_text}"
+                return method_name
+                
         return node.text.decode('utf-8')[:50]
+
 
 class RubyConfig(LanguageConfig):
     """Ruby language configuration."""
@@ -122,25 +134,19 @@ class RubyConfig(LanguageConfig):
                 node_types={"method", "singleton_method"},
                 include_children=True,
                 priority=1,
-                metadata={"name": "methods", "min_lines": 1, "max_lines": 300}
+                metadata={"name": "methods", "min_lines": 1, "max_lines": 500}
             ),
             ChunkRule(
-                node_types={"class", "singleton_class"},
+                node_types={"class", "module"},
                 include_children=True,
                 priority=1,
-                metadata={"name": "classes", "min_lines": 1, "max_lines": 1000}
+                metadata={"name": "classes_modules", "min_lines": 1, "max_lines": 2000}
             ),
             ChunkRule(
-                node_types={"module"},
+                node_types={"do_block", "lambda"},
                 include_children=True,
-                priority=1,
-                metadata={"name": "modules", "min_lines": 1, "max_lines": 1000}
-            ),
-            ChunkRule(
-                node_types={"block"},
-                include_children=True,
-                priority=1,
-                metadata={"name": "dsl_blocks", "min_lines": 1, "max_lines": 500}
+                priority=2,
+                metadata={"name": "blocks", "min_lines": 5, "max_lines": 100}
             ),
         ]
         
@@ -150,10 +156,11 @@ class RubyConfig(LanguageConfig):
             "module",
             "method",
             "singleton_method",
+            "do_block",
             "block",
         }
         
-        self._file_extensions = {".rb", ".rake", ".gemspec", ".ru"}
+        self._file_extensions = {".rb", ".rake", ".gemspec"}
         
     @property
     def language_id(self) -> str:
