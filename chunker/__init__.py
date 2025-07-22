@@ -27,7 +27,7 @@ __all__ = [
     "CodeChunk",
     # Plugin system
     "PluginManager",
-    "ChunkerConfig",
+    # "ChunkerConfig",  # Commented out due to namespace conflict
     "LanguagePlugin",
     "PluginConfig",
     "get_plugin_manager",
@@ -54,6 +54,15 @@ __all__ = [
     "render_ast_graph",
     "print_ast_tree",
     "highlight_chunk_boundaries",
+    # Metadata extraction
+    "BaseMetadataExtractor",
+    "BaseComplexityAnalyzer",
+    "PythonMetadataExtractor",
+    "PythonComplexityAnalyzer",
+    "JavaScriptMetadataExtractor",
+    "JavaScriptComplexityAnalyzer",
+    "SignatureInfo",
+    "ComplexityMetrics",
     # Token counting integration
     "TiktokenCounter",
     "TokenAwareChunker",
@@ -110,6 +119,22 @@ from .debug import (
     render_ast_graph,
     print_ast_tree,
     highlight_chunk_boundaries
+)
+
+# Metadata extraction
+from .metadata import (
+    BaseMetadataExtractor,
+    BaseComplexityAnalyzer
+)
+from .metadata.languages import (
+    PythonMetadataExtractor,
+    PythonComplexityAnalyzer,
+    JavaScriptMetadataExtractor,
+    JavaScriptComplexityAnalyzer
+)
+from .interfaces.metadata import (
+    SignatureInfo,
+    ComplexityMetrics
 )
 
 # Token counting integration

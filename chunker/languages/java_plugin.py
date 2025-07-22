@@ -121,9 +121,6 @@ class JavaPlugin(LanguagePlugin):
                 
         return node.text.decode('utf-8')[:50]
 
-
-<<<<<<< HEAD
-# Create Java configuration class
 class JavaConfig(LanguageConfig):
     """Java language configuration."""
     
@@ -195,59 +192,3 @@ class JavaConfig(LanguageConfig):
 # Register the configuration
 java_config = JavaConfig()
 language_config_registry.register(java_config)
-=======
-# Register Java configuration
-# TODO: Fix this to use the proper ChunkRule interface
-# java_config = LanguageConfig(
-#     name="java",
-#     file_extensions=[".java"],
-#     chunk_rules=[
-#         ChunkRule(
-#             name="classes",
-#             node_types=[
-#                 "class_declaration",
-#                 "interface_declaration",
-#                 "enum_declaration",
-#                 "annotation_type_declaration",
-#                 "record_declaration"
-#             ],
-#             min_lines=1,
-#             max_lines=2000,
-#             include_context=True,
-#         ),
-#         ChunkRule(
-#             name="methods",
-#             node_types=["method_declaration", "constructor_declaration"],
-#             min_lines=1,
-#             max_lines=500,
-#             include_context=True,
-#         ),
-#         ChunkRule(
-#             name="fields",
-#             node_types=["field_declaration"],
-#             min_lines=1,
-#             max_lines=50,
-#             include_context=True,
-#         ),
-#         ChunkRule(
-#             name="static_blocks",
-#             node_types=["static_initializer"],
-#             min_lines=2,  # Skip empty blocks
-#             max_lines=200,
-#             include_context=True,
-#         ),
-#     ],
-#     scope_node_types=[
-#         "program",
-#         "class_declaration",
-#         "interface_declaration",
-#         "enum_declaration",
-#         "method_declaration",
-#         "constructor_declaration",
-#         "block",
-#     ],
-# )
-# 
-# # Register the configuration
-# language_config_registry.register(java_config)
->>>>>>> 437636e (Implement Phase 9 chunk hierarchy building)
