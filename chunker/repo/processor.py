@@ -12,7 +12,7 @@ import git
 import pathspec
 from tqdm import tqdm
 
-from ..chunker import Chunker
+from .chunker_adapter import Chunker
 from ..exceptions import ChunkerError
 from ..interfaces.repo import (
     FileChunkResult,

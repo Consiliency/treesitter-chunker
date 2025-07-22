@@ -170,9 +170,20 @@ min_chunk_size = 5
 - **JSONL**: Line-delimited JSON for streaming
 - **Parquet**: Columnar format for analytics with compression
 
+### Phase 9 Features (Completed)
+
+- **Token Integration**: Count tokens for LLM context windows
+- **Chunk Hierarchy**: Build hierarchical chunk relationships
+- **Metadata Extraction**: Extract TODOs, complexity metrics, etc.
+- **Semantic Merging**: Intelligently merge related chunks
+- **Custom Rules**: Define custom chunking rules per language
+- **Repository Processing**: Process entire repositories efficiently
+- **Overlapping Fallback**: Handle edge cases with smart fallbacks
+- **Cross-Platform Packaging**: Distribute as wheels for all platforms
+
 ## 📚 API Overview
 
-Tree-sitter Chunker exports 27 APIs organized into logical groups:
+Tree-sitter Chunker exports 107 APIs organized into logical groups:
 
 ### Core Functions
 - `chunk_file()` - Extract chunks from a file
@@ -210,6 +221,16 @@ Tree-sitter Chunker exports 27 APIs organized into logical groups:
 - `JSONLExporter` - Export to JSONL
 - `ParquetExporter` - Export to Parquet
 - `SchemaType` - Export schema types
+
+### Phase 9 Features
+- **Token Integration**: `TokenCounter`, `TokenAwareChunker`, `TokenConfig`
+- **Chunk Hierarchy**: `ChunkHierarchy`, `ChunkRelationship`, `HierarchyBuilder`
+- **Metadata Extraction**: `MetadataExtractor`, `ChunkMetadata`, `MetadataConfig`
+- **Semantic Merging**: `SemanticChunker`, `MergeStrategy`, `SemanticConfig`
+- **Custom Rules**: `RuleBasedChunker`, `ChunkRule`, `RuleEngine`
+- **Repository Processing**: `RepoProcessor`, `RepoConfig`, `FileFilter`
+- **Overlapping Fallback**: `FallbackChunker`, `ChunkOverlap`, `FallbackStrategy`
+- **Packaging**: `PackageDistributor`, `WheelBuilder`, `PlatformConfig`
 
 ### Error Handling
 - `ChunkerError` - Base exception
@@ -274,13 +295,42 @@ python benchmarks/run_benchmarks.py
 ### Test Suite
 
 The project includes a comprehensive test suite with excellent coverage:
-- **Total tests**: 603 (558 original + 45 Phase 7)
-- **Test files**: 39 (33 original + 6 Phase 7)
+- **Total tests**: 668 (558 original + 45 Phase 7 + 65 Phase 9)
+- **Test files**: 48 (33 original + 6 Phase 7 + 9 Phase 9)
 - **Unit test coverage**: >95%
-- **Integration test coverage**: ~80% (increased from ~40%)
-- **Status**: All tests passing (590 passed, 13 skipped for unimplemented features)
+- **Integration test coverage**: ~85% (increased from ~40%)
+- **Status**: All tests passing (655 passed, 13 skipped for unimplemented features)
 
-**Phase 7 Completed**: Successfully implemented cross-module integration testing with proper error propagation, thread safety verification, and resource management across all module boundaries.
+**Phase 9 Completed**: Successfully implemented and integrated all Phase 9 features including token counting, hierarchy building, metadata extraction, semantic merging, custom rules, repository processing, overlapping fallback, and cross-platform packaging.
+
+## 🚀 Phase 10: Advanced Features (Planned)
+
+The next phase will introduce advanced capabilities through well-defined interfaces:
+
+### Smart Context Selection
+- **Interface**: `SmartContextProvider`
+- **Features**: Semantic, dependency, usage, and structural context extraction
+- **Goal**: Provide optimal context for LLM processing
+
+### Advanced Query System
+- **Interface**: `ChunkQueryAdvanced`
+- **Features**: Natural language queries, semantic search, similarity matching
+- **Goal**: Enable sophisticated code search and retrieval
+
+### Chunk Optimization
+- **Interface**: `ChunkOptimizer`
+- **Features**: LLM-specific optimization, boundary analysis, chunk rebalancing
+- **Goal**: Optimize chunks for specific model constraints and use cases
+
+### Multi-Language Support
+- **Interface**: `MultiLanguageProcessor`
+- **Features**: Mixed-language files, cross-language references, embedded code
+- **Goal**: Handle polyglot codebases and modern web frameworks
+
+### Incremental Processing
+- **Interface**: `IncrementalProcessor`
+- **Features**: Change detection, diff computation, cache management
+- **Goal**: Efficiently process only changed portions of large codebases
 
 ## 📄 License
 
