@@ -8,6 +8,7 @@ pygments
 chardet
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 
 [all]
@@ -15,10 +16,13 @@ treesitter-chunker[dev,docs,viz]
 >>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
 =======
 >>>>>>> 0533abd (Implement Phase 9 semantic chunk merging)
+=======
+>>>>>>> 0a01ed2 (Implement Phase 9 overlapping fallback chunking)
 
 [dev]
 pytest
 psutil
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 =======
@@ -37,6 +41,8 @@ sphinx-autodoc-typehints
 >>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
 =======
 >>>>>>> 0533abd (Implement Phase 9 semantic chunk merging)
+=======
+>>>>>>> 0a01ed2 (Implement Phase 9 overlapping fallback chunking)
 
 [viz]
 graphviz

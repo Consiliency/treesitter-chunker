@@ -61,20 +61,12 @@ try:
 except ImportError:
     pass
 
-<<<<<<< HEAD
-# Temporarily disabled - needs fix
-=======
->>>>>>> 0533abd (Implement Phase 9 semantic chunk merging)
-# try:
-#     from . import ruby_plugin  # noqa: F401
-# except ImportError:
-#     pass
-<<<<<<< HEAD
+try:
+    from . import ruby_plugin  # noqa: F401
+except ImportError:
+    pass
 
-=======
-# 
->>>>>>> 0533abd (Implement Phase 9 semantic chunk merging)
-# try:
-#     from . import java_plugin  # noqa: F401
-# except ImportError:
-#     pass
+try:
+    from . import java_plugin  # noqa: F401
+except ImportError:
+    pass

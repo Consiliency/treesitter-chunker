@@ -54,6 +54,13 @@ __all__ = [
     "render_ast_graph",
     "print_ast_tree",
     "highlight_chunk_boundaries",
+    # Token counting integration
+    "TiktokenCounter",
+    "TokenAwareChunker",
+    # Hierarchy features
+    "ChunkHierarchyBuilder",
+    "HierarchyNavigator",
+    "ChunkHierarchy",
     # Custom rules
     "BaseCustomRule",
     "BaseRegexRule",
@@ -80,13 +87,6 @@ __all__ = [
     "JavaScriptComplexityAnalyzer",
     "SignatureInfo",
     "ComplexityMetrics",
-    # Token counting integration
-    "TiktokenCounter",
-    "TokenAwareChunker",
-    # Hierarchy features
-    "ChunkHierarchyBuilder",
-    "HierarchyNavigator",
-    "ChunkHierarchy",
     # Repository processing
     "RepoProcessor",
     "GitAwareProcessor",
@@ -100,6 +100,10 @@ __all__ = [
     "TreeSitterRelationshipAnalyzer",
     "TreeSitterSemanticMerger",
     "MergeConfig",
+    # Overlapping fallback chunker
+    "OverlappingFallbackChunker",
+    "OverlapStrategy",
+    "OverlapConfig",
 ]
 
 from .parser import (
@@ -151,6 +155,13 @@ from .debug import (
     highlight_chunk_boundaries
 )
 
+# Token counting integration
+from .token import TiktokenCounter, TokenAwareChunker
+
+# Hierarchy features
+from .hierarchy import ChunkHierarchyBuilder, HierarchyNavigator
+from .interfaces.hierarchy import ChunkHierarchy
+
 # Custom rules
 from .rules import (
     BaseCustomRule,
@@ -187,13 +198,6 @@ from .interfaces.metadata import (
     ComplexityMetrics
 )
 
-# Token counting integration
-from .token import TiktokenCounter, TokenAwareChunker
-
-# Hierarchy features
-from .hierarchy import ChunkHierarchyBuilder, HierarchyNavigator
-from .interfaces.hierarchy import ChunkHierarchy
-
 # Repository processing
 from .interfaces.repo import (
     RepoProcessor,
@@ -213,4 +217,11 @@ from .semantic import (
     TreeSitterRelationshipAnalyzer,
     TreeSitterSemanticMerger,
     MergeConfig
+)
+
+# Overlapping fallback chunker
+from .fallback.overlapping import (
+    OverlappingFallbackChunker,
+    OverlapStrategy,
+    OverlapConfig
 )
