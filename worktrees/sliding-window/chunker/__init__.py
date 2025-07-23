@@ -1,0 +1,1 @@
+# Chunker module initialization for sliding window worktree

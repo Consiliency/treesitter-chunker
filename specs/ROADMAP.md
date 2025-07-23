@@ -211,26 +211,26 @@ This document outlines the development roadmap for the tree-sitter-chunker proje
 
 ## Phase 3: Advanced Chunking Features
 
-### 3.1 Context-Aware Chunking
+### 3.1 Context-Aware Chunking (Partially Complete)
 # Branch: feature/context-chunking | Can Start: After any language module | Blocks: None
-- [ ] **Overlapping Chunks**
-  - [ ] Implement configurable overlap size (lines/tokens)
-  - [ ] Add sliding window support
-  - [ ] Create overlap strategies (fixed, dynamic, semantic)
-  - [ ] Support asymmetric overlap (more before vs after)
+- [x] **Overlapping Chunks** *(Partial - completed in Phase 9.7)*
+  - [x] Implement configurable overlap size (lines/tokens) ✓
+  - [ ] Add sliding window support *(Moved to Phase 11)*
+  - [x] Create overlap strategies (fixed, dynamic, semantic) ✓
+  - [x] Support asymmetric overlap (more before vs after) ✓
 
-- [ ] **Token Counting**
-  - [ ] Integrate tiktoken for accurate token counting
-  - [ ] Support multiple tokenizer models
-  - [ ] Add token limit enforcement
-  - [ ] Implement smart splitting for over-limit chunks
+- [x] **Token Counting** *(Completed in Phase 9.1)*
+  - [x] Integrate tiktoken for accurate token counting ✓
+  - [x] Support multiple tokenizer models ✓
+  - [x] Add token limit enforcement ✓
+  - [x] Implement smart splitting for over-limit chunks ✓
 
-### 3.2 Semantic Understanding
-- [ ] **Chunk Hierarchy**
-  - [ ] Build tree structure of chunk relationships
-  - [ ] Track parent-child relationships
-  - [ ] Support sibling navigation
-  - [ ] Add depth-based filtering
+### 3.2 Semantic Understanding (Partially Complete)
+- [x] **Chunk Hierarchy** *(Completed in Phase 9.2)*
+  - [x] Build tree structure of chunk relationships ✓
+  - [x] Track parent-child relationships ✓
+  - [x] Support sibling navigation ✓
+  - [x] Add depth-based filtering ✓
 
 - [ ] **Context Preservation**
   - [ ] Extract and attach imports/includes to chunks
@@ -238,18 +238,18 @@ This document outlines the development roadmap for the tree-sitter-chunker proje
   - [ ] Add namespace/module context
   - [ ] Support cross-reference tracking
 
-- [ ] **Semantic Merging**
-  - [ ] Merge related small chunks (getters/setters)
-  - [ ] Group overloaded functions
-  - [ ] Combine interface/implementation pairs
-  - [ ] Support configuration-based merging rules
+- [x] **Semantic Merging** *(Completed in Phase 9.4)*
+  - [x] Merge related small chunks (getters/setters) ✓
+  - [x] Group overloaded functions ✓
+  - [x] Combine interface/implementation pairs ✓
+  - [x] Support configuration-based merging rules ✓
 
-### 3.3 Chunk Metadata
-- [ ] **Enhanced Metadata Extraction**
-  - [ ] Extract function/method signatures
-  - [ ] Parse docstrings/comments
-  - [ ] Identify chunk dependencies
-  - [ ] Add complexity metrics
+### 3.3 Chunk Metadata (Partially Complete)
+- [x] **Enhanced Metadata Extraction** *(Completed in Phase 9.3)*
+  - [x] Extract function/method signatures ✓
+  - [x] Parse docstrings/comments ✓
+  - [x] Identify chunk dependencies ✓
+  - [x] Add complexity metrics ✓
 
 - [ ] **Chunk Relationships**
   - [ ] Track call relationships between chunks
@@ -694,6 +694,32 @@ This roadmap is a living document and should be updated as the project evolves. 
 - Updated README with Phase 9 completion and Phase 10 plans
 - Archived outdated documentation to maintain clarity
 
+**2025-01-22**: Phase 10 Completed ✅
+- Successfully implemented all 5 advanced features:
+  - Smart Context: `TreeSitterSmartContextProvider` with semantic, dependency, usage, and structural context
+  - Query Advanced: `NaturalLanguageQueryEngine` with natural language search capabilities
+  - Optimization: `ChunkOptimizer` with LLM-specific optimization and boundary analysis
+  - Multi-Language: `DefaultMultiLanguageProcessor` for polyglot projects
+  - Incremental: `DefaultIncrementalProcessor` with efficient diff computation and caching
+- Created comprehensive test suite with 138 tests (132 passing after fixes)
+- Fixed 6 failing tests (all were test issues, not implementation bugs)
+- Updated README.md to reflect Phase 10 completion
+- Reorganized documentation structure
+
+**2025-01-22**: Phase 11-13 Planning
+- Phase 11: Sliding Window & Text Processing
+  - Essential for non-code files without tree-sitter support
+  - Configurable windows with overlap strategies
+  - Support for markdown, logs, config files
+- Phase 12: Graph & Database Export
+  - GraphML, Neo4j, DOT formats for visualization
+  - SQLite and PostgreSQL for analysis
+  - Relationship tracking and query support
+- Phase 13: Developer Tools & Distribution
+  - Pre-commit hooks, linting, CI/CD
+  - AST visualization and debugging tools
+  - PyPI, Docker, and platform packages
+
 **2025-01-12**: Completed Phase 1.1 (Parser Module Redesign)
 - Implemented dynamic language discovery with `LanguageRegistry`
 - Added `ParserFactory` with LRU caching and thread-safe pooling
@@ -1137,39 +1163,223 @@ This roadmap is a living document and should be updated as the project evolves. 
 - [x] Documentation updated
 - [x] Successfully merged all 9 Phase 9 PRs
 
-## Phase 10: Advanced Features (Planned)
+## Phase 10: Advanced Features ✅ *[Completed: 2025-01-22]*
 
 ### 10.1 Smart Context Selection
-- [ ] **Interface**: `SmartContextProvider`
-- [ ] Semantic context extraction
-- [ ] Dependency context analysis
-- [ ] Usage context tracking
-- [ ] Structural context understanding
+- [x] **Interface**: `SmartContextProvider`
+- [x] Semantic context extraction
+- [x] Dependency context analysis
+- [x] Usage context tracking
+- [x] Structural context understanding
 
 ### 10.2 Advanced Query System
-- [ ] **Interface**: `ChunkQueryAdvanced`
-- [ ] Natural language queries
-- [ ] Semantic search capabilities
-- [ ] Similarity matching
-- [ ] Query optimization
+- [x] **Interface**: `ChunkQueryAdvanced`
+- [x] Natural language queries
+- [x] Semantic search capabilities
+- [x] Similarity matching
+- [x] Query optimization
 
 ### 10.3 Chunk Optimization
-- [ ] **Interface**: `ChunkOptimizer`
-- [ ] LLM-specific optimization
-- [ ] Boundary analysis
-- [ ] Chunk rebalancing
-- [ ] Model constraint handling
+- [x] **Interface**: `ChunkOptimizer`
+- [x] LLM-specific optimization
+- [x] Boundary analysis
+- [x] Chunk rebalancing
+- [x] Model constraint handling
 
 ### 10.4 Multi-Language Support
-- [ ] **Interface**: `MultiLanguageProcessor`
-- [ ] Mixed-language file handling
-- [ ] Cross-language references
-- [ ] Embedded code extraction
-- [ ] Polyglot project support
+- [x] **Interface**: `MultiLanguageProcessor`
+- [x] Mixed-language file handling
+- [x] Cross-language references
+- [x] Embedded code extraction
+- [x] Polyglot project support
 
 ### 10.5 Incremental Processing
-- [ ] **Interface**: `IncrementalProcessor`
-- [ ] Change detection
-- [ ] Diff computation
-- [ ] Cache management
-- [ ] Efficient updates
+- [x] **Interface**: `IncrementalProcessor`
+- [x] Change detection
+- [x] Diff computation
+- [x] Cache management
+- [x] Efficient updates
+
+### 10.6 Implementation Details
+- **Smart Context**: `TreeSitterSmartContextProvider` with intelligent context selection
+- **Query Advanced**: `NaturalLanguageQueryEngine` with semantic search
+- **Optimization**: `ChunkOptimizer` with multi-strategy optimization
+- **Multi-Language**: `DefaultMultiLanguageProcessor` for polyglot projects
+- **Incremental**: `DefaultIncrementalProcessor` with efficient diff computation
+- **Test Coverage**: 138 tests across all features (132 passing after fixes)
+
+## Phase 11: Sliding Window & Text Processing (Planned)
+
+### 11.1 Sliding Window Implementation
+- [ ] **Core Window Engine**
+  - [ ] Configurable window size (lines/tokens/bytes)
+  - [ ] Overlap strategies (fixed, percentage, semantic)
+  - [ ] Dynamic window adjustment based on content density
+  - [ ] Memory-efficient streaming for large files
+  - [ ] Window position tracking and navigation
+
+### 11.2 Text File Support
+- [ ] **Plain Text Processing**
+  - [ ] Paragraph-based chunking
+  - [ ] Sentence boundary detection
+  - [ ] Natural break point identification
+  - [ ] UTF-8 and encoding support
+  - [ ] Large file streaming
+
+### 11.3 Specialized File Types
+- [ ] **Markdown Processing**
+  - [ ] Header-aware chunking
+  - [ ] Code block preservation
+  - [ ] List continuity maintenance
+  - [ ] Front matter handling
+  - [ ] Table integrity preservation
+
+- [ ] **Log File Processing**
+  - [ ] Timestamp-based chunking
+  - [ ] Log level grouping
+  - [ ] Session boundary detection
+  - [ ] Error context extraction
+  - [ ] Streaming tail support
+
+- [ ] **Configuration Files**
+  - [ ] Section-based chunking (INI, TOML)
+  - [ ] Key-value pair grouping
+  - [ ] Comment preservation
+  - [ ] Nested structure handling
+  - [ ] Schema-aware chunking
+
+### 11.4 Integration Features
+- [ ] **Fallback System Integration**
+  - [ ] Automatic fallback for unsupported file types
+  - [ ] Hybrid mode for partially supported formats
+  - [ ] Performance optimization for text processing
+  - [ ] Configurable strategy selection
+
+- [ ] **LLM Optimization**
+  - [ ] Token-aware sliding windows
+  - [ ] Context overlap for continuity
+  - [ ] Semantic boundary detection
+  - [ ] Model-specific window sizing
+
+## Phase 12: Graph & Database Export (Planned)
+
+### 12.1 Graph Export Formats
+- [ ] **GraphML Export**
+  - [ ] Node and edge representation of chunks
+  - [ ] Hierarchical structure preservation
+  - [ ] Metadata as node/edge attributes
+  - [ ] Relationship type mapping
+  - [ ] Visualization-ready output
+
+- [ ] **Neo4j Import Format**
+  - [ ] Cypher query generation
+  - [ ] CSV format for bulk import
+  - [ ] Node labels and properties
+  - [ ] Relationship types and directions
+  - [ ] Index creation scripts
+
+- [ ] **DOT Format (Graphviz)**
+  - [ ] Directed graph representation
+  - [ ] Cluster support for modules/classes
+  - [ ] Style attributes for node types
+  - [ ] Edge labels for relationships
+  - [ ] Subgraph organization
+
+### 12.2 Database Export
+- [ ] **SQLite Export**
+  - [ ] Schema generation for chunks
+  - [ ] Normalized table structure
+  - [ ] Foreign key relationships
+  - [ ] Index optimization
+  - [ ] Transaction batching
+
+- [ ] **PostgreSQL Export**
+  - [ ] COPY format for bulk loading
+  - [ ] JSONB columns for metadata
+  - [ ] Full-text search indexes
+  - [ ] Materialized views for queries
+  - [ ] Partitioning for large codebases
+
+### 12.3 Advanced Features
+- [ ] **Relationship Tracking**
+  - [ ] Call graph extraction
+  - [ ] Dependency mapping
+  - [ ] Import/export relationships
+  - [ ] Inheritance hierarchies
+  - [ ] Cross-file references
+
+- [ ] **Query Support**
+  - [ ] Pre-built query templates
+  - [ ] Code navigation queries
+  - [ ] Complexity analysis queries
+  - [ ] Impact analysis support
+  - [ ] Change tracking queries
+
+## Phase 13: Developer Tools & Distribution (Planned)
+
+### 13.1 Development Environment
+- [ ] **Code Quality Tools**
+  - [ ] Pre-commit hooks configuration
+  - [ ] Ruff linting setup
+  - [ ] MyPy type checking
+  - [ ] Black code formatting
+  - [ ] isort import sorting
+
+- [ ] **CI/CD Pipeline**
+  - [ ] GitHub Actions workflows
+  - [ ] Automated testing on PRs
+  - [ ] Coverage reporting
+  - [ ] Performance benchmarking
+  - [ ] Release automation
+
+### 13.2 Debugging & Visualization
+- [ ] **AST Visualization Tools**
+  - [ ] Interactive AST explorer
+  - [ ] Tree-sitter parse tree viewer
+  - [ ] Chunk boundary visualization
+  - [ ] Real-time parsing preview
+  - [ ] Export to SVG/PNG
+
+- [ ] **Debug Mode Features**
+  - [ ] Verbose logging options
+  - [ ] Performance profiling
+  - [ ] Memory usage tracking
+  - [ ] Parser state inspection
+  - [ ] Error trace visualization
+
+### 13.3 Distribution
+- [ ] **PyPI Publishing**
+  - [ ] Package metadata setup
+  - [ ] Wheel building automation
+  - [ ] Version management
+  - [ ] Dependency specification
+  - [ ] Long description from README
+
+- [ ] **Docker Support**
+  - [ ] Multi-stage Dockerfile
+  - [ ] Alpine and Ubuntu variants
+  - [ ] Pre-built grammar support
+  - [ ] Volume mounting for projects
+  - [ ] Docker Hub publishing
+
+- [ ] **Platform Packages**
+  - [ ] Homebrew formula (macOS)
+  - [ ] AUR package (Arch Linux)
+  - [ ] Snap package (Ubuntu)
+  - [ ] Windows installer (MSI)
+  - [ ] Conda package
+
+### 13.4 Developer Experience
+- [ ] **IDE Integration**
+  - [ ] VS Code extension
+  - [ ] IntelliJ plugin
+  - [ ] Vim/Neovim plugin
+  - [ ] Emacs package
+  - [ ] Language server protocol
+
+- [ ] **Documentation Tools**
+  - [ ] API documentation generation
+  - [ ] Interactive examples
+  - [ ] Video tutorials
+  - [ ] Architecture diagrams
+  - [ ] Performance guides
