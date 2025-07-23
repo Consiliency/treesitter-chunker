@@ -376,15 +376,15 @@ class IntelligentFallbackChunker(FallbackChunker):
         """
         # Try to detect why fallback would be needed
         if language and language not in self._supported_languages:
-            return FallbackReason.LANGUAGE_NOT_SUPPORTED
+            return FallbackReason.NO_GRAMMAR
         
         # Check file type
         file_type = self.file_detector.detect_file_type(file_path)
         if file_type == FileType.BINARY:
-            return FallbackReason.LANGUAGE_NOT_SUPPORTED
+            return FallbackReason.BINARY_FILE
         
-        # Default reason
-        return FallbackReason.CUSTOM
+        # Default reason - no grammar available
+        return FallbackReason.NO_GRAMMAR
     
     def get_decision_info(self, file_path: str, content: str, language: Optional[str] = None) -> Dict[str, Any]:
         """Get detailed information about the chunking decision.
