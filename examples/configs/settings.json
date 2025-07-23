@@ -1,0 +1,219 @@
+{
+  "application": {
+    "name": "Enterprise Application Suite",
+    "version": "3.2.1",
+    "environment": "production",
+    "debug": false,
+    "maintenance_mode": false
+  },
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8080,
+    "workers": 4,
+    "timeout": 30,
+    "keep_alive": 75,
+    "max_requests": 1000,
+    "max_requests_jitter": 50,
+    "graceful_timeout": 30,
+    "ssl": {
+      "enabled": true,
+      "cert_file": "/etc/ssl/certs/server.crt",
+      "key_file": "/etc/ssl/private/server.key",
+      "protocols": ["TLSv1.2", "TLSv1.3"],
+      "ciphers": "ECDHE+AESGCM:ECDHE+CHACHA20:DHE+AESGCM:DHE+CHACHA20:!aNULL:!MD5:!DSS"
+    }
+  },
+  "database": {
+    "primary": {
+      "engine": "postgresql",
+      "host": "db-primary.example.com",
+      "port": 5432,
+      "name": "app_production",
+      "user": "app_user",
+      "password": "${DB_PASSWORD}",
+      "pool": {
+        "min_size": 5,
+        "max_size": 20,
+        "timeout": 30,
+        "idle_timeout": 600,
+        "max_overflow": 10
+      },
+      "options": {
+        "sslmode": "require",
+        "connect_timeout": 10,
+        "application_name": "enterprise_app"
+      }
+    },
+    "replica": {
+      "engine": "postgresql",
+      "host": "db-replica.example.com",
+      "port": 5432,
+      "name": "app_production",
+      "user": "app_reader",
+      "password": "${DB_REPLICA_PASSWORD}",
+      "pool": {
+        "min_size": 2,
+        "max_size": 10,
+        "timeout": 30
+      }
+    }
+  },
+  "cache": {
+    "default": {
+      "backend": "redis",
+      "host": "cache-1.example.com",
+      "port": 6379,
+      "db": 0,
+      "password": "${REDIS_PASSWORD}",
+      "ttl": 3600,
+      "key_prefix": "app:cache:",
+      "connection_pool": {
+        "max_connections": 50,
+        "max_idle_time": 300
+      }
+    },
+    "session": {
+      "backend": "redis",
+      "host": "cache-2.example.com",
+      "port": 6379,
+      "db": 1,
+      "password": "${REDIS_PASSWORD}",
+      "ttl": 86400,
+      "key_prefix": "app:session:"
+    }
+  },
+  "logging": {
+    "level": "INFO",
+    "format": "json",
+    "handlers": {
+      "console": {
+        "enabled": true,
+        "level": "INFO",
+        "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+      },
+      "file": {
+        "enabled": true,
+        "level": "DEBUG",
+        "filename": "/var/log/app/application.log",
+        "max_bytes": 104857600,
+        "backup_count": 10,
+        "encoding": "utf-8"
+      },
+      "syslog": {
+        "enabled": true,
+        "host": "syslog.example.com",
+        "port": 514,
+        "facility": "local0"
+      }
+    }
+  },
+  "security": {
+    "cors": {
+      "enabled": true,
+      "allowed_origins": [
+        "https://app.example.com",
+        "https://www.example.com",
+        "https://admin.example.com"
+      ],
+      "allowed_methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      "allowed_headers": ["Content-Type", "Authorization", "X-Requested-With"],
+      "expose_headers": ["X-Total-Count", "X-Page-Count"],
+      "max_age": 86400,
+      "supports_credentials": true
+    },
+    "csrf": {
+      "enabled": true,
+      "token_length": 32,
+      "header_name": "X-CSRF-Token",
+      "cookie_name": "csrf_token",
+      "secure": true,
+      "httponly": true
+    },
+    "rate_limiting": {
+      "enabled": true,
+      "default_limit": "100 per hour",
+      "limits": {
+        "api": "1000 per hour",
+        "auth": "10 per minute",
+        "upload": "50 per day"
+      }
+    }
+  },
+  "features": {
+    "authentication": {
+      "enabled": true,
+      "providers": ["local", "oauth2", "saml"],
+      "two_factor": true,
+      "session_timeout": 3600,
+      "remember_me_duration": 2592000
+    },
+    "api": {
+      "enabled": true,
+      "version": "v2",
+      "base_path": "/api",
+      "documentation": true,
+      "playground": false
+    },
+    "websocket": {
+      "enabled": true,
+      "path": "/ws",
+      "heartbeat_interval": 30,
+      "max_connections": 10000
+    },
+    "notifications": {
+      "email": true,
+      "sms": true,
+      "push": true,
+      "in_app": true
+    }
+  },
+  "integrations": {
+    "stripe": {
+      "enabled": true,
+      "api_key": "${STRIPE_API_KEY}",
+      "webhook_secret": "${STRIPE_WEBHOOK_SECRET}",
+      "api_version": "2023-10-16"
+    },
+    "sendgrid": {
+      "enabled": true,
+      "api_key": "${SENDGRID_API_KEY}",
+      "from_email": "noreply@example.com",
+      "from_name": "Enterprise App"
+    },
+    "twilio": {
+      "enabled": true,
+      "account_sid": "${TWILIO_ACCOUNT_SID}",
+      "auth_token": "${TWILIO_AUTH_TOKEN}",
+      "from_number": "+1234567890"
+    },
+    "aws": {
+      "region": "us-east-1",
+      "access_key_id": "${AWS_ACCESS_KEY_ID}",
+      "secret_access_key": "${AWS_SECRET_ACCESS_KEY}",
+      "s3": {
+        "bucket": "enterprise-app-uploads",
+        "region": "us-east-1",
+        "acl": "private"
+      }
+    }
+  },
+  "monitoring": {
+    "health_check": {
+      "enabled": true,
+      "path": "/health",
+      "checks": ["database", "cache", "storage", "external_apis"]
+    },
+    "metrics": {
+      "enabled": true,
+      "provider": "prometheus",
+      "path": "/metrics",
+      "include_host_metrics": true
+    },
+    "tracing": {
+      "enabled": true,
+      "provider": "jaeger",
+      "endpoint": "http://jaeger:14268/api/traces",
+      "sample_rate": 0.1
+    }
+  }
+}
