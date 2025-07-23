@@ -38,15 +38,18 @@ class DatabaseExporterBase(ABC):
     
     def _get_chunk_data(self, chunk: CodeChunk) -> Dict[str, Any]:
         """Convert chunk to database-friendly format."""
+        # Get chunk_type from metadata or use node_type as fallback
+        chunk_type = chunk.metadata.get("chunk_type", chunk.node_type) if chunk.metadata else chunk.node_type
+        
         return {
             "id": self._get_chunk_id(chunk),
             "file_path": str(chunk.file_path),
             "start_line": chunk.start_line,
             "end_line": chunk.end_line,
-            "start_byte": chunk.start_byte,
-            "end_byte": chunk.end_byte,
+            "start_byte": chunk.byte_start,
+            "end_byte": chunk.byte_end,
             "content": chunk.content,
-            "chunk_type": chunk.chunk_type,
+            "chunk_type": chunk_type,
             "language": chunk.language,
             "metadata": chunk.metadata or {}
         }
@@ -89,13 +92,23 @@ class DatabaseExporterBase(ABC):
             List of CREATE INDEX statements
         """
         return [
-            "CREATE INDEX idx_chunks_file_path ON chunks(file_path);",
-            "CREATE INDEX idx_chunks_chunk_type ON chunks(chunk_type);",
-            "CREATE INDEX idx_chunks_language ON chunks(language);",
-            "CREATE INDEX idx_chunks_position ON chunks(file_path, start_line, end_line);",
-            "CREATE INDEX idx_relationships_source ON relationships(source_id);",
-            "CREATE INDEX idx_relationships_target ON relationships(target_id);",
-            "CREATE INDEX idx_relationships_type ON relationships(relationship_type);"
+            # Files table indices
+            "CREATE INDEX IF NOT EXISTS idx_file_path ON files(path);",
+            "CREATE INDEX IF NOT EXISTS idx_files_language ON files(language);",
+            
+            # Chunks table indices
+            "CREATE INDEX IF NOT EXISTS idx_chunks_file_id ON chunks(file_id);",
+            "CREATE INDEX IF NOT EXISTS idx_chunks_chunk_type ON chunks(chunk_type);",
+            "CREATE INDEX IF NOT EXISTS idx_chunks_position ON chunks(file_id, start_line, end_line);",
+            
+            # Relationships table indices
+            "CREATE INDEX IF NOT EXISTS idx_relationships_source ON relationships(source_id);",
+            "CREATE INDEX IF NOT EXISTS idx_relationships_target ON relationships(target_id);",
+            "CREATE INDEX IF NOT EXISTS idx_relationships_type ON relationships(relationship_type);",
+            
+            # Composite indices for common queries
+            "CREATE INDEX IF NOT EXISTS idx_chunks_file_type ON chunks(file_id, chunk_type);",
+            "CREATE INDEX IF NOT EXISTS idx_relationships_source_type ON relationships(source_id, relationship_type);"
         ]
     
     def get_analysis_queries(self) -> Dict[str, str]:
