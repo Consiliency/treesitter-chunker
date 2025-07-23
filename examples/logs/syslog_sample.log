@@ -1,0 +1,18 @@
+Jan  1 00:00:00 web-server-01 systemd[1]: Starting nginx - high performance web server...
+Jan  1 00:00:01 web-server-01 nginx[1234]: nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+Jan  1 00:00:01 web-server-01 nginx[1234]: nginx: configuration file /etc/nginx/nginx.conf test is successful
+Jan  1 00:00:02 web-server-01 systemd[1]: Started nginx - high performance web server.
+Jan  1 00:00:10 web-server-01 sshd[2345]: Accepted publickey for admin from 192.168.1.100 port 54321 ssh2
+Jan  1 00:00:10 web-server-01 sshd[2345]: pam_unix(sshd:session): session opened for user admin by (uid=0)
+Jan  1 00:00:15 web-server-01 sudo[2350]: admin : TTY=pts/0 ; PWD=/home/admin ; USER=root ; COMMAND=/usr/bin/systemctl status nginx
+Jan  1 00:00:20 web-server-01 kernel: [12345.678] Out of memory: Kill process 9876 (python3) score 543 or sacrifice child
+Jan  1 00:00:20 web-server-01 kernel: [12345.679] Killed process 9876 (python3) total-vm:2048576kB, anon-rss:1536000kB, file-rss:0kB
+Jan  1 00:00:21 web-server-01 systemd[1]: app-worker.service: Main process exited, code=killed, status=9/KILL
+Jan  1 00:00:21 web-server-01 systemd[1]: app-worker.service: Failed with result 'oom-kill'.
+Jan  1 00:00:30 web-server-01 systemd[1]: Starting app-worker.service...
+Jan  1 00:00:31 web-server-01 python3[9900]: Starting application worker process
+Jan  1 00:00:32 web-server-01 systemd[1]: Started app-worker.service.
+Jan  1 00:05:00 web-server-01 sshd[2345]: pam_unix(sshd:session): session closed for user admin
+Jan  1 00:10:00 web-server-01 logrotate[3456]: rotating pattern: /var/log/nginx/*.log daily (7 rotations)
+Jan  1 00:10:01 web-server-01 systemd[1]: Reloading nginx - high performance web server.
+Jan  1 00:10:02 web-server-01 systemd[1]: Reloaded nginx - high performance web server.
