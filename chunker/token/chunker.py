@@ -8,7 +8,6 @@ import tree_sitter
 from ..interfaces.token import TokenAwareChunker, TokenCounter
 from ..interfaces.base import ChunkingStrategy
 from ..types import CodeChunk
-from ..chunker import chunk_file, chunk_text
 from .counter import TiktokenCounter
 
 
@@ -84,6 +83,9 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
         Returns:
             List of chunks with token information
         """
+        # Import locally to avoid circular imports
+        from ..chunker import chunk_file
+        
         chunks = chunk_file(file_path, language)
         return self.add_token_info(chunks)
     
@@ -106,6 +108,9 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
             List of chunks with token information in metadata
         """
         # Get base chunks from Tree-sitter
+        # Import locally to avoid circular imports
+        from ..chunker import chunk_file
+        
         chunks = chunk_file(file_path, language)
         
         # Add token information

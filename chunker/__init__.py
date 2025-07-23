@@ -5,6 +5,9 @@ __all__ = [
     # Core functions
     "get_parser", 
     "chunk_file",
+    "chunk_text_with_token_limit",
+    "chunk_file_with_token_limit", 
+    "count_chunk_tokens",
     # New parser API
     "list_languages",
     "get_language_info",
@@ -57,6 +60,7 @@ __all__ = [
     # Token counting integration
     "TiktokenCounter",
     "TokenAwareChunker",
+    "TreeSitterTokenAwareChunker",
     # Hierarchy features
     "ChunkHierarchyBuilder",
     "HierarchyNavigator",
@@ -104,6 +108,8 @@ __all__ = [
     "OverlappingFallbackChunker",
     "OverlapStrategy",
     "OverlapConfig",
+    # Intelligent fallback
+    "IntelligentFallbackChunker",
     # Smart context (Phase 10)
     "SmartContextProvider",
     "TreeSitterSmartContextProvider",
@@ -156,7 +162,12 @@ from .parser import (
     get_parser, list_languages, get_language_info, 
     return_parser, clear_cache
 )
-from .chunker import chunk_file
+from .chunker import (
+    chunk_file, 
+    chunk_text_with_token_limit,
+    chunk_file_with_token_limit,
+    count_chunk_tokens
+)
 from .types import CodeChunk
 from .factory import ParserConfig
 from .exceptions import (
@@ -203,6 +214,7 @@ from .debug import (
 
 # Token counting integration
 from .token import TiktokenCounter, TokenAwareChunker
+from .token.chunker import TreeSitterTokenAwareChunker
 
 # Hierarchy features
 from .hierarchy import ChunkHierarchyBuilder, HierarchyNavigator
@@ -271,6 +283,9 @@ from .fallback.overlapping import (
     OverlapStrategy,
     OverlapConfig
 )
+
+# Intelligent fallback
+from .fallback.intelligent_fallback import IntelligentFallbackChunker
 
 # Smart context (Phase 10)
 from .interfaces.smart_context import (

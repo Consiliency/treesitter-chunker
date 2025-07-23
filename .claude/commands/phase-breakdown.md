@@ -3,7 +3,7 @@
 Place this file at: `.claude/commands/phase-breakdown.md`
 
 ---
-allowed-tools: Bash(git worktree:*), Bash(git branch:*), Bash(git status:*), Bash(cat:*), Bash(mkdir:*), Bash(echo:*), Bash(cd:*), Bash(ls:*), Task
+allowed-tools: Bash(git worktree:*), Bash(git branch:*), Bash(git status:*), Bash(git add:*), Bash(git commit:*), Bash(git push:*), Bash(cat:*), Bash(mkdir:*), Bash(echo:*), Bash(cd:*), Bash(ls:*), Bash(test:*), Bash(if:*), Bash(for:*), Task, TodoWrite, Write, MultiEdit, Read, Glob, Grep
 description: Break down a development phase into parallel tasks with clear interface boundaries
 argument-hint: [phase-name]
 ---
@@ -36,23 +36,34 @@ Follow these steps:
 - Focus on clear interface boundaries between components
 - Ensure these tasks align with the phase objectives from the roadmap
 
-### 3. Define interfaces and tests
-- Create interface definitions that outline contracts between different tasks
-- Design integration tests for these interfaces
-- Ensure interfaces minimize coupling between parallel work streams
+### 3. Create concrete interface implementations in main branch
+- Generate actual interface code files (not just TypeScript definitions)
+- Create stub implementations with clear method signatures
+- Each method should throw "Not implemented" errors initially
+- Commit and push these to main branch before creating worktrees
+- This ensures all teams work from the same concrete implementation
 
-### 4. Create work trees and launch sub-agents
-- For each identified task, provide commands to create a separate git worktree inside the project
+### 4. Write and commit integration tests first
+- Create comprehensive integration tests that define expected behavior
+- Tests should cover all cross-component interactions
+- Tests will fail initially (this is expected)
+- Commit and push tests to main branch
+- Each team's success is measured by making these tests pass
+
+### 5. Create work trees and launch sub-agents
+- Verify interfaces and tests exist in main branch before proceeding
+- For each identified task, create a separate git worktree inside the project
 - Use naming convention: `./worktrees/task-{name}` for worktree directories
 - Use the Task tool to spawn Claude agents for each worktree
-- Include all necessary context and constraints in each agent prompt
+- Include explicit references to interface files and integration tests in agent prompts
 
-### 5. Merging and integration plan
+### 6. Merging and integration plan
 - Define the order and process for merging completed work
 - Include commands for creating and merging pull requests
 - Specify integration test execution steps
+- Verify all integration tests pass before final merge
 
-### 6. Documentation updates
+### 7. Documentation updates
 - Identify documentation that needs updating
 - Prepare for the next development phase
 
@@ -74,15 +85,40 @@ List separable tasks with clear boundaries:
    - Dependencies: [what it needs from other tasks]
    - Deliverables: [what it provides]
 
-### Interface Definitions
-    ```typescript
-    // or appropriate language
-    // Define interfaces here
+### Contract Definitions
+Create concrete contract files in the main branch before parallel work:
+
+    ```
+    // Contract: [Component Name]
+    // Purpose: Define the boundary between components
+    // Team responsible: [Team Name]
+    
+    interface [ComponentContract] {
+      method: [methodName](parameters) -> returnType
+        preconditions: [what must be true before calling]
+        postconditions: [what will be true after calling]
+        implementation: throw "Not implemented - [Team] will implement"
+    }
     ```
 
-### Integration Tests
-    ```typescript
-    // Define integration test specifications
+### Integration Test Specifications
+Define expected behavior across component boundaries:
+
+    ```
+    // Test: [Integration Scenario Name]
+    // Components involved: [List components]
+    // Expected behavior: [Description]
+    
+    test "[scenario description]" {
+      // Arrange: Set up test data
+      [setup code]
+      
+      // Act: Execute cross-component operation
+      [execution code]
+      
+      // Assert: Verify expected behavior
+      assert [expected condition]
+    }
     ```
 
 ### Permissions Setup
@@ -114,16 +150,37 @@ Create or update `.claude/settings.json` with these permissions:
 
 ### Work Tree Setup Commands
 
+**Step 0: Create and Commit Contracts First**
+
+    ```bash
+    # CRITICAL: Create contract files and tests BEFORE creating worktrees
+    # This ensures all teams work from the same interface definitions
+    
+    # Create contract files using the Write tool
+    # Create integration test files using the Write tool
+    
+    # Commit contracts to main branch
+    git add [contract files]
+    git commit -m "feat: define component contracts for parallel development"
+    
+    # Commit integration tests
+    git add [test files]  
+    git commit -m "test: add integration specifications for contracts"
+    
+    # Push to main - this is REQUIRED before creating worktrees
+    git push origin main
+    ```
+
 **Step 1: Create Internal Work Trees**
 
     ```bash
-    # Ensure worktrees directory exists
+    # NOW create worktrees - they will inherit the contracts from main
     mkdir -p worktrees
     
     # Create work trees inside project directory (replace with actual task names)
-    git worktree add ./worktrees/task1-auth -b feature/auth-system
-    git worktree add ./worktrees/task2-api -b feature/api-endpoints  
-    git worktree add ./worktrees/task3-frontend -b feature/frontend-components
+    git worktree add ./worktrees/task1-[name] -b feature/[name]
+    git worktree add ./worktrees/task2-[name] -b feature/[name]  
+    git worktree add ./worktrees/task3-[name] -b feature/[name]
     
     # Verify creation
     git worktree list
@@ -141,141 +198,85 @@ Create or update `.claude/settings.json` with these permissions:
 
 ### Sub-Agent Task Spawning
 
-#### Task 1: [Auth System]
+#### Task 1: [Component Name]
     ```
-    Task("You are working on the Authentication System in the ./worktrees/task1-auth directory.
+    Task("You are working on [Component Name] in the ./worktrees/task1-[name] directory.
 
-    **Working Directory**: ./worktrees/task1-auth
+    **Working Directory**: ./worktrees/task1-[name]
     **Phase**: $ARGUMENTS
-    **Your Boundaries**: Authentication modules, user management, session handling
-    **Interfaces to Implement**: 
-    - UserAuth interface with login/logout/register methods
-    - SessionManager interface for token handling
-    - AuthMiddleware for route protection
+    **Your Component Boundaries**: [List the specific areas this component owns]
+    
+    **Contract to Implement**: 
+    - Review the contract file: [path to contract file in main branch]
+    - You must implement ALL methods defined in the contract
+    - Do NOT change method signatures - they are frozen
+    - Your implementation must make the integration tests pass
+    
+    **Integration Tests to Pass**:
+    - Review test file: [path to integration test file]
+    - These tests define the expected behavior
+    - Run them frequently to verify your implementation
 
     **Dependencies Available**: 
-    - Database models (shared)
-    - Crypto utilities (shared)
-    - Configuration system (shared)
+    - [List shared resources/utilities]
+    - Other component contracts (use their interfaces, not implementations)
 
     **Your Objectives**:
-    1. Implement user authentication system with JWT tokens
-    2. Create password hashing and validation utilities  
-    3. Build session management with refresh tokens
-    4. Add authentication middleware for API routes
-    5. Write comprehensive unit tests for all auth functions
-    6. Document all public authentication APIs
+    1. Implement all methods in your contract
+    2. Make all related integration tests pass
+    3. Add unit tests for your implementation
+    4. Handle all error cases gracefully
+    5. Document your component's behavior
 
-    **Constraints**:
-    - Work ONLY within ./worktrees/task1-auth directory
-    - Implement interfaces exactly as specified above
-    - Follow project coding standards from main CLAUDE.md
-    - Include error handling for all edge cases
-    - Commit work in logical chunks with descriptive messages
-    - Run tests after each major change
+    **Critical Constraints**:
+    - Work ONLY within your worktree directory
+    - NEVER modify the contract signatures
+    - Reference other components only through their contracts
+    - If integration tests fail, fix YOUR implementation, not the tests
+    - Commit frequently with clear messages
 
     **Workflow**:
-    1. First, navigate to and examine the worktree: cd ./worktrees/task1-auth && ls -la
-    2. Review current authentication-related code
-    3. Plan implementation approach
-    4. Implement core authentication logic
-    5. Add comprehensive tests
-    6. Document APIs and usage
-    7. Validate integration points match defined interfaces
+    1. Navigate to worktree: cd ./worktrees/task1-[name]
+    2. Review the contract file from main branch
+    3. Review integration tests to understand expected behavior
+    4. Implement contract methods one by one
+    5. Run integration tests frequently
+    6. Add unit tests for your implementation
+    7. Document your component
 
-    Begin by changing to the worktree directory and examining the current state.")
+    Begin by examining your contract and understanding what needs to be implemented.")
     ```
 
-#### Task 2: [API Endpoints]
+#### Task 2: [Component Name]
     ```
-    Task("You are working on the API Endpoints in the ./worktrees/task2-api directory.
+    Task("You are working on [Component Name] in the ./worktrees/task2-[name] directory.
 
-    **Working Directory**: ./worktrees/task2-api
+    **Working Directory**: ./worktrees/task2-[name]
     **Phase**: $ARGUMENTS
-    **Your Boundaries**: REST API routes, request validation, response formatting
-    **Interfaces to Implement**:
-    - RESTful endpoints following OpenAPI 3.0 spec
-    - Request validation middleware
-    - Standardized error response format
-    - API versioning system
+    **Your Component Boundaries**: [Specific areas this component owns]
+    
+    **Contract to Implement**: 
+    - Contract file: [path to contract]
+    - Integration tests: [path to tests]
+    - Follow the contract EXACTLY - no modifications allowed
+    
+    **Your Implementation Focus**:
+    - [Key responsibility 1]
+    - [Key responsibility 2]
+    - [Key responsibility 3]
 
-    **Dependencies Available**:
-    - Authentication system (interface only - implementation in parallel)
-    - Database models (shared)
-    - Validation libraries (shared)
-
-    **Your Objectives**:
-    1. Design and implement RESTful API endpoints
-    2. Add request validation and sanitization
-    3. Implement standardized error handling
-    4. Create API documentation with examples
-    5. Add integration tests for all endpoints
-    6. Implement rate limiting and security headers
-
-    **Constraints**:
-    - Work ONLY within ./worktrees/task2-api directory
-    - Design for the auth interface (implementation will be integrated later)
-    - Follow RESTful conventions and HTTP status codes
-    - Include comprehensive error handling
-    - Validate all inputs thoroughly
-    - Commit work in logical chunks
-
-    **Workflow**:
-    1. Navigate to worktree: cd ./worktrees/task2-api && ls -la
-    2. Review existing API structure
-    3. Plan endpoint design and data flow
-    4. Implement core API routes
-    5. Add validation and error handling
-    6. Create comprehensive tests
-    7. Document all endpoints
-
-    Begin by changing to the worktree directory and examining the current state.")
+    Remember: The integration tests define success. Make them pass.")
     ```
 
-#### Task 3: [Frontend Components]
+#### Task 3: [Component Name]
     ```
-    Task("You are working on Frontend Components in the ./worktrees/task3-frontend directory.
+    Task("You are working on [Component Name] in the ./worktrees/task3-[name] directory.
 
-    **Working Directory**: ./worktrees/task3-frontend
-    **Phase**: $ARGUMENTS  
-    **Your Boundaries**: UI components, state management, client-side routing
-    **Interfaces to Implement**:
-    - Reusable component library
-    - State management with consistent patterns
-    - API integration layer
-    - Responsive design system
-
-    **Dependencies Available**:
-    - API endpoints (interface only - implementation in parallel)
-    - Design system guidelines (shared)
-    - Utility functions (shared)
-
-    **Your Objectives**:
-    1. Build reusable UI component library
-    2. Implement state management for application data
-    3. Create API integration layer for data fetching
-    4. Add responsive design and accessibility features
-    5. Write component tests and interaction tests
-    6. Document component usage and props
-
-    **Constraints**:
-    - Work ONLY within ./worktrees/task3-frontend directory
-    - Design for the API interface (implementation will be integrated later)
-    - Follow accessibility guidelines (WCAG 2.1)
-    - Ensure mobile-responsive design
-    - Include comprehensive testing
-    - Use TypeScript for type safety
-
-    **Workflow**:
-    1. Navigate to worktree: cd ./worktrees/task3-frontend && ls -la
-    2. Review existing component structure
-    3. Plan component architecture and data flow
-    4. Implement core UI components
-    5. Add state management and API integration
-    6. Create comprehensive tests
-    7. Document component library
-
-    Begin by changing to the worktree directory and examining the current state.")
+    **Phase**: $ARGUMENTS
+    **Contract**: [path to contract file]
+    **Tests**: [path to integration tests]
+    
+    Focus on making the integration tests pass while staying within your component boundaries.")
     ```
 
 ### Agent Management Commands
@@ -310,10 +311,11 @@ Create or update `.claude/settings.json` with these permissions:
 ### Merge and Integration Plan
 
 **Pre-merge Checklist**:
-   - [ ] All unit tests pass in each worktree
-   - [ ] Interface contracts are satisfied and validated
-   - [ ] Code review completed for each task
-   - [ ] Integration tests defined and ready
+   - [ ] All integration tests pass (these were written BEFORE implementation)
+   - [ ] Contract methods are fully implemented (no "Not implemented" errors remain)
+   - [ ] Unit tests added for implementation details
+   - [ ] No modifications made to contract signatures
+   - [ ] Code review completed focusing on contract compliance
    - [ ] No conflicts with main branch
 
 **Integration Sequence** (merge foundational tasks first):
@@ -324,41 +326,45 @@ Create or update `.claude/settings.json` with these permissions:
     git pull origin main
     
     # 2. Merge tasks in dependency order (foundational first)
-    echo "=== Merging Auth System (foundational) ==="
-    git merge feature/auth-system --no-ff -m "feat: integrate authentication system"
+    echo "=== Merging [Component 1] (foundational) ==="
+    git merge feature/[branch-name] --no-ff -m "feat: integrate [component description]"
     
-    # Run integration tests after each merge
-    npm test  # or your test command
-    npm run test:integration
+    # Run integration tests after EVERY merge
+    # Replace with your test command
+    [test command]
+    [integration test command]
     
-    # Push immediately to update remote
+    # Push immediately to catch integration issues early
     git push origin main
     
-    echo "=== Merging API Endpoints ==="
-    git merge feature/api-endpoints --no-ff -m "feat: integrate API endpoints"
-    npm test && npm run test:integration
+    echo "=== Merging [Component 2] ==="
+    git merge feature/[branch-name] --no-ff -m "feat: integrate [component description]"
+    [test command]
     git push origin main
     
-    echo "=== Merging Frontend Components ==="
-    git merge feature/frontend-components --no-ff -m "feat: integrate frontend components"
-    npm test && npm run test:integration && npm run test:e2e
+    echo "=== Merging [Component 3] ==="
+    git merge feature/[branch-name] --no-ff -m "feat: integrate [component description]"
+    [test command]
     git push origin main
     
     echo "=== Final Integration Validation ==="
-    npm run build
-    npm run test:all
+    # Run all integration tests one final time
+    [full test suite command]
     ```
 
-**Integration Testing**:
+**Integration Testing Commands**:
     ```bash
-    # Comprehensive integration test suite
-    npm run test:unit           # All unit tests
-    npm run test:integration    # Cross-component integration
-    npm run test:e2e           # End-to-end user workflows
-    npm run test:api           # API contract testing
-    npm run lint               # Code quality checks
-    npm run type-check         # TypeScript validation
-    npm run build              # Build verification
+    # Run integration tests frequently during development
+    [your test command for integration tests]
+    
+    # Verify contract compliance
+    [your command to verify contracts are satisfied]
+    
+    # Full validation suite
+    [unit tests command]           # Component-level tests
+    [integration tests command]    # Cross-component tests
+    [contract tests command]       # Contract compliance
+    [build command]               # Build verification
     ```
 
 ### Worktree Cleanup
