@@ -12,12 +12,14 @@ class GraphNode:
     def __init__(self, chunk: CodeChunk):
         self.id = f"{chunk.file_path}:{chunk.start_line}:{chunk.end_line}"
         self.chunk = chunk
-        self.label = chunk.chunk_type or "unknown"
+        # Get chunk_type from metadata if available, otherwise use node_type
+        chunk_type = chunk.metadata.get("chunk_type", chunk.node_type) if chunk.metadata else chunk.node_type
+        self.label = chunk_type or "unknown"
         self.properties: Dict[str, Any] = {
             "file_path": chunk.file_path,
             "start_line": chunk.start_line,
             "end_line": chunk.end_line,
-            "chunk_type": chunk.chunk_type,
+            "chunk_type": chunk_type,
             "language": chunk.language,
         }
         if chunk.metadata:
