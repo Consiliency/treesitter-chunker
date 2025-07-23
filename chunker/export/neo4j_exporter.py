@@ -24,9 +24,9 @@ class Neo4jExporter(GraphExporterBase):
         for node_id, node in self.nodes.items():
             labels = {"CodeChunk"}  # Base label for all chunks
             
-            if node.chunk.chunk_type:
-                # Convert chunk_type to Neo4j label format (PascalCase)
-                label = self._to_pascal_case(node.chunk.chunk_type)
+            if node.chunk.node_type:
+                # Convert node_type to Neo4j label format (PascalCase)
+                label = self._to_pascal_case(node.chunk.node_type)
                 labels.add(label)
             
             if node.chunk.language:
@@ -147,68 +147,83 @@ class Neo4jExporter(GraphExporterBase):
         for labels in self.node_labels.values():
             unique_labels.update(labels)
         
+        statements.append("// Create constraints for unique node IDs")
         for label in unique_labels:
-            if label != "CodeChunk":  # Don't create constraint on base label
-                statements.append(
-                    f"CREATE CONSTRAINT IF NOT EXISTS FOR (n:{label}) REQUIRE n.nodeId IS UNIQUE;"
-                )
+            # Neo4j 5.x syntax
+            statements.append(
+                f"CREATE CONSTRAINT {label.lower()}_unique_id IF NOT EXISTS"
+                f" FOR (n:{label}) REQUIRE n.nodeId IS UNIQUE;"
+            )
         
         # Generate index statements
-        statements.append("CREATE INDEX IF NOT EXISTS FOR (n:CodeChunk) ON (n.file_path);")
-        statements.append("CREATE INDEX IF NOT EXISTS FOR (n:CodeChunk) ON (n.chunk_type);")
-        statements.append("CREATE INDEX IF NOT EXISTS FOR (n:CodeChunk) ON (n.language);")
+        statements.append("\n// Create indexes for better query performance")
+        statements.append("CREATE INDEX codechunk_file_path IF NOT EXISTS FOR (n:CodeChunk) ON (n.file_path);")
+        statements.append("CREATE INDEX codechunk_node_type IF NOT EXISTS FOR (n:CodeChunk) ON (n.node_type);")
+        statements.append("CREATE INDEX codechunk_language IF NOT EXISTS FOR (n:CodeChunk) ON (n.language);")
         
-        # Generate node creation statements in batches
-        node_items = list(self.nodes.items())
-        for i in range(0, len(node_items), batch_size):
-            batch = node_items[i:i + batch_size]
+        # Generate node creation statements
+        statements.append("\n// Create nodes")
+        for node_id, node in self.nodes.items():
+            labels = ":".join(sorted(self.node_labels.get(node_id, {"CodeChunk"})))
             
-            cypher = "UNWIND $batch AS item\n"
-            cypher += "CREATE (n:CodeChunk)\n"
-            cypher += "SET n = item.properties\n"
-            cypher += "SET n.nodeId = item.id\n"
-            cypher += "WITH n, item\n"
-            cypher += "CALL apoc.create.addLabels(n, item.labels) YIELD node\n"
-            cypher += "RETURN count(node);"
+            # Build property list
+            props = ["nodeId: " + self._escape_property_value(node_id)]
+            for key, value in sorted(node.properties.items()):
+                if value is not None and value != "":
+                    props.append(f"{key}: {self._escape_property_value(value)}")
             
-            # Create the parameter object
-            batch_data = []
-            for node_id, node in batch:
-                labels = list(self.node_labels.get(node_id, {"CodeChunk"}))
-                labels.remove("CodeChunk")  # Already set as base label
-                batch_data.append({
-                    "id": node_id,
-                    "properties": node.properties,
-                    "labels": labels
-                })
-            
-            statements.append(f"// Batch {i // batch_size + 1} of nodes")
-            statements.append(f"// Parameters: {batch_data}")
+            cypher = f"CREATE (n:{labels} {{\n  {',\n  '.join(props)}\n}});"
             statements.append(cypher)
         
-        # Generate relationship creation statements in batches
-        for i in range(0, len(self.edges), batch_size):
-            batch = self.edges[i:i + batch_size]
+        # Generate relationship creation statements
+        if self.edges:
+            statements.append("\n// Create relationships")
+            for edge in self.edges:
+                # Build property list for relationship
+                if edge.properties:
+                    props = []
+                    for key, value in sorted(edge.properties.items()):
+                        if value is not None:
+                            props.append(f"{key}: {self._escape_property_value(value)}")
+                    prop_str = " {" + ", ".join(props) + "}"
+                else:
+                    prop_str = ""
+                
+                cypher = (
+                    f"MATCH (a:CodeChunk {{nodeId: {self._escape_property_value(edge.source_id)}}}),\n"
+                    f"      (b:CodeChunk {{nodeId: {self._escape_property_value(edge.target_id)}}})\n"
+                    f"CREATE (a)-[:{edge.relationship_type}{prop_str}]->(b);"
+                )
+                statements.append(cypher)
+        
+        # Add transaction boundaries for batching if needed
+        if batch_size and len(self.nodes) + len(self.edges) > batch_size:
+            batched_statements = []
             
-            cypher = "UNWIND $batch AS rel\n"
-            cypher += "MATCH (a:CodeChunk {nodeId: rel.source})\n"
-            cypher += "MATCH (b:CodeChunk {nodeId: rel.target})\n"
-            cypher += "CALL apoc.create.relationship(a, rel.type, rel.properties, b) YIELD rel AS r\n"
-            cypher += "RETURN count(r);"
+            # Collect constraint and index statements
+            setup_statements = []
+            create_statements = []
             
-            # Create the parameter object
-            batch_data = []
-            for edge in batch:
-                batch_data.append({
-                    "source": edge.source_id,
-                    "target": edge.target_id,
-                    "type": edge.relationship_type,
-                    "properties": edge.properties
-                })
+            for stmt in statements:
+                if "CONSTRAINT" in stmt or "INDEX" in stmt or stmt.startswith("//"):
+                    setup_statements.append(stmt)
+                else:
+                    create_statements.append(stmt)
             
-            statements.append(f"// Batch {i // batch_size + 1} of relationships")
-            statements.append(f"// Parameters: {batch_data}")
-            statements.append(cypher)
+            # Add setup statements first
+            batched_statements.extend(setup_statements)
+            
+            # Batch the CREATE statements
+            if create_statements:
+                batched_statements.append("\n// Batched operations")
+                for i in range(0, len(create_statements), batch_size):
+                    batch = create_statements[i:i + batch_size]
+                    batched_statements.append(f"\n// Batch {i // batch_size + 1}")
+                    batched_statements.extend(batch)
+                    if i + batch_size < len(create_statements):
+                        batched_statements.append(":commit;")
+            
+            return batched_statements
         
         return statements
     
