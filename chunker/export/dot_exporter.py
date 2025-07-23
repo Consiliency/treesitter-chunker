@@ -66,7 +66,7 @@ class DotExporter(GraphExporterBase):
         attrs = self.node_attrs.copy()
         
         # Apply chunk type specific styles
-        chunk_type = node.chunk.metadata.get("chunk_type") if node.chunk.metadata else None
+        chunk_type = node.chunk.metadata.get("chunk_type", node.chunk.node_type) if node.chunk.metadata else node.chunk.node_type
         if chunk_type and chunk_type in self.chunk_type_styles:
             attrs.update(self.chunk_type_styles[chunk_type])
         

@@ -227,7 +227,7 @@ class TestDotExporter:
         content = output_file.read_text()
         assert "digraph CodeGraph" in content
         assert "->" in content  # Has edges
-        assert "function" in content  # Has node types
+        assert "ellipse" in content  # Has function shape (ellipse)
     
     def test_clustering(self, sample_chunks):
         """Test clustering by file."""
@@ -408,7 +408,7 @@ class TestPostgresExporter:
         # Check for advanced features
         assert "PARTITION BY" in schema  # Partitioning
         assert "MATERIALIZED VIEW" in schema  # Mat views
-        assert "CREATE FUNCTION" in schema  # Functions
+        assert "CREATE OR REPLACE FUNCTION" in schema  # Functions
         assert "gin_trgm_ops" in schema  # Trigram search
         
         # Check for recursive CTE function
