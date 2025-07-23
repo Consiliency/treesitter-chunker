@@ -1,0 +1,43 @@
+{
+  "test_metric": {
+    "name": "test_metric",
+    "mean": 1.01,
+    "std_dev": 0.07416198487095665,
+    "min_val": 0.9,
+    "max_val": 1.1,
+    "samples": 5,
+    "timestamp": "2025-07-23T16:22:00.639089",
+    "commit_hash": "be58d821",
+    "metadata": {
+      "test": true
+    }
+  },
+  "parse_python_file": {
+    "name": "parse_python_file",
+    "mean": 0.101,
+    "std_dev": 0.007416198487095664,
+    "min_val": 0.09,
+    "max_val": 0.11,
+    "samples": 5,
+    "timestamp": "2025-07-23T16:22:52.995798",
+    "commit_hash": "be58d821",
+    "metadata": {
+      "file_size": 1024,
+      "chunks": 15
+    }
+  },
+  "chunk_javascript_file": {
+    "name": "chunk_javascript_file",
+    "mean": 0.151,
+    "std_dev": 0.0074161984870956595,
+    "min_val": 0.14,
+    "max_val": 0.16,
+    "samples": 5,
+    "timestamp": "2025-07-23T16:22:53.002402",
+    "commit_hash": "be58d821",
+    "metadata": {
+      "file_size": 2048,
+      "chunks": 25
+    }
+  }
+}

@@ -2,8 +2,9 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from pathlib import Path
-from typing import Dict, Any, Optional, List, Set
+from typing import Dict, Any, Optional, List, Set, Union
 import toml
 import yaml
 
@@ -13,15 +14,23 @@ logger = logging.getLogger(__name__)
 
 
 class ChunkerConfig:
-    """Configuration manager for the chunker system."""
+    """Configuration manager for the chunker system.
+    
+    Supports environment variable expansion and overrides:
+    - ${VAR} or ${VAR:default} syntax in config files
+    - CHUNKER_* environment variables override config values
+    """
     
     DEFAULT_CONFIG_FILENAME = "chunker.config"
     SUPPORTED_FORMATS = {".toml", ".yaml", ".yml", ".json"}
+    ENV_PREFIX = "CHUNKER_"
+    ENV_VAR_PATTERN = re.compile(r'\$\{([^}]+)\}')
     
-    def __init__(self, config_path: Optional[Path] = None):
+    def __init__(self, config_path: Optional[Path] = None, use_env_vars: bool = True):
         self.config_path = config_path
         self.data: Dict[str, Any] = {}
         self.plugin_configs: Dict[str, PluginConfig] = {}
+        self.use_env_vars = use_env_vars
         
         # Default configuration
         self.plugin_dirs: List[Path] = []
@@ -74,7 +83,17 @@ class ChunkerConfig:
                     raise ValueError(f"Unsupported config format: {ext}")
                     
             self.config_path = config_path
+            
+            # Expand environment variables in the loaded data
+            if self.use_env_vars:
+                self.data = self._expand_env_vars(self.data)
+            
             self._parse_config()
+            
+            # Apply environment variable overrides
+            if self.use_env_vars:
+                self._apply_env_overrides()
+            
             logger.info(f"Loaded configuration from: {config_path}")
             
         except Exception as e:
@@ -304,3 +323,115 @@ class ChunkerConfig:
         config = cls()
         config.data = example_data
         config.save(config_path)
+        
+    def _expand_env_vars(self, data: Any) -> Any:
+        """Recursively expand environment variables in configuration data.
+        
+        Supports ${VAR} and ${VAR:default} syntax.
+        """
+        if isinstance(data, str):
+            # Find all environment variable references
+            def replacer(match):
+                var_expr = match.group(1)
+                if ':' in var_expr:
+                    var_name, default = var_expr.split(':', 1)
+                else:
+                    var_name, default = var_expr, None
+                
+                value = os.environ.get(var_name)
+                if value is None:
+                    if default is not None:
+                        return default
+                    else:
+                        logger.warning(f"Environment variable '{var_name}' not found")
+                        return match.group(0)  # Keep original
+                return value
+            
+            return self.ENV_VAR_PATTERN.sub(replacer, data)
+            
+        elif isinstance(data, dict):
+            return {key: self._expand_env_vars(value) for key, value in data.items()}
+            
+        elif isinstance(data, list):
+            return [self._expand_env_vars(item) for item in data]
+            
+        else:
+            return data
+    
+    def _apply_env_overrides(self) -> None:
+        """Apply environment variable overrides to configuration.
+        
+        Environment variables with CHUNKER_ prefix override config values.
+        Examples:
+        - CHUNKER_ENABLED_LANGUAGES=python,rust
+        - CHUNKER_PLUGIN_DIRS=/path/one,/path/two
+        - CHUNKER_LANGUAGES_PYTHON_ENABLED=false
+        """
+        for env_var, value in os.environ.items():
+            if not env_var.startswith(self.ENV_PREFIX):
+                continue
+                
+            # Remove prefix and convert to config path
+            config_path = env_var[len(self.ENV_PREFIX):].lower()
+            
+            # Convert UPPER_SNAKE_CASE to nested dict path
+            # e.g., LANGUAGES_PYTHON_ENABLED -> languages.python.enabled
+            path_parts = config_path.split('_')
+            
+            # Special handling for known list types
+            if config_path == 'enabled_languages':
+                self.enabled_languages = set(value.split(','))
+                logger.info(f"Set enabled_languages from env: {self.enabled_languages}")
+                continue
+            elif config_path == 'plugin_dirs':
+                self.plugin_dirs = [Path(p.strip()) for p in value.split(',')]
+                logger.info(f"Set plugin_dirs from env: {self.plugin_dirs}")
+                continue
+            
+            # Handle nested configuration
+            if len(path_parts) >= 2 and path_parts[0] == 'languages':
+                # Language-specific config
+                if len(path_parts) >= 3:
+                    lang = path_parts[1]
+                    setting = '_'.join(path_parts[2:])
+                    
+                    if lang not in self.plugin_configs:
+                        self.plugin_configs[lang] = PluginConfig()
+                    
+                    # Apply the setting
+                    if setting == 'enabled':
+                        self.plugin_configs[lang].enabled = value.lower() == 'true'
+                    elif setting == 'min_chunk_size':
+                        self.plugin_configs[lang].min_chunk_size = int(value)
+                    elif setting == 'max_chunk_size':
+                        self.plugin_configs[lang].max_chunk_size = int(value)
+                    elif setting == 'chunk_types':
+                        self.plugin_configs[lang].chunk_types = set(value.split(','))
+                    else:
+                        # Custom option
+                        self.plugin_configs[lang].custom_options[setting] = value
+                    
+                    logger.info(f"Set {lang}.{setting} from env: {value}")
+            elif len(path_parts) >= 2 and path_parts[0] == 'default' and path_parts[1] == 'plugin' and path_parts[2] == 'config':
+                # Default plugin config
+                setting = '_'.join(path_parts[3:])
+                if setting == 'min_chunk_size':
+                    self.default_plugin_config.min_chunk_size = int(value)
+                elif setting == 'max_chunk_size':
+                    self.default_plugin_config.max_chunk_size = int(value)
+                
+                logger.info(f"Set default_plugin_config.{setting} from env: {value}")
+    
+    @classmethod
+    def get_env_var_info(cls) -> Dict[str, str]:
+        """Get information about supported environment variables."""
+        return {
+            f"{cls.ENV_PREFIX}ENABLED_LANGUAGES": "Comma-separated list of enabled languages",
+            f"{cls.ENV_PREFIX}PLUGIN_DIRS": "Comma-separated list of plugin directories",
+            f"{cls.ENV_PREFIX}LANGUAGES_<LANG>_ENABLED": "Enable/disable specific language (true/false)",
+            f"{cls.ENV_PREFIX}LANGUAGES_<LANG>_MIN_CHUNK_SIZE": "Minimum chunk size for language",
+            f"{cls.ENV_PREFIX}LANGUAGES_<LANG>_MAX_CHUNK_SIZE": "Maximum chunk size for language",
+            f"{cls.ENV_PREFIX}LANGUAGES_<LANG>_CHUNK_TYPES": "Comma-separated list of chunk types",
+            f"{cls.ENV_PREFIX}DEFAULT_PLUGIN_CONFIG_MIN_CHUNK_SIZE": "Default minimum chunk size",
+            f"{cls.ENV_PREFIX}DEFAULT_PLUGIN_CONFIG_MAX_CHUNK_SIZE": "Default maximum chunk size",
+        }

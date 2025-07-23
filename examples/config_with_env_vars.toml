@@ -1,0 +1,82 @@
+# Example configuration file demonstrating environment variable support
+
+[chunker]
+# Plugin directories can use environment variables
+# ${HOME} is expanded to user's home directory
+# ${CHUNKER_EXTRA_PLUGINS:/opt/chunker/plugins} uses a default if var not set
+plugin_dirs = [
+    "${HOME}/.chunker/plugins",
+    "${CHUNKER_EXTRA_PLUGINS:/opt/chunker/plugins}",
+    "./local_plugins"
+]
+
+# Languages can be configured via CHUNKER_ENABLED_LANGUAGES env var
+enabled_languages = ["python", "rust", "javascript", "c", "cpp"]
+
+[chunker.default_plugin_config]
+# Can be overridden by CHUNKER_DEFAULT_PLUGIN_CONFIG_MIN_CHUNK_SIZE
+min_chunk_size = 3
+# Can be overridden by CHUNKER_DEFAULT_PLUGIN_CONFIG_MAX_CHUNK_SIZE
+max_chunk_size = 500
+
+[languages.python]
+# Can be overridden by CHUNKER_LANGUAGES_PYTHON_ENABLED
+enabled = true
+# Can be overridden by CHUNKER_LANGUAGES_PYTHON_CHUNK_TYPES
+chunk_types = [
+    "function_definition",
+    "class_definition",
+    "async_function_definition"
+]
+# Can be overridden by CHUNKER_LANGUAGES_PYTHON_MIN_CHUNK_SIZE
+min_chunk_size = 5
+# Custom options can be overridden too
+# e.g., CHUNKER_LANGUAGES_PYTHON_INCLUDE_DOCSTRINGS
+include_docstrings = true
+
+[languages.rust]
+enabled = true
+chunk_types = [
+    "function_item",
+    "impl_item",
+    "struct_item",
+    "enum_item",
+    "trait_item"
+]
+# Using environment variable with default
+max_chunk_size = "${RUST_MAX_CHUNK_SIZE:1000}"
+
+[languages.javascript]
+enabled = true
+chunk_types = [
+    "function_declaration",
+    "method_definition",
+    "class_declaration",
+    "arrow_function"
+]
+# Custom option
+include_jsx = "${INCLUDE_JSX:true}"
+
+# Environment Variable Reference:
+# 
+# The following environment variables are supported:
+#
+# Global settings:
+# - CHUNKER_ENABLED_LANGUAGES=python,rust,javascript
+# - CHUNKER_PLUGIN_DIRS=/path/one,/path/two
+#
+# Default plugin config:
+# - CHUNKER_DEFAULT_PLUGIN_CONFIG_MIN_CHUNK_SIZE=5
+# - CHUNKER_DEFAULT_PLUGIN_CONFIG_MAX_CHUNK_SIZE=1000
+#
+# Language-specific settings:
+# - CHUNKER_LANGUAGES_<LANG>_ENABLED=true/false
+# - CHUNKER_LANGUAGES_<LANG>_MIN_CHUNK_SIZE=10
+# - CHUNKER_LANGUAGES_<LANG>_MAX_CHUNK_SIZE=500
+# - CHUNKER_LANGUAGES_<LANG>_CHUNK_TYPES=func,class,method
+#
+# Custom language options:
+# - CHUNKER_LANGUAGES_PYTHON_INCLUDE_DOCSTRINGS=true
+# - CHUNKER_LANGUAGES_JAVASCRIPT_INCLUDE_JSX=false
+#
+# In config files, use ${VAR} or ${VAR:default} syntax

@@ -156,6 +156,27 @@ __all__ = [
     "DefaultChunkCache",
     "DefaultChangeDetector",
     "SimpleIncrementalIndex",
+    # Virtual File System support
+    "VirtualFileSystem",
+    "LocalFileSystem",
+    "InMemoryFileSystem",
+    "ZipFileSystem",
+    "HTTPFileSystem",
+    "CompositeFileSystem",
+    "VirtualFile",
+    "create_vfs",
+    "VFSChunker",
+    "chunk_from_url",
+    "chunk_from_zip",
+    # Garbage Collection tuning
+    "GCTuner",
+    "MemoryOptimizer",
+    "ObjectPool",
+    "get_memory_optimizer",
+    "tune_gc_for_batch",
+    "tune_gc_for_streaming",
+    "optimized_gc",
+    "gc_disabled",
 ]
 
 from .parser import (
@@ -357,4 +378,33 @@ from .incremental import (
     DefaultChunkCache,
     DefaultChangeDetector,
     SimpleIncrementalIndex
+)
+
+# Virtual File System support
+from .vfs import (
+    VirtualFileSystem,
+    LocalFileSystem,
+    InMemoryFileSystem,
+    ZipFileSystem,
+    HTTPFileSystem,
+    CompositeFileSystem,
+    VirtualFile,
+    create_vfs
+)
+from .vfs_chunker import (
+    VFSChunker,
+    chunk_from_url,
+    chunk_from_zip
+)
+
+# Garbage Collection tuning
+from .gc_tuning import (
+    GCTuner,
+    MemoryOptimizer,
+    ObjectPool,
+    get_memory_optimizer,
+    tune_gc_for_batch,
+    tune_gc_for_streaming,
+    optimized_gc,
+    gc_disabled
 )

@@ -16,3 +16,4 @@ pytest_cache/
 generated_config.yaml
 generated_config.toml
 generated_config.json
+worktrees/
