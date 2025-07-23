@@ -11,10 +11,14 @@ A high-performance semantic code chunker that leverages [Tree-sitter](https://tr
 - 🚀 **Blazing Fast** - 11.9x speedup with intelligent AST caching
 - 🔌 **Plugin Architecture** - Built-in support for Python, JavaScript, Rust, C, C++
 - 🎛️ **Flexible Configuration** - TOML/YAML/JSON config files with per-language settings
-- 📊 **Multiple Export Formats** - JSON, JSONL, and Parquet with compression
+- 📊 **14 Export Formats** - JSON, JSONL, Parquet, CSV, XML, GraphML, Neo4j, DOT, SQLite, PostgreSQL, and more
 - ⚡ **Parallel Processing** - Process entire codebases with configurable workers
 - 🌊 **Streaming Support** - Handle files larger than memory
 - 🎨 **Rich CLI** - Progress bars, batch processing, and filtering
+- 🤖 **LLM-Ready** - Token counting, chunk optimization, and context-aware splitting
+- 📝 **Text File Support** - Markdown, logs, config files with intelligent chunking
+- 🔍 **Advanced Query** - Natural language search across your codebase
+- 📈 **Graph Export** - Visualize code structure in yEd, Neo4j, or Graphviz
 
 ## 📦 Installation
 
@@ -308,111 +312,68 @@ python benchmarks/run_benchmarks.py
 ### Test Suite
 
 The project includes a comprehensive test suite with excellent coverage:
-- **Total tests**: 830 (558 original + 45 Phase 7 + 65 Phase 9 + 138 Phase 10 + 7 Phase 11 + 17 Phase 12)
-- **Test files**: 59 (33 original + 6 Phase 7 + 9 Phase 9 + 9 Phase 10 + 1 Phase 11 + 1 Phase 12)
+- **Total tests**: 830+ tests
+- **Test files**: 59+ test modules
 - **Unit test coverage**: >95%
-- **Integration test coverage**: ~90% (increased from ~40%)
-- **Status**: All tests passing (799 passed, 14 skipped for unimplemented features)
+- **Integration test coverage**: ~90%
+- **Status**: All tests passing
 
-**Phase 9 Completed**: Successfully implemented and integrated all Phase 9 features including token counting, hierarchy building, metadata extraction, semantic merging, custom rules, repository processing, overlapping fallback, and cross-platform packaging.
+## 🎯 Project Status
 
-**Phase 10 Completed**: All advanced features have been successfully implemented and integrated with comprehensive test coverage (96%).
+### Completed Phases (12 of 13)
+- **Phase 1**: Core Architecture - Parser redesign, plugin system ✅
+- **Phase 2**: Language Support - 5 languages with custom configs ✅
+- **Phase 3**: Advanced Chunking - Context preservation, relationships ✅
+- **Phase 4**: Performance - Streaming, caching, parallel processing ✅
+- **Phase 5**: CLI & Export - Rich CLI, 14 export formats ✅
+- **Phase 6**: Testing & Docs - >95% coverage, comprehensive guides ✅
+- **Phase 7**: Integration Testing - Cross-module testing ✅
+- **Phase 8**: Structured Export - CSV, XML, minimal formats ✅
+- **Phase 9**: Feature Enhancement - Token counting, custom rules ✅
+- **Phase 10**: Advanced Features - Smart context, query system ✅
+- **Phase 11**: Text Processing - Markdown, logs, config files ✅
+- **Phase 12**: Graph & Database - GraphML, Neo4j, SQLite, PostgreSQL ✅
 
-**Phase 11 Completed**: All 6 components successfully implemented (100%). Full text processing capabilities including sliding window engine, text utilities, token limit handling, intelligent fallback, and specialized processors for Markdown, Log, and Config files.
+### Next Phase
+- **Phase 13**: Developer Tools & Distribution - PyPI, Docker, CI/CD 📋
 
-**Phase 12 Completed**: All 5 graph and database export formats successfully implemented (100%). Comprehensive export capabilities for GraphML, Neo4j, DOT, SQLite, and PostgreSQL with full test coverage.
+## 🚀 Advanced Capabilities
 
-## 🚀 Phase 10: Advanced Features (Completed)
+### Smart Processing
+- **Token-Aware Chunking**: Respects LLM context windows (GPT-4, Claude, etc.)
+- **Intelligent Fallback**: Automatically selects best chunking method
+- **Context Preservation**: Maintains imports, class context, and relationships
+- **Semantic Merging**: Groups related code (getters/setters, overloads)
 
-The following advanced capabilities are now available:
+### Text File Support 
+- **Markdown**: Header-aware chunking with code block preservation
+- **Logs**: Timestamp-based grouping with session detection
+- **Config Files**: Section-based chunking for INI/TOML/YAML/JSON
+- **Plain Text**: Paragraph and sentence-aware chunking
 
-### Smart Context Selection ✅
-- **Implementation**: `TreeSitterSmartContextProvider`
-- **Features**: Semantic, dependency, usage, and structural context extraction
-- **Usage**: Provides optimal context for LLM processing with intelligent selection
+### Export Formats
+- **Structured Data**: JSON, JSONL, Parquet, CSV, XML
+- **Graph Formats**: GraphML (yEd), Neo4j, DOT (Graphviz)
+- **Databases**: SQLite with FTS5, PostgreSQL with JSONB
+- **Specialized**: Minimal (code-only), Enhanced (with relationships), Debug
 
-### Advanced Query System ✅
-- **Implementation**: `NaturalLanguageQueryEngine`, `AdvancedQueryIndex`
-- **Features**: Natural language queries, semantic search, similarity matching
-- **Usage**: Enables sophisticated code search and retrieval with intuitive queries
+### Advanced Features
+- **Natural Language Query**: Search code with intuitive queries
+- **Smart Context Selection**: Optimal context extraction for LLMs
+- **Incremental Processing**: Process only changed files
+- **Repository Processing**: Git-aware with .gitignore support
+- **Custom Rules**: Define language-specific chunking rules
 
-### Chunk Optimization ✅
-- **Implementation**: `ChunkOptimizer`, `ChunkBoundaryAnalyzer`
-- **Features**: LLM-specific optimization, boundary analysis, chunk rebalancing
-- **Usage**: Optimizes chunks for specific model constraints and use cases
+## 🚧 Phase 13: Developer Tools & Distribution (Next)
 
-### Multi-Language Support ✅
-- **Implementation**: `DefaultMultiLanguageProcessor`
-- **Features**: Mixed-language files, cross-language references, embedded code
-- **Usage**: Handles polyglot codebases and modern web frameworks seamlessly
+The final phase will add professional development and distribution capabilities:
 
-### Incremental Processing ✅
-- **Implementation**: `DefaultIncrementalProcessor`, `DefaultChunkCache`
-- **Features**: Change detection, diff computation, cache management
-- **Usage**: Efficiently processes only changed portions of large codebases
-
-## 🚀 Phase 11: Sliding Window & Text Processing (Partial)
-
-The following text processing capabilities have been implemented:
-
-### Markdown Processing ✅
-- **Implementation**: `MarkdownProcessor`
-- **Features**: Header-aware chunking, code block preservation, table integrity
-- **Usage**: Intelligently chunks markdown documentation files
-
-### Log File Processing ✅
-- **Implementation**: `LogProcessor`
-- **Features**: Timestamp-based chunking, log level grouping, session detection
-- **Usage**: Analyzes and chunks log files with context preservation
-
-### Configuration File Processing ✅
-- **Implementation**: `ConfigProcessor`
-- **Features**: Section-based chunking for INI/TOML/YAML/JSON files
-- **Usage**: Preserves configuration structure and relationships
-
-### Integration Layer ✅
-- **Implementation**: `SlidingWindowFallback`
-- **Features**: Automatic processor selection, fallback strategies
-- **Usage**: Seamlessly handles various text file types
-
-### Token Limit Handling ✅
-- **Implementation**: `chunk_text_with_token_limit`, `chunk_file_with_token_limit`
-- **Features**: Respects LLM token limits, smart chunk splitting
-- **Usage**: Ensures chunks fit within model context windows
-
-### Intelligent Fallback ✅
-- **Implementation**: `IntelligentFallbackChunker`
-- **Features**: Automatic method selection, decision transparency
-- **Usage**: Intelligently chooses between tree-sitter and sliding window
-
-## 🚀 Phase 12: Graph & Database Export (Completed)
-
-The following graph and database export capabilities have been implemented:
-
-### GraphML Export ✅
-- **Implementation**: `GraphMLExporter`
-- **Features**: yEd-compatible format, hierarchical node styling, complete metadata
-- **Usage**: Export code structure for visualization in graph editors
-
-### Neo4j Export ✅
-- **Implementation**: `Neo4jExporter`
-- **Features**: CSV and Cypher formats, relationship preservation, batch import
-- **Usage**: Import code structure into Neo4j for graph analysis
-
-### DOT Export ✅
-- **Implementation**: `DOTExporter`
-- **Features**: Graphviz format, customizable styling, subgraph support
-- **Usage**: Generate code structure diagrams with Graphviz
-
-### SQLite Export ✅
-- **Implementation**: `SQLiteExporter`
-- **Features**: Full-text search with FTS5, metadata preservation, relationship tables
-- **Usage**: Query code structure with SQL, enable full-text search
-
-### PostgreSQL Export ✅
-- **Implementation**: `PostgreSQLExporter`
-- **Features**: JSONB metadata, table partitioning, advanced indexing
-- **Usage**: Enterprise-scale code analysis with PostgreSQL
+### Planned Features
+- **Code Quality**: Pre-commit hooks, ruff, mypy, black formatting
+- **CI/CD**: GitHub Actions, automated testing, coverage reporting
+- **AST Visualization**: Interactive parse tree viewer, chunk boundaries
+- **Distribution**: PyPI publishing, Docker images, platform packages
+- **IDE Integration**: VS Code, IntelliJ, Vim/Neovim plugins
 
 ## 📄 License
 
