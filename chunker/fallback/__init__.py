@@ -12,6 +12,15 @@ from .detection.file_type import FileTypeDetector
 from .strategies.line_based import LineBasedChunker
 from .strategies.log_chunker import LogChunker
 from .strategies.markdown import MarkdownChunker
+from .sliding_window_fallback import (
+    SlidingWindowFallback,
+    ProcessorRegistry,
+    ProcessorInfo,
+    ProcessorType,
+    TextProcessor,
+    ProcessorChain,
+    GenericSlidingWindowProcessor,
+)
 
 __all__ = [
     'FallbackChunker',
@@ -20,4 +29,11 @@ __all__ = [
     'LineBasedChunker',
     'LogChunker',
     'MarkdownChunker',
+    'SlidingWindowFallback',
+    'ProcessorRegistry',
+    'ProcessorInfo',
+    'ProcessorType',
+    'TextProcessor',
+    'ProcessorChain',
+    'GenericSlidingWindowProcessor',
 ]
