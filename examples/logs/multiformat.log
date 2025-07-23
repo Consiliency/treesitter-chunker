@@ -1,0 +1,41 @@
+# Mixed format log file demonstrating the processor's ability to handle multiple formats
+
+2024-01-01T08:00:00.000Z [INFO] Service starting up
+2024-01-01T08:00:01.000Z [DEBUG] Loading configuration from environment variables
+
+Jan  1 08:00:02 auth-service sshd[1234]: Server listening on 0.0.0.0 port 22.
+Jan  1 08:00:02 auth-service sshd[1234]: Server listening on :: port 22.
+
+2024-01-01 08:00:03,000 INFO [main] com.example.AuthService - Authentication service initialized
+2024-01-01 08:00:04,000 DEBUG [main] com.example.AuthService - Database pool size: 10
+
+[2024/01/01 08:00:05] ERROR: Failed to connect to authentication database
+[2024/01/01 08:00:05] ERROR: Connection string: postgres://localhost:5432/auth_db
+[2024/01/01 08:00:05] ERROR: Retrying in 5 seconds...
+
+192.168.1.100 - user123 [01/Jan/2024:08:00:06 +0000] "POST /api/auth/login HTTP/1.1" 200 256
+192.168.1.100 - user123 [01/Jan/2024:08:00:07 +0000] "GET /api/profile HTTP/1.1" 200 1024
+
+2024-01-01T08:00:08.000+00:00 app[web.1]: Processing login request for user123
+2024-01-01T08:00:09.000+00:00 app[web.1]: Login successful, generating JWT token
+2024-01-01T08:00:10.000+00:00 app[web.1]: Session created: sess_abc123def456
+
+ERROR [2024-01-01 08:00:11] Payment processing failed
+  Transaction ID: txn_789xyz
+  Amount: $99.99
+  Error: Gateway timeout
+  
+WARNING [2024-01-01 08:00:12] High memory usage detected: 85%
+WARNING [2024-01-01 08:00:13] Consider scaling up the instance
+
+Jan  1 08:00:14 payment-service kernel: [123456.789] Out of memory: Kill process 5678
+Jan  1 08:00:14 payment-service kernel: [123456.790] Killed process 5678 (ruby) total-vm:2048576kB
+
+2024-01-01 08:00:15.000 [CRITICAL] System is running out of memory
+2024-01-01 08:00:16.000 [INFO] Initiating emergency garbage collection
+2024-01-01 08:00:17.000 [INFO] Memory freed: 512MB
+2024-01-01 08:00:18.000 [INFO] System recovered
+
+# Session end marker
+2024-01-01T08:00:19.000Z [INFO] User session ended for user123
+2024-01-01T08:00:20.000Z [INFO] Cleanup completed

@@ -1,0 +1,56 @@
+2024-01-01 08:00:00,000 [INFO] ApplicationServer - Starting application server v2.5.0
+2024-01-01 08:00:00,100 [INFO] ConfigLoader - Loading configuration from /etc/app/config.yaml
+2024-01-01 08:00:00,200 [DEBUG] ConfigLoader - Configuration loaded successfully
+2024-01-01 08:00:00,300 [INFO] DatabaseManager - Initializing database connection pool
+2024-01-01 08:00:00,400 [INFO] DatabaseManager - Connected to PostgreSQL database at localhost:5432
+2024-01-01 08:00:00,500 [INFO] CacheManager - Initializing Redis cache at localhost:6379
+2024-01-01 08:00:00,600 [INFO] APIServer - Starting REST API server on port 8080
+2024-01-01 08:00:00,700 [INFO] APIServer - API server started successfully
+2024-01-01 08:00:00,800 [INFO] HealthCheck - Health check endpoint available at /health
+2024-01-01 08:00:00,900 [INFO] ApplicationServer - Application server started successfully
+
+2024-01-01 08:00:10,000 [INFO] RequestHandler - Incoming request: GET /api/v1/users
+2024-01-01 08:00:10,100 [DEBUG] AuthMiddleware - Validating JWT token
+2024-01-01 08:00:10,200 [INFO] AuthMiddleware - User authenticated: user_id=12345
+2024-01-01 08:00:10,300 [DEBUG] UserService - Fetching user list from database
+2024-01-01 08:00:10,400 [INFO] RequestHandler - Request completed: 200 OK (400ms)
+
+2024-01-01 08:00:20,000 [INFO] RequestHandler - Incoming request: POST /api/v1/orders
+2024-01-01 08:00:20,100 [DEBUG] AuthMiddleware - Validating JWT token
+2024-01-01 08:00:20,200 [INFO] AuthMiddleware - User authenticated: user_id=12345
+2024-01-01 08:00:20,300 [INFO] OrderService - Creating new order for user 12345
+2024-01-01 08:00:20,400 [ERROR] PaymentService - Payment processing failed
+2024-01-01 08:00:20,500 [ERROR] PaymentService - Error details: Gateway timeout after 30 seconds
+2024-01-01 08:00:20,600 [ERROR] OrderService - Failed to create order: Payment failed
+2024-01-01 08:00:20,700 [ERROR] RequestHandler - Request failed: 500 Internal Server Error
+2024-01-01 08:00:20,800 [ERROR] RequestHandler - Stack trace:
+  at PaymentService.processPayment(PaymentService.java:156)
+  at OrderService.createOrder(OrderService.java:89)
+  at OrderController.handlePost(OrderController.java:45)
+  at RequestHandler.handle(RequestHandler.java:123)
+2024-01-01 08:00:20,900 [INFO] NotificationService - Sending error notification to ops team
+
+2024-01-01 08:00:30,000 [WARNING] DatabaseManager - Connection pool usage at 85%
+2024-01-01 08:00:30,100 [WARNING] DatabaseManager - Consider increasing pool size
+2024-01-01 08:00:40,000 [INFO] MetricsCollector - Collecting system metrics
+2024-01-01 08:00:40,100 [INFO] MetricsCollector - CPU: 45%, Memory: 62%, Disk: 78%
+2024-01-01 08:00:50,000 [INFO] HealthCheck - Health check passed: all systems operational
+
+2024-01-01 08:01:00,000 [INFO] SessionManager - Starting session cleanup
+2024-01-01 08:01:00,100 [INFO] SessionManager - Removed 15 expired sessions
+2024-01-01 08:01:00,200 [INFO] SessionManager - Active sessions: 342
+
+2024-01-01 08:05:00,000 [INFO] LogRotator - Starting log rotation
+2024-01-01 08:05:00,100 [INFO] LogRotator - Archived application.log to application.log.2024-01-01
+2024-01-01 08:05:00,200 [INFO] LogRotator - Log rotation completed
+
+2024-01-01 08:10:00,000 [CRITICAL] DatabaseManager - Lost connection to database
+2024-01-01 08:10:00,100 [CRITICAL] DatabaseManager - All connection attempts failed
+2024-01-01 08:10:00,200 [CRITICAL] ApplicationServer - Entering degraded mode
+2024-01-01 08:10:00,300 [INFO] CacheManager - Switching to cache-only mode
+2024-01-01 08:10:00,400 [WARNING] APIServer - Some endpoints may be unavailable
+
+2024-01-01 08:10:10,000 [INFO] DatabaseManager - Attempting to reconnect to database
+2024-01-01 08:10:15,000 [INFO] DatabaseManager - Database connection restored
+2024-01-01 08:10:15,100 [INFO] ApplicationServer - Exiting degraded mode
+2024-01-01 08:10:15,200 [INFO] ApplicationServer - All systems operational
