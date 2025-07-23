@@ -14,6 +14,17 @@ Welcome to the Tree-sitter Chunker documentation! Tree-sitter Chunker is a power
 - **[Cookbook](cookbook.md)** - Practical recipes and examples
 - **[Architecture](architecture.md)** - System design and internals
 
+### Phase 11: Text Processing
+- **[Intelligent Fallback](intelligent_fallback.md)** - Automatic chunking method selection
+- **[Token Limits](token_limits.md)** - LLM-aware token limit handling
+- **[Markdown Processor](markdown_processor.md)** - Markdown document chunking
+- **[Config Processor](config_processor.md)** - Configuration file chunking
+- **[Log Processor](log_processor.md)** - Log file analysis and chunking
+
+### Phase 12: Graph & Database Export
+- **[Phase 12 Export](phase12_export.md)** - GraphML, Neo4j, DOT, SQLite, PostgreSQL exports
+- **[GraphML Export](graphml_export.md)** - Detailed GraphML export documentation
+
 ## What is Tree-sitter Chunker?
 
 Tree-sitter Chunker leverages the power of Tree-sitter parsers to understand code structure and extract semantic chunks. Unlike simple line-based splitting, it:
@@ -249,12 +260,17 @@ Many features from the [ROADMAP.md](specs/ROADMAP.md) are now implemented:
 - ✅ **Export Formats**: JSON, JSONL, and Parquet with compression
 - ✅ **Advanced CLI**: Batch processing, filtering, and configuration
 - ✅ **AST Caching**: 11.9x performance improvement
+- ✅ **Phase 9 Features**: Token counting, hierarchy, metadata, semantic merging, custom rules
+- ✅ **Phase 10 Features**: Smart context, advanced queries, optimization, multi-language support
+- ✅ **Phase 11 Features**: Text processing, intelligent fallback, token limits
+- ✅ **Phase 12 Features**: Graph exports (GraphML, Neo4j, DOT) and database exports (SQLite, PostgreSQL)
 
-Upcoming features:
-- Context-aware chunking with overlap
-- Token counting integration
-- Semantic chunk merging
-- Graph export formats
+Upcoming features (Phase 13):
+- Pre-commit hooks and linting setup
+- CI/CD pipeline automation
+- AST visualization tools
+- PyPI publishing and Docker support
+- Platform-specific packages
 
 ## License
 

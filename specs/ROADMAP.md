@@ -742,6 +742,15 @@ This roadmap is a living document and should be updated as the project evolves. 
   - Graph formats: Visualization in yEd, Neo4j Browser, Graphviz
   - Database formats: SQLite for local analysis, PostgreSQL for enterprise scale
   - Supports chunk hierarchies, complexity metrics, and code relationships
+- Implementation Files:
+  - `chunker/export/graph_exporter_base.py`: Base class for graph exporters
+  - `chunker/export/database_exporter_base.py`: Base class for database exporters
+  - `chunker/export/graphml_exporter.py`: GraphML export implementation
+  - `chunker/export/neo4j_exporter.py`: Neo4j CSV/Cypher export
+  - `chunker/export/dot_exporter.py`: Graphviz DOT format export
+  - `chunker/export/sqlite_exporter.py`: SQLite database export
+  - `chunker/export/postgresql_exporter.py`: PostgreSQL database export
+  - `tests/test_phase12_integration.py`: Comprehensive integration tests
 
 **2025-07-23**: Completed Phase 11 (Sliding Window & Text Processing) ✅
 - Implemented all 6 Phase 11 components with advanced features:
