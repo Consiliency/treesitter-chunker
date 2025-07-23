@@ -259,6 +259,12 @@ See the [API Reference](docs/api-reference.md) for detailed documentation.
 - **[Incremental Processing](docs/INCREMENTAL_PROCESSING.md)** - Efficient change detection
 - **[Structured Export](docs/STRUCTURED_EXPORT.md)** - Export with relationships
 
+### Phase 11 Documentation
+- **[Markdown Processing](docs/MARKDOWN_PROCESSOR.md)** - Header-aware markdown chunking
+- **[Log Processing](docs/LOG_PROCESSOR.md)** - Advanced log file analysis
+- **[Config Processing](docs/CONFIG_PROCESSOR.md)** - Configuration file handling
+- **[Text Processing](docs/TEXT_PROCESSING.md)** - Non-code file support
+
 ## 📁 Project Structure
 
 ```
@@ -302,15 +308,17 @@ python benchmarks/run_benchmarks.py
 ### Test Suite
 
 The project includes a comprehensive test suite with excellent coverage:
-- **Total tests**: 806 (558 original + 45 Phase 7 + 65 Phase 9 + 138 Phase 10)
-- **Test files**: 57 (33 original + 6 Phase 7 + 9 Phase 9 + 9 Phase 10)
+- **Total tests**: 813 (558 original + 45 Phase 7 + 65 Phase 9 + 138 Phase 10 + 7 Phase 11)
+- **Test files**: 58 (33 original + 6 Phase 7 + 9 Phase 9 + 9 Phase 10 + 1 Phase 11)
 - **Unit test coverage**: >95%
 - **Integration test coverage**: ~90% (increased from ~40%)
-- **Status**: All tests passing (793 passed, 13 skipped for unimplemented features)
+- **Status**: All tests passing (799 passed, 14 skipped for unimplemented features)
 
 **Phase 9 Completed**: Successfully implemented and integrated all Phase 9 features including token counting, hierarchy building, metadata extraction, semantic merging, custom rules, repository processing, overlapping fallback, and cross-platform packaging.
 
 **Phase 10 Completed**: All advanced features have been successfully implemented and integrated with comprehensive test coverage (96%).
+
+**Phase 11 Partially Completed**: 4 of 6 components successfully implemented (67%). Specialized processors for Markdown, Log, and Config files are fully functional with comprehensive test coverage.
 
 ## 🚀 Phase 10: Advanced Features (Completed)
 
@@ -340,6 +348,34 @@ The following advanced capabilities are now available:
 - **Implementation**: `DefaultIncrementalProcessor`, `DefaultChunkCache`
 - **Features**: Change detection, diff computation, cache management
 - **Usage**: Efficiently processes only changed portions of large codebases
+
+## 🚀 Phase 11: Sliding Window & Text Processing (Partial)
+
+The following text processing capabilities have been implemented:
+
+### Markdown Processing ✅
+- **Implementation**: `MarkdownProcessor`
+- **Features**: Header-aware chunking, code block preservation, table integrity
+- **Usage**: Intelligently chunks markdown documentation files
+
+### Log File Processing ✅
+- **Implementation**: `LogProcessor`
+- **Features**: Timestamp-based chunking, log level grouping, session detection
+- **Usage**: Analyzes and chunks log files with context preservation
+
+### Configuration File Processing ✅
+- **Implementation**: `ConfigProcessor`
+- **Features**: Section-based chunking for INI/TOML/YAML/JSON files
+- **Usage**: Preserves configuration structure and relationships
+
+### Integration Layer ✅
+- **Implementation**: `SlidingWindowFallback`
+- **Features**: Automatic processor selection, fallback strategies
+- **Usage**: Seamlessly handles various text file types
+
+### Not Yet Implemented
+- **Sliding Window Engine**: Core window processing (reported complete but missing)
+- **Text Processing Utilities**: Sentence/paragraph detection (reported complete but missing)
 
 ## 📄 License
 

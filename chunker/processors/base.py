@@ -208,10 +208,10 @@ class SpecializedProcessor(ABC):
                         content=chunk.content,
                         start_line=chunk.start_line,
                         end_line=chunk.end_line,
-                        start_byte=chunk.start_byte,
-                        end_byte=chunk.end_byte,
+                        start_byte=chunk.byte_start,
+                        end_byte=chunk.byte_end,
                         metadata=chunk.metadata,
-                        chunk_type=chunk.chunk_type
+                        chunk_type=chunk.node_type
                     )
                     text_chunks.append(text_chunk)
                 else:

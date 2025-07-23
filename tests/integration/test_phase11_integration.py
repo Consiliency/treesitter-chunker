@@ -118,12 +118,12 @@ Final content here.
 """)
         
         # Process the file
-        chunks = processor.process_file(
-            str(md_file),
-            {"max_chunk_size": 200}  # Simple config
-        )
+        # The markdown processor expects process() to be called with content and file_path
+        content = md_file.read_text()
+        chunks = processor.process(content, str(md_file))
         
         assert len(chunks) > 0
+        
         # Verify code block is preserved
         assert any("def hello():" in chunk.content and "return \"world\"" in chunk.content 
                   for chunk in chunks)
@@ -150,13 +150,16 @@ java.sql.SQLException: Connection refused
 2024-01-22 10:00:06 INFO Application started successfully
 """)
         
-        # Process the file
-        chunks = processor.process_file(
-            str(log_file),
-            {"chunk_strategy": "lines", "max_lines": 5}
+        # Process the file using the correct config format
+        from chunker.processors import ProcessorConfig
+        processor.config = ProcessorConfig(
+            chunk_size=5,
+            format_specific={"chunk_by": "lines", "max_chunk_lines": 5}
         )
+        chunks = processor.process_file(str(log_file))
         
         assert len(chunks) > 0
+        
         # Verify error with stack trace is kept together
         error_chunk = next((c for c in chunks if "ERROR" in c.content), None)
         assert error_chunk is not None

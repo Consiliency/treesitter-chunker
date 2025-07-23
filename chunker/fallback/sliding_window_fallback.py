@@ -294,6 +294,52 @@ class SlidingWindowFallback(FallbackChunker):
     
     def _load_builtin_processors(self) -> None:
         """Load built-in processors dynamically."""
+        # Try to import processors from Phase 11 components
+        try:
+            from ..processors.markdown import MarkdownProcessor
+            processor_info = ProcessorInfo(
+                name='markdown_processor',
+                processor_type=ProcessorType.MARKDOWN,
+                processor_class=self._create_processor_adapter_for_specialized(MarkdownProcessor),
+                supported_file_types={FileType.MARKDOWN},
+                supported_extensions={'.md', '.markdown'},
+                priority=50
+            )
+            self.registry.register(processor_info)
+            logger.info("Registered MarkdownProcessor")
+        except ImportError as e:
+            logger.debug(f"Could not import MarkdownProcessor: {e}")
+            
+        try:
+            from ..processors.logs import LogProcessor
+            processor_info = ProcessorInfo(
+                name='log_processor',
+                processor_type=ProcessorType.LOG,
+                processor_class=self._create_processor_adapter_for_specialized(LogProcessor),
+                supported_file_types={FileType.LOG},
+                supported_extensions={'.log'},
+                priority=50
+            )
+            self.registry.register(processor_info)
+            logger.info("Registered LogProcessor")
+        except ImportError as e:
+            logger.debug(f"Could not import LogProcessor: {e}")
+            
+        try:
+            from ..processors.config import ConfigProcessor
+            processor_info = ProcessorInfo(
+                name='config_processor',
+                processor_type=ProcessorType.CONFIG,
+                processor_class=self._create_processor_adapter_for_specialized(ConfigProcessor),
+                supported_file_types={FileType.CONFIG, FileType.YAML, FileType.JSON},
+                supported_extensions={'.ini', '.cfg', '.conf', '.yaml', '.yml', '.json', '.toml'},
+                priority=50
+            )
+            self.registry.register(processor_info)
+            logger.info("Registered ConfigProcessor")
+        except ImportError as e:
+            logger.debug(f"Could not import ConfigProcessor: {e}")
+        
         # Try to import processors from parallel worktrees
         processor_modules = [
             ('sliding_window_processor', ProcessorType.SLIDING_WINDOW, 
@@ -321,12 +367,12 @@ class SlidingWindowFallback(FallbackChunker):
                         obj != TextProcessor):
                         
                         processor_info = ProcessorInfo(
-                            name=module_name,
+                            name=module_name + '_sliding',
                             processor_type=proc_type,
                             processor_class=obj,
                             supported_file_types=file_types,
                             supported_extensions=extensions,
-                            priority=50
+                            priority=40  # Lower priority than Phase 11 processors
                         )
                         self.registry.register(processor_info)
                         break
@@ -394,6 +440,46 @@ class SlidingWindowFallback(FallbackChunker):
                 return self.fallback.chunk_text(content, file_path)
         
         return ProcessorAdapter
+    
+    def _create_processor_adapter_for_specialized(self, 
+                                                 processor_class: Type) -> Type[TextProcessor]:
+        """Create a TextProcessor adapter for a SpecializedProcessor."""
+        
+        class SpecializedProcessorAdapter(TextProcessor):
+            def __init__(self, config: Optional[Dict[str, Any]] = None):
+                super().__init__(config)
+                self.processor = processor_class(config)
+            
+            def can_process(self, content: str, file_path: str) -> bool:
+                return self.processor.can_handle(file_path, content)
+            
+            def process(self, content: str, file_path: str) -> List[CodeChunk]:
+                # Call the process method and convert TextChunks to CodeChunks
+                chunks = self.processor.process(content, file_path)
+                code_chunks = []
+                
+                for chunk in chunks:
+                    if hasattr(chunk, 'content'):  # TextChunk
+                        code_chunk = CodeChunk(
+                            language=chunk.chunk_type,
+                            file_path=file_path,
+                            node_type=chunk.chunk_type,
+                            start_line=chunk.start_line,
+                            end_line=chunk.end_line,
+                            byte_start=chunk.start_byte,
+                            byte_end=chunk.end_byte,
+                            parent_context=chunk.metadata.get('parent_context', ''),
+                            content=chunk.content,
+                            metadata=chunk.metadata
+                        )
+                        code_chunks.append(code_chunk)
+                    else:
+                        # Already a CodeChunk
+                        code_chunks.append(chunk)
+                
+                return code_chunks
+        
+        return SpecializedProcessorAdapter
     
     def _load_custom_processors(self) -> None:
         """Load custom processors from configuration."""
@@ -585,6 +671,36 @@ class SlidingWindowFallback(FallbackChunker):
             processors.append(processor)
         
         return ProcessorChain(processors)
+    
+    def can_chunk(self, file_path: str) -> bool:
+        """Check if this fallback can chunk the given file.
+        
+        This is an alias for compatibility with tests and other interfaces.
+        
+        Args:
+            file_path: Path to the file
+            
+        Returns:
+            True (sliding window fallback can always chunk text files)
+        """
+        # The sliding window fallback can always chunk any text file
+        return True
+    
+    def chunk_file(self, file_path: str) -> List[CodeChunk]:
+        """Chunk a file by reading its content.
+        
+        Args:
+            file_path: Path to the file to chunk
+            
+        Returns:
+            List of code chunks
+        """
+        # Read the file content
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Use chunk_text method to process the content
+        return self.chunk_text(content, file_path)
 
 
 # Generic sliding window processor as fallback

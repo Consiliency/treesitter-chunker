@@ -62,12 +62,12 @@ class MarkdownProcessor(SpecializedProcessor):
         super().__init__(config)
         self.elements: List[MarkdownElement] = []
         
-    def can_process(self, file_path: str, content: str) -> bool:
-        """Check if this processor can handle the content.
+    def can_handle(self, file_path: str, content: Optional[str] = None) -> bool:
+        """Check if this processor can handle the file.
         
         Args:
             file_path: Path to the file
-            content: File content
+            content: Optional file content for detection
             
         Returns:
             True if this is a Markdown file
@@ -79,8 +79,8 @@ class MarkdownProcessor(SpecializedProcessor):
         if file_path_str.endswith(('.md', '.markdown', '.mdown', '.mkd')):
             return True
             
-        # Check for Markdown-like content patterns
-        if any(pattern.search(content) for pattern in [
+        # Check for Markdown-like content patterns if content provided
+        if content and any(pattern.search(content) for pattern in [
             self.PATTERNS['header'],
             self.PATTERNS['code_block'],
             self.PATTERNS['list_item']
@@ -88,6 +88,10 @@ class MarkdownProcessor(SpecializedProcessor):
             return True
             
         return False
+    
+    def can_process(self, file_path: str, content: str) -> bool:
+        """Alias for can_handle to maintain compatibility."""
+        return self.can_handle(file_path, content)
         
     def process(self, content: str, file_path: str) -> List[CodeChunk]:
         """Process Markdown content into chunks.
@@ -109,7 +113,9 @@ class MarkdownProcessor(SpecializedProcessor):
         chunks = self._create_chunks(content, boundaries, file_path)
         
         # Apply overlap if configured
-        if self.config.overlap_size > 0:
+        # Check if we have overlap configuration
+        overlap_size = getattr(self.config, 'overlap_size', 0)
+        if overlap_size > 0:
             chunks = self._apply_overlap(chunks, content)
             
         return chunks
@@ -408,7 +414,7 @@ class MarkdownProcessor(SpecializedProcessor):
                 current_size = 0
             
             # If adding this segment would exceed max size and we have content
-            elif current_size + segment_size > self.config.max_chunk_size and current_chunk_segments:
+            elif current_size + segment_size > self.config.chunk_size and current_chunk_segments:
                 # Create chunk from current segments
                 chunk = self._create_chunk_from_segments(
                     current_chunk_segments, content, file_path
@@ -553,7 +559,7 @@ class MarkdownProcessor(SpecializedProcessor):
                 prev_chunk = chunks[i - 1]
                 overlap_content = self._extract_overlap(
                     prev_chunk.content, 
-                    self.config.overlap_size,
+                    getattr(self.config, 'overlap_size', 0),
                     from_end=True
                 )
                 
@@ -615,7 +621,8 @@ class MarkdownProcessor(SpecializedProcessor):
             True if valid
         """
         # Basic validation from parent
-        if not super().validate_chunk(chunk):
+        # Basic validation - chunk should have content
+        if not chunk.content.strip():
             return False
             
         # Markdown-specific validation
