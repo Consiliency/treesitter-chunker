@@ -20,6 +20,7 @@ class GraphNode:
             "start_line": chunk.start_line,
             "end_line": chunk.end_line,
             "chunk_type": chunk_type,
+            "node_type": chunk.node_type,
             "language": chunk.language,
         }
         if chunk.metadata:

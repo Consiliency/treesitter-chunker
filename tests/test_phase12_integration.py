@@ -21,15 +21,15 @@ def sample_chunks():
     """Create sample code chunks for testing."""
     return [
         CodeChunk(
+            language="python",
             file_path="src/main.py",
+            node_type="function",
             start_line=1,
             end_line=10,
             byte_start=0,
             byte_end=200,
-            content="def main():\n    pass",
-            node_type="function",
-            language="python",
             parent_context="module",
+            content="def main():\n    pass",
             metadata={
                 "name": "main",
                 "cyclomatic_complexity": 1,
@@ -39,15 +39,15 @@ def sample_chunks():
             }
         ),
         CodeChunk(
+            language="python",
             file_path="src/utils.py",
+            node_type="function",
             start_line=5,
             end_line=15,
             byte_start=100,
             byte_end=300,
-            content="def helper():\n    return 42",
-            node_type="function",
-            language="python",
             parent_context="module",
+            content="def helper():\n    return 42",
             metadata={
                 "name": "helper",
                 "cyclomatic_complexity": 2,
@@ -56,15 +56,15 @@ def sample_chunks():
             }
         ),
         CodeChunk(
+            language="python",
             file_path="src/main.py",
+            node_type="class",
             start_line=15,
             end_line=30,
             byte_start=250,
             byte_end=500,
-            content="class App:\n    def __init__(self):\n        pass",
-            node_type="class",
-            language="python",
             parent_context="module",
+            content="class App:\n    def __init__(self):\n        pass",
             metadata={
                 "name": "App",
                 "parent_id": "src/main.py:1:10",  # References main function
