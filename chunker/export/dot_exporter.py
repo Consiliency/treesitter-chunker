@@ -66,16 +66,19 @@ class DotExporter(GraphExporterBase):
         attrs = self.node_attrs.copy()
         
         # Apply chunk type specific styles
-        chunk_type = node.chunk.chunk_type
+        chunk_type = node.chunk.metadata.get("chunk_type") if node.chunk.metadata else None
         if chunk_type and chunk_type in self.chunk_type_styles:
             attrs.update(self.chunk_type_styles[chunk_type])
         
         # Create label
         label_parts = []
+        chunk_type = node.chunk.metadata.get("chunk_type") if node.chunk.metadata else None
+        chunk_type = chunk_type or node.chunk.node_type or "chunk"
+        
         if node.chunk.metadata and "name" in node.chunk.metadata:
-            label_parts.append(node.chunk.metadata["name"])
+            label_parts.append(f"{node.chunk.metadata['name']} ({chunk_type})")
         else:
-            label_parts.append(node.chunk.chunk_type or "chunk")
+            label_parts.append(chunk_type)
         
         # Add file location
         label_parts.append(f"{node.chunk.file_path}:{node.chunk.start_line}-{node.chunk.end_line}")
