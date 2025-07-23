@@ -24,9 +24,10 @@ class Neo4jExporter(GraphExporterBase):
         for node_id, node in self.nodes.items():
             labels = {"CodeChunk"}  # Base label for all chunks
             
-            if node.chunk.chunk_type:
+            chunk_type = node.chunk.metadata.get("chunk_type", node.chunk.node_type) if node.chunk.metadata else node.chunk.node_type
+            if chunk_type:
                 # Convert chunk_type to Neo4j label format (PascalCase)
-                label = self._to_pascal_case(node.chunk.chunk_type)
+                label = self._to_pascal_case(chunk_type)
                 labels.add(label)
             
             if node.chunk.language:

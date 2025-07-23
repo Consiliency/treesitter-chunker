@@ -43,10 +43,10 @@ class DatabaseExporterBase(ABC):
             "file_path": str(chunk.file_path),
             "start_line": chunk.start_line,
             "end_line": chunk.end_line,
-            "start_byte": chunk.start_byte,
-            "end_byte": chunk.end_byte,
+            "start_byte": chunk.byte_start,
+            "end_byte": chunk.byte_end,
             "content": chunk.content,
-            "chunk_type": chunk.chunk_type,
+            "chunk_type": chunk.metadata.get("chunk_type", chunk.node_type) if chunk.metadata else chunk.node_type,
             "language": chunk.language,
             "metadata": chunk.metadata or {}
         }

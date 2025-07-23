@@ -71,6 +71,9 @@ CREATE TABLE IF NOT EXISTS chunks_cpp PARTITION OF chunks_partitioned FOR VALUES
 -- Full-text search configuration
 CREATE TEXT SEARCH CONFIGURATION IF NOT EXISTS code_search (COPY = simple);
 
+-- Add trigram index for similarity search on main table
+CREATE INDEX IF NOT EXISTS idx_chunks_content_trgm ON chunks USING GIN (content gin_trgm_ops);
+
 -- Materialized view for fast aggregations
 CREATE MATERIALIZED VIEW IF NOT EXISTS file_stats AS
 SELECT 
