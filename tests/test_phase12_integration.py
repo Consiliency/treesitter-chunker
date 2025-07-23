@@ -227,7 +227,7 @@ class TestDotExporter:
         content = output_file.read_text()
         assert "digraph CodeGraph" in content
         assert "->" in content  # Has edges
-        assert "function" in content  # Has node types
+        assert "ellipse" in content  # Has function shape (ellipse)
     
     def test_clustering(self, sample_chunks):
         """Test clustering by file."""
