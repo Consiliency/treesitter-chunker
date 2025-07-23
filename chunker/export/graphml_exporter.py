@@ -183,15 +183,19 @@ class GraphMLExporter(GraphExporterBase):
         if node_colors:
             self.node_attrs["color"] = "string"
             for node in self.nodes.values():
-                if node.chunk.chunk_type in node_colors:
-                    node.properties["color"] = node_colors[node.chunk.chunk_type]
+                # Get chunk_type from properties (set in GraphNode)
+                chunk_type = node.properties.get("chunk_type", "unknown")
+                if chunk_type in node_colors:
+                    node.properties["color"] = node_colors[chunk_type]
         
         # Add shape attribute for nodes
         if node_shapes:
             self.node_attrs["shape"] = "string"
             for node in self.nodes.values():
-                if node.chunk.chunk_type in node_shapes:
-                    node.properties["shape"] = node_shapes[node.chunk.chunk_type]
+                # Get chunk_type from properties (set in GraphNode)
+                chunk_type = node.properties.get("chunk_type", "unknown")
+                if chunk_type in node_shapes:
+                    node.properties["shape"] = node_shapes[chunk_type]
         
         # Add color attribute for edges
         if edge_colors:

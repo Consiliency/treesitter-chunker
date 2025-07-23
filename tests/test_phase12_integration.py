@@ -24,45 +24,51 @@ def sample_chunks():
             file_path="src/main.py",
             start_line=1,
             end_line=10,
-            start_byte=0,
-            end_byte=200,
+            byte_start=0,
+            byte_end=200,
             content="def main():\n    pass",
-            chunk_type="function",
+            node_type="function",
             language="python",
+            parent_context="module",
             metadata={
                 "name": "main",
                 "cyclomatic_complexity": 1,
                 "token_count": 15,
-                "imports": ["sys", "os"]
+                "imports": ["sys", "os"],
+                "chunk_type": "function"  # Add chunk_type to metadata for GraphML export
             }
         ),
         CodeChunk(
             file_path="src/utils.py",
             start_line=5,
             end_line=15,
-            start_byte=100,
-            end_byte=300,
+            byte_start=100,
+            byte_end=300,
             content="def helper():\n    return 42",
-            chunk_type="function",
+            node_type="function",
             language="python",
+            parent_context="module",
             metadata={
                 "name": "helper",
                 "cyclomatic_complexity": 2,
-                "token_count": 20
+                "token_count": 20,
+                "chunk_type": "function"
             }
         ),
         CodeChunk(
             file_path="src/main.py",
             start_line=15,
             end_line=30,
-            start_byte=250,
-            end_byte=500,
+            byte_start=250,
+            byte_end=500,
             content="class App:\n    def __init__(self):\n        pass",
-            chunk_type="class",
+            node_type="class",
             language="python",
+            parent_context="module",
             metadata={
                 "name": "App",
-                "parent_id": "src/main.py:1:10"  # References main function
+                "parent_id": "src/main.py:1:10",  # References main function
+                "chunk_type": "class"
             }
         )
     ]
