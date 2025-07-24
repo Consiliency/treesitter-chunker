@@ -8,6 +8,7 @@ from .builder import TreeSitterGrammarBuilder
 from .discovery import GrammarDiscoveryService
 from .download import GrammarDownloadManager
 from .manager import TreeSitterGrammarManager
+from .registry import UniversalLanguageRegistry
 from .repository import GrammarRepository, get_grammar_repository
 from .validator import TreeSitterGrammarValidator
 
@@ -18,5 +19,6 @@ __all__ = [
     "TreeSitterGrammarBuilder",
     "TreeSitterGrammarManager",
     "TreeSitterGrammarValidator",
+    "UniversalLanguageRegistry",
     "get_grammar_repository",
 ]

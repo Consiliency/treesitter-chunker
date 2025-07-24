@@ -18,3 +18,4 @@ generated_config.toml
 generated_config.json
 worktrees/
 worktrees/
+__pycache__/
