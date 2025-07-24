@@ -2,11 +2,11 @@
 
 This document outlines the development roadmap for the tree-sitter-chunker project. Each item is a checkbox for tracking progress.
 
-## 📊 Current Status (As of 2025-07-23)
+## 📊 Current Status (As of 2025-07-24)
 
 ### Completion Summary
 - **Phases 1-12**: ✅ **COMPLETE** (97% of planned features implemented)
-- **Phase 13**: 📋 **PLANNED** (Developer Tools & Distribution)
+- **Phase 13**: 🚧 **IN PROGRESS** (Developer Tools & Distribution)
 - **Total Progress**: 12 of 13 phases complete
 - **Test Coverage**: >95% unit tests, ~90% integration tests
 - **Total Tests**: 864+ tests passing (830 + 22 plugin tests + 12 config tests)
@@ -1316,28 +1316,27 @@ This roadmap is a living document and should be updated as the project evolves. 
 
 ## Phase 13: Developer Tools & Distribution (Planned)
 
-### 13.1 Development Environment
-- [ ] **Code Quality Tools**
-  - [ ] Pre-commit hooks configuration
-  - [ ] Ruff linting setup
-  - [ ] MyPy type checking
-  - [ ] Black code formatting
-  - [ ] isort import sorting
+- [x] **Code Quality Tools**
+  - [x] Pre-commit hooks configuration
+  - [x] Ruff linting setup
+  - [x] MyPy type checking
+  - [x] Black code formatting
+  - [x] isort import sorting
 
-- [ ] **CI/CD Pipeline**
-  - [ ] GitHub Actions workflows
-  - [ ] Automated testing on PRs
-  - [ ] Coverage reporting
+- [x] **CI/CD Pipeline**
+  - [x] GitHub Actions workflows
+  - [x] Automated testing on PRs
+  - [x] Coverage reporting
   - [ ] Performance benchmarking
   - [ ] Release automation
 
 ### 13.2 Debugging & Visualization
 - [ ] **AST Visualization Tools**
   - [ ] Interactive AST explorer
-  - [ ] Tree-sitter parse tree viewer
+  - [x] Tree-sitter parse tree viewer
   - [ ] Chunk boundary visualization
   - [ ] Real-time parsing preview
-  - [ ] Export to SVG/PNG
+  - [x] Export to SVG/PNG
 
 - [ ] **Debug Mode Features**
   - [ ] Verbose logging options
@@ -1457,3 +1456,11 @@ This roadmap is a living document and should be updated as the project evolves. 
   - Memory leaks with plugin parser instances ✅
   - Thread safety with plugin parsers ✅
   - Parser configuration propagation ✅
+
+**2025-07-24**: Began Phase 13 implementation with tooling and visualization.
+- Implemented `.pre-commit-config.yaml` running Black, isort, Ruff, and MyPy
+- Added GitHub Actions workflow for linting, type checking, and tests with coverage
+- Created `scripts/visualize_ast.py` for Graphviz parse tree output
+- Documented grammar fetching and pre-commit setup in README
+- Added `docs/blocked-grammars.md` describing previously blocked grammars
+
