@@ -332,7 +332,6 @@ class TestCrossComponentIntegration:
         lint_success, _ = dev_env.run_linting()
         type_coverage, _ = qa.check_type_coverage()
         test_coverage, _ = qa.check_test_coverage()
-
         # Build system is mocked, so set up expected behavior
         build_sys.build_wheel.return_value = (True, Path("dist/test.whl"))
 
