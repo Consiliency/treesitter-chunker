@@ -105,7 +105,7 @@ class QueryDebugger:
             # Provide helpful error messages
             if "Invalid syntax" in str(e):
                 raise ValueError(f"Invalid query syntax: {e}")
-            elif "Invalid node type" in str(e):
+            if "Invalid node type" in str(e):
                 # Extract the invalid node type
                 match = re.search(r"node type '(\w+)'", str(e))
                 if match:
@@ -196,7 +196,10 @@ class QueryDebugger:
         """Display query results."""
         # Display query
         self.console.print(
-            Panel(Syntax(query_string, "scheme", theme="monokai"), title="Query"),
+            Panel(
+                Syntax(query_string, "scheme", theme="monokai"),
+                title="Query",
+            ),
         )
 
         # Display match summary
@@ -217,7 +220,12 @@ class QueryDebugger:
             if len(text) > 50:
                 text = text[:47] + "..."
 
-            table.add_row(str(i + 1), str(match.pattern_index), match.span, repr(text))
+            table.add_row(
+                str(i + 1),
+                str(match.pattern_index),
+                match.span,
+                repr(text),
+            )
 
         self.console.print(table)
 
@@ -229,7 +237,11 @@ class QueryDebugger:
         if highlight_matches:
             self._highlight_matches(matches, source_code)
 
-    def _display_captures(self, matches: list[QueryMatch], source_code: str) -> None:
+    def _display_captures(
+        self,
+        matches: list[QueryMatch],
+        source_code: str,
+    ) -> None:
         """Display capture details."""
         self.console.print("\n[bold]Captures:[/bold]")
 
@@ -252,7 +264,11 @@ class QueryDebugger:
                         f'"{text}"',
                     )
 
-    def _highlight_matches(self, matches: list[QueryMatch], source_code: str) -> None:
+    def _highlight_matches(
+        self,
+        matches: list[QueryMatch],
+        source_code: str,
+    ) -> None:
         """Highlight matches in source code."""
         if not matches:
             return

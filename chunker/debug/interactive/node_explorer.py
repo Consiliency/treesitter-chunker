@@ -183,10 +183,7 @@ class NodeExplorer:
             siblings = list(parent.children)
 
         # Get content
-        if hasattr(self, "current_content") and self.current_content:
-            content = self.current_content[node.start_byte : node.end_byte]
-        else:
-            content = ""
+        content = self.current_content[node.start_byte : node.end_byte]
 
         return NodeInfo(
             node=node,
@@ -339,7 +336,9 @@ class NodeExplorer:
 
     def _show_subtree(self) -> None:
         """Show subtree structure."""
-        tree = RichTree(f"[green]{self.current_node.type}[/green]")
+        tree = RichTree(
+            f"[green]{self.current_node.type}[/green]",
+        )
 
         def add_children(node: Node, tree_node: RichTree, depth: int = 0):
             if depth > 3:  # Limit depth
@@ -533,7 +532,10 @@ class NodeExplorer:
             self.console.print(f"[red]Query error: {e}[/red]")
 
 
-def explore_ast(source_code: str, language: str) -> None:
+def explore_ast(
+    source_code: str,
+    language: str,
+) -> None:
     """
     Quick function to explore an AST interactively.
 

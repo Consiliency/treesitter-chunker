@@ -1,69 +1,69 @@
 """Benchmark different chunking strategies."""
 
-import time
 import statistics
+import time
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Any
 
+from chunker.chunker_config import get_profile
 from chunker.parser import get_parser
 from chunker.strategies import (
-    SemanticChunker,
-    HierarchicalChunker,
     AdaptiveChunker,
-    CompositeChunker
+    CompositeChunker,
+    HierarchicalChunker,
+    SemanticChunker,
 )
-from chunker.chunker_config import get_profile, ChunkingProfile
 
 
 def benchmark_strategy(strategy, ast, source, file_path, language, runs=5):
     """Benchmark a single strategy."""
     times = []
     chunk_counts = []
-    
+
     for _ in range(runs):
         start = time.time()
         chunks = strategy.chunk(ast, source, file_path, language)
         end = time.time()
-        
+
         times.append(end - start)
         chunk_counts.append(len(chunks))
-    
+
     return {
-        'mean_time': statistics.mean(times),
-        'std_time': statistics.stdev(times) if len(times) > 1 else 0,
-        'min_time': min(times),
-        'max_time': max(times),
-        'mean_chunks': statistics.mean(chunk_counts),
-        'total_runs': runs
+        "mean_time": statistics.mean(times),
+        "std_time": statistics.stdev(times) if len(times) > 1 else 0,
+        "min_time": min(times),
+        "max_time": max(times),
+        "mean_chunks": statistics.mean(chunk_counts),
+        "total_runs": runs,
     }
 
 
-def analyze_chunk_quality(chunks: List[Any]) -> Dict[str, Any]:
+def analyze_chunk_quality(chunks: list[Any]) -> dict[str, Any]:
     """Analyze the quality of chunks produced."""
     if not chunks:
         return {
-            'count': 0,
-            'avg_size': 0,
-            'size_variance': 0,
-            'metadata_completeness': 0
+            "count": 0,
+            "avg_size": 0,
+            "size_variance": 0,
+            "metadata_completeness": 0,
         }
-    
+
     sizes = [c.end_line - c.start_line + 1 for c in chunks]
-    
+
     metadata_scores = []
     for chunk in chunks:
         score = 0
-        if hasattr(chunk, 'metadata') and chunk.metadata:
+        if hasattr(chunk, "metadata") and chunk.metadata:
             score = len(chunk.metadata) / 10  # Normalize to 0-1
         metadata_scores.append(min(1.0, score))
-    
+
     return {
-        'count': len(chunks),
-        'avg_size': statistics.mean(sizes),
-        'size_variance': statistics.variance(sizes) if len(sizes) > 1 else 0,
-        'min_size': min(sizes),
-        'max_size': max(sizes),
-        'metadata_completeness': statistics.mean(metadata_scores)
+        "count": len(chunks),
+        "avg_size": statistics.mean(sizes),
+        "size_variance": statistics.variance(sizes) if len(sizes) > 1 else 0,
+        "min_size": min(sizes),
+        "max_size": max(sizes),
+        "metadata_completeness": statistics.mean(metadata_scores),
     }
 
 
@@ -71,7 +71,7 @@ def run_benchmarks():
     """Run benchmarks on different strategies."""
     # Sample code for benchmarking
     test_file = Path(__file__).parent.parent / "examples" / "example.py"
-    
+
     if not test_file.exists():
         # Use inline sample if file doesn't exist
         sample_code = '''
@@ -127,92 +127,103 @@ def complex_function(data: List[int], threshold: int = 10) -> Dict[str, Any]:
     else:
         source = test_file.read_bytes()
         file_path = str(test_file)
-    
+
     # Parse the code
     language = "python"
     parser = get_parser(language)
     tree = parser.parse(source)
-    
+
     # Initialize strategies
     strategies = {
-        'Semantic': SemanticChunker(),
-        'Hierarchical': HierarchicalChunker(),
-        'Adaptive': AdaptiveChunker(),
-        'Composite': CompositeChunker()
+        "Semantic": SemanticChunker(),
+        "Hierarchical": HierarchicalChunker(),
+        "Adaptive": AdaptiveChunker(),
+        "Composite": CompositeChunker(),
     }
-    
+
     # Run benchmarks
     print("=== Chunking Strategy Benchmarks ===\n")
     print(f"File: {file_path}")
     print(f"Size: {len(source)} bytes, {len(source.decode().splitlines())} lines\n")
-    
+
     results = {}
-    
+
     for name, strategy in strategies.items():
         print(f"\nBenchmarking {name} Chunker...")
-        
+
         # Run benchmark
         perf = benchmark_strategy(strategy, tree.root_node, source, file_path, language)
-        
+
         # Get one set of chunks for quality analysis
         chunks = strategy.chunk(tree.root_node, source, file_path, language)
         quality = analyze_chunk_quality(chunks)
-        
+
         results[name] = {
-            'performance': perf,
-            'quality': quality
+            "performance": perf,
+            "quality": quality,
         }
-        
+
         # Print results
-        print(f"  Performance:")
-        print(f"    Mean time: {perf['mean_time']*1000:.2f}ms (±{perf['std_time']*1000:.2f}ms)")
-        print(f"    Range: {perf['min_time']*1000:.2f}ms - {perf['max_time']*1000:.2f}ms")
-        print(f"  Chunks:")
+        print("  Performance:")
+        print(
+            f"    Mean time: {perf['mean_time']*1000:.2f}ms (±{perf['std_time']*1000:.2f}ms)",
+        )
+        print(
+            f"    Range: {perf['min_time']*1000:.2f}ms - {perf['max_time']*1000:.2f}ms",
+        )
+        print("  Chunks:")
         print(f"    Count: {quality['count']}")
         print(f"    Avg size: {quality['avg_size']:.1f} lines")
         print(f"    Size range: {quality['min_size']} - {quality['max_size']} lines")
         print(f"    Metadata completeness: {quality['metadata_completeness']:.0%}")
-    
+
     # Compare strategies
     print("\n=== Strategy Comparison ===\n")
-    
+
     # Speed comparison
     print("Speed Ranking (fastest to slowest):")
-    speed_ranking = sorted(results.items(), key=lambda x: x[1]['performance']['mean_time'])
+    speed_ranking = sorted(
+        results.items(),
+        key=lambda x: x[1]["performance"]["mean_time"],
+    )
     for i, (name, data) in enumerate(speed_ranking, 1):
-        time_ms = data['performance']['mean_time'] * 1000
+        time_ms = data["performance"]["mean_time"] * 1000
         print(f"  {i}. {name}: {time_ms:.2f}ms")
-    
+
     # Chunk granularity comparison
     print("\nChunk Granularity (most to least chunks):")
-    chunk_ranking = sorted(results.items(), key=lambda x: x[1]['quality']['count'], reverse=True)
+    chunk_ranking = sorted(
+        results.items(),
+        key=lambda x: x[1]["quality"]["count"],
+        reverse=True,
+    )
     for i, (name, data) in enumerate(chunk_ranking, 1):
-        count = data['quality']['count']
-        avg_size = data['quality']['avg_size']
+        count = data["quality"]["count"]
+        avg_size = data["quality"]["avg_size"]
         print(f"  {i}. {name}: {count} chunks (avg {avg_size:.1f} lines)")
-    
+
     # Test with profiles
     print("\n=== Profile-based Chunking ===\n")
-    
-    profiles_to_test = ['documentation', 'code_review', 'embedding_generation']
-    
+
+    profiles_to_test = ["documentation", "code_review", "embedding_generation"]
+
     for profile_name in profiles_to_test:
         profile = get_profile(profile_name)
         if profile:
             print(f"\nProfile: {profile_name}")
             print(f"Description: {profile.description}")
-            
+
             # Create composite chunker with profile config
             chunker = CompositeChunker()
             chunker.configure(profile.config.composite)
-            
+
             # Benchmark
             start = time.time()
             chunks = chunker.chunk(tree.root_node, source, file_path, language)
             elapsed = time.time() - start
-            
+
             quality = analyze_chunk_quality(chunks)
-            
+
             print(f"  Time: {elapsed*1000:.2f}ms")
             print(f"  Chunks: {quality['count']} (avg {quality['avg_size']:.1f} lines)")
             print(f"  Use cases: {', '.join(profile.use_cases[:2])}")

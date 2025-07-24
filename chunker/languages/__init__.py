@@ -4,31 +4,31 @@ Per‑language helpers live here (e.g. node‑type mappings, heuristics).
 
 # Phase 2.1 exports (LanguageConfig system)
 from .base import (
-    LanguageConfig,
-    CompositeLanguageConfig,
     ChunkRule,
+    CompositeLanguageConfig,
+    LanguageConfig,
     LanguageConfigRegistry,
+    PluginConfig,  # For backward compatibility
     language_config_registry,
     validate_language_config,
-    PluginConfig,  # For backward compatibility
 )
+from .c import CPlugin
+from .cpp import CppPlugin
+from .go_plugin import GoPlugin
+from .java_plugin import JavaPlugin
+from .javascript import JavaScriptPlugin
 
 # Phase 1.2 exports (Plugin system)
 from .plugin_base import LanguagePlugin
 
 # Import plugin implementations
 from .python import PythonPlugin
-from .rust import RustPlugin
-from .javascript import JavaScriptPlugin
-from .c import CPlugin
-from .cpp import CppPlugin
-from .go_plugin import GoPlugin
 from .ruby_plugin import RubyPlugin
-from .java_plugin import JavaPlugin
+from .rust import RustPlugin
 
 _plugin_exports = [
     "PythonPlugin",
-    "RustPlugin", 
+    "RustPlugin",
     "JavaScriptPlugin",
     "CPlugin",
     "CppPlugin",

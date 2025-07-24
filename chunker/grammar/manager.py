@@ -111,10 +111,10 @@ class TreeSitterGrammarManager(GrammarManager):
                 logger.info(f"Updating grammar '{name}'...")
                 result = subprocess.run(
                     ["git", "pull"],
+                    check=False,
                     cwd=grammar_path,
                     capture_output=True,
                     text=True,
-                    check=False,
                 )
                 if result.returncode != 0:
                     raise GrammarManagementError(f"Git pull failed: {result.stderr}")
@@ -123,9 +123,9 @@ class TreeSitterGrammarManager(GrammarManager):
                 logger.info(f"Cloning grammar '{name}'...")
                 result = subprocess.run(
                     ["git", "clone", grammar.repository_url, str(grammar_path)],
+                    check=False,
                     capture_output=True,
                     text=True,
-                    check=False,
                 )
                 if result.returncode != 0:
                     raise GrammarManagementError(f"Git clone failed: {result.stderr}")
@@ -135,10 +135,10 @@ class TreeSitterGrammarManager(GrammarManager):
                 logger.info(f"Checking out commit {grammar.commit_hash}")
                 result = subprocess.run(
                     ["git", "checkout", grammar.commit_hash],
+                    check=False,
                     cwd=grammar_path,
                     capture_output=True,
                     text=True,
-                    check=False,
                 )
                 if result.returncode != 0:
                     raise GrammarManagementError(

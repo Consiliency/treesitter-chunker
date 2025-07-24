@@ -4,20 +4,19 @@ Example demonstrating Tree-sitter debug workflows.
 
 from chunker.debug import (
     ASTVisualizer,
-    QueryDebugger,
     ChunkDebugger,
+    QueryDebugger,
     highlight_chunk_boundaries,
-    explore_ast
 )
 
 
 def example_ast_visualization():
     """Example: Visualize AST for Python code."""
     print("=== AST Visualization Example ===")
-    
+
     # Create visualizer
     visualizer = ASTVisualizer("python")
-    
+
     # Sample code
     code = '''
 def calculate_sum(numbers):
@@ -35,33 +34,35 @@ class Calculator:
         self.result = x + y
         return self.result
 '''
-    
+
     # Save to temp file
     import tempfile
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
         f.write(code)
         temp_file = f.name
-    
+
     # Visualize as tree
     print("\n1. Tree visualization:")
     visualizer.visualize_file(
         temp_file,
         output_format="tree",
         max_depth=3,
-        highlight_nodes={'function_definition', 'class_definition'}
+        highlight_nodes={"function_definition", "class_definition"},
     )
-    
+
     # Clean up
     import os
+
     os.unlink(temp_file)
 
 
 def example_query_debugging():
     """Example: Debug Tree-sitter queries."""
     print("\n=== Query Debugging Example ===")
-    
+
     # Sample Python code
-    code = '''
+    code = """
 def process_data(data):
     result = []
     for item in data:
@@ -72,11 +73,11 @@ def process_data(data):
 async def fetch_data(url):
     response = await http.get(url)
     return response.json()
-'''
-    
+"""
+
     # Create debugger
     debugger = QueryDebugger("python")
-    
+
     # Example 1: Find all function definitions
     print("\n1. Finding function definitions:")
     query1 = """
@@ -85,7 +86,7 @@ async def fetch_data(url):
     )
     """
     debugger.debug_query(query1, code)
-    
+
     # Example 2: Find async functions
     print("\n2. Finding async functions:")
     query2 = """
@@ -95,7 +96,7 @@ async def fetch_data(url):
     )
     """
     debugger.debug_query(query2, code)
-    
+
     # Example 3: Find conditional statements
     print("\n3. Finding if statements:")
     query3 = """
@@ -110,7 +111,7 @@ async def fetch_data(url):
 def example_chunk_analysis():
     """Example: Analyze chunking decisions."""
     print("\n=== Chunk Analysis Example ===")
-    
+
     # Sample code with various structures
     code = '''
 def small_function():
@@ -154,16 +155,17 @@ class DataProcessor:
             'value': item['value'] * 2
         }
 '''
-    
+
     # Save to temp file
     import tempfile
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
         f.write(code)
         temp_file = f.name
-    
+
     # Create chunk debugger
     debugger = ChunkDebugger("python")
-    
+
     # Analyze chunking
     print("\nAnalyzing chunking decisions...")
     analysis = debugger.analyze_file(
@@ -172,38 +174,39 @@ class DataProcessor:
         show_overlap=True,
         show_gaps=True,
         min_chunk_size=3,
-        max_chunk_size=20
+        max_chunk_size=20,
     )
-    
+
     # Also show visual boundaries
     print("\n\nVisualizing chunk boundaries...")
     highlight_chunk_boundaries(
         temp_file,
         "python",
         show_stats=True,
-        show_side_by_side=False
+        show_side_by_side=False,
     )
-    
+
     # Clean up
     import os
+
     os.unlink(temp_file)
 
 
 def example_interactive_exploration():
     """Example: Interactive AST exploration."""
     print("\n=== Interactive AST Exploration ===")
-    
+
     # Sample code
-    code = '''
+    code = """
 def fibonacci(n):
     if n <= 1:
         return n
     return fibonacci(n-1) + fibonacci(n-2)
-'''
-    
+"""
+
     print("Starting interactive AST explorer...")
     print("Try commands like: info, tree, child 0, find if_statement, help")
-    
+
     # This would start the interactive explorer
     # explore_ast(code, "python")
     print("(Interactive explorer would start here)")
@@ -212,7 +215,7 @@ def fibonacci(n):
 def example_query_patterns():
     """Example: Common query patterns."""
     print("\n=== Common Query Patterns ===")
-    
+
     queries = {
         "Function calls": "(call expression: (identifier) @func_call)",
         "Class methods": """
@@ -230,17 +233,17 @@ def example_query_patterns():
           (import_from_statement)
         ] @import
         """,
-        "String literals": '(string) @string',
-        "Comments": '(comment) @comment',
+        "String literals": "(string) @string",
+        "Comments": "(comment) @comment",
         "Decorators": """
         (decorated_definition
           (decorator
             (identifier) @decorator_name
           )
         )
-        """
+        """,
     }
-    
+
     # Sample code to test queries
     code = '''
 import os
@@ -258,9 +261,9 @@ class Point:
         
 print("Hello, world!")
 '''
-    
+
     debugger = QueryDebugger("python")
-    
+
     for name, query in queries.items():
         print(f"\n{name}:")
         print(f"Query: {query.strip()}")
@@ -270,7 +273,7 @@ print("Hello, world!")
                 code,
                 show_ast=False,
                 show_captures=True,
-                highlight_matches=False
+                highlight_matches=False,
             )
             print(f"Found {len(matches)} matches")
         except Exception as e:
@@ -284,7 +287,7 @@ if __name__ == "__main__":
     example_chunk_analysis()
     example_query_patterns()
     example_interactive_exploration()
-    
+
     print("\n\nFor more interactive debugging, try:")
     print("  python -m cli.main debug repl")
     print("  python -m cli.main debug ast examples/example.py")

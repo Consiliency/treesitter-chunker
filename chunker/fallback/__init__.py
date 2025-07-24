@@ -9,31 +9,31 @@ whenever possible.
 
 from .base import FallbackChunker, FallbackWarning
 from .detection.file_type import FileTypeDetector
+from .sliding_window_fallback import (
+    GenericSlidingWindowProcessor,
+    ProcessorChain,
+    ProcessorInfo,
+    ProcessorRegistry,
+    ProcessorType,
+    SlidingWindowFallback,
+    TextProcessor,
+)
 from .strategies.line_based import LineBasedChunker
 from .strategies.log_chunker import LogChunker
 from .strategies.markdown import MarkdownChunker
-from .sliding_window_fallback import (
-    SlidingWindowFallback,
-    ProcessorRegistry,
-    ProcessorInfo,
-    ProcessorType,
-    TextProcessor,
-    ProcessorChain,
-    GenericSlidingWindowProcessor,
-)
 
 __all__ = [
-    'FallbackChunker',
-    'FallbackWarning',
-    'FileTypeDetector',
-    'LineBasedChunker',
-    'LogChunker',
-    'MarkdownChunker',
-    'SlidingWindowFallback',
-    'ProcessorRegistry',
-    'ProcessorInfo',
-    'ProcessorType',
-    'TextProcessor',
-    'ProcessorChain',
-    'GenericSlidingWindowProcessor',
+    "FallbackChunker",
+    "FallbackWarning",
+    "FileTypeDetector",
+    "GenericSlidingWindowProcessor",
+    "LineBasedChunker",
+    "LogChunker",
+    "MarkdownChunker",
+    "ProcessorChain",
+    "ProcessorInfo",
+    "ProcessorRegistry",
+    "ProcessorType",
+    "SlidingWindowFallback",
+    "TextProcessor",
 ]

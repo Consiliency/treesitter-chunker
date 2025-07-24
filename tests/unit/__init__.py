@@ -1,1 +1,1 @@
-"""Unit tests for debug tools"""
+"""Unit tests for treesitter-chunker components"""

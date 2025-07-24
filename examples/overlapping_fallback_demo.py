@@ -2,13 +2,14 @@
 """Demo of overlapping fallback chunker for non-Tree-sitter files."""
 
 import warnings
+
 from chunker.fallback_overlap import OverlappingFallbackChunker, OverlapStrategy
 
 
 def demo_log_file_chunking():
     """Demonstrate overlapping chunks on a log file."""
     print("=== Log File Chunking Demo ===\n")
-    
+
     # Sample log content
     log_content = """2024-01-15 10:00:00 INFO Starting application server
 2024-01-15 10:00:01 DEBUG Loading configuration from config.yml
@@ -20,9 +21,9 @@ def demo_log_file_chunking():
 2024-01-15 10:00:07 INFO All systems operational
 2024-01-15 10:00:08 DEBUG Starting request handler
 2024-01-15 10:00:09 INFO Server ready on port 8080"""
-    
+
     chunker = OverlappingFallbackChunker()
-    
+
     # Chunk with line-based overlap
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")  # Suppress warnings for demo
@@ -32,13 +33,13 @@ def demo_log_file_chunking():
             chunk_size=4,  # 4 lines per chunk
             overlap_size=2,  # 2 lines overlap
             strategy=OverlapStrategy.FIXED,
-            unit="lines"
+            unit="lines",
         )
-    
+
     print(f"Created {len(chunks)} overlapping chunks:\n")
-    
+
     for i, chunk in enumerate(chunks):
-        lines = chunk.content.strip().split('\n')
+        lines = chunk.content.strip().split("\n")
         print(f"Chunk {i} (lines {chunk.start_line}-{chunk.end_line}):")
         for line in lines:
             print(f"  {line}")
@@ -48,7 +49,7 @@ def demo_log_file_chunking():
 def demo_markdown_chunking():
     """Demonstrate overlapping chunks on markdown content."""
     print("=== Markdown Chunking Demo ===\n")
-    
+
     markdown_content = """# Project README
 
 ## Introduction
@@ -76,9 +77,9 @@ chunks = chunker.chunk_with_overlap(content, path)
 
 You can configure overlap size and strategy.
 """
-    
+
     chunker = OverlappingFallbackChunker()
-    
+
     # Chunk with character-based overlap
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -88,39 +89,47 @@ You can configure overlap size and strategy.
             chunk_size=150,  # 150 chars per chunk
             overlap_size=30,  # 20% overlap
             strategy=OverlapStrategy.PERCENTAGE,
-            unit="characters"
+            unit="characters",
         )
-    
+
     print(f"Created {len(chunks)} overlapping chunks:\n")
-    
+
     for i, chunk in enumerate(chunks):
         print(f"Chunk {i} ({chunk.byte_start}-{chunk.byte_end} bytes):")
-        print(f"  Preview: {chunk.content[:60]}..." if len(chunk.content) > 60 else f"  Content: {chunk.content}")
+        print(
+            (
+                f"  Preview: {chunk.content[:60]}..."
+                if len(chunk.content) > 60
+                else f"  Content: {chunk.content}"
+            ),
+        )
         print()
 
 
 def demo_error_on_code_file():
     """Demonstrate that code files with Tree-sitter support are rejected."""
     print("=== Error Demo for Code Files ===\n")
-    
+
     chunker = OverlappingFallbackChunker()
-    
+
     try:
         # This should fail because Go has Tree-sitter support
         chunks = chunker.chunk_with_overlap(
             "package main\n\nfunc main() {}",
             "main.go",
             chunk_size=100,
-            overlap_size=20
+            overlap_size=20,
         )
     except Exception as e:
         print(f"Expected error occurred: {e}")
-        print("\nThis is correct behavior - overlapping chunks are ONLY for non-Tree-sitter files!")
+        print(
+            "\nThis is correct behavior - overlapping chunks are ONLY for non-Tree-sitter files!",
+        )
 
 
 if __name__ == "__main__":
     demo_log_file_chunking()
-    print("\n" + "="*50 + "\n")
+    print("\n" + "=" * 50 + "\n")
     demo_markdown_chunking()
-    print("\n" + "="*50 + "\n")
+    print("\n" + "=" * 50 + "\n")
     demo_error_on_code_file()

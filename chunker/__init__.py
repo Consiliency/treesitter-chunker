@@ -1,12 +1,13 @@
 """
 Tree‑sitter Chunker – top‑level package.
 """
+
 __all__ = [
     # Core functions
-    "get_parser", 
+    "get_parser",
     "chunk_file",
     "chunk_text_with_token_limit",
-    "chunk_file_with_token_limit", 
+    "chunk_file_with_token_limit",
     "count_chunk_tokens",
     # New parser API
     "list_languages",
@@ -179,222 +180,48 @@ __all__ = [
     "gc_disabled",
 ]
 
-from .parser import (
-    get_parser, list_languages, get_language_info, 
-    return_parser, clear_cache
-)
-from .chunker import (
-    chunk_file, 
-    chunk_text_with_token_limit,
-    chunk_file_with_token_limit,
-    count_chunk_tokens
-)
-from .types import CodeChunk
-from .factory import ParserConfig
-from .exceptions import (
-    ChunkerError, LanguageNotFoundError, 
-    ParserError, LibraryNotFoundError
-)
-from .streaming import chunk_file_streaming, StreamingChunker
-from .parallel import chunk_files_parallel, chunk_directory_parallel, ParallelChunker
-from .cache import ASTCache
-from .plugin_manager import PluginManager, get_plugin_manager
-from .chunker_config import ChunkerConfig
-from .languages.plugin_base import LanguagePlugin, PluginConfig
-
-# Enhanced chunking strategies
-from .strategies import (
-    SemanticChunker,
-    HierarchicalChunker,
-    AdaptiveChunker,
-    CompositeChunker
-)
-
 # Analysis tools
-from .analysis import (
-    ComplexityAnalyzer,
-    CouplingAnalyzer,
-    SemanticAnalyzer
+from .analysis import ComplexityAnalyzer, CouplingAnalyzer, SemanticAnalyzer
+from .cache import ASTCache
+from .chunker import (
+    chunk_file,
+    chunk_file_with_token_limit,
+    chunk_text_with_token_limit,
+    count_chunk_tokens,
 )
+from .chunker_config import ChunkerConfig
+from .config.profiles import ChunkingProfile, get_profile, list_profiles
 
 # Configuration system for strategies
 from .config.strategy_config import StrategyConfig
-from .config.profiles import ChunkingProfile, get_profile, list_profiles
 
 # Debug tools
 from .debug import (
     ASTVisualizer,
-    QueryDebugger,
     ChunkDebugger,
     NodeExplorer,
-    start_repl,
-    render_ast_graph,
+    QueryDebugger,
+    highlight_chunk_boundaries,
     print_ast_tree,
-    highlight_chunk_boundaries
+    render_ast_graph,
+    start_repl,
 )
-
-# Token counting integration
-from .token import TiktokenCounter, TokenAwareChunker
-from .token.chunker import TreeSitterTokenAwareChunker
-
-# Hierarchy features
-from .hierarchy import ChunkHierarchyBuilder, HierarchyNavigator
-from .interfaces.hierarchy import ChunkHierarchy
-
-# Custom rules
-from .rules import (
-    BaseCustomRule,
-    BaseRegexRule,
-    BaseCommentBlockRule,
-    MetadataRule,
-    DefaultRuleEngine,
-    TodoCommentRule,
-    CopyrightHeaderRule,
-    DocstringRule,
-    ImportBlockRule,
-    CustomMarkerRule,
-    SectionHeaderRule,
-    ConfigurationBlockRule,
-    LanguageSpecificCommentRule,
-    DebugStatementRule,
-    TestAnnotationRule,
-    get_builtin_rules
+from .exceptions import (
+    ChunkerError,
+    LanguageNotFoundError,
+    LibraryNotFoundError,
+    ParserError,
 )
-
-# Metadata extraction
-from .metadata import (
-    BaseMetadataExtractor,
-    BaseComplexityAnalyzer
-)
-from .metadata.languages import (
-    PythonMetadataExtractor,
-    PythonComplexityAnalyzer,
-    JavaScriptMetadataExtractor,
-    JavaScriptComplexityAnalyzer
-)
-from .interfaces.metadata import (
-    SignatureInfo,
-    ComplexityMetrics
-)
-
-# Repository processing
-from .interfaces.repo import (
-    RepoProcessor,
-    GitAwareProcessor,
-    FileChunkResult,
-    RepoChunkResult
-)
-from .repo import (
-    RepoProcessorImpl,
-    GitAwareProcessorImpl,
-    GitignoreMatcher,
-    load_gitignore_patterns
-)
-
-# Semantic merging
-from .semantic import (
-    TreeSitterRelationshipAnalyzer,
-    TreeSitterSemanticMerger,
-    MergeConfig
-)
-
-# Overlapping fallback chunker
-from .fallback.overlapping import (
-    OverlappingFallbackChunker,
-    OverlapStrategy,
-    OverlapConfig
-)
+from .factory import ParserConfig
 
 # Intelligent fallback
 from .fallback.intelligent_fallback import IntelligentFallbackChunker
 
-# Smart context (Phase 10)
-from .interfaces.smart_context import (
-    SmartContextProvider,
-    ContextMetadata,
-    ContextStrategy,
-    ContextCache
-)
-from .smart_context import (
-    TreeSitterSmartContextProvider,
-    RelevanceContextStrategy,
-    HybridContextStrategy,
-    InMemoryContextCache
-)
-
-# Advanced query (Phase 10)
-from .interfaces.query_advanced import (
-    ChunkQueryAdvanced,
-    QueryIndexAdvanced,
-    QueryType,
-    QueryResult
-)
-from .query_advanced import (
-    NaturalLanguageQueryEngine,
-    AdvancedQueryIndex,
-    SmartQueryOptimizer
-)
-
-# Optimization (Phase 10)
-from .interfaces.optimization import (
-    ChunkOptimizer as ChunkOptimizerInterface,
-    OptimizationMetrics,
-    OptimizationConfig,
-    OptimizationStrategy
-)
-from .optimization import (
-    ChunkOptimizer,
-    ChunkBoundaryAnalyzer
-)
-
-# Multi-language processing
-from .interfaces.multi_language import (
-    MultiLanguageProcessor,
-    LanguageDetector,
-    ProjectAnalyzer,
-    LanguageRegion,
-    CrossLanguageReference,
-    EmbeddedLanguageType
-)
-from .multi_language import (
-    MultiLanguageProcessorImpl,
-    LanguageDetectorImpl,
-    ProjectAnalyzerImpl
-)
-
-# Incremental processing (Phase 10)
-from .interfaces.incremental import (
-    IncrementalProcessor,
-    ChunkCache,
-    ChangeDetector,
-    IncrementalIndex,
-    ChunkChange,
-    ChunkDiff,
-    CacheEntry,
-    ChangeType
-)
-from .incremental import (
-    DefaultIncrementalProcessor,
-    DefaultChunkCache,
-    DefaultChangeDetector,
-    SimpleIncrementalIndex
-)
-
-# Virtual File System support
-from .vfs import (
-    VirtualFileSystem,
-    LocalFileSystem,
-    InMemoryFileSystem,
-    ZipFileSystem,
-    HTTPFileSystem,
-    CompositeFileSystem,
-    VirtualFile,
-    create_vfs
-)
-from .vfs_chunker import (
-    VFSChunker,
-    chunk_from_url,
-    chunk_from_zip
+# Overlapping fallback chunker
+from .fallback.overlapping import (
+    OverlapConfig,
+    OverlappingFallbackChunker,
+    OverlapStrategy,
 )
 
 # Garbage Collection tuning
@@ -402,9 +229,170 @@ from .gc_tuning import (
     GCTuner,
     MemoryOptimizer,
     ObjectPool,
+    gc_disabled,
     get_memory_optimizer,
+    optimized_gc,
     tune_gc_for_batch,
     tune_gc_for_streaming,
-    optimized_gc,
-    gc_disabled
 )
+
+# Hierarchy features
+from .hierarchy import ChunkHierarchyBuilder, HierarchyNavigator
+from .incremental import (
+    DefaultChangeDetector,
+    DefaultChunkCache,
+    DefaultIncrementalProcessor,
+    SimpleIncrementalIndex,
+)
+from .interfaces.hierarchy import ChunkHierarchy
+
+# Incremental processing (Phase 10)
+from .interfaces.incremental import (
+    CacheEntry,
+    ChangeDetector,
+    ChangeType,
+    ChunkCache,
+    ChunkChange,
+    ChunkDiff,
+    IncrementalIndex,
+    IncrementalProcessor,
+)
+from .interfaces.metadata import ComplexityMetrics, SignatureInfo
+
+# Multi-language processing
+from .interfaces.multi_language import (
+    CrossLanguageReference,
+    EmbeddedLanguageType,
+    LanguageDetector,
+    LanguageRegion,
+    MultiLanguageProcessor,
+    ProjectAnalyzer,
+)
+
+# Optimization (Phase 10)
+from .interfaces.optimization import ChunkOptimizer as ChunkOptimizerInterface
+from .interfaces.optimization import (
+    OptimizationConfig,
+    OptimizationMetrics,
+    OptimizationStrategy,
+)
+
+# Advanced query (Phase 10)
+from .interfaces.query_advanced import (
+    ChunkQueryAdvanced,
+    QueryIndexAdvanced,
+    QueryResult,
+    QueryType,
+)
+
+# Repository processing
+from .interfaces.repo import (
+    FileChunkResult,
+    GitAwareProcessor,
+    RepoChunkResult,
+    RepoProcessor,
+)
+
+# Smart context (Phase 10)
+from .interfaces.smart_context import (
+    ContextCache,
+    ContextMetadata,
+    ContextStrategy,
+    SmartContextProvider,
+)
+from .languages.plugin_base import LanguagePlugin, PluginConfig
+
+# Metadata extraction
+from .metadata import BaseComplexityAnalyzer, BaseMetadataExtractor
+from .metadata.languages import (
+    JavaScriptComplexityAnalyzer,
+    JavaScriptMetadataExtractor,
+    PythonComplexityAnalyzer,
+    PythonMetadataExtractor,
+)
+from .multi_language import (
+    LanguageDetectorImpl,
+    MultiLanguageProcessorImpl,
+    ProjectAnalyzerImpl,
+)
+from .optimization import ChunkBoundaryAnalyzer, ChunkOptimizer
+from .parallel import ParallelChunker, chunk_directory_parallel, chunk_files_parallel
+from .parser import (
+    clear_cache,
+    get_language_info,
+    get_parser,
+    list_languages,
+    return_parser,
+)
+from .plugin_manager import PluginManager, get_plugin_manager
+from .query_advanced import (
+    AdvancedQueryIndex,
+    NaturalLanguageQueryEngine,
+    SmartQueryOptimizer,
+)
+from .repo import (
+    GitAwareProcessorImpl,
+    GitignoreMatcher,
+    RepoProcessorImpl,
+    load_gitignore_patterns,
+)
+
+# Custom rules
+from .rules import (
+    BaseCommentBlockRule,
+    BaseCustomRule,
+    BaseRegexRule,
+    ConfigurationBlockRule,
+    CopyrightHeaderRule,
+    CustomMarkerRule,
+    DebugStatementRule,
+    DefaultRuleEngine,
+    DocstringRule,
+    ImportBlockRule,
+    LanguageSpecificCommentRule,
+    MetadataRule,
+    SectionHeaderRule,
+    TestAnnotationRule,
+    TodoCommentRule,
+    get_builtin_rules,
+)
+
+# Semantic merging
+from .semantic import (
+    MergeConfig,
+    TreeSitterRelationshipAnalyzer,
+    TreeSitterSemanticMerger,
+)
+from .smart_context import (
+    HybridContextStrategy,
+    InMemoryContextCache,
+    RelevanceContextStrategy,
+    TreeSitterSmartContextProvider,
+)
+
+# Enhanced chunking strategies
+from .strategies import (
+    AdaptiveChunker,
+    CompositeChunker,
+    HierarchicalChunker,
+    SemanticChunker,
+)
+from .streaming import StreamingChunker, chunk_file_streaming
+
+# Token counting integration
+from .token import TiktokenCounter, TokenAwareChunker
+from .token.chunker import TreeSitterTokenAwareChunker
+from .types import CodeChunk
+
+# Virtual File System support
+from .vfs import (
+    CompositeFileSystem,
+    HTTPFileSystem,
+    InMemoryFileSystem,
+    LocalFileSystem,
+    VirtualFile,
+    VirtualFileSystem,
+    ZipFileSystem,
+    create_vfs,
+)
+from .vfs_chunker import VFSChunker, chunk_from_url, chunk_from_zip
