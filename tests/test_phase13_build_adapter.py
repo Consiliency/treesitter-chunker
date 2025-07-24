@@ -123,7 +123,7 @@ def setup_module(module):
             if "build_contract" in module_name:
                 if "BuildSystemContract" in str(args[0]):
                     return BuildSystem()
-                elif "PlatformSupportContract" in str(args[0]):
+                if "PlatformSupportContract" in str(args[0]):
                     return PlatformSupport()
 
         # Otherwise return normal mock

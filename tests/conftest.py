@@ -43,13 +43,13 @@ def pytest_runtest_setup(item):
 
                 if "BuildSystemContract" in class_name:
                     return BuildSystem()
-                elif "PlatformSupportContract" in class_name:
+                if "PlatformSupportContract" in class_name:
                     return PlatformSupport()
 
             # Otherwise use original Mock
             if original_mock:
                 return original_mock(*args, **kwargs)
-            else:
-                from unittest.mock import Mock
 
-                return Mock(*args, **kwargs)
+            from unittest.mock import Mock
+
+            return Mock(*args, **kwargs)
