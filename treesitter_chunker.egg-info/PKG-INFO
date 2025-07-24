@@ -38,43 +38,42 @@ Requires-Dist: toml
 Requires-Dist: pyyaml
 Requires-Dist: pygments
 Requires-Dist: chardet
+Requires-Dist: gitpython>=3.1.0
+Requires-Dist: pathspec>=0.11.0
+Requires-Dist: tqdm>=4.65.0
 Provides-Extra: dev
-Requires-Dist: pytest; extra == "dev"
-Requires-Dist: psutil; extra == "dev"
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-Provides-Extra: viz
-Requires-Dist: graphviz; extra == "viz"
-=======
+Requires-Dist: pytest>=7.4.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.1.0; extra == "dev"
+Requires-Dist: pytest-xdist>=3.3.1; extra == "dev"
+Requires-Dist: pytest-timeout>=2.1.0; extra == "dev"
+Requires-Dist: psutil>=5.9.0; extra == "dev"
+Requires-Dist: black>=24.3.0; extra == "dev"
+Requires-Dist: ruff>=0.3.4; extra == "dev"
+Requires-Dist: mypy>=1.9.0; extra == "dev"
+Requires-Dist: isort>=5.13.0; extra == "dev"
+Requires-Dist: pre-commit>=3.5.0; extra == "dev"
+Requires-Dist: bandit[toml]>=1.7.8; extra == "dev"
+Requires-Dist: types-setuptools; extra == "dev"
+Requires-Dist: types-pyyaml; extra == "dev"
+Requires-Dist: types-toml; extra == "dev"
 Requires-Dist: build; extra == "dev"
 Requires-Dist: wheel; extra == "dev"
 Requires-Dist: twine; extra == "dev"
-Requires-Dist: pytest-cov; extra == "dev"
-Requires-Dist: black; extra == "dev"
-Requires-Dist: ruff; extra == "dev"
-Requires-Dist: mypy; extra == "dev"
 Provides-Extra: viz
 Requires-Dist: graphviz; extra == "viz"
+Provides-Extra: profile
+Requires-Dist: memory-profiler>=0.61.0; extra == "profile"
+Requires-Dist: line-profiler>=4.1.0; extra == "profile"
 Provides-Extra: docs
 Requires-Dist: sphinx; extra == "docs"
 Requires-Dist: sphinx-rtd-theme; extra == "docs"
 Requires-Dist: sphinx-autodoc-typehints; extra == "docs"
 Provides-Extra: all
-Requires-Dist: treesitter-chunker[dev,docs,viz]; extra == "all"
+Requires-Dist: treesitter-chunker[dev,docs,profile,viz]; extra == "all"
 Dynamic: author
 Dynamic: home-page
 Dynamic: license-file
 Dynamic: requires-python
->>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
-=======
-Provides-Extra: viz
-Requires-Dist: graphviz; extra == "viz"
->>>>>>> 0533abd (Implement Phase 9 semantic chunk merging)
-=======
-Provides-Extra: viz
-Requires-Dist: graphviz; extra == "viz"
->>>>>>> 0a01ed2 (Implement Phase 9 overlapping fallback chunking)
 
 # Tree-sitter Chunker
 
@@ -89,10 +88,14 @@ A high-performance semantic code chunker that leverages [Tree-sitter](https://tr
 - 🚀 **Blazing Fast** - 11.9x speedup with intelligent AST caching
 - 🔌 **Plugin Architecture** - Built-in support for Python, JavaScript, Rust, C, C++
 - 🎛️ **Flexible Configuration** - TOML/YAML/JSON config files with per-language settings
-- 📊 **Multiple Export Formats** - JSON, JSONL, and Parquet with compression
+- 📊 **14 Export Formats** - JSON, JSONL, Parquet, CSV, XML, GraphML, Neo4j, DOT, SQLite, PostgreSQL, and more
 - ⚡ **Parallel Processing** - Process entire codebases with configurable workers
 - 🌊 **Streaming Support** - Handle files larger than memory
 - 🎨 **Rich CLI** - Progress bars, batch processing, and filtering
+- 🤖 **LLM-Ready** - Token counting, chunk optimization, and context-aware splitting
+- 📝 **Text File Support** - Markdown, logs, config files with intelligent chunking
+- 🔍 **Advanced Query** - Natural language search across your codebase
+- 📈 **Graph Export** - Visualize code structure in yEd, Neo4j, or Graphviz
 
 ## 📦 Installation
 
@@ -248,9 +251,20 @@ min_chunk_size = 5
 - **JSONL**: Line-delimited JSON for streaming
 - **Parquet**: Columnar format for analytics with compression
 
+### Phase 9 Features (Completed)
+
+- **Token Integration**: Count tokens for LLM context windows
+- **Chunk Hierarchy**: Build hierarchical chunk relationships
+- **Metadata Extraction**: Extract TODOs, complexity metrics, etc.
+- **Semantic Merging**: Intelligently merge related chunks
+- **Custom Rules**: Define custom chunking rules per language
+- **Repository Processing**: Process entire repositories efficiently
+- **Overlapping Fallback**: Handle edge cases with smart fallbacks
+- **Cross-Platform Packaging**: Distribute as wheels for all platforms
+
 ## 📚 API Overview
 
-Tree-sitter Chunker exports 27 APIs organized into logical groups:
+Tree-sitter Chunker exports 107 APIs organized into logical groups:
 
 ### Core Functions
 - `chunk_file()` - Extract chunks from a file
@@ -289,6 +303,16 @@ Tree-sitter Chunker exports 27 APIs organized into logical groups:
 - `ParquetExporter` - Export to Parquet
 - `SchemaType` - Export schema types
 
+### Phase 9 Features
+- **Token Integration**: `TokenCounter`, `TokenAwareChunker`, `TokenConfig`
+- **Chunk Hierarchy**: `ChunkHierarchy`, `ChunkRelationship`, `HierarchyBuilder`
+- **Metadata Extraction**: `MetadataExtractor`, `ChunkMetadata`, `MetadataConfig`
+- **Semantic Merging**: `SemanticChunker`, `MergeStrategy`, `SemanticConfig`
+- **Custom Rules**: `RuleBasedChunker`, `ChunkRule`, `RuleEngine`
+- **Repository Processing**: `RepoProcessor`, `RepoConfig`, `FileFilter`
+- **Overlapping Fallback**: `FallbackChunker`, `ChunkOverlap`, `FallbackStrategy`
+- **Packaging**: `PackageDistributor`, `WheelBuilder`, `PlatformConfig`
+
 ### Error Handling
 - `ChunkerError` - Base exception
 - `LanguageNotFoundError` - Language not supported
@@ -308,6 +332,19 @@ See the [API Reference](docs/api-reference.md) for detailed documentation.
 - **[Export Formats](docs/export-formats.md)** - Export format details
 - **[Cookbook](docs/cookbook.md)** - Practical recipes and examples
 - **[Architecture](docs/architecture.md)** - System design and internals
+
+### Phase 10 Documentation
+- **[Smart Context](docs/SMART_CONTEXT.md)** - Intelligent context extraction
+- **[Advanced Query](docs/QUERY_ADVANCED.md)** - Natural language queries
+- **[Optimization](docs/OPTIMIZATION.md)** - Chunk optimization strategies
+- **[Incremental Processing](docs/INCREMENTAL_PROCESSING.md)** - Efficient change detection
+- **[Structured Export](docs/STRUCTURED_EXPORT.md)** - Export with relationships
+
+### Phase 11 Documentation
+- **[Markdown Processing](docs/MARKDOWN_PROCESSOR.md)** - Header-aware markdown chunking
+- **[Log Processing](docs/LOG_PROCESSOR.md)** - Advanced log file analysis
+- **[Config Processing](docs/CONFIG_PROCESSOR.md)** - Configuration file handling
+- **[Text Processing](docs/TEXT_PROCESSING.md)** - Non-code file support
 
 ## 📁 Project Structure
 
@@ -352,13 +389,68 @@ python benchmarks/run_benchmarks.py
 ### Test Suite
 
 The project includes a comprehensive test suite with excellent coverage:
-- **Total tests**: 603 (558 original + 45 Phase 7)
-- **Test files**: 39 (33 original + 6 Phase 7)
+- **Total tests**: 830+ tests
+- **Test files**: 59+ test modules
 - **Unit test coverage**: >95%
-- **Integration test coverage**: ~80% (increased from ~40%)
-- **Status**: All tests passing (590 passed, 13 skipped for unimplemented features)
+- **Integration test coverage**: ~90%
+- **Status**: All tests passing
 
-**Phase 7 Completed**: Successfully implemented cross-module integration testing with proper error propagation, thread safety verification, and resource management across all module boundaries.
+## 🎯 Project Status
+
+### Completed Phases (12 of 13)
+- **Phase 1**: Core Architecture - Parser redesign, plugin system ✅
+- **Phase 2**: Language Support - 5 languages with custom configs ✅
+- **Phase 3**: Advanced Chunking - Context preservation, relationships ✅
+- **Phase 4**: Performance - Streaming, caching, parallel processing ✅
+- **Phase 5**: CLI & Export - Rich CLI, 14 export formats ✅
+- **Phase 6**: Testing & Docs - >95% coverage, comprehensive guides ✅
+- **Phase 7**: Integration Testing - Cross-module testing ✅
+- **Phase 8**: Structured Export - CSV, XML, minimal formats ✅
+- **Phase 9**: Feature Enhancement - Token counting, custom rules ✅
+- **Phase 10**: Advanced Features - Smart context, query system ✅
+- **Phase 11**: Text Processing - Markdown, logs, config files ✅
+- **Phase 12**: Graph & Database - GraphML, Neo4j, SQLite, PostgreSQL ✅
+
+### Next Phase
+- **Phase 13**: Developer Tools & Distribution - PyPI, Docker, CI/CD 📋
+
+## 🚀 Advanced Capabilities
+
+### Smart Processing
+- **Token-Aware Chunking**: Respects LLM context windows (GPT-4, Claude, etc.)
+- **Intelligent Fallback**: Automatically selects best chunking method
+- **Context Preservation**: Maintains imports, class context, and relationships
+- **Semantic Merging**: Groups related code (getters/setters, overloads)
+
+### Text File Support 
+- **Markdown**: Header-aware chunking with code block preservation
+- **Logs**: Timestamp-based grouping with session detection
+- **Config Files**: Section-based chunking for INI/TOML/YAML/JSON
+- **Plain Text**: Paragraph and sentence-aware chunking
+
+### Export Formats
+- **Structured Data**: JSON, JSONL, Parquet, CSV, XML
+- **Graph Formats**: GraphML (yEd), Neo4j, DOT (Graphviz)
+- **Databases**: SQLite with FTS5, PostgreSQL with JSONB
+- **Specialized**: Minimal (code-only), Enhanced (with relationships), Debug
+
+### Advanced Features
+- **Natural Language Query**: Search code with intuitive queries
+- **Smart Context Selection**: Optimal context extraction for LLMs
+- **Incremental Processing**: Process only changed files
+- **Repository Processing**: Git-aware with .gitignore support
+- **Custom Rules**: Define language-specific chunking rules
+
+## 🚧 Phase 13: Developer Tools & Distribution (Next)
+
+The final phase will add professional development and distribution capabilities:
+
+### Planned Features
+- **Code Quality**: Pre-commit hooks, ruff, mypy, black formatting
+- **CI/CD**: GitHub Actions, automated testing, coverage reporting
+- **AST Visualization**: Interactive parse tree viewer, chunk boundaries
+- **Distribution**: PyPI publishing, Docker images, platform packages
+- **IDE Integration**: VS Code, IntelliJ, Vim/Neovim plugins
 
 ## 📄 License
 

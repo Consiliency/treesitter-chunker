@@ -1,39 +1,69 @@
 .chunkerrc.example
+.codex.env
+AGENTS.md
 CHANGELOG.md
 CLAUDE.md
-IMPLEMENTATION_SUMMARY.md
+Dockerfile
+Dockerfile.alpine
 LICENSE
 MANIFEST.in
 README.md
-README_GRAMMARS.md
-SMART_CONTEXT_IMPLEMENTATION.md
-TEST_COVERAGE_SUMMARY.md
-TEST_IMPLEMENTATION_PROGRESS.md
-TEST_INTEGRATION_COVERAGE_SUMMARY.md
-WORKTREE_INTEGRATION_COMMANDS.md
-WORKTREE_SETUP_CHECKLIST.md
-api-reference.md
-architecture.md
-configuration.md
-cookbook.md
+demo_postgres_export.py
 dev.sh
 example_parquet_usage.py
-export-formats.md
-getting-started.md
-index.md
-performance-guide.md
-plugin-development.md
+example_repo_usage.py
+example_sliding_window_integration.py
+fix_language_conflicts.py
+fix_plugins.py
+phase10_setup_commands.sh
+phase12_worktree_setup.sh
 pyproject.toml
 requirements-build.txt
 run_coordinator_setup.sh
 setup.py
-user-guide.md
+setup_codex.sh
+test_config_processor_demo.py
+test_integration_with_main_chunker.py
+test_overlapping_direct.py
+test_postgres_advanced.py
+test_token_integration_demo.py
 uv.lock
 .claude/settings.json
+.claude/commands/phase-breakdown.md
+archive/development-docs/IMPLEMENTATION_SUMMARY.md
+archive/development-docs/SMART_CONTEXT_IMPLEMENTATION.md
+archive/development-docs/TEST_COVERAGE_SUMMARY.md
+archive/development-docs/TEST_IMPLEMENTATION_PROGRESS.md
+archive/development-docs/TEST_INTEGRATION_COVERAGE_SUMMARY.md
+archive/development-docs/WORKTREE_INTEGRATION_COMMANDS.md
+archive/development-docs/WORKTREE_SETUP_CHECKLIST.md
+archive/legacy-docs/README_GRAMMARS.md
+archive/phase-implementations/CHUNK_HIERARCHY_IMPLEMENTATION.md
+archive/phase-implementations/PHASE_9_METADATA_EXTRACTION_SUMMARY.md
+archive/phase-implementations/PHASE_9_REPO_PROCESSING_SUMMARY.md
+archive/phase-implementations/PHASE_9_SUMMARY.md
+archive/phase-implementations/PHASE_9_TOKEN_INTEGRATION_SUMMARY.md
+archive/phase-implementations/README_CUSTOM_RULES.md
+archive/phase-implementations/SEMANTIC_MERGING_SUMMARY.md
+archive/phase10-docs/INCREMENTAL_IMPLEMENTATION_SUMMARY.md
+archive/phase10-docs/PHASE_10_COMPLETION_SUMMARY.md
+archive/phase10-docs/PHASE_10_IMPLEMENTATION_GUIDE.md
+archive/phase10-docs/PHASE_10_IMPLEMENTATION_SUMMARY.md
+archive/phase10-docs/PHASE_10_INTEGRATION_STATUS.md
+archive/phase10-docs/PHASE_10_QUERY_ADVANCED_SUMMARY.md
+archive/phase10-docs/PHASE_10_STATUS.md
+archive/phase11-docs/CONFIG_PROCESSOR_README.md
+archive/phase11-docs/README_LOG_PROCESSOR.md
+archive/phase12-docs/NEO4J_EXPORT_SUMMARY.md
+archive/phase12-docs/POSTGRESQL_IMPLEMENTATION_SUMMARY.md
+archive/phase12-docs/SQLITE_SCHEMA.md
 benchmarks/__init__.py
+benchmarks/baselines.json
 benchmarks/benchmark.py
 benchmarks/benchmark_strategies.py
+benchmarks/comprehensive_suite.py
 benchmarks/example_benchmark.py
+benchmarks/regression_tracker.py
 benchmarks/run_benchmarks.py
 benchmarks/performance/benchmark_batch.py
 benchmarks/performance/benchmark_caching.py
@@ -41,16 +71,24 @@ benchmarks/performance/benchmark_incremental.py
 chunker/__init__.py
 chunker/cache.py
 chunker/chunker.py
-chunker/config.py
+chunker/chunker_config.py
 chunker/exceptions.py
 chunker/factory.py
+chunker/gc_tuning.py
+chunker/incremental.py
+chunker/multi_language.py
+chunker/optimization.py
 chunker/parallel.py
 chunker/parser.py
 chunker/plugin_manager.py
 chunker/py.typed
+chunker/query_advanced.py
 chunker/registry.py
+chunker/smart_context.py
 chunker/streaming.py
 chunker/types.py
+chunker/vfs.py
+chunker/vfs_chunker.py
 chunker/analysis/__init__.py
 chunker/analysis/complexity.py
 chunker/analysis/coupling.py
@@ -77,8 +115,16 @@ chunker/debug/visualization/__init__.py
 chunker/debug/visualization/ast_visualizer.py
 chunker/debug/visualization/chunk_visualizer.py
 chunker/export/__init__.py
+chunker/export/database_exporter_base.py
+chunker/export/dot_exporter.py
 chunker/export/formatters.py
+chunker/export/graph_exporter_base.py
+chunker/export/graphml_exporter.py
+chunker/export/graphml_yed_exporter.py
 chunker/export/json_export.py
+chunker/export/neo4j_exporter.py
+chunker/export/postgres_exporter.py
+chunker/export/sqlite_exporter.py
 chunker/export/structured_exporter.py
 chunker/export/formats/__init__.py
 chunker/export/formats/database.py
@@ -90,52 +136,32 @@ chunker/export/relationships/__init__.py
 chunker/export/relationships/tracker.py
 chunker/exporters/__init__.py
 chunker/exporters/parquet.py
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
 chunker/fallback/README.md
->>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
-=======
->>>>>>> 0533abd (Implement Phase 9 semantic chunk merging)
-=======
->>>>>>> 0a01ed2 (Implement Phase 9 overlapping fallback chunking)
+chunker/fallback/SLIDING_WINDOW_INTEGRATION.md
 chunker/fallback/__init__.py
 chunker/fallback/base.py
 chunker/fallback/fallback_manager.py
+chunker/fallback/intelligent_fallback.py
+chunker/fallback/overlapping.py
+chunker/fallback/sliding_window_fallback.py
 chunker/fallback/detection/__init__.py
 chunker/fallback/detection/file_type.py
 chunker/fallback/strategies/__init__.py
 chunker/fallback/strategies/line_based.py
 chunker/fallback/strategies/log_chunker.py
 chunker/fallback/strategies/markdown.py
+chunker/fallback_overlap/README.md
+chunker/fallback_overlap/__init__.py
+chunker/fallback_overlap/chunker.py
 chunker/grammar/__init__.py
 chunker/grammar/builder.py
 chunker/grammar/manager.py
 chunker/grammar/repository.py
 chunker/grammar/validator.py
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-=======
 chunker/hierarchy/__init__.py
 chunker/hierarchy/builder.py
 chunker/hierarchy/navigator.py
->>>>>>> 437636e (Implement Phase 9 chunk hierarchy building)
->>>>>>> origin/main
->>>>>>> origin/main
-=======
 chunker/interfaces/README.md
->>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
-=======
->>>>>>> 0533abd (Implement Phase 9 semantic chunk merging)
-=======
->>>>>>> 0a01ed2 (Implement Phase 9 overlapping fallback chunking)
 chunker/interfaces/__init__.py
 chunker/interfaces/base.py
 chunker/interfaces/context.py
@@ -145,12 +171,17 @@ chunker/interfaces/fallback.py
 chunker/interfaces/fallback_overlap.py
 chunker/interfaces/grammar.py
 chunker/interfaces/hierarchy.py
+chunker/interfaces/incremental.py
 chunker/interfaces/metadata.py
+chunker/interfaces/multi_language.py
+chunker/interfaces/optimization.py
 chunker/interfaces/performance.py
 chunker/interfaces/query.py
+chunker/interfaces/query_advanced.py
 chunker/interfaces/repo.py
 chunker/interfaces/rules.py
 chunker/interfaces/semantic.py
+chunker/interfaces/smart_context.py
 chunker/interfaces/stubs.py
 chunker/interfaces/token.py
 chunker/languages/__init__.py
@@ -167,28 +198,15 @@ chunker/languages/python.py
 chunker/languages/ruby.py
 chunker/languages/ruby_plugin.py
 chunker/languages/rust.py
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
 chunker/metadata/__init__.py
 chunker/metadata/extractor.py
+chunker/metadata/factory.py
 chunker/metadata/metrics.py
 chunker/metadata/languages/__init__.py
 chunker/metadata/languages/javascript.py
 chunker/metadata/languages/python.py
-=======
->>>>>>> origin/main
->>>>>>> origin/main
-=======
+chunker/metadata/languages/typescript.py
 chunker/performance/README.md
->>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
-=======
->>>>>>> 0533abd (Implement Phase 9 semantic chunk merging)
-=======
->>>>>>> 0a01ed2 (Implement Phase 9 overlapping fallback chunking)
 chunker/performance/__init__.py
 chunker/performance/enhanced_chunker.py
 chunker/performance/cache/__init__.py
@@ -200,45 +218,117 @@ chunker/performance/optimization/batch.py
 chunker/performance/optimization/incremental.py
 chunker/performance/optimization/memory_pool.py
 chunker/performance/optimization/monitor.py
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
+chunker/processors/README.md
+chunker/processors/__init__.py
+chunker/processors/base.py
+chunker/processors/config.py
+chunker/processors/logs.py
+chunker/processors/markdown.py
+chunker/repo/README.md
+chunker/repo/__init__.py
+chunker/repo/chunker_adapter.py
+chunker/repo/git_aware.py
+chunker/repo/patterns.py
+chunker/repo/processor.py
+chunker/rules/README.md
+chunker/rules/__init__.py
+chunker/rules/builtin.py
+chunker/rules/comment.py
+chunker/rules/custom.py
+chunker/rules/engine.py
+chunker/rules/regex.py
+chunker/semantic/__init__.py
+chunker/semantic/analyzer.py
+chunker/semantic/merger.py
 chunker/strategies/README.md
->>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
-=======
->>>>>>> 0533abd (Implement Phase 9 semantic chunk merging)
-=======
->>>>>>> 0a01ed2 (Implement Phase 9 overlapping fallback chunking)
 chunker/strategies/__init__.py
 chunker/strategies/adaptive.py
 chunker/strategies/composite.py
 chunker/strategies/hierarchical.py
 chunker/strategies/semantic.py
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
+chunker/token/__init__.py
+chunker/token/chunker.py
+chunker/token/counter.py
 cli/main.py
+cli/repo_command.py
 cli/debug/__init__.py
 cli/debug/commands.py
+conda/meta.yaml
+docs/INCREMENTAL_PROCESSING.md
+docs/OPTIMIZATION.md
 docs/PLUGIN_ARCHITECTURE.md
+docs/QUERY_ADVANCED.md
+docs/SMART_CONTEXT.md
 docs/STRUCTURED_EXPORT.md
 docs/WORKTREE_DEVELOPMENT.md
+docs/api-reference.md
+docs/architecture.md
+docs/config_processor.md
+docs/configuration.md
+docs/cookbook.md
+docs/environment_variables.md
+docs/export-formats.md
+docs/getting-started.md
+docs/graphml_export.md
+docs/index.md
+docs/installation.md
+docs/intelligent_fallback.md
+docs/log_processor.md
+docs/markdown_processor.md
+docs/metadata-extraction.md
+docs/overlapping-fallback.md
+docs/packaging.md
+docs/performance-guide.md
+docs/phase12_export.md
+docs/plugin-development.md
+docs/token_limits.md
+docs/user-guide.md
 examples/blog_codebase.cypher
 examples/chunker.config.toml
 examples/chunker.config.yaml
+examples/config_with_env_vars.toml
 examples/custom_plugin_example.py
+examples/custom_rules_demo.py
+examples/demo_log_processor.py
 examples/dependency_visualization.py
 examples/enhanced_chunking_demo.py
 examples/example.py
 examples/fallback_demo.py
+examples/gc_tuning_example.py
+examples/hierarchy_demo.py
+examples/incremental_demo.py
+examples/incremental_processing.py
 examples/manage_grammars.py
+examples/metadata_extraction_demo.py
+examples/multi_language_demo.py
 examples/neo4j_export_example.py
+examples/optimize_chunks.py
+examples/overlapping_demo.py
+examples/overlapping_demo_standalone.py
+examples/overlapping_fallback_demo.py
 examples/performance_demo.py
 examples/plugin_demo.py
+examples/query_advanced_demo.py
+examples/repo_processing_example.py
+examples/semantic_merging_demo.py
+examples/semantic_merging_improved_demo.py
+examples/smart_context_demo.py
+examples/token_example.py
+examples/vfs_example.py
+examples/configs/.env
+examples/configs/app.ini
+examples/configs/docker-compose.yml
+examples/configs/pyproject.toml
+examples/configs/settings.json
 examples/debug/README.md
 examples/debug/debug_workflow_example.py
+examples/logs/apache_access.log
+examples/logs/application.log
+examples/logs/multiformat.log
+examples/logs/syslog_sample.log
+examples/markdown/demo_processor.py
+examples/markdown/mixed_content.md
+examples/markdown/technical_documentation.md
 examples/sample_codebase/app.py
 examples/sample_codebase/base.py
 examples/sample_codebase/posts.py
@@ -252,20 +342,19 @@ examples/visualizations/dependencies.dot
 examples/visualizations/dependencies.graphml
 examples/visualizations/dependencies.png
 examples/visualizations/dependencies.svg
+homebrew/treesitter-chunker.rb
 profiling/profile_chunker.py
 scripts/build_grammars.py
 scripts/build_lib.py
+scripts/build_macos.sh
 scripts/build_wheels.py
+scripts/build_windows.bat
 scripts/fetch_grammars.py
 scripts/launch-claude-sessions.sh
 scripts/package.py
 scripts/setup-worktree-env.sh
+scripts/test_packaging.sh
 specs/ROADMAP.md
->>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
-=======
->>>>>>> 0533abd (Implement Phase 9 semantic chunk merging)
-=======
->>>>>>> 0a01ed2 (Implement Phase 9 overlapping fallback chunking)
 tests/test_adaptive_chunker.py
 tests/test_c_language.py
 tests/test_cache.py
@@ -276,66 +365,81 @@ tests/test_cli_integration_advanced.py
 tests/test_composite_chunker.py
 tests/test_composite_config_advanced.py
 tests/test_config.py
+tests/test_config_advanced_scenarios.py
+tests/test_config_processor.py
 tests/test_config_runtime_changes.py
 tests/test_cpp_language.py
 tests/test_cross_module_errors.py
+tests/test_custom_rules.py
 tests/test_debug_tools.py
 tests/test_edge_cases.py
 tests/test_end_to_end.py
+tests/test_env_config.py
+tests/test_exception_serialization.py
 tests/test_exceptions.py
 tests/test_export_integration_advanced.py
 tests/test_export_json.py
 tests/test_export_jsonl.py
 tests/test_factory.py
 tests/test_fallback_chunking.py
+tests/test_gc_tuning.py
 tests/test_go_language.py
+tests/test_graphml_exporter.py
 tests/test_hierarchical_chunker.py
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-=======
 tests/test_hierarchy.py
->>>>>>> 437636e (Implement Phase 9 chunk hierarchy building)
->>>>>>> origin/main
->>>>>>> origin/main
-=======
->>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
-=======
->>>>>>> 0533abd (Implement Phase 9 semantic chunk merging)
-=======
->>>>>>> 0a01ed2 (Implement Phase 9 overlapping fallback chunking)
+tests/test_incremental.py
+tests/test_incremental_integration.py
+tests/test_incremental_unit.py
 tests/test_integration.py
+tests/test_intelligent_fallback.py
 tests/test_java_language.py
 tests/test_javascript_language.py
 tests/test_language_config.py
 tests/test_language_integration.py
+tests/test_log_processor.py
+tests/test_log_processor_integration.py
+tests/test_markdown_processor.py
 tests/test_metadata_extraction.py
+tests/test_multi_language.py
+tests/test_optimization.py
+tests/test_overlapping_fallback.py
+tests/test_overlapping_fallback_isolated.py
 tests/test_parallel.py
 tests/test_parallel_error_handling.py
 tests/test_parquet_cli_integration.py
 tests/test_parquet_export.py
 tests/test_parser.py
+tests/test_parser_plugin_integration.py
 tests/test_performance.py
 tests/test_performance_advanced.py
 tests/test_performance_features.py
+tests/test_phase10_full_integration.py
+tests/test_phase10_interface_compatibility.py
+tests/test_phase11_comprehensive_integration.py
+tests/test_phase12_integration.py
+tests/test_plugin_custom_directory_scanning.py
+tests/test_plugin_initialization_failures.py
 tests/test_plugin_integration_advanced.py
 tests/test_plugin_system.py
 tests/test_python_language.py
+tests/test_query_advanced.py
 tests/test_recovery.py
 tests/test_registry.py
 tests/test_relationship_tracker.py
 tests/test_relationships.py
+tests/test_repo_processing.py
 tests/test_ruby_language.py
 tests/test_rust_language.py
 tests/test_semantic_chunker.py
+tests/test_semantic_merging.py
+tests/test_sliding_integration.py
+tests/test_smart_context.py
 tests/test_streaming.py
 tests/test_structured_export_integration.py
+tests/test_token_integration.py
+tests/test_token_limit_chunking.py
 tests/test_types.py
+tests/test_vfs.py
 tests/integration/COORDINATOR_USAGE.md
 tests/integration/README.md
 tests/integration/__init__.py
@@ -348,10 +452,23 @@ tests/integration/scenarios.json
 tests/integration/test_coordinator.py
 tests/integration/test_fixtures.py
 tests/integration/test_interfaces.py
+tests/integration/test_phase11_integration.py
 tests/integration/context/__init__.py
 tests/integration/context/test_chunker_with_context.py
 tests/integration/context/test_full_context_extraction.py
 tests/integration/grammar/test_grammar_integration.py
+tests/integration/phase9/__init__.py
+tests/integration/phase9/base.py
+tests/integration/phase9/test_phase9_combined.py
+tests/integration/phase9/test_phase9_metadata_rules.py
+tests/integration/phase9/test_phase9_overlapping_fallback.py
+tests/integration/phase9/test_phase9_packaging.py
+tests/integration/phase9/test_phase9_repo_processing.py
+tests/integration/phase9/test_phase9_semantic_merging.py
+tests/integration/phase9/test_phase9_simple_integration.py
+tests/integration/phase9/test_phase9_token_hierarchy.py
+tests/integration/phase9/test_phase9_token_hierarchy_simple.py
+tests/integration/phase9/test_token_hierarchy_standalone.py
 tests/unit/context/__init__.py
 tests/unit/context/test_context_extractor.py
 tests/unit/context/test_context_factory.py
