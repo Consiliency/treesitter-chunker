@@ -6,43 +6,40 @@ toml
 pyyaml
 pygments
 chardet
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
+gitpython>=3.1.0
+pathspec>=0.11.0
+tqdm>=4.65.0
 
 [all]
-treesitter-chunker[dev,docs,viz]
->>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
-=======
->>>>>>> 0533abd (Implement Phase 9 semantic chunk merging)
-=======
->>>>>>> 0a01ed2 (Implement Phase 9 overlapping fallback chunking)
+treesitter-chunker[dev,docs,profile,viz]
 
 [dev]
-pytest
-psutil
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-xdist>=3.3.1
+pytest-timeout>=2.1.0
+psutil>=5.9.0
+black>=24.3.0
+ruff>=0.3.4
+mypy>=1.9.0
+isort>=5.13.0
+pre-commit>=3.5.0
+bandit[toml]>=1.7.8
+types-setuptools
+types-pyyaml
+types-toml
 build
 wheel
 twine
-pytest-cov
-black
-ruff
-mypy
 
 [docs]
 sphinx
 sphinx-rtd-theme
 sphinx-autodoc-typehints
->>>>>>> 9b5b55f (Implement Phase 9 packaging and distribution)
-=======
->>>>>>> 0533abd (Implement Phase 9 semantic chunk merging)
-=======
->>>>>>> 0a01ed2 (Implement Phase 9 overlapping fallback chunking)
+
+[profile]
+memory-profiler>=0.61.0
+line-profiler>=4.1.0
 
 [viz]
 graphviz
