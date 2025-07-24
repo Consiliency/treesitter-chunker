@@ -1,3 +1,3 @@
-from .benchmark import run_benchmarks, BenchmarkSuite, PerformanceBenchmark
+from .benchmark import BenchmarkSuite, PerformanceBenchmark, run_benchmarks
 
-__all__ = ["run_benchmarks", "BenchmarkSuite", "PerformanceBenchmark"]
+__all__ = ["BenchmarkSuite", "PerformanceBenchmark", "run_benchmarks"]

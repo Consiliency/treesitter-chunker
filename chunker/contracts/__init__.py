@@ -7,11 +7,11 @@ from .distribution_contract import DistributionContract, ReleaseManagementContra
 
 __all__ = [
     "BuildSystemContract",
-    "PlatformSupportContract",
-    "DebugVisualizationContract",
     "ChunkComparisonContract",
+    "DebugVisualizationContract",
     "DevelopmentEnvironmentContract",
-    "QualityAssuranceContract",
     "DistributionContract",
+    "PlatformSupportContract",
+    "QualityAssuranceContract",
     "ReleaseManagementContract",
 ]

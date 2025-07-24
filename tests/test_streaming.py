@@ -9,35 +9,41 @@ Tests cover:
 5. Buffer size optimization
 6. Progress callbacks
 """
-import pytest
-import tempfile
-import time
-import threading
-import psutil
-import os
-from pathlib import Path
-from typing import Iterator, List, Optional, Callable
-from unittest.mock import Mock, patch
-import mmap
 
-from chunker.streaming import StreamingChunker, chunk_file_streaming, get_file_metadata, compute_file_hash
+import mmap
+import os
+import tempfile
+import threading
+import time
+from collections.abc import Callable, Iterator
+from pathlib import Path
+
+import psutil
+import pytest
+
+from chunker.exceptions import LanguageNotFoundError
+from chunker.streaming import (
+    StreamingChunker,
+    chunk_file_streaming,
+    compute_file_hash,
+    get_file_metadata,
+)
 from chunker.types import CodeChunk
-from chunker.exceptions import ChunkerError, LanguageNotFoundError
 
 
 # Sample code generator for creating large files
 def generate_large_python_code(num_functions: int = 1000) -> str:
     """Generate a large Python file with many functions."""
     code_parts = ['"""Large auto-generated Python file for testing."""\n\n']
-    
+
     # Add imports
     code_parts.append("import math\nimport sys\nimport os\n\n")
-    
+
     # Generate classes with methods
     for i in range(num_functions // 10):
         code_parts.append(f"class TestClass{i}:\n")
         code_parts.append(f'    """Test class number {i}."""\n\n')
-        
+
         for j in range(10):
             func_num = i * 10 + j
             code_parts.append(f"    def method_{func_num}(self, x, y):\n")
@@ -45,19 +51,19 @@ def generate_large_python_code(num_functions: int = 1000) -> str:
             code_parts.append(f"        # This is method number {func_num}\n")
             code_parts.append(f"        result = x * {func_num} + y * {func_num % 7}\n")
             code_parts.append(f"        return result + {func_num}\n\n")
-    
+
     # Add standalone functions
     for i in range(num_functions % 10):
         code_parts.append(f"def standalone_function_{i}(param1, param2):\n")
         code_parts.append(f'    """Standalone function {i}."""\n')
         code_parts.append(f"    return param1 + param2 * {i}\n\n")
-    
+
     return "".join(code_parts)
 
 
 class MemoryMonitor:
     """Monitor memory usage during streaming operations."""
-    
+
     def __init__(self):
         self.process = psutil.Process()
         self.initial_memory = 0
@@ -65,48 +71,51 @@ class MemoryMonitor:
         self.samples = []
         self.monitoring = False
         self._lock = threading.Lock()
-    
+
     def start(self):
         """Start monitoring memory usage."""
         self.initial_memory = self.process.memory_info().rss
         self.peak_memory = self.initial_memory
         self.samples = []
         self.monitoring = True
-        
+
         # Start monitoring thread
         self._monitor_thread = threading.Thread(target=self._monitor_loop)
         self._monitor_thread.daemon = True
         self._monitor_thread.start()
-    
+
     def stop(self):
         """Stop monitoring and return statistics."""
         self.monitoring = False
         self._monitor_thread.join(timeout=1)
-        
+
         with self._lock:
             return {
-                'initial_mb': self.initial_memory / (1024 * 1024),
-                'peak_mb': self.peak_memory / (1024 * 1024),
-                'increase_mb': (self.peak_memory - self.initial_memory) / (1024 * 1024),
-                'num_samples': len(self.samples),
-                'average_mb': sum(self.samples) / len(self.samples) / (1024 * 1024) if self.samples else 0
+                "initial_mb": self.initial_memory / (1024 * 1024),
+                "peak_mb": self.peak_memory / (1024 * 1024),
+                "increase_mb": (self.peak_memory - self.initial_memory) / (1024 * 1024),
+                "num_samples": len(self.samples),
+                "average_mb": (
+                    sum(self.samples) / len(self.samples) / (1024 * 1024)
+                    if self.samples
+                    else 0
+                ),
             }
-    
+
     def _monitor_loop(self):
         """Monitor memory usage in a loop."""
         while self.monitoring:
             current_memory = self.process.memory_info().rss
             with self._lock:
                 self.samples.append(current_memory)
-                if current_memory > self.peak_memory:
-                    self.peak_memory = current_memory
+                self.peak_memory = max(self.peak_memory, current_memory)
             time.sleep(0.1)  # Sample every 100ms
 
 
-@pytest.fixture
+@pytest.fixture()
 def large_python_file():
     """Create a large temporary Python file (>100MB)."""
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
         # Generate ~100MB of Python code
         large_code = generate_large_python_code(num_functions=50000)
         f.write(large_code)
@@ -115,10 +124,10 @@ def large_python_file():
     temp_path.unlink()
 
 
-@pytest.fixture
+@pytest.fixture()
 def medium_python_file():
     """Create a medium-sized temporary Python file (~10MB)."""
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
         medium_code = generate_large_python_code(num_functions=5000)
         f.write(medium_code)
         temp_path = Path(f.name)
@@ -126,16 +135,18 @@ def medium_python_file():
     temp_path.unlink()
 
 
-@pytest.fixture
+@pytest.fixture()
 def corrupted_python_file():
     """Create a file with invalid UTF-8 sequences."""
-    with tempfile.NamedTemporaryFile(mode='wb', suffix='.py', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="wb", suffix=".py", delete=False) as f:
         # Write some valid Python code
-        f.write(b'def valid_function():\n    pass\n\n')
+        f.write(b"def valid_function():\n    pass\n\n")
         # Insert invalid UTF-8 sequences
-        f.write(b'def corrupted_function():\n    # Invalid UTF-8: \xff\xfe\n    pass\n\n')
+        f.write(
+            b"def corrupted_function():\n    # Invalid UTF-8: \xff\xfe\n    pass\n\n",
+        )
         # More valid code
-        f.write(b'def another_valid_function():\n    return 42\n')
+        f.write(b"def another_valid_function():\n    return 42\n")
         temp_path = Path(f.name)
     yield temp_path
     temp_path.unlink()
@@ -143,144 +154,158 @@ def corrupted_python_file():
 
 class TestStreamingLargeFiles:
     """Test streaming functionality with large files."""
-    
-    @pytest.mark.skip(reason="Large file generation creates ~9MB instead of 100MB, needs adjustment")
+
+    @pytest.mark.skip(
+        reason="Large file generation creates ~9MB instead of 100MB, needs adjustment",
+    )
     def test_large_file_streaming(self, large_python_file):
         """Test streaming a large file (>100MB) without loading it entirely into memory."""
         monitor = MemoryMonitor()
         monitor.start()
-        
+
         chunk_count = 0
         chunker = StreamingChunker("python")
-        
+
         for chunk in chunker.chunk_file_streaming(large_python_file):
             chunk_count += 1
             assert isinstance(chunk, CodeChunk)
             assert chunk.language == "python"
             assert chunk.content  # Content should not be empty
-            assert chunk.node_type in ["function_definition", "class_definition", "method_definition"]
-        
+            assert chunk.node_type in [
+                "function_definition",
+                "class_definition",
+                "method_definition",
+            ]
+
         memory_stats = monitor.stop()
-        
+
         # Assert we got chunks
         assert chunk_count > 0
-        
+
         # Memory increase should be reasonable
         # Tree-sitter needs to build the AST, so some memory usage is expected
         file_size_mb = large_python_file.stat().st_size / (1024 * 1024)
         # Allow up to 10x file size for AST + Python overhead
         max_allowed_mb = file_size_mb * 10
-        assert memory_stats['increase_mb'] < max_allowed_mb, f"Memory increase too high: {memory_stats['increase_mb']}MB for {file_size_mb}MB file"
-        
+        assert (
+            memory_stats["increase_mb"] < max_allowed_mb
+        ), f"Memory increase too high: {memory_stats['increase_mb']}MB for {file_size_mb}MB file"
+
         # File size check
         file_size_mb = large_python_file.stat().st_size / (1024 * 1024)
         assert file_size_mb > 100, f"Test file too small: {file_size_mb}MB"
-    
+
     def test_streaming_vs_regular_memory_usage(self, medium_python_file):
         """Compare memory usage between streaming and regular chunking."""
         from chunker import chunk_file
-        
+
         # Test regular chunking
         monitor_regular = MemoryMonitor()
         monitor_regular.start()
         regular_chunks = chunk_file(medium_python_file, "python")
         regular_stats = monitor_regular.stop()
-        
+
         # Test streaming chunking
         monitor_streaming = MemoryMonitor()
         monitor_streaming.start()
         streaming_chunks = list(chunk_file_streaming(medium_python_file, "python"))
         streaming_stats = monitor_streaming.stop()
-        
+
         # Verify same results
         assert len(regular_chunks) == len(streaming_chunks)
-        
+
         # Both methods need to parse the AST, so memory usage should be similar
         # The main advantage of streaming is not keeping all chunks in memory at once
         # when processing them one by one (not collecting in a list)
-        assert streaming_stats['peak_mb'] <= regular_stats['peak_mb'] * 2.0  # Allow 2x variance
+        assert (
+            streaming_stats["peak_mb"] <= regular_stats["peak_mb"] * 2.0
+        )  # Allow 2x variance
 
 
 class TestMemoryEfficiency:
     """Test memory efficiency and profiling."""
-    
+
     def test_memory_mapped_file_access(self, medium_python_file):
         """Test that memory-mapped file access is working correctly."""
         chunker = StreamingChunker("python")
-        
-        with open(medium_python_file, 'rb') as f:
+
+        with open(medium_python_file, "rb") as f:
             with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mmap_data:
                 # Test direct access
                 assert len(mmap_data) > 0
-                
+
                 # Test slicing
                 first_100_bytes = mmap_data[:100]
                 assert len(first_100_bytes) == 100
-    
+
     def test_progressive_memory_usage(self, medium_python_file):
         """Test that memory usage doesn't grow linearly with chunks processed."""
         monitor = MemoryMonitor()
         monitor.start()
-        
+
         memory_checkpoints = []
         chunk_count = 0
-        
+
         for chunk in chunk_file_streaming(medium_python_file, "python"):
             chunk_count += 1
             if chunk_count % 100 == 0:
                 current_memory = psutil.Process().memory_info().rss / (1024 * 1024)
                 memory_checkpoints.append(current_memory)
-        
+
         monitor.stop()
-        
+
         # Memory shouldn't grow significantly after initial loading
         if len(memory_checkpoints) > 2:
             initial_checkpoint = memory_checkpoints[0]
             final_checkpoint = memory_checkpoints[-1]
             memory_growth = final_checkpoint - initial_checkpoint
-            
+
             # Memory growth should be minimal after initial parsing
             # Allow some growth for Python's memory management
-            assert memory_growth < 50, f"Memory grew by {memory_growth}MB during streaming"
+            assert (
+                memory_growth < 50
+            ), f"Memory grew by {memory_growth}MB during streaming"
 
 
 class TestStreamingErrorRecovery:
     """Test error handling and recovery in streaming operations."""
-    
+
     def test_corrupted_file_handling(self, corrupted_python_file):
         """Test handling of files with invalid UTF-8 sequences."""
         chunks = list(chunk_file_streaming(corrupted_python_file, "python"))
-        
+
         # Should still process valid parts
         assert len(chunks) > 0
-        
+
         # Check that we got the valid functions
-        function_names = [chunk.content.split('(')[0].split()[-1] 
-                         for chunk in chunks 
-                         if chunk.node_type == "function_definition"]
+        function_names = [
+            chunk.content.split("(")[0].split()[-1]
+            for chunk in chunks
+            if chunk.node_type == "function_definition"
+        ]
         assert "valid_function" in function_names
         assert "another_valid_function" in function_names
-    
+
     def test_file_not_found_error(self):
         """Test handling of non-existent files."""
         with pytest.raises(FileNotFoundError):
             list(chunk_file_streaming("/nonexistent/file.py", "python"))
-    
+
     def test_unsupported_language_error(self, medium_python_file):
         """Test handling of unsupported languages."""
         with pytest.raises(LanguageNotFoundError):
             list(chunk_file_streaming(medium_python_file, "unsupported_lang"))
-    
+
     def test_permission_error_handling(self):
         """Test handling of permission errors."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
             f.write("def test(): pass")
             temp_path = Path(f.name)
-        
+
         try:
             # Remove read permissions
             os.chmod(temp_path, 0o000)
-            
+
             with pytest.raises(PermissionError):
                 list(chunk_file_streaming(temp_path, "python"))
         finally:
@@ -291,21 +316,23 @@ class TestStreamingErrorRecovery:
 
 class TestPartialChunkHandling:
     """Test handling of partial chunks and boundaries."""
-    
+
     def test_chunk_boundary_integrity(self, medium_python_file):
         """Test that chunk boundaries are properly maintained."""
         chunks = list(chunk_file_streaming(medium_python_file, "python"))
-        
+
         for chunk in chunks:
             # Verify chunk content matches the byte boundaries
-            with open(medium_python_file, 'rb') as f:
+            with open(medium_python_file, "rb") as f:
                 f.seek(chunk.byte_start)
                 expected_content = f.read(chunk.byte_end - chunk.byte_start)
-                assert chunk.content.encode('utf-8', errors='replace') == expected_content
-    
+                assert (
+                    chunk.content.encode("utf-8", errors="replace") == expected_content
+                )
+
     def test_nested_chunk_handling(self):
         """Test handling of nested code structures."""
-        nested_code = '''
+        nested_code = """
 class OuterClass:
     class InnerClass:
         def inner_method(self):
@@ -315,190 +342,210 @@ class OuterClass:
     
     def outer_method(self):
         return self.InnerClass()
-'''
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
             f.write(nested_code)
             temp_path = Path(f.name)
-        
+
         try:
             chunks = list(chunk_file_streaming(temp_path, "python"))
-            
+
             # Should find all structures
             chunk_types = [c.node_type for c in chunks]
             assert "class_definition" in chunk_types
-            assert "function_definition" in chunk_types  # Python uses function_definition for methods too
-            
+            assert (
+                "function_definition" in chunk_types
+            )  # Python uses function_definition for methods too
+
             # Check we found the methods
-            method_chunks = [c for c in chunks if "inner_method" in c.content or "outer_method" in c.content]
-            assert len(method_chunks) >= 2  # Should find both inner_method and outer_method
+            method_chunks = [
+                c
+                for c in chunks
+                if "inner_method" in c.content or "outer_method" in c.content
+            ]
+            assert (
+                len(method_chunks) >= 2
+            )  # Should find both inner_method and outer_method
         finally:
             temp_path.unlink()
 
 
 class TestBufferOptimization:
     """Test buffer size optimization and performance."""
-    
+
     def test_file_hash_computation_performance(self, large_python_file):
         """Test efficient file hash computation."""
         start_time = time.time()
-        
+
         # Test default chunk size
         hash1 = compute_file_hash(large_python_file)
         default_time = time.time() - start_time
-        
+
         # Test larger chunk size
         start_time = time.time()
-        hash2 = compute_file_hash(large_python_file, chunk_size=1024*1024)  # 1MB chunks
+        hash2 = compute_file_hash(
+            large_python_file,
+            chunk_size=1024 * 1024,
+        )  # 1MB chunks
         large_chunk_time = time.time() - start_time
-        
+
         # Hashes should be identical
         assert hash1 == hash2
-        
+
         # Larger chunks should be faster for large files
         assert large_chunk_time <= default_time * 1.1  # Allow 10% variance
-    
+
     def test_streaming_performance_consistency(self, medium_python_file):
         """Test that streaming performance is consistent across runs."""
         times = []
-        
+
         for _ in range(3):
             start_time = time.time()
             chunks = list(chunk_file_streaming(medium_python_file, "python"))
             elapsed = time.time() - start_time
             times.append(elapsed)
-        
+
         # Calculate variance
         avg_time = sum(times) / len(times)
         variance = sum((t - avg_time) ** 2 for t in times) / len(times)
-        
+
         # Variance should be low (consistent performance)
         assert variance < 0.01, f"High variance in streaming times: {variance}"
 
 
 class TestProgressCallbacks:
     """Test progress callback functionality."""
-    
+
     def test_progress_callback_integration(self, medium_python_file):
         """Test integration of progress callbacks with streaming."""
         progress_calls = []
-        
-        def progress_callback(current: int, total: int, chunk: Optional[CodeChunk] = None):
-            progress_calls.append({
-                'current': current,
-                'total': total,
-                'has_chunk': chunk is not None
-            })
-        
+
+        def progress_callback(current: int, total: int, chunk: CodeChunk | None = None):
+            progress_calls.append(
+                {
+                    "current": current,
+                    "total": total,
+                    "has_chunk": chunk is not None,
+                },
+            )
+
         # Create a custom streaming chunker with progress callback
         class ProgressStreamingChunker(StreamingChunker):
-            def __init__(self, language: str, progress_callback: Optional[Callable] = None):
+            def __init__(
+                self,
+                language: str,
+                progress_callback: Callable | None = None,
+            ):
                 super().__init__(language)
                 self.progress_callback = progress_callback
                 self._chunk_count = 0
-            
+
             def chunk_file_streaming(self, path: Path) -> Iterator[CodeChunk]:
                 # Get file size for progress tracking
                 file_size = path.stat().st_size
-                
+
                 for chunk in super().chunk_file_streaming(path):
                     self._chunk_count += 1
                     if self.progress_callback:
                         # Report progress based on byte position
                         self.progress_callback(chunk.byte_end, file_size, chunk)
                     yield chunk
-        
+
         chunker = ProgressStreamingChunker("python", progress_callback)
         chunks = list(chunker.chunk_file_streaming(medium_python_file))
-        
+
         # Verify progress was reported
         assert len(progress_calls) > 0
         assert len(progress_calls) == len(chunks)
-        
+
         # Verify progress was tracked correctly
         # Note: Progress might not be strictly increasing if chunks are not in byte order
         # Just verify we got progress updates
-    
+
     def test_cancellable_streaming(self, large_python_file):
         """Test ability to cancel streaming operation."""
+
         class CancellableStreamingChunker(StreamingChunker):
             def __init__(self, language: str):
                 super().__init__(language)
                 self.cancelled = False
-            
+
             def chunk_file_streaming(self, path: Path) -> Iterator[CodeChunk]:
                 for chunk in super().chunk_file_streaming(path):
                     if self.cancelled:
                         break
                     yield chunk
-        
+
         chunker = CancellableStreamingChunker("python")
         chunks_processed = 0
-        
+
         for chunk in chunker.chunk_file_streaming(large_python_file):
             chunks_processed += 1
             if chunks_processed >= 10:
                 chunker.cancelled = True
-        
+
         # Should have stopped after ~10 chunks
         assert chunks_processed <= 11  # Allow one extra due to timing
 
 
 class TestFileMetadata:
     """Test file metadata functionality."""
-    
+
     def test_get_file_metadata(self, medium_python_file):
         """Test file metadata extraction."""
         metadata = get_file_metadata(medium_python_file)
-        
+
         assert metadata.path == medium_python_file
         assert metadata.size > 0
         assert len(metadata.hash) == 64  # SHA256 hex digest length
         assert metadata.mtime > 0
-    
+
     def test_metadata_caching_validity(self, medium_python_file):
         """Test that metadata can be used for cache validation."""
         # Get initial metadata
         metadata1 = get_file_metadata(medium_python_file)
-        
+
         # File unchanged, metadata should match
         metadata2 = get_file_metadata(medium_python_file)
         assert metadata1.hash == metadata2.hash
         assert metadata1.size == metadata2.size
-        
+
         # Small delay to ensure mtime changes
         time.sleep(0.01)
-        
+
         # Modify file
-        with open(medium_python_file, 'a') as f:
+        with open(medium_python_file, "a") as f:
             f.write("\n# Modified\n")
-        
+
         # Metadata should change
         metadata3 = get_file_metadata(medium_python_file)
         assert metadata3.hash != metadata1.hash
         assert metadata3.size > metadata1.size
-        assert metadata3.mtime >= metadata1.mtime  # Use >= in case filesystem has low time resolution
+        assert (
+            metadata3.mtime >= metadata1.mtime
+        )  # Use >= in case filesystem has low time resolution
 
 
 class TestStreamingEdgeCases:
     """Test edge cases and special scenarios."""
-    
+
     def test_empty_file_handling(self):
         """Test handling of empty files."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
             temp_path = Path(f.name)
-        
+
         try:
             chunks = list(chunk_file_streaming(temp_path, "python"))
             assert len(chunks) == 0
         finally:
             temp_path.unlink()
-    
+
     def test_single_line_file(self):
         """Test handling of single-line files."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
             f.write("def oneliner(): return 42")
             temp_path = Path(f.name)
-        
+
         try:
             chunks = list(chunk_file_streaming(temp_path, "python"))
             assert len(chunks) == 1
@@ -507,37 +554,43 @@ class TestStreamingEdgeCases:
             assert chunks[0].end_line == 1
         finally:
             temp_path.unlink()
-    
+
     def test_file_with_no_chunks(self):
         """Test handling of files with no chunkable content."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
-            f.write("# Just comments\n# No functions or classes\nimport os\nVARIABLE = 42\n")
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+            f.write(
+                "# Just comments\n# No functions or classes\nimport os\nVARIABLE = 42\n",
+            )
             temp_path = Path(f.name)
-        
+
         try:
             chunks = list(chunk_file_streaming(temp_path, "python"))
             assert len(chunks) == 0
         finally:
             temp_path.unlink()
-    
+
     @pytest.mark.parametrize("encoding", ["utf-8", "latin-1", "utf-16"])
     def test_different_encodings(self, encoding):
         """Test handling of files with different encodings."""
         content = """def test_encoding():
     return "Hello, World!"
 """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, 
-                                       encoding=encoding) as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            suffix=".py",
+            delete=False,
+            encoding=encoding,
+        ) as f:
             try:
                 f.write(content)
             except UnicodeEncodeError:
                 pytest.skip(f"Cannot encode test content with {encoding}")
             temp_path = Path(f.name)
-        
+
         try:
             # Streaming should handle encoding issues gracefully
             chunks = list(chunk_file_streaming(temp_path, "python"))
-            
+
             # UTF-16 might not parse correctly with tree-sitter (expects UTF-8)
             if encoding == "utf-16":
                 # Just verify it doesn't crash - might get 0 chunks
@@ -550,64 +603,63 @@ class TestStreamingEdgeCases:
 
 class TestConcurrentStreaming:
     """Test concurrent streaming operations."""
-    
+
     def test_multiple_files_concurrent_streaming(self, temp_directory_with_files):
         """Test streaming multiple files concurrently."""
         import concurrent.futures
         from pathlib import Path
-        
+
         # Create a temporary directory with files
         temp_dir = Path(tempfile.mkdtemp())
         files = []
-        
+
         try:
             # Create multiple test files
             for i in range(5):
                 file_path = temp_dir / f"concurrent_test_{i}.py"
                 file_path.write_text(generate_large_python_code(num_functions=100))
                 files.append(file_path)
-            
+
             # Process files concurrently
             all_chunks = {}
-            
+
             def process_file(file_path):
                 return file_path, list(chunk_file_streaming(file_path, "python"))
-            
+
             with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-                future_to_file = {
-                    executor.submit(process_file, f): f for f in files
-                }
-                
+                future_to_file = {executor.submit(process_file, f): f for f in files}
+
                 for future in concurrent.futures.as_completed(future_to_file):
                     file_path, chunks = future.result()
                     all_chunks[file_path] = chunks
-            
+
             # Verify all files were processed
             assert len(all_chunks) == len(files)
             for file_path, chunks in all_chunks.items():
                 assert len(chunks) > 0
-        
+
         finally:
             # Cleanup
             import shutil
+
             shutil.rmtree(temp_dir)
-    
+
     def test_thread_safety(self, medium_python_file):
         """Test that StreamingChunker is thread-safe."""
         import concurrent.futures
-        
+
         chunker = StreamingChunker("python")
         results = []
-        
+
         def stream_chunks():
             return list(chunker.chunk_file_streaming(medium_python_file))
-        
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
             futures = [executor.submit(stream_chunks) for _ in range(3)]
-            
+
             for future in concurrent.futures.as_completed(futures):
                 results.append(future.result())
-        
+
         # All results should be identical
         assert len(results) == 3
         first_result = results[0]
@@ -618,18 +670,19 @@ class TestConcurrentStreaming:
 
 
 # Additional fixtures for creating test directories
-@pytest.fixture
+@pytest.fixture()
 def temp_directory_with_files():
     """Create a temporary directory with multiple Python files."""
     temp_dir = Path(tempfile.mkdtemp())
-    
+
     # Create multiple test files
     for i in range(5):
         file_path = temp_dir / f"test_file_{i}.py"
         file_path.write_text(generate_large_python_code(num_functions=50))
-    
+
     yield temp_dir
-    
+
     # Cleanup
     import shutil
+
     shutil.rmtree(temp_dir)

@@ -2,8 +2,9 @@
 Clone a curated set of Tree‑sitter grammars into ./grammars.
 Run: python scripts/fetch_grammars.py
 """
-from pathlib import Path
+
 import subprocess
+from pathlib import Path
 
 GRAMMARS = {
     # Original languages
@@ -12,12 +13,10 @@ GRAMMARS = {
     "javascript": "https://github.com/tree-sitter/tree-sitter-javascript.git",
     "c": "https://github.com/tree-sitter/tree-sitter-c.git",
     "cpp": "https://github.com/tree-sitter/tree-sitter-cpp.git",
-    
     # New languages for Phase 8
     "go": "https://github.com/tree-sitter/tree-sitter-go.git",
     "ruby": "https://github.com/tree-sitter/tree-sitter-ruby.git",
     "java": "https://github.com/tree-sitter/tree-sitter-java.git",
-    
     # Additional popular languages
     "typescript": "https://github.com/tree-sitter/tree-sitter-typescript.git",
     "csharp": "https://github.com/tree-sitter/tree-sitter-c-sharp.git",

@@ -6,10 +6,8 @@ This example shows how to use the OverlappingFallbackChunker for files
 that don't have Tree-sitter support, such as text files, markdown, logs, etc.
 """
 
-import os
-from pathlib import Path
 
-from chunker import OverlappingFallbackChunker, OverlapStrategy, OverlapConfig
+from chunker import OverlappingFallbackChunker, OverlapStrategy
 
 
 def print_chunk_info(chunks, title):
@@ -17,21 +15,27 @@ def print_chunk_info(chunks, title):
     print(f"\n{title}")
     print("=" * len(title))
     print(f"Total chunks: {len(chunks)}")
-    
+
     for i, chunk in enumerate(chunks):
         print(f"\nChunk {i + 1}:")
         print(f"  Lines: {chunk.start_line}-{chunk.end_line}")
         print(f"  Bytes: {chunk.byte_start}-{chunk.byte_end}")
         print(f"  Size: {len(chunk.content)} characters")
-        print(f"  Preview: {chunk.content[:50]}..." if len(chunk.content) > 50 else f"  Content: {chunk.content}")
+        print(
+            (
+                f"  Preview: {chunk.content[:50]}..."
+                if len(chunk.content) > 50
+                else f"  Content: {chunk.content}"
+            ),
+        )
 
 
 def demo_fixed_overlap():
     """Demonstrate fixed overlap strategy."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("FIXED OVERLAP STRATEGY DEMO")
-    print("="*60)
-    
+    print("=" * 60)
+
     # Create sample text content
     content = """# Project Documentation
 
@@ -81,9 +85,9 @@ Common issues and their solutions:
 - Authentication failed: Verify JWT token is valid
 - Data not persisting: Check database connection settings
 """
-    
+
     chunker = OverlappingFallbackChunker()
-    
+
     # Chunk by lines with fixed overlap
     chunks_lines = chunker.chunk_with_overlap(
         content=content,
@@ -91,25 +95,25 @@ Common issues and their solutions:
         chunk_size=10,  # 10 lines per chunk
         overlap_size=3,  # 3 lines overlap
         strategy=OverlapStrategy.FIXED,
-        unit="lines"
+        unit="lines",
     )
-    
+
     print_chunk_info(chunks_lines, "Line-based chunking with 3-line overlap")
-    
+
     # Show overlap between first two chunks
     if len(chunks_lines) >= 2:
         print("\n### Overlap Demonstration ###")
         chunk1_lines = chunks_lines[0].content.splitlines()
         chunk2_lines = chunks_lines[1].content.splitlines()
-        
-        print(f"\nEnd of Chunk 1 (last 3 lines):")
+
+        print("\nEnd of Chunk 1 (last 3 lines):")
         for line in chunk1_lines[-3:]:
             print(f"  {line}")
-        
-        print(f"\nStart of Chunk 2 (first 3 lines):")
+
+        print("\nStart of Chunk 2 (first 3 lines):")
         for line in chunk2_lines[:3]:
             print(f"  {line}")
-    
+
     # Chunk by characters with fixed overlap
     chunks_chars = chunker.chunk_with_overlap(
         content=content,
@@ -117,18 +121,18 @@ Common issues and their solutions:
         chunk_size=300,  # 300 characters per chunk
         overlap_size=50,  # 50 characters overlap
         strategy=OverlapStrategy.FIXED,
-        unit="characters"
+        unit="characters",
     )
-    
+
     print_chunk_info(chunks_chars, "\nCharacter-based chunking with 50-char overlap")
 
 
 def demo_asymmetric_overlap():
     """Demonstrate asymmetric overlap for log files."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("ASYMMETRIC OVERLAP STRATEGY DEMO")
-    print("="*60)
-    
+    print("=" * 60)
+
     # Create sample log content
     log_content = """2024-01-20 10:15:23 INFO Starting application server
 2024-01-20 10:15:24 INFO Loading configuration from config.yaml
@@ -150,21 +154,21 @@ def demo_asymmetric_overlap():
 2024-01-20 10:20:46 INFO Retrying connection attempt 2 of 3
 2024-01-20 10:20:56 INFO Connection successful
 2024-01-20 10:20:57 INFO Resuming normal operation"""
-    
+
     chunker = OverlappingFallbackChunker()
-    
+
     # For logs, we want more forward context than backward
     chunks = chunker.chunk_with_asymmetric_overlap(
         content=log_content,
         file_path="logs/app.log",
         chunk_size=5,  # 5 lines per chunk base
         overlap_before=1,  # Only 1 line before
-        overlap_after=3,   # 3 lines after for context
-        unit="lines"
+        overlap_after=3,  # 3 lines after for context
+        unit="lines",
     )
-    
+
     print_chunk_info(chunks, "Log file with asymmetric overlap (1 before, 3 after)")
-    
+
     # Show how errors get more context
     for i, chunk in enumerate(chunks):
         if "ERROR" in chunk.content:
@@ -175,10 +179,10 @@ def demo_asymmetric_overlap():
 
 def demo_dynamic_overlap():
     """Demonstrate dynamic overlap based on content structure."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("DYNAMIC OVERLAP STRATEGY DEMO")
-    print("="*60)
-    
+    print("=" * 60)
+
     # Create structured content with varying density
     structured_content = """# Configuration Guide
 
@@ -253,52 +257,52 @@ If settings don't take effect:
 
 Remember that changes require a full restart.
 """
-    
+
     chunker = OverlappingFallbackChunker()
-    
+
     # Dynamic overlap adjusts based on content structure
     chunks = chunker.chunk_with_dynamic_overlap(
         content=structured_content,
         file_path="docs/config.md",
         chunk_size=400,  # 400 characters per chunk
-        min_overlap=30,   # Minimum 30 chars
+        min_overlap=30,  # Minimum 30 chars
         max_overlap=100,  # Maximum 100 chars
-        unit="characters"
+        unit="characters",
     )
-    
+
     print_chunk_info(chunks, "Dynamic overlap based on content structure")
-    
+
     # Analyze overlap variation
     print("\n### Overlap Analysis ###")
     for i in range(len(chunks) - 1):
         chunk1 = chunks[i].content
         chunk2 = chunks[i + 1].content
-        
+
         # Find actual overlap
         overlap_size = 0
         for size in range(min(len(chunk1), len(chunk2)), 0, -1):
             if chunk1[-size:] == chunk2[:size]:
                 overlap_size = size
                 break
-        
+
         if overlap_size > 0:
             print(f"\nOverlap between chunks {i + 1} and {i + 2}: {overlap_size} chars")
             overlap_text = chunk1[-overlap_size:]
             # Show what was included in overlap
-            if '\n\n' in overlap_text:
+            if "\n\n" in overlap_text:
                 print("  -> Includes paragraph break")
-            elif '\n' in overlap_text:
+            elif "\n" in overlap_text:
                 print("  -> Includes line break")
-            elif '```' in overlap_text:
+            elif "```" in overlap_text:
                 print("  -> Includes code block boundary")
 
 
 def demo_natural_boundaries():
     """Demonstrate natural boundary detection."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("NATURAL BOUNDARY DETECTION DEMO")
-    print("="*60)
-    
+    print("=" * 60)
+
     content = """This is the first sentence. This is the second sentence.
 
 This is a new paragraph with its own content. It continues here.
@@ -306,33 +310,33 @@ This is a new paragraph with its own content. It continues here.
 ## New Section
 
 This section has different content altogether."""
-    
+
     chunker = OverlappingFallbackChunker()
-    
+
     # Test boundary detection at different positions
     test_positions = [28, 57, 85, 120]
-    
+
     print("Testing natural boundary detection:")
     for pos in test_positions:
         if pos < len(content):
             boundary = chunker.find_natural_overlap_boundary(content, pos, 20)
             print(f"\nDesired position: {pos}")
             print(f"Natural boundary: {boundary}")
-            print(f"Character at boundary: {repr(content[boundary-1:boundary+1])}")
+            print(f"Character at boundary: {content[boundary-1:boundary+1]!r}")
 
 
 def main():
     """Run all demonstrations."""
     print("Overlapping Fallback Chunker Demonstration")
     print("This demo shows overlapping chunks for non-Tree-sitter files")
-    
+
     # Run demonstrations
     demo_fixed_overlap()
     demo_asymmetric_overlap()
     demo_dynamic_overlap()
     demo_natural_boundaries()
-    
-    print("\n" + "="*60)
+
+    print("\n" + "=" * 60)
     print("Demo complete!")
     print("\nKey takeaways:")
     print("- Fixed overlap maintains consistent context between chunks")

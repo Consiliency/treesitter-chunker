@@ -3,12 +3,12 @@
 from chunker.parser import get_parser
 from chunker.rules import (
     DefaultRuleEngine,
-    TodoCommentRule,
+    DocumentationBlockRule,
+    HeaderCommentRule,
+    MetadataRule,
     RegionMarkerRule,
     SeparatorLineRule,
-    HeaderCommentRule,
-    DocumentationBlockRule,
-    MetadataRule
+    TodoCommentRule,
 )
 
 
@@ -63,10 +63,10 @@ def main():
 if __name__ == "__main__":
     main()
 '''
-    
+
     # Create rule engine
     engine = DefaultRuleEngine()
-    
+
     # Add various rules with different priorities
     engine.add_rule(MetadataRule(priority=100))
     engine.add_rule(HeaderCommentRule(priority=90))
@@ -74,30 +74,34 @@ if __name__ == "__main__":
     engine.add_rule(DocumentationBlockRule(priority=70))
     engine.add_rule(TodoCommentRule(priority=60))
     engine.add_rule(SeparatorLineRule(priority=40))
-    
+
     # Parse the source
     parser = get_parser("python")
     tree = parser.parse(source)
-    
+
     # Apply rules
     chunks = engine.apply_rules(tree, source, "demo.py")
-    
+
     # Display results
     print(f"Found {len(chunks)} chunks:\n")
-    
+
     for i, chunk in enumerate(chunks, 1):
         print(f"{i}. {chunk.node_type} (lines {chunk.start_line}-{chunk.end_line})")
-        print(f"   Priority: {engine._priorities.get(chunk.node_type.split('_')[-1], 'N/A')}")
+        print(
+            f"   Priority: {engine._priorities.get(chunk.node_type.split('_')[-1], 'N/A')}",
+        )
         if len(chunk.content) > 100:
             print(f"   Content: {chunk.content[:100]}...")
         else:
             print(f"   Content: {chunk.content}")
         print()
-    
+
     # List all registered rules
     print("\nRegistered Rules:")
     for rule_info in engine.list_rules():
-        print(f"- {rule_info['name']}: {rule_info['description']} (priority: {rule_info['priority']})")
+        print(
+            f"- {rule_info['name']}: {rule_info['description']} (priority: {rule_info['priority']})",
+        )
 
 
 if __name__ == "__main__":
