@@ -91,7 +91,7 @@ class NodeExplorer:
                 # Execute command
                 if cmd in ["q", "quit", "exit"]:
                     break
-                if cmd == "help":
+                elif cmd == "help":
                     self._show_help()
                 elif cmd == "up":
                     self._go_up()

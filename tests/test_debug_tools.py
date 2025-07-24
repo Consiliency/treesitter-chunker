@@ -314,14 +314,15 @@ class TestNodeExplorer:
         explorer = NodeExplorer("python")
         code = "x = 42"
 
-        # Parse code
+        # Set up explorer properly
+        explorer.current_content = code
         tree = explorer.parser.parse(code.encode())
         node = tree.root_node
 
         # Get node info
         info = explorer._get_node_info(node)
         assert info.node == node
-        assert info.content == code
+        assert info.content == code  # Root node contains entire code
         assert info.depth >= 0
 
 

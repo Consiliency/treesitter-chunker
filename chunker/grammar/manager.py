@@ -25,7 +25,11 @@ class GrammarManagementError(ChunkerError):
 class TreeSitterGrammarManager(GrammarManager):
     """Manages Tree-sitter language grammars."""
 
-    def __init__(self, grammars_dir: Path | None = None, build_dir: Path | None = None):
+    def __init__(
+        self,
+        grammars_dir: Path | None = None,
+        build_dir: Path | None = None,
+    ):
         """Initialize grammar manager.
 
         Args:
@@ -38,8 +42,8 @@ class TreeSitterGrammarManager(GrammarManager):
         self._config_file = self.grammars_dir / "grammars.json"
 
         # Create directories if they don't exist
-        self.grammars_dir.mkdir(exist_ok=True)
-        self.build_dir.mkdir(exist_ok=True)
+        self.grammars_dir.mkdir(parents=True, exist_ok=True)
+        self.build_dir.mkdir(parents=True, exist_ok=True)
 
         # Load existing grammar configuration
         self._load_config()
@@ -213,7 +217,10 @@ class TreeSitterGrammarManager(GrammarManager):
         """
         return self._grammars.get(name)
 
-    def list_grammars(self, status: GrammarStatus | None = None) -> list[GrammarInfo]:
+    def list_grammars(
+        self,
+        status: GrammarStatus | None = None,
+    ) -> list[GrammarInfo]:
         """List all managed grammars.
 
         Args:

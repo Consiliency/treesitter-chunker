@@ -1,6 +1,6 @@
 """Unit tests for grammar manager."""
 
-import shutil
+import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -13,9 +13,9 @@ class TestTreeSitterGrammarManager:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.temp_dir = Path("/tmp/test_grammars")
-        # Ensure parent directory exists
-        self.temp_dir.mkdir(parents=True, exist_ok=True)
+        # Use a proper temporary directory that gets cleaned up
+        self.temp_dir_obj = tempfile.TemporaryDirectory()
+        self.temp_dir = Path(self.temp_dir_obj.name)
         self.manager = TreeSitterGrammarManager(
             grammars_dir=self.temp_dir / "grammars",
             build_dir=self.temp_dir / "build",
@@ -23,8 +23,7 @@ class TestTreeSitterGrammarManager:
 
     def teardown_method(self):
         """Clean up test fixtures."""
-        if self.temp_dir.exists():
-            shutil.rmtree(self.temp_dir)
+        self.temp_dir_obj.cleanup()
 
     def test_add_grammar(self):
         """Test adding a new grammar."""
