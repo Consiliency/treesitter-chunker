@@ -3,6 +3,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable, Optional
 
 
 @dataclass
@@ -33,7 +34,7 @@ class GrammarDownloadContract(ABC):
         self,
         language: str,
         version: str | None = None,
-        progress_callback: callable | None = None,
+        progress_callback: Optional[Callable[[DownloadProgress], None]] = None,
     ) -> Path:
         """Download a grammar repository
 

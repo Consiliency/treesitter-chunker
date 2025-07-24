@@ -148,5 +148,9 @@ class ZeroConfigStub(ZeroConfigContract):
         """Stub that simulates preloading"""
         results = {}
         for lang in languages:
-            results[lang] = self.ensure_language(lang)
+            success = self.ensure_language(lang)
+            results[lang] = success
+            # If successful, also ensure it's in the installed list
+            if success:
+                self._installed_languages.add(lang)
         return results

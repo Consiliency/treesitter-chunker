@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: treesitter-chunker
-Version: 0.1.0
+Version: 1.0.0
 Summary: Semantic code chunker using Tree-sitter for intelligent code analysis
 Home-page: https://github.com/Consiliency/treesitter-chunker
 Author: Consiliency
@@ -213,6 +213,14 @@ python cli/main.py chunk example.py -l python --json > chunks.json
 python cli/main.py chunk src/ --config .chunkerrc
 ```
 
+### AST Visualization
+
+Generate Graphviz diagrams of the parse tree:
+
+```bash
+python scripts/visualize_ast.py example.py --lang python --out example.svg
+```
+
 ## 🎯 Features
 
 ### Plugin Architecture
@@ -384,6 +392,10 @@ python -m pytest
 
 # Run benchmarks
 python benchmarks/run_benchmarks.py
+
+# Enable pre-commit hooks
+uv pip install pre-commit
+pre-commit install
 ```
 
 ### Test Suite

@@ -16,7 +16,7 @@ from chunker.contracts.registry_contract import UniversalRegistryContract
 from chunker.contracts.registry_stub import UniversalRegistryStub
 
 
-def test_contract_compliance(contract_class, implementation_class):
+def verify_contract_compliance(contract_class, implementation_class):
     """Generic test to verify implementation matches contract exactly"""
 
     # Get all abstract methods from contract
@@ -70,7 +70,7 @@ def test_contract_compliance(contract_class, implementation_class):
 class TestDiscoveryCompliance:
     def test_discovery_stub_compliance(self):
         """Verify GrammarDiscoveryStub matches GrammarDiscoveryContract"""
-        test_contract_compliance(GrammarDiscoveryContract, GrammarDiscoveryStub)
+        verify_contract_compliance(GrammarDiscoveryContract, GrammarDiscoveryStub)
 
     def test_discovery_stub_instantiation(self):
         """Verify stub can be instantiated and used"""
@@ -89,7 +89,7 @@ class TestDiscoveryCompliance:
 class TestDownloadCompliance:
     def test_download_stub_compliance(self):
         """Verify GrammarDownloadStub matches GrammarDownloadContract"""
-        test_contract_compliance(GrammarDownloadContract, GrammarDownloadStub)
+        verify_contract_compliance(GrammarDownloadContract, GrammarDownloadStub)
 
     def test_download_stub_instantiation(self):
         """Verify stub can be instantiated and used"""
@@ -106,7 +106,7 @@ class TestDownloadCompliance:
 class TestRegistryCompliance:
     def test_registry_stub_compliance(self):
         """Verify UniversalRegistryStub matches UniversalRegistryContract"""
-        test_contract_compliance(UniversalRegistryContract, UniversalRegistryStub)
+        verify_contract_compliance(UniversalRegistryContract, UniversalRegistryStub)
 
     def test_registry_stub_instantiation(self):
         """Verify stub can be instantiated and used"""
@@ -123,7 +123,7 @@ class TestRegistryCompliance:
 class TestAutoCompliance:
     def test_auto_stub_compliance(self):
         """Verify ZeroConfigStub matches ZeroConfigContract"""
-        test_contract_compliance(ZeroConfigContract, ZeroConfigStub)
+        verify_contract_compliance(ZeroConfigContract, ZeroConfigStub)
 
     def test_auto_stub_instantiation(self):
         """Verify stub can be instantiated and used"""

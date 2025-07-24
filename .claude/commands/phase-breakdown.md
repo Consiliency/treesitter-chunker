@@ -86,39 +86,138 @@ List separable tasks with clear boundaries:
    - Deliverables: [what it provides]
 
 ### Contract Definitions
-Create concrete contract files in the main branch before parallel work:
+Create concrete contract files AND stub implementations in the main branch before parallel work:
 
-    ```
-    // Contract: [Component Name]
-    // Purpose: Define the boundary between components
-    // Team responsible: [Team Name]
+    ```python
+    # File: [project]/contracts/[component]_contract.py
+    # Purpose: Define the boundary between components
+    # Team responsible: [Team Name]
     
-    interface [ComponentContract] {
-      method: [methodName](parameters) -> returnType
-        preconditions: [what must be true before calling]
-        postconditions: [what will be true after calling]
-        implementation: throw "Not implemented - [Team] will implement"
-    }
+    from abc import ABC, abstractmethod
+    from typing import Any, Dict, List, Optional, Tuple, Union
+    
+    class [ComponentContract](ABC):
+        """Abstract contract defining component interface"""
+        
+        @abstractmethod
+        def method_name(self, param1: Type1, param2: Type2) -> ReturnType:
+            """Document expected behavior
+            
+            Args:
+                param1: Description of parameter 1
+                param2: Description of parameter 2
+                
+            Returns:
+                Description of return value
+                
+            Preconditions:
+                - What must be true before calling
+                
+            Postconditions:
+                - What will be true after calling
+            """
+            pass
+    
+    # File: [project]/contracts/[component]_stub.py
+    # Purpose: Concrete stub implementation for testing
+    
+    class [ComponentStub]([ComponentContract]):
+        """Stub implementation that can be instantiated and tested"""
+        
+        def method_name(self, param1: Type1, param2: Type2) -> ReturnType:
+            """Stub that returns valid default values"""
+            # Return appropriate default for the return type
+            # This ensures integration tests use correct types
+            if ReturnType is str:
+                return "Not implemented - [Team] will implement"
+            elif ReturnType is dict:
+                return {"status": "not_implemented", "team": "[Team]"}
+            elif ReturnType is bool:
+                return False
+            elif ReturnType is list:
+                return []
+            elif ReturnType is tuple:
+                return (False, {"message": "Not implemented"})
+            else:
+                raise NotImplementedError("[Team] will implement")
     ```
 
 ### Integration Test Specifications
-Define expected behavior across component boundaries:
+Define expected behavior using ACTUAL stub implementations (NOT mocks!):
 
-    ```
-    // Test: [Integration Scenario Name]
-    // Components involved: [List components]
-    // Expected behavior: [Description]
+    ```python
+    # File: tests/test_[phase]_integration.py
+    # Test: [Integration Scenario Name]
+    # Components involved: [List components]
+    # Expected behavior: [Description]
     
-    test "[scenario description]" {
-      // Arrange: Set up test data
-      [setup code]
-      
-      // Act: Execute cross-component operation
-      [execution code]
-      
-      // Assert: Verify expected behavior
-      assert [expected condition]
-    }
+    # CRITICAL: Import stub implementations, not Mock!
+    from [project].contracts.[component1]_stub import [Component1Stub]
+    from [project].contracts.[component2]_stub import [Component2Stub]
+    
+    def test_[scenario]_integration():
+        """Test integration between components using real stubs"""
+        # Arrange: Create real stub instances (NOT Mock()!)
+        component1 = [Component1Stub]()
+        component2 = [Component2Stub]()
+        
+        # Act: Execute cross-component operation
+        result = component1.method_name(param1, param2)
+        processed = component2.process(result)
+        
+        # Assert: Verify return types and structure
+        # These assertions will FAIL if stubs don't match contracts!
+        assert isinstance(result, expected_type), f"Expected {expected_type}, got {type(result)}"
+        assert isinstance(processed, expected_type2)
+        
+        # Verify the structure matches contract expectations
+        if isinstance(result, dict):
+            assert 'required_field' in result
+        
+        # This ensures implementations will work when integrated
+    ```
+
+### Contract Compliance Tests
+Create tests that verify implementations match contracts exactly:
+
+    ```python
+    # File: tests/test_contract_compliance.py
+    
+    import inspect
+    from [project].contracts.[component]_contract import [ComponentContract]
+    
+    def test_[component]_contract_compliance(implementation_class):
+        """Verify implementation matches contract exactly"""
+        contract = [ComponentContract]
+        
+        # Get all abstract methods from contract
+        abstract_methods = [
+            name for name, method in inspect.getmembers(contract)
+            if hasattr(method, '__isabstractmethod__') and method.__isabstractmethod__
+        ]
+        
+        # Check all abstract methods are implemented
+        for method_name in abstract_methods:
+            assert hasattr(implementation_class, method_name), \
+                f"Missing implementation for {method_name}"
+            
+            # Verify signatures match exactly
+            contract_method = getattr(contract, method_name)
+            impl_method = getattr(implementation_class, method_name)
+            
+            contract_sig = inspect.signature(contract_method)
+            impl_sig = inspect.signature(impl_method)
+            
+            # Remove 'self' parameter for comparison
+            contract_params = list(contract_sig.parameters.values())[1:]
+            impl_params = list(impl_sig.parameters.values())[1:]
+            
+            assert len(contract_params) == len(impl_params), \
+                f"Parameter count mismatch for {method_name}"
+            
+            # Check return type annotation
+            assert contract_sig.return_annotation == impl_sig.return_annotation, \
+                f"Return type mismatch for {method_name}"
     ```
 
 ### Permissions Setup
@@ -159,16 +258,22 @@ Create or update `.claude/settings.json` with these permissions:
     # Create contract files using the Write tool
     # Create integration test files using the Write tool
     
-    # Commit contracts to main branch
-    git add [contract files]
-    git commit -m "feat: define component contracts for parallel development"
+    # Commit contracts AND stub implementations to main branch
+    git add [project]/contracts/*_contract.py
+    git add [project]/contracts/*_stub.py
+    git commit -m "feat: define component contracts and stub implementations"
     
-    # Commit integration tests
-    git add [test files]  
-    git commit -m "test: add integration specifications for contracts"
+    # Commit integration tests (using stubs, not mocks!)
+    git add tests/test_*_integration.py
+    git add tests/test_contract_compliance.py
+    git commit -m "test: add integration tests with real stub implementations"
     
     # Push to main - this is REQUIRED before creating worktrees
     git push origin main
+    
+    # Verify stubs work with integration tests BEFORE creating worktrees
+    pytest tests/test_*_integration.py -v
+    # These should pass with stub implementations!
     ```
 
 **Step 1: Create Internal Work Trees**
@@ -234,6 +339,14 @@ Create or update `.claude/settings.json` with these permissions:
     - Reference other components only through their contracts
     - If integration tests fail, fix YOUR implementation, not the tests
     - Commit frequently with clear messages
+    
+    **Contract Compliance Requirements**:
+    - Your implementation MUST have the EXACT same method signatures as the contract
+    - Run contract compliance tests frequently: pytest tests/test_contract_compliance.py
+    - If compliance tests fail, fix YOUR implementation signature to match
+    - Do NOT modify return type annotations or parameter types
+    - Return actual values of the correct type, not Mock objects
+    - Ensure all return values match the contract's type hints exactly
 
     **Workflow**:
     1. Navigate to worktree: cd ./worktrees/task1-[name]
@@ -311,6 +424,11 @@ Create or update `.claude/settings.json` with these permissions:
 ### Merge and Integration Plan
 
 **Pre-merge Checklist**:
+   - [ ] Contract compliance tests pass (signatures match exactly)
+   - [ ] Integration tests pass with REAL implementations (no mocks)
+   - [ ] All stub methods have been replaced with real implementations
+   - [ ] Return types match contract specifications exactly
+   - [ ] No Mock objects in production code
    - [ ] All integration tests pass (these were written BEFORE implementation)
    - [ ] Contract methods are fully implemented (no "Not implemented" errors remain)
    - [ ] Unit tests added for implementation details
@@ -411,6 +529,35 @@ Create or update `.claude/settings.json` with these permissions:
 **Integration Strategy**: Merge in dependency order (foundational components first) with comprehensive testing after each integration.
 
 **Error Recovery**: If a Task agent encounters issues, the main Claude session can inspect the worktree and provide guidance.
+
+## Interface Testing Best Practices
+
+Based on real-world experience, follow these practices for successful parallel development:
+
+1. **Concrete Stubs Are Essential**
+   - Abstract interfaces alone will cause integration failures
+   - Always create instantiable stub implementations
+   - Stubs must return correct types, not Mock objects
+
+2. **Test With Real Objects**
+   - Integration tests using Mock() hide type mismatches
+   - Use actual stub implementations in all integration tests
+   - This ensures components will integrate properly
+
+3. **Contract Compliance Testing**
+   - Create separate tests to verify signatures match
+   - Run these before any integration attempts
+   - Fail fast when contracts are violated
+
+4. **Type Safety at Boundaries**
+   - Return types must match contract specifications exactly
+   - Use type hints and runtime validation
+   - Component boundaries are where most integration failures occur
+
+5. **Pre-Integration Verification**
+   - Run all integration tests with stubs before creating worktrees
+   - Ensure stubs pass all integration tests
+   - This validates your interface design early
 
 Remember: The goal is to enable truly parallel development with minimal merge conflicts through proper interface design and automated agent orchestration.
 

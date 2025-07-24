@@ -120,7 +120,7 @@ def get_platform_tag():
 # Setup configuration
 setup(
     name="treesitter-chunker",
-    version="0.1.0",
+    version="1.0.0",
     author="Consiliency",
     author_email="dev@consiliency.com",
     description="Semantic code chunker using Tree-sitter for intelligent code analysis",
