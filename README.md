@@ -136,6 +136,14 @@ python cli/main.py chunk example.py -l python --json > chunks.json
 python cli/main.py chunk src/ --config .chunkerrc
 ```
 
+### AST Visualization
+
+Generate Graphviz diagrams of the parse tree:
+
+```bash
+python scripts/visualize_ast.py example.py --lang python --out example.svg
+```
+
 ## 🎯 Features
 
 ### Plugin Architecture
@@ -307,6 +315,10 @@ python -m pytest
 
 # Run benchmarks
 python benchmarks/run_benchmarks.py
+
+# Enable pre-commit hooks
+uv pip install pre-commit
+pre-commit install
 ```
 
 ### Test Suite
