@@ -1,5 +1,5 @@
 """Detection utilities for fallback chunking."""
 
-from .file_type import FileTypeDetector, FileType, EncodingDetector
+from .file_type import EncodingDetector, FileType, FileTypeDetector
 
-__all__ = ['FileTypeDetector', 'FileType', 'EncodingDetector']
+__all__ = ["EncodingDetector", "FileType", "FileTypeDetector"]

@@ -9,15 +9,15 @@ This module provides performance optimizations including:
 """
 
 from .cache.manager import CacheManager as CacheManagerImpl
+from .optimization.batch import BatchProcessor as BatchProcessorImpl
 from .optimization.incremental import IncrementalParser as IncrementalParserImpl
 from .optimization.memory_pool import MemoryPool as MemoryPoolImpl
 from .optimization.monitor import PerformanceMonitor as PerformanceMonitorImpl
-from .optimization.batch import BatchProcessor as BatchProcessorImpl
 
 __all__ = [
-    'CacheManagerImpl',
-    'IncrementalParserImpl', 
-    'MemoryPoolImpl',
-    'PerformanceMonitorImpl',
-    'BatchProcessorImpl'
+    "BatchProcessorImpl",
+    "CacheManagerImpl",
+    "IncrementalParserImpl",
+    "MemoryPoolImpl",
+    "PerformanceMonitorImpl",
 ]

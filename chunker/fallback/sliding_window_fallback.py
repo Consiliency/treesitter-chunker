@@ -5,32 +5,28 @@ processors (sliding window, markdown, log, config) with automatic processor
 selection based on file type and content.
 """
 
+import importlib
+import inspect
 import logging
 import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional, Type, Any, Set, Callable, Union
-import importlib
-import inspect
+from typing import Any
 
-from ..interfaces.fallback import (
-    FallbackChunker as IFallbackChunker,
-    FallbackReason,
-    ChunkingMethod,
-    FallbackConfig,
-)
-from ..types import CodeChunk
 from ..chunker_config import ChunkerConfig
+from ..interfaces.fallback import FallbackConfig
+from ..types import CodeChunk
 from .base import FallbackChunker
-from .detection.file_type import FileTypeDetector, FileType
+from .detection.file_type import FileType, FileTypeDetector
 
 logger = logging.getLogger(__name__)
 
 
 class ProcessorType(Enum):
     """Types of text processors available."""
+
     SLIDING_WINDOW = "sliding_window"
     MARKDOWN = "markdown"
     LOG = "log"
@@ -42,146 +38,145 @@ class ProcessorType(Enum):
 @dataclass
 class ProcessorInfo:
     """Information about a registered processor."""
+
     name: str
     processor_type: ProcessorType
-    processor_class: Type['TextProcessor']
-    supported_file_types: Set[FileType]
-    supported_extensions: Set[str]
+    processor_class: type["TextProcessor"]
+    supported_file_types: set[FileType]
+    supported_extensions: set[str]
     priority: int = 50  # Higher priority = preferred processor
     enabled: bool = True
-    config: Dict[str, Any] = field(default_factory=dict)
+    config: dict[str, Any] = field(default_factory=dict)
 
 
 class TextProcessor(ABC):
     """Base class for all text processors."""
-    
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+
+    def __init__(self, config: dict[str, Any] | None = None):
         """Initialize processor with configuration."""
         self.config = config or {}
-    
+
     @abstractmethod
     def can_process(self, content: str, file_path: str) -> bool:
         """Check if this processor can handle the content.
-        
+
         Args:
             content: File content
             file_path: Path to the file
-            
+
         Returns:
             True if processor can handle this content
         """
-        pass
-    
+
     @abstractmethod
-    def process(self, content: str, file_path: str) -> List[CodeChunk]:
+    def process(self, content: str, file_path: str) -> list[CodeChunk]:
         """Process content into chunks.
-        
+
         Args:
             content: File content
             file_path: Path to the file
-            
+
         Returns:
             List of code chunks
         """
-        pass
-    
-    def get_metadata(self) -> Dict[str, Any]:
+
+    def get_metadata(self) -> dict[str, Any]:
         """Get processor metadata.
-        
+
         Returns:
             Dictionary with processor information
         """
         return {
-            'processor_type': self.__class__.__name__,
-            'config': self.config
+            "processor_type": self.__class__.__name__,
+            "config": self.config,
         }
 
 
 class ProcessorRegistry:
     """Registry for managing text processors."""
-    
+
     def __init__(self):
         """Initialize the processor registry."""
-        self._processors: Dict[str, ProcessorInfo] = {}
-        self._file_type_map: Dict[FileType, List[str]] = {}
-        self._extension_map: Dict[str, List[str]] = {}
-        self._processor_cache: Dict[str, TextProcessor] = {}
-    
+        self._processors: dict[str, ProcessorInfo] = {}
+        self._file_type_map: dict[FileType, list[str]] = {}
+        self._extension_map: dict[str, list[str]] = {}
+        self._processor_cache: dict[str, TextProcessor] = {}
+
     def register(self, processor_info: ProcessorInfo) -> None:
         """Register a new processor.
-        
+
         Args:
             processor_info: Information about the processor
         """
         name = processor_info.name
-        
+
         if name in self._processors:
             logger.warning(f"Overwriting existing processor: {name}")
-        
+
         self._processors[name] = processor_info
-        
+
         # Update file type mapping
         for file_type in processor_info.supported_file_types:
             if file_type not in self._file_type_map:
                 self._file_type_map[file_type] = []
             self._file_type_map[file_type].append(name)
-        
+
         # Update extension mapping
         for ext in processor_info.supported_extensions:
             if ext not in self._extension_map:
                 self._extension_map[ext] = []
             self._extension_map[ext].append(name)
-        
+
         logger.info(f"Registered processor: {name}")
-    
+
     def unregister(self, name: str) -> None:
         """Unregister a processor.
-        
+
         Args:
             name: Processor name
         """
         if name not in self._processors:
             return
-        
+
         processor_info = self._processors[name]
-        
+
         # Remove from mappings
         for file_type in processor_info.supported_file_types:
             if file_type in self._file_type_map:
                 self._file_type_map[file_type].remove(name)
-        
+
         for ext in processor_info.supported_extensions:
             if ext in self._extension_map:
                 self._extension_map[ext].remove(name)
-        
+
         # Remove from cache
         if name in self._processor_cache:
             del self._processor_cache[name]
-        
+
         del self._processors[name]
         logger.info(f"Unregistered processor: {name}")
-    
-    def get_processor(self, name: str) -> Optional[TextProcessor]:
+
+    def get_processor(self, name: str) -> TextProcessor | None:
         """Get a processor instance by name.
-        
+
         Args:
             name: Processor name
-            
+
         Returns:
             Processor instance or None
         """
         if name not in self._processors:
             return None
-        
+
         # Check cache first
         if name in self._processor_cache:
             return self._processor_cache[name]
-        
+
         # Create new instance
         processor_info = self._processors[name]
         if not processor_info.enabled:
             return None
-        
+
         try:
             processor = processor_info.processor_class(processor_info.config)
             self._processor_cache[name] = processor
@@ -189,43 +184,45 @@ class ProcessorRegistry:
         except Exception as e:
             logger.error(f"Failed to create processor {name}: {e}")
             return None
-    
-    def find_processors(self, 
-                       file_path: str,
-                       file_type: Optional[FileType] = None) -> List[str]:
+
+    def find_processors(
+        self,
+        file_path: str,
+        file_type: FileType | None = None,
+    ) -> list[str]:
         """Find suitable processors for a file.
-        
+
         Args:
             file_path: Path to the file
             file_type: Optional file type hint
-            
+
         Returns:
             List of processor names sorted by priority
         """
         candidates = set()
-        
+
         # Check by file type
         if file_type and file_type in self._file_type_map:
             candidates.update(self._file_type_map[file_type])
-        
+
         # Check by extension
         ext = os.path.splitext(file_path)[1].lower()
         if ext in self._extension_map:
             candidates.update(self._extension_map[ext])
-        
+
         # Filter enabled processors and sort by priority
         enabled_processors = [
             (name, self._processors[name].priority)
             for name in candidates
             if self._processors[name].enabled
         ]
-        
+
         enabled_processors.sort(key=lambda x: x[1], reverse=True)
         return [name for name, _ in enabled_processors]
-    
-    def list_processors(self) -> List[ProcessorInfo]:
+
+    def list_processors(self) -> list[ProcessorInfo]:
         """List all registered processors.
-        
+
         Returns:
             List of processor information
         """
@@ -234,48 +231,50 @@ class ProcessorRegistry:
 
 class ProcessorChain:
     """Chain multiple processors for complex file handling."""
-    
-    def __init__(self, processors: List[TextProcessor]):
+
+    def __init__(self, processors: list[TextProcessor]):
         """Initialize processor chain.
-        
+
         Args:
             processors: List of processors to chain
         """
         self.processors = processors
-    
-    def process(self, content: str, file_path: str) -> List[CodeChunk]:
+
+    def process(self, content: str, file_path: str) -> list[CodeChunk]:
         """Process content through the chain.
-        
+
         Args:
             content: File content
             file_path: Path to the file
-            
+
         Returns:
             Combined list of chunks from all processors
         """
         all_chunks = []
         remaining_content = content
-        
+
         for processor in self.processors:
             if processor.can_process(remaining_content, file_path):
                 chunks = processor.process(remaining_content, file_path)
                 all_chunks.extend(chunks)
-                
+
                 # For hybrid mode, we might want to process only
                 # unprocessed parts in subsequent processors
                 # This is a simple implementation that processes all
-        
+
         return all_chunks
 
 
 class SlidingWindowFallback(FallbackChunker):
     """Enhanced fallback system with sliding window and processor integration."""
-    
-    def __init__(self, 
-                 config: Optional[FallbackConfig] = None,
-                 chunker_config: Optional[ChunkerConfig] = None):
+
+    def __init__(
+        self,
+        config: FallbackConfig | None = None,
+        chunker_config: ChunkerConfig | None = None,
+    ):
         """Initialize sliding window fallback.
-        
+
         Args:
             config: Fallback configuration
             chunker_config: Overall chunker configuration
@@ -284,182 +283,223 @@ class SlidingWindowFallback(FallbackChunker):
         self.chunker_config = chunker_config
         self.registry = ProcessorRegistry()
         self.detector = FileTypeDetector()
-        
+
         # Load built-in processors
         self._load_builtin_processors()
-        
+
         # Load custom processors if configured
         if chunker_config:
             self._load_custom_processors()
-    
+
     def _load_builtin_processors(self) -> None:
         """Load built-in processors dynamically."""
         # Try to import processors from Phase 11 components
         try:
             from ..processors.markdown import MarkdownProcessor
+
             processor_info = ProcessorInfo(
-                name='markdown_processor',
+                name="markdown_processor",
                 processor_type=ProcessorType.MARKDOWN,
-                processor_class=self._create_processor_adapter_for_specialized(MarkdownProcessor),
+                processor_class=self._create_processor_adapter_for_specialized(
+                    MarkdownProcessor,
+                ),
                 supported_file_types={FileType.MARKDOWN},
-                supported_extensions={'.md', '.markdown'},
-                priority=50
+                supported_extensions={".md", ".markdown"},
+                priority=50,
             )
             self.registry.register(processor_info)
             logger.info("Registered MarkdownProcessor")
         except ImportError as e:
             logger.debug(f"Could not import MarkdownProcessor: {e}")
-            
+
         try:
             from ..processors.logs import LogProcessor
+
             processor_info = ProcessorInfo(
-                name='log_processor',
+                name="log_processor",
                 processor_type=ProcessorType.LOG,
-                processor_class=self._create_processor_adapter_for_specialized(LogProcessor),
+                processor_class=self._create_processor_adapter_for_specialized(
+                    LogProcessor,
+                ),
                 supported_file_types={FileType.LOG},
-                supported_extensions={'.log'},
-                priority=50
+                supported_extensions={".log"},
+                priority=50,
             )
             self.registry.register(processor_info)
             logger.info("Registered LogProcessor")
         except ImportError as e:
             logger.debug(f"Could not import LogProcessor: {e}")
-            
+
         try:
             from ..processors.config import ConfigProcessor
+
             processor_info = ProcessorInfo(
-                name='config_processor',
+                name="config_processor",
                 processor_type=ProcessorType.CONFIG,
-                processor_class=self._create_processor_adapter_for_specialized(ConfigProcessor),
+                processor_class=self._create_processor_adapter_for_specialized(
+                    ConfigProcessor,
+                ),
                 supported_file_types={FileType.CONFIG, FileType.YAML, FileType.JSON},
-                supported_extensions={'.ini', '.cfg', '.conf', '.yaml', '.yml', '.json', '.toml'},
-                priority=50
+                supported_extensions={
+                    ".ini",
+                    ".cfg",
+                    ".conf",
+                    ".yaml",
+                    ".yml",
+                    ".json",
+                    ".toml",
+                },
+                priority=50,
             )
             self.registry.register(processor_info)
             logger.info("Registered ConfigProcessor")
         except ImportError as e:
             logger.debug(f"Could not import ConfigProcessor: {e}")
-        
+
         # Try to import processors from parallel worktrees
         processor_modules = [
-            ('sliding_window_processor', ProcessorType.SLIDING_WINDOW, 
-             {FileType.TEXT}, {'.txt', '.text'}),
-            ('markdown_processor', ProcessorType.MARKDOWN,
-             {FileType.MARKDOWN}, {'.md', '.markdown'}),
-            ('log_processor', ProcessorType.LOG,
-             {FileType.LOG}, {'.log'}),
-            ('config_processor', ProcessorType.CONFIG,
-             {FileType.CONFIG, FileType.YAML, FileType.JSON},
-             {'.ini', '.cfg', '.conf', '.yaml', '.yml', '.json', '.toml'}),
+            (
+                "sliding_window_processor",
+                ProcessorType.SLIDING_WINDOW,
+                {FileType.TEXT},
+                {".txt", ".text"},
+            ),
+            (
+                "markdown_processor",
+                ProcessorType.MARKDOWN,
+                {FileType.MARKDOWN},
+                {".md", ".markdown"},
+            ),
+            ("log_processor", ProcessorType.LOG, {FileType.LOG}, {".log"}),
+            (
+                "config_processor",
+                ProcessorType.CONFIG,
+                {FileType.CONFIG, FileType.YAML, FileType.JSON},
+                {".ini", ".cfg", ".conf", ".yaml", ".yml", ".json", ".toml"},
+            ),
         ]
-        
+
         for module_name, proc_type, file_types, extensions in processor_modules:
             try:
                 # Try to import from sliding window module
                 module = importlib.import_module(
-                    f'chunker.sliding_window.{module_name}'
+                    f"chunker.sliding_window.{module_name}",
                 )
-                
+
                 # Find processor class
                 for name, obj in inspect.getmembers(module):
-                    if (inspect.isclass(obj) and 
-                        issubclass(obj, TextProcessor) and 
-                        obj != TextProcessor):
-                        
+                    if (
+                        inspect.isclass(obj)
+                        and issubclass(obj, TextProcessor)
+                        and obj != TextProcessor
+                    ):
+
                         processor_info = ProcessorInfo(
-                            name=module_name + '_sliding',
+                            name=module_name + "_sliding",
                             processor_type=proc_type,
                             processor_class=obj,
                             supported_file_types=file_types,
                             supported_extensions=extensions,
-                            priority=40  # Lower priority than Phase 11 processors
+                            priority=40,  # Lower priority than Phase 11 processors
                         )
                         self.registry.register(processor_info)
                         break
-                        
+
             except ImportError as e:
                 logger.debug(f"Could not import {module_name}: {e}")
                 # Fall back to basic processors from strategies
-                self._load_strategy_processor(module_name, proc_type, 
-                                            file_types, extensions)
-    
-    def _load_strategy_processor(self,
-                                name: str,
-                                proc_type: ProcessorType,
-                                file_types: Set[FileType],
-                                extensions: Set[str]) -> None:
+                self._load_strategy_processor(
+                    module_name,
+                    proc_type,
+                    file_types,
+                    extensions,
+                )
+
+    def _load_strategy_processor(
+        self,
+        name: str,
+        proc_type: ProcessorType,
+        file_types: set[FileType],
+        extensions: set[str],
+    ) -> None:
         """Load processor from strategies directory."""
         try:
             # Map processor names to strategy modules
             strategy_map = {
-                'markdown_processor': 'markdown',
-                'log_processor': 'log_chunker',
+                "markdown_processor": "markdown",
+                "log_processor": "log_chunker",
             }
-            
+
             if name in strategy_map:
                 module = importlib.import_module(
-                    f'chunker.fallback.strategies.{strategy_map[name]}'
+                    f"chunker.fallback.strategies.{strategy_map[name]}",
                 )
-                
+
                 # Create adapter class
                 for class_name, obj in inspect.getmembers(module):
-                    if (inspect.isclass(obj) and 
-                        issubclass(obj, FallbackChunker) and
-                        obj != FallbackChunker):
-                        
+                    if (
+                        inspect.isclass(obj)
+                        and issubclass(obj, FallbackChunker)
+                        and obj != FallbackChunker
+                    ):
+
                         # Create processor adapter
                         adapter_class = self._create_processor_adapter(obj)
-                        
+
                         processor_info = ProcessorInfo(
                             name=name,
                             processor_type=proc_type,
                             processor_class=adapter_class,
                             supported_file_types=file_types,
                             supported_extensions=extensions,
-                            priority=40  # Lower priority for adapters
+                            priority=40,  # Lower priority for adapters
                         )
                         self.registry.register(processor_info)
                         break
-                        
+
         except ImportError as e:
             logger.debug(f"Could not load strategy processor {name}: {e}")
-    
-    def _create_processor_adapter(self, 
-                                 fallback_class: Type[FallbackChunker]) -> Type[TextProcessor]:
+
+    def _create_processor_adapter(
+        self,
+        fallback_class: type[FallbackChunker],
+    ) -> type[TextProcessor]:
         """Create a TextProcessor adapter for a FallbackChunker."""
-        
+
         class ProcessorAdapter(TextProcessor):
-            def __init__(self, config: Optional[Dict[str, Any]] = None):
+            def __init__(self, config: dict[str, Any] | None = None):
                 super().__init__(config)
                 self.fallback = fallback_class()
-            
+
             def can_process(self, content: str, file_path: str) -> bool:
                 return self.fallback.can_handle(file_path, "")
-            
-            def process(self, content: str, file_path: str) -> List[CodeChunk]:
+
+            def process(self, content: str, file_path: str) -> list[CodeChunk]:
                 return self.fallback.chunk_text(content, file_path)
-        
+
         return ProcessorAdapter
-    
-    def _create_processor_adapter_for_specialized(self, 
-                                                 processor_class: Type) -> Type[TextProcessor]:
+
+    def _create_processor_adapter_for_specialized(
+        self,
+        processor_class: type,
+    ) -> type[TextProcessor]:
         """Create a TextProcessor adapter for a SpecializedProcessor."""
-        
+
         class SpecializedProcessorAdapter(TextProcessor):
-            def __init__(self, config: Optional[Dict[str, Any]] = None):
+            def __init__(self, config: dict[str, Any] | None = None):
                 super().__init__(config)
                 self.processor = processor_class(config)
-            
+
             def can_process(self, content: str, file_path: str) -> bool:
                 return self.processor.can_handle(file_path, content)
-            
-            def process(self, content: str, file_path: str) -> List[CodeChunk]:
+
+            def process(self, content: str, file_path: str) -> list[CodeChunk]:
                 # Call the process method and convert TextChunks to CodeChunks
                 chunks = self.processor.process(content, file_path)
                 code_chunks = []
-                
+
                 for chunk in chunks:
-                    if hasattr(chunk, 'content'):  # TextChunk
+                    if hasattr(chunk, "content"):  # TextChunk
                         code_chunk = CodeChunk(
                             language=chunk.chunk_type,
                             file_path=file_path,
@@ -468,172 +508,182 @@ class SlidingWindowFallback(FallbackChunker):
                             end_line=chunk.end_line,
                             byte_start=chunk.start_byte,
                             byte_end=chunk.end_byte,
-                            parent_context=chunk.metadata.get('parent_context', ''),
+                            parent_context=chunk.metadata.get("parent_context", ""),
                             content=chunk.content,
-                            metadata=chunk.metadata
+                            metadata=chunk.metadata,
                         )
                         code_chunks.append(code_chunk)
                     else:
                         # Already a CodeChunk
                         code_chunks.append(chunk)
-                
+
                 return code_chunks
-        
+
         return SpecializedProcessorAdapter
-    
+
     def _load_custom_processors(self) -> None:
         """Load custom processors from configuration."""
         if not self.chunker_config:
             return
-        
+
         # Get processor configuration
-        processor_config = self.chunker_config.data.get('processors', {})
-        
+        processor_config = self.chunker_config.data.get("processors", {})
+
         # Load from plugin directories
         for plugin_dir in self.chunker_config.plugin_dirs:
             self._scan_plugin_directory(plugin_dir)
-        
+
         # Apply configuration overrides
         for proc_name, config in processor_config.items():
             if proc_name in self.registry._processors:
                 proc_info = self.registry._processors[proc_name]
-                
+
                 # Update configuration
-                if 'enabled' in config:
-                    proc_info.enabled = config['enabled']
-                if 'priority' in config:
-                    proc_info.priority = config['priority']
-                if 'config' in config:
-                    proc_info.config.update(config['config'])
-    
+                if "enabled" in config:
+                    proc_info.enabled = config["enabled"]
+                if "priority" in config:
+                    proc_info.priority = config["priority"]
+                if "config" in config:
+                    proc_info.config.update(config["config"])
+
     def _scan_plugin_directory(self, directory: Path) -> None:
         """Scan directory for processor plugins."""
         if not directory.exists():
             return
-        
+
         for file_path in directory.glob("*_processor.py"):
             try:
                 # Load module dynamically
                 spec = importlib.util.spec_from_file_location(
-                    file_path.stem, file_path
+                    file_path.stem,
+                    file_path,
                 )
                 module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(module)
-                
+
                 # Find processor classes
                 for name, obj in inspect.getmembers(module):
-                    if (inspect.isclass(obj) and 
-                        issubclass(obj, TextProcessor) and
-                        obj != TextProcessor and
-                        hasattr(obj, 'processor_info')):
-                        
+                    if (
+                        inspect.isclass(obj)
+                        and issubclass(obj, TextProcessor)
+                        and obj != TextProcessor
+                        and hasattr(obj, "processor_info")
+                    ):
+
                         # Register processor
                         info = obj.processor_info()
                         self.registry.register(info)
-                        
+
             except Exception as e:
                 logger.error(f"Failed to load processor from {file_path}: {e}")
-    
-    def chunk_text(self, 
-                   content: str, 
-                   file_path: str, 
-                   language: Optional[str] = None) -> List[CodeChunk]:
+
+    def chunk_text(
+        self,
+        content: str,
+        file_path: str,
+        language: str | None = None,
+    ) -> list[CodeChunk]:
         """Chunk content using appropriate processor.
-        
+
         Args:
             content: Content to chunk
             file_path: Path to the file
             language: Language hint (if available)
-            
+
         Returns:
             List of chunks
         """
         # Detect file type
         file_type = self.detector.detect_file_type(file_path)
-        
+
         # Find suitable processors
         processor_names = self.registry.find_processors(file_path, file_type)
-        
+
         # Try processors in order of priority
         for proc_name in processor_names:
             processor = self.registry.get_processor(proc_name)
             if processor and processor.can_process(content, file_path):
                 logger.info(f"Using processor '{proc_name}' for {file_path}")
-                
+
                 try:
                     chunks = processor.process(content, file_path)
-                    
+
                     # Add processor metadata to chunks
                     for chunk in chunks:
-                        if not hasattr(chunk, 'metadata'):
+                        if not hasattr(chunk, "metadata"):
                             chunk.metadata = {}
-                        chunk.metadata['processor'] = proc_name
-                        chunk.metadata['processor_type'] = \
-                            self.registry._processors[proc_name].processor_type.value
-                    
+                        chunk.metadata["processor"] = proc_name
+                        chunk.metadata["processor_type"] = self.registry._processors[
+                            proc_name
+                        ].processor_type.value
+
                     return chunks
-                    
+
                 except Exception as e:
                     logger.error(f"Processor '{proc_name}' failed: {e}")
                     continue
-        
+
         # Fall back to base implementation
-        logger.warning(f"No suitable processor found for {file_path}, "
-                      "using line-based chunking")
+        logger.warning(
+            f"No suitable processor found for {file_path}, "
+            "using line-based chunking",
+        )
         return super().chunk_text(content, file_path, language)
-    
-    def get_processor_info(self, file_path: str) -> Dict[str, Any]:
+
+    def get_processor_info(self, file_path: str) -> dict[str, Any]:
         """Get information about which processor would be used.
-        
+
         Args:
             file_path: Path to the file
-            
+
         Returns:
             Dictionary with processor selection information
         """
         file_type = self.detector.detect_file_type(file_path)
         processor_names = self.registry.find_processors(file_path, file_type)
-        
+
         return {
-            'file_type': file_type.value,
-            'available_processors': processor_names,
-            'processors': [
+            "file_type": file_type.value,
+            "available_processors": processor_names,
+            "processors": [
                 {
-                    'name': name,
-                    'type': self.registry._processors[name].processor_type.value,
-                    'priority': self.registry._processors[name].priority,
-                    'enabled': self.registry._processors[name].enabled,
+                    "name": name,
+                    "type": self.registry._processors[name].processor_type.value,
+                    "priority": self.registry._processors[name].priority,
+                    "enabled": self.registry._processors[name].enabled,
                 }
                 for name in processor_names
-            ]
+            ],
         }
-    
+
     def enable_processor(self, name: str) -> None:
         """Enable a processor.
-        
+
         Args:
             name: Processor name
         """
         if name in self.registry._processors:
             self.registry._processors[name].enabled = True
-    
+
     def disable_processor(self, name: str) -> None:
         """Disable a processor.
-        
+
         Args:
             name: Processor name
         """
         if name in self.registry._processors:
             self.registry._processors[name].enabled = False
-    
-    def register_custom_processor(self,
-                                 name: str,
-                                 processor_class: Type[TextProcessor],
-                                 file_types: Set[FileType],
-                                 extensions: Set[str],
-                                 priority: int = 50) -> None:
+
+    def register_custom_processor(
+        self,
+        name: str,
+        processor_class: type[TextProcessor],
+        file_types: set[FileType],
+        extensions: set[str],
+        priority: int = 50,
+    ) -> None:
         """Register a custom processor at runtime.
-        
+
         Args:
             name: Processor name
             processor_class: Processor class
@@ -647,58 +697,60 @@ class SlidingWindowFallback(FallbackChunker):
             processor_class=processor_class,
             supported_file_types=file_types,
             supported_extensions=extensions,
-            priority=priority
+            priority=priority,
         )
         self.registry.register(processor_info)
-    
-    def create_processor_chain(self,
-                              processor_names: List[str]) -> Optional[ProcessorChain]:
+
+    def create_processor_chain(
+        self,
+        processor_names: list[str],
+    ) -> ProcessorChain | None:
         """Create a processor chain for hybrid processing.
-        
+
         Args:
             processor_names: List of processor names to chain
-            
+
         Returns:
             ProcessorChain instance or None if any processor not found
         """
         processors = []
-        
+
         for name in processor_names:
             processor = self.registry.get_processor(name)
             if not processor:
                 logger.error(f"Processor '{name}' not found for chain")
                 return None
             processors.append(processor)
-        
+
         return ProcessorChain(processors)
-    
+
     def can_chunk(self, file_path: str) -> bool:
         """Check if this fallback can chunk the given file.
-        
+
         This is an alias for compatibility with tests and other interfaces.
-        
+
         Args:
             file_path: Path to the file
-            
+
         Returns:
             True (sliding window fallback can always chunk text files)
         """
         # The sliding window fallback can always chunk any text file
         return True
-    
-    def chunk_file(self, file_path: str) -> List[CodeChunk]:
+
+    def chunk_file(self, file_path: str) -> list[CodeChunk]:
         """Chunk a file by reading its content.
-        
+
         Args:
             file_path: Path to the file to chunk
-            
+
         Returns:
             List of code chunks
         """
         # Read the file content
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, encoding="utf-8") as f:
             content = f.read()
-        
+
         # Use chunk_text method to process the content
         return self.chunk_text(content, file_path)
 
@@ -706,10 +758,10 @@ class SlidingWindowFallback(FallbackChunker):
 # Generic sliding window processor as fallback
 class GenericSlidingWindowProcessor(TextProcessor):
     """Generic sliding window processor for any text file."""
-    
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+
+    def __init__(self, config: dict[str, Any] | None = None):
         """Initialize with configuration.
-        
+
         Config options:
             window_size: Size of sliding window in characters
             overlap: Overlap between windows in characters
@@ -717,20 +769,20 @@ class GenericSlidingWindowProcessor(TextProcessor):
             preserve_words: Try to preserve word boundaries
         """
         super().__init__(config)
-        self.window_size = self.config.get('window_size', 1000)
-        self.overlap = self.config.get('overlap', 100)
-        self.min_window_size = self.config.get('min_window_size', 100)
-        self.preserve_words = self.config.get('preserve_words', True)
-    
+        self.window_size = self.config.get("window_size", 1000)
+        self.overlap = self.config.get("overlap", 100)
+        self.min_window_size = self.config.get("min_window_size", 100)
+        self.preserve_words = self.config.get("preserve_words", True)
+
     def can_process(self, content: str, file_path: str) -> bool:
         """Can process any text content."""
         return True
-    
-    def process(self, content: str, file_path: str) -> List[CodeChunk]:
+
+    def process(self, content: str, file_path: str) -> list[CodeChunk]:
         """Process content using sliding window."""
         chunks = []
         content_length = len(content)
-        
+
         if content_length <= self.window_size:
             # Content fits in single window
             chunk = CodeChunk(
@@ -738,23 +790,23 @@ class GenericSlidingWindowProcessor(TextProcessor):
                 file_path=file_path,
                 node_type="sliding_window",
                 start_line=1,
-                end_line=content.count('\n') + 1,
+                end_line=content.count("\n") + 1,
                 byte_start=0,
                 byte_end=content_length,
                 parent_context="full_content",
-                content=content
+                content=content,
             )
             return [chunk]
-        
+
         # Sliding window processing
         position = 0
         chunk_index = 0
-        
+
         while position < content_length:
             # Calculate window boundaries
             window_start = position
             window_end = min(position + self.window_size, content_length)
-            
+
             # Adjust for word boundaries if requested
             if self.preserve_words and window_end < content_length:
                 # Look for nearest word boundary
@@ -762,15 +814,15 @@ class GenericSlidingWindowProcessor(TextProcessor):
                     if content[i].isspace():
                         window_end = i
                         break
-            
+
             # Extract window content
             window_content = content[window_start:window_end]
-            
+
             # Calculate line numbers
-            lines_before = content[:window_start].count('\n')
+            lines_before = content[:window_start].count("\n")
             start_line = lines_before + 1
-            end_line = start_line + window_content.count('\n')
-            
+            end_line = start_line + window_content.count("\n")
+
             # Create chunk
             chunk = CodeChunk(
                 language="text",
@@ -781,18 +833,18 @@ class GenericSlidingWindowProcessor(TextProcessor):
                 byte_start=window_start,
                 byte_end=window_end,
                 parent_context=f"window_{chunk_index}",
-                content=window_content
+                content=window_content,
             )
             chunks.append(chunk)
-            
+
             # Move to next position
             position = window_end - self.overlap
             chunk_index += 1
-            
+
             # Ensure we make progress
             if position <= window_start:
                 position = window_start + 1
-        
+
         return chunks
 
 
@@ -805,5 +857,5 @@ def _create_generic_processor_info() -> ProcessorInfo:
         processor_class=GenericSlidingWindowProcessor,
         supported_file_types=set(FileType),  # Support all file types
         supported_extensions=set(),  # No specific extensions
-        priority=10  # Low priority - use as last resort
+        priority=10,  # Low priority - use as last resort
     )

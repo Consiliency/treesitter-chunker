@@ -1,41 +1,45 @@
 """Cache manager implementation."""
 
-from typing import Any, Dict, Optional
+import hashlib
+import logging
+from typing import Any
+
 from ...interfaces.performance import CacheManager as CacheManagerInterface
 from .multi_level import MultiLevelCache
-import hashlib
-import pickle
-import logging
 
 logger = logging.getLogger(__name__)
 
 
 class CacheManager(CacheManagerInterface):
     """Implementation of CacheManager interface with multi-level caching."""
-    
-    def __init__(self,
-                 ast_size: int = 100,
-                 chunk_size: int = 1000,
-                 query_size: int = 500,
-                 metadata_size: int = 500):
+
+    def __init__(
+        self,
+        ast_size: int = 100,
+        chunk_size: int = 1000,
+        query_size: int = 500,
+        metadata_size: int = 500,
+    ):
         """Initialize cache manager.
-        
+
         Args:
             ast_size: Max entries for AST cache
-            chunk_size: Max entries for chunk cache  
+            chunk_size: Max entries for chunk cache
             query_size: Max entries for query cache
             metadata_size: Max entries for metadata cache
         """
         self._cache = MultiLevelCache(ast_size, chunk_size, query_size, metadata_size)
-        logger.info(f"Initialized CacheManager with sizes - AST: {ast_size}, "
-                   f"Chunk: {chunk_size}, Query: {query_size}, Metadata: {metadata_size}")
-    
-    def get(self, key: str) -> Optional[Any]:
+        logger.info(
+            f"Initialized CacheManager with sizes - AST: {ast_size}, "
+            f"Chunk: {chunk_size}, Query: {query_size}, Metadata: {metadata_size}",
+        )
+
+    def get(self, key: str) -> Any | None:
         """Get a value from cache.
-        
+
         Args:
             key: Cache key
-            
+
         Returns:
             Cached value or None if not found/expired
         """
@@ -45,10 +49,10 @@ class CacheManager(CacheManagerInterface):
         else:
             logger.debug(f"Cache miss for key: {key}")
         return value
-    
-    def put(self, key: str, value: Any, ttl_seconds: Optional[int] = None) -> None:
+
+    def put(self, key: str, value: Any, ttl_seconds: int | None = None) -> None:
         """Put a value in cache.
-        
+
         Args:
             key: Cache key
             value: Value to cache
@@ -56,13 +60,13 @@ class CacheManager(CacheManagerInterface):
         """
         self._cache.put(key, value, ttl_seconds)
         logger.debug(f"Cached value for key: {key} (TTL: {ttl_seconds}s)")
-    
+
     def invalidate(self, key: str) -> bool:
         """Invalidate a cache entry.
-        
+
         Args:
             key: Cache key to invalidate
-            
+
         Returns:
             True if entry was found and invalidated
         """
@@ -70,45 +74,47 @@ class CacheManager(CacheManagerInterface):
         if result:
             logger.debug(f"Invalidated cache key: {key}")
         return result
-    
+
     def invalidate_pattern(self, pattern: str) -> int:
         """Invalidate all entries matching a pattern.
-        
+
         Args:
             pattern: Pattern to match (e.g., 'file:*' for all files)
-            
+
         Returns:
             Number of entries invalidated
         """
         count = self._cache.invalidate_pattern(pattern)
         if count > 0:
-            logger.info(f"Invalidated {count} cache entries matching pattern: {pattern}")
+            logger.info(
+                f"Invalidated {count} cache entries matching pattern: {pattern}",
+            )
         return count
-    
+
     def clear(self) -> None:
         """Clear all cache entries."""
         self._cache.clear()
         logger.info("Cleared all cache entries")
-    
+
     def size(self) -> int:
         """Get number of entries in cache.
-        
+
         Returns:
             Number of cache entries
         """
         return self._cache.size()
-    
+
     def memory_usage(self) -> int:
         """Get approximate memory usage in bytes.
-        
+
         Returns:
             Memory usage in bytes
         """
         return self._cache.memory_usage()
-    
+
     def evict_expired(self) -> int:
         """Remove all expired entries.
-        
+
         Returns:
             Number of entries evicted
         """
@@ -116,21 +122,27 @@ class CacheManager(CacheManagerInterface):
         if count > 0:
             logger.info(f"Evicted {count} expired cache entries")
         return count
-    
-    def get_stats(self) -> Dict[str, Any]:
+
+    def get_stats(self) -> dict[str, Any]:
         """Get cache statistics.
-        
+
         Returns:
             Dictionary with hit rate, size, memory usage, etc.
         """
         return self._cache.get_stats()
-    
+
     # Helper methods for specific cache operations
-    
-    def cache_ast(self, file_path: str, source_hash: str, ast: Any, 
-                  language: str, parse_time_ms: float) -> None:
+
+    def cache_ast(
+        self,
+        file_path: str,
+        source_hash: str,
+        ast: Any,
+        language: str,
+        parse_time_ms: float,
+    ) -> None:
         """Cache a parsed AST.
-        
+
         Args:
             file_path: Path to the file
             source_hash: Hash of the source code
@@ -140,30 +152,30 @@ class CacheManager(CacheManagerInterface):
         """
         key = f"ast:{file_path}:{source_hash}"
         value = {
-            'ast': ast,
-            'language': language,
-            'parse_time_ms': parse_time_ms,
-            'source_hash': source_hash
+            "ast": ast,
+            "language": language,
+            "parse_time_ms": parse_time_ms,
+            "source_hash": source_hash,
         }
         # ASTs are valid for longer (1 hour)
         self.put(key, value, ttl_seconds=3600)
-    
-    def get_cached_ast(self, file_path: str, source_hash: str) -> Optional[Dict[str, Any]]:
+
+    def get_cached_ast(self, file_path: str, source_hash: str) -> dict[str, Any] | None:
         """Get cached AST if available.
-        
+
         Args:
             file_path: Path to the file
             source_hash: Hash of the source code
-            
+
         Returns:
             Cached AST data or None
         """
         key = f"ast:{file_path}:{source_hash}"
         return self.get(key)
-    
+
     def cache_chunks(self, file_path: str, source_hash: str, chunks: Any) -> None:
         """Cache code chunks.
-        
+
         Args:
             file_path: Path to the file
             source_hash: Hash of the source code
@@ -172,26 +184,26 @@ class CacheManager(CacheManagerInterface):
         key = f"chunk:{file_path}:{source_hash}"
         # Chunks are valid for 30 minutes
         self.put(key, chunks, ttl_seconds=1800)
-    
-    def get_cached_chunks(self, file_path: str, source_hash: str) -> Optional[Any]:
+
+    def get_cached_chunks(self, file_path: str, source_hash: str) -> Any | None:
         """Get cached chunks if available.
-        
+
         Args:
             file_path: Path to the file
             source_hash: Hash of the source code
-            
+
         Returns:
             Cached chunks or None
         """
         key = f"chunk:{file_path}:{source_hash}"
         return self.get(key)
-    
+
     def invalidate_file(self, file_path: str) -> int:
         """Invalidate all cache entries for a file.
-        
+
         Args:
             file_path: Path to the file
-            
+
         Returns:
             Number of entries invalidated
         """
@@ -200,22 +212,22 @@ class CacheManager(CacheManagerInterface):
             f"ast:{file_path}:*",
             f"chunk:{file_path}:*",
             f"query:{file_path}:*",
-            f"metadata:{file_path}:*"
+            f"metadata:{file_path}:*",
         ]
-        
+
         total = 0
         for pattern in patterns:
             total += self.invalidate_pattern(pattern)
-            
+
         return total
-    
+
     @staticmethod
     def compute_source_hash(source: bytes) -> str:
         """Compute hash of source code.
-        
+
         Args:
             source: Source code bytes
-            
+
         Returns:
             Hash string
         """

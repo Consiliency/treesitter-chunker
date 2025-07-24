@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Demo script showing PostgreSQL exporter advanced features."""
 
-from pathlib import Path
 import tempfile
-from chunker.types import CodeChunk
+from pathlib import Path
+
 from chunker.export.postgres_exporter import PostgresExporter
+from chunker.types import CodeChunk
 
 
 def create_sample_chunks():
@@ -34,8 +35,8 @@ class User:
                 "cyclomatic_complexity": 3,
                 "token_count": 45,
                 "has_docstring": False,
-                "methods": ["__init__", "validate_email"]
-            }
+                "methods": ["__init__", "validate_email"],
+            },
         ),
         CodeChunk(
             file_path="src/services/auth.py",
@@ -61,8 +62,8 @@ def authenticate(username, password):
                 "has_docstring": True,
                 "parameters": ["username", "password"],
                 "calls": ["User.find_by_username", "generate_token"],
-                "returns": "str|None"
-            }
+                "returns": "str|None",
+            },
         ),
         CodeChunk(
             file_path="src/utils/validators.py",
@@ -86,47 +87,49 @@ def validate_password(password):
                 "cyclomatic_complexity": 2,
                 "token_count": 25,
                 "has_docstring": True,
-                "security_related": True
-            }
-        )
+                "security_related": True,
+            },
+        ),
     ]
 
 
 def main():
     """Demonstrate PostgreSQL exporter features."""
     print("=== PostgreSQL Exporter Demo ===\n")
-    
+
     # Create exporter and add chunks
     exporter = PostgresExporter()
     chunks = create_sample_chunks()
     exporter.add_chunks(chunks)
-    
+
     # Add relationships
     exporter.add_relationship(
-        chunks[1], chunks[0],  # authenticate -> User
+        chunks[1],
+        chunks[0],  # authenticate -> User
         "IMPORTS",
-        {"module": "models.user", "import_type": "class"}
+        {"module": "models.user", "import_type": "class"},
     )
-    
+
     exporter.add_relationship(
-        chunks[1], chunks[2],  # authenticate -> validate_password
+        chunks[1],
+        chunks[2],  # authenticate -> validate_password
         "CALLS",
-        {"line": 15, "context": "password_validation"}
+        {"line": 15, "context": "password_validation"},
     )
-    
+
     # Create output directory
     with tempfile.TemporaryDirectory() as tmpdir:
         output_dir = Path(tmpdir)
-        
+
         # Export as SQL
         print("1. Exporting as SQL file...")
         sql_file = output_dir / "export.sql"
         exporter.export(sql_file, format="sql")
-        
+
         # Show schema features
         print("\n2. Advanced PostgreSQL features in schema:")
         schema = exporter.get_schema_ddl()
-        
+
         if "JSONB" in schema:
             print("   ✓ JSONB columns for flexible metadata storage")
         if "PARTITION BY" in schema:
@@ -139,29 +142,33 @@ def main():
             print("   ✓ Trigram indexes for fuzzy search")
         if "GENERATED ALWAYS AS" in schema:
             print("   ✓ Generated columns for computed values")
-        
+
         # Export as COPY format
         print("\n3. Exporting as COPY format...")
         copy_base = output_dir / "export"
         exporter.export(copy_base, format="copy")
-        
+
         print("   Generated files:")
         for file in sorted(output_dir.glob("export*")):
             print(f"   - {file.name}")
-        
+
         # Show sample queries
         print("\n4. Advanced query examples:")
         queries = exporter.get_advanced_queries()
-        
-        for query_name in ["similarity_search", "full_text_search", "jsonb_metadata_query"]:
+
+        for query_name in [
+            "similarity_search",
+            "full_text_search",
+            "jsonb_metadata_query",
+        ]:
             if query_name in queries:
                 print(f"\n   {query_name}:")
                 # Show first few lines of query
-                lines = queries[query_name].strip().split('\n')[:3]
+                lines = queries[query_name].strip().split("\n")[:3]
                 for line in lines:
                     if line.strip():
                         print(f"   {line}")
-        
+
         print("\n5. Sample SQL content:")
         content = sql_file.read_text()
         # Show some key parts
@@ -171,7 +178,7 @@ def main():
             print("   ✓ Upsert support with ON CONFLICT")
         if "REFRESH MATERIALIZED VIEW" in content:
             print("   ✓ Materialized view refresh commands")
-    
+
     print("\n=== Demo Complete ===")
 
 

@@ -1,46 +1,43 @@
 """Integration tests combining multiple Phase 9 features."""
 
 import pytest
-from pathlib import Path
-from chunker import (
-    # Core
-    chunk_file,
-    CodeChunk,
-    # Phase 9 features
-    TiktokenCounter,
-    TokenAwareChunker,
+
+from chunker import BaseMetadataExtractor as MetadataExtractor
+from chunker import (  # Supporting; Core
     ChunkHierarchyBuilder,
-    BaseMetadataExtractor as MetadataExtractor,
-    TreeSitterSemanticMerger,
-    RuleBasedChunker,
-    TodoCommentRule,
-    ImportBlockRule,
-    RepoProcessorImpl,
-    RepoConfig,
     FallbackChunker,
-    # Supporting
+    FallbackStrategy,
+    ImportBlockRule,
     MergeStrategy,
-    FallbackStrategy
+    RepoConfig,
+    RepoProcessorImpl,
+    TiktokenCounter,
+    TodoCommentRule,
+    TokenAwareChunker,
+    TreeSitterSemanticMerger,
+    chunk_file,
 )
 
 
 class TestPhase9CombinedFeatures:
     """Test multiple Phase 9 features working together."""
-    
-    @pytest.fixture
+
+    @pytest.fixture()
     def complex_project(self, tmp_path):
         """Create a complex project structure."""
         # Initialize git
         import subprocess
-        subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
-        
+
+        subprocess.run(["git", "init"], check=False, cwd=tmp_path, capture_output=True)
+
         # Create project structure
         src = tmp_path / "src"
         src.mkdir()
-        
+
         # API module with TODOs
         api_py = src / "api.py"
-        api_py.write_text('''
+        api_py.write_text(
+            '''
 """API module for web service."""
 import json
 from flask import Flask, request, jsonify
@@ -96,11 +93,13 @@ def create_user_in_db(data: Dict) -> Dict:
     """Create user in database."""
     # Mock implementation
     return {"id": 3, **data}
-''')
-        
+''',
+        )
+
         # Models module
         models_py = src / "models.py"
-        models_py.write_text('''
+        models_py.write_text(
+            '''
 """Data models."""
 from dataclasses import dataclass
 from typing import Optional, List
@@ -154,11 +153,13 @@ class Post:
     def unpublish(self) -> None:
         """Unpublish the post."""
         self.published = False
-''')
-        
+''',
+        )
+
         # Utils with small functions
         utils_py = src / "utils.py"
-        utils_py.write_text('''
+        utils_py.write_text(
+            r'''
 """Utility functions."""
 import re
 import hashlib
@@ -195,70 +196,80 @@ def is_empty(value: Any) -> bool:
 def get_default(value: Any, default: Any) -> Any:
     """Get value or default."""
     return value if value is not None else default
-''')
-        
+''',
+        )
+
         # Create .gitignore
         gitignore = tmp_path / ".gitignore"
         gitignore.write_text("__pycache__/\n*.pyc\n.env\n")
-        
+
         # Git add and commit
-        subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True)
-        subprocess.run(["git", "commit", "-m", "Initial"], cwd=tmp_path, capture_output=True)
-        
+        subprocess.run(
+            ["git", "add", "."],
+            check=False,
+            cwd=tmp_path,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "commit", "-m", "Initial"],
+            check=False,
+            cwd=tmp_path,
+            capture_output=True,
+        )
+
         return tmp_path
-    
+
     def test_full_pipeline_integration(self, complex_project):
         """Test complete pipeline with all Phase 9 features."""
         # Step 1: Repository processing
         repo_processor = RepoProcessorImpl()
         repo_config = RepoConfig(
             include_patterns=["**/*.py"],
-            respect_gitignore=True
+            respect_gitignore=True,
         )
-        
+
         repo_results = repo_processor.process_repository(
             str(complex_project),
-            repo_config
+            repo_config,
         )
-        
+
         assert repo_results.total_files >= 3
         assert repo_results.chunks
-        
+
         # Step 2: Build hierarchy
         hierarchy_builder = ChunkHierarchyBuilder()
         hierarchy = hierarchy_builder.build_hierarchy(repo_results.chunks)
-        
+
         # Step 3: Extract metadata with custom rules
         metadata_extractor = MetadataExtractor()
         todo_rule = TodoCommentRule()
         import_rule = ImportBlockRule()
-        
+
         for chunk in repo_results.chunks:
             # Extract standard metadata
             chunk.metadata = metadata_extractor.extract_metadata(chunk)
-            
+
             # Apply custom rules
             if todo_rule.matches(chunk):
                 todos = todo_rule.extract(chunk)
                 chunk.metadata["custom_todos"] = todos
-            
+
             if import_rule.matches(chunk):
                 imports = import_rule.extract(chunk)
                 chunk.metadata["imports"] = imports
-        
+
         # Verify TODOs were found
         chunks_with_todos = [
-            c for c in repo_results.chunks 
-            if c.metadata and c.metadata.get("todos")
+            c for c in repo_results.chunks if c.metadata and c.metadata.get("todos")
         ]
         assert chunks_with_todos
-        
+
         # Step 4: Semantic merging
         merger = TreeSitterSemanticMerger(
             merge_strategy=MergeStrategy.BALANCED,
-            max_chunk_size=500
+            max_chunk_size=500,
         )
-        
+
         # Group by file for merging
         chunks_by_file = {}
         for chunk in repo_results.chunks:
@@ -266,67 +277,70 @@ def get_default(value: Any, default: Any) -> Any:
             if file_path not in chunks_by_file:
                 chunks_by_file[file_path] = []
             chunks_by_file[file_path].append(chunk)
-        
+
         # Merge chunks
         all_merged = []
         for file_path, file_chunks in chunks_by_file.items():
             merged = merger.merge_chunks(file_chunks)
             all_merged.extend(merged)
-        
+
         # Should have fewer chunks after merging
         assert len(all_merged) < len(repo_results.chunks)
-        
+
         # Step 5: Token counting and optimization
         counter = TiktokenCounter()
         token_aware = TokenAwareChunker(
             tokenizer=counter,
             max_tokens=200,
-            min_tokens=50
+            min_tokens=50,
         )
-        
+
         # Re-process merged chunks for token optimization
         token_optimized = []
         for chunk in all_merged:
             optimized = token_aware.optimize_chunk(chunk)
             token_optimized.extend(optimized)
-        
+
         # Verify token limits
         for chunk in token_optimized:
             tokens = counter.count_tokens(chunk.content)
             assert tokens <= 200
-    
+
     def test_cross_feature_metadata_flow(self, complex_project):
         """Test metadata flows correctly across features."""
         # Process single file
         api_file = complex_project / "src" / "api.py"
         chunks = chunk_file(api_file, "python")
-        
+
         # Extract metadata
         extractor = MetadataExtractor()
         for chunk in chunks:
             chunk.metadata = extractor.extract_metadata(chunk)
-        
+
         # Build hierarchy
         builder = ChunkHierarchyBuilder()
         hierarchy = builder.build_hierarchy(chunks)
-        
+
         # Merge semantically
         merger = TreeSitterSemanticMerger()
         merged = merger.merge_chunks(chunks)
-        
+
         # Verify metadata preserved through pipeline
         for chunk in merged:
             assert chunk.metadata is not None
-            
+
             # If it's a function chunk, should have signature
             if "def " in chunk.content:
-                assert chunk.metadata.get("signatures") or chunk.metadata.get("signature")
-    
+                assert chunk.metadata.get("signatures") or chunk.metadata.get(
+                    "signature",
+                )
+
     def test_fallback_with_other_features(self, tmp_path):
         """Test fallback chunking with other Phase 9 features."""
         # Create malformed Python file
         bad_file = tmp_path / "malformed.py"
-        bad_file.write_text('''
+        bad_file.write_text(
+            '''
 def incomplete_function(
     # This function is incomplete and will cause parsing issues
     print("This is inside an incomplete function"
@@ -343,77 +357,77 @@ def valid_function():
     
 # TODO: Fix the incomplete parts above
 # TODO: Add proper error handling
-''')
-        
+''',
+        )
+
         # Try normal chunking (might fail or give incomplete results)
         try:
             chunks = chunk_file(bad_file, "python")
         except:
             chunks = []
-        
+
         # Use fallback chunking
         fallback = FallbackChunker(
             chunk_size=10,
             chunk_overlap=2,
-            strategy=FallbackStrategy.SYNTAX_AWARE
+            strategy=FallbackStrategy.SYNTAX_AWARE,
         )
-        
+
         fallback_chunks = fallback.chunk_file(str(bad_file), "python")
         assert fallback_chunks  # Should produce chunks even with bad syntax
-        
+
         # Extract metadata from fallback chunks
         extractor = MetadataExtractor()
         for chunk in fallback_chunks:
             chunk.metadata = extractor.extract_metadata(chunk)
-        
+
         # Should still find TODOs
         todos_found = any(
-            chunk.metadata and chunk.metadata.get("todos")
-            for chunk in fallback_chunks
+            chunk.metadata and chunk.metadata.get("todos") for chunk in fallback_chunks
         )
         assert todos_found
-    
+
     def test_performance_with_combined_features(self, complex_project):
         """Test performance when using multiple features together."""
         import time
-        
+
         # Time the full pipeline
         start = time.time()
-        
+
         # 1. Repository processing
         processor = RepoProcessorImpl()
         config = RepoConfig(include_patterns=["**/*.py"])
         results = processor.process_repository(str(complex_project), config)
-        
+
         # 2. Hierarchy building
         hierarchy_builder = ChunkHierarchyBuilder()
         hierarchy = hierarchy_builder.build_hierarchy(results.chunks)
-        
+
         # 3. Metadata extraction
         extractor = MetadataExtractor()
         for chunk in results.chunks:
             chunk.metadata = extractor.extract_metadata(chunk)
-        
+
         # 4. Token counting
         counter = TiktokenCounter()
         for chunk in results.chunks:
             tokens = counter.count_tokens(chunk.content)
-        
+
         # 5. Semantic merging
         merger = TreeSitterSemanticMerger()
         # Group by file
         by_file = {}
         for chunk in results.chunks:
             by_file.setdefault(chunk.file_path, []).append(chunk)
-        
+
         for file_chunks in by_file.values():
             merger.merge_chunks(file_chunks)
-        
+
         elapsed = time.time() - start
-        
+
         # Should complete reasonably fast for small project
         assert elapsed < 5.0  # 5 seconds for small test project
-        
+
         # Verify all features produced results
         assert results.chunks
         assert hierarchy.root_chunks

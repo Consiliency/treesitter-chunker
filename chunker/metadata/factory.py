@@ -1,43 +1,44 @@
 """Factory for creating language-specific metadata extractors."""
 
-from typing import Optional, Dict, Type, Tuple
-
-from ..interfaces.metadata import MetadataExtractor, ComplexityAnalyzer
+from ..interfaces.metadata import ComplexityAnalyzer, MetadataExtractor
 from .languages import (
-    PythonMetadataExtractor, PythonComplexityAnalyzer,
-    JavaScriptMetadataExtractor, JavaScriptComplexityAnalyzer,
-    TypeScriptMetadataExtractor, TypeScriptComplexityAnalyzer,
+    JavaScriptComplexityAnalyzer,
+    JavaScriptMetadataExtractor,
+    PythonComplexityAnalyzer,
+    PythonMetadataExtractor,
+    TypeScriptComplexityAnalyzer,
+    TypeScriptMetadataExtractor,
 )
 
 
 class MetadataExtractorFactory:
     """Factory for creating language-specific metadata extractors."""
-    
+
     # Registry of language-specific extractors
-    _extractors: Dict[str, Type[MetadataExtractor]] = {
-        'python': PythonMetadataExtractor,
-        'javascript': JavaScriptMetadataExtractor,
-        'typescript': TypeScriptMetadataExtractor,
-        'tsx': TypeScriptMetadataExtractor,  # TSX uses same extractor
-        'jsx': JavaScriptMetadataExtractor,  # JSX uses same extractor
+    _extractors: dict[str, type[MetadataExtractor]] = {
+        "python": PythonMetadataExtractor,
+        "javascript": JavaScriptMetadataExtractor,
+        "typescript": TypeScriptMetadataExtractor,
+        "tsx": TypeScriptMetadataExtractor,  # TSX uses same extractor
+        "jsx": JavaScriptMetadataExtractor,  # JSX uses same extractor
     }
-    
-    _analyzers: Dict[str, Type[ComplexityAnalyzer]] = {
-        'python': PythonComplexityAnalyzer,
-        'javascript': JavaScriptComplexityAnalyzer,
-        'typescript': TypeScriptComplexityAnalyzer,
-        'tsx': TypeScriptComplexityAnalyzer,
-        'jsx': JavaScriptComplexityAnalyzer,
+
+    _analyzers: dict[str, type[ComplexityAnalyzer]] = {
+        "python": PythonComplexityAnalyzer,
+        "javascript": JavaScriptComplexityAnalyzer,
+        "typescript": TypeScriptComplexityAnalyzer,
+        "tsx": TypeScriptComplexityAnalyzer,
+        "jsx": JavaScriptComplexityAnalyzer,
     }
-    
+
     @classmethod
-    def create_extractor(cls, language: str) -> Optional[MetadataExtractor]:
+    def create_extractor(cls, language: str) -> MetadataExtractor | None:
         """
         Create a metadata extractor for the given language.
-        
+
         Args:
             language: Programming language name
-            
+
         Returns:
             MetadataExtractor instance or None if language not supported
         """
@@ -46,15 +47,15 @@ class MetadataExtractorFactory:
             # Pass language to the extractor constructor
             return extractor_class(language.lower())
         return None
-        
+
     @classmethod
-    def create_analyzer(cls, language: str) -> Optional[ComplexityAnalyzer]:
+    def create_analyzer(cls, language: str) -> ComplexityAnalyzer | None:
         """
         Create a complexity analyzer for the given language.
-        
+
         Args:
             language: Programming language name
-            
+
         Returns:
             ComplexityAnalyzer instance or None if language not supported
         """
@@ -62,38 +63,41 @@ class MetadataExtractorFactory:
         if analyzer_class:
             return analyzer_class()
         return None
-        
+
     @classmethod
-    def create_both(cls, language: str) -> Tuple[Optional[MetadataExtractor], Optional[ComplexityAnalyzer]]:
+    def create_both(
+        cls,
+        language: str,
+    ) -> tuple[MetadataExtractor | None, ComplexityAnalyzer | None]:
         """
         Create both metadata extractor and complexity analyzer.
-        
+
         Args:
             language: Programming language name
-            
+
         Returns:
             Tuple of (MetadataExtractor, ComplexityAnalyzer) or (None, None)
         """
         return cls.create_extractor(language), cls.create_analyzer(language)
-        
+
     @classmethod
     def is_supported(cls, language: str) -> bool:
         """
         Check if language is supported for metadata extraction.
-        
+
         Args:
             language: Programming language name
-            
+
         Returns:
             True if language is supported
         """
         return language.lower() in cls._extractors
-        
+
     @classmethod
     def supported_languages(cls) -> list[str]:
         """
         Get list of supported languages.
-        
+
         Returns:
             List of supported language names
         """

@@ -16,49 +16,42 @@ Key Interfaces:
 """
 
 # Import all interfaces for easy access
-from .base import ChunkingStrategy, ASTProcessor
-from .query import QueryEngine, QueryBasedChunker, Query, QueryMatch
+from .base import ASTProcessor, ChunkingStrategy
 from .context import ContextExtractor, ContextItem
-from .performance import CacheManager, IncrementalParser, ParseCache
-from .export import StructuredExporter, RelationshipTracker, ExportFormat
-from .grammar import GrammarManager, GrammarInfo
-from .fallback import FallbackChunker, FallbackStrategy
 from .debug import ASTVisualizer, QueryDebugger
+from .export import ExportFormat, RelationshipTracker, StructuredExporter
+from .fallback import FallbackChunker, FallbackStrategy
+from .grammar import GrammarInfo, GrammarManager
+from .performance import CacheManager, IncrementalParser, ParseCache
+from .query import Query, QueryBasedChunker, QueryEngine, QueryMatch
 
 __all__ = [
     # Base interfaces
-    'ChunkingStrategy',
-    'ASTProcessor',
-    
+    "ChunkingStrategy",
+    "ASTProcessor",
     # Query interfaces
-    'QueryEngine',
-    'QueryBasedChunker',
-    'Query',
-    'QueryMatch',
-    
+    "QueryEngine",
+    "QueryBasedChunker",
+    "Query",
+    "QueryMatch",
     # Context interfaces
-    'ContextExtractor',
-    'ContextItem',
-    
+    "ContextExtractor",
+    "ContextItem",
     # Performance interfaces
-    'CacheManager',
-    'IncrementalParser',
-    'ParseCache',
-    
+    "CacheManager",
+    "IncrementalParser",
+    "ParseCache",
     # Export interfaces
-    'StructuredExporter',
-    'RelationshipTracker',
-    'ExportFormat',
-    
+    "StructuredExporter",
+    "RelationshipTracker",
+    "ExportFormat",
     # Grammar interfaces
-    'GrammarManager',
-    'GrammarInfo',
-    
+    "GrammarManager",
+    "GrammarInfo",
     # Fallback interfaces
-    'FallbackChunker',
-    'FallbackStrategy',
-    
+    "FallbackChunker",
+    "FallbackStrategy",
     # Debug interfaces
-    'ASTVisualizer',
-    'QueryDebugger',
+    "ASTVisualizer",
+    "QueryDebugger",
 ]
