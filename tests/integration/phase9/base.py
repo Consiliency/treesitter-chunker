@@ -1,33 +1,30 @@
 """Base class and utilities for Phase 9 integration tests."""
 
 import os
-import tempfile
-import shutil
-from pathlib import Path
-from typing import List, Dict, Any, Optional
 import subprocess
-import json
+from pathlib import Path
+from typing import Any
 
 import pytest
 
-from chunker import get_parser, chunk_file
 from chunker.types import CodeChunk
 
 
 class Phase9IntegrationTestBase:
     """Base class for Phase 9 integration tests."""
-    
-    @pytest.fixture
+
+    @pytest.fixture()
     def test_repo_path(self, tmp_path):
         """Create a test repository with various file types."""
         repo_path = tmp_path / "test_repo"
         repo_path.mkdir()
-        
+
         # Create Python files
         python_dir = repo_path / "src" / "python"
         python_dir.mkdir(parents=True)
-        
-        (python_dir / "main.py").write_text('''
+
+        (python_dir / "main.py").write_text(
+            '''
 """Main module for the application."""
 
 import os
@@ -82,9 +79,11 @@ def main():
 
 if __name__ == "__main__":
     main()
-''')
-        
-        (python_dir / "utils.py").write_text(r'''
+''',
+        )
+
+        (python_dir / "utils.py").write_text(
+            r'''
 """Utility functions."""
 
 import re
@@ -117,13 +116,15 @@ class StringUtils:
     def word_count(text: str) -> int:
         """Count words in text."""
         return len(text.split())
-''')
-        
+''',
+        )
+
         # Create JavaScript files
         js_dir = repo_path / "src" / "javascript"
         js_dir.mkdir(parents=True)
-        
-        (js_dir / "app.js").write_text('''
+
+        (js_dir / "app.js").write_text(
+            """
 /**
  * Main application module
  * @module app
@@ -216,13 +217,15 @@ function getDefaultConfig() {
 }
 
 export { Application, createApp, getDefaultConfig };
-''')
-        
+""",
+        )
+
         # Create a markdown file (for fallback chunking)
         docs_dir = repo_path / "docs"
         docs_dir.mkdir()
-        
-        (docs_dir / "README.md").write_text('''
+
+        (docs_dir / "README.md").write_text(
+            """
 # Test Repository
 
 This is a test repository for Phase 9 integration testing.
@@ -289,13 +292,15 @@ Please read CONTRIBUTING.md for details on our code of conduct.
 ## License
 
 This project is licensed under the MIT License.
-''')
-        
+""",
+        )
+
         # Create a log file (for fallback chunking)
         logs_dir = repo_path / "logs"
         logs_dir.mkdir()
-        
-        (logs_dir / "app.log").write_text('''
+
+        (logs_dir / "app.log").write_text(
+            """
 2024-01-15 10:00:00 INFO Starting application
 2024-01-15 10:00:01 INFO Loading configuration from config.yaml
 2024-01-15 10:00:02 INFO Configuration loaded successfully
@@ -320,10 +325,12 @@ This project is licensed under the MIT License.
 2024-01-15 12:00:00 INFO Shutting down application
 2024-01-15 12:00:01 INFO Closing database connections
 2024-01-15 12:00:02 INFO Application stopped
-''')
-        
+""",
+        )
+
         # Create .gitignore
-        (repo_path / ".gitignore").write_text('''
+        (repo_path / ".gitignore").write_text(
+            """
 __pycache__/
 *.pyc
 *.pyo
@@ -370,26 +377,39 @@ yarn-error.log*
 .Trashes
 ehthumbs.db
 Thumbs.db
-''')
-        
+""",
+        )
+
         # Initialize git repo
-        subprocess.run(["git", "init"], cwd=repo_path, capture_output=True)
-        subprocess.run(["git", "add", "."], cwd=repo_path, capture_output=True)
+        subprocess.run(["git", "init"], check=False, cwd=repo_path, capture_output=True)
         subprocess.run(
-            ["git", "commit", "-m", "Initial commit"],
+            ["git", "add", "."],
+            check=False,
             cwd=repo_path,
             capture_output=True,
-            env={**os.environ, "GIT_AUTHOR_NAME": "Test", "GIT_AUTHOR_EMAIL": "test@example.com",
-                 "GIT_COMMITTER_NAME": "Test", "GIT_COMMITTER_EMAIL": "test@example.com"}
         )
-        
+        subprocess.run(
+            ["git", "commit", "-m", "Initial commit"],
+            check=False,
+            cwd=repo_path,
+            capture_output=True,
+            env={
+                **os.environ,
+                "GIT_AUTHOR_NAME": "Test",
+                "GIT_AUTHOR_EMAIL": "test@example.com",
+                "GIT_COMMITTER_NAME": "Test",
+                "GIT_COMMITTER_EMAIL": "test@example.com",
+            },
+        )
+
         return repo_path
-    
-    @pytest.fixture
+
+    @pytest.fixture()
     def sample_python_file(self, tmp_path):
         """Create a sample Python file for testing."""
         file_path = tmp_path / "sample.py"
-        file_path.write_text('''
+        file_path.write_text(
+            '''
 class DataProcessor:
     """Process data with various operations."""
     
@@ -428,9 +448,10 @@ def merge_processors(p1: DataProcessor, p2: DataProcessor) -> DataProcessor:
     for item in p1.get_data() + p2.get_data():
         merged.add_data(item)
     return merged
-''')
+''',
+        )
         return file_path
-    
+
     def create_phase9_chunker(
         self,
         enable_tokens: bool = True,
@@ -438,79 +459,95 @@ def merge_processors(p1: DataProcessor, p2: DataProcessor) -> DataProcessor:
         enable_metadata: bool = True,
         enable_semantic: bool = True,
         enable_rules: bool = True,
-        token_limit: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        token_limit: int | None = None,
+    ) -> dict[str, Any]:
         """Create a chunker with Phase 9 features enabled."""
         components = {}
-        
+
         if enable_tokens:
             from chunker.token import TiktokenCounter, TokenAwareChunker
-            components['token_counter'] = TiktokenCounter()
+
+            components["token_counter"] = TiktokenCounter()
             if token_limit:
-                components['token_chunker'] = TokenAwareChunker(
-                    max_tokens=token_limit
+                components["token_chunker"] = TokenAwareChunker(
+                    max_tokens=token_limit,
                 )
-        
+
         if enable_hierarchy:
             from chunker.hierarchy import ChunkHierarchyBuilder, HierarchyNavigator
-            components['hierarchy_builder'] = ChunkHierarchyBuilder()
-            components['hierarchy_navigator'] = HierarchyNavigator()
-        
+
+            components["hierarchy_builder"] = ChunkHierarchyBuilder()
+            components["hierarchy_navigator"] = HierarchyNavigator()
+
         if enable_metadata:
             from chunker.metadata import BaseMetadataExtractor
-            components['metadata_extractor'] = BaseMetadataExtractor()
-        
+
+            components["metadata_extractor"] = BaseMetadataExtractor()
+
         if enable_semantic:
-            from chunker.semantic import TreeSitterRelationshipAnalyzer, TreeSitterSemanticMerger, MergeConfig
-            components['relationship_analyzer'] = TreeSitterRelationshipAnalyzer()
-            components['semantic_merger'] = TreeSitterSemanticMerger(
-                config=MergeConfig()
+            from chunker.semantic import (
+                MergeConfig,
+                TreeSitterRelationshipAnalyzer,
+                TreeSitterSemanticMerger,
             )
-        
+
+            components["relationship_analyzer"] = TreeSitterRelationshipAnalyzer()
+            components["semantic_merger"] = TreeSitterSemanticMerger(
+                config=MergeConfig(),
+            )
+
         if enable_rules:
             from chunker.rules import DefaultRuleEngine
-            components['rule_engine'] = DefaultRuleEngine()
-        
+
+            components["rule_engine"] = DefaultRuleEngine()
+
         return components
-    
-    def assert_chunks_have_tokens(self, chunks: List[CodeChunk]) -> None:
+
+    def assert_chunks_have_tokens(self, chunks: list[CodeChunk]) -> None:
         """Assert that all chunks have token counts."""
         for chunk in chunks:
-            assert hasattr(chunk, 'metadata'), f"Chunk missing metadata: {chunk}"
-            assert 'tokens' in chunk.metadata, f"Chunk missing token count: {chunk}"
-            assert isinstance(chunk.metadata['tokens'], int)
-            assert chunk.metadata['tokens'] > 0
-    
-    def assert_chunks_have_hierarchy(self, chunks: List[CodeChunk]) -> None:
+            assert hasattr(chunk, "metadata"), f"Chunk missing metadata: {chunk}"
+            assert "tokens" in chunk.metadata, f"Chunk missing token count: {chunk}"
+            assert isinstance(chunk.metadata["tokens"], int)
+            assert chunk.metadata["tokens"] > 0
+
+    def assert_chunks_have_hierarchy(self, chunks: list[CodeChunk]) -> None:
         """Assert that chunks have hierarchical relationships."""
         # At least some chunks should have parent/child relationships
         has_parent = any(
-            chunk.metadata.get('parent_id') is not None
+            chunk.metadata.get("parent_id") is not None
             for chunk in chunks
-            if hasattr(chunk, 'metadata')
+            if hasattr(chunk, "metadata")
         )
         has_children = any(
-            chunk.metadata.get('child_ids', [])
+            chunk.metadata.get("child_ids", [])
             for chunk in chunks
-            if hasattr(chunk, 'metadata')
+            if hasattr(chunk, "metadata")
         )
         assert has_parent or has_children, "No hierarchical relationships found"
-    
-    def assert_chunks_have_metadata(self, chunks: List[CodeChunk]) -> None:
+
+    def assert_chunks_have_metadata(self, chunks: list[CodeChunk]) -> None:
         """Assert that chunks have extracted metadata."""
         for chunk in chunks:
-            assert hasattr(chunk, 'metadata'), f"Chunk missing metadata: {chunk}"
+            assert hasattr(chunk, "metadata"), f"Chunk missing metadata: {chunk}"
             # Check for common metadata fields
             metadata = chunk.metadata
-            if chunk.chunk_type in ['function_definition', 'method_definition']:
-                assert any(key in metadata for key in [
-                    'signature', 'parameters', 'return_type', 'complexity'
-                ])
-    
-    def create_test_config_file(self, path: Path, config: Dict[str, Any]) -> Path:
+            if chunk.chunk_type in ["function_definition", "method_definition"]:
+                assert any(
+                    key in metadata
+                    for key in [
+                        "signature",
+                        "parameters",
+                        "return_type",
+                        "complexity",
+                    ]
+                )
+
+    def create_test_config_file(self, path: Path, config: dict[str, Any]) -> Path:
         """Create a test configuration file."""
         config_path = path / ".chunkerrc"
-        with open(config_path, 'w') as f:
+        with open(config_path, "w") as f:
             import toml
+
             toml.dump(config, f)
         return config_path

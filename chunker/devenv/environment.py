@@ -29,10 +29,10 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
     def setup_pre_commit_hooks(self, project_root: Path) -> bool:
         """
         Install and configure pre-commit hooks for the project
-        
+
         Args:
             project_root: Root directory of the project
-            
+
         Returns:
             True if setup successful, False otherwise
         """
@@ -57,7 +57,8 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
             # Run pre-commit install
             result = subprocess.run(
                 [self._pre_commit_path, "install"],
-                check=False, cwd=project_root,
+                check=False,
+                cwd=project_root,
                 capture_output=True,
                 text=True,
             )
@@ -79,11 +80,11 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
     ) -> tuple[bool, list[dict[str, Any]]]:
         """
         Run linting tools (ruff, mypy) on specified paths
-        
+
         Args:
             paths: List of file/directory paths to lint (None = all)
             fix: Whether to auto-fix issues where possible
-            
+
         Returns:
             Tuple of (success, issues) where issues is list of lint errors
         """
@@ -122,7 +123,8 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
 
             result = subprocess.run(
                 cmd,
-                check=False, capture_output=True,
+                check=False,
+                capture_output=True,
                 text=True,
             )
 
@@ -131,38 +133,44 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
                 try:
                     ruff_output = json.loads(result.stdout)
                     for issue in ruff_output:
-                        issues.append({
-                            "tool": "ruff",
-                            "file": issue.get("filename", ""),
-                            "line": issue.get("location", {}).get("row", 0),
-                            "column": issue.get("location", {}).get("column", 0),
-                            "code": issue.get("code", ""),
-                            "message": issue.get("message", ""),
-                            "fixable": issue.get("fix") is not None,
-                        })
+                        issues.append(
+                            {
+                                "tool": "ruff",
+                                "file": issue.get("filename", ""),
+                                "line": issue.get("location", {}).get("row", 0),
+                                "column": issue.get("location", {}).get("column", 0),
+                                "code": issue.get("code", ""),
+                                "message": issue.get("message", ""),
+                                "fixable": issue.get("fix") is not None,
+                            },
+                        )
                 except json.JSONDecodeError:
                     # Fallback for non-JSON output
                     if result.returncode != 0:
-                        issues.append({
-                            "tool": "ruff",
-                            "file": "",
-                            "line": 0,
-                            "column": 0,
-                            "code": "ERROR",
-                            "message": result.stdout or result.stderr,
-                            "fixable": False,
-                        })
+                        issues.append(
+                            {
+                                "tool": "ruff",
+                                "file": "",
+                                "line": 0,
+                                "column": 0,
+                                "code": "ERROR",
+                                "message": result.stdout or result.stderr,
+                                "fixable": False,
+                            },
+                        )
 
         except Exception as e:
-            issues.append({
-                "tool": "ruff",
-                "file": "",
-                "line": 0,
-                "column": 0,
-                "code": "ERROR",
-                "message": str(e),
-                "fixable": False,
-            })
+            issues.append(
+                {
+                    "tool": "ruff",
+                    "file": "",
+                    "line": 0,
+                    "column": 0,
+                    "code": "ERROR",
+                    "message": str(e),
+                    "fixable": False,
+                },
+            )
 
         return issues
 
@@ -176,7 +184,8 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
 
             result = subprocess.run(
                 cmd,
-                check=False, capture_output=True,
+                check=False,
+                capture_output=True,
                 text=True,
             )
 
@@ -186,26 +195,32 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
                     if ": error:" in line or ": note:" in line:
                         parts = line.split(":", 4)
                         if len(parts) >= 5:
-                            issues.append({
-                                "tool": "mypy",
-                                "file": parts[0],
-                                "line": int(parts[1]) if parts[1].isdigit() else 0,
-                                "column": int(parts[2]) if parts[2].isdigit() else 0,
-                                "code": parts[3].strip(),
-                                "message": parts[4].strip(),
-                                "fixable": False,
-                            })
+                            issues.append(
+                                {
+                                    "tool": "mypy",
+                                    "file": parts[0],
+                                    "line": int(parts[1]) if parts[1].isdigit() else 0,
+                                    "column": (
+                                        int(parts[2]) if parts[2].isdigit() else 0
+                                    ),
+                                    "code": parts[3].strip(),
+                                    "message": parts[4].strip(),
+                                    "fixable": False,
+                                },
+                            )
 
         except Exception as e:
-            issues.append({
-                "tool": "mypy",
-                "file": "",
-                "line": 0,
-                "column": 0,
-                "code": "ERROR",
-                "message": str(e),
-                "fixable": False,
-            })
+            issues.append(
+                {
+                    "tool": "mypy",
+                    "file": "",
+                    "line": 0,
+                    "column": 0,
+                    "code": "ERROR",
+                    "message": str(e),
+                    "fixable": False,
+                },
+            )
 
         return issues
 
@@ -216,11 +231,11 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
     ) -> tuple[bool, list[str]]:
         """
         Format code using configured formatter (black/ruff)
-        
+
         Args:
             paths: List of file/directory paths to format (None = all)
             check_only: Only check if formatting needed, don't modify
-            
+
         Returns:
             Tuple of (formatted_correctly, modified_files)
         """
@@ -245,7 +260,11 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
 
         return formatted_correctly, modified_files
 
-    def _run_ruff_format(self, paths: list[str], check_only: bool) -> tuple[bool, list[str]]:
+    def _run_ruff_format(
+        self,
+        paths: list[str],
+        check_only: bool,
+    ) -> tuple[bool, list[str]]:
         """Run ruff formatter"""
         modified_files = []
 
@@ -257,7 +276,8 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
 
             result = subprocess.run(
                 cmd,
-                check=False, capture_output=True,
+                check=False,
+                capture_output=True,
                 text=True,
             )
 
@@ -290,7 +310,8 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
 
             result = subprocess.run(
                 cmd,
-                check=False, capture_output=True,
+                check=False,
+                capture_output=True,
                 text=True,
             )
 
@@ -317,11 +338,11 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
     ) -> dict[str, Any]:
         """
         Generate CI/CD configuration for specified platforms
-        
+
         Args:
             platforms: List of platforms (ubuntu, macos, windows)
             python_versions: List of Python versions to test
-            
+
         Returns:
             CI configuration as dictionary (convertible to YAML)
         """
@@ -360,9 +381,9 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
                         {
                             "name": "Install dependencies",
                             "run": "|\n"
-                                  "python -m pip install --upgrade pip\n"
-                                  "pip install uv\n"
-                                  "uv pip install -e '.[dev]'",
+                            "python -m pip install --upgrade pip\n"
+                            "pip install uv\n"
+                            "uv pip install -e '.[dev]'",
                         },
                         {
                             "name": "Fetch grammars",
@@ -374,9 +395,7 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
                         },
                         {
                             "name": "Run linting",
-                            "run": "|\n"
-                                  "ruff check .\n"
-                                  "mypy .",
+                            "run": "|\nruff check .\nmypy .",
                         },
                         {
                             "name": "Run tests",
@@ -414,8 +433,8 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
                         {
                             "name": "Install build dependencies",
                             "run": "|\n"
-                                  "python -m pip install --upgrade pip\n"
-                                  "pip install build wheel",
+                            "python -m pip install --upgrade pip\n"
+                            "pip install build wheel",
                         },
                         {
                             "name": "Build wheel",

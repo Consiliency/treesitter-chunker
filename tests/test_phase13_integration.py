@@ -92,16 +92,24 @@ class TestDevEnvironmentIntegration:
 
             # Create a git repository
             import subprocess
-            subprocess.run(["git", "init"], check=False, cwd=project_root, capture_output=True)
+
+            subprocess.run(
+                ["git", "init"],
+                check=False,
+                cwd=project_root,
+                capture_output=True,
+            )
 
             # Create .pre-commit-config.yaml
             config_file = project_root / ".pre-commit-config.yaml"
-            config_file.write_text("""repos:
+            config_file.write_text(
+                """repos:
   - repo: https://github.com/psf/black
     rev: 24.3.0
     hooks:
       - id: black
-""")
+""",
+            )
 
             # Setup pre-commit (may fail if not installed)
             success = dev_env.setup_pre_commit_hooks(project_root)
@@ -116,6 +124,7 @@ class TestDevEnvironmentIntegration:
 
             # If we have linting tools, should find issues
             import shutil
+
             if shutil.which("ruff") or shutil.which("mypy"):
                 assert not success
                 assert len(issues) > 0

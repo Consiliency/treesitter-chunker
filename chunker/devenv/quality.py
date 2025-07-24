@@ -31,10 +31,10 @@ class QualityAssurance(QualityAssuranceContract):
     ) -> tuple[float, dict[str, Any]]:
         """
         Check type annotation coverage using mypy
-        
+
         Args:
             min_coverage: Minimum required coverage percentage
-            
+
         Returns:
             Tuple of (coverage_percentage, detailed_report)
         """
@@ -46,16 +46,21 @@ class QualityAssurance(QualityAssuranceContract):
             cmd = [
                 self._mypy_path,
                 "chunker",  # Analyze chunker package
-                "--html-report", ".mypy_coverage",
-                "--any-exprs-report", ".mypy_coverage",
-                "--linecount-report", ".mypy_coverage",
-                "--linecoverage-report", ".mypy_coverage",
+                "--html-report",
+                ".mypy_coverage",
+                "--any-exprs-report",
+                ".mypy_coverage",
+                "--linecount-report",
+                ".mypy_coverage",
+                "--linecoverage-report",
+                ".mypy_coverage",
                 "--no-error-summary",
             ]
 
             result = subprocess.run(
                 cmd,
-                check=False, capture_output=True,
+                check=False,
+                capture_output=True,
                 text=True,
             )
 
@@ -171,10 +176,10 @@ class QualityAssurance(QualityAssuranceContract):
     ) -> tuple[float, dict[str, Any]]:
         """
         Check test coverage using pytest-cov
-        
+
         Args:
             min_coverage: Minimum required coverage percentage
-            
+
         Returns:
             Tuple of (coverage_percentage, detailed_report)
         """
@@ -194,7 +199,8 @@ class QualityAssurance(QualityAssuranceContract):
 
             result = subprocess.run(
                 cmd,
-                check=False, capture_output=True,
+                check=False,
+                capture_output=True,
                 text=True,
             )
 
@@ -242,7 +248,10 @@ class QualityAssurance(QualityAssuranceContract):
         except Exception as e:
             return 0.0, {"error": str(e)}
 
-    def _parse_coverage_text(self, coverage_output: str) -> tuple[float, dict[str, Any]]:
+    def _parse_coverage_text(
+        self,
+        coverage_output: str,
+    ) -> tuple[float, dict[str, Any]]:
         """Parse coverage text output"""
         lines = coverage_output.strip().split("\n")
         coverage_percentage = 0.0
@@ -276,8 +285,7 @@ class QualityAssurance(QualityAssuranceContract):
             "coverage_percentage": coverage_percentage,
             "meets_minimum": coverage_percentage >= 80.0,
             "files": {
-                filename: {"coverage": cov}
-                for filename, cov in file_coverage.items()
+                filename: {"coverage": cov} for filename, cov in file_coverage.items()
             },
             "uncovered_lines": {},  # Not available in text output
         }

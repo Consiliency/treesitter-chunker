@@ -5,23 +5,15 @@ All integration tests should use these interfaces to ensure consistency across
 parallel worktree development.
 """
 
-from .interfaces import (
-    ErrorPropagationMixin,
-    ConfigChangeObserver,
-    ResourceTracker,
-)
+from .coordinator import IntegrationCoordinator, TestResult, TestScenario
 from .fixtures import *
-from .coordinator import (
-    IntegrationCoordinator,
-    TestScenario,
-    TestResult,
-)
+from .interfaces import ConfigChangeObserver, ErrorPropagationMixin, ResourceTracker
 
 __all__ = [
-    'ErrorPropagationMixin',
-    'ConfigChangeObserver', 
-    'ResourceTracker',
-    'IntegrationCoordinator',
-    'TestScenario',
-    'TestResult',
+    "ConfigChangeObserver",
+    "ErrorPropagationMixin",
+    "IntegrationCoordinator",
+    "ResourceTracker",
+    "TestResult",
+    "TestScenario",
 ]

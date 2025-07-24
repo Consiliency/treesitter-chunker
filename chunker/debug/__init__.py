@@ -19,9 +19,13 @@ __all__ = [
     "explore_ast",
 ]
 
-from .visualization.ast_visualizer import ASTVisualizer, render_ast_graph, print_ast_tree
-from .visualization.chunk_visualizer import highlight_chunk_boundaries
-from .interactive.query_debugger import QueryDebugger, debug_query
 from .interactive.chunk_debugger import ChunkDebugger
 from .interactive.node_explorer import NodeExplorer, explore_ast
+from .interactive.query_debugger import QueryDebugger, debug_query
 from .interactive.repl import start_repl
+from .visualization.ast_visualizer import (
+    ASTVisualizer,
+    print_ast_tree,
+    render_ast_graph,
+)
+from .visualization.chunk_visualizer import highlight_chunk_boundaries

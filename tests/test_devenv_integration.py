@@ -31,7 +31,12 @@ class TestDevEnvironmentIntegration:
             project_root = Path(tmpdir)
 
             # Create a git repository
-            subprocess.run(["git", "init"], check=False, cwd=project_root, capture_output=True)
+            subprocess.run(
+                ["git", "init"],
+                check=False,
+                cwd=project_root,
+                capture_output=True,
+            )
 
             # Create a minimal .pre-commit-config.yaml
             config_content = """repos:
@@ -64,14 +69,16 @@ class TestDevEnvironmentIntegration:
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create a file with linting issues
             bad_file = Path(tmpdir) / "bad_code.py"
-            bad_file.write_text("""
+            bad_file.write_text(
+                """
 import os
 import sys
 def bad_function( ):
     x = 1
     y = 2
     return x
-""")
+""",
+            )
 
             # Run linting
             success, issues = dev_env.run_linting([str(bad_file)])
@@ -95,30 +102,41 @@ def bad_function( ):
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create a file with formatting issues
             bad_file = Path(tmpdir) / "format_me.py"
-            bad_file.write_text("""def poorly_formatted(  x,y   ):
+            bad_file.write_text(
+                """def poorly_formatted(  x,y   ):
     return x+y
 
 
 class BadClass:
   def __init__(self):
       pass
-""")
+""",
+            )
 
             # Check formatting
-            success, modified_files = dev_env.format_code([str(bad_file)], check_only=True)
+            success, modified_files = dev_env.format_code(
+                [str(bad_file)],
+                check_only=True,
+            )
 
             if shutil.which("ruff") or shutil.which("black"):
                 # Should detect formatting issues
                 assert not success or len(modified_files) > 0
 
                 # Actually format the file
-                success, modified_files = dev_env.format_code([str(bad_file)], check_only=False)
+                success, modified_files = dev_env.format_code(
+                    [str(bad_file)],
+                    check_only=False,
+                )
 
                 # Read the formatted content
                 formatted_content = bad_file.read_text()
 
                 # Should be properly formatted now
-                assert "def poorly_formatted(x, y):" in formatted_content or "def poorly_formatted(" in formatted_content
+                assert (
+                    "def poorly_formatted(x, y):" in formatted_content
+                    or "def poorly_formatted(" in formatted_content
+                )
 
     def test_ci_config_generation(self):
         """CI config should cover all specified platforms"""
@@ -182,7 +200,11 @@ class TestQualityAssuranceIntegration:
 
             # If successful, should have detailed metrics
             if coverage > 0:
-                assert "files" in report or "lines_covered" in report or "total_lines" in report
+                assert (
+                    "files" in report
+                    or "lines_covered" in report
+                    or "total_lines" in report
+                )
 
 
 if __name__ == "__main__":

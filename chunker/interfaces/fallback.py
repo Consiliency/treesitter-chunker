@@ -8,15 +8,16 @@ Tree-sitter grammars for all file types.
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Pattern, Tuple
-import re
+from re import Pattern
+from typing import Any
 
-from .base import ChunkingStrategy
 from ..types import CodeChunk
+from .base import ChunkingStrategy
 
 
 class FallbackReason(Enum):
     """Reasons for using fallback chunking."""
+
     NO_GRAMMAR = "no_grammar_available"
     GRAMMAR_ERROR = "grammar_error"
     BINARY_FILE = "binary_file"
@@ -26,6 +27,7 @@ class FallbackReason(Enum):
 
 class ChunkingMethod(Enum):
     """Fallback chunking methods."""
+
     LINE_BASED = "line_based"
     PARAGRAPH_BASED = "paragraph_based"
     REGEX_BASED = "regex_based"
@@ -36,7 +38,7 @@ class ChunkingMethod(Enum):
 @dataclass
 class FallbackConfig:
     """Configuration for fallback chunking.
-    
+
     Attributes:
         method: Chunking method to use
         chunk_size: Target chunk size (lines or characters)
@@ -46,223 +48,225 @@ class FallbackConfig:
         min_chunk_size: Minimum chunk size to create
         max_chunk_size: Maximum chunk size allowed
     """
+
     method: ChunkingMethod
     chunk_size: int = 50
     overlap: int = 0
-    delimiter: Optional[str] = None
-    pattern: Optional[Pattern] = None
+    delimiter: str | None = None
+    pattern: Pattern | None = None
     min_chunk_size: int = 1
     max_chunk_size: int = 1000
 
 
 class FallbackChunker(ChunkingStrategy):
     """Base interface for fallback chunking strategies.
-    
+
     Important: This should emit warnings when used, encouraging
     users to request/contribute Tree-sitter grammar support.
     """
-    
+
     @abstractmethod
     def set_fallback_reason(self, reason: FallbackReason) -> None:
         """Set the reason for using fallback.
-        
+
         Args:
             reason: Why fallback is being used
         """
-        pass
-    
+
     @abstractmethod
-    def chunk_by_lines(self,
-                      content: str,
-                      lines_per_chunk: int,
-                      overlap_lines: int = 0) -> List[CodeChunk]:
+    def chunk_by_lines(
+        self,
+        content: str,
+        lines_per_chunk: int,
+        overlap_lines: int = 0,
+    ) -> list[CodeChunk]:
         """Chunk content by line count.
-        
+
         Args:
             content: Text content to chunk
             lines_per_chunk: Number of lines per chunk
             overlap_lines: Lines to overlap between chunks
-            
+
         Returns:
             List of chunks
         """
-        pass
-    
+
     @abstractmethod
-    def chunk_by_delimiter(self,
-                          content: str,
-                          delimiter: str,
-                          include_delimiter: bool = True) -> List[CodeChunk]:
+    def chunk_by_delimiter(
+        self,
+        content: str,
+        delimiter: str,
+        include_delimiter: bool = True,
+    ) -> list[CodeChunk]:
         """Chunk content by delimiter.
-        
+
         Args:
             content: Text content to chunk
             delimiter: Delimiter to split on
             include_delimiter: Whether to include delimiter in chunks
-            
+
         Returns:
             List of chunks
         """
-        pass
-    
+
     @abstractmethod
-    def chunk_by_pattern(self,
-                        content: str,
-                        pattern: Pattern,
-                        include_match: bool = True) -> List[CodeChunk]:
+    def chunk_by_pattern(
+        self,
+        content: str,
+        pattern: Pattern,
+        include_match: bool = True,
+    ) -> list[CodeChunk]:
         """Chunk content by regex pattern.
-        
+
         Args:
             content: Text content to chunk
             pattern: Regex pattern to match chunk boundaries
             include_match: Whether to include matched text in chunks
-            
+
         Returns:
             List of chunks
         """
-        pass
-    
+
     @abstractmethod
     def emit_warning(self) -> str:
         """Emit a warning about fallback usage.
-        
+
         Returns:
             Warning message to display to user
         """
-        pass
 
 
 class FallbackStrategy(ABC):
     """Strategy for determining when to use fallback."""
-    
+
     @abstractmethod
-    def should_use_fallback(self,
-                           file_path: str,
-                           language: Optional[str] = None) -> Tuple[bool, FallbackReason]:
+    def should_use_fallback(
+        self,
+        file_path: str,
+        language: str | None = None,
+    ) -> tuple[bool, FallbackReason]:
         """Determine if fallback should be used.
-        
+
         Args:
             file_path: Path to file
             language: Language hint (if available)
-            
+
         Returns:
             Tuple of (should_use_fallback, reason)
         """
-        pass
-    
+
     @abstractmethod
-    def suggest_grammar(self, file_path: str) -> Optional[str]:
+    def suggest_grammar(self, file_path: str) -> str | None:
         """Suggest a grammar that could handle this file.
-        
+
         Args:
             file_path: Path to file
-            
+
         Returns:
             Grammar repository URL or None
         """
-        pass
 
 
 class LogChunker(FallbackChunker):
     """Specialized chunker for log files."""
-    
+
     @abstractmethod
-    def chunk_by_timestamp(self,
-                          content: str,
-                          time_window_seconds: int) -> List[CodeChunk]:
+    def chunk_by_timestamp(
+        self,
+        content: str,
+        time_window_seconds: int,
+    ) -> list[CodeChunk]:
         """Chunk logs by time window.
-        
+
         Args:
             content: Log content
             time_window_seconds: Size of time window
-            
+
         Returns:
             List of chunks grouped by time
         """
-        pass
-    
+
     @abstractmethod
-    def chunk_by_severity(self,
-                         content: str,
-                         group_consecutive: bool = True) -> List[CodeChunk]:
+    def chunk_by_severity(
+        self,
+        content: str,
+        group_consecutive: bool = True,
+    ) -> list[CodeChunk]:
         """Chunk logs by severity level.
-        
+
         Args:
             content: Log content
             group_consecutive: Group consecutive same-severity entries
-            
+
         Returns:
             List of chunks grouped by severity
         """
-        pass
 
 
 class MarkdownChunker(FallbackChunker):
     """Fallback chunker for Markdown without Tree-sitter.
-    
+
     Note: Tree-sitter-markdown should be preferred when available.
     """
-    
+
     @abstractmethod
-    def chunk_by_headers(self,
-                        content: str,
-                        max_level: int = 3) -> List[CodeChunk]:
+    def chunk_by_headers(self, content: str, max_level: int = 3) -> list[CodeChunk]:
         """Chunk by header hierarchy.
-        
+
         Args:
             content: Markdown content
             max_level: Maximum header level to chunk by
-            
+
         Returns:
             List of chunks
         """
-        pass
-    
+
     @abstractmethod
-    def chunk_by_sections(self,
-                         content: str,
-                         include_code_blocks: bool = True) -> List[CodeChunk]:
+    def chunk_by_sections(
+        self,
+        content: str,
+        include_code_blocks: bool = True,
+    ) -> list[CodeChunk]:
         """Chunk by logical sections.
-        
+
         Args:
             content: Markdown content
             include_code_blocks: Whether to include code blocks
-            
+
         Returns:
             List of chunks
         """
-        pass
 
 
 class BinaryFileHandler(ABC):
     """Handler for binary files (no chunking possible)."""
-    
+
     @abstractmethod
-    def extract_metadata(self, file_path: str) -> Dict[str, Any]:
+    def extract_metadata(self, file_path: str) -> dict[str, Any]:
         """Extract metadata from binary file.
-        
+
         Args:
             file_path: Path to binary file
-            
+
         Returns:
             Metadata dictionary
         """
-        pass
-    
+
     @abstractmethod
-    def create_placeholder_chunk(self,
-                                file_path: str,
-                                metadata: Dict[str, Any]) -> CodeChunk:
+    def create_placeholder_chunk(
+        self,
+        file_path: str,
+        metadata: dict[str, Any],
+    ) -> CodeChunk:
         """Create a placeholder chunk for binary file.
-        
+
         Args:
             file_path: Path to binary file
             metadata: Extracted metadata
-            
+
         Returns:
             Single chunk representing the file
         """
-        pass
 
 
 # Warning messages to encourage Tree-sitter usage

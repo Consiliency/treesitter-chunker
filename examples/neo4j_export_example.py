@@ -1,79 +1,79 @@
 #!/usr/bin/env python3
 """Example: Export code chunks to Neo4j format with relationship tracking."""
 
-from pathlib import Path
 import sys
+from pathlib import Path
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from chunker.chunker import chunk_file
 from chunker.export import (
-    StructuredExportOrchestrator,
     ASTRelationshipTracker,
-    Neo4jExporter
+    Neo4jExporter,
+    StructuredExportOrchestrator,
 )
 from chunker.interfaces.export import ExportFormat
 
 
 def export_to_neo4j(source_files, output_path):
     """Export source files to Neo4j Cypher format.
-    
+
     Args:
         source_files: List of source file paths
         output_path: Output path for Cypher file
     """
     # Collect all chunks
     all_chunks = []
-    
+
     print("Chunking source files...")
     for file_path in source_files:
         # Determine language from extension
         ext = Path(file_path).suffix
         language_map = {
-            '.py': 'python',
-            '.js': 'javascript',
-            '.c': 'c',
-            '.cpp': 'cpp',
-            '.rs': 'rust'
+            ".py": "python",
+            ".js": "javascript",
+            ".c": "c",
+            ".cpp": "cpp",
+            ".rs": "rust",
         }
-        
+
         language = language_map.get(ext)
         if not language:
             print(f"Skipping {file_path} - unknown language")
             continue
-            
+
         print(f"  Processing {file_path} ({language})...")
         chunks = chunk_file(file_path, language)
         all_chunks.extend(chunks)
-        
+
     print(f"\nTotal chunks: {len(all_chunks)}")
-    
+
     # Track relationships
     print("\nAnalyzing relationships...")
     tracker = ASTRelationshipTracker()
     relationships = tracker.infer_relationships(all_chunks)
     print(f"Found {len(relationships)} relationships")
-    
+
     # Count relationship types
     rel_types = {}
     for rel in relationships:
         rel_type = rel.relationship_type.value
         rel_types[rel_type] = rel_types.get(rel_type, 0) + 1
-        
+
     print("\nRelationship breakdown:")
     for rel_type, count in sorted(rel_types.items()):
         print(f"  {rel_type}: {count}")
-        
+
     # Export to Neo4j
     print(f"\nExporting to Neo4j format: {output_path}")
     orchestrator = StructuredExportOrchestrator()
     neo4j_exporter = Neo4jExporter()
     orchestrator.register_exporter(ExportFormat.NEO4J, neo4j_exporter)
-    
+
     orchestrator.export(all_chunks, relationships, output_path)
     print("Export complete!")
-    
+
     # Print sample queries
     print("\nSample Neo4j queries to try:")
     print("1. Find all classes:")
@@ -81,7 +81,9 @@ def export_to_neo4j(source_files, output_path):
     print("\n2. Find inheritance hierarchy:")
     print("   MATCH (child)-[:INHERITS]->(parent) RETURN child, parent")
     print("\n3. Find most connected chunks:")
-    print("   MATCH (c:CodeChunk)-[r]-() RETURN c, COUNT(r) as connections ORDER BY connections DESC LIMIT 10")
+    print(
+        "   MATCH (c:CodeChunk)-[r]-() RETURN c, COUNT(r) as connections ORDER BY connections DESC LIMIT 10",
+    )
     print("\n4. Find call graph:")
     print("   MATCH path = (caller)-[:CALLS*1..3]->(callee) RETURN path")
 
@@ -90,13 +92,14 @@ def main():
     """Main entry point."""
     # Example Python files
     example_dir = Path(__file__).parent
-    
+
     # Create a sample codebase
     sample_dir = example_dir / "sample_codebase"
     sample_dir.mkdir(exist_ok=True)
-    
+
     # Create base module
-    (sample_dir / "base.py").write_text('''
+    (sample_dir / "base.py").write_text(
+        '''
 class BaseModel:
     """Base model for all entities."""
     def __init__(self, id):
@@ -123,10 +126,12 @@ class BaseManager:
     def find(self, id):
         """Find instance by id."""
         return self.model_class(id)
-''')
-    
+''',
+    )
+
     # Create user module
-    (sample_dir / "users.py").write_text('''
+    (sample_dir / "users.py").write_text(
+        '''
 from .base import BaseModel, BaseManager
 
 
@@ -157,10 +162,12 @@ class UserManager(BaseManager):
         user = self.find_by_email(email)
         # Simplified auth
         return user if password == "password" else None
-''')
-    
+''',
+    )
+
     # Create posts module
-    (sample_dir / "posts.py").write_text('''
+    (sample_dir / "posts.py").write_text(
+        '''
 from .base import BaseModel, BaseManager
 from .users import User, UserManager
 
@@ -202,10 +209,12 @@ class PostManager(BaseManager):
         """Get recent posts."""
         # Simplified implementation
         return [Post(i, f"Post {i}", f"Content {i}", 1) for i in range(limit)]
-''')
-    
+''',
+    )
+
     # Create main app
-    (sample_dir / "app.py").write_text('''
+    (sample_dir / "app.py").write_text(
+        '''
 from .users import UserManager
 from .posts import PostManager
 
@@ -260,20 +269,21 @@ def main():
 
 if __name__ == "__main__":
     main()
-''')
-    
+''',
+    )
+
     # Export to Neo4j
     source_files = list(sample_dir.glob("*.py"))
     output_path = example_dir / "blog_codebase.cypher"
-    
+
     export_to_neo4j(source_files, output_path)
-    
-    print(f"\nTo import into Neo4j:")
-    print(f"1. Start Neo4j database")
-    print(f"2. Open Neo4j Browser")
+
+    print("\nTo import into Neo4j:")
+    print("1. Start Neo4j database")
+    print("2. Open Neo4j Browser")
     print(f"3. Copy contents of {output_path}")
-    print(f"4. Paste and run in Neo4j Browser")
-    
+    print("4. Paste and run in Neo4j Browser")
+
 
 if __name__ == "__main__":
     main()

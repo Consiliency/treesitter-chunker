@@ -2,14 +2,14 @@
 
 import json
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Tuple
+from typing import Any
+
 from .database_exporter_base import DatabaseExporterBase
-from ..types import CodeChunk
 
 
 class PostgresExporter(DatabaseExporterBase):
     """Export code chunks to PostgreSQL format."""
-    
+
     def get_schema_ddl(self) -> str:
         """Get PostgreSQL schema DDL with advanced features."""
         return """
@@ -167,8 +167,8 @@ UNION ALL
 SELECT 'token_count', SUM((metadata->>'token_count')::NUMERIC) FROM chunks WHERE file_path = target_file_path;
 $$ LANGUAGE SQL;
 """
-    
-    def get_index_statements(self) -> List[str]:
+
+    def get_index_statements(self) -> list[str]:
         """Get PostgreSQL-specific index statements."""
         return [
             # B-tree indices for exact matches
@@ -176,36 +176,31 @@ $$ LANGUAGE SQL;
             "CREATE INDEX IF NOT EXISTS idx_chunks_chunk_type ON chunks(chunk_type);",
             "CREATE INDEX IF NOT EXISTS idx_chunks_language ON chunks(language);",
             "CREATE INDEX IF NOT EXISTS idx_chunks_position ON chunks(file_path, start_line, end_line);",
-            
             # GIN indices for JSONB
             "CREATE INDEX IF NOT EXISTS idx_chunks_metadata ON chunks USING GIN (metadata);",
             "CREATE INDEX IF NOT EXISTS idx_relationships_properties ON relationships USING GIN (properties);",
-            
             # Full-text search index
             "CREATE INDEX IF NOT EXISTS idx_chunks_content_fts ON chunks USING GIN (to_tsvector('code_search', content));",
-            
             # Trigram index for similarity search
             "CREATE INDEX IF NOT EXISTS idx_chunks_content_trgm ON chunks USING GIN (content gin_trgm_ops);",
-            
             # Relationship indices
             "CREATE INDEX IF NOT EXISTS idx_relationships_source ON relationships(source_id);",
             "CREATE INDEX IF NOT EXISTS idx_relationships_target ON relationships(target_id);",
             "CREATE INDEX IF NOT EXISTS idx_relationships_type ON relationships(relationship_type);",
-            
             # Composite indices for common queries
             "CREATE INDEX IF NOT EXISTS idx_chunks_type_language ON chunks(chunk_type, language);",
             "CREATE INDEX IF NOT EXISTS idx_chunks_metadata_name ON chunks((metadata->>'name')) WHERE metadata->>'name' IS NOT NULL;",
-            "CREATE INDEX IF NOT EXISTS idx_chunks_metadata_complexity ON chunks((metadata->>'cyclomatic_complexity')::INTEGER) WHERE metadata->>'cyclomatic_complexity' IS NOT NULL;"
+            "CREATE INDEX IF NOT EXISTS idx_chunks_metadata_complexity ON chunks((metadata->>'cyclomatic_complexity')::INTEGER) WHERE metadata->>'cyclomatic_complexity' IS NOT NULL;",
         ]
-    
-    def get_copy_data(self) -> Tuple[str, List[List[Any]]]:
+
+    def get_copy_data(self) -> tuple[str, list[list[Any]]]:
         """Generate COPY format data for chunks.
-        
+
         Returns:
             Tuple of (COPY command, data rows)
         """
         copy_cmd = """COPY chunks (id, file_path, start_line, end_line, start_byte, end_byte, content, chunk_type, language, metadata) FROM STDIN WITH (FORMAT csv, HEADER false, NULL '\\N');"""
-        
+
         rows = []
         for chunk in self.chunks:
             chunk_data = self._get_chunk_data(chunk)
@@ -214,35 +209,44 @@ $$ LANGUAGE SQL;
                 chunk_data["file_path"],
                 chunk_data["start_line"],
                 chunk_data["end_line"],
-                chunk_data["start_byte"] if chunk_data["start_byte"] is not None else "\\N",
+                (
+                    chunk_data["start_byte"]
+                    if chunk_data["start_byte"] is not None
+                    else "\\N"
+                ),
                 chunk_data["end_byte"] if chunk_data["end_byte"] is not None else "\\N",
                 chunk_data["content"],
                 chunk_data["chunk_type"] if chunk_data["chunk_type"] else "\\N",
                 chunk_data["language"] if chunk_data["language"] else "\\N",
-                json.dumps(chunk_data["metadata"]) if chunk_data["metadata"] else "{}"
+                json.dumps(chunk_data["metadata"]) if chunk_data["metadata"] else "{}",
             ]
             rows.append(row)
-        
+
         return copy_cmd, rows
-    
-    def get_insert_statements(self, batch_size: int = 100) -> List[str]:
+
+    def get_insert_statements(self, batch_size: int = 100) -> list[str]:
         """Generate INSERT statements with ON CONFLICT handling."""
         statements = []
-        
+
         # Insert chunks in batches
         for i in range(0, len(self.chunks), batch_size):
-            batch = self.chunks[i:i + batch_size]
-            
+            batch = self.chunks[i : i + batch_size]
+
             values_parts = []
             for chunk in batch:
                 chunk_data = self._get_chunk_data(chunk)
-                
+
                 # Escape single quotes in content
                 content_escaped = chunk_data["content"].replace("'", "''")
-                metadata_json = json.dumps(chunk_data["metadata"]) if chunk_data["metadata"] else "{}"
+                metadata_json = (
+                    json.dumps(chunk_data["metadata"])
+                    if chunk_data["metadata"]
+                    else "{}"
+                )
                 metadata_escaped = metadata_json.replace("'", "''")
-                
-                values_parts.append(f"""(
+
+                values_parts.append(
+                    f"""(
                     '{chunk_data["id"]}',
                     '{chunk_data["file_path"]}',
                     {chunk_data["start_line"]},
@@ -253,8 +257,9 @@ $$ LANGUAGE SQL;
                     {f"'{chunk_data['chunk_type']}'" if chunk_data["chunk_type"] else "NULL"},
                     {f"'{chunk_data['language']}'" if chunk_data["language"] else "NULL"},
                     '{metadata_escaped}'::jsonb
-                )""")
-            
+                )""",
+                )
+
             statement = f"""
 INSERT INTO chunks (id, file_path, start_line, end_line, start_byte, end_byte, content, chunk_type, language, metadata)
 VALUES {','.join(values_parts)}
@@ -268,43 +273,47 @@ ON CONFLICT (id) DO UPDATE SET
     chunk_type = EXCLUDED.chunk_type,
     language = EXCLUDED.language,
     metadata = EXCLUDED.metadata;"""
-            
+
             statements.append(statement)
-        
+
         # Insert relationships
         if self.relationships:
             for i in range(0, len(self.relationships), batch_size):
-                batch = self.relationships[i:i + batch_size]
-                
+                batch = self.relationships[i : i + batch_size]
+
                 values_parts = []
                 for rel in batch:
-                    props_json = json.dumps(rel["properties"]) if rel["properties"] else "{}"
+                    props_json = (
+                        json.dumps(rel["properties"]) if rel["properties"] else "{}"
+                    )
                     props_escaped = props_json.replace("'", "''")
-                    
-                    values_parts.append(f"""(
+
+                    values_parts.append(
+                        f"""(
                         '{rel["source_id"]}',
                         '{rel["target_id"]}',
                         '{rel["relationship_type"]}',
                         '{props_escaped}'::jsonb
-                    )""")
-                
+                    )""",
+                    )
+
                 statement = f"""
 INSERT INTO relationships (source_id, target_id, relationship_type, properties)
 VALUES {','.join(values_parts)}
 ON CONFLICT (source_id, target_id, relationship_type) DO UPDATE SET
     properties = EXCLUDED.properties;"""
-                
+
                 statements.append(statement)
-        
+
         # Refresh materialized views
         statements.append("REFRESH MATERIALIZED VIEW CONCURRENTLY file_stats;")
         statements.append("REFRESH MATERIALIZED VIEW CONCURRENTLY chunk_graph;")
-        
+
         return statements
-    
+
     def export(self, output_path: Path, format: str = "sql", **options) -> None:
         """Export to PostgreSQL format.
-        
+
         Args:
             output_path: Base path for output files
             format: Export format - "sql" or "copy"
@@ -313,28 +322,28 @@ ON CONFLICT (source_id, target_id, relationship_type) DO UPDATE SET
         if format == "sql":
             # Export as SQL file
             statements = []
-            
+
             # Add header
             statements.append("-- PostgreSQL export for tree-sitter-chunker")
             statements.append("-- Generated code chunk data")
             statements.append("")
-            
+
             # Schema
             statements.append("-- Create schema")
             statements.append(self.get_schema_ddl())
             statements.append("")
-            
+
             # Data
             statements.append("-- Insert data")
             statements.extend(self.get_insert_statements(**options))
             statements.append("")
-            
+
             # Indices
             statements.append("-- Create indices")
             statements.extend(self.get_index_statements())
-            
-            output_path.write_text("\n".join(statements), encoding='utf-8')
-            
+
+            output_path.write_text("\n".join(statements), encoding="utf-8")
+
         elif format == "copy":
             # Export as COPY format files
             # Schema file
@@ -344,14 +353,14 @@ ON CONFLICT (source_id, target_id, relationship_type) DO UPDATE SET
                 self.get_schema_ddl(),
                 "",
                 "-- Indices",
-                *self.get_index_statements()
+                *self.get_index_statements(),
             ]
-            schema_path.write_text("\n".join(schema_content), encoding='utf-8')
-            
+            schema_path.write_text("\n".join(schema_content), encoding="utf-8")
+
             # Chunks COPY file
             chunks_path = output_path.parent / f"{output_path.stem}_chunks.csv"
             copy_cmd, rows = self.get_copy_data()
-            
+
             # Write COPY command
             cmd_path = output_path.parent / f"{output_path.stem}_import.sql"
             import_cmds = [
@@ -361,54 +370,68 @@ ON CONFLICT (source_id, target_id, relationship_type) DO UPDATE SET
                 "-- Import chunks",
                 copy_cmd,
             ]
-            
+
             # Write CSV data
             import csv
-            with open(chunks_path, 'w', newline='', encoding='utf-8') as f:
+
+            with open(chunks_path, "w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
                 writer.writerows(rows)
-            
-            import_cmds.append(f"\\copy chunks FROM '{chunks_path.name}' CSV NULL '\\N';")
-            
+
+            import_cmds.append(
+                f"\\copy chunks FROM '{chunks_path.name}' CSV NULL '\\N';",
+            )
+
             # Relationships COPY file
             if self.relationships:
                 rels_path = output_path.parent / f"{output_path.stem}_relationships.csv"
                 rel_rows = []
                 for rel in self.relationships:
-                    rel_rows.append([
-                        rel["source_id"],
-                        rel["target_id"],
-                        rel["relationship_type"],
-                        json.dumps(rel["properties"]) if rel["properties"] else "{}"
-                    ])
-                
-                with open(rels_path, 'w', newline='', encoding='utf-8') as f:
+                    rel_rows.append(
+                        [
+                            rel["source_id"],
+                            rel["target_id"],
+                            rel["relationship_type"],
+                            (
+                                json.dumps(rel["properties"])
+                                if rel["properties"]
+                                else "{}"
+                            ),
+                        ],
+                    )
+
+                with open(rels_path, "w", newline="", encoding="utf-8") as f:
                     writer = csv.writer(f)
                     writer.writerows(rel_rows)
-                
+
                 import_cmds.append("")
                 import_cmds.append("-- Import relationships")
-                import_cmds.append(f"\\copy relationships (source_id, target_id, relationship_type, properties) FROM '{rels_path.name}' CSV;")
-            
-            import_cmds.extend([
-                "",
-                "-- Refresh materialized views",
-                "REFRESH MATERIALIZED VIEW file_stats;",
-                "REFRESH MATERIALIZED VIEW chunk_graph;"
-            ])
-            
-            cmd_path.write_text("\n".join(import_cmds), encoding='utf-8')
-        
+                import_cmds.append(
+                    f"\\copy relationships (source_id, target_id, relationship_type, properties) FROM '{rels_path.name}' CSV;",
+                )
+
+            import_cmds.extend(
+                [
+                    "",
+                    "-- Refresh materialized views",
+                    "REFRESH MATERIALIZED VIEW file_stats;",
+                    "REFRESH MATERIALIZED VIEW chunk_graph;",
+                ],
+            )
+
+            cmd_path.write_text("\n".join(import_cmds), encoding="utf-8")
+
         else:
             raise ValueError(f"Unknown format: {format}")
-    
-    def get_advanced_queries(self) -> Dict[str, str]:
+
+    def get_advanced_queries(self) -> dict[str, str]:
         """Get PostgreSQL-specific advanced queries."""
         queries = super().get_analysis_queries()
-        
+
         # Add PostgreSQL-specific queries
-        queries.update({
-            "similarity_search": """
+        queries.update(
+            {
+                "similarity_search": """
                 -- Find chunks similar to a given chunk
                 SELECT 
                     c2.id,
@@ -424,8 +447,7 @@ ON CONFLICT (source_id, target_id, relationship_type) DO UPDATE SET
                 ORDER BY similarity_score DESC
                 LIMIT 10;
             """,
-            
-            "full_text_search": """
+                "full_text_search": """
                 -- Full-text search with ranking
                 SELECT 
                     id,
@@ -439,8 +461,7 @@ ON CONFLICT (source_id, target_id, relationship_type) DO UPDATE SET
                 ORDER BY rank DESC
                 LIMIT 20;
             """,
-            
-            "jsonb_metadata_query": """
+                "jsonb_metadata_query": """
                 -- Query chunks by metadata fields
                 SELECT 
                     id,
@@ -453,8 +474,7 @@ ON CONFLICT (source_id, target_id, relationship_type) DO UPDATE SET
                 AND (metadata->>'cyclomatic_complexity')::INTEGER > 10
                 ORDER BY (metadata->>'cyclomatic_complexity')::INTEGER DESC;
             """,
-            
-            "dependency_graph": """
+                "dependency_graph": """
                 -- Get full dependency graph for visualization
                 WITH RECURSIVE dep_tree AS (
                     -- Start nodes (no incoming dependencies)
@@ -491,8 +511,7 @@ ON CONFLICT (source_id, target_id, relationship_type) DO UPDATE SET
                 SELECT * FROM dep_tree
                 ORDER BY level, file_path;
             """,
-            
-            "hot_spots": """
+                "hot_spots": """
                 -- Find code hot spots (high complexity + many dependencies)
                 SELECT 
                     cg.id,
@@ -508,7 +527,8 @@ ON CONFLICT (source_id, target_id, relationship_type) DO UPDATE SET
                 WHERE c.metadata->>'cyclomatic_complexity' IS NOT NULL
                 ORDER BY hotness_score DESC
                 LIMIT 20;
-            """
-        })
-        
+            """,
+            },
+        )
+
         return queries
