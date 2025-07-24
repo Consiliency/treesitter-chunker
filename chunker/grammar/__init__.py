@@ -5,11 +5,13 @@ including fetching, building, and validating language grammars.
 """
 
 from .builder import TreeSitterGrammarBuilder
+from .download import GrammarDownloadManager
 from .manager import TreeSitterGrammarManager
 from .repository import GrammarRepository, get_grammar_repository
 from .validator import TreeSitterGrammarValidator
 
 __all__ = [
+    "GrammarDownloadManager",
     "GrammarRepository",
     "TreeSitterGrammarBuilder",
     "TreeSitterGrammarManager",
