@@ -1,16 +1,15 @@
 """SQLite export implementation for code chunks."""
 
-import sqlite3
 import json
+import sqlite3
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+
 from .database_exporter_base import DatabaseExporterBase
-from ..types import CodeChunk
 
 
 class SQLiteExporter(DatabaseExporterBase):
     """Export code chunks to SQLite database."""
-    
+
     def get_schema_ddl(self) -> str:
         """Get SQLite schema DDL."""
         return """
@@ -172,20 +171,25 @@ WITH RECURSIVE hierarchy AS (
 )
 SELECT * FROM hierarchy ORDER BY root_id, depth, start_line;
 """
-    
-    def get_insert_statements(self, batch_size: int = 100) -> List[str]:
+
+    def get_insert_statements(self, batch_size: int = 100) -> list[str]:
         """Generate INSERT statements for SQLite.
-        
+
         Note: For SQLite export, we'll use the connection directly instead of
         generating SQL strings.
         """
         # This method is not used for SQLite - we insert directly
         return []
-    
-    def export(self, output_path: Path, create_indices: bool = True, 
-              enable_fts: bool = True, **options) -> None:
+
+    def export(
+        self,
+        output_path: Path,
+        create_indices: bool = True,
+        enable_fts: bool = True,
+        **options,
+    ) -> None:
         """Export chunks to SQLite database.
-        
+
         Args:
             output_path: Path for the SQLite database file
             create_indices: Whether to create indices
@@ -195,19 +199,19 @@ SELECT * FROM hierarchy ORDER BY root_id, depth, start_line;
         # Remove existing database if it exists
         if output_path.exists():
             output_path.unlink()
-        
+
         # Create connection
         conn = sqlite3.connect(str(output_path))
         conn.row_factory = sqlite3.Row
-        
+
         try:
             # Create schema
             conn.executescript(self.get_schema_ddl())
-            
+
             # First, collect unique files and insert them
             files_data = {}
             file_id_map = {}
-            
+
             for chunk in self.chunks:
                 file_path = str(chunk.file_path)
                 if file_path not in files_data:
@@ -215,99 +219,126 @@ SELECT * FROM hierarchy ORDER BY root_id, depth, start_line;
                         "path": file_path,
                         "language": chunk.language,
                         "size": None,  # Could be calculated if needed
-                        "hash": None   # Could be calculated if needed
+                        "hash": None,  # Could be calculated if needed
                     }
-            
+
             # Insert files and get their IDs
             for file_path, file_info in files_data.items():
                 cursor = conn.execute(
                     "INSERT INTO files (path, language, size, hash) VALUES (?, ?, ?, ?)",
-                    (file_info["path"], file_info["language"], file_info["size"], file_info["hash"])
+                    (
+                        file_info["path"],
+                        file_info["language"],
+                        file_info["size"],
+                        file_info["hash"],
+                    ),
                 )
                 file_id_map[file_path] = cursor.lastrowid
-            
+
             # Prepare chunk data
             chunks_data = []
             complexity_data = []
             imports_data = []
-            
+
             for chunk in self.chunks:
                 chunk_data = self._get_chunk_data(chunk)
                 chunk_id = chunk_data["id"]
                 file_id = file_id_map[chunk_data["file_path"]]
-                
+
                 # Main chunk data
-                chunks_data.append((
-                    chunk_id,
-                    file_id,
-                    chunk_data["start_line"],
-                    chunk_data["end_line"],
-                    chunk_data["start_byte"],
-                    chunk_data["end_byte"],
-                    chunk_data["content"],
-                    chunk_data["chunk_type"],
-                    chunk.parent_context,  # Use the actual parent_context from chunk
-                    json.dumps(chunk_data["metadata"]) if chunk_data["metadata"] else None
-                ))
-                
+                chunks_data.append(
+                    (
+                        chunk_id,
+                        file_id,
+                        chunk_data["start_line"],
+                        chunk_data["end_line"],
+                        chunk_data["start_byte"],
+                        chunk_data["end_byte"],
+                        chunk_data["content"],
+                        chunk_data["chunk_type"],
+                        chunk.parent_context,  # Use the actual parent_context from chunk
+                        (
+                            json.dumps(chunk_data["metadata"])
+                            if chunk_data["metadata"]
+                            else None
+                        ),
+                    ),
+                )
+
                 # Extract complexity metrics if available
                 metadata = chunk_data["metadata"]
                 if metadata:
-                    if any(key in metadata for key in ["cyclomatic_complexity", "cognitive_complexity", "lines_of_code", "token_count"]):
-                        complexity_data.append((
-                            chunk_id,
-                            metadata.get("cyclomatic_complexity"),
-                            metadata.get("cognitive_complexity"),
-                            metadata.get("lines_of_code"),
-                            metadata.get("token_count")
-                        ))
-                    
+                    if any(
+                        key in metadata
+                        for key in [
+                            "cyclomatic_complexity",
+                            "cognitive_complexity",
+                            "lines_of_code",
+                            "token_count",
+                        ]
+                    ):
+                        complexity_data.append(
+                            (
+                                chunk_id,
+                                metadata.get("cyclomatic_complexity"),
+                                metadata.get("cognitive_complexity"),
+                                metadata.get("lines_of_code"),
+                                metadata.get("token_count"),
+                            ),
+                        )
+
                     # Extract imports
                     if "imports" in metadata:
                         for import_name in metadata["imports"]:
                             imports_data.append((chunk_id, import_name, None))
-            
+
             # Bulk insert chunks
             conn.executemany(
                 "INSERT INTO chunks (id, file_id, start_line, end_line, start_byte, end_byte, content, chunk_type, parent_context, metadata) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                chunks_data
+                chunks_data,
             )
-            
+
             # Insert complexity data
             if complexity_data:
                 conn.executemany(
                     "INSERT INTO chunk_complexity (chunk_id, cyclomatic_complexity, cognitive_complexity, lines_of_code, token_count) "
                     "VALUES (?, ?, ?, ?, ?)",
-                    complexity_data
+                    complexity_data,
                 )
-            
+
             # Insert imports
             if imports_data:
                 conn.executemany(
                     "INSERT OR IGNORE INTO chunk_imports (chunk_id, import_name, import_type) VALUES (?, ?, ?)",
-                    imports_data
+                    imports_data,
                 )
-            
+
             # Insert relationships
             if self.relationships:
                 rel_data = []
                 for rel in self.relationships:
-                    rel_data.append((
-                        rel["source_id"],
-                        rel["target_id"],
-                        rel["relationship_type"],
-                        json.dumps(rel["properties"]) if rel["properties"] else None
-                    ))
-                
+                    rel_data.append(
+                        (
+                            rel["source_id"],
+                            rel["target_id"],
+                            rel["relationship_type"],
+                            (
+                                json.dumps(rel["properties"])
+                                if rel["properties"]
+                                else None
+                            ),
+                        ),
+                    )
+
                 conn.executemany(
                     "INSERT OR IGNORE INTO relationships (source_id, target_id, relationship_type, properties) "
                     "VALUES (?, ?, ?, ?)",
-                    rel_data
+                    rel_data,
                 )
-            
+
             # Note: FTS is populated automatically via triggers
-            
+
             # Create indices
             if create_indices:
                 for index_stmt in self.get_index_statements():
@@ -316,35 +347,42 @@ SELECT * FROM hierarchy ORDER BY root_id, depth, start_line;
                     except sqlite3.OperationalError:
                         # Index might already exist
                         pass
-            
+
             # Add statistics
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO schema_info (key, value) 
                 SELECT 'total_chunks', COUNT(*) FROM chunks
-            """)
-            
-            conn.execute("""
+            """,
+            )
+
+            conn.execute(
+                """
                 INSERT INTO schema_info (key, value)
                 SELECT 'total_relationships', COUNT(*) FROM relationships
-            """)
-            
-            conn.execute("""
+            """,
+            )
+
+            conn.execute(
+                """
                 INSERT INTO schema_info (key, value)
                 SELECT 'total_files', COUNT(*) FROM files
-            """)
-            
+            """,
+            )
+
             conn.commit()
-            
+
         finally:
             conn.close()
-    
-    def get_example_queries(self) -> Dict[str, str]:
+
+    def get_example_queries(self) -> dict[str, str]:
         """Get example queries for SQLite."""
         queries = super().get_analysis_queries()
-        
+
         # Add SQLite-specific queries
-        queries.update({
-            "search_content": """
+        queries.update(
+            {
+                "search_content": """
                 -- Full-text search for content
                 SELECT c.id, c.file_path, c.chunk_type, c.start_line, c.end_line,
                        snippet(chunks_fts, 1, '<b>', '</b>', '...', 32) as match_snippet
@@ -353,8 +391,7 @@ SELECT * FROM hierarchy ORDER BY root_id, depth, start_line;
                 WHERE chunks_fts MATCH ?
                 ORDER BY rank;
             """,
-            
-            "complex_functions": """
+                "complex_functions": """
                 -- Find the most complex functions
                 SELECT c.file_path, c.chunk_type, c.start_line, c.end_line,
                        cc.cyclomatic_complexity, cc.cognitive_complexity, cc.token_count
@@ -364,8 +401,7 @@ SELECT * FROM hierarchy ORDER BY root_id, depth, start_line;
                 ORDER BY cc.cyclomatic_complexity DESC
                 LIMIT 20;
             """,
-            
-            "file_dependencies": """
+                "file_dependencies": """
                 -- Find all files that a given file depends on
                 SELECT DISTINCT target_file.file_path as dependency
                 FROM chunks source
@@ -376,8 +412,7 @@ SELECT * FROM hierarchy ORDER BY root_id, depth, start_line;
                 AND r.relationship_type IN ('IMPORTS', 'INCLUDES')
                 ORDER BY dependency;
             """,
-            
-            "duplicate_detection": """
+                "duplicate_detection": """
                 -- Find potentially duplicate chunks (same content)
                 SELECT c1.file_path as file1, c1.start_line as line1,
                        c2.file_path as file2, c2.start_line as line2,
@@ -386,7 +421,8 @@ SELECT * FROM hierarchy ORDER BY root_id, depth, start_line;
                 JOIN chunks c2 ON c1.content = c2.content AND c1.id < c2.id
                 WHERE c1.chunk_type = c2.chunk_type
                 ORDER BY size DESC;
-            """
-        })
-        
+            """,
+            },
+        )
+
         return queries

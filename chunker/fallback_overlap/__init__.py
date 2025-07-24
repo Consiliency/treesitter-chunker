@@ -2,4 +2,4 @@
 
 from .chunker import OverlappingFallbackChunker, OverlapStrategy, TreeSitterOverlapError
 
-__all__ = ["OverlappingFallbackChunker", "OverlapStrategy", "TreeSitterOverlapError"]
+__all__ = ["OverlapStrategy", "OverlappingFallbackChunker", "TreeSitterOverlapError"]

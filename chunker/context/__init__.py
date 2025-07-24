@@ -5,15 +5,15 @@ meaning when creating code chunks.
 """
 
 from .extractor import BaseContextExtractor
-from .symbol_resolver import BaseSymbolResolver
-from .scope_analyzer import BaseScopeAnalyzer
-from .filter import BaseContextFilter
 from .factory import ContextFactory
+from .filter import BaseContextFilter
+from .scope_analyzer import BaseScopeAnalyzer
+from .symbol_resolver import BaseSymbolResolver
 
 __all__ = [
-    'BaseContextExtractor',
-    'BaseSymbolResolver',
-    'BaseScopeAnalyzer',
-    'BaseContextFilter',
-    'ContextFactory',
+    "BaseContextExtractor",
+    "BaseContextFilter",
+    "BaseScopeAnalyzer",
+    "BaseSymbolResolver",
+    "ContextFactory",
 ]

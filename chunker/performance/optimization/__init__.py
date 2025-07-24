@@ -1,8 +1,8 @@
 """Optimization sub-module for performance enhancement."""
 
+from .batch import BatchProcessor
 from .incremental import IncrementalParser
 from .memory_pool import MemoryPool
 from .monitor import PerformanceMonitor
-from .batch import BatchProcessor
 
-__all__ = ['IncrementalParser', 'MemoryPool', 'PerformanceMonitor', 'BatchProcessor']
+__all__ = ["BatchProcessor", "IncrementalParser", "MemoryPool", "PerformanceMonitor"]

@@ -1,57 +1,52 @@
 """Example of chunk optimization for different use cases."""
 
-from chunker import (
-    chunk_file,
-    ChunkOptimizer,
-    OptimizationStrategy,
-    OptimizationConfig
-)
+from chunker import ChunkOptimizer, OptimizationConfig, OptimizationStrategy, chunk_file
 
 
 def demonstrate_optimization():
     """Demonstrate chunk optimization features."""
-    
+
     # 1. Get initial chunks from a file
     print("1. Getting initial chunks from a Python file...")
     chunks = chunk_file("examples/sample_code.py", language="python")
     print(f"   Original chunks: {len(chunks)}")
-    
+
     # 2. Create optimizer with default config
     optimizer = ChunkOptimizer()
-    
+
     # 3. Optimize for different LLM models
     print("\n2. Optimizing for GPT-4 (8k context)...")
     optimized_gpt4, metrics_gpt4 = optimizer.optimize_for_llm(
         chunks,
         model="gpt-4",
         max_tokens=2000,  # Leave room for prompts
-        strategy=OptimizationStrategy.BALANCED
+        strategy=OptimizationStrategy.BALANCED,
     )
     print(f"   Optimized chunks: {metrics_gpt4.optimized_count}")
     print(f"   Average tokens: {metrics_gpt4.avg_tokens_after:.1f}")
     print(f"   Coherence score: {metrics_gpt4.coherence_score:.2f}")
     print(f"   Token efficiency: {metrics_gpt4.token_efficiency:.2%}")
-    
+
     # 4. Optimize for Claude (100k context)
     print("\n3. Optimizing for Claude (100k context)...")
     optimized_claude, metrics_claude = optimizer.optimize_for_llm(
         chunks,
         model="claude",
         max_tokens=8000,  # Can use larger chunks
-        strategy=OptimizationStrategy.AGGRESSIVE
+        strategy=OptimizationStrategy.AGGRESSIVE,
     )
     print(f"   Optimized chunks: {metrics_claude.optimized_count}")
     print(f"   Average tokens: {metrics_claude.avg_tokens_after:.1f}")
-    
+
     # 5. Optimize for embeddings
     print("\n4. Optimizing for embeddings...")
     embedding_chunks = optimizer.optimize_for_embedding(
         chunks,
         embedding_model="text-embedding-ada-002",
-        max_tokens=512
+        max_tokens=512,
     )
     print(f"   Embedding chunks: {len(embedding_chunks)}")
-    
+
     # 6. Custom configuration
     print("\n5. Using custom configuration...")
     config = OptimizationConfig()
@@ -59,34 +54,36 @@ def demonstrate_optimization():
     config.max_chunk_tokens = 1500
     config.target_chunk_tokens = 750
     config.merge_threshold = 0.8
-    
+
     custom_optimizer = ChunkOptimizer(config)
-    
+
     # Rebalance chunks for uniform sizing
     rebalanced = custom_optimizer.rebalance_chunks(
         chunks,
         target_tokens=750,
-        variance=0.2
+        variance=0.2,
     )
     print(f"   Rebalanced chunks: {len(rebalanced)}")
-    
+
     # 7. Preserve structure strategy
     print("\n6. Using PRESERVE_STRUCTURE strategy...")
     preserved, metrics_preserved = optimizer.optimize_for_llm(
         chunks,
         model="gpt-4",
         max_tokens=1000,
-        strategy=OptimizationStrategy.PRESERVE_STRUCTURE
+        strategy=OptimizationStrategy.PRESERVE_STRUCTURE,
     )
     print(f"   Preserved chunks: {metrics_preserved.optimized_count}")
-    print(f"   Structure maintained: {metrics_preserved.optimized_count == len(chunks)}")
-    
+    print(
+        f"   Structure maintained: {metrics_preserved.optimized_count == len(chunks)}",
+    )
+
     # 8. Show chunk boundaries analysis
     print("\n7. Analyzing chunk boundaries...")
     from chunker import ChunkBoundaryAnalyzer
-    
+
     analyzer = ChunkBoundaryAnalyzer()
-    
+
     # Find merge suggestions
     merge_suggestions = analyzer.suggest_merge_points(chunks[:5])  # First 5 chunks
     print(f"   Merge suggestions: {len(merge_suggestions)}")
@@ -188,7 +185,7 @@ def main():
 if __name__ == '__main__':
     main()
 '''
-    
+
     with open("examples/sample_code.py", "w") as f:
         f.write(sample_code)
     print("Created examples/sample_code.py")
@@ -197,8 +194,9 @@ if __name__ == '__main__':
 if __name__ == "__main__":
     # Create sample file if it doesn't exist
     import os
+
     if not os.path.exists("examples/sample_code.py"):
         os.makedirs("examples", exist_ok=True)
         create_sample_code()
-    
+
     demonstrate_optimization()
