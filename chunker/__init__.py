@@ -178,10 +178,16 @@ __all__ = [
     "tune_gc_for_streaming",
     "optimized_gc",
     "gc_disabled",
+    # Zero-configuration API (Phase 14)
+    "ZeroConfigAPI",
+    "AutoChunkResult",
 ]
 
 # Analysis tools
 from .analysis import ComplexityAnalyzer, CouplingAnalyzer, SemanticAnalyzer
+
+# Zero-configuration API (Phase 14)
+from .auto import ZeroConfigAPI
 from .cache import ASTCache
 from .chunker import (
     chunk_file,
@@ -194,6 +200,7 @@ from .config.profiles import ChunkingProfile, get_profile, list_profiles
 
 # Configuration system for strategies
 from .config.strategy_config import StrategyConfig
+from .contracts.auto_contract import AutoChunkResult
 
 # Debug tools
 from .debug import (
