@@ -1,5 +1,4 @@
-# File: tests/test_phase15_integration.py
-# Integration tests for Phase 15: Production Readiness & Developer Experience
+"""Integration tests for Phase 15: Production Readiness & Developer Experience."""
 
 from pathlib import Path
 
@@ -9,7 +8,8 @@ from chunker.contracts.debug_stub import ChunkComparisonStub, DebugVisualization
 from chunker.contracts.distribution_stub import DistributionStub, ReleaseManagementStub
 
 # Import stub implementations, NOT Mock!
-from chunker.contracts.tooling_stub import DeveloperToolingStub
+# Import the real implementation for tooling
+from chunker.tooling.developer import DeveloperToolingImpl
 
 
 class TestPhase15Integration:
@@ -18,7 +18,7 @@ class TestPhase15Integration:
     def test_pre_commit_before_ci_push(self):
         """Test that pre-commit checks run before CI/CD pipeline"""
         # Arrange: Create real stub instances
-        tooling = DeveloperToolingStub()
+        tooling = DeveloperToolingImpl()
         cicd = CICDPipelineStub()
 
         # Simulate changed files
@@ -82,9 +82,9 @@ class TestPhase15Integration:
     def test_full_release_pipeline(self):
         """Test complete release pipeline from checks to distribution"""
         # Arrange
-        tooling = DeveloperToolingStub()
+        tooling = DeveloperToolingImpl()
         cicd = CICDPipelineStub()
-        build_system = BuildSystemStub()
+        build_system = BuildSystemStub()  # noqa: F841
         distribution = DistributionStub()
         release_mgmt = ReleaseManagementStub()
 
@@ -174,7 +174,7 @@ class TestPhase15Integration:
         """Test Docker image includes debug capabilities"""
         # Arrange
         distribution = DistributionStub()
-        debug_viz = DebugVisualizationStub()
+        debug_viz = DebugVisualizationStub()  # noqa: F841
 
         # Act: Build Docker image
         docker_success, image_id = distribution.build_docker_image(
@@ -232,7 +232,7 @@ class TestPhase15Integration:
     def test_linting_before_type_checking(self):
         """Test proper ordering of quality checks"""
         # Arrange
-        tooling = DeveloperToolingStub()
+        tooling = DeveloperToolingImpl()
 
         test_files = [Path("chunker/parser.py"), Path("chunker/factory.py")]
 
@@ -294,7 +294,7 @@ class TestPhase15Integration:
         assert len(distribution_results) >= 1  # At least PyPI
         assert all(isinstance(r[1], bool) for r in distribution_results)
         # Each method returns appropriate type
-        for method, success, result in distribution_results:
+        for method, _, result in distribution_results:
             if method == "homebrew":
                 assert isinstance(result, Path)
             elif method == "pypi":
