@@ -1,6 +1,8 @@
 """
-Tree‑sitter Chunker – top‑level package.
+Tree-sitter Chunker - top-level package.
 """
+
+__version__ = "1.0.0"
 
 __all__ = [
     # Core functions

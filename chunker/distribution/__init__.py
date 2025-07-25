@@ -11,7 +11,9 @@ This module handles package distribution across multiple platforms:
 from .distributor import Distributor
 from .docker_builder import DockerBuilder
 from .homebrew_generator import HomebrewFormulaGenerator
+from .manager import DistributionImpl
 from .pypi_publisher import PyPIPublisher
+from .release import ReleaseManagementImpl
 from .release_manager import ReleaseManager
 from .verifier import InstallationVerifier
 
@@ -22,4 +24,6 @@ __all__ = [
     "ReleaseManager",
     "InstallationVerifier",
     "Distributor",
+    "DistributionImpl",
+    "ReleaseManagementImpl",
 ]
