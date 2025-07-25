@@ -1,6 +1,6 @@
 # Tree-sitter Chunker Interfaces
 
-This package contains the interface definitions for Phase 8 parallel development. All implementations in separate worktrees should inherit from these interfaces to ensure compatibility.
+This package contains the interface definitions for parallel development across multiple phases (8-15). All implementations in separate worktrees should inherit from these interfaces to ensure compatibility.
 
 ## Interface Overview
 

@@ -1,6 +1,6 @@
 # Integration Test Framework
 
-This directory contains the shared interfaces and utilities for Phase 7 cross-module integration testing.
+This directory contains the shared interfaces and utilities for cross-module integration testing across multiple phases (7-15).
 
 ## Overview
 
