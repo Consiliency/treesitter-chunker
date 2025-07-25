@@ -1,0 +1,48 @@
+Source: treesitter-chunker
+Section: python
+Priority: optional
+Maintainer: Consiliency <dev@consiliency.com>
+Build-Depends: debhelper-compat (= 13),
+               dh-python,
+               python3-all,
+               python3-setuptools,
+               python3-wheel,
+               python3-tree-sitter,
+               git,
+               cmake,
+               build-essential
+Standards-Version: 4.6.0
+Homepage: https://github.com/Consiliency/treesitter-chunker
+Vcs-Browser: https://github.com/Consiliency/treesitter-chunker
+Vcs-Git: https://github.com/Consiliency/treesitter-chunker.git
+Rules-Requires-Root: no
+
+Package: python3-treesitter-chunker
+Architecture: any
+Depends: ${python3:Depends},
+         ${misc:Depends},
+         ${shlibs:Depends},
+         python3-tree-sitter,
+         python3-rich,
+         python3-typer,
+         python3-pyarrow (>= 11.0.0),
+         python3-toml,
+         python3-yaml,
+         python3-pygments,
+         python3-chardet,
+         python3-git,
+         python3-pathspec (>= 0.11.0),
+         python3-tqdm (>= 4.65.0)
+Description: Semantic code chunker using Tree-sitter
+ TreeSitter Chunker is a powerful Python library for semantically chunking
+ source code using Tree-sitter parsers. It intelligently splits code into
+ meaningful units like functions, classes, and methods.
+ .
+ Features:
+  - Semantic understanding of code structure
+  - Support for Python, JavaScript, Rust, C, and C++
+  - High performance with parser caching
+  - Language agnostic design
+  - Thread safe for concurrent processing
+  - Multiple export formats (JSON, JSONL, Parquet)
+  - Plugin architecture for extending language support

@@ -1,0 +1,121 @@
+{
+  "name": "treesitter-chunker",
+  "displayName": "TreeSitter Chunker",
+  "description": "Semantic code chunking using Tree-sitter for intelligent code analysis",
+  "version": "1.0.0",
+  "publisher": "Consiliency",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Other"
+  ],
+  "keywords": [
+    "tree-sitter",
+    "code-analysis",
+    "chunking",
+    "parsing",
+    "ast"
+  ],
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Consiliency/treesitter-chunker"
+  },
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "treesitter-chunker.chunkFile",
+        "title": "TreeSitter Chunker: Chunk Current File"
+      },
+      {
+        "command": "treesitter-chunker.chunkWorkspace",
+        "title": "TreeSitter Chunker: Chunk Workspace"
+      },
+      {
+        "command": "treesitter-chunker.showChunks",
+        "title": "TreeSitter Chunker: Show Chunks"
+      },
+      {
+        "command": "treesitter-chunker.exportChunks",
+        "title": "TreeSitter Chunker: Export Chunks"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "treesitter-chunker.chunkFile",
+          "group": "treesitter-chunker",
+          "when": "resourceExtname =~ /\\.(py|js|ts|rs|c|cpp)$/"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "treesitter-chunker.chunkFile",
+          "group": "treesitter-chunker",
+          "when": "resourceExtname =~ /\\.(py|js|ts|rs|c|cpp)$/"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "TreeSitter Chunker",
+      "properties": {
+        "treesitter-chunker.pythonPath": {
+          "type": "string",
+          "default": "python",
+          "description": "Path to Python executable with treesitter-chunker installed"
+        },
+        "treesitter-chunker.exportFormat": {
+          "type": "string",
+          "enum": ["json", "jsonl", "parquet"],
+          "default": "json",
+          "description": "Default export format for chunks"
+        },
+        "treesitter-chunker.showChunkBoundaries": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show chunk boundaries in the editor"
+        },
+        "treesitter-chunker.chunkTypes": {
+          "type": "object",
+          "default": {
+            "python": ["function_definition", "class_definition"],
+            "javascript": ["function_declaration", "class_declaration", "method_definition"],
+            "typescript": ["function_declaration", "class_declaration", "method_definition"],
+            "rust": ["function_item", "impl_item"],
+            "c": ["function_definition"],
+            "cpp": ["function_definition", "class_specifier"]
+          },
+          "description": "Chunk types to extract for each language"
+        }
+      }
+    },
+    "activationEvents": [
+      "onLanguage:python",
+      "onLanguage:javascript",
+      "onLanguage:typescript",
+      "onLanguage:rust",
+      "onLanguage:c",
+      "onLanguage:cpp"
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.0.0",
+    "@types/mocha": "^10.0.0",
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.74.0",
+    "@vscode/test-electron": "^2.2.0",
+    "glob": "^8.0.3",
+    "mocha": "^10.0.0",
+    "typescript": "^4.9.0"
+  }
+}

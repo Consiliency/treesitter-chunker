@@ -5,7 +5,7 @@ Welcome to the Tree-sitter Chunker documentation! Tree-sitter Chunker is a power
 ## Quick Links
 
 - **[Getting Started](getting-started.md)** - Installation and your first chunking project
-- **[API Reference](api-reference.md)** - Complete API documentation with all 27 exported APIs
+- **[API Reference](api-reference.md)** - Complete API documentation with all 107+ exported APIs
 - **[User Guide](user-guide.md)** - Comprehensive usage guide with plugins and performance
 - **[Plugin Development](plugin-development.md)** - Create custom language plugins
 - **[Configuration](configuration.md)** - Configuration files and options
@@ -22,8 +22,11 @@ Welcome to the Tree-sitter Chunker documentation! Tree-sitter Chunker is a power
 - **[Log Processor](log_processor.md)** - Log file analysis and chunking
 
 ### Phase 12: Graph & Database Export
-- **[Phase 12 Export](phase12_export.md)** - GraphML, Neo4j, DOT, SQLite, PostgreSQL exports
 - **[GraphML Export](graphml_export.md)** - Detailed GraphML export documentation
+
+### Phase 14: Universal Language Support
+- **[Grammar Discovery](grammar_discovery.md)** - Automatic grammar discovery from GitHub
+- **[Zero-Config API](zero_config_api.md)** - Simple API that requires no setup
 
 ## What is Tree-sitter Chunker?
 
