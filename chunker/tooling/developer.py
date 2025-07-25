@@ -6,7 +6,7 @@ Team responsible: Developer Tooling Team
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Tuple  # type: ignore[deprecated]
+from typing import Any, Dict, List, Tuple  # noqa: UP035
 
 from chunker.contracts.tooling_contract import DeveloperToolingContract
 
@@ -28,7 +28,9 @@ class DeveloperToolingImpl(DeveloperToolingContract):
         # Default to current directory if not found
         return Path.cwd()
 
-    def run_pre_commit_checks(self, files: List[Path]) -> Tuple[bool, Dict[str, Any]]:
+    def run_pre_commit_checks(
+        self, files: List[Path],
+    ) -> Tuple[bool, Dict[str, Any]]:  # noqa: UP006
         """Run all pre-commit checks on specified files
 
         Args:
@@ -94,7 +96,9 @@ class DeveloperToolingImpl(DeveloperToolingContract):
 
         return all_success, results
 
-    def format_code(self, files: List[Path], fix: bool = False) -> Dict[str, Any]:
+    def format_code(
+        self, files: List[Path], fix: bool = False,
+    ) -> Dict[str, Any]:  # noqa: UP006
         """Format code files according to project standards
 
         Args:
@@ -185,7 +189,7 @@ class DeveloperToolingImpl(DeveloperToolingContract):
         self,
         files: List[Path],
         fix: bool = False,
-    ) -> Dict[str, List[Dict[str, Any]]]:
+    ) -> Dict[str, List[Dict[str, Any]]]:  # noqa: UP006
         """Run linting checks on specified files
 
         Args:
@@ -258,7 +262,9 @@ class DeveloperToolingImpl(DeveloperToolingContract):
 
         return results
 
-    def run_type_checking(self, files: List[Path]) -> Dict[str, List[Dict[str, Any]]]:
+    def run_type_checking(
+        self, files: List[Path],
+    ) -> Dict[str, List[Dict[str, Any]]]:  # noqa: UP006
         """Run static type checking on files
 
         Args:
