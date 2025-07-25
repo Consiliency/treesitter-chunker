@@ -347,9 +347,7 @@ class WorkflowValidator:
                 self.errors.append(f"Job '{job_id}' matrix must be a dictionary")
             else:
                 # Check for at least one dimension
-                dimensions = [
-                    k for k in matrix if k not in ["include", "exclude"]
-                ]
+                dimensions = [k for k in matrix if k not in ["include", "exclude"]]
                 if not dimensions:
                     self.errors.append(
                         f"Job '{job_id}' matrix must define at least one dimension",
