@@ -15,17 +15,59 @@ The build system handles:
 
 ### Core Classes
 
-- **BuildSystem**: Main build orchestrator implementing `BuildSystemContract`
+- **BuildSystem**: Main build orchestrator with core functionality
   - Compiles grammars for target platforms
   - Builds distribution packages (wheels, conda)
   - Verifies build artifacts
   
-- **PlatformSupport**: Platform detection and setup implementing `PlatformSupportContract`
+- **PlatformSupport**: Platform detection and setup
   - Detects OS, architecture, Python version
   - Manages compiler detection
   - Installs platform-specific dependencies
 
+- **BuildSystemImpl**: Contract-compliant wrapper implementing `BuildSystemContract`
+  - Provides the exact interface required by the contract
+  - Delegates to BuildSystem for actual implementation
+  
+- **PlatformSupportImpl**: Contract-compliant wrapper implementing `PlatformSupportContract`
+  - Provides the exact interface required by the contract
+  - Delegates to PlatformSupport for actual implementation
+
 ## Usage
+
+### Using Contract Implementations (Recommended for Integration)
+
+```python
+from chunker.build import BuildSystemImpl, PlatformSupportImpl
+from pathlib import Path
+
+# Initialize implementations
+platform_support = PlatformSupportImpl()
+build_system = BuildSystemImpl()
+
+# Detect current platform
+platform_info = platform_support.detect_platform()
+print(f"Platform: {platform_info['os']} {platform_info['arch']}")
+
+# Compile grammars
+success, build_info = build_system.compile_grammars(
+    languages=["python", "javascript", "rust"],
+    platform=platform_info["os"],
+    output_dir=Path("./build")
+)
+
+# Build wheel
+success, wheel_path = build_system.build_wheel(
+    platform=platform_info["os"],
+    python_version=platform_info["python_tag"],
+    output_dir=Path("./dist")
+)
+
+# Verify build
+valid, report = build_system.verify_build(wheel_path, platform_info["os"])
+```
+
+### Using Core Classes Directly
 
 ```python
 from chunker.build import BuildSystem, PlatformSupport
@@ -33,26 +75,15 @@ from chunker.build import BuildSystem, PlatformSupport
 # Initialize build system
 build_sys = BuildSystem()
 
-# Detect current platform
+# Access platform support through build system
 platform_info = build_sys.platform_support.detect_platform()
-print(f"Platform: {platform_info['os']} {platform_info['arch']}")
 
-# Compile grammars
+# Use build system methods directly
 success, build_info = build_sys.compile_grammars(
-    languages=["python", "javascript", "rust"],
+    languages=["python"],
     platform=platform_info["os"],
     output_dir=Path("./build")
 )
-
-# Build wheel
-success, wheel_path = build_sys.build_wheel(
-    platform=platform_info["os"],
-    python_version=platform_info["python_tag"],
-    output_dir=Path("./dist")
-)
-
-# Verify build
-valid, report = build_sys.verify_build(wheel_path, platform_info["os"])
 ```
 
 ## Platform Support
