@@ -29,7 +29,7 @@ class DebugVisualization(DebugVisualizationContract):
         Args:
             file_path: Path to source file
             language: Programming language
-            output_format: Output format (svg, png, dot, json)
+            output_format: Output format (svg, png, dot, json, text)
 
         Returns:
             Visualization data in requested format
@@ -38,7 +38,7 @@ class DebugVisualization(DebugVisualizationContract):
         if not Path(file_path).exists():
             raise FileNotFoundError(f"File not found: {file_path}")
 
-        if output_format not in ["svg", "png", "dot", "json"]:
+        if output_format not in ["svg", "png", "dot", "json", "text"]:
             raise ValueError(f"Unsupported format: {output_format}")
 
         # Get chunks for highlighting
@@ -48,6 +48,15 @@ class DebugVisualization(DebugVisualizationContract):
             chunks = None
 
         visualizer = ASTVisualizer(language)
+
+        if output_format == "text":
+            # Return text representation of AST (JSON format for now)
+            result = visualizer.visualize_file(
+                file_path,
+                output_format="json",
+                chunks=chunks,
+            )
+            return result if isinstance(result, str) else json.dumps(result)
 
         if output_format == "json":
             # Return JSON representation

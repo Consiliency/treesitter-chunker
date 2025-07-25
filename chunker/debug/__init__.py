@@ -17,8 +17,12 @@ __all__ = [
     "start_repl",
     "debug_query",
     "explore_ast",
+    # Contract implementations
+    "DebugVisualizationImpl",
+    "ChunkComparisonImpl",
 ]
 
+from .comparison import ChunkComparisonImpl
 from .interactive.chunk_debugger import ChunkDebugger
 from .interactive.node_explorer import NodeExplorer, explore_ast
 from .interactive.query_debugger import QueryDebugger, debug_query
@@ -29,3 +33,4 @@ from .visualization.ast_visualizer import (
     render_ast_graph,
 )
 from .visualization.chunk_visualizer import highlight_chunk_boundaries
+from .visualization_impl import DebugVisualizationImpl
