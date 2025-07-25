@@ -15,6 +15,12 @@ from .distribution_stub import DistributionStub, ReleaseManagementStub
 from .tooling_contract import DeveloperToolingContract
 from .tooling_stub import DeveloperToolingStub
 
+# Import actual implementations if available
+try:
+    from chunker.cicd.pipeline import CICDPipelineImpl
+except ImportError:
+    CICDPipelineImpl = CICDPipelineStub  # Fallback to stub
+
 __all__ = [
     # Contracts
     "BuildSystemContract",
@@ -36,4 +42,6 @@ __all__ = [
     "ReleaseManagementStub",
     "DeveloperToolingStub",
     "CICDPipelineStub",
+    # Implementations
+    "CICDPipelineImpl",
 ]

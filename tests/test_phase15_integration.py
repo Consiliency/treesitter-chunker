@@ -4,12 +4,17 @@
 from pathlib import Path
 
 from chunker.contracts.build_stub import BuildSystemStub, PlatformSupportStub
-from chunker.contracts.cicd_stub import CICDPipelineStub
 from chunker.contracts.debug_stub import ChunkComparisonStub, DebugVisualizationStub
 from chunker.contracts.distribution_stub import DistributionStub, ReleaseManagementStub
 
 # Import stub implementations, NOT Mock!
 from chunker.contracts.tooling_stub import DeveloperToolingStub
+
+# Import actual implementation for CI/CD
+try:
+    from chunker.cicd.pipeline import CICDPipelineImpl as CICDPipelineStub
+except ImportError:
+    from chunker.contracts.cicd_stub import CICDPipelineStub
 
 
 class TestPhase15Integration:
