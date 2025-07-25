@@ -9,6 +9,7 @@ A high-performance semantic code chunker that leverages [Tree-sitter](https://tr
 
 - 🎯 **Semantic Understanding** - Extracts functions, classes, methods based on AST
 - 🚀 **Blazing Fast** - 11.9x speedup with intelligent AST caching
+- 🌍 **Universal Language Support** - Auto-download and support for 100+ Tree-sitter grammars
 - 🔌 **Plugin Architecture** - Built-in support for Python, JavaScript, Rust, C, C++
 - 🎛️ **Flexible Configuration** - TOML/YAML/JSON config files with per-language settings
 - 📊 **14 Export Formats** - JSON, JSONL, Parquet, CSV, XML, GraphML, Neo4j, DOT, SQLite, PostgreSQL, and more
@@ -22,6 +23,7 @@ A high-performance semantic code chunker that leverages [Tree-sitter](https://tr
 - 🐛 **Debug Tools** - AST visualization, chunk inspection, performance profiling
 - 🔧 **Developer Tools** - Pre-commit hooks, CI/CD generation, quality metrics
 - 📦 **Multi-Platform Distribution** - PyPI, Docker, Homebrew packages
+- 🌐 **Zero-Configuration** - Automatic language detection and grammar download
 
 ## 📦 Installation
 
@@ -29,6 +31,37 @@ A high-performance semantic code chunker that leverages [Tree-sitter](https://tr
 - Python 3.8+
 - C compiler (for building Tree-sitter grammars)
 - `uv` package manager (recommended) or pip
+
+### Installation Methods
+
+#### From PyPI (when published)
+```bash
+pip install treesitter-chunker
+```
+
+#### Using Docker
+```bash
+docker pull ghcr.io/consiliency/treesitter-chunker:latest
+docker run -v $(pwd):/workspace treesitter-chunker chunk /workspace/example.py -l python
+```
+
+#### Using Homebrew (macOS/Linux)
+```bash
+brew tap consiliency/treesitter-chunker
+brew install treesitter-chunker
+```
+
+#### For Debian/Ubuntu
+```bash
+# Download .deb package from releases
+sudo dpkg -i python3-treesitter-chunker_1.0.0-1_all.deb
+```
+
+#### For Fedora/RHEL
+```bash
+# Download .rpm package from releases
+sudo rpm -i python-treesitter-chunker-1.0.0-1.noarch.rpm
+```
 
 ### Quick Install
 
@@ -65,6 +98,24 @@ chunks = chunk_file("example.py", "python")
 for chunk in chunks:
     print(f"{chunk.node_type} at lines {chunk.start_line}-{chunk.end_line}")
     print(f"  Context: {chunk.parent_context or 'module level'}")
+```
+
+### Zero-Configuration Usage (New!)
+
+```python
+from chunker import ZeroConfigAPI
+
+# Create API instance - no setup required!
+api = ZeroConfigAPI()
+
+# Automatically detects language and downloads grammar if needed
+result = api.auto_chunk_file("example.rs")
+
+for chunk in result.chunks:
+    print(f"{chunk['type']} at lines {chunk['start_line']}-{chunk['end_line']}")
+
+# Preload languages for offline use
+api.preload_languages(["python", "rust", "go", "typescript"])
 ```
 
 ### Using Plugins
@@ -147,6 +198,23 @@ Generate Graphviz diagrams of the parse tree:
 python scripts/visualize_ast.py example.py --lang python --out example.svg
 ```
 
+### VS Code Extension
+
+The Tree-sitter Chunker VS Code extension provides integrated chunking capabilities:
+
+1. **Install the extension**: Search for "TreeSitter Chunker" in VS Code marketplace
+2. **Commands available**:
+   - `TreeSitter Chunker: Chunk Current File` - Analyze the active file
+   - `TreeSitter Chunker: Chunk Workspace` - Process all supported files
+   - `TreeSitter Chunker: Show Chunks` - View chunks in a webview
+   - `TreeSitter Chunker: Export Chunks` - Export to JSON/JSONL/Parquet
+
+3. **Features**:
+   - Visual chunk boundaries in the editor
+   - Context menu integration
+   - Configurable chunk types per language
+   - Progress tracking for large operations
+
 ## 🎯 Features
 
 ### Plugin Architecture
@@ -185,8 +253,9 @@ min_chunk_size = 5
 - **JSONL**: Line-delimited JSON for streaming
 - **Parquet**: Columnar format for analytics with compression
 
-### Phase 9 Features (Completed)
+### Recent Feature Additions
 
+#### Phase 9 Features (Completed)
 - **Token Integration**: Count tokens for LLM context windows
 - **Chunk Hierarchy**: Build hierarchical chunk relationships
 - **Metadata Extraction**: Extract TODOs, complexity metrics, etc.
@@ -195,6 +264,13 @@ min_chunk_size = 5
 - **Repository Processing**: Process entire repositories efficiently
 - **Overlapping Fallback**: Handle edge cases with smart fallbacks
 - **Cross-Platform Packaging**: Distribute as wheels for all platforms
+
+#### Phase 14: Universal Language Support (Completed)
+- **Automatic Grammar Discovery**: Discovers 100+ Tree-sitter grammars from GitHub
+- **On-Demand Download**: Downloads and compiles grammars automatically when needed
+- **Zero-Configuration API**: Simple API that just works without setup
+- **Smart Caching**: Local cache with 24-hour refresh for offline use
+- **Language Detection**: Automatic language detection from file extensions
 
 ## 📚 API Overview
 
@@ -247,6 +323,12 @@ Tree-sitter Chunker exports 107 APIs organized into logical groups:
 - **Overlapping Fallback**: `FallbackChunker`, `ChunkOverlap`, `FallbackStrategy`
 - **Packaging**: `PackageDistributor`, `WheelBuilder`, `PlatformConfig`
 
+### Phase 14 Features
+- **Grammar Discovery**: `GrammarDiscoveryService`, `GrammarInfo`, `GrammarCompatibility`
+- **Grammar Download**: `GrammarDownloadManager`, `DownloadProgress`, `DownloadOptions`
+- **Universal Registry**: `UniversalLanguageRegistry` with auto-download support
+- **Zero-Config API**: `ZeroConfigAPI`, `AutoChunkResult`, automatic language detection
+
 ### Error Handling
 - `ChunkerError` - Base exception
 - `LanguageNotFoundError` - Language not supported
@@ -279,6 +361,10 @@ See the [API Reference](docs/api-reference.md) for detailed documentation.
 - **[Log Processing](docs/LOG_PROCESSOR.md)** - Advanced log file analysis
 - **[Config Processing](docs/CONFIG_PROCESSOR.md)** - Configuration file handling
 - **[Text Processing](docs/TEXT_PROCESSING.md)** - Non-code file support
+
+### Phase 14 Documentation
+- **[Grammar Discovery](docs/grammar_discovery.md)** - Automatic grammar discovery from GitHub
+- **[Zero-Config API](docs/zero_config_api.md)** - Simple API that requires no setup
 
 ## 📁 Project Structure
 
@@ -335,7 +421,7 @@ The project includes a comprehensive test suite with excellent coverage:
 
 ## 🎯 Project Status
 
-### Completed Phases (12 of 13)
+### Completed Phases (14 of 14) 🎉
 - **Phase 1**: Core Architecture - Parser redesign, plugin system ✅
 - **Phase 2**: Language Support - 5 languages with custom configs ✅
 - **Phase 3**: Advanced Chunking - Context preservation, relationships ✅
@@ -348,9 +434,8 @@ The project includes a comprehensive test suite with excellent coverage:
 - **Phase 10**: Advanced Features - Smart context, query system ✅
 - **Phase 11**: Text Processing - Markdown, logs, config files ✅
 - **Phase 12**: Graph & Database - GraphML, Neo4j, SQLite, PostgreSQL ✅
-
-### Next Phase
 - **Phase 13**: Developer Tools & Distribution - PyPI, Docker, CI/CD ✅
+- **Phase 14**: Universal Language Support - 100+ languages auto-download ✅
 
 ## 🚀 Advanced Capabilities
 
@@ -388,6 +473,8 @@ The final phase has added professional development and distribution capabilities
 - **🐛 Debug Tools**: Interactive chunk inspector, profiling, and analysis
 - **📊 Chunk Comparison**: Compare different chunking strategies
 - **🎯 Performance Profiling**: Memory and timing analysis for optimization
+- **🔌 VS Code Extension**: Full-featured extension for code chunking within VS Code
+- **📚 Sphinx Documentation**: Auto-generated API documentation with GitHub Pages deployment
 
 ### Development Environment
 - **🔧 Pre-commit Hooks**: Automated code quality checks before commits
@@ -403,33 +490,35 @@ The final phase has added professional development and distribution capabilities
 
 ### Distribution
 - **📦 PyPI Publishing**: Automated package publishing with validation
-- **🐳 Docker Images**: Multi-platform container images
+- **🐳 Docker Images**: Multi-platform container images (Dockerfile and Alpine variant)
 - **🍺 Homebrew Formula**: macOS/Linux package manager support
+- **📦 Platform Packages**: Debian (.deb) and RPM packages with GitHub Actions workflows
 - **🚀 Release Management**: Version bumping and changelog generation
 
 ## 🎯 Project Status and Maturity
 
 **Current Status**: ✅ **Production Ready** (v1.0.0)
 
-The Tree-sitter Chunker has completed all 13 planned development phases and is now production-ready:
+The Tree-sitter Chunker has completed all 14 planned development phases and is now production-ready:
 
 - **Code Maturity**: Stable API with comprehensive documentation
 - **Test Coverage**: 900+ tests with >95% coverage
 - **Performance**: Optimized with 11.9x performance improvements
-- **Languages**: Full support for 9 programming languages
+- **Languages**: Built-in support for 9 languages + automatic support for 100+ via download
 - **Export Formats**: 14 different output formats
 - **Distribution**: Available via PyPI, Docker Hub, and Homebrew
+- **Zero-Configuration**: Works out of the box with automatic grammar management
 
 ### 🚀 Future Enhancements
 
-The next phases focus on making Tree-sitter Chunker the ideal submodule for integration into larger platforms:
+With Phase 14 complete, the next phases focus on making Tree-sitter Chunker the ideal submodule for integration into larger platforms:
 
-- **Phase 14 - Universal Language Support**: Auto-download and support for 100+ Tree-sitter grammars
 - **Phase 15 - API Excellence**: Async APIs, HTTP service, and seamless integration patterns
 - **Phase 16 - Scale & Performance**: Handle millions of files with distributed processing
 - **Phase 17 - Deploy Anywhere**: From WASM in browsers to Kubernetes clusters
+- **Phase 18 - Enhanced Text Processing**: Intelligent chunking for documentation and configs
 
-After Phase 15, the chunker will be production-ready for integration into any vector embedding pipeline.
+After Phase 15, the chunker will be fully optimized for integration into any vector embedding pipeline.
 
 See the [ROADMAP](specs/ROADMAP.md#future-directions-post-phase-13) for detailed phase plans.
 

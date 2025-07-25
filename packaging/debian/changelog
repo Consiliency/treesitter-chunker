@@ -1,0 +1,12 @@
+treesitter-chunker (1.0.0-1) unstable; urgency=medium
+
+  * Initial release
+  * Full support for Python, JavaScript, Rust, C, and C++
+  * Plugin architecture for language extensions
+  * Multiple export formats (JSON, JSONL, Parquet)
+  * AST caching for improved performance
+  * Parallel processing capabilities
+  * Comprehensive CLI with batch processing
+  * Phase 14: Universal language support with auto-download
+
+ -- Consiliency <dev@consiliency.com>  Wed, 24 Jul 2025 12:00:00 +0000

@@ -1,0 +1,121 @@
+name: Build Packages
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-deb:
+    runs-on: ubuntu-latest
+    container: debian:bookworm
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install build dependencies
+      run: |
+        apt-get update
+        apt-get install -y debhelper dh-python python3-all python3-setuptools \
+          python3-wheel python3-tree-sitter git cmake build-essential devscripts
+    
+    - name: Prepare source package
+      run: |
+        cp -r packaging/debian debian/
+        dch -v $(git describe --tags --abbrev=0 | sed 's/v//') -D unstable "Automated build"
+    
+    - name: Build package
+      run: |
+        dpkg-buildpackage -us -uc -b
+    
+    - name: Upload deb packages
+      uses: actions/upload-artifact@v3
+      with:
+        name: debian-packages
+        path: ../*.deb
+
+  build-rpm:
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install build dependencies
+      run: |
+        dnf install -y rpm-build python3-devel python3-setuptools python3-wheel \
+          gcc gcc-c++ cmake git python3-tree-sitter
+    
+    - name: Setup build environment
+      run: |
+        mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+        cp packaging/rpm/treesitter-chunker.spec ~/rpmbuild/SPECS/
+        
+        # Create source tarball
+        version=$(grep "^Version:" packaging/rpm/treesitter-chunker.spec | awk '{print $2}')
+        tar czf ~/rpmbuild/SOURCES/treesitter-chunker-${version}.tar.gz \
+          --transform "s,^,treesitter-chunker-${version}/," \
+          --exclude=.git --exclude=__pycache__ .
+    
+    - name: Build RPM
+      run: |
+        cd ~/rpmbuild
+        rpmbuild -ba SPECS/treesitter-chunker.spec
+    
+    - name: Upload RPM packages
+      uses: actions/upload-artifact@v3
+      with:
+        name: rpm-packages
+        path: ~/rpmbuild/RPMS/**/*.rpm
+
+  build-homebrew:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Test Homebrew formula
+      run: |
+        brew install --build-from-source treesitter-chunker.rb
+        brew test treesitter-chunker.rb
+    
+    - name: Create bottle
+      run: |
+        brew bottle treesitter-chunker.rb
+    
+    - name: Upload Homebrew bottle
+      uses: actions/upload-artifact@v3
+      with:
+        name: homebrew-bottle
+        path: '*.bottle.tar.gz'
+
+  release-packages:
+    needs: [build-deb, build-rpm, build-homebrew]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+    
+    - name: Create package directory
+      run: |
+        mkdir -p packages
+        mv debian-packages/*.deb packages/
+        mv rpm-packages/*.rpm packages/
+        mv homebrew-bottle/*.tar.gz packages/
+    
+    - name: Generate package checksums
+      run: |
+        cd packages
+        sha256sum * > checksums.txt
+    
+    - name: Upload packages to release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: packages/*
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
