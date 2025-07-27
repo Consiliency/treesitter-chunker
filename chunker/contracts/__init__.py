@@ -1,9 +1,9 @@
-"""Phase 13/15 Contracts for Developer Tools & Distribution"""
+"""Phase 13/15/19 Contracts for Developer Tools, Distribution & Language Expansion"""
 
-# Contracts
+# Phase 13/15 Contracts
 from .build_contract import BuildSystemContract, PlatformSupportContract
 
-# Stub implementations
+# Phase 13/15 Stub implementations
 from .build_stub import BuildSystemStub, PlatformSupportStub
 from .cicd_contract import CICDPipelineContract
 from .cicd_stub import CICDPipelineStub
@@ -12,6 +12,14 @@ from .debug_stub import ChunkComparisonStub, DebugVisualizationStub
 from .devenv_contract import DevelopmentEnvironmentContract, QualityAssuranceContract
 from .distribution_contract import DistributionContract, ReleaseManagementContract
 from .distribution_stub import DistributionStub, ReleaseManagementStub
+from .grammar_manager_contract import GrammarManagerContract
+from .grammar_manager_stub import GrammarManagerStub
+from .language_plugin_contract import ExtendedLanguagePluginContract
+from .language_plugin_stub import ExtendedLanguagePluginStub
+
+# Phase 19 Contracts - Language Expansion
+from .template_generator_contract import TemplateGeneratorContract
+from .template_generator_stub import TemplateGeneratorStub
 from .tooling_contract import DeveloperToolingContract
 from .tooling_stub import DeveloperToolingStub
 
@@ -22,7 +30,7 @@ except ImportError:
     CICDPipelineImpl = CICDPipelineStub  # Fallback to stub
 
 __all__ = [
-    # Contracts
+    # Phase 13/15 Contracts
     "BuildSystemContract",
     "ChunkComparisonContract",
     "DebugVisualizationContract",
@@ -33,7 +41,7 @@ __all__ = [
     "ReleaseManagementContract",
     "DeveloperToolingContract",
     "CICDPipelineContract",
-    # Stubs
+    # Phase 13/15 Stubs
     "BuildSystemStub",
     "ChunkComparisonStub",
     "DebugVisualizationStub",
@@ -42,6 +50,14 @@ __all__ = [
     "ReleaseManagementStub",
     "DeveloperToolingStub",
     "CICDPipelineStub",
+    # Phase 19 Contracts
+    "TemplateGeneratorContract",
+    "GrammarManagerContract",
+    "ExtendedLanguagePluginContract",
+    # Phase 19 Stubs
+    "TemplateGeneratorStub",
+    "GrammarManagerStub",
+    "ExtendedLanguagePluginStub",
     # Implementations
     "CICDPipelineImpl",
 ]
