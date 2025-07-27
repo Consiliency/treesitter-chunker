@@ -80,8 +80,7 @@ class GrammarDownloadStub(GrammarDownloadContract):
 
             if result.success:
                 return (True, str(result.output_path))
-            else:
-                return (False, result.error_message or "Compilation failed")
+            return (False, result.error_message or "Compilation failed")
         except Exception as e:
             return (False, str(e))
 

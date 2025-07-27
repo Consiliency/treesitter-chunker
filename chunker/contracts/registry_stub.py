@@ -80,8 +80,7 @@ class UniversalRegistryStub(UniversalRegistryContract):
         if current < "0.20.0":
             self._versions[language] = "0.20.0"
             return (True, f"Updated {language} from {current} to 0.20.0")
-        else:
-            return (True, f"Language {language} already up to date")
+        return (True, f"Language {language} already up to date")
 
     def get_language_metadata(self, language: str) -> dict[str, Any]:
         """Stub that returns metadata"""

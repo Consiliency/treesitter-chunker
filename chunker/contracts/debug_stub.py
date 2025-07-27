@@ -18,8 +18,8 @@ class DebugVisualizationStub(DebugVisualizationContract):
         """Stub that returns valid default values"""
         if output_format in ["svg", "dot", "json"]:
             return "Not implemented - Debug Tools team will implement"
-        else:  # png or other binary formats
-            return b"Not implemented - Debug Tools team will implement"
+        # png or other binary formats
+        return b"Not implemented - Debug Tools team will implement"
 
     def inspect_chunk(
         self,

@@ -54,7 +54,7 @@ class GrammarDiscoveryStub(GrammarDiscoveryContract):
                 supported_extensions=[".py", ".pyw"],
                 official=True,
             )
-        elif language == "rust":
+        if language == "rust":
             return GrammarInfo(
                 name="rust",
                 url="https://github.com/tree-sitter/tree-sitter-rust",
@@ -75,10 +75,10 @@ class GrammarDiscoveryStub(GrammarDiscoveryContract):
         updates = {}
         for lang, version in installed_grammars.items():
             if (
-                lang == "python"
-                and version < "0.20.0"
-                or lang == "rust"
-                and version < "0.20.0"
+                (lang == "python"
+                and version < "0.20.0")
+                or (lang == "rust"
+                and version < "0.20.0")
             ):
                 updates[lang] = (version, "0.20.0")
         return updates

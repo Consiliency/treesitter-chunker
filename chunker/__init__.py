@@ -183,6 +183,8 @@ __all__ = [
     # Zero-configuration API (Phase 14)
     "ZeroConfigAPI",
     "AutoChunkResult",
+    # Grammar management (Phase 19)
+    "GrammarManager",
 ]
 
 # Analysis tools
@@ -245,6 +247,9 @@ from .gc_tuning import (
     tune_gc_for_streaming,
 )
 
+# Grammar management (Phase 19)
+from .grammar_manager import GrammarManager
+
 # Hierarchy features
 from .hierarchy import ChunkHierarchyBuilder, HierarchyNavigator
 from .incremental import (
@@ -279,7 +284,6 @@ from .interfaces.multi_language import (
 )
 
 # Optimization (Phase 10)
-from .interfaces.optimization import ChunkOptimizer as ChunkOptimizerInterface
 from .interfaces.optimization import (
     OptimizationConfig,
     OptimizationMetrics,

@@ -10,7 +10,7 @@ A high-performance semantic code chunker that leverages [Tree-sitter](https://tr
 - 🎯 **Semantic Understanding** - Extracts functions, classes, methods based on AST
 - 🚀 **Blazing Fast** - 11.9x speedup with intelligent AST caching
 - 🌍 **Universal Language Support** - Auto-download and support for 100+ Tree-sitter grammars
-- 🔌 **Plugin Architecture** - Built-in support for Python, JavaScript, Rust, C, C++
+- 🔌 **Plugin Architecture** - Built-in support for 14 languages: Python, JavaScript, TypeScript, TSX, Rust, C, C++, Go, Ruby, Java, PHP, Kotlin, C#, Swift
 - 🎛️ **Flexible Configuration** - TOML/YAML/JSON config files with per-language settings
 - 📊 **14 Export Formats** - JSON, JSONL, Parquet, CSV, XML, GraphML, Neo4j, DOT, SQLite, PostgreSQL, and more
 - ⚡ **Parallel Processing** - Process entire codebases with configurable workers
@@ -221,7 +221,7 @@ The Tree-sitter Chunker VS Code extension provides integrated chunking capabilit
 
 The chunker uses a flexible plugin system for language support:
 
-- **Built-in Plugins**: Python, JavaScript, Rust, C, C++
+- **Built-in Plugins**: 14 languages including Python, JavaScript, TypeScript, TSX, Rust, C, C++, Go, Ruby, Java, PHP, Kotlin, C#, Swift
 - **Custom Plugins**: Easy to add new languages
 - **Configuration**: Per-language chunk types and rules
 - **Hot Loading**: Load plugins from directories
@@ -413,11 +413,12 @@ pre-commit install
 ### Test Suite
 
 The project includes a comprehensive test suite with excellent coverage:
-- **Total tests**: 830+ tests
-- **Test files**: 59+ test modules
+- **Total tests**: 900+ tests (including dedicated tests for all 14 languages)
+- **Test files**: 65+ test modules
 - **Unit test coverage**: >95%
 - **Integration test coverage**: ~90%
 - **Status**: All tests passing
+- **Production Testing**: Comprehensive methodology covering security, performance, reliability, and operations
 
 ## 🎯 Project Status
 
