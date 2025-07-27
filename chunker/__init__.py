@@ -183,6 +183,8 @@ __all__ = [
     # Zero-configuration API (Phase 14)
     "ZeroConfigAPI",
     "AutoChunkResult",
+    # Template Generator (Phase 19)
+    "TemplateGenerator",
 ]
 
 # Analysis tools
@@ -279,7 +281,6 @@ from .interfaces.multi_language import (
 )
 
 # Optimization (Phase 10)
-from .interfaces.optimization import ChunkOptimizer as ChunkOptimizerInterface
 from .interfaces.optimization import (
     OptimizationConfig,
     OptimizationMetrics,
@@ -387,6 +388,9 @@ from .strategies import (
     SemanticChunker,
 )
 from .streaming import StreamingChunker, chunk_file_streaming
+
+# Template Generator (Phase 19)
+from .template_generator import TemplateGenerator
 
 # Token counting integration
 from .token import TiktokenCounter, TokenAwareChunker

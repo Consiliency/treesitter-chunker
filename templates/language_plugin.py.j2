@@ -1,0 +1,193 @@
+"""
+Support for {{ class_name }} language.
+"""
+
+from __future__ import annotations
+
+from typing import Optional
+
+from tree_sitter import Node
+
+from .plugin_base import LanguagePlugin
+from ..contracts.language_plugin_contract import ExtendedLanguagePluginContract
+
+
+class {{ class_name }}Plugin(LanguagePlugin, ExtendedLanguagePluginContract):
+    """Plugin for {{ class_name }} language chunking."""
+
+    @property
+    def language_name(self) -> str:
+        return "{{ language_name }}"
+
+    @property
+    def supported_extensions(self) -> set[str]:
+        return {{ '{' }}{% for ext in file_extensions %}"{{ ext }}"{% if not loop.last %}, {% endif %}{% endfor %}{{ '}' }}
+
+    @property
+    def default_chunk_types(self) -> set[str]:
+        return {{ '{' }}
+            {% for node_type in node_types %}
+            "{{ node_type }}",
+            {% endfor %}
+        {{ '}' }}
+
+    def get_chunk_node_types(self) -> set[str]:
+        """Get language-specific node types that form chunks."""
+        return self.default_chunk_types
+
+    def should_chunk_node(self, node: Node) -> bool:
+        """Determine if a specific node should be chunked.
+        
+        Args:
+            node: Tree-sitter node to evaluate
+            
+        Returns:
+            True if node should form a chunk
+        """
+        # Basic check against chunk types
+        if node.type not in self.get_chunk_node_types():
+            return False
+        
+        {% if custom_node_handling %}
+        # Custom node handling logic
+        {% for node_type, handler in custom_node_handling.items() %}
+        if node.type == "{{ node_type }}":
+            {{ handler | indent(12) }}
+        {% endfor %}
+        {% endif %}
+        
+        # Default behavior - chunk all nodes of the configured types
+        return True
+
+    def get_node_name(self, node: Node, source: bytes) -> str | None:
+        """Extract the name from a {{ language_name }} node."""
+        # For most languages, look for an identifier child node
+        for child in node.children:
+            if child.type == "identifier":
+                return source[child.start_byte : child.end_byte].decode("utf-8")
+            {% if language_name in ["javascript", "typescript"] %}
+            # Handle property identifiers for methods
+            elif child.type == "property_identifier":
+                return source[child.start_byte : child.end_byte].decode("utf-8")
+            {% endif %}
+        return None
+
+    def get_node_context(self, node: Node, source: bytes) -> Optional[str]:
+        """Extract meaningful context for a node.
+        
+        Args:
+            node: Tree-sitter node
+            source: Source code bytes
+            
+        Returns:
+            Context string or None
+        """
+        name = self.get_node_name(node, source)
+        if not name:
+            return None
+            
+        # Build context based on node type
+        context_parts = []
+        
+        # Walk up the tree to find parent contexts
+        parent = node.parent
+        while parent:
+            if parent.type in self.get_chunk_node_types():
+                parent_name = self.get_node_name(parent, source)
+                if parent_name:
+                    context_parts.insert(0, parent_name)
+            parent = parent.parent
+        
+        # Add current node name
+        context_parts.append(name)
+        
+        # Join with appropriate separator
+        return ".".join(context_parts) if context_parts else None
+
+    def get_semantic_chunks(self, node: Node, source: bytes) -> list[dict[str, any]]:
+        """Extract semantic chunks specific to this language.
+        
+        Args:
+            node: Tree-sitter parse tree root
+            source: Source code bytes
+            
+        Returns:
+            List of chunk dictionaries with metadata
+        """
+        chunks = []
+        self._extract_chunks_recursive(node, source, chunks, parent_context=None)
+        return chunks
+
+    def _extract_chunks_recursive(
+        self,
+        node: Node,
+        source: bytes,
+        chunks: list[dict[str, any]],
+        parent_context: Optional[str] = None,
+    ) -> None:
+        """Recursively extract chunks from the tree."""
+        # Check if this node should be chunked
+        if self.should_chunk_node(node):
+            # Extract chunk content
+            content = source[node.start_byte : node.end_byte].decode("utf-8", errors="replace")
+            
+            # Get node context
+            context = self.get_node_context(node, source)
+            
+            # Create chunk dictionary
+            chunk = {
+                "type": node.type,
+                "start_line": node.start_point[0] + 1,
+                "end_line": node.end_point[0] + 1,
+                "content": content,
+                "context": context or parent_context or "",
+                "name": self.get_node_name(node, source),
+            }
+            
+            chunks.append(chunk)
+            
+            # Update parent context for children
+            parent_context = context or parent_context
+        
+        # Process children
+        for child in node.children:
+            self._extract_chunks_recursive(child, source, chunks, parent_context)
+
+    def get_context_for_children(self, node: Node, chunk) -> str:
+        """Build context string for nested definitions."""
+        # Get the name of the current node
+        name = self.get_node_name(node, chunk.content.encode("utf-8"))
+        
+        if not name:
+            return chunk.parent_context
+        
+        # Build hierarchical context
+        if chunk.parent_context:
+            return f"{chunk.parent_context}.{name}"
+        return name
+
+    {% if include_decorators %}
+    def process_node(
+        self,
+        node: Node,
+        source: bytes,
+        file_path: str,
+        parent_context: str | None = None,
+    ):
+        """Process {{ language_name }} nodes with special handling for decorated definitions."""
+        # Handle decorated definitions specially
+        if node.type == "decorated_definition":
+            # The actual function/class is a child of decorated_definition
+            for child in node.children:
+                if child.type in self.get_chunk_node_types():
+                    # Process the actual definition but use the decorated node's range
+                    chunk = self.create_chunk(node, source, file_path, parent_context)
+                    if chunk and self.should_include_chunk(chunk):
+                        # Update the node type to be more specific
+                        chunk.node_type = f"decorated_{child.type}"
+                        return chunk
+            return None
+        
+        # Default processing
+        return super().process_node(node, source, file_path, parent_context)
+    {% endif %}
