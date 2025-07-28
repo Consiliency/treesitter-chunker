@@ -94,8 +94,8 @@ class MarkdownChunker(FallbackChunker, IMarkdownChunker):
                 node_type=f"markdown_h{level}",
                 start_line=line_num + 1,
                 end_line=end_line_num,
-                byte_start=sum(len(l) for l in lines[:line_num]),
-                byte_end=sum(len(l) for l in lines[:end_line_num]),
+                byte_start=sum(len(line) for line in lines[:line_num]),
+                byte_end=sum(len(line) for line in lines[:end_line_num]),
                 parent_context=f"h{level}_{text[:30]}",
                 content=chunk_content,
             )
@@ -162,7 +162,7 @@ class MarkdownChunker(FallbackChunker, IMarkdownChunker):
                     # Start of code block
                     # First, save current section
                     if current_section_lines and any(
-                        l.strip() for l in current_section_lines
+                        line.strip() for line in current_section_lines
                     ):
                         chunk = self._create_section_chunk(
                             current_section_lines,
@@ -211,7 +211,7 @@ class MarkdownChunker(FallbackChunker, IMarkdownChunker):
             if self.header_pattern.match(line_stripped):
                 # Save current section
                 if current_section_lines and any(
-                    l.strip() for l in current_section_lines
+                    line.strip() for line in current_section_lines
                 ):
                     chunk = self._create_section_chunk(
                         current_section_lines,
@@ -236,7 +236,7 @@ class MarkdownChunker(FallbackChunker, IMarkdownChunker):
                 if not in_list or (in_list and abs(indent - list_indent) > 2):
                     # New list or significantly different indent
                     if current_section_lines and any(
-                        l.strip() for l in current_section_lines
+                        line.strip() for line in current_section_lines
                     ):
                         chunk = self._create_section_chunk(
                             current_section_lines,
@@ -289,7 +289,7 @@ class MarkdownChunker(FallbackChunker, IMarkdownChunker):
                 else:
                     # Paragraph break
                     if current_section_lines and any(
-                        l.strip() for l in current_section_lines
+                        line.strip() for line in current_section_lines
                     ):
                         chunk = self._create_section_chunk(
                             current_section_lines,
@@ -308,7 +308,7 @@ class MarkdownChunker(FallbackChunker, IMarkdownChunker):
             current_section_lines.append(line)
 
         # Handle remaining lines
-        if current_section_lines and any(l.strip() for l in current_section_lines):
+        if current_section_lines and any(line.strip() for line in current_section_lines):
             chunk = self._create_section_chunk(
                 current_section_lines,
                 current_start_line,

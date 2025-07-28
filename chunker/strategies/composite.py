@@ -549,7 +549,7 @@ class CompositeChunker(ChunkingStrategy):
         scores.append(size_score)
 
         # Content score (non-empty, meaningful)
-        content_lines = [l for l in chunk.content.split("\n") if l.strip()]
+        content_lines = [line for line in chunk.content.split("\n") if line.strip()]
         if content_lines:
             content_score = min(1.0, len(content_lines) / lines) if lines > 0 else 0
         else:

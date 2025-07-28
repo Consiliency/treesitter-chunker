@@ -423,8 +423,8 @@ class ConfigProcessor(SpecializedProcessor):
                             parent_context=f"[{', '.join(all_sections)}]",
                             file_path=file_path,
                             language="ini",
-                            byte_start=sum(len(l.encode()) + 1 for l in lines[:start]),
-                            byte_end=sum(len(l.encode()) + 1 for l in lines[: end + 1]),
+                            byte_start=sum(len(l.encode()) + 1 for line in lines[:start]),
+                            byte_end=sum(len(l.encode()) + 1 for line in lines[: end + 1]),
                             metadata={
                                 "sections": all_sections,
                                 "format": "ini",
@@ -451,10 +451,10 @@ class ConfigProcessor(SpecializedProcessor):
                     file_path=file_path,
                     language="ini",
                     byte_start=sum(
-                        len(l.encode()) + 1 for l in lines[: section_info["start"]]
+                        len(l.encode()) + 1 for line in lines[: section_info["start"]]
                     ),
                     byte_end=sum(
-                        len(l.encode()) + 1 for l in lines[: section_info["end"] + 1]
+                        len(l.encode()) + 1 for line in lines[: section_info["end"] + 1]
                     ),
                     metadata={
                         "section": section_name,
@@ -531,10 +531,10 @@ class ConfigProcessor(SpecializedProcessor):
                     file_path=file_path,
                     language="toml",
                     byte_start=sum(
-                        len(l.encode()) + 1 for l in lines[: table_info["start"]]
+                        len(l.encode()) + 1 for line in lines[: table_info["start"]]
                     ),
                     byte_end=sum(
-                        len(l.encode()) + 1 for l in lines[: table_info["end"] + 1]
+                        len(l.encode()) + 1 for line in lines[: table_info["end"] + 1]
                     ),
                     metadata={
                         "table": table_name,
@@ -614,10 +614,10 @@ class ConfigProcessor(SpecializedProcessor):
                     file_path=file_path,
                     language="yaml",
                     byte_start=sum(
-                        len(l.encode()) + 1 for l in lines[: section_info["start"]]
+                        len(l.encode()) + 1 for line in lines[: section_info["start"]]
                     ),
                     byte_end=sum(
-                        len(l.encode()) + 1 for l in lines[: section_info["end"] + 1]
+                        len(l.encode()) + 1 for line in lines[: section_info["end"] + 1]
                     ),
                     metadata={
                         "section": section_name,

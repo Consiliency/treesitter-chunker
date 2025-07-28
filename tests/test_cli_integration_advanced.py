@@ -167,7 +167,7 @@ class Class_{i}:
             assert result.exit_code == 0
 
             # Count processed files
-            lines = [l for l in result.stdout.strip().split("\n") if l]
+            lines = [line for line in result.stdout.strip().split("\n") if line]
             assert len(lines) >= expected_count
 
     def test_recursive_directory_processing(self, tmp_path):
