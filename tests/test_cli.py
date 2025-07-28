@@ -401,7 +401,7 @@ def func2():
                     try:
                         json_objects.append(json.loads(current))
                         current = ""
-                    except:
+                    except Exception:
                         pass  # Continue accumulating
 
             assert len(json_objects) == 2

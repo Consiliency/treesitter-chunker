@@ -315,7 +315,7 @@ class Class_{i} {{
                     self._create_test_file(lang, size)
                     for size in ["small", "medium", "large"]
                 ]
-            except:
+            except Exception:
                 # Skip if language not available
                 pass
         return {"files": files}

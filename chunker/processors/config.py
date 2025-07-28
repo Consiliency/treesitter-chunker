@@ -105,7 +105,7 @@ class ConfigProcessor(SpecializedProcessor):
             try:
                 json.loads(content)
                 return "json"
-            except:
+            except Exception:
                 pass
 
         # Try YAML (must have yaml library)
@@ -115,7 +115,7 @@ class ConfigProcessor(SpecializedProcessor):
                 # Additional check to distinguish from INI
                 if not self._ini_section_pattern.search(content):
                     return "yaml"
-            except:
+            except Exception:
                 pass
 
         # Try TOML (must have toml library)
@@ -123,7 +123,7 @@ class ConfigProcessor(SpecializedProcessor):
             try:
                 toml.loads(content)
                 return "toml"
-            except:
+            except Exception:
                 pass
 
         # Try INI - .env files are a special case of INI without sections

@@ -623,7 +623,7 @@ class TestCacheFileMonitoring:
                                     cache.invalidate(str(path))
                                     cache.put(str(file), original_content["content"])
                                     return
-                            except:
+                            except Exception:
                                 pass
 
                 # Not a rename, just deletion
@@ -1363,7 +1363,7 @@ class TestCacheFileMonitoring:
                     readable_count += 1
                 else:
                     corrupted_entries.append(str(file))
-            except:
+            except Exception:
                 corrupted_entries.append(str(file))
 
         # Most entries should still be readable
@@ -1403,7 +1403,7 @@ class TestCacheFileMonitoring:
                     result = self.primary.get(key)
                     if result:
                         return result
-                except:
+                except Exception:
                     pass
 
                 # Fallback to memory cache
@@ -1453,7 +1453,7 @@ class TestCacheFileMonitoring:
                         )
                     conn.execute("COMMIT")
                     return True
-                except:
+                except Exception:
                     conn.execute("ROLLBACK")
                     return False
                 finally:

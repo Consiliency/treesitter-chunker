@@ -1143,7 +1143,7 @@ def test_comprehensive_recovery_scenario(tmp_path):
                     },
                 )
                 recovered = True
-            except:
+            except Exception:
                 pass
 
             if not recovered:

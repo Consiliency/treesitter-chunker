@@ -249,7 +249,7 @@ class PerformanceRegressionTracker:
                 check=True,
             )
             return result.stdout.strip()[:8]
-        except:
+        except Exception:
             return None
 
     def generate_report(self) -> str:

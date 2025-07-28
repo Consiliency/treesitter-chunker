@@ -229,7 +229,7 @@ class TestFailureHandling:
             # Restore permissions for cleanup
             try:
                 os.chmod(restricted_file, 0o644)
-            except:
+            except Exception:
                 pass  # In case file doesn't exist
             shutil.rmtree(temp_dir)
 

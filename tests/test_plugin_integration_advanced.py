@@ -60,7 +60,7 @@ class MockPluginRegistry(PluginRegistry):
             temp_instance = plugin_class()
             lang_name = temp_instance.language_name
             version = getattr(temp_instance, "plugin_version", "1.0.0")
-        except:
+        except Exception:
             # Fallback to class name parsing
             class_name = plugin_class.__name__
             if class_name.endswith("Plugin"):

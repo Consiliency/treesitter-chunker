@@ -182,21 +182,21 @@ class TreeSitterGrammarValidator(GrammarValidator):
                 try:
                     tree = parser.parse(unicode_code.encode("utf-8"))
                     features["unicode"] = not self._has_errors(tree.root_node)
-                except:
+                except Exception:
                     features["unicode"] = False
 
             # Test incremental parsing
             try:
                 parser.parse(test_code.encode(), tree)
                 features["incremental"] = True
-            except:
+            except Exception:
                 features["incremental"] = False
 
             # Test timeout
             try:
                 parser.set_timeout_micros(1000)  # 1ms timeout
                 features["timeout"] = True
-            except:
+            except Exception:
                 features["timeout"] = False
 
             return features

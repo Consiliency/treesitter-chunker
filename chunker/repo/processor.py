@@ -167,7 +167,7 @@ class RepoProcessor(RepoProcessorInterface):
                     "total_chunks": total_chunks,
                 }
                 self.save_incremental_state(str(repo_path), state)
-            except:
+            except Exception:
                 pass  # Not a git repo or other error
 
         processing_time = time.time() - start_time
@@ -241,7 +241,7 @@ class RepoProcessor(RepoProcessorInterface):
                 if ext in self._language_extensions:
                     lang = self._language_extensions[ext]
                     language_counts[lang] = language_counts.get(lang, 0) + 1
-            except:
+            except Exception:
                 pass
 
         # Rough estimates: 1MB/sec with overhead per file
@@ -380,7 +380,7 @@ class RepoProcessor(RepoProcessorInterface):
                     try:
                         content = file_path.read_text(encoding=encoding)
                         break
-                    except:
+                    except Exception:
                         continue
                 else:
                     return FileChunkResult(
@@ -503,7 +503,7 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
 
             return True
 
-        except:
+        except Exception:
             # If git operations fail, fall back to processing the file
             return True
 
@@ -581,7 +581,7 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
                             line = line.strip()
                             if line and not line.startswith("#"):
                                 patterns.append(line)
-        except:
+        except Exception:
             pass
 
         return patterns
@@ -665,7 +665,7 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
                             filtered_files.append(file_path)
 
                 return filtered_files
-        except:
+        except Exception:
             # Not a git repo, return original list
             pass
 

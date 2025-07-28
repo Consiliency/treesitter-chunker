@@ -363,7 +363,7 @@ class HTTPFileSystem(VirtualFileSystem):
             req = urllib.request.Request(url, method="HEAD")
             with urllib.request.urlopen(req) as response:
                 return response.status == 200
-        except:
+        except Exception:
             return False
 
     def is_file(self, path: str) -> bool:

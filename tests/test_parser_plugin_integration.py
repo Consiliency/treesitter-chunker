@@ -65,7 +65,7 @@ class TestParserPoolManagement:
 
             lib_path = Path(__file__).parent.parent / "build" / "my-languages.so"
             self.registry = LanguageRegistry(lib_path)
-        except:
+        except Exception:
             # Fallback to mock registry
             self.registry = Mock(spec=LanguageRegistry)
             self.registry.get_language = Mock()
@@ -136,7 +136,7 @@ class TestParserPoolManagement:
             try:
                 self.parser_factory._pools[dynamic_lang].put_nowait(parser)
                 parsers_added += 1
-            except:
+            except Exception:
                 # Pool is full
                 pass
 

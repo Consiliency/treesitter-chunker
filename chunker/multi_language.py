@@ -421,7 +421,7 @@ class ProjectAnalyzerImpl(ProjectAnalyzer):
                     try:
                         with open(file_path, encoding="utf-8", errors="ignore") as f:
                             analysis["total_lines"] += sum(1 for _ in f)
-                    except:
+                    except Exception:
                         pass
 
                     # Detect structure patterns
@@ -996,7 +996,7 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
                         parent_language=primary_language,
                     ),
                 )
-            except:
+            except Exception:
                 pass
 
         return regions

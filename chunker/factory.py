@@ -104,7 +104,7 @@ class ParserPool:
         try:
             self.pool.put(parser, block=False)
             return True
-        except:
+        except Exception:
             # Pool is full
             return False
 

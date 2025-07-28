@@ -100,7 +100,7 @@ class HomebrewFormulaGenerator:
                         "text",
                         info["license"],
                     )
-            except:
+            except Exception:
                 pass  # Use defaults
 
         return info

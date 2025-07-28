@@ -189,7 +189,7 @@ def complex_algorithm(data, options):
         elif item['type'] == 'B':
             try:
                 processed = special_process(item)
-            except:
+            except Exception:
                 processed = fallback_process(item)
         else:
             processed = default_process(item)

@@ -444,7 +444,7 @@ class LogProcessor(SpecializedProcessor):
 
                         dt = dt.replace(tzinfo=timezone.utc)
                     return dt
-                except:
+                except Exception:
                     pass
         except Exception:
             pass
