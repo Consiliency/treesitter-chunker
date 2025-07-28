@@ -26,32 +26,32 @@ from .performance import CacheManager, IncrementalParser, ParseCache
 from .query import Query, QueryBasedChunker, QueryEngine, QueryMatch
 
 __all__ = [
+    "ASTProcessor",
+    # Debug interfaces
+    "ASTVisualizer",
+    # Performance interfaces
+    "CacheManager",
     # Base interfaces
     "ChunkingStrategy",
-    "ASTProcessor",
-    # Query interfaces
-    "QueryEngine",
-    "QueryBasedChunker",
-    "Query",
-    "QueryMatch",
     # Context interfaces
     "ContextExtractor",
     "ContextItem",
-    # Performance interfaces
-    "CacheManager",
-    "IncrementalParser",
-    "ParseCache",
-    # Export interfaces
-    "StructuredExporter",
-    "RelationshipTracker",
     "ExportFormat",
-    # Grammar interfaces
-    "GrammarManager",
-    "GrammarInfo",
     # Fallback interfaces
     "FallbackChunker",
     "FallbackStrategy",
-    # Debug interfaces
-    "ASTVisualizer",
+    "GrammarInfo",
+    # Grammar interfaces
+    "GrammarManager",
+    "IncrementalParser",
+    "ParseCache",
+    "Query",
+    "QueryBasedChunker",
     "QueryDebugger",
+    # Query interfaces
+    "QueryEngine",
+    "QueryMatch",
+    "RelationshipTracker",
+    # Export interfaces
+    "StructuredExporter",
 ]

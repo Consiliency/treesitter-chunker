@@ -177,9 +177,7 @@ def demonstrate_targeted_merging():
         c for c in chunks if c.language == "python" and "Person" in c.parent_context
     ]
     java_calc_chunks = [c for c in chunks if c.language == "java"]
-    other_chunks = [
-        c for c in chunks if c not in python_person_chunks and c not in java_calc_chunks
-    ]
+    [c for c in chunks if c not in python_person_chunks and c not in java_calc_chunks]
 
     print("=== Targeted Semantic Merging Demo ===\n")
 

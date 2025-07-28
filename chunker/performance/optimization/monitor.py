@@ -7,7 +7,9 @@ from collections import defaultdict
 from dataclasses import dataclass
 from threading import RLock
 
-from ...interfaces.performance import PerformanceMonitor as PerformanceMonitorInterface
+from chunker.interfaces.performance import (
+    PerformanceMonitor as PerformanceMonitorInterface,
+)
 
 logger = logging.getLogger(__name__)
 

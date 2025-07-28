@@ -211,7 +211,7 @@ port = 5432
 
             # Should be valid JSON
             parsed = json.loads(chunk.content)
-            assert isinstance(parsed, (dict, list))
+            assert isinstance(parsed, dict | list)
 
     def test_chunk_json_array(self):
         """Test chunking JSON arrays."""

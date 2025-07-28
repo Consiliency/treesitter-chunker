@@ -15,9 +15,10 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from ..chunker_config import ChunkerConfig
-from ..interfaces.fallback import FallbackConfig
-from ..types import CodeChunk
+from chunker.chunker_config import ChunkerConfig
+from chunker.interfaces.fallback import FallbackConfig
+from chunker.types import CodeChunk
+
 from .base import FallbackChunker
 from .detection.file_type import FileType, FileTypeDetector
 
@@ -295,7 +296,7 @@ class SlidingWindowFallback(FallbackChunker):
         """Load built-in processors dynamically."""
         # Try to import processors from Phase 11 components
         try:
-            from ..processors.markdown import MarkdownProcessor
+            from chunker.processors.markdown import MarkdownProcessor
 
             processor_info = ProcessorInfo(
                 name="markdown_processor",
@@ -313,7 +314,7 @@ class SlidingWindowFallback(FallbackChunker):
             logger.debug(f"Could not import MarkdownProcessor: {e}")
 
         try:
-            from ..processors.logs import LogProcessor
+            from chunker.processors.logs import LogProcessor
 
             processor_info = ProcessorInfo(
                 name="log_processor",
@@ -331,7 +332,7 @@ class SlidingWindowFallback(FallbackChunker):
             logger.debug(f"Could not import LogProcessor: {e}")
 
         try:
-            from ..processors.config import ConfigProcessor
+            from chunker.processors.config import ConfigProcessor
 
             processor_info = ProcessorInfo(
                 name="config_processor",
@@ -387,7 +388,7 @@ class SlidingWindowFallback(FallbackChunker):
                 )
 
                 # Find processor class
-                for name, obj in inspect.getmembers(module):
+                for _name, obj in inspect.getmembers(module):
                     if (
                         inspect.isclass(obj)
                         and issubclass(obj, TextProcessor)
@@ -436,7 +437,7 @@ class SlidingWindowFallback(FallbackChunker):
                 )
 
                 # Create adapter class
-                for class_name, obj in inspect.getmembers(module):
+                for _class_name, obj in inspect.getmembers(module):
                     if (
                         inspect.isclass(obj)
                         and issubclass(obj, FallbackChunker)
@@ -562,7 +563,7 @@ class SlidingWindowFallback(FallbackChunker):
                 spec.loader.exec_module(module)
 
                 # Find processor classes
-                for name, obj in inspect.getmembers(module):
+                for _name, obj in inspect.getmembers(module):
                     if (
                         inspect.isclass(obj)
                         and issubclass(obj, TextProcessor)

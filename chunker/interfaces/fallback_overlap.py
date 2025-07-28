@@ -4,8 +4,8 @@ from abc import abstractmethod
 from enum import Enum
 from typing import Literal
 
-from ..fallback.base import FallbackChunker
-from ..types import CodeChunk
+from chunker.fallback.base import FallbackChunker
+from chunker.types import CodeChunk
 
 
 class OverlapStrategy(Enum):

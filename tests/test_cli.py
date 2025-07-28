@@ -251,7 +251,8 @@ def func2():
             result = runner.invoke(app, ["batch", str(tmppath), "--quiet"])
             assert result.exit_code == 0
             assert "2 total chunks" in result.output
-            assert "from 2" in result.output and "files)" in result.output
+            assert "from 2" in result.output
+            assert "files)" in result.output
 
     def test_batch_command_pattern(self):
         """Test batch command with pattern."""
@@ -284,7 +285,8 @@ function testFunc() {}
             )
             assert result.exit_code == 0
             assert "2 total chunks" in result.output
-            assert "from 2" in result.output and "files)" in result.output
+            assert "from 2" in result.output
+            assert "files)" in result.output
 
     def test_batch_command_stdin(self):
         """Test batch command reading from stdin."""
@@ -365,7 +367,8 @@ def test_function():
                     ],
                 )
                 assert result.exit_code == 0
-                assert "from 1" in result.output and "files)" in result.output
+                assert "from 1" in result.output
+                assert "files)" in result.output
                 assert "function_definition" in result.output
             finally:
                 os.chdir(old_cwd)

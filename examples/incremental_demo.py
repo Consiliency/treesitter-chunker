@@ -91,7 +91,7 @@ def demonstrate_diff_computation():
     """Demonstrate diff computation between chunks."""
     print("\n=== Diff Computation Demo ===")
 
-    processor = DefaultIncrementalProcessor()
+    DefaultIncrementalProcessor()
 
     # Original chunks
     old_chunks = create_sample_chunks()

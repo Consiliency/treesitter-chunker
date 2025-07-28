@@ -22,7 +22,8 @@ try:
 except ImportError:
     yaml = None
 
-from ..types import CodeChunk
+from chunker.types import CodeChunk
+
 from .base import ProcessorConfig, SpecializedProcessor
 
 
@@ -261,7 +262,7 @@ class ConfigProcessor(SpecializedProcessor):
         if not yaml:
             raise ImportError("yaml library not available")
 
-        data = yaml.safe_load(content)
+        yaml.safe_load(content)
         lines = content.split("\n")
 
         structure = {
@@ -286,7 +287,7 @@ class ConfigProcessor(SpecializedProcessor):
 
                 # Root level key
                 if indent == 0:
-                    if not value or value == "|" or value == ">":
+                    if not value or value in {"|", ">"}:
                         # This is a section
                         current_section = key
                         section_indent = indent
@@ -408,7 +409,7 @@ class ConfigProcessor(SpecializedProcessor):
                 related = self._find_related_sections(section_name, available_sections)
                 if related:
                     # Group related sections
-                    all_sections = [section_name] + related
+                    all_sections = [section_name, *related]
                     start = min(structure["sections"][s]["start"] for s in all_sections)
                     end = max(structure["sections"][s]["end"] for s in all_sections)
                     grouped_content = "\n".join(lines[start : end + 1])
@@ -682,7 +683,7 @@ class ConfigProcessor(SpecializedProcessor):
                             metadata={
                                 "key": key,
                                 "value_type": type(value).__name__,
-                                "is_nested": isinstance(value, (dict, list)),
+                                "is_nested": isinstance(value, dict | list),
                                 "format": "json",
                                 "name": key,
                             },

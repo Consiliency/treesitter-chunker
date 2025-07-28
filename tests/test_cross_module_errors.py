@@ -162,11 +162,6 @@ class TestCrossModuleErrors(ErrorPropagationMixin):
     def test_config_error_to_parallel(self, error_tracking_context):
         """Test config error propagation to parallel processing with worker handling."""
         # Simulate invalid config during parallel operation
-        invalid_config = {
-            "num_workers": -1,  # Invalid: negative workers
-            "chunk_types": None,  # Invalid: None instead of list
-            "timeout": "not_a_number",  # Invalid: string instead of int
-        }
 
         # Config validation error
         config_error = ValueError("Invalid configuration: num_workers must be positive")
@@ -233,9 +228,7 @@ class TestCrossModuleErrors(ErrorPropagationMixin):
         # Verify no zombie processes
         final_error = error_chain[-1]
         assert final_error["context_data"]["cleanup_status"]["zombie_processes"] == []
-        assert (
-            final_error["context_data"]["cleanup_status"]["resources_released"] == True
-        )
+        assert final_error["context_data"]["cleanup_status"]["resources_released"]
 
     def test_cascading_failure_scenario(self, error_tracking_context):
         """Test cascading failure across multiple modules with context accumulation."""
@@ -629,7 +622,7 @@ class TestCrossModuleErrors(ErrorPropagationMixin):
     def _format_user_friendly_error(
         self,
         error_context: dict[str, Any],
-        original_context: dict[str, Any] = None,
+        original_context: dict[str, Any] | None = None,
     ) -> str:
         """Format error for end user consumption."""
         lines = []

@@ -18,13 +18,13 @@ struct User {
     let id: UUID
     var name: String
     var email: String?
-    
+
     init(name: String, email: String? = nil) {
         self.id = UUID()
         self.name = name
         self.email = email
     }
-    
+
     mutating func updateEmail(_ newEmail: String) {
         email = newEmail
     }
@@ -32,15 +32,15 @@ struct User {
 
 class UserManager {
     private var users: [User] = []
-    
+
     func addUser(_ user: User) {
         users.append(user)
     }
-    
+
     func findUser(byId id: UUID) -> User? {
         return users.first { $0.id == id }
     }
-    
+
     func getAllUsers() -> [User] {
         return users
     }
@@ -77,15 +77,15 @@ protocol Electric {
 struct Car: Vehicle, Electric {
     let numberOfWheels = 4
     var batteryLevel: Double = 0.0
-    
+
     func startEngine() {
         print("Engine started")
     }
-    
+
     func stopEngine() {
         print("Engine stopped")
     }
-    
+
     mutating func charge(to level: Double) {
         batteryLevel = min(level, 100.0)
     }
@@ -101,7 +101,7 @@ extension Array where Element: Numeric {
     func sum() -> Element {
         return reduce(0, +)
     }
-    
+
     func average() -> Double? {
         guard !isEmpty else { return nil }
         let total = reduce(0) { Double($0) + Double($1 as! NSNumber) }
@@ -118,7 +118,7 @@ extension Array where Element: Numeric {
 enum Result<Success, Failure: Error> {
     case success(Success)
     case failure(Failure)
-    
+
     func map<NewSuccess>(_ transform: (Success) -> NewSuccess) -> Result<NewSuccess, Failure> {
         switch self {
         case .success(let value):
@@ -134,7 +134,7 @@ enum NetworkError: Error {
     case timeout(seconds: Int)
     case serverError(code: Int, message: String)
     case invalidResponse
-    
+
     var localizedDescription: String {
         switch self {
         case .noConnection:
@@ -164,15 +164,15 @@ enum ViewState<T> {
         code = """
 actor UserCache {
     private var cache: [UUID: User] = [:]
-    
+
     func get(_ id: UUID) -> User? {
         return cache[id]
     }
-    
+
     func set(_ user: User) {
         cache[user.id] = user
     }
-    
+
     func clear() {
         cache.removeAll()
     }
@@ -181,24 +181,24 @@ actor UserCache {
 class APIService {
     private let session = URLSession.shared
     private let decoder = JSONDecoder()
-    
+
     func fetchUser(id: UUID) async throws -> User {
         let url = URL(string: "https://api.example.com/users/\\(id)")!
         let (data, response) = try await session.data(from: url)
-        
+
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {
             throw APIError.invalidResponse
         }
-        
+
         return try decoder.decode(User.self, from: data)
     }
-    
+
     func fetchUsers() async throws -> [User] {
         async let user1 = fetchUser(id: UUID())
         async let user2 = fetchUser(id: UUID())
         async let user3 = fetchUser(id: UUID())
-        
+
         return try await [user1, user2, user3]
     }
 }
@@ -207,13 +207,13 @@ class APIService {
 class ViewModel: ObservableObject {
     @Published var users: [User] = []
     @Published var isLoading = false
-    
+
     private let apiService = APIService()
-    
+
     func loadUsers() async {
         isLoading = true
         defer { isLoading = false }
-        
+
         do {
             users = try await apiService.fetchUsers()
         } catch {
@@ -232,7 +232,7 @@ class ViewModel: ObservableObject {
 struct UserDefault<T> {
     let key: String
     let defaultValue: T
-    
+
     var wrappedValue: T {
         get { UserDefaults.standard.object(forKey: key) as? T ?? defaultValue }
         set { UserDefaults.standard.set(newValue, forKey: key) }
@@ -243,12 +243,12 @@ struct UserDefault<T> {
 struct Clamped<T: Comparable> {
     private var value: T
     let range: ClosedRange<T>
-    
+
     init(wrappedValue: T, _ range: ClosedRange<T>) {
         self.range = range
         self.value = min(max(wrappedValue, range.lowerBound), range.upperBound)
     }
-    
+
     var wrappedValue: T {
         get { value }
         set { value = min(max(newValue, range.lowerBound), range.upperBound) }
@@ -258,11 +258,11 @@ struct Clamped<T: Comparable> {
 struct Settings {
     @UserDefault(key: "username", defaultValue: "")
     var username: String
-    
+
     @UserDefault(key: "volume", defaultValue: 50)
     @Clamped(0...100)
     var volume: Int
-    
+
     @UserDefault(key: "isDarkMode", defaultValue: false)
     var isDarkMode: Bool
 }
@@ -280,15 +280,15 @@ protocol Identifiable {
 
 class Cache<T: Identifiable> {
     private var storage: [T.ID: T] = [:]
-    
+
     func store(_ item: T) {
         storage[item.id] = item
     }
-    
+
     func retrieve(id: T.ID) -> T? {
         return storage[id]
     }
-    
+
     func remove(id: T.ID) {
         storage.removeValue(forKey: id)
     }
@@ -297,7 +297,7 @@ class Cache<T: Identifiable> {
 func findDuplicates<T: Hashable>(_ array: [T]) -> [T] {
     var seen = Set<T>()
     var duplicates = Set<T>()
-    
+
     for item in array {
         if seen.contains(item) {
             duplicates.insert(item)
@@ -305,17 +305,17 @@ func findDuplicates<T: Hashable>(_ array: [T]) -> [T] {
             seen.insert(item)
         }
     }
-    
+
     return Array(duplicates)
 }
 
 struct Container<T> where T: Equatable {
     private var items: [T] = []
-    
+
     mutating func append(_ item: T) {
         items.append(item)
     }
-    
+
     func contains(_ item: T) -> Bool {
         return items.contains(item)
     }

@@ -7,12 +7,14 @@ import logging
 import re
 import subprocess
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from tree_sitter import Language, Parser
 
 from .exceptions import LanguageNotFoundError, LibraryLoadError, LibraryNotFoundError
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 logger = logging.getLogger(__name__)
 

@@ -76,7 +76,7 @@ class TestParserAPI:
     def test_clear_cache(self):
         """Test clearing parser cache."""
         # Get a parser to populate cache
-        parser1 = get_parser("python")
+        get_parser("python")
         clear_cache()
         # Should still work after clearing
         parser2 = get_parser("python")

@@ -145,8 +145,7 @@ def test_streaming_export(sample_chunks):
 
         # Use iterator to simulate streaming
         def chunks_iterator():
-            for chunk in sample_chunks:
-                yield chunk
+            yield from sample_chunks
 
         exporter.export_streaming(chunks_iterator(), output_path, batch_size=2)
 

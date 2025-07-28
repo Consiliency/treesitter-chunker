@@ -10,7 +10,7 @@ class MockLanguageConfig(LanguageConfig):
         self,
         language_id: str,
         chunk_types: set[str],
-        ignore_types: set[str] = None,
+        ignore_types: set[str] | None = None,
     ):
         self._language_id = language_id
         self._chunk_types = chunk_types

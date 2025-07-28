@@ -23,52 +23,52 @@ class TestSemanticMergingIntegration:
             '''
 class User:
     """User model with properties."""
-    
+
     def __init__(self, name, age):
         self._name = name
         self._age = age
         self._email = None
-    
+
     # Getter/setter pair for name
     def get_name(self):
         """Get user name."""
         return self._name
-    
+
     def set_name(self, name):
         """Set user name."""
         self._name = name
-    
+
     # Getter/setter pair for age
     def get_age(self):
         """Get user age."""
         return self._age
-    
+
     def set_age(self, age):
         """Set user age."""
         if age < 0:
             raise ValueError("Age cannot be negative")
         self._age = age
-    
+
     # Getter/setter pair for email
     def get_email(self):
         """Get user email."""
         return self._email
-    
+
     def set_email(self, email):
         """Set user email."""
         if "@" not in email:
             raise ValueError("Invalid email")
         self._email = email
-    
+
     # Utility methods
     def is_adult(self):
         """Check if user is adult."""
         return self._age >= 18
-    
+
     def has_email(self):
         """Check if user has email."""
         return self._email is not None
-    
+
     def format_name(self):
         """Format name for display."""
         return self._name.title()
@@ -114,7 +114,7 @@ class User:
 
         # Build hierarchy
         hierarchy_builder = ChunkHierarchyBuilder()
-        hierarchy = hierarchy_builder.build_hierarchy(chunks)
+        hierarchy_builder.build_hierarchy(chunks)
 
         # Merge chunks
         merger = TreeSitterSemanticMerger()
@@ -202,7 +202,7 @@ class BaseModel:
     def save(self):
         """Save model."""
         pass
-    
+
     def delete(self):
         """Delete model."""
         pass
@@ -219,7 +219,7 @@ class User(BaseModel):
         """Save user."""
         super().save()
         print("User saved")
-    
+
     def delete(self):
         """Delete user."""
         super().delete()

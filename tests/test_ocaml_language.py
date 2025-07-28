@@ -99,15 +99,15 @@ and env = (string * value) list
             """(* Simple module *)
 module Stack = struct
   type 'a t = 'a list
-  
+
   let empty = []
-  
+
   let push x s = x :: s
-  
+
   let pop = function
     | [] -> failwith "Empty stack"
     | h :: t -> (h, t)
-    
+
   let is_empty s = s = []
 end
 
@@ -121,9 +121,9 @@ end
 module MakeSet (M : COMPARABLE) = struct
   type element = M.t
   type t = element list
-  
+
   let empty = []
-  
+
   let add x s =
     if List.mem x s then s else x :: s
 end
@@ -133,7 +133,7 @@ module Outer = struct
   module Inner = struct
     let value = 42
   end
-  
+
   let get_value () = Inner.value
 end
 """,
@@ -196,14 +196,14 @@ class point x_init y_init =
   object
     val mutable x = x_init
     val mutable y = y_init
-    
+
     method get_x = x
     method get_y = y
-    
+
     method move dx dy =
       x <- x + dx;
       y <- y + dy
-    
+
     method distance (other : point) =
       let dx = x - other#get_x in
       let dy = y - other#get_y in
@@ -449,7 +449,7 @@ end
 module Make (E : ELEMENT) : sig
   type element = E.t
   type t
-  
+
   val create : unit -> t
   val push : element -> t -> unit
   val pop : t -> element option

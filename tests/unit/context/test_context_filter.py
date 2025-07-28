@@ -29,7 +29,7 @@ class TestBaseContextFilter:
             importance=90,
         )
 
-        assert filter.is_relevant(import_item, chunk_node) == True
+        assert filter.is_relevant(import_item, chunk_node)
 
     def test_is_relevant_parent_scope(self):
         """Test that parent scope is relevant if it's an ancestor."""
@@ -67,7 +67,7 @@ class TestBaseContextFilter:
             importance=70,
         )
 
-        assert filter.is_relevant(parent_item, chunk_node) == True
+        assert filter.is_relevant(parent_item, chunk_node)
 
     def test_score_relevance_by_type(self):
         """Test relevance scoring based on context type."""
@@ -210,11 +210,11 @@ class TestBaseContextFilter:
         child = type("MockNode", (), {"parent": parent})()
         unrelated = type("MockNode", (), {"parent": None})()
 
-        assert filter._is_ancestor(root, child) == True
-        assert filter._is_ancestor(parent, child) == True
-        assert filter._is_ancestor(child, child) == False  # Not its own ancestor
-        assert filter._is_ancestor(unrelated, child) == False
-        assert filter._is_ancestor(child, parent) == False  # Wrong direction
+        assert filter._is_ancestor(root, child)
+        assert filter._is_ancestor(parent, child)
+        assert not filter._is_ancestor(child, child)  # Not its own ancestor
+        assert not filter._is_ancestor(unrelated, child)
+        assert not filter._is_ancestor(child, parent)  # Wrong direction
 
     def test_calculate_ast_distance(self):
         """Test calculating distance between nodes."""
@@ -256,8 +256,8 @@ class TestPythonContextFilter:
         decorator_node = type("MockNode", (), {"type": "decorator"})()
         other_node = type("MockNode", (), {"type": "function_definition"})()
 
-        assert filter._is_decorator_node(decorator_node) == True
-        assert filter._is_decorator_node(other_node) == False
+        assert filter._is_decorator_node(decorator_node)
+        assert not filter._is_decorator_node(other_node)
 
 
 class TestJavaScriptContextFilter:
@@ -271,5 +271,5 @@ class TestJavaScriptContextFilter:
         decorator_node = type("MockNode", (), {"type": "decorator"})()
         other_node = type("MockNode", (), {"type": "function_declaration"})()
 
-        assert filter._is_decorator_node(decorator_node) == True
-        assert filter._is_decorator_node(other_node) == False
+        assert filter._is_decorator_node(decorator_node)
+        assert not filter._is_decorator_node(other_node)

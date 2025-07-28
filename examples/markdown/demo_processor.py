@@ -79,7 +79,7 @@ def process_file(file_path, config=None):
     print(
         f"  Average chunk size: {sum(c.metadata.get('tokens', 0) for c in chunks) / len(chunks):.1f} tokens",
     )
-    print(f"  Chunk types: {set(c.node_type for c in chunks)}")
+    print(f"  Chunk types: { {c.node_type for c in chunks} }")
 
     # Check for overlap
     overlap_chunks = [c for c in chunks if c.metadata.get("has_overlap")]

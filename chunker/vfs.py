@@ -12,9 +12,12 @@ import urllib.parse
 import urllib.request
 import zipfile
 from abc import ABC, abstractmethod
-from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 
 @dataclass
@@ -167,7 +170,7 @@ class InMemoryFileSystem(VirtualFileSystem):
     def is_dir(self, path: str) -> bool:
         """Check if a path is a directory."""
         # Root is always a directory
-        if path == "/" or path == "":
+        if path in {"/", ""}:
             return True
         # Simple implementation - check if any file has this as prefix
         if path in self.files:
@@ -245,7 +248,7 @@ class ZipFileSystem(VirtualFileSystem):
 
     def open(self, path: str, mode: str = "r") -> io.IOBase:
         """Open a file in the ZIP archive."""
-        if mode != "r" and mode != "rb":
+        if mode not in {"r", "rb"}:
             raise ValueError("ZIP file system is read-only")
 
         if path not in self.files:
@@ -328,7 +331,7 @@ class HTTPFileSystem(VirtualFileSystem):
 
     def _make_url(self, path: str) -> str:
         """Construct full URL from path."""
-        if path.startswith("http://") or path.startswith("https://"):
+        if path.startswith(("http://", "https://")):
             return path
         path = path.lstrip("/")
         return f"{self.base_url}/{path}"

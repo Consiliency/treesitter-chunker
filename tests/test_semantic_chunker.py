@@ -24,34 +24,34 @@ from typing import List, Dict
 
 class DataProcessor:
     """Process data with various transformations."""
-    
+
     def __init__(self, config: Dict):
         self.config = config
         self.data = []
         self.errors = []
-    
+
     def validate_input(self, data: List[Dict]) -> bool:
         """Validate input data format."""
         if not data:
             self.errors.append("Empty data")
             return False
-        
+
         for item in data:
             if not isinstance(item, dict):
                 self.errors.append(f"Invalid item: {item}")
                 return False
-            
+
             if 'id' not in item or 'value' not in item:
                 self.errors.append(f"Missing fields: {item}")
                 return False
-        
+
         return True
-    
+
     def process_data(self, data: List[Dict]) -> List[Dict]:
         """Main processing function with complex logic."""
         if not self.validate_input(data):
             return []
-        
+
         results = []
         for item in data:
             try:
@@ -62,13 +62,13 @@ class DataProcessor:
                     processed = self._transform_negative(item)
                 else:
                     processed = self._transform_normal(item)
-                
+
                 results.append(processed)
             except Exception as e:
                 self.errors.append(f"Processing error: {e}")
-        
+
         return results
-    
+
     def _transform_large(self, item: Dict) -> Dict:
         """Transform large values."""
         return {
@@ -76,7 +76,7 @@ class DataProcessor:
             'value': item['value'] / 10,
             'category': 'large'
         }
-    
+
     def _transform_negative(self, item: Dict) -> Dict:
         """Transform negative values."""
         return {
@@ -84,7 +84,7 @@ class DataProcessor:
             'value': abs(item['value']),
             'category': 'negative'
         }
-    
+
     def _transform_normal(self, item: Dict) -> Dict:
         """Transform normal values."""
         return {
@@ -97,13 +97,13 @@ def main():
     """Entry point for the processor."""
     config = {'debug': True}
     processor = DataProcessor(config)
-    
+
     test_data = [
         {'id': 1, 'value': 150},
         {'id': 2, 'value': -20},
         {'id': 3, 'value': 50}
     ]
-    
+
     results = processor.process_data(test_data)
     print(json.dumps(results, indent=2))
 
@@ -169,7 +169,7 @@ if __name__ == "__main__":
         )
 
         # Transform methods should be grouped if they're related
-        transform_chunks = [
+        [
             c
             for c in chunks
             if any(pattern in c.content for pattern in ["_transform_", "transform"])
@@ -187,7 +187,7 @@ if __name__ == "__main__":
 def complex_function(data):
     """A function with high complexity."""
     result = []
-    
+
     for item in data:
         if item['type'] == 'A':
             if item['value'] > 100:
@@ -215,7 +215,7 @@ def complex_function(data):
             except Exception as e:
                 print(f"Error: {e}")
                 result.append(None)
-    
+
     return [r for r in result if r is not None]
 '''
 
@@ -269,7 +269,7 @@ def complex_function(data):
 
     def test_configuration(self, semantic_chunker):
         """Test configuration updates."""
-        original_config = semantic_chunker.config.copy()
+        semantic_chunker.config.copy()
 
         # Update configuration
         new_config = {
@@ -341,15 +341,13 @@ async def get_product(product_id):
         chunk_contents = [chunk.content for chunk in chunks]
 
         # Config should be separate
-        config_chunks = [c for c in chunk_contents if "DEBUG" in c or "API_KEY" in c]
+        [c for c in chunk_contents if "DEBUG" in c or "API_KEY" in c]
 
         # Classes should be chunked
-        class_chunks = [
-            c for c in chunk_contents if "class User" in c or "class Product" in c
-        ]
+        [c for c in chunk_contents if "class User" in c or "class Product" in c]
 
         # Functions should be chunked
-        function_chunks = [
+        [
             c
             for c in chunk_contents
             if "def calculate_discount" in c or "def apply_discount" in c

@@ -1026,7 +1026,7 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
             try:
                 # Use tree-sitter to parse the region if available
                 parser = get_parser(region.language)
-                tree = parser.parse(region_content.encode())
+                parser.parse(region_content.encode())
 
                 # Create chunks from the parsed tree
                 region_chunks = chunk_file(
@@ -1287,16 +1287,15 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
                             if (
                                 other_chunk != chunk
                                 and table_name in other_chunk.content
-                            ):
-                                if other_chunk.language != chunk.language:
-                                    references.append(
-                                        CrossLanguageReference(
-                                            source_chunk=chunk,
-                                            target_chunk=other_chunk,
-                                            reference_type="database_reference",
-                                            confidence=0.5,
-                                        ),
-                                    )
+                            ) and other_chunk.language != chunk.language:
+                                references.append(
+                                    CrossLanguageReference(
+                                        source_chunk=chunk,
+                                        target_chunk=other_chunk,
+                                        reference_type="database_reference",
+                                        confidence=0.5,
+                                    ),
+                                )
 
         return references
 

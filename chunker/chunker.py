@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-
-from tree_sitter import Node
+from typing import TYPE_CHECKING
 
 from .languages import language_config_registry
 from .metadata import MetadataExtractorFactory
@@ -10,6 +9,9 @@ from .parser import get_parser
 from .token.chunker import TreeSitterTokenAwareChunker
 from .token.counter import TiktokenCounter
 from .types import CodeChunk
+
+if TYPE_CHECKING:
+    from tree_sitter import Node
 
 
 def _walk(
@@ -27,8 +29,13 @@ def _walk(
     if not config:
         # Fallback to hardcoded defaults for backward compatibility
         CHUNK_TYPES = {"function_definition", "class_definition", "method_definition"}
-        should_chunk = lambda node_type: node_type in CHUNK_TYPES
-        should_ignore = lambda node_type: False
+
+        def should_chunk(node_type):
+            return node_type in CHUNK_TYPES
+
+        def should_ignore(node_type):
+            return False
+
     else:
         should_chunk = config.should_chunk_node
         should_ignore = config.should_ignore_node
@@ -79,11 +86,9 @@ def _walk(
 
                 # Extract dependencies
                 dependencies = extractor.extract_dependencies(node, source)
-                metadata["dependencies"] = (
-                    sorted(list(dependencies)) if dependencies else []
-                )
+                metadata["dependencies"] = sorted(dependencies) if dependencies else []
                 current_chunk.dependencies = (
-                    sorted(list(dependencies)) if dependencies else []
+                    sorted(dependencies) if dependencies else []
                 )
 
                 # Extract imports
@@ -94,7 +99,7 @@ def _walk(
                 # Extract exports
                 exports = extractor.extract_exports(node, source)
                 if exports:
-                    metadata["exports"] = sorted(list(exports))
+                    metadata["exports"] = sorted(exports)
 
             if analyzer:
                 # Calculate complexity metrics

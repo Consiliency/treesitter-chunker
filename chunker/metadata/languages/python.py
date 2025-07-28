@@ -4,9 +4,9 @@ from typing import Any
 
 from tree_sitter import Node
 
-from ...interfaces.metadata import SignatureInfo
-from ..extractor import BaseMetadataExtractor
-from ..metrics import BaseComplexityAnalyzer
+from chunker.interfaces.metadata import SignatureInfo
+from chunker.metadata.extractor import BaseMetadataExtractor
+from chunker.metadata.metrics import BaseComplexityAnalyzer
 
 
 class PythonMetadataExtractor(BaseMetadataExtractor):
@@ -81,9 +81,9 @@ class PythonMetadataExtractor(BaseMetadataExtractor):
                 if string_node:
                     docstring = self._get_node_text(string_node, source)
                     # Clean up triple quotes
-                    if docstring.startswith('"""') or docstring.startswith("'''"):
+                    if docstring.startswith(('"""', "'''")):
                         docstring = docstring[3:-3]
-                    elif docstring.startswith('"') or docstring.startswith("'"):
+                    elif docstring.startswith(('"', "'")):
                         docstring = docstring[1:-1]
                     return docstring.strip()
 
@@ -445,10 +445,7 @@ class PythonComplexityAnalyzer(BaseComplexityAnalyzer):
         """Check if line is a Python comment."""
         line = line.strip()
         return (
-            line.startswith("#")
-            or line.startswith('"""')
-            or line.startswith("'''")
-            or line == '"""'
-            or line == "'''"
+            line.startswith(("#", '"""', "'''"))
+            or line in {'"""', "'''"}
             or not line  # Empty lines
         )

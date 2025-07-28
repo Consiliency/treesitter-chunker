@@ -62,7 +62,7 @@ class Example:
     def test_visualize_ast_svg_format(self, impl, sample_file):
         """Test SVG format visualization"""
         result = impl.visualize_ast(sample_file, "python", "svg")
-        assert isinstance(result, (str, bytes))
+        assert isinstance(result, str | bytes)
         # Could be DOT source if graphviz not available, or SVG
         if isinstance(result, str):
             assert "digraph" in result or "<svg" in result

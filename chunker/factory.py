@@ -7,12 +7,14 @@ import threading
 from collections import OrderedDict
 from dataclasses import dataclass
 from queue import Empty, Queue
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from tree_sitter import Parser, Range
 
 from .exceptions import LanguageNotFoundError, ParserConfigError, ParserInitError
-from .registry import LanguageRegistry
+
+if TYPE_CHECKING:
+    from .registry import LanguageRegistry
 
 logger = logging.getLogger(__name__)
 

@@ -5,7 +5,8 @@ from io import StringIO
 from pathlib import Path
 from typing import Any
 
-from ..types import CodeChunk
+from chunker.types import CodeChunk
+
 from .graph_exporter_base import GraphExporterBase
 
 
@@ -52,7 +53,7 @@ class Neo4jExporter(GraphExporterBase):
             # Escape single quotes and backslashes
             escaped = value.replace("\\", "\\\\").replace("'", "\\'")
             return f"'{escaped}'"
-        if isinstance(value, (int, float)):
+        if isinstance(value, int | float):
             return str(value)
         if isinstance(value, bool):
             return "true" if value else "false"
@@ -74,7 +75,7 @@ class Neo4jExporter(GraphExporterBase):
             all_properties.update(node.properties.keys())
 
         # Create headers
-        headers = ["nodeId:ID", ":LABEL"] + sorted(list(all_properties))
+        headers = ["nodeId:ID", ":LABEL", *sorted(all_properties)]
 
         # Create data rows
         rows = []
@@ -82,7 +83,7 @@ class Neo4jExporter(GraphExporterBase):
             labels = ";".join(sorted(self.node_labels.get(node_id, {"CodeChunk"})))
             row = [node_id, labels]
 
-            for prop in sorted(list(all_properties)):
+            for prop in sorted(all_properties):
                 value = node.properties.get(prop, "")
                 # CSV encoding handles escaping
                 row.append(value)
@@ -112,14 +113,14 @@ class Neo4jExporter(GraphExporterBase):
             all_properties.update(edge.properties.keys())
 
         # Create headers
-        headers = [":START_ID", ":END_ID", ":TYPE"] + sorted(list(all_properties))
+        headers = [":START_ID", ":END_ID", ":TYPE", *sorted(all_properties)]
 
         # Create data rows
         rows = []
         for edge in self.edges:
             row = [edge.source_id, edge.target_id, edge.relationship_type]
 
-            for prop in sorted(list(all_properties)):
+            for prop in sorted(all_properties):
                 value = edge.properties.get(prop, "")
                 row.append(value)
 

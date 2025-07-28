@@ -5,9 +5,9 @@ from typing import Any
 
 from tree_sitter import Node
 
-from ..analysis import ComplexityAnalyzer, CouplingAnalyzer, SemanticAnalyzer
-from ..interfaces.base import ChunkingStrategy
-from ..types import CodeChunk
+from chunker.analysis import ComplexityAnalyzer, CouplingAnalyzer, SemanticAnalyzer
+from chunker.interfaces.base import ChunkingStrategy
+from chunker.types import CodeChunk
 
 
 @dataclass
@@ -248,7 +248,6 @@ class AdaptiveChunker(ChunkingStrategy):
                 return
 
         # Process children
-        child_chunks = []
         accumulated_lines = 0
         current_group = []
 

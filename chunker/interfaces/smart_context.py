@@ -4,7 +4,7 @@ import builtins
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-from ..types import CodeChunk
+from chunker.types import CodeChunk
 
 
 @dataclass

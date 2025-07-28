@@ -4,9 +4,8 @@ Support for Elixir language.
 
 from __future__ import annotations
 
-from tree_sitter import Node
+from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 
-from ..contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
 
@@ -78,7 +77,12 @@ class ElixirConfig(LanguageConfig):
 
 
 # Register the Elixir configuration
+from typing import TYPE_CHECKING
+
 from . import language_config_registry
+
+if TYPE_CHECKING:
+    from tree_sitter import Node
 
 language_config_registry.register(ElixirConfig(), aliases=["ex"])
 
@@ -144,7 +148,7 @@ class ElixirPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         """Extract semantic chunks specific to Elixir."""
         chunks = []
 
-        def extract_chunks(n: Node, parent_module: str = None):
+        def extract_chunks(n: Node, parent_module: str | None = None):
             # Special handling for function definitions
             if n.type == "call":
                 for child in n.children:
@@ -296,7 +300,7 @@ class ElixirPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         if node.type == "module_attribute":
             # Check if it's a behavior/behaviour declaration
             content = source[node.start_byte : node.end_byte].decode("utf-8")
-            if content.startswith("@behaviour") or content.startswith("@behavior"):
+            if content.startswith(("@behaviour", "@behavior")):
                 chunk = self.create_chunk(node, source, file_path, parent_context)
                 if chunk:
                     chunk.node_type = "behaviour_definition"

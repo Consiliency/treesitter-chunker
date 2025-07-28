@@ -2,8 +2,8 @@
 
 from abc import ABC, abstractmethod
 
-from ..interfaces.base import ChunkingStrategy
-from ..types import CodeChunk
+from chunker.interfaces.base import ChunkingStrategy
+from chunker.types import CodeChunk
 
 
 class TokenCounter(ABC):

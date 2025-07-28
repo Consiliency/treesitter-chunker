@@ -37,13 +37,13 @@ class Example:
         result = debug_tools.visualize_ast(test_file, "python", "svg")
 
         # Verify SVG output
-        assert isinstance(result, (str, bytes))
+        assert isinstance(result, str | bytes)
         if isinstance(result, str):
             assert result.startswith(("<?xml", "<svg", "digraph"))
 
         # Test JSON output for programmatic use
         result = debug_tools.visualize_ast(test_file, "python", "json")
-        assert isinstance(result, (str, dict))
+        assert isinstance(result, str | dict)
 
     def test_chunk_inspection_includes_all_metadata(self, test_file):
         """Chunk inspection should return comprehensive metadata"""

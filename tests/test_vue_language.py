@@ -91,7 +91,7 @@ const searchQuery = ref('')
 const items = ref([])
 
 const filteredItems = computed(() => {
-  return items.value.filter(item => 
+  return items.value.filter(item =>
     item.name.toLowerCase().includes(searchQuery.value.toLowerCase())
   )
 })
@@ -115,7 +115,7 @@ $primary-color: #42b883;
 
 div {
   padding: 20px;
-  
+
   input {
     width: 100%;
     padding: 10px;
@@ -168,7 +168,7 @@ export default defineComponent({
     const updateUser = () => {
       emit('update', props.user.id)
     }
-    
+
     return {
       updateUser
     }
@@ -202,21 +202,21 @@ export default defineComponent({
   <div>
     <div v-if="isVisible">Conditional content</div>
     <div v-else>Alternative content</div>
-    
+
     <ul>
       <li v-for="(item, index) in items" :key="item.id">
         {{ index + 1 }}. {{ item.name }}
       </li>
     </ul>
-    
+
     <div v-show="showDetails">Details section</div>
-    
+
     <input v-model="inputValue" @input="handleInput">
-    
+
     <button @click="handleClick" :disabled="isDisabled">
       Click me
     </button>
-    
+
     <custom-directive v-custom="directiveValue" />
   </div>
 </template>
@@ -401,11 +401,11 @@ const count = ref(0)
     <header>
       <slot name="header">Default header</slot>
     </header>
-    
+
     <main>
       <slot>Default content</slot>
     </main>
-    
+
     <footer>
       <slot name="footer" :user="currentUser">
         Default footer for {{ currentUser.name }}

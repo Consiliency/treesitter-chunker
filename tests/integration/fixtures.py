@@ -58,7 +58,7 @@ def calculate_sum(numbers):
 class DataProcessor:
     def __init__(self):
         self.data = []
-    
+
     def process(self, item):
         '''Process a single item.'''
         self.data.append(item)
@@ -79,7 +79,7 @@ class DataProcessor {
     constructor() {
         this.data = [];
     }
-    
+
     process(item) {
         // Process single item
         this.data.push(item);
@@ -107,7 +107,7 @@ impl DataProcessor {
     fn new() -> Self {
         Self { data: Vec::new() }
     }
-    
+
     fn process(&mut self, item: i32) -> i32 {
         // Process single item
         self.data.push(item);

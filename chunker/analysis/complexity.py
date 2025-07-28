@@ -4,7 +4,7 @@ from typing import Any
 
 from tree_sitter import Node
 
-from ..interfaces.base import ASTProcessor
+from chunker.interfaces.base import ASTProcessor
 
 
 class ComplexityAnalyzer(ASTProcessor):

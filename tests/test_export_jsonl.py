@@ -76,7 +76,7 @@ def test_jsonl_export_full_schema(sample_chunks):
     # Parse each line
     metadata = json.loads(lines[0])
     chunk1 = json.loads(lines[1])
-    chunk2 = json.loads(lines[2])
+    json.loads(lines[2])
     relationships = json.loads(lines[3])
 
     assert metadata["type"] == "metadata"
@@ -130,8 +130,7 @@ def test_jsonl_stream_export(sample_chunks, tmp_path):
 
     # Generator function
     def chunk_generator():
-        for chunk in sample_chunks:
-            yield chunk
+        yield from sample_chunks
 
     exporter.stream_export(chunk_generator(), output_path)
 
@@ -151,8 +150,7 @@ def test_jsonl_stream_export_compressed(sample_chunks, tmp_path):
 
     # Generator function
     def chunk_generator():
-        for chunk in sample_chunks:
-            yield chunk
+        yield from sample_chunks
 
     exporter.stream_export(chunk_generator(), output_path, compress=True)
 

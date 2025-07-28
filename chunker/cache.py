@@ -90,8 +90,8 @@ class ASTCache:
         with self._get_connection() as conn:
             result = conn.execute(
                 """
-                SELECT file_hash, mtime, chunks_data 
-                FROM file_cache 
+                SELECT file_hash, mtime, chunks_data
+                FROM file_cache
                 WHERE file_path = ? AND language = ?
             """,
                 (str(path), language),
@@ -129,7 +129,7 @@ class ASTCache:
         with self._get_connection() as conn:
             conn.execute(
                 """
-                INSERT OR REPLACE INTO file_cache 
+                INSERT OR REPLACE INTO file_cache
                 (file_path, file_hash, file_size, mtime, language, chunks_data)
                 VALUES (?, ?, ?, ?, ?, ?)
             """,

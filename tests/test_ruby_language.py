@@ -19,23 +19,23 @@ class TestRubyLanguageSupport:
         code = """
 class User
   attr_accessor :name, :email
-  
+
   def initialize(name, email)
     @name = name
     @email = email
   end
-  
+
   def full_name
     "#{@name} <#{@email}>"
   end
-  
+
   def self.find_by_email(email)
     # Class method
     User.where(email: email).first
   end
-  
+
   private
-  
+
   def validate_email
     @email.include?('@')
   end
@@ -64,19 +64,19 @@ end
         code = """
 module Authentication
   extend ActiveSupport::Concern
-  
+
   included do
     before_action :authenticate_user!
   end
-  
+
   def authenticate_user!
     redirect_to login_path unless logged_in?
   end
-  
+
   def logged_in?
     current_user.present?
   end
-  
+
   module ClassMethods
     def requires_admin
       before_action :ensure_admin
@@ -105,18 +105,18 @@ end
         code = """
 describe User do
   let(:user) { User.new(name: "John", email: "john@example.com") }
-  
+
   describe "#full_name" do
     it "returns the full name with email" do
       expect(user.full_name).to eq("John <john@example.com>")
     end
   end
-  
+
   context "when email is invalid" do
     before do
       user.email = "invalid"
     end
-    
+
     it "fails validation" do
       expect(user).not_to be_valid
     end
@@ -147,12 +147,12 @@ class Book
   attr_reader :title, :author
   attr_writer :price
   attr_accessor :isbn, :published_date
-  
+
   def initialize(title, author)
     @title = title
     @author = author
   end
-  
+
   def description
     "#{@title} by #{@author}"
   end
@@ -162,7 +162,7 @@ end
 
         # Should find attr_* declarations
         call_chunks = [c for c in chunks if c.node_type == "call"]
-        attr_chunks = [c for c in call_chunks if c.metadata.get("attr_type")]
+        [c for c in call_chunks if c.metadata.get("attr_type")]
 
         # Note: The plugin may not detect attr_* as separate chunks
         # They might be included in the class chunk
@@ -179,17 +179,17 @@ end
 class Configuration
   class << self
     attr_accessor :api_key, :base_url
-    
+
     def configure
       yield self
     end
-    
+
     def reset!
       @api_key = nil
       @base_url = nil
     end
   end
-  
+
   def self.configured?
     api_key.present? && base_url.present?
   end
@@ -198,8 +198,8 @@ end
         chunks = chunk_text(code, "ruby", "configuration.rb")
 
         # Should find singleton class and methods
-        singleton_methods = [c for c in chunks if c.node_type == "singleton_method"]
-        singleton_classes = [c for c in chunks if c.node_type == "singleton_class"]
+        [c for c in chunks if c.node_type == "singleton_method"]
+        [c for c in chunks if c.node_type == "singleton_class"]
 
         assert len(chunks) >= 2  # At least main class and some methods
 

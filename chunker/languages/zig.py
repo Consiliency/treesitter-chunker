@@ -4,9 +4,8 @@ Support for Zig language.
 
 from __future__ import annotations
 
-from tree_sitter import Node
+from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 
-from ..contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
 
@@ -69,7 +68,12 @@ class ZigConfig(LanguageConfig):
 
 
 # Register the Zig configuration
+from typing import TYPE_CHECKING
+
 from . import language_config_registry
+
+if TYPE_CHECKING:
+    from tree_sitter import Node
 
 language_config_registry.register(ZigConfig())
 
@@ -115,7 +119,7 @@ class ZigPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         """Extract semantic chunks specific to Zig."""
         chunks = []
 
-        def extract_chunks(n: Node, container_name: str = None):
+        def extract_chunks(n: Node, container_name: str | None = None):
             # Function declarations
             if n.type == "function_declaration":
                 content = source[n.start_byte : n.end_byte].decode(

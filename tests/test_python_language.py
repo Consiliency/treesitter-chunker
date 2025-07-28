@@ -29,10 +29,10 @@ async def fetch_data():
             """
 async def process_items(items):
     '''Process items asynchronously.
-    
+
     Args:
         items: List of items to process
-        
+
     Returns:
         Processed results
     '''
@@ -56,7 +56,7 @@ async def process_items(items):
 async def outer_async():
     async def inner_async():
         return await something()
-    
+
     return await inner_async()
 """,
         )
@@ -66,7 +66,7 @@ async def outer_async():
         assert all(c.node_type == "function_definition" for c in chunks)
 
         # Check nesting context
-        outer = next(
+        next(
             c
             for c in chunks
             if "outer_async" in c.content and "inner_async" in c.content
@@ -141,7 +141,7 @@ def get_users(request):
 class Point:
     x: float
     y: float
-    
+
     def distance(self, other):
         return ((self.x - other.x)**2 + (self.y - other.y)**2)**0.5
 """,
@@ -204,7 +204,7 @@ class Outer:
     class Inner:
         def inner_method(self):
             pass
-    
+
     def outer_method(self):
         return self.Inner()
 """,
@@ -214,7 +214,7 @@ class Outer:
         assert len(chunks) == 4
 
         # Find the chunks - be specific to avoid finding parent chunks
-        outer = next(
+        next(
             c
             for c in chunks
             if c.node_type == "class_definition"
@@ -259,13 +259,13 @@ class Level1:
             class Level4:
                 def deep_method(self):
                     return "deep"
-            
+
             def level3_method(self):
                 return self.Level4()
-        
+
         def level2_method(self):
             return self.Level3()
-    
+
     def level1_method(self):
         return self.Level2()
 """,
@@ -385,13 +385,13 @@ class TestPythonComprehensions:
 def process_data(items):
     # Simple list comprehension
     squares = [x ** 2 for x in items]
-    
+
     # Conditional comprehension
     evens = [x for x in items if x % 2 == 0]
-    
+
     # Nested comprehension
     matrix = [[i * j for j in range(5)] for i in range(5)]
-    
+
     return squares, evens, matrix
 """,
         )
@@ -408,17 +408,17 @@ def process_data(items):
 def create_mappings(keys, values):
     # Basic dict comprehension
     mapping = {k: v for k, v in zip(keys, values)}
-    
+
     # Conditional dict comprehension
     filtered = {k: v for k, v in mapping.items() if v > 0}
-    
+
     # Complex transformation
     transformed = {
-        k.upper(): v ** 2 
-        for k, v in mapping.items() 
+        k.upper(): v ** 2
+        for k, v in mapping.items()
         if isinstance(k, str) and isinstance(v, (int, float))
     }
-    
+
     return transformed
 """,
         )
@@ -496,15 +496,15 @@ class User:
     age: int
     emails: list[str]
     metadata: dict[str, Any] = {}
-    
+
     def __init__(self, name: str, age: int) -> None:
         self.name = name
         self.age = age
         self.emails = []
-    
+
     def add_email(self, email: str) -> None:
         self.emails.append(email)
-    
+
     def get_info(self) -> dict[str, Union[str, int, list[str]]]:
         return {
             'name': self.name,
@@ -538,10 +538,10 @@ V = TypeVar('V')
 class Container(Generic[T]):
     def __init__(self, value: T) -> None:
         self._value = value
-    
+
     def get(self) -> T:
         return self._value
-    
+
     def transform(self, func: Callable[[T], K]) -> 'Container[K]':
         return Container(func(self._value))
 
@@ -578,7 +578,7 @@ def single_line_doc():
 def multi_line_doc():
     """
     This is a multi-line docstring.
-    
+
     It has multiple paragraphs and provides
     detailed documentation about the function.
     """
@@ -586,16 +586,16 @@ def multi_line_doc():
 
 def google_style_doc(param1: str, param2: int) -> bool:
     """Summary line.
-    
+
     Extended description of function.
-    
+
     Args:
         param1: Description of param1
         param2: Description of param2
-        
+
     Returns:
         Description of return value
-        
+
     Raises:
         ValueError: If param2 is negative
     """
@@ -606,14 +606,14 @@ def google_style_doc(param1: str, param2: int) -> bool:
 def numpy_style_doc(x, y):
     """
     Calculate something.
-    
+
     Parameters
     ----------
     x : array_like
         Input array
     y : array_like
         Another input array
-        
+
     Returns
     -------
     result : ndarray
@@ -642,37 +642,37 @@ def numpy_style_doc(x, y):
 class DocumentedClass:
     """
     A well-documented class.
-    
+
     This class demonstrates proper documentation
     with class-level and method-level docstrings.
-    
+
     Attributes:
         name: The name of the instance
         value: The current value
     """
-    
+
     def __init__(self, name: str, value: float):
         """
         Initialize the instance.
-        
+
         Args:
             name: Instance name
             value: Initial value
         """
         self.name = name
         self.value = value
-    
+
     def calculate(self, factor: float) -> float:
         """Calculate adjusted value.
-        
+
         Multiplies the current value by the given factor.
-        
+
         Args:
             factor: Multiplication factor
-            
+
         Returns:
             The adjusted value
-            
+
         Example:
             >>> obj = DocumentedClass("test", 10.0)
             >>> obj.calculate(1.5)
@@ -701,12 +701,12 @@ class DocumentedClass:
 def regex_function():
     r"""
     Process text with regex patterns.
-    
+
     This function uses patterns like:
     - \d+ for digits
-    - \w+ for words  
+    - \w+ for words
     - \s* for optional whitespace
-    
+
     The backslashes are preserved in raw strings.
     """
     pass
@@ -714,7 +714,7 @@ def regex_function():
 def path_function():
     r"""
     Handle Windows paths.
-    
+
     Example paths:
         C:\Users\Name\Documents
         \\server\share\folder
@@ -741,14 +741,14 @@ def process_with_walrus(items):
     # Walrus in if statement
     if (n := len(items)) > 10:
         print(f"Processing {n} items")
-    
+
     # Walrus in while loop
     while (item := get_next_item()) is not None:
         process_item(item)
-    
+
     # Walrus in comprehension
     filtered = [y for x in items if (y := transform(x)) is not None]
-    
+
     return filtered
 """,
         )
@@ -794,7 +794,7 @@ async def process_async_resource():
             result = await conn.execute("SELECT * FROM users")
             async for row in result:
                 yield process_row(row)
-                
+
     async with AsyncExitStack() as stack:
         files = [
             await stack.enter_async_context(aiofiles.open(f))
@@ -830,7 +830,7 @@ def my_context():
 @overload
 def process(x: int) -> str: ...
 
-@overload  
+@overload
 def process(x: str) -> int: ...
 
 def process(x):
@@ -853,7 +853,7 @@ def process(x):
             """
 class SingletonMeta(type):
     _instances = {}
-    
+
     def __call__(cls, *args, **kwargs):
         if cls not in cls._instances:
             cls._instances[cls] = super().__call__(*args, **kwargs)
@@ -862,7 +862,7 @@ class SingletonMeta(type):
 class Database(metaclass=SingletonMeta):
     def __init__(self, connection_string):
         self.connection = connection_string
-    
+
     def query(self, sql):
         return f"Executing: {sql}"
 
@@ -895,18 +895,18 @@ def outer_function():
                 class InnerClass:
                     def inner_method(self):
                         lambda x: x * 2
-                        
+
                         def deepest():
                             return "very deep"
-                        
+
                         return deepest()
-                
+
                 return InnerClass()
-            
+
             return level3()
-        
+
         return level2()
-    
+
     return level1()
 """,
         )
@@ -988,7 +988,7 @@ def handle_optional(data: dict[str, Any] | None = None) -> list[str] | None:
 
 class FlexibleContainer:
     value: int | str | list[int] | None
-    
+
     def set_value(self, v: int | str | list[int]) -> None:
         self.value = v
 """,
@@ -1013,7 +1013,7 @@ class ImmutablePoint:
     x: float
     y: float
     _id: ClassVar[int] = 0
-    
+
     def distance_from_origin(self) -> float:
         return (self.x ** 2 + self.y ** 2) ** 0.5
 
@@ -1023,11 +1023,11 @@ class ConfigurableClass:
     values: list[int] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
     _init_value: InitVar[int] = 0
-    
+
     def __post_init__(self, _init_value: int):
         if _init_value > 0:
             self.values = list(range(_init_value))
-    
+
     def add_value(self, val: int) -> None:
         self.values.append(val)
 """,
@@ -1050,7 +1050,7 @@ class ConfigurableClass:
             """
 def process_multiple_errors():
     errors = []
-    
+
     try:
         # Simulate multiple operations
         for operation in operations:
@@ -1058,10 +1058,10 @@ def process_multiple_errors():
                 operation()
             except Exception as e:
                 errors.append(e)
-        
+
         if errors:
             raise ExceptionGroup("Multiple errors occurred", errors)
-    
+
     except* ValueError as eg:
         for e in eg.exceptions:
             log_value_error(e)
@@ -1091,31 +1091,31 @@ class Vector:
     def __init__(self, x, y):
         self.x = x
         self.y = y
-    
+
     def __repr__(self):
         return f"Vector({self.x}, {self.y})"
-    
+
     def __str__(self):
         return f"<{self.x}, {self.y}>"
-    
+
     def __add__(self, other):
         return Vector(self.x + other.x, self.y + other.y)
-    
+
     def __mul__(self, scalar):
         return Vector(self.x * scalar, self.y * scalar)
-    
+
     def __eq__(self, other):
         return self.x == other.x and self.y == other.y
-    
+
     def __len__(self):
         return 2
-    
+
     def __getitem__(self, index):
         return (self.x, self.y)[index]
-    
+
     def __enter__(self):
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
 """,
@@ -1150,11 +1150,11 @@ class AsyncRange:
     def __init__(self, start, stop):
         self.start = start
         self.stop = stop
-    
+
     def __aiter__(self):
         self.current = self.start
         return self
-    
+
     async def __anext__(self):
         if self.current < self.stop:
             await asyncio.sleep(0.1)
@@ -1209,11 +1209,11 @@ def process_data(file_path: Path) -> pd.DataFrame:
 
 class DataProcessor:
     '''Class using imported modules.'''
-    
+
     def __init__(self):
         self.data_dir = Path.home() / 'data'
         self.arrays = []
-    
+
     def load_array(self, name: str) -> np.ndarray:
         return np.load(self.data_dir / f"{name}.npy")
 """,
@@ -1273,7 +1273,7 @@ def process_unicode():
     emoji = "🐍 Python rocks! 🚀"
     chinese = "你好世界"
     arabic = "مرحبا بالعالم"
-    
+
     return {
         'emoji': emoji,
         'chinese': chinese,
@@ -1282,7 +1282,7 @@ def process_unicode():
 
 class 多语言类:
     '''A class with non-ASCII name.'''
-    
+
     def 获取信息(self):
         return "信息"
 """,

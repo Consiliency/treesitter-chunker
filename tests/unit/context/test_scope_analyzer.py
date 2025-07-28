@@ -83,24 +83,24 @@ class TestPythonScopeAnalyzer:
         return """
 def outer_function():
     outer_var = 1
-    
+
     def inner_function():
         inner_var = 2
-        
+
         def deeply_nested():
             return outer_var + inner_var
-        
+
         return deeply_nested()
-    
+
     class InnerClass:
         def method(self):
             return outer_var
-    
+
     return inner_function()
 
 class TopLevel:
     class_var = 42
-    
+
     def __init__(self):
         self.instance_var = 0
 """.strip()
@@ -182,9 +182,9 @@ class TopLevel:
         class_node = type("MockNode", (), {"type": "class_definition"})()
         other_node = type("MockNode", (), {"type": "identifier"})()
 
-        assert analyzer._is_scope_node(func_node) == True
-        assert analyzer._is_scope_node(class_node) == True
-        assert analyzer._is_scope_node(other_node) == False
+        assert analyzer._is_scope_node(func_node)
+        assert analyzer._is_scope_node(class_node)
+        assert not analyzer._is_scope_node(other_node)
 
 
 class TestJavaScriptScopeAnalyzer:
@@ -196,33 +196,33 @@ class TestJavaScriptScopeAnalyzer:
         return """
 function outerFunction() {
     const outerVar = 1;
-    
+
     function innerFunction() {
         const innerVar = 2;
-        
+
         const arrowFunc = () => {
             return outerVar + innerVar;
         };
-        
+
         return arrowFunc();
     }
-    
+
     class InnerClass {
         method() {
             return outerVar;
         }
     }
-    
+
     return innerFunction();
 }
 
 class TopLevel {
     static classVar = 42;
-    
+
     constructor() {
         this.instanceVar = 0;
     }
-    
+
     get value() {
         return this.instanceVar;
     }
@@ -280,7 +280,7 @@ for (let i = 0; i < 10; i++) {
         assert for_stmt is not None
 
         # For statements create block scope
-        assert analyzer._is_scope_node(for_stmt) == True
+        assert analyzer._is_scope_node(for_stmt)
         assert analyzer.get_scope_type(for_stmt) == "block"
 
     def test_get_scope_type_map(self):

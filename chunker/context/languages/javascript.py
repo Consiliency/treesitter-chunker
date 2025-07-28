@@ -2,11 +2,11 @@
 
 from tree_sitter import Node
 
-from ...interfaces.context import ContextItem, ContextType
-from ..extractor import BaseContextExtractor
-from ..filter import BaseContextFilter
-from ..scope_analyzer import BaseScopeAnalyzer
-from ..symbol_resolver import BaseSymbolResolver
+from chunker.context.extractor import BaseContextExtractor
+from chunker.context.filter import BaseContextFilter
+from chunker.context.scope_analyzer import BaseScopeAnalyzer
+from chunker.context.symbol_resolver import BaseSymbolResolver
+from chunker.interfaces.context import ContextItem, ContextType
 
 
 class JavaScriptContextExtractor(BaseContextExtractor):
@@ -246,19 +246,13 @@ class JavaScriptContextExtractor(BaseContextExtractor):
                 return True
 
         # Object property definitions
-        if (
-            parent.type == "property_identifier"
-            or parent.type == "shorthand_property_identifier"
-        ):
+        if parent.type in {"property_identifier", "shorthand_property_identifier"}:
             grandparent = parent.parent
             if grandparent and grandparent.type in ("object", "object_pattern"):
                 return True
 
         # Import specifiers
-        if parent.type in ("import_specifier", "namespace_import"):
-            return True
-
-        return False
+        return parent.type in ("import_specifier", "namespace_import")
 
     def _find_definition(
         self,

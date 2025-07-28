@@ -14,15 +14,15 @@ class TestTokenHierarchyStandalone:
             '''
 class DataProcessor:
     """Process data with various operations."""
-    
+
     def __init__(self, name: str):
         self.name = name
         self._data = []
-    
+
     def add_data(self, item: Any) -> None:
         """Add data item."""
         self._data.append(item)
-    
+
     def get_data(self) -> List[Any]:
         """Get all data."""
         return self._data.copy()

@@ -95,7 +95,7 @@ class TestRegistryAutoIntegration:
         """Test chunking a file that requires grammar download"""
         # Arrange
         auto_api = ZeroConfigStub()
-        registry = UniversalRegistryStub()
+        UniversalRegistryStub()
 
         with tempfile.NamedTemporaryFile(suffix=".go", mode="w") as f:
             f.write("package main\n\nfunc main() {}")

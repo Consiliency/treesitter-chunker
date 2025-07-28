@@ -12,7 +12,7 @@ from rich.table import Table
 from rich.tree import Tree as RichTree
 from tree_sitter import Node, Tree
 
-from ...parser import get_parser
+from chunker.parser import get_parser
 
 
 @dataclass
@@ -164,7 +164,6 @@ class NodeExplorer:
         """Get detailed info about a node."""
         # Find path to node
         path = []
-        current = node
         parent = None
 
         # This is a simplified path - in real implementation would traverse from root
@@ -265,7 +264,7 @@ class NodeExplorer:
         else:
             # Find nth occurrence of any node
             try:
-                n = int(args)
+                int(args)
                 self._push_history()
                 # Simple implementation - just go to first child
                 self.current_node = self.current_node.children[0]
@@ -309,7 +308,7 @@ class NodeExplorer:
     def _show_detailed_info(self) -> None:
         """Show detailed node information."""
         node = self.current_node
-        info = self._get_node_info(node)
+        self._get_node_info(node)
 
         details = {
             "Type": node.type,
@@ -373,7 +372,7 @@ class NodeExplorer:
             if node.type == node_type:
                 found.append((node, path.copy()))
             for i, child in enumerate(node.children):
-                search(child, path + [i])
+                search(child, [*path, i])
 
         search(self.current_node, [])
 
@@ -508,7 +507,7 @@ class NodeExplorer:
             return
 
         try:
-            from ...debug.interactive.query_debugger import debug_query
+            from chunker.debug.interactive.query_debugger import debug_query
 
             # Get subtree content
             subtree_content = self.current_content[

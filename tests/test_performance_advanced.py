@@ -34,7 +34,7 @@ def function_2():
 class TestClass:
     def method_1(self):
         pass
-    
+
     def method_2(self):
         pass
 """,
@@ -127,10 +127,10 @@ def function_{i}_b():
 class Module_{i}:
     def __init__(self):
         self.value = {i}
-    
+
     def process(self):
         return self.value * 2
-    
+
     def transform(self):
         return str(self.value)
 """,
@@ -209,7 +209,7 @@ class TestMemoryOptimization:
         # Test streaming processing
         stream_start_mem = process.memory_info().rss / 1024 / 1024
 
-        stream_chunks = list(chunk_file_streaming(large_file, language="python"))
+        list(chunk_file_streaming(large_file, language="python"))
 
         stream_peak_mem = process.memory_info().rss / 1024 / 1024
         stream_mem_used = stream_peak_mem - stream_start_mem
@@ -381,14 +381,14 @@ class Class_{i}:
         start_time = time.time()
         for test_file in test_files:
             for _ in range(10):  # Process each file 10 times
-                chunks = chunk_file(test_file, language="python")
+                chunk_file(test_file, language="python")
         no_reuse_time = time.time() - start_time
 
         # Test with parser reuse (normal operation)
         start_time = time.time()
         chunker = ParallelChunker(language="python", num_workers=1)
         for _ in range(10):
-            results = chunker.chunk_files_parallel(test_files)
+            chunker.chunk_files_parallel(test_files)
         reuse_time = time.time() - start_time
 
         # Parser reuse might not show speedup for small files due to overhead
@@ -437,7 +437,7 @@ class Class_{i}:
 
         # Performance can vary based on implementation details
         # Just verify all formats complete quickly
-        for format_name, time_taken in export_times.items():
+        for time_taken in export_times.values():
             assert time_taken < 1.0  # Should export in less than 1 second
 
 
@@ -547,7 +547,7 @@ class Handler_{iteration}:
 
             # Process files
             start_time = time.time()
-            results = chunk_files_parallel(
+            chunk_files_parallel(
                 list(tmp_path.glob("continuous_*.py")),
                 language="python",
                 num_workers=2,
@@ -561,7 +561,7 @@ class Handler_{iteration}:
         # Performance should remain consistent
         avg_time = sum(processing_times) / len(processing_times)
         max_time = max(processing_times)
-        min_time = min(processing_times)
+        min(processing_times)
 
         # Max time should not be much worse than average
         assert max_time < avg_time * 2.0

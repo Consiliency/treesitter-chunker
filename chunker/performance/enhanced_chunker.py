@@ -4,8 +4,9 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from ..chunker import _walk
-from ..types import CodeChunk
+from chunker.chunker import _walk
+from chunker.types import CodeChunk
+
 from .cache.manager import CacheManager
 from .optimization.incremental import IncrementalParser
 from .optimization.memory_pool import MemoryPool

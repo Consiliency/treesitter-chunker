@@ -29,32 +29,32 @@ def main():
     python_code = '''
 class DataProcessor:
     """Process various types of data."""
-    
+
     def __init__(self, config):
         self.config = config
         self.cache = {}
-    
+
     def process_text(self, text):
         """Process text data."""
         # Clean the text
         cleaned = self._clean_text(text)
-        
+
         # Analyze
         results = self._analyze(cleaned)
-        
+
         return results
-    
+
     def _clean_text(self, text):
         """Internal method to clean text."""
         return text.strip().lower()
-    
+
     def _analyze(self, text):
         """Analyze the cleaned text."""
         return {"length": len(text), "words": text.split()}
-    
+
     class NestedProcessor:
         """A nested processor class."""
-        
+
         def nested_method(self):
             """Method in nested class."""
             pass

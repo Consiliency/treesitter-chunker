@@ -2,7 +2,8 @@
 
 from tree_sitter import Node
 
-from ..types import CodeChunk
+from chunker.types import CodeChunk
+
 from .base import LanguageChunker
 
 
@@ -90,7 +91,7 @@ class GoChunker(LanguageChunker):
                     if type_node:
                         info["receiver_type"] = type_node.text.decode("utf-8")
 
-        elif node.type == "type_declaration" or node.type == "type_spec":
+        elif node.type in {"type_declaration", "type_spec"}:
             # Extract type name
             name_node = node.child_by_field_name("name")
             if name_node:

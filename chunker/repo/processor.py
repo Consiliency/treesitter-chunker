@@ -13,9 +13,10 @@ import git
 import pathspec
 from tqdm import tqdm
 
-from ..exceptions import ChunkerError
-from ..interfaces.repo import FileChunkResult, GitAwareProcessor, RepoChunkResult
-from ..interfaces.repo import RepoProcessor as RepoProcessorInterface
+from chunker.exceptions import ChunkerError
+from chunker.interfaces.repo import FileChunkResult, GitAwareProcessor, RepoChunkResult
+from chunker.interfaces.repo import RepoProcessor as RepoProcessorInterface
+
 from .chunker_adapter import Chunker
 
 
@@ -346,9 +347,8 @@ class RepoProcessor(RepoProcessorInterface):
     def _should_process_file(self, file_path: Path, file_pattern: str | None) -> bool:
         """Check if file should be processed based on extension and pattern."""
         # Check pattern first
-        if file_pattern:
-            if not file_path.match(file_pattern):
-                return False
+        if file_pattern and not file_path.match(file_pattern):
+            return False
 
         # Check if we support this file type
         ext = file_path.suffix.lower()
@@ -646,7 +646,7 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
 
         # If it's a git repo, filter using git
         try:
-            repo = git.Repo(repo_path)
+            git.Repo(repo_path)
 
             # Load gitignore patterns
             gitignore_patterns = self.load_gitignore_patterns(repo_path)

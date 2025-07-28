@@ -81,7 +81,7 @@ repeat {
     inner_function <- function(y) {
         y * 2
     }
-    
+
     # Use inner function
     result <- inner_function(x) + 10
     return(result)

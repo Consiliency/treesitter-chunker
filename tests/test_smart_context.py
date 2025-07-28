@@ -71,10 +71,10 @@ class TestTreeSitterSmartContextProvider:
                 content="""class ShoppingCart:
     def __init__(self):
         self.items = []
-    
+
     def add_item(self, item):
         self.items.append(item)
-    
+
     def get_total(self):
         return calculate_total(self.items)""",
                 chunk_id="chunk3",
@@ -157,7 +157,7 @@ class TestTreeSitterSmartContextProvider:
         assert "chunk1" in dep_ids  # calculate_total function
 
         # Check metadata
-        for chunk, metadata in dependencies:
+        for _chunk, metadata in dependencies:
             assert isinstance(metadata, ContextMetadata)
             assert metadata.relationship_type == "dependency"
             assert metadata.relevance_score > 0
@@ -659,7 +659,7 @@ class TestIntegration:
     def __init__(self, name, email):
         self.name = name
         self.email = email
-    
+
     def validate_email(self):
         return '@' in self.email""",
                 chunk_id="user_class",

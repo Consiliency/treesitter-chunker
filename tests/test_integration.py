@@ -82,7 +82,7 @@ public:
     int add(int a, int b) {
         return a + b;
     }
-    
+
     template<typename T>
     T multiply(T a, T b) {
         return a * b;
@@ -111,7 +111,7 @@ impl Calculator {
     fn new(value: i32) -> Self {
         Calculator { value }
     }
-    
+
     fn add(&self, other: i32) -> i32 {
         self.value + other
     }
@@ -161,10 +161,7 @@ trait Compute {
         """Check if tree contains any ERROR nodes."""
         if node.type == "ERROR" or node.is_error:
             return True
-        for child in node.children:
-            if self._has_error_node(child):
-                return True
-        return False
+        return any(self._has_error_node(child) for child in node.children)
 
     def _count_nodes(self, node):
         """Count total nodes in tree."""
@@ -253,7 +250,7 @@ class TestConcurrentParsing:
             code = f"// Thread {thread_id}\nfunction test{thread_id}() {{ return {thread_id}; }}"
 
             try:
-                for i in range(iterations):
+                for _i in range(iterations):
                     parser = get_parser(lang)
                     tree = parser.parse(bytes(code, "utf8"))
                     assert tree.root_node is not None
@@ -344,7 +341,7 @@ class TestMemoryEfficiency:
                 test_factory.return_parser("python", parser)
 
             # Get multiple parsers without returning
-            parsers = [test_factory.get_parser("python") for _ in range(3)]
+            [test_factory.get_parser("python") for _ in range(3)]
 
             final_stats = test_factory.get_stats()
             final_count = final_stats["total_parsers_created"]
@@ -358,7 +355,7 @@ class TestMemoryEfficiency:
                 return_parser("python", parser)
 
             # Get multiple parsers without returning
-            parsers = [get_parser("python") for _ in range(3)]
+            [get_parser("python") for _ in range(3)]
 
             final_stats = _factory.get_stats()
             final_count = final_stats["total_parsers_created"]
@@ -419,7 +416,7 @@ def function_{i}(param_{i}: int) -> int:
 
 class Class_{i}:
     """Class {i} docstring."""
-    
+
     def method_{i}(self, value: int) -> str:
         """Method {i} docstring."""
         return f"Value: {{value}}"

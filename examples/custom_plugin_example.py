@@ -90,7 +90,7 @@ class GoPlugin(LanguagePlugin):
         ):
 
             name = self.get_node_name(node, source)
-            if name and (name.startswith("Test") or name.startswith("Benchmark")):
+            if name and (name.startswith(("Test", "Benchmark"))):
                 return None
 
         # Handle package-level var declarations
@@ -242,7 +242,7 @@ def demonstrate_custom_plugins():
         print(f"  {key}: {value}")
 
     # Configure the Go plugin
-    go_config = PluginConfig(
+    PluginConfig(
         chunk_types={
             "function_declaration",
             "method_declaration",
@@ -254,43 +254,12 @@ def demonstrate_custom_plugins():
 
     # Example: Process a hypothetical Go file
     print("\n2. Processing Go code (hypothetical)...")
-    go_code = """
-package main
-
-import "fmt"
-
-// Greeter interface defines greeting behavior
-type Greeter interface {
-    Greet(name string) string
-}
-
-// Person struct represents a person
-type Person struct {
-    Name string
-    Age  int
-}
-
-// Greet implements the Greeter interface for Person
-func (p Person) Greet(name string) string {
-    return fmt.Sprintf("Hello %s, I'm %s", name, p.Name)
-}
-
-// TestGreeting is a test function (should be skipped)
-func TestGreeting(t *testing.T) {
-    // Test code here
-}
-
-func main() {
-    person := Person{Name: "Alice", Age: 30}
-    fmt.Println(person.Greet("Bob"))
-}
-"""
 
     # Note: This would work if we had the Go grammar installed
     print("  (Would process Go code if grammar was available)")
 
     # Configure markdown plugin
-    md_config = PluginConfig(
+    PluginConfig(
         custom_options={
             "min_code_block_lines": 5,
             "include_yaml_frontmatter": True,
@@ -299,26 +268,6 @@ func main() {
 
     # Example: Process a markdown file
     print("\n3. Processing Markdown (hypothetical)...")
-    md_content = """
-# Main Title
-
-This is the introduction.
-
-## Section 1
-
-Content for section 1.
-
-### Subsection 1.1
-
-```python
-def hello():
-    print("Hello, world!")
-```
-
-## Section 2
-
-More content here.
-"""
 
     print("  (Would process Markdown if grammar was available)")
 
@@ -356,15 +305,15 @@ class GoPlugin(LanguagePlugin):
     @property
     def language_name(self) -> str:
         return "go"
-    
+
     @property
     def supported_extensions(self) -> Set[str]:
         return {".go"}
-    
+
     @property
     def default_chunk_types(self) -> Set[str]:
         return {"function_declaration", "method_declaration"}
-    
+
     def get_node_name(self, node: Node, source: bytes) -> Optional[str]:
         for child in node.children:
             if child.type == "identifier":

@@ -2,7 +2,8 @@
 
 from tree_sitter import Node
 
-from ..types import CodeChunk
+from chunker.types import CodeChunk
+
 from .custom import BaseCommentBlockRule, BaseRegexRule, MetadataRule
 
 

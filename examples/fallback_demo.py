@@ -14,6 +14,9 @@ from pathlib import Path
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+import builtins
+import contextlib
+
 from chunker.fallback import (
     FallbackWarning,
     FileTypeDetector,
@@ -263,10 +266,8 @@ def demo_specialized_chunking(sample_files):
 def cleanup_files(sample_files):
     """Clean up temporary files."""
     for file_path in sample_files.values():
-        try:
+        with contextlib.suppress(builtins.BaseException):
             os.unlink(file_path)
-        except:
-            pass
 
 
 def main():

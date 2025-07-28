@@ -165,7 +165,7 @@ def process_users(users: List[User]) -> Dict[str, User]:
 class UserManager:
     def __init__(self):
         self.users = []
-    
+
     def add_user(self, user: User):
         self.users.append(user)
 '''.strip()
@@ -278,7 +278,7 @@ class UserList extends Component {
         super(props);
         this.state = { users: [] };
     }
-    
+
     addUser(user) {
         this.setState({
             users: [...this.state.users, user]

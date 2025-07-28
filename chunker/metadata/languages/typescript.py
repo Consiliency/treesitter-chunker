@@ -5,7 +5,8 @@ This module extends the JavaScript extractor to handle TypeScript-specific featu
 
 from tree_sitter import Node
 
-from ...interfaces.metadata import SignatureInfo
+from chunker.interfaces.metadata import SignatureInfo
+
 from .javascript import JavaScriptComplexityAnalyzer, JavaScriptMetadataExtractor
 
 
@@ -68,10 +69,7 @@ class TypeScriptMetadataExtractor(JavaScriptMetadataExtractor):
         exports = super().extract_exports(node, source)
 
         # Add interface exports
-        if (
-            node.type == "interface_declaration"
-            or node.type == "type_alias_declaration"
-        ):
+        if node.type in {"interface_declaration", "type_alias_declaration"}:
             name_node = self._find_child_by_type(node, "type_identifier")
             if name_node:
                 exports.add(self._get_node_text(name_node, source))

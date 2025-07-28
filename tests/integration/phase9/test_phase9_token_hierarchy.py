@@ -51,18 +51,18 @@ class TestTokenHierarchyIntegration(Phase9IntegrationTestBase):
 def process_large_dataset(data: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Process a large dataset with many operations."""
     # This function is intentionally large to test token splitting
-    
+
     # Step 1: Validate input data
     if not data:
         raise ValueError("Input data cannot be empty")
-    
+
     if not isinstance(data, list):
         raise TypeError("Data must be a list")
-    
+
     for i, item in enumerate(data):
         if not isinstance(item, dict):
             raise TypeError(f"Item {i} must be a dictionary")
-    
+
     # Step 2: Initialize processing variables
     results = {
         'total_items': len(data),
@@ -77,7 +77,7 @@ def process_large_dataset(data: List[Dict[str, Any]]) -> Dict[str, Any]:
             'unique_counts': {}
         }
     }
-    
+
     # Step 3: Process each item
     processed_data = []
     for idx, item in enumerate(data):
@@ -91,7 +91,7 @@ def process_large_dataset(data: List[Dict[str, Any]]) -> Dict[str, Any]:
                     'error': f"Missing fields: {missing_fields}"
                 })
                 continue
-            
+
             # Transform the item
             transformed = {
                 'id': str(item['id']),
@@ -100,13 +100,13 @@ def process_large_dataset(data: List[Dict[str, Any]]) -> Dict[str, Any]:
                 'timestamp': item['timestamp'],
                 'processed_at': datetime.now().isoformat()
             }
-            
+
             # Add optional fields
             if 'category' in item:
                 transformed['category'] = item['category']
             if 'tags' in item:
                 transformed['tags'] = [tag.strip() for tag in item['tags']]
-            
+
             # Update statistics
             for key, value in transformed.items():
                 if isinstance(value, (int, float)):
@@ -120,17 +120,17 @@ def process_large_dataset(data: List[Dict[str, Any]]) -> Dict[str, Any]:
                         results['statistics']['max_values'][key] = max(
                             results['statistics']['max_values'][key], value
                         )
-            
+
             processed_data.append(transformed)
             results['processed_items'] += 1
-            
+
         except Exception as e:
             results['errors'].append({
                 'index': idx,
                 'error': str(e),
                 'item': item
             })
-    
+
     # Step 4: Calculate final statistics
     if processed_data:
         # Calculate averages
@@ -141,10 +141,10 @@ def process_large_dataset(data: List[Dict[str, Any]]) -> Dict[str, Any]:
                     if key not in numeric_fields:
                         numeric_fields[key] = []
                     numeric_fields[key].append(value)
-        
+
         for key, values in numeric_fields.items():
             results['statistics']['avg_values'][key] = sum(values) / len(values)
-        
+
         # Count unique values
         for key in processed_data[0].keys():
             unique_values = set()
@@ -154,7 +154,7 @@ def process_large_dataset(data: List[Dict[str, Any]]) -> Dict[str, Any]:
                     if isinstance(value, (str, int, float)):
                         unique_values.add(value)
             results['statistics']['unique_counts'][key] = len(unique_values)
-    
+
     # Step 5: Generate summary
     results['summary'] = {
         'success_rate': results['processed_items'] / results['total_items'] * 100,
@@ -162,7 +162,7 @@ def process_large_dataset(data: List[Dict[str, Any]]) -> Dict[str, Any]:
         'warning_count': len(results['warnings']),
         'processing_complete': True
     }
-    
+
     results['data'] = processed_data
     return results
 
@@ -180,13 +180,13 @@ def merge_results(results_list: List[Dict[str, Any]]) -> Dict[str, Any]:
         'errors': [],
         'data': []
     }
-    
+
     for results in results_list:
         merged['total_items'] += results.get('total_items', 0)
         merged['processed_items'] += results.get('processed_items', 0)
         merged['errors'].extend(results.get('errors', []))
         merged['data'].extend(results.get('data', []))
-    
+
     return merged
 ''',
         )
@@ -254,7 +254,7 @@ def merge_results(results_list: List[Dict[str, Any]]) -> Dict[str, Any]:
         # Create components
         token_counter = TiktokenCounter()
         hierarchy_builder = ChunkHierarchyBuilder()
-        navigator = HierarchyNavigator()
+        HierarchyNavigator()
 
         # Parse and chunk
         parser = get_parser("python")

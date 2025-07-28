@@ -70,7 +70,7 @@ class TestPythonSymbolResolver:
 class Calculator:
     def __init__(self):
         self.result = 0
-    
+
     def add(self, x, y):
         result = x + y
         self.result = result
@@ -159,7 +159,7 @@ class Calculator {
     constructor() {
         this.result = 0;
     }
-    
+
     add(x, y) {
         const result = x + y;
         this.result = result;

@@ -33,15 +33,15 @@ CONFIG = {
 
 class DataProcessor:
     """Process data with various transformations."""
-    
+
     def __init__(self, config: Dict):
         self.config = config
         self.data = []
         self.errors = []
-    
+
     def load_data(self, path: str) -> List[Dict]:
         """Load data from file.
-        
+
         This method reads data from the specified path and
         returns a list of dictionaries. It handles various
         file formats and encodings.
@@ -57,7 +57,7 @@ class DataProcessor:
         except Exception as e:
             self.errors.append(f"Error loading data: {e}")
         return self.data
-    
+
     def _parse_line(self, line: str) -> Dict:
         """Parse a single line of data."""
         parts = line.strip().split(',')
@@ -66,10 +66,10 @@ class DataProcessor:
             'value': parts[1] if len(parts) > 1 else None,
             'timestamp': parts[2] if len(parts) > 2 else None
         }
-    
+
     def transform_data(self) -> List[Dict]:
         """Apply transformations to loaded data.
-        
+
         Transformations include:
         - Normalization
         - Validation
@@ -81,31 +81,31 @@ class DataProcessor:
             if not self._validate_item(item):
                 self.errors.append(f"Invalid item: {item}")
                 continue
-            
+
             # Normalize values
             item['value'] = self._normalize_value(item.get('value'))
-            
+
             # Enrich with metadata
             item['processed_at'] = datetime.now()
             item['version'] = '1.0'
-            
+
             transformed.append(item)
-        
+
         return transformed
-    
+
     def _validate_item(self, item: Dict) -> bool:
         """Validate a data item."""
         return (
             item.get('id') is not None and
             item.get('value') is not None
         )
-    
+
     def _normalize_value(self, value: Optional[str]) -> Optional[str]:
         """Normalize a value."""
         if value is None:
             return None
         return value.strip().lower()
-    
+
     def save_results(self, output_path: str) -> None:
         """Save processed results to file."""
         with open(output_path, 'w') as f:
@@ -124,7 +124,7 @@ def main():
     if len(sys.argv) < 3:
         print("Usage: script.py <input> <output>")
         sys.exit(1)
-    
+
     process_file(sys.argv[1], sys.argv[2])
 
 if __name__ == "__main__":
@@ -196,7 +196,8 @@ if __name__ == "__main__":
             parent = hierarchy.get_parent(method_chunk.chunk_id)
             if parent:
                 parent_chunk = next((c for c in chunks if c.chunk_id == parent), None)
-                assert parent_chunk and "class" in parent_chunk.content
+                assert parent_chunk
+                assert "class" in parent_chunk.content
 
     def test_overlapping_with_metadata(self, complex_file):
         """Test overlapping chunks maintain metadata."""
@@ -249,7 +250,7 @@ if __name__ == "__main__":
             chunk_size=30,
             strategy=FallbackStrategy.SYNTAX_AWARE,
         )
-        syntax_chunks = syntax_chunker.chunk_file(str(complex_file), "python")
+        syntax_chunker.chunk_file(str(complex_file), "python")
 
         # Different strategies should produce different results
         assert (

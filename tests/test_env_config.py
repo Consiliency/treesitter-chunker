@@ -243,7 +243,7 @@ class TestEnvironmentVariableInfo:
         assert "CHUNKER_LANGUAGES_<LANG>_MIN_CHUNK_SIZE" in info
 
         # Verify descriptions are provided
-        for var, desc in info.items():
+        for desc in info.values():
             assert isinstance(desc, str)
             assert len(desc) > 0
 

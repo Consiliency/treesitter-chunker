@@ -6,14 +6,14 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from ..exceptions import ChunkerError
-from ..interfaces.grammar import (
+from chunker.exceptions import ChunkerError
+from chunker.interfaces.grammar import (
     GrammarInfo,
     GrammarManager,
     GrammarStatus,
     NodeTypeInfo,
 )
-from ..parser import get_parser
+from chunker.parser import get_parser
 
 logger = logging.getLogger(__name__)
 
@@ -297,7 +297,7 @@ class TreeSitterGrammarManager(GrammarManager):
             List of node type information
         """
         try:
-            parser = get_parser(language)
+            get_parser(language)
             # Note: py-tree-sitter doesn't directly expose node types
             # This would require parsing the grammar file or using a test file
             logger.warning(f"Node type extraction not yet implemented for '{language}'")

@@ -14,7 +14,8 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from ..types import CodeChunk
+from chunker.types import CodeChunk
+
 from . import ProcessorConfig, SpecializedProcessor
 
 logger = logging.getLogger(__name__)
@@ -84,17 +85,17 @@ class MarkdownProcessor(SpecializedProcessor):
             return True
 
         # Check for Markdown-like content patterns if content provided
-        if content and any(
-            pattern.search(content)
-            for pattern in [
-                self.PATTERNS["header"],
-                self.PATTERNS["code_block"],
-                self.PATTERNS["list_item"],
-            ]
-        ):
-            return True
-
-        return False
+        return bool(
+            content
+            and any(
+                pattern.search(content)
+                for pattern in [
+                    self.PATTERNS["header"],
+                    self.PATTERNS["code_block"],
+                    self.PATTERNS["list_item"],
+                ]
+            ),
+        )
 
     def can_process(self, file_path: str, content: str) -> bool:
         """Alias for can_handle to maintain compatibility."""
@@ -111,7 +112,7 @@ class MarkdownProcessor(SpecializedProcessor):
             List of code chunks
         """
         # Extract structure
-        structure = self.extract_structure(content)
+        self.extract_structure(content)
 
         # Find boundaries
         boundaries = self.find_boundaries(content)
@@ -209,7 +210,6 @@ class MarkdownProcessor(SpecializedProcessor):
             structure["tables"].append(element)
 
         # Extract lists (with nesting levels)
-        list_stack = []
         for match in self.PATTERNS["list_item"].finditer(content):
             indent = len(match.group(1))
             level = indent // 2 + 1  # Approximate nesting level

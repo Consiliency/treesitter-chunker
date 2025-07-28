@@ -2,20 +2,23 @@
 
 from __future__ import annotations
 
-import io
 import json
-from collections.abc import Iterator
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from ...interfaces.export import (
+from chunker.interfaces.export import (
     ChunkRelationship,
     ExportFormat,
     ExportMetadata,
     StructuredExporter,
 )
-from ...types import CodeChunk
+
+if TYPE_CHECKING:
+    import io
+    from collections.abc import Iterator
+
+    from chunker.types import CodeChunk
 
 
 class Neo4jExporter(StructuredExporter):
@@ -79,7 +82,7 @@ class Neo4jExporter(StructuredExporter):
 
         # Write to output
         cypher_content = "\n".join(cypher_lines)
-        if isinstance(output, (str, Path)):
+        if isinstance(output, str | Path):
             Path(output).write_text(cypher_content, encoding="utf-8")
         else:
             output.write(cypher_content)
@@ -92,7 +95,7 @@ class Neo4jExporter(StructuredExporter):
     ) -> None:
         """Export using iterators for large datasets."""
         # Open output for streaming
-        if isinstance(output, (str, Path)):
+        if isinstance(output, str | Path):
             with open(output, "w", encoding="utf-8") as f:
                 self._stream_cypher(chunk_iterator, relationship_iterator, f)
         else:

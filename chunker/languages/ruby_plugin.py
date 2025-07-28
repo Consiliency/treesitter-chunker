@@ -77,7 +77,7 @@ class RubyPlugin(LanguagePlugin):
         elif node.type == "module":
             # Find constant node for module name
             for child in node.children:
-                if child.type == "constant" or child.type == "scope_resolution":
+                if child.type in {"constant", "scope_resolution"}:
                     return f"module {child.text.decode('utf-8')}"
 
         elif node.type in ["method", "singleton_method"]:

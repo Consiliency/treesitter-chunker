@@ -133,7 +133,7 @@ def main():
 
     # Check worktrees
     print("\nChecking worktrees...")
-    worktrees_needed = set(s.worktree for s in filtered_scenarios)
+    worktrees_needed = {s.worktree for s in filtered_scenarios}
     missing_worktrees = []
 
     for worktree in worktrees_needed:

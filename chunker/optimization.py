@@ -118,7 +118,7 @@ class ChunkOptimizer(ChunkOptimizerInterface):
         current_group = []
         current_tokens = 0
 
-        for i, chunk in enumerate(chunks):
+        for _i, chunk in enumerate(chunks):
             chunk_tokens = self.token_counter.count_tokens(chunk.content)
 
             if preserve_boundaries and current_group:
@@ -155,7 +155,7 @@ class ChunkOptimizer(ChunkOptimizerInterface):
                     ):
                         # Merge with last chunk
                         merged_chunks[-1] = self._merge_chunk_group(
-                            [last_merged] + current_group,
+                            [last_merged, *current_group],
                         )
                     else:
                         # Can't merge, add as separate chunk
@@ -497,10 +497,7 @@ class ChunkOptimizer(ChunkOptimizerInterface):
                 return True
 
         # Check if one is a child of the other based on parent context
-        if chunk2.parent_context.startswith(chunk1.parent_context):
-            return True
-
-        return False
+        return bool(chunk2.parent_context.startswith(chunk1.parent_context))
 
     def _merge_chunk_group(self, chunks: list[CodeChunk]) -> CodeChunk:
         """Merge a group of chunks into a single chunk."""
@@ -626,7 +623,7 @@ class ChunkOptimizer(ChunkOptimizerInterface):
         )
 
         sub_chunks = []
-        lines = chunk.content.split("\n")
+        chunk.content.split("\n")
         current_line = chunk.start_line
 
         for text in text_chunks:
@@ -785,10 +782,7 @@ class ChunkOptimizer(ChunkOptimizerInterface):
 
         # Check for shared dependencies
         shared_deps = set(chunk1.dependencies) & set(chunk2.dependencies)
-        if len(shared_deps) > 0:
-            return True
-
-        return False
+        return len(shared_deps) > 0
 
     def _split_for_embedding(
         self,
@@ -1034,7 +1028,7 @@ class ChunkBoundaryAnalyzer(ChunkBoundaryAnalyzerInterface):
         patterns = self.language_patterns.get(language, {})
 
         # Find matches for each pattern
-        for pattern_type, pattern in patterns.items():
+        for pattern in patterns.values():
             for match in re.finditer(pattern, content):
                 boundaries.add(match.start())
 
@@ -1064,7 +1058,7 @@ class ChunkBoundaryAnalyzer(ChunkBoundaryAnalyzerInterface):
                     pos = len("\n".join(lines[:i]))
                     boundaries.add(pos)
 
-        return sorted(list(boundaries))
+        return sorted(boundaries)
 
     def score_boundary(self, content: str, position: int, language: str) -> float:
         """Score how good a boundary point is."""

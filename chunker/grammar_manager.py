@@ -240,7 +240,7 @@ class GrammarManager(GrammarManagerContract):
         cmd = ["gcc", "-shared", "-fPIC"]
         for inc in sorted(include_dirs):
             cmd.extend(["-I", inc])
-        cmd += ["-o", str(self._lib_path)] + c_files
+        cmd += ["-o", str(self._lib_path), *c_files]
 
         # Compile
         try:
@@ -251,7 +251,7 @@ class GrammarManager(GrammarManagerContract):
                 f"Compilation command: {' '.join(cmd[:10])}... ({len(cmd)} args total)",
             )
 
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            subprocess.run(cmd, capture_output=True, text=True, check=True)
             logger.info(f"✅ Successfully compiled to {self._lib_path}")
 
             # Mark all as successful (they were already marked True if they had C files)

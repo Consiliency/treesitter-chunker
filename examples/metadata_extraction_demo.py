@@ -22,20 +22,20 @@ def demo_python_metadata():
 def calculate_fibonacci(n: int, memo: dict = None) -> int:
     """
     Calculate the nth Fibonacci number using memoization.
-    
+
     Args:
         n: The position in the Fibonacci sequence
         memo: Optional memoization dictionary
-        
+
     Returns:
         The nth Fibonacci number
     """
     if memo is None:
         memo = {}
-        
+
     if n in memo:
         return memo[n]
-        
+
     if n <= 1:
         return n
     else:
@@ -91,7 +91,7 @@ def demo_javascript_metadata():
 async function mergeSortedArrays(arr1, arr2 = []) {
     const result = [];
     let i = 0, j = 0;
-    
+
     while (i < arr1.length && j < arr2.length) {
         if (arr1[i] <= arr2[j]) {
             result.push(arr1[i]);
@@ -101,18 +101,18 @@ async function mergeSortedArrays(arr1, arr2 = []) {
             j++;
         }
     }
-    
+
     // Add remaining elements
     while (i < arr1.length) {
         result.push(arr1[i]);
         i++;
     }
-    
+
     while (j < arr2.length) {
         result.push(arr2[j]);
         j++;
     }
-    
+
     return result;
 }
 """

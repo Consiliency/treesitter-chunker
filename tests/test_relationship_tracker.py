@@ -32,10 +32,10 @@ class Animal:
 class Dog(Animal):
     def speak(self):
         return "Woof!"
-        
+
     def play(self):
         self.speak()
-        
+
 def create_dog(name):
     return Dog()
 
@@ -64,7 +64,7 @@ class Circle extends Shape {
         super();
         this.radius = radius;
     }
-    
+
     getArea() {
         return Math.PI * this.radius ** 2;
     }
@@ -305,11 +305,11 @@ class BaseProcessor(ABC):
 class DataProcessor(BaseProcessor):
     def __init__(self):
         self.helper = ProcessorHelper()
-        
+
     def process(self, data):
         validated = self.helper.validate(data)
         return self._transform(validated)
-        
+
     def _transform(self, data):
         return data.upper()
 
@@ -331,7 +331,7 @@ def process_file(filename):
         relationships = tracker.infer_relationships(chunks)
 
         # Check for various relationship types
-        rel_types = set(r.relationship_type for r in relationships)
+        rel_types = {r.relationship_type for r in relationships}
 
         # Should have inheritance (DataProcessor from BaseProcessor)
         assert RelationshipType.INHERITS in rel_types

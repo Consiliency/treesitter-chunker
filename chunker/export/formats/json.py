@@ -3,20 +3,23 @@
 from __future__ import annotations
 
 import gzip
-import io
 import json
-from collections.abc import Iterator
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from ...interfaces.export import (
+from chunker.interfaces.export import (
     ChunkRelationship,
     ExportFormat,
     ExportMetadata,
     StructuredExporter,
 )
-from ...types import CodeChunk
+
+if TYPE_CHECKING:
+    import io
+    from collections.abc import Iterator
+
+    from chunker.types import CodeChunk
 
 
 class StructuredJSONExporter(StructuredExporter):
@@ -63,7 +66,7 @@ class StructuredJSONExporter(StructuredExporter):
         json_str = json.dumps(data, indent=self.indent)
 
         # Write to output
-        if isinstance(output, (str, Path)):
+        if isinstance(output, str | Path):
             output_path = Path(output)
             if self.compress:
                 with gzip.open(f"{output_path}.gz", "wt", encoding="utf-8") as f:
@@ -127,7 +130,7 @@ class StructuredJSONExporter(StructuredExporter):
                 "options": metadata.options,
             }
         # Generate basic metadata
-        source_files = list(set(c.file_path for c in chunks))
+        source_files = list({c.file_path for c in chunks})
         return {
             "format": "json",
             "version": "1.0",
@@ -195,7 +198,7 @@ class StructuredJSONLExporter(StructuredExporter):
             output: Output path or stream
             metadata: Export metadata
         """
-        if isinstance(output, (str, Path)):
+        if isinstance(output, str | Path):
             output_path = Path(output)
             if self.compress:
                 with gzip.open(f"{output_path}.gz", "wt", encoding="utf-8") as f:
@@ -213,7 +216,7 @@ class StructuredJSONLExporter(StructuredExporter):
         output: Path | io.IOBase,
     ) -> None:
         """Export using iterators for large datasets."""
-        if isinstance(output, (str, Path)):
+        if isinstance(output, str | Path):
             output_path = Path(output)
             if self.compress:
                 with gzip.open(f"{output_path}.gz", "wt", encoding="utf-8") as f:
@@ -265,7 +268,7 @@ class StructuredJSONLExporter(StructuredExporter):
             }
         else:
             # Generate basic metadata
-            source_files = list(set(c.file_path for c in chunks))
+            source_files = list({c.file_path for c in chunks})
             meta_record = {
                 "type": "metadata",
                 "data": {

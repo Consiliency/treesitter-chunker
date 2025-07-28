@@ -15,7 +15,7 @@ class TestSvelteBasicChunking:
             """<script>
   let name = 'world';
   let count = 0;
-  
+
   function increment() {
     count += 1;
   }
@@ -33,7 +33,7 @@ class TestSvelteBasicChunking:
     text-align: center;
     padding: 1em;
   }
-  
+
   h1 {
     color: #ff3e00;
   }
@@ -45,9 +45,7 @@ class TestSvelteBasicChunking:
 
         # Check for script section
         script_chunks = [
-            c
-            for c in chunks
-            if c.node_type == "script_element" or c.node_type == "instance_script"
+            c for c in chunks if c.node_type in {"script_element", "instance_script"}
         ]
         assert len(script_chunks) >= 1
         assert any("count" in c.content for c in script_chunks)
@@ -65,21 +63,21 @@ class TestSvelteBasicChunking:
   let count = 0;
   let doubled = 0;
   let quadrupled = 0;
-  
+
   // Reactive statement
   $: doubled = count * 2;
-  
+
   // Reactive block
   $: {
     console.log(`count is ${count}`);
     quadrupled = doubled * 2;
   }
-  
+
   // Reactive function call
   $: if (count >= 10) {
     alert('Count is getting high!');
   }
-  
+
   function increment() {
     count += 1;
   }
@@ -109,7 +107,7 @@ class TestSvelteBasicChunking:
   let items = ['Apple', 'Banana', 'Cherry'];
   let showItems = true;
   let promise = fetchData();
-  
+
   async function fetchData() {
     await new Promise(r => setTimeout(r, 1000));
     return { data: 'Loaded!' };
@@ -118,7 +116,7 @@ class TestSvelteBasicChunking:
 
 {#if showItems}
   <h2>Fruit List</h2>
-  
+
   {#each items as item, index}
     <div>
       {index + 1}. {item}
@@ -162,7 +160,7 @@ class TestSvelteBasicChunking:
         src.write_text(
             """<script context="module">
   let totalInstances = 0;
-  
+
   export function getInstanceCount() {
     return totalInstances;
   }
@@ -170,13 +168,13 @@ class TestSvelteBasicChunking:
 
 <script>
   import { onMount, onDestroy } from 'svelte';
-  
+
   export let title = 'Default Title';
-  
+
   onMount(() => {
     totalInstances += 1;
   });
-  
+
   onDestroy(() => {
     totalInstances -= 1;
   });
@@ -212,13 +210,13 @@ class TestSvelteBasicChunking:
         src.write_text(
             """<script>
   import { writable, derived } from 'svelte/store';
-  
+
   const count = writable(0);
   const doubled = derived(count, $count => $count * 2);
-  
+
   let inputValue = '';
   let checked = false;
-  
+
   function increment() {
     count.update(n => n + 1);
   }
@@ -364,19 +362,19 @@ class TestSvelteEdgeCases:
             """<script lang="ts">
   export let count: number = 0;
   export let name: string = 'World';
-  
+
   interface User {
     id: number;
     name: string;
     email: string;
   }
-  
+
   let user: User = {
     id: 1,
     name: 'John',
     email: 'john@example.com'
   };
-  
+
   function increment(): void {
     count += 1;
   }
@@ -411,11 +409,11 @@ class TestSvelteEdgeCases:
       <h2>{title}</h2>
     </slot>
   </header>
-  
+
   <main>
     <slot>Default content</slot>
   </main>
-  
+
   <footer>
     <slot name="footer" count={42}>
       <p>Default footer</p>
@@ -443,17 +441,17 @@ class TestSvelteEdgeCases:
         src.write_text(
             """<script>
   let message = '';
-  
+
   function handleClick(event) {
     console.log('Clicked!', event);
   }
-  
+
   function handleKeydown(event) {
     if (event.key === 'Enter') {
       message = 'Enter pressed!';
     }
   }
-  
+
   function handleSubmit() {
     console.log('Form submitted');
   }
@@ -497,14 +495,14 @@ class TestSvelteEdgeCases:
             """<script>
   import { fade, fly, slide } from 'svelte/transition';
   import { flip } from 'svelte/animate';
-  
+
   let visible = true;
   let items = [1, 2, 3, 4, 5];
-  
+
   function addItem() {
     items = [...items, items.length + 1];
   }
-  
+
   function removeItem(item) {
     items = items.filter(i => i !== item);
   }
@@ -547,10 +545,10 @@ class TestSvelteEdgeCases:
             """<script>
   import Child from './Child.svelte';
   import { Button } from './components';
-  
+
   let items = ['A', 'B', 'C'];
   let selectedItem = null;
-  
+
   function handleSelect(item) {
     selectedItem = item;
   }
@@ -559,8 +557,8 @@ class TestSvelteEdgeCases:
 <h1>Parent Component</h1>
 
 {#each items as item}
-  <Child 
-    {item} 
+  <Child
+    {item}
     on:select={() => handleSelect(item)}
     selected={selectedItem === item}
   />

@@ -12,7 +12,8 @@ from typing import Any
 
 from tree_sitter import Node
 
-from ..types import CodeChunk
+from chunker.types import CodeChunk
+
 from .base import ASTProcessor, ChunkingStrategy
 from .context import ContextExtractor, ContextItem
 from .debug import ASTVisualizer

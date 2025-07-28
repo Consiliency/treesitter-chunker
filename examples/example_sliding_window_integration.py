@@ -76,9 +76,7 @@ class DataFileProcessor(TextProcessor):
     def can_process(self, content: str, file_path: str) -> bool:
         """Check if content is structured data."""
         return (
-            file_path.endswith(".csv")
-            or file_path.endswith(".tsv")
-            or "\t" in content.splitlines()[0]
+            file_path.endswith((".csv", ".tsv")) or "\t" in content.splitlines()[0]
             if content
             else False
         )
@@ -170,10 +168,10 @@ def main():
         id INTEGER PRIMARY KEY,
         name VARCHAR(100)
     );
-    
+
     INSERT INTO users (name) VALUES ('Alice');
     INSERT INTO users (name) VALUES ('Bob');
-    
+
     SELECT * FROM users WHERE id > 0;
     """
 
@@ -254,20 +252,20 @@ def main():
     # Create a mixed content file
     mixed_content = """
     # Database Schema Documentation
-    
+
     This document describes our database schema.
-    
+
     ## Users Table
-    
+
     ```sql
     CREATE TABLE users (
         id INTEGER PRIMARY KEY,
         name VARCHAR(100)
     );
     ```
-    
+
     ## Sample Data
-    
+
     name,age,city
     Alice,25,NYC
     Bob,30,LA

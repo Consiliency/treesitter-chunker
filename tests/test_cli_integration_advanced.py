@@ -348,7 +348,7 @@ class TestInteractiveMode:
         )
 
         # Should not fail completely
-        assert result.exit_code == 0 or result.exit_code == 1
+        assert result.exit_code in {0, 1}
 
         # Should process good file
         if result.stdout:
@@ -506,7 +506,7 @@ class TestSignalHandling:
         marker = output_dir / ".chunker_lock"
 
         # Run command that might create temporary files
-        result = subprocess.run(
+        subprocess.run(
             [
                 sys.executable,
                 "-m",

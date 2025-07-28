@@ -9,7 +9,8 @@ from dataclasses import dataclass
 
 from tree_sitter import Node
 
-from ..types import CodeChunk
+from chunker.types import CodeChunk
+
 from .base import ChunkingStrategy
 
 

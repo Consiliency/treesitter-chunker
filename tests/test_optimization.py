@@ -551,7 +551,7 @@ public class MyClass {
     private void method1() {
         return;
     }
-    
+
     public void method2() {
         return;
     }

@@ -4,7 +4,8 @@ import hashlib
 import logging
 from typing import Any
 
-from ...interfaces.performance import CacheManager as CacheManagerInterface
+from chunker.interfaces.performance import CacheManager as CacheManagerInterface
+
 from .multi_level import MultiLevelCache
 
 logger = logging.getLogger(__name__)

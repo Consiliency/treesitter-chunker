@@ -31,7 +31,7 @@ class Animal:
     """Base animal class."""
     def __init__(self, name):
         self.name = name
-        
+
     def speak(self):
         pass
 
@@ -40,10 +40,10 @@ class Dog(Animal):
     def __init__(self, name, breed):
         super().__init__(name)
         self.breed = breed
-        
+
     def speak(self):
         return f"{self.name} barks!"
-        
+
     def play_fetch(self):
         return "Fetching the ball!"
 
@@ -81,7 +81,7 @@ class Shape {
     constructor(color) {
         this.color = color;
     }
-    
+
     getArea() {
         throw new Error("getArea must be implemented");
     }
@@ -93,7 +93,7 @@ class Circle extends Shape {
         super(color);
         this.radius = radius;
     }
-    
+
     getArea() {
         return Math.PI * this.radius ** 2;
     }
@@ -106,7 +106,7 @@ class Rectangle extends Shape {
         this.width = width;
         this.height = height;
     }
-    
+
     getArea() {
         return this.width * this.height;
     }
@@ -449,12 +449,10 @@ class TestStructuredExportIntegration:
 
         # Create iterators
         def chunk_iterator():
-            for chunk in chunks:
-                yield chunk
+            yield from chunks
 
         def rel_iterator():
-            for rel in relationships:
-                yield rel
+            yield from relationships
 
         # Test JSONL streaming
         orchestrator = StructuredExportOrchestrator()

@@ -10,8 +10,8 @@ from rich.panel import Panel
 from rich.syntax import Syntax
 from rich.table import Table
 
-from ...chunker import chunk_file
-from ...types import CodeChunk
+from chunker.chunker import chunk_file
+from chunker.types import CodeChunk
 
 
 def highlight_chunk_boundaries(
@@ -186,7 +186,7 @@ def _show_side_by_side(
         chunk_panels.append(chunk_panel)
 
     # Display side by side
-    console.print(Columns([original_panel] + chunk_panels[:2]))
+    console.print(Columns([original_panel, *chunk_panels[:2]]))
 
     # Display remaining chunks
     for i in range(2, len(chunk_panels), 2):

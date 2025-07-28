@@ -3,6 +3,7 @@
 Handles code quality metrics, type coverage, and test coverage analysis.
 """
 
+import contextlib
 import json
 import shutil
 import subprocess
@@ -263,10 +264,8 @@ class QualityAssurance(QualityAssuranceContract):
                 parts = line.split()
                 for part in parts:
                     if part.endswith("%"):
-                        try:
+                        with contextlib.suppress(ValueError):
                             coverage_percentage = float(part.rstrip("%"))
-                        except ValueError:
-                            pass
             # Parse individual file coverage
             elif line.startswith("chunker/") and "%" in line:
                 parts = line.split()

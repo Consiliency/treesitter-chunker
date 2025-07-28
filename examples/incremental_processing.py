@@ -31,10 +31,10 @@ def calculate(a, b):
 
 class Calculator:
     """Basic calculator."""
-    
+
     def __init__(self):
         self.result = 0
-    
+
     def add(self, value):
         """Add to result."""
         self.result += value
@@ -71,16 +71,16 @@ def calculate(a, b, operation="+"):
 
 class Calculator:
     """Advanced calculator."""
-    
+
     def __init__(self):
         self.result = 0
         self.history = []
-    
+
     def add(self, value):
         """Add to result and track history."""
         self.result += value
         self.history.append(f"Added {value}")
-    
+
     def subtract(self, value):
         """Subtract from result."""
         self.result -= value

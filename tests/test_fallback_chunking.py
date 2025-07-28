@@ -28,7 +28,7 @@ class TestFallbackBase:
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            chunks = chunker.chunk_text(content, "test.txt")
+            chunker.chunk_text(content, "test.txt")
 
             assert len(w) == 1
             assert issubclass(w[0].category, FallbackWarning)

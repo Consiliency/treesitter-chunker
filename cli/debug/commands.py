@@ -119,7 +119,7 @@ def ast(
     # Parse highlight nodes
     highlight_nodes = None
     if highlight:
-        highlight_nodes = set(n.strip() for n in highlight.split(","))
+        highlight_nodes = {n.strip() for n in highlight.split(",")}
 
     try:
         if format == "tree":

@@ -32,7 +32,7 @@ class MockCLIRunner:
         # Construct full command
         # Use the worktree root as the working directory
         worktree_root = Path(__file__).parent.parent
-        cmd = [sys.executable, "-m", "cli.main"] + args
+        cmd = [sys.executable, "-m", "cli.main", *args]
 
         # Run command from worktree root so cli module can be found
         result = subprocess.run(
@@ -53,7 +53,7 @@ class MockCLIRunner:
     def invoke_async(self, args: list[str]) -> subprocess.Popen:
         """Run CLI command asynchronously."""
         worktree_root = Path(__file__).parent.parent
-        cmd = [sys.executable, "-m", "cli.main"] + args
+        cmd = [sys.executable, "-m", "cli.main", *args]
 
         self.process = subprocess.Popen(
             cmd,
@@ -247,16 +247,16 @@ def simple_function():
 
 class MyClass:
     '''A test class'''
-    
+
     def method(self):
         '''Instance method'''
         return self
-    
+
     @classmethod
     def class_method(cls):
         '''Class method'''
         return cls
-    
+
     @staticmethod
     def static_method():
         '''Static method'''
@@ -265,7 +265,7 @@ class MyClass:
 async def async_function():
     '''Async function'''
     await something()
-    
+
 def nested_function():
     '''Function with nested function'''
     def inner():
@@ -351,7 +351,7 @@ class JavaScriptClass {
     constructor() {
         this.value = 1;
     }
-    
+
     method() {
         return this.value;
     }
@@ -364,7 +364,7 @@ const objectLiteral = {
 };
 """
 
-        js_file = test_file_generator.create_file("chunk_types.js", js_content)
+        test_file_generator.create_file("chunk_types.js", js_content)
 
         output_file3 = temp_workspace / "output" / "multi_lang_chunks.parquet"
         result = runner.invoke(
@@ -489,7 +489,6 @@ class Class_{i}:
             ), f"Chunks out of order in {file_path}"
 
         # Test with different worker counts
-        stats = {}
         for workers in [1, 2, 4, 8]:
             output = temp_workspace / "output" / f"parallel_{workers}.parquet"
 
@@ -553,7 +552,7 @@ def function_{i}(param1, param2, param3):
     result = param1 + param2 * param3
     intermediate = result ** 2
     final = intermediate / (param1 + 1)
-    
+
     # Some additional logic
     if final > 1000:
         return final * 0.9
@@ -568,10 +567,10 @@ def function_{i}(param1, param2, param3):
                     f"""
 class LargeClass_{i}:
     '''A class in the large file'''
-    
+
     def __init__(self):
         self.data = list(range(1000))
-    
+
     def process(self):
         return sum(self.data)
 """,
@@ -1114,7 +1113,6 @@ class Class_{i}:
 
         # Capture progress output
         progress_updates = []
-        progress_pattern = r"(\d+)%|\[.*\]|(\d+)/(\d+)"
 
         runner = MockCLIRunner(temp_workspace)
 

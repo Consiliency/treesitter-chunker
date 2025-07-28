@@ -4,7 +4,7 @@ from abc import ABC
 
 from tree_sitter import Node
 
-from ..interfaces.metadata import ComplexityAnalyzer, ComplexityMetrics
+from chunker.interfaces.metadata import ComplexityAnalyzer, ComplexityMetrics
 
 
 class BaseComplexityAnalyzer(ComplexityAnalyzer, ABC):
@@ -251,7 +251,6 @@ class BaseComplexityAnalyzer(ComplexityAnalyzer, ABC):
         string_delimiter = None
 
         for line in text.split("\n"):
-            original_line = line
             line = line.strip()
 
             # Skip empty lines
@@ -260,7 +259,7 @@ class BaseComplexityAnalyzer(ComplexityAnalyzer, ABC):
 
             # Handle multi-line strings (Python docstrings) - but count the first line if it's a statement
             if not in_multiline_string:
-                if (line.startswith('"""') or line.startswith("'''")) and len(line) > 3:
+                if (line.startswith(('"""', "'''"))) and len(line) > 3:
                     string_delimiter = line[:3]
                     in_multiline_string = True
                     # Check if it ends on the same line
@@ -269,7 +268,7 @@ class BaseComplexityAnalyzer(ComplexityAnalyzer, ABC):
                         # Count this line if it's a standalone string (likely docstring)
                         logical_lines += 1
                     continue
-                if line == '"""' or line == "'''":
+                if line in {'"""', "'''"}:
                     string_delimiter = line
                     in_multiline_string = True
                     continue
@@ -354,10 +353,7 @@ class BaseComplexityAnalyzer(ComplexityAnalyzer, ABC):
 
         # Try to get the function name being called
         name_node = self._find_name_node(node)
-        if name_node and name_node.type in parent_function_names:
-            return True
-
-        return False
+        return bool(name_node and name_node.type in parent_function_names)
 
     def _find_name_node(self, node: Node) -> Node | None:
         """Find name/identifier node."""
@@ -370,13 +366,6 @@ class BaseComplexityAnalyzer(ComplexityAnalyzer, ABC):
         """Check if line is a comment."""
         line = line.strip()
         # Common comment patterns
-        return (
-            line.startswith("//")
-            or line.startswith("#")
-            or line.startswith("--")
-            or line.startswith("*")
-            or line.startswith("/*")
-            or line.startswith("*/")
-            or line.startswith('"' * 3)  # Python docstring
-            or line.startswith("'" * 3)  # Python docstring
-        )
+        return line.startswith(
+            ("//", "#", "--", "*", "/*", "*/", '"' * 3, "'" * 3),
+        )  # Python docstring

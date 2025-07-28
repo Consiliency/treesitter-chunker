@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-
-from tree_sitter import Parser
+from typing import TYPE_CHECKING
 
 from .exceptions import (
     LanguageNotFoundError,
@@ -15,6 +14,9 @@ from .exceptions import (
 )
 from .factory import ParserConfig, ParserFactory
 from .registry import LanguageMetadata, LanguageRegistry
+
+if TYPE_CHECKING:
+    from tree_sitter import Parser
 
 # Module-level logger
 logger = logging.getLogger(__name__)

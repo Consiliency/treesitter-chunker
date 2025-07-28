@@ -3,16 +3,18 @@ from __future__ import annotations
 import json
 import statistics
 import time
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from chunker import chunk_file
 from chunker.cache import ASTCache
 from chunker.parallel import chunk_files_parallel
 from chunker.streaming import chunk_file_streaming
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
 
 
 @dataclass
@@ -270,7 +272,7 @@ class PerformanceBenchmark:
 def run_benchmarks(
     directory: Path,
     language: str,
-    extensions: list[str] = None,
+    extensions: list[str] | None = None,
 ) -> BenchmarkSuite:
     """Run benchmarks on all files in a directory."""
     if extensions is None:

@@ -561,10 +561,10 @@ class CustomProcessor(TextProcessor):
             supported_extensions={'.custom'},
             priority=150
         )
-    
+
     def can_process(self, content, file_path):
         return file_path.endswith('.custom')
-    
+
     def process(self, content, file_path):
         return [CodeChunk(
             language="custom",

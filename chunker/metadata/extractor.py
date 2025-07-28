@@ -4,7 +4,7 @@ from abc import ABC
 
 from tree_sitter import Node
 
-from ..interfaces.metadata import MetadataExtractor
+from chunker.interfaces.metadata import MetadataExtractor
 
 
 class BaseMetadataExtractor(MetadataExtractor, ABC):

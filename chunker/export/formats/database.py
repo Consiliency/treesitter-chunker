@@ -5,19 +5,22 @@ from __future__ import annotations
 import io
 import json
 import sqlite3
-from collections.abc import Iterator
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from ...exceptions import ChunkerError
-from ...interfaces.export import (
+from chunker.exceptions import ChunkerError
+from chunker.interfaces.export import (
     ChunkRelationship,
     DatabaseExporter,
     ExportFormat,
     ExportMetadata,
 )
-from ...types import CodeChunk
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from chunker.types import CodeChunk
 
 
 class SQLiteExporter(DatabaseExporter):
@@ -228,7 +231,7 @@ class SQLiteExporter(DatabaseExporter):
 
         cursor.execute(
             f"""
-            INSERT INTO {self._metadata_table} 
+            INSERT INTO {self._metadata_table}
             (format, version, created_at, source_files, chunk_count, relationship_count, options)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
@@ -413,7 +416,7 @@ class PostgreSQLExporter(DatabaseExporter):
 
         # Write to output
         sql_content = "\n".join(sql_lines)
-        if isinstance(output, (str, Path)):
+        if isinstance(output, str | Path):
             Path(output).write_text(sql_content, encoding="utf-8")
         else:
             output.write(sql_content)
@@ -426,7 +429,7 @@ class PostgreSQLExporter(DatabaseExporter):
     ) -> None:
         """Export using iterators for large datasets."""
         # Open output for streaming
-        if isinstance(output, (str, Path)):
+        if isinstance(output, str | Path):
             with open(output, "w", encoding="utf-8") as f:
                 self._stream_sql(chunk_iterator, relationship_iterator, f)
         else:

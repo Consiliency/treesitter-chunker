@@ -4,10 +4,10 @@ import logging
 import platform
 from pathlib import Path
 
-from ..exceptions import ChunkerError
-from ..interfaces.grammar import GrammarValidator
-from ..parser import get_parser
-from ..registry import LanguageRegistry
+from chunker.exceptions import ChunkerError
+from chunker.interfaces.grammar import GrammarValidator
+from chunker.parser import get_parser
+from chunker.registry import LanguageRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -187,7 +187,7 @@ class TreeSitterGrammarValidator(GrammarValidator):
 
             # Test incremental parsing
             try:
-                tree2 = parser.parse(test_code.encode(), tree)
+                parser.parse(test_code.encode(), tree)
                 features["incremental"] = True
             except:
                 features["incremental"] = False
@@ -218,11 +218,7 @@ class TreeSitterGrammarValidator(GrammarValidator):
         if node.type == "ERROR" or node.is_error:
             return True
 
-        for child in node.children:
-            if self._has_errors(child):
-                return True
-
-        return False
+        return any(self._has_errors(child) for child in node.children)
 
     def _find_error_nodes(self, node, errors=None):
         """Find all error nodes in tree."""

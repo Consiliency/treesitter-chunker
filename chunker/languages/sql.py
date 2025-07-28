@@ -4,9 +4,8 @@ Support for SQL language.
 
 from __future__ import annotations
 
-from tree_sitter import Node
+from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 
-from ..contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
 
@@ -66,7 +65,12 @@ class SQLConfig(LanguageConfig):
 
 
 # Register the SQL configuration
+from typing import TYPE_CHECKING
+
 from . import language_config_registry
+
+if TYPE_CHECKING:
+    from tree_sitter import Node
 
 language_config_registry.register(
     SQLConfig(),
@@ -112,7 +116,7 @@ class SQLPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         if node.type.startswith("create_"):
             # Look for table/view/function name
             for child in node.children:
-                if child.type == "relation" or child.type == "identifier":
+                if child.type in {"relation", "identifier"}:
                     return source[child.start_byte : child.end_byte].decode("utf-8")
                 if child.type == "object_reference":
                     # Handle schema.table notation
@@ -132,7 +136,7 @@ class SQLPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         """Extract semantic chunks specific to SQL."""
         chunks = []
 
-        def extract_chunks(n: Node, parent_type: str = None):
+        def extract_chunks(n: Node, parent_type: str | None = None):
             if n.type in self.default_chunk_types:
                 content = source[n.start_byte : n.end_byte].decode(
                     "utf-8",
@@ -175,9 +179,7 @@ class SQLPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         }:
             return True
         # Comments are also chunks
-        if node.type == "comment":
-            return True
-        return False
+        return node.type == "comment"
 
     def get_node_context(self, node: Node, source: bytes) -> str | None:
         """Extract meaningful context for a node."""

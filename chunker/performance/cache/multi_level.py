@@ -74,7 +74,7 @@ class MultiLevelCache:
         """
         count = 0
 
-        for cache in list(self.caches.values()) + [self.default_cache]:
+        for cache in [*list(self.caches.values()), self.default_cache]:
             # Get all keys (we need to iterate safely)
             keys_to_check = []
             with cache._lock:

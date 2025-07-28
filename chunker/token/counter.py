@@ -4,7 +4,7 @@ from functools import lru_cache
 
 import tiktoken
 
-from ..interfaces.token import TokenCounter
+from chunker.interfaces.token import TokenCounter
 
 
 class TiktokenCounter(TokenCounter):

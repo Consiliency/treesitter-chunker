@@ -16,19 +16,19 @@ class TestTokenHierarchyIntegrationSimple:
             '''
 class DataProcessor:
     """Process data with various operations."""
-    
+
     def __init__(self, name: str):
         self.name = name
         self._data = []
-    
+
     def add_data(self, item: Any) -> None:
         """Add data item."""
         self._data.append(item)
-    
+
     def get_data(self) -> List[Any]:
         """Get all data."""
         return self._data.copy()
-    
+
     def process(self) -> Dict[str, Any]:
         """Process all data."""
         return {
@@ -36,7 +36,7 @@ class DataProcessor:
             "count": len(self._data),
             "data": self._data
         }
-    
+
     def clear(self) -> None:
         """Clear all data."""
         self._data.clear()
@@ -133,26 +133,26 @@ def merge_processors(p1: DataProcessor, p2: DataProcessor) -> DataProcessor:
             '''
 def process_data(items):
     """Process a list of items with detailed documentation.
-    
+
     This function processes each item in the list and performs various
     transformations and validations. It handles errors gracefully and
     provides detailed logging for debugging purposes.
-    
+
     Args:
         items: List of items to process
-        
+
     Returns:
         Dict containing processed results and statistics
     """
     results = []
     errors = []
-    
+
     for i, item in enumerate(items):
         try:
             # Validate item
             if not isinstance(item, dict):
                 raise ValueError(f"Item {i} must be a dictionary")
-            
+
             # Process item
             processed = {
                 'id': item.get('id', i),
@@ -160,15 +160,15 @@ def process_data(items):
                 'value': float(item.get('value', 0)),
                 'processed': True
             }
-            
+
             results.append(processed)
-            
+
         except Exception as e:
             errors.append({
                 'index': i,
                 'error': str(e)
             })
-    
+
     return {
         'results': results,
         'errors': errors,
@@ -197,7 +197,7 @@ def process_data(items):
                 )
 
                 # Verify splits respect token limit
-                for content, token_count in split_results:
+                for _content, token_count in split_results:
                     assert (
                         token_count <= 100
                     ), f"Token count {token_count} exceeds limit"
@@ -210,21 +210,21 @@ def process_data(items):
             '''
 class OuterClass:
     """Outer class with nested elements."""
-    
+
     class InnerClass:
         """Inner class."""
-        
+
         def inner_method(self):
             """Method in inner class."""
             return "inner"
-    
+
     def outer_method(self):
         """Method in outer class."""
-        
+
         def nested_function():
             """Nested function."""
             return "nested"
-        
+
         return nested_function()
 ''',
         )

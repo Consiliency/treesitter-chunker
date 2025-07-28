@@ -60,7 +60,7 @@ def function_two():
 
 class TestClass:
     """Test class."""
-    
+
     def method(self):
         return 3
 '''
@@ -86,14 +86,14 @@ class TestClass:
         # Incremental parse
         print("\nIncremental parse after small change...")
         start = time.perf_counter()
-        chunks2 = chunker.chunk_file_incremental(test_file, "python")
+        chunker.chunk_file_incremental(test_file, "python")
         incr_time = time.perf_counter() - start
         print(f"Incremental parse: {incr_time*1000:.2f}ms")
 
         # Compare with full reparse
         chunker.invalidate_file(test_file)  # Clear cache
         start = time.perf_counter()
-        chunks3 = chunker.chunk_file(test_file, "python", force_reparse=True)
+        chunker.chunk_file(test_file, "python", force_reparse=True)
         full_time = time.perf_counter() - start
         print(f"Full reparse: {full_time*1000:.2f}ms")
 

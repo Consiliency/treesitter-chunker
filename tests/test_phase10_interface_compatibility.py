@@ -56,14 +56,14 @@ def calculate_average(numbers: List[int]) -> float:
 
 class Statistics:
     """Calculate statistics for number lists."""
-    
+
     def __init__(self):
         self.data = []
-    
+
     def add_data(self, numbers: List[int]):
         """Add data for analysis."""
         self.data.extend(numbers)
-    
+
     def get_mean(self) -> float:
         """Get mean of all data."""
         return calculate_average(self.data)

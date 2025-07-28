@@ -30,18 +30,18 @@ def fibonacci(n):
 
 class DataProcessor:
     """Process data with various methods."""
-    
+
     def __init__(self, data):
         self.data = data
-    
+
     def clean_data(self):
         """Clean the data."""
         return [x.strip() for x in self.data if x]
-    
+
     def transform_data(self):
         """Transform the data."""
         return [x.upper() for x in self.clean_data()]
-    
+
     def analyze_data(self):
         """Analyze the data."""
         cleaned = self.clean_data()
@@ -60,15 +60,15 @@ def process_file(filename):
 
 class Calculator:
     """Simple calculator class."""
-    
+
     @staticmethod
     def add(a, b):
         return a + b
-    
+
     @staticmethod
     def multiply(a, b):
         return a * b
-    
+
     def power(self, base, exp):
         """Calculate power."""
         result = 1
@@ -91,7 +91,7 @@ def demo_basic_chunking():
     print("-" * 40)
 
     temp_dir = create_test_files(1)
-    test_file = list(temp_dir.glob("*.py"))[0]
+    test_file = next(iter(temp_dir.glob("*.py")))
 
     start = time.time()
     chunks = chunk_file(test_file, "python")
@@ -113,7 +113,7 @@ def demo_streaming_chunking():
     print("-" * 40)
 
     temp_dir = create_test_files(1)
-    test_file = list(temp_dir.glob("*.py"))[0]
+    test_file = next(iter(temp_dir.glob("*.py")))
 
     start = time.time()
     chunks = list(chunk_file_streaming(test_file, "python"))
@@ -133,7 +133,7 @@ def demo_cached_chunking():
     print("-" * 40)
 
     temp_dir = create_test_files(1)
-    test_file = list(temp_dir.glob("*.py"))[0]
+    test_file = next(iter(temp_dir.glob("*.py")))
 
     # Clear cache
     cache = ASTCache()
@@ -146,7 +146,7 @@ def demo_cached_chunking():
 
     # Second run (warm cache)
     start = time.time()
-    chunks2 = chunk_file(test_file, "python", use_cache=True)
+    chunk_file(test_file, "python", use_cache=True)
     warm_duration = time.time() - start
 
     print(f"File: {test_file.name}")

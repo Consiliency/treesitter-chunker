@@ -3,8 +3,9 @@
 from collections import defaultdict
 from dataclasses import dataclass
 
-from ..interfaces.semantic import SemanticMerger
-from ..types import CodeChunk
+from chunker.interfaces.semantic import SemanticMerger
+from chunker.types import CodeChunk
+
 from .analyzer import TreeSitterRelationshipAnalyzer
 
 
@@ -160,7 +161,7 @@ class TreeSitterSemanticMerger(SemanticMerger):
         """Build groups of chunks that should be merged together."""
         # Use Union-Find to build connected components
         parent = {chunk.chunk_id: chunk.chunk_id for chunk in chunks}
-        chunk_map = {chunk.chunk_id: chunk for chunk in chunks}
+        {chunk.chunk_id: chunk for chunk in chunks}
 
         def find(x):
             if parent[x] != x:

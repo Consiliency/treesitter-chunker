@@ -224,14 +224,14 @@ class CustomTestPlugin(LanguagePlugin):
     @property
     def language_name(self):
         return "custom"
-    
+
     @property
     def plugin_metadata(self):
         return {"name": "custom-plugin", "version": "1.0.0"}
-    
+
     def get_file_extensions(self):
         return [".custom"]
-    
+
     def get_parser(self):
         return None
 """,
@@ -247,7 +247,7 @@ class CustomTestPlugin(LanguagePlugin):
 
             # Find plugin class
             plugin_found = False
-            for name, obj in inspect.getmembers(module):
+            for _name, obj in inspect.getmembers(module):
                 if (
                     inspect.isclass(obj)
                     and issubclass(obj, LanguagePlugin)
@@ -287,14 +287,14 @@ class NamespacePlugin(LanguagePlugin):
     @property
     def language_name(self):
         return "namespace_lang"
-    
-    @property  
+
+    @property
     def plugin_metadata(self):
         return {"name": "namespace-plugin", "version": "1.0.0"}
-    
+
     def get_file_extensions(self):
         return [".nslang"]
-    
+
     def get_parser(self):
         return None
 """,
@@ -308,7 +308,7 @@ class NamespacePlugin(LanguagePlugin):
 
             # Find plugin class
             plugin_found = False
-            for name, obj in inspect.getmembers(ns_module):
+            for _name, obj in inspect.getmembers(ns_module):
                 if (
                     inspect.isclass(obj)
                     and issubclass(obj, LanguagePlugin)
@@ -342,14 +342,14 @@ class Plugin{i}(LanguagePlugin):
     @property
     def language_name(self):
         return "lang{i}"
-    
+
     @property
     def plugin_metadata(self):
         return {{"name": "plugin-{i}", "version": "1.0.0"}}
-    
+
     def get_file_extensions(self):
         return [".lang{i}"]
-    
+
     def get_parser(self):
         return None
 """,
@@ -372,7 +372,7 @@ class Plugin{i}(LanguagePlugin):
                 spec.loader.exec_module(module)
 
                 # Find plugin classes
-                for name, obj in inspect.getmembers(module):
+                for _name, obj in inspect.getmembers(module):
                     if (
                         inspect.isclass(obj)
                         and issubclass(obj, LanguagePlugin)
@@ -405,7 +405,7 @@ class Plugin{i}(LanguagePlugin):
                 super().__init__("test_lang", "2.0.0", config)
 
         # Should handle gracefully (log warning)
-        with patch("chunker.plugin_manager.logger.warning") as mock_warning:
+        with patch("chunker.plugin_manager.logger.warning"):
             registry.register(TestPlugin2)
             # Warning may or may not be called in mock registry
 
@@ -429,33 +429,33 @@ from chunker.languages.plugin_base import LanguagePlugin
 
 class HotReloadPlugin(LanguagePlugin):
     VERSION = "1.0.0"
-    
+
     def __init__(self, config=None):
         super().__init__(config)
         self.resources = []
-    
+
     @property
     def language_name(self):
         return "hotreload"
-    
+
     @property
     def plugin_metadata(self):
         return {"name": "hotreload-plugin", "version": self.VERSION}
-    
+
     @property
     def supported_extensions(self):
         return {".hot"}
-    
+
     @property
     def default_chunk_types(self):
         return {"function", "class"}
-    
+
     def get_parser(self):
         return None
-    
+
     def process(self):
         return "v1"
-    
+
     def cleanup(self):
         # Clean up resources
         for resource in self.resources:
@@ -505,18 +505,16 @@ class HotReloadPlugin(LanguagePlugin):
             )
 
             # Register plugin
-            plugin_class = None
-            for name, obj in inspect.getmembers(module):
+            for _name, obj in inspect.getmembers(module):
                 if (
                     inspect.isclass(obj)
                     and issubclass(obj, LanguagePlugin)
                     and obj.__name__ == "HotReloadPlugin"
                 ):
-                    plugin_class = obj
                     registry.register(obj)
                     break
 
-            initial_load_time = time.time() - start_time
+            time.time() - start_time
 
             # Get initial instance
             plugin_instance = registry.get_plugin("hotreload")
@@ -543,7 +541,7 @@ class HotReloadPlugin(LanguagePlugin):
             plugin_file.write_text(plugin_content_v2)
 
             # Detect change
-            assert check_for_changes() == True
+            assert check_for_changes()
 
             # Clean up old resources before reload
             resource_tracker.release_resource(instance_resource["resource_id"])
@@ -573,7 +571,7 @@ class HotReloadPlugin(LanguagePlugin):
             spec.loader.exec_module(module)
 
             # Re-register updated plugin
-            for name, obj in inspect.getmembers(module):
+            for _name, obj in inspect.getmembers(module):
                 if (
                     inspect.isclass(obj)
                     and issubclass(obj, LanguagePlugin)
@@ -864,7 +862,7 @@ class HotReloadPlugin(LanguagePlugin):
         from tests.integration.interfaces import ErrorPropagationMixin, ResourceTracker
 
         resource_tracker = ResourceTracker()
-        error_mixin = ErrorPropagationMixin()
+        ErrorPropagationMixin()
 
         # Shared resource pool with limited capacity
         resource_pool = {
@@ -969,7 +967,7 @@ class HotReloadPlugin(LanguagePlugin):
         # Test 2: Concurrent contention
         contention_events.clear()
         threads = []
-        success_count = threading.Event()
+        threading.Event()
         successful_plugins = []
 
         def try_acquire(plugin):
@@ -1089,7 +1087,7 @@ class TestPluginVersioning:
         # Use MockPluginRegistry that tracks versions
         registry = MockPluginRegistry()
         resource_tracker = ResourceTracker()
-        error_mixin = ErrorPropagationMixin()
+        ErrorPropagationMixin()
 
         # Track version resolution times
         resolution_times = []
@@ -1354,7 +1352,7 @@ option2 = "global"
         project_config = tmp_path / "project.toml"
         project_config.write_text(
             """
-[plugin.test_plugin]  
+[plugin.test_plugin]
 option2 = "project"
 option3 = "project"
 """,
@@ -1491,7 +1489,7 @@ option3 = "project"
                 # Check timeout range
                 if "timeout" in config:
                     timeout = config["timeout"]
-                    if not isinstance(timeout, (int, float)) or timeout <= 0:
+                    if not isinstance(timeout, int | float) or timeout <= 0:
                         self.validation_errors.append("Timeout must be positive number")
                     elif timeout > 300:
                         self.validation_errors.append("Timeout too large (max 300s)")
@@ -1558,7 +1556,7 @@ option3 = "project"
             # Should fail validation
             try:
                 plugin.configure(new_plugin_config)
-                assert False, "Should have raised ValueError"
+                raise AssertionError("Should have raised ValueError")
             except ValueError as e:
                 assert "Timeout must be positive" in str(e)
 
@@ -2022,7 +2020,7 @@ class TestPluginInteractions:
         start_time = time.time()
         for _ in range(1000):
             # Simulate processing without plugins
-            result = "test"
+            pass
         baseline_time = time.time() - start_time
 
         # Add lightweight plugin
@@ -2039,7 +2037,7 @@ class TestPluginInteractions:
         plugin = registry.get_plugin("light")
         start_time = time.time()
         for _ in range(1000):
-            result = plugin.process_data("test")
+            plugin.process_data("test")
         plugin_time = time.time() - start_time
 
         # Overhead should be reasonable
@@ -2067,7 +2065,7 @@ class TestPluginInteractions:
         heavy_plugin = registry.get_plugin("heavy")
         start_time = time.time()
         for _ in range(100):
-            result = heavy_plugin.process_data("test")
+            heavy_plugin.process_data("test")
         heavy_time = time.time() - start_time
 
         # Should still complete in reasonable time

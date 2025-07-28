@@ -84,17 +84,17 @@ class BenchmarkClass:
     def __init__(self, config: Dict):
         self.config = config
         self.data = []
-    
+
     def process(self, items: List[str]) -> List[Dict]:
         results = []
         for item in items:
             if self.validate(item):
                 results.append(self.transform(item))
         return results
-    
+
     def validate(self, item: str) -> bool:
         return len(item) > 0 and item.isalnum()
-    
+
     def transform(self, item: str) -> Dict:
         return {
             'original': item,
@@ -105,7 +105,7 @@ class BenchmarkClass:
 def complex_function(data: List[int], threshold: int = 10) -> Dict[str, Any]:
     """Complex function with multiple branches."""
     results = {'positive': [], 'negative': [], 'zero': []}
-    
+
     for value in data:
         if value > threshold:
             results['positive'].append(value * 2)
@@ -119,7 +119,7 @@ def complex_function(data: List[int], threshold: int = 10) -> Dict[str, Any]:
                 results['positive'].append(value)
             else:
                 results['negative'].append(value)
-    
+
     return results
 '''
         source = sample_code.encode()

@@ -104,11 +104,11 @@ class BaseModel:
     """Base model for all entities."""
     def __init__(self, id):
         self.id = id
-        
+
     def save(self):
         """Save the model."""
         print(f"Saving {self.__class__.__name__} with id {self.id}")
-        
+
     def delete(self):
         """Delete the model."""
         print(f"Deleting {self.__class__.__name__} with id {self.id}")
@@ -118,11 +118,11 @@ class BaseManager:
     """Base manager for model operations."""
     def __init__(self, model_class):
         self.model_class = model_class
-        
+
     def create(self, **kwargs):
         """Create a new instance."""
         return self.model_class(**kwargs)
-        
+
     def find(self, id):
         """Find instance by id."""
         return self.model_class(id)
@@ -141,22 +141,22 @@ class User(BaseModel):
         super().__init__(id)
         self.name = name
         self.email = email
-        
+
     def send_email(self, message):
         """Send email to user."""
         print(f"Sending email to {self.email}: {message}")
-        
+
 
 class UserManager(BaseManager):
     """Manager for User operations."""
     def __init__(self):
         super().__init__(User)
-        
+
     def find_by_email(self, email):
         """Find user by email."""
         # Simplified implementation
         return User(1, "Test User", email)
-        
+
     def authenticate(self, email, password):
         """Authenticate user."""
         user = self.find_by_email(email)
@@ -179,24 +179,24 @@ class Post(BaseModel):
         self.title = title
         self.content = content
         self.author_id = author_id
-        
+
     def get_author(self):
         """Get the post author."""
         user_manager = UserManager()
         return user_manager.find(self.author_id)
-        
+
     def publish(self):
         """Publish the post."""
         self.save()
         author = self.get_author()
         author.send_email(f"Your post '{self.title}' has been published!")
-        
+
 
 class PostManager(BaseManager):
     """Manager for Post operations."""
     def __init__(self):
         super().__init__(Post)
-        
+
     def find_by_author(self, author_id):
         """Find posts by author."""
         # Simplified implementation
@@ -204,7 +204,7 @@ class PostManager(BaseManager):
             Post(1, "First Post", "Content 1", author_id),
             Post(2, "Second Post", "Content 2", author_id)
         ]
-        
+
     def get_recent_posts(self, limit=10):
         """Get recent posts."""
         # Simplified implementation
@@ -224,14 +224,14 @@ class BlogApp:
     def __init__(self):
         self.user_manager = UserManager()
         self.post_manager = PostManager()
-        
+
     def create_post(self, user_email, password, title, content):
         """Create a new blog post."""
         # Authenticate user
         user = self.user_manager.authenticate(user_email, password)
         if not user:
             raise ValueError("Authentication failed")
-            
+
         # Create post
         post = self.post_manager.create(
             id=None,
@@ -239,20 +239,20 @@ class BlogApp:
             content=content,
             author_id=user.id
         )
-        
+
         # Publish it
         post.publish()
         return post
-        
+
     def get_user_posts(self, user_id):
         """Get all posts by a user."""
         return self.post_manager.find_by_author(user_id)
-        
+
 
 def main():
     """Run the blog application."""
     app = BlogApp()
-    
+
     # Create a post
     post = app.create_post(
         "user@example.com",
@@ -260,7 +260,7 @@ def main():
         "Hello World",
         "This is my first blog post!"
     )
-    
+
     # Get user's posts
     posts = app.get_user_posts(1)
     for p in posts:

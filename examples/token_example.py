@@ -50,20 +50,20 @@ def calculate_fibonacci(n):
     large_class = '''
 class DataProcessor:
     """A class with many methods to demonstrate splitting."""
-    
+
     def __init__(self, config):
         self.config = config
         self.data = []
         self.results = {}
         self.cache = {}
         self.errors = []
-        
+
     def load_data(self, file_path):
         """Load data from file."""
         with open(file_path, 'r') as f:
             self.data = json.load(f)
         return len(self.data)
-        
+
     def validate_data(self):
         """Validate loaded data."""
         errors = []
@@ -76,28 +76,28 @@ class DataProcessor:
                 errors.append(f"Item {i} missing 'value' field")
         self.errors = errors
         return len(errors) == 0
-        
+
     def process_data(self):
         """Process the validated data."""
         for item in self.data:
             item_id = item.get('id')
             value = item.get('value', 0)
-            
+
             # Complex processing logic
             processed = value * 2 + len(str(value))
-            
+
             # Store in results
             self.results[item_id] = {
                 'original': value,
                 'processed': processed,
                 'timestamp': 'now'
             }
-            
+
             # Cache for future use
             self.cache[item_id] = processed
-            
+
         return len(self.results)
-        
+
     def get_summary(self):
         """Get processing summary."""
         return {

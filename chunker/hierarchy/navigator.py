@@ -2,9 +2,11 @@
 
 from collections import deque
 
-from ..interfaces.hierarchy import ChunkHierarchy
-from ..interfaces.hierarchy import HierarchyNavigator as HierarchyNavigatorInterface
-from ..types import CodeChunk
+from chunker.interfaces.hierarchy import ChunkHierarchy
+from chunker.interfaces.hierarchy import (
+    HierarchyNavigator as HierarchyNavigatorInterface,
+)
+from chunker.types import CodeChunk
 
 
 class HierarchyNavigator(HierarchyNavigatorInterface):

@@ -20,17 +20,17 @@ use Illuminate\\Support\\Facades\\Hash;
 class User extends Model
 {
     protected $fillable = ['name', 'email', 'password'];
-    
+
     public function setPasswordAttribute($value)
     {
         $this->attributes['password'] = Hash::make($value);
     }
-    
+
     public function posts()
     {
         return $this->hasMany(Post::class);
     }
-    
+
     public static function findByEmail($email)
     {
         return static::where('email', $email)->first();
@@ -67,16 +67,16 @@ interface PaymentGateway {
 
 abstract class BaseController {
     protected $request;
-    
+
     abstract protected function authorize();
-    
+
     public function handle() {
         if (!$this->authorize()) {
             throw new UnauthorizedException();
         }
         return $this->process();
     }
-    
+
     protected function process() {
         return response()->json(['status' => 'ok']);
     }
@@ -104,11 +104,11 @@ $calculate = function($number) use ($multiplier) {
 
 class EventEmitter {
     private $listeners = [];
-    
+
     public function on($event, callable $callback) {
         $this->listeners[$event][] = $callback;
     }
-    
+
     public function emit($event, $data = null) {
         foreach ($this->listeners[$event] ?? [] as $callback) {
             $callback($data);
@@ -140,7 +140,7 @@ enum Status: string {
     case PENDING = 'pending';
     case APPROVED = 'approved';
     case REJECTED = 'rejected';
-    
+
     public function getLabel(): string {
         return match($this) {
             self::PENDING => 'Awaiting Review',
@@ -156,7 +156,7 @@ class UserController {
         private UserRepository $users,
         private ?LoggerInterface $logger = null
     ) {}
-    
+
     public function index(): JsonResponse {
         return response()->json(
             $this->users->all()
@@ -178,22 +178,22 @@ class UserController {
     <?php
     class TemplateEngine {
         private $vars = [];
-        
+
         public function assign($key, $value) {
             $this->vars[$key] = $value;
         }
-        
+
         public function render($template) {
             extract($this->vars);
             include $template;
         }
     }
-    
+
     function formatDate($date) {
         return date('Y-m-d', strtotime($date));
     }
     ?>
-    
+
     <div class="content">
         <?php foreach ($items as $item): ?>
             <div><?= htmlspecialchars($item) ?></div>
@@ -217,24 +217,24 @@ use Illuminate\\Support\\Facades\\{Cache, Log};
 class PostController extends Controller
 {
     use HasApiTokens, Notifiable;
-    
+
     public function __construct(
         private NotificationService $notifications
     ) {
         $this->middleware('auth:api');
     }
-    
+
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'content' => 'required|string',
         ]);
-        
+
         $post = Post::create($validated);
-        
+
         $this->notifications->notifyFollowers($post);
-        
+
         return response()->json($post, 201);
     }
 }

@@ -9,7 +9,8 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Confirm, Prompt
 
-from ...parser import list_languages
+from chunker.parser import list_languages
+
 from .chunk_debugger import ChunkDebugger
 from .node_explorer import NodeExplorer
 from .query_debugger import QueryDebugger
@@ -42,7 +43,7 @@ class DebugREPL:
 
 Available commands:
   [green]lang <language>[/green]     - Set current language
-  [green]load <file>[/green]        - Load a file for analysis  
+  [green]load <file>[/green]        - Load a file for analysis
   [green]code <code>[/green]        - Set code directly
   [green]query <query>[/green]      - Debug a Tree-sitter query
   [green]chunk[/green]              - Analyze chunking
@@ -315,7 +316,7 @@ Available commands:
         if not self._check_ready():
             return
 
-        from ..visualization.ast_visualizer import ASTVisualizer
+        from chunker.debug.visualization.ast_visualizer import ASTVisualizer
 
         visualizer = ASTVisualizer(self.current_language)
 

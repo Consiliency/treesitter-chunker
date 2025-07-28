@@ -11,7 +11,8 @@ from enum import Enum
 from re import Pattern
 from typing import Any
 
-from ..types import CodeChunk
+from chunker.types import CodeChunk
+
 from .base import ChunkingStrategy
 
 

@@ -228,9 +228,9 @@ class MyClass {
 public:
     MyClass();
     virtual ~MyClass();
-    
+
     void process(const std::string& data);
-    
+
 private:
     std::vector<int> m_data;
 };
@@ -276,7 +276,7 @@ public:
 
 def test_explicit_language_override():
     """Test that explicit language specification overrides detection."""
-    manager = get_plugin_manager()
+    get_plugin_manager()
 
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create a .h file that would normally be detected as C++

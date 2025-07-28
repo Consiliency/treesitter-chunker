@@ -112,11 +112,7 @@ class LanguageConfig(ABC):
             return True
 
         # Check advanced rules
-        for rule in self.chunk_rules:
-            if node_type in rule.node_types:
-                return True
-
-        return False
+        return any(node_type in rule.node_types for rule in self.chunk_rules)
 
     def should_ignore_node(self, node_type: str) -> bool:
         """Determine if a node should be ignored during traversal.

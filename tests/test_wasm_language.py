@@ -47,7 +47,7 @@ class TestWASMPlugin:
     local.get $a
     local.get $b
     i32.add)
-  
+
   (export "add" (func $add))
 )
 """
@@ -78,7 +78,7 @@ class TestWASMPlugin:
         (i32.add
           (call $fibonacci (i32.sub (local.get $n) (i32.const 1)))
           (call $fibonacci (i32.sub (local.get $n) (i32.const 2)))))))
-  
+
   (func $main (result i32)
     (call $fibonacci (i32.const 10)))
 )
@@ -173,12 +173,12 @@ class TestWASMPlugin:
   (import "env" "print" (func $print (param i32)))
   (import "env" "memory" (memory 1))
   (import "js" "table" (table 1 funcref))
-  
+
   (func $add (param i32 i32) (result i32)
     local.get 0
     local.get 1
     i32.add)
-  
+
   (export "add" (func $add))
   (export "memory" (memory 0))
 )
@@ -209,7 +209,7 @@ class TestWASMPlugin:
 (module
   (type $sig1 (func (param i32 i32) (result i32)))
   (type $sig2 (func (param f32) (result f32)))
-  
+
   (func (type $sig1)
     local.get 0
     local.get 1
@@ -312,42 +312,42 @@ class TestWASMPlugin:
   ;; Type definitions
   (type $binary_op (func (param i32 i32) (result i32)))
   (type $unary_op (func (param i32) (result i32)))
-  
+
   ;; Imports
   (import "console" "log" (func $log (param i32)))
-  
+
   ;; Memory
   (memory (export "memory") 1)
-  
+
   ;; Globals
   (global $counter (mut i32) (i32.const 0))
-  
+
   ;; Data section
   (data (i32.const 0) "Hello, WebAssembly!")
-  
+
   ;; Functions
   (func $increment (type $unary_op)
     (global.set $counter
       (i32.add (global.get $counter) (local.get 0))))
-  
+
   (func $add (type $binary_op)
     local.get 0
     local.get 1
     i32.add)
-  
+
   (func $multiply (type $binary_op)
     local.get 0
     local.get 1
     i32.mul)
-  
+
   ;; Table and elements
   (table funcref (elem $add $multiply))
-  
+
   ;; Start function
   (func $start
     (call $log (i32.const 0)))
   (start $start)
-  
+
   ;; Exports
   (export "increment" (func $increment))
   (export "add" (func $add))
@@ -388,14 +388,14 @@ class TestWASMPlugin:
         code = """
 (module
   (func $no_params_no_result)
-  
+
   (func $one_param (param i32))
-  
+
   (func $two_params_one_result (param i32 i32) (result i32)
     local.get 0
     local.get 1
     i32.add)
-  
+
   (func $many_params (param i32 f32 i64) (result i32 i32)
     i32.const 0
     i32.const 0)

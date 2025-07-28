@@ -82,7 +82,7 @@ def save_results(results):
 
         src_dir = Path(temp_project) / "src"
         main_file = src_dir / "main.py"
-        utils_file = src_dir / "utils.py"
+        src_dir / "utils.py"
 
         # Mock chunk_text to return predictable chunks
         with patch("chunker.incremental.chunk_text") as mock_chunk_text:

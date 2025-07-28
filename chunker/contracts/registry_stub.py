@@ -39,11 +39,11 @@ class UniversalRegistryStub(UniversalRegistryContract):
 
     def list_installed_languages(self) -> list[str]:
         """Stub that returns installed languages"""
-        return sorted(list(self._installed))
+        return sorted(self._installed)
 
     def list_available_languages(self) -> list[str]:
         """Stub that returns all available languages"""
-        return sorted(list(self._available))
+        return sorted(self._available)
 
     def is_language_installed(self, language: str) -> bool:
         """Stub that checks installation"""

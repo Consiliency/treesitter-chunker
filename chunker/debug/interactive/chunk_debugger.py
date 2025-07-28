@@ -10,9 +10,9 @@ from rich.panel import Panel
 from rich.table import Table
 from tree_sitter import Node
 
-from ...chunker import chunk_file
-from ...parser import get_parser
-from ...types import CodeChunk
+from chunker.chunker import chunk_file
+from chunker.parser import get_parser
+from chunker.types import CodeChunk
 
 
 class ChunkDebugger:

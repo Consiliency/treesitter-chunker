@@ -6,6 +6,8 @@
 # ]
 # ///
 
+import builtins
+import contextlib
 import os
 import subprocess
 import sys
@@ -89,10 +91,8 @@ def main():
                     continue
 
             # Clean up temporary file
-            try:
+            with contextlib.suppress(builtins.BaseException):
                 os.unlink(temp_path)
-            except:
-                pass
 
             print("✅ Playback complete!")
 

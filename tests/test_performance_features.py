@@ -271,7 +271,7 @@ class TestMemoryPool:
 
         # Create and release 3 parsers
         parsers = []
-        for i in range(3):
+        for _i in range(3):
             p = pool.acquire_parser("python")
             parsers.append(p)
 

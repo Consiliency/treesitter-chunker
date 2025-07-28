@@ -58,25 +58,25 @@ Stream<int> countStream(int max) async* {
             """class Person {
   final String name;
   int _age;
-  
+
   Person(this.name, this._age);
-  
+
   Person.withName(String name) : this(name, 0);
-  
+
   factory Person.fromJson(Map<String, dynamic> json) {
     return Person(json['name'], json['age']);
   }
-  
+
   int get age => _age;
-  
+
   set age(int value) {
     if (value >= 0) _age = value;
   }
-  
+
   void greet() {
     print('Hello, I am $name');
   }
-  
+
   static Person createAnonymous() {
     return Person('Anonymous', 0);
   }
@@ -89,7 +89,7 @@ abstract class Shape {
 
 mixin Colorable {
   String color = 'black';
-  
+
   void setColor(String newColor) {
     color = newColor;
   }
@@ -97,12 +97,12 @@ mixin Colorable {
 
 class Circle extends Shape with Colorable {
   final double radius;
-  
+
   Circle(this.radius);
-  
+
   @override
   double get area => 3.14159 * radius * radius;
-  
+
   @override
   void draw() {
     print('Drawing a $color circle');
@@ -114,9 +114,7 @@ class Circle extends Shape with Colorable {
 
         # Check for class declarations
         class_chunks = [
-            c
-            for c in chunks
-            if c.node_type == "class_declaration" or c.node_type == "widget_class"
+            c for c in chunks if c.node_type in {"class_declaration", "widget_class"}
         ]
         assert len(class_chunks) >= 3
         assert any("Person" in c.content for c in class_chunks)
@@ -158,22 +156,22 @@ class MyApp extends StatelessWidget {
 
 class HomePage extends StatefulWidget {
   final String title;
-  
+
   const HomePage({Key? key, this.title = 'Home'}) : super(key: key);
-  
+
   @override
   _HomePageState createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
   int _counter = 0;
-  
+
   void _incrementCounter() {
     setState(() {
       _counter++;
     });
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -228,16 +226,16 @@ enum Status {
   pending('Pending'),
   approved('Approved'),
   rejected('Rejected');
-  
+
   final String displayName;
   const Status(this.displayName);
 }
 
 extension StringExtensions on String {
   String get reversed => split('').reversed.join();
-  
+
   bool get isEmail => contains('@') && contains('.');
-  
+
   String capitalize() {
     if (isEmpty) return this;
     return '${this[0].toUpperCase()}${substring(1)}';
@@ -246,7 +244,7 @@ extension StringExtensions on String {
 
 extension IterableExtensions<T> on Iterable<T> {
   T? get firstOrNull => isEmpty ? null : first;
-  
+
   Iterable<T> whereNotNull() {
     return where((e) => e != null);
   }
@@ -430,19 +428,19 @@ Future<int> computeValue() async => 42;
   final String name;
   final String? email;
   late final int id;
-  
+
   User({required this.name, this.email}) {
     id = _generateId();
   }
-  
+
   int _generateId() => DateTime.now().millisecondsSinceEpoch;
-  
+
   void sendEmail(String message) {
     if (email != null) {
       print('Sending to $email: $message');
     }
   }
-  
+
   String getDisplayName() {
     return email ?? name;
   }
@@ -464,7 +462,7 @@ T requireNotNull<T>(T? value, String message) {
         chunks = chunk_file(src, "dart")
 
         # Check class with nullable fields
-        class_chunks = [c for c in chunks if c.node_type == "class_declaration"]
+        [c for c in chunks if c.node_type == "class_declaration"]
         assert any("User" in c.content and "String?" in c.content for c in chunks)
 
         # Check functions handling nullable types
@@ -485,9 +483,9 @@ typedef GenericTransform<T, R> = R Function(T value);
 
 class Container<T> {
   final T value;
-  
+
   Container(this.value);
-  
+
   R map<R>(R Function(T) transform) {
     return transform(value);
   }
@@ -496,9 +494,9 @@ class Container<T> {
 class Pair<T, U> {
   final T first;
   final U second;
-  
+
   const Pair(this.first, this.second);
-  
+
   Pair<U, T> swap() => Pair(second, first);
 }
 
@@ -519,11 +517,11 @@ List<R> mapList<T, R>(List<T> items, R Function(T) transform) {
         assert any("GenericTransform" in c.content for c in typedef_chunks)
 
         # Check generic classes
-        class_chunks = [c for c in chunks if c.node_type == "class_declaration"]
+        [c for c in chunks if c.node_type == "class_declaration"]
         assert any("Container<T>" in c.content for c in chunks)
         assert any("Pair<T, U>" in c.content for c in chunks)
 
         # Check generic functions
-        function_chunks = [c for c in chunks if "function" in c.node_type]
+        [c for c in chunks if "function" in c.node_type]
         assert any("identity<T>" in c.content for c in chunks)
         assert any("mapList<T, R>" in c.content for c in chunks)

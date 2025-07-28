@@ -60,10 +60,10 @@ def problematic_function():
 
             # Attempt to chunk with recovery
             try:
-                chunks = chunk_file(test_file, language="python")
+                chunk_file(test_file, language="python")
             except RuntimeError:
                 # Retry with fresh parser
-                chunks = chunk_file(test_file, language="python")
+                chunk_file(test_file, language="python")
 
             # Should have recovered and processed file
             assert mock_parser.parse.call_count >= 2
@@ -295,7 +295,7 @@ class TestStatePersistence:
         newly_processed = []
         for file_path in remaining:
             if file_path not in already_processed:
-                chunks = chunk_file(file_path, language="python")
+                chunk_file(file_path, language="python")
                 newly_processed.append(file_path)
 
         # Should process exactly the remaining files
@@ -337,7 +337,7 @@ class TestStatePersistence:
             """Update shared state with locking."""
             # More robust locking with retries
             max_retries = 50
-            for retry in range(max_retries):
+            for _retry in range(max_retries):
                 if not lock_file.exists():
                     try:
                         # Acquire lock atomically
@@ -463,7 +463,7 @@ def function4():
         processed_chunks = all_chunks[:interruption_point]
 
         # Save partial results
-        partial_results = {
+        {
             "file": str(test_file),
             "total_chunks": len(all_chunks),
             "processed": interruption_point,
@@ -495,11 +495,11 @@ class OuterClass:
         def inner_function():
             return "nested"
         return inner_function
-    
+
     class InnerClass:
         def inner_method(self):
             pass
-    
+
     def method2(self):
         return "method2"
 """,
@@ -755,7 +755,7 @@ function test() {
 
         if detected_language:
             try:
-                chunks = chunk_file(test_file, language=detected_language)
+                chunk_file(test_file, language=detected_language)
                 # May or may not get chunks depending on parsing
             except Exception:
                 # Fallback might also fail
@@ -781,7 +781,7 @@ function test() {
         for file_path in files:
             try:
                 # Try parallel first (this will fail)
-                result = mock_chunk_files_parallel([file_path])
+                mock_chunk_files_parallel([file_path])
             except RuntimeError:
                 # Fallback to sequential
                 chunks = chunk_file(file_path, language="python")
@@ -949,7 +949,7 @@ def dependent_function2():
                 if filename == "dependent1.py":
                     raise RuntimeError("Processing failed")
 
-                chunks = chunk_file(file_path, language="python")
+                chunk_file(file_path, language="python")
                 processing_order.append((filename, "success"))
             except Exception as e:
                 failures.append((filename, str(e)))
@@ -1057,7 +1057,7 @@ def dependent_function2():
         results = []
 
         # Make multiple calls
-        for i in range(6):
+        for _i in range(6):
             try:
                 result = breaker.call(flaky_operation)
                 results.append(("success", result))

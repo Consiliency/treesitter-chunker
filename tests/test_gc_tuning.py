@@ -127,7 +127,7 @@ class TestGCTuner:
 
         # Create some garbage
         for _ in range(100):
-            _ = [i for i in range(100)]
+            _ = list(range(100))
 
         # Collect and get stats
         stats = tuner.collect_with_stats()
@@ -185,7 +185,7 @@ class TestMemoryOptimizer:
         assert ref() is obj
 
         # Delete object
-        obj_id = id(obj)
+        id(obj)
         del obj
 
         # Force garbage collection
@@ -291,7 +291,7 @@ class TestObjectPool:
         pool.release(obj2)
 
         # Acquire again - should reuse
-        obj3 = pool.acquire()
+        pool.acquire()
         stats = pool.get_stats()
         assert stats["reused"] == 1
         assert stats["in_use"] == 1
@@ -415,7 +415,7 @@ class TestIntegration:
         for item in large_data:
             results1.append(sum(item["data"]))
 
-        time_without = time.perf_counter() - start
+        time.perf_counter() - start
 
         # Time with optimization
         gc.collect()
@@ -426,7 +426,7 @@ class TestIntegration:
             for item in large_data:
                 results2.append(sum(item["data"]))
 
-        time_with = time.perf_counter() - start
+        time.perf_counter() - start
 
         # Results should be the same
         assert results1 == results2

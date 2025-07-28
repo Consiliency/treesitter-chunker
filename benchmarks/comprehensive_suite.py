@@ -47,7 +47,7 @@ class BenchmarkScenario:
 class ComprehensiveBenchmarkSuite:
     """Comprehensive benchmark suite for different use cases."""
 
-    def __init__(self, output_dir: Path = None):
+    def __init__(self, output_dir: Path | None = None):
         self.output_dir = output_dir or Path("benchmark_results")
         self.output_dir.mkdir(exist_ok=True)
         self.scenarios: list[BenchmarkScenario] = []
@@ -205,7 +205,7 @@ def function_{i}(x, y):
 class Class_{i}:
     def __init__(self):
         self.value = {i}
-    
+
     def process(self, data):
         return [x * self.value for x in data]
 """
@@ -219,7 +219,7 @@ def complex_function_{i}(data, options=None):
     '''Complex function with multiple operations.'''
     if options is None:
         options = {{}}
-    
+
     result = []
     for item in data:
         if isinstance(item, dict):
@@ -229,15 +229,15 @@ def complex_function_{i}(data, options=None):
         else:
             processed = item
         result.append(processed)
-    
+
     # Nested class
     class Processor_{i}:
         def __init__(self, factor={i}):
             self.factor = factor
-        
+
         def apply(self, value):
             return value * self.factor
-    
+
     return Processor_{i}().apply(sum(result))
 """
                         for i in range(100)
@@ -272,7 +272,7 @@ class Class_{i} {{
     constructor() {{
         this.value = {i};
     }}
-    
+
     process(data) {{
         return data.map(x => x * this.value);
     }}
@@ -310,7 +310,7 @@ class Class_{i} {{
         files = {}
         for lang in ["python", "javascript", "rust", "c", "cpp"]:
             try:
-                parser = get_parser(lang)
+                get_parser(lang)
                 files[lang] = [
                     self._create_test_file(lang, size)
                     for size in ["small", "medium", "large"]
@@ -422,67 +422,67 @@ DEFAULT_TIMEOUT = 30
 
 class DatabaseConnection:
     '''Main database connection class.'''
-    
+
     def __init__(self, config: Dict):
         self.config = config
         self.connection = None
         self._pool = []
-    
+
     def connect(self):
         '''Establish database connection.'''
         # Connection logic here
         pass
-    
+
     def disconnect(self):
         '''Close database connection.'''
         # Disconnection logic
         pass
-    
+
     def execute(self, query: str, params: Optional[List] = None):
         '''Execute a database query.'''
         if not self.connection:
             self.connect()
-        
+
         # Query execution logic
         return []
 
 class QueryBuilder:
     '''Build SQL queries programmatically.'''
-    
+
     def __init__(self):
         self.query_parts = []
-    
+
     def select(self, *columns):
         self.query_parts.append(f"SELECT {', '.join(columns)}")
         return self
-    
+
     def from_table(self, table: str):
         self.query_parts.append(f"FROM {table}")
         return self
-    
+
     def where(self, condition: str):
         self.query_parts.append(f"WHERE {condition}")
         return self
-    
+
     def build(self) -> str:
         return ' '.join(self.query_parts)
 
 def process_data(data: List[Dict]) -> List[Dict]:
     '''Process a list of data items.'''
     results = []
-    
+
     for item in data:
         # Validate item
         if not validate_item(item):
             continue
-        
+
         # Transform item
         transformed = transform_item(item)
-        
+
         # Apply business rules
         if apply_rules(transformed):
             results.append(transformed)
-    
+
     return results
 
 def validate_item(item: Dict) -> bool:
@@ -634,14 +634,14 @@ class Handler_{i}:
         for _ in range(5):
             cache.invalidate_cache(test_file)
             start = time.perf_counter()
-            chunks = chunk_file(test_file, "python", use_cache=True)
+            chunk_file(test_file, "python", use_cache=True)
             cold_times.append(time.perf_counter() - start)
 
         # Warm cache
         warm_times = []
         for _ in range(5):
             start = time.perf_counter()
-            chunks = chunk_file(test_file, "python", use_cache=True)
+            chunk_file(test_file, "python", use_cache=True)
             warm_times.append(time.perf_counter() - start)
 
         # Partial invalidation
@@ -651,7 +651,7 @@ class Handler_{i}:
         partial_times = []
         for _ in range(5):
             start = time.perf_counter()
-            chunks = chunk_file(test_file, "python", use_cache=True)
+            chunk_file(test_file, "python", use_cache=True)
             partial_times.append(time.perf_counter() - start)
 
         results["cold_cache"] = {"mean_time": statistics.mean(cold_times)}
@@ -673,28 +673,28 @@ def detailed_function_{i}(parameter_one, parameter_two, parameter_three=None):
     '''
     This is a detailed docstring for function {i}.
     It contains multiple lines of documentation to increase token count.
-    
+
     Args:
         parameter_one: First parameter description
         parameter_two: Second parameter description
         parameter_three: Optional third parameter
-        
+
     Returns:
         A complex result based on the input parameters
     '''
     # Initialize variables
     result = {{}}
     intermediate_value = parameter_one * 2
-    
+
     # Process parameter_two
     if isinstance(parameter_two, list):
         for index, item in enumerate(parameter_two):
             result[f'item_{index}'] = process_item(item, intermediate_value)
-    
+
     # Handle optional parameter
     if parameter_three is not None:
         result['optional'] = parameter_three
-    
+
     return result
 """
                 for i in range(50)
@@ -870,7 +870,7 @@ from .base import BaseClass
 class Module{i}(BaseClass):
     def process(self, data):
         return self.transform(data)
-    
+
     def transform(self, data):
         return [x * {i} for x in data]
 """
@@ -1022,7 +1022,7 @@ This is a test repository for benchmarking.
                 scenario.teardown(context)
             else:
                 # Default cleanup
-                for key, value in context.items():
+                for value in context.values():
                     if isinstance(value, Path) and value.exists():
                         if value.is_file():
                             value.unlink()
@@ -1035,7 +1035,7 @@ This is a test repository for benchmarking.
                             if isinstance(item, Path) and item.exists():
                                 item.unlink()
                     elif isinstance(value, dict):
-                        for k, v in value.items():
+                        for v in value.values():
                             if isinstance(v, Path) and v.exists():
                                 v.unlink()
 

@@ -9,7 +9,7 @@ from typing import Any
 
 from tree_sitter import Node
 
-from ..types import CodeChunk
+from chunker.types import CodeChunk
 
 
 class ChunkingStrategy(ABC):
@@ -116,7 +116,7 @@ class ASTProcessor(ABC):
 
             # Process children
             for child in node.children:
-                child_result = self.traverse(child, child_context)
+                self.traverse(child, child_context)
                 # Subclasses can override to accumulate results
 
         return result

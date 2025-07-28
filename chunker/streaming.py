@@ -2,14 +2,17 @@ from __future__ import annotations
 
 import hashlib
 import mmap
-from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-
-from tree_sitter import Node
+from typing import TYPE_CHECKING
 
 from .parser import get_parser
 from .types import CodeChunk
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from tree_sitter import Node
 
 
 @dataclass

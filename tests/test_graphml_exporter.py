@@ -171,7 +171,7 @@ class TestGraphMLExporter:
         xml_str = exporter.export_string()
 
         # Ensure XML is parseable
-        root = ET.fromstring(xml_str)
+        ET.fromstring(xml_str)
 
         # Check that special chars are in the raw XML
         assert "&lt;" in xml_str  # <

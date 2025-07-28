@@ -80,29 +80,29 @@ fprintf('Mean: %.2f, Std: %.2f\\n', mean_val, std_val);
         src.write_text(
             """classdef MyClass < handle
     % MyClass - Example MATLAB class
-    
+
     properties
         Name
         Value
     end
-    
+
     properties (Access = private)
         InternalData
     end
-    
+
     methods
         function obj = MyClass(name, value)
             % Constructor
             obj.Name = name;
             obj.Value = value;
         end
-        
+
         function display(obj)
             % Display object information
             fprintf('Name: %s, Value: %d\\n', obj.Name, obj.Value);
         end
     end
-    
+
     methods (Static)
         function result = staticMethod(x)
             result = x * 2;
@@ -137,12 +137,12 @@ end
     % Outer function
     y = helper1(x);
     result = helper2(y);
-    
+
     function a = helper1(b)
         % First nested function
         a = b * 2;
     end
-    
+
     function c = helper2(d)
         % Second nested function
         c = d + 10;
@@ -302,22 +302,22 @@ combined = @(x, y) add(square(x), y);
         src = tmp_path / "AdvancedClass.m"
         src.write_text(
             """classdef AdvancedClass < handle
-    
+
     events
         DataChanged
         StateUpdated
     end
-    
+
     enumeration
         Active
         Inactive
         Pending
     end
-    
+
     properties
         State = AdvancedClass.Inactive
     end
-    
+
     methods
         function notify_change(obj)
             notify(obj, 'DataChanged');
@@ -339,22 +339,22 @@ end
         src.write_text(
             """classdef DerivedClass < BaseClass & matlab.mixin.Copyable
     % Class with multiple inheritance
-    
+
     properties (SetAccess = protected, GetAccess = public)
         ProtectedProp
     end
-    
+
     properties (Constant)
         VERSION = '1.0.0'
     end
-    
+
     methods (Access = protected)
         function protectedMethod(obj)
             % Protected method implementation
             obj.ProtectedProp = 42;
         end
     end
-    
+
     methods (Sealed)
         function sealedMethod(obj)
             % Cannot be overridden

@@ -4,9 +4,8 @@ Support for Scala language.
 
 from __future__ import annotations
 
-from tree_sitter import Node
+from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 
-from ..contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
 
@@ -74,7 +73,12 @@ class ScalaConfig(LanguageConfig):
 
 
 # Register the Scala configuration
+from typing import TYPE_CHECKING
+
 from . import language_config_registry
+
+if TYPE_CHECKING:
+    from tree_sitter import Node
 
 language_config_registry.register(ScalaConfig(), aliases=["sc"])
 
@@ -127,7 +131,7 @@ class ScalaPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             "case_class_definition",
         }:
             for child in node.children:
-                if child.type == "identifier" or child.type == "class_identifier":
+                if child.type in {"identifier", "class_identifier"}:
                     return source[child.start_byte : child.end_byte].decode("utf-8")
         # For type definitions
         elif node.type == "type_definition":
@@ -140,7 +144,7 @@ class ScalaPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         """Extract semantic chunks specific to Scala."""
         chunks = []
 
-        def extract_chunks(n: Node, parent_type: str = None):
+        def extract_chunks(n: Node, parent_type: str | None = None):
             if n.type in self.default_chunk_types:
                 content = source[n.start_byte : n.end_byte].decode(
                     "utf-8",
@@ -262,7 +266,7 @@ class ScalaPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                                 )
 
         # Handle implicit conversions
-        if node.type == "val_definition" or node.type == "function_definition":
+        if node.type in {"val_definition", "function_definition"}:
             content = source[node.start_byte : node.end_byte].decode("utf-8")
             if "implicit" in content[:50]:
                 chunk = self.create_chunk(node, source, file_path, parent_context)

@@ -15,11 +15,11 @@ def hello_world():
 
 class Calculator:
     """A simple calculator class."""
-    
+
     def add(self, a, b):
         """Add two numbers."""
         return a + b
-    
+
     def subtract(self, a, b):
         """Subtract b from a."""
         return a - b
@@ -111,7 +111,7 @@ def test_parallel_chunking(temp_directory_with_files):
     results = chunk_files_parallel(files, "python", num_workers=2)
 
     assert len(results) == 5  # 5 files
-    for path, chunks in results.items():
+    for chunks in results.values():
         assert len(chunks) == 5  # Each file has 5 chunks
 
 

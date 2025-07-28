@@ -2,7 +2,8 @@
 
 from tree_sitter import Node
 
-from ..types import CodeChunk
+from chunker.types import CodeChunk
+
 from .base import LanguageChunker
 
 
@@ -241,10 +242,7 @@ class JavaChunker(LanguageChunker):
         """Extract list of interface names."""
         interfaces = []
         for child in interfaces_node.children:
-            if (
-                child.type == "type_identifier"
-                or child.type == "scoped_type_identifier"
-            ):
+            if child.type in {"type_identifier", "scoped_type_identifier"}:
                 interfaces.append(child.text.decode("utf-8"))
         return interfaces
 

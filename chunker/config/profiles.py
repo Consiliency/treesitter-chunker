@@ -256,7 +256,7 @@ def create_custom_profile(
     name: str,
     description: str,
     base_profile: str = "balanced",
-    config_overrides: dict = None,
+    config_overrides: dict | None = None,
 ) -> ChunkingProfile:
     """Create a custom profile based on an existing one."""
     # Get base configuration

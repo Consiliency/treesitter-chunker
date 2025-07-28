@@ -16,20 +16,20 @@ from .relationships import ASTRelationshipTracker
 from .structured_exporter import StructuredExportOrchestrator
 
 __all__ = [
+    "ASTRelationshipTracker",
+    "DOTExporter",
+    "GraphMLExporter",
     # Legacy exports
     "JSONExporter",
     "JSONLExporter",
+    "Neo4jExporter",
+    "PostgreSQLExporter",
+    "SQLiteExporter",
     "SchemaType",
-    "get_formatter",
     # Structured exports
     "StructuredExportOrchestrator",
-    "ASTRelationshipTracker",
     "StructuredJSONExporter",
     "StructuredJSONLExporter",
     "StructuredParquetExporter",
-    "GraphMLExporter",
-    "DOTExporter",
-    "SQLiteExporter",
-    "PostgreSQLExporter",
-    "Neo4jExporter",
+    "get_formatter",
 ]

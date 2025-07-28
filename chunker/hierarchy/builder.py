@@ -2,11 +2,11 @@
 
 from collections import defaultdict
 
-from ..interfaces.hierarchy import ChunkHierarchy
-from ..interfaces.hierarchy import (
+from chunker.interfaces.hierarchy import ChunkHierarchy
+from chunker.interfaces.hierarchy import (
     ChunkHierarchyBuilder as ChunkHierarchyBuilderInterface,
 )
-from ..types import CodeChunk
+from chunker.types import CodeChunk
 
 
 class ChunkHierarchyBuilder(ChunkHierarchyBuilderInterface):

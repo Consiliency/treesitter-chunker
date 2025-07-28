@@ -4,13 +4,13 @@ import re
 from dataclasses import dataclass
 from typing import Literal
 
-from ..interfaces.fallback_overlap import (
+from chunker.interfaces.fallback_overlap import (
     OverlappingFallbackChunker as IOverlappingFallbackChunker,
 )
-from ..interfaces.fallback_overlap import OverlapStrategy
-from ..types import CodeChunk
+from chunker.interfaces.fallback_overlap import OverlapStrategy
+from chunker.types import CodeChunk
 
-__all__ = ["OverlappingFallbackChunker", "OverlapConfig", "OverlapStrategy"]
+__all__ = ["OverlapConfig", "OverlapStrategy", "OverlappingFallbackChunker"]
 
 
 @dataclass

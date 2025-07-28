@@ -24,7 +24,7 @@ class UserService(private val repository: UserRepository) {
             repository.findById(id)
         }
     }
-    
+
     suspend fun createUser(name: String, email: String?): User {
         val user = User(
             id = generateId(),
@@ -33,7 +33,7 @@ class UserService(private val repository: UserRepository) {
         )
         return repository.save(user)
     }
-    
+
     private fun generateId(): Int {
         return (1..1000000).random()
     }
@@ -69,7 +69,7 @@ sealed class Result<out T> {
     data class Success<T>(val data: T) : Result<T>()
     data class Error(val exception: Exception) : Result<Nothing>()
     object Loading : Result<Nothing>()
-    
+
     inline fun <R> map(transform: (T) -> R): Result<R> = when (this) {
         is Success -> Success(transform(data))
         is Error -> Error(exception)
@@ -80,7 +80,7 @@ sealed class Result<out T> {
 abstract class BaseViewModel : ViewModel() {
     protected val _state = MutableStateFlow<ViewState>(ViewState.Initial)
     val state: StateFlow<ViewState> = _state.asStateFlow()
-    
+
     abstract fun onEvent(event: ViewEvent)
 }
 """
@@ -105,8 +105,8 @@ inline fun <T> List<T>.forEachIndexedReversed(action: (index: Int, T) -> Unit) {
 
 object StringExtensions {
     fun String.capitalize(): String {
-        return this.replaceFirstChar { 
-            if (it.isLowerCase()) it.titlecase() else it.toString() 
+        return this.replaceFirstChar {
+            if (it.isLowerCase()) it.titlecase() else it.toString()
         }
     }
 }
@@ -129,10 +129,10 @@ import kotlinx.coroutines.flow.*
 
 class DataRepository {
     private val refreshTrigger = MutableSharedFlow<Unit>()
-    
+
     val data: Flow<List<Item>> = refreshTrigger
         .onStart { emit(Unit) }
-        .flatMapLatest { 
+        .flatMapLatest {
             flow {
                 emit(fetchFromNetwork())
             }.catch { e ->
@@ -144,16 +144,16 @@ class DataRepository {
             started = SharingStarted.WhileSubscribed(5000),
             replay = 1
         )
-    
+
     suspend fun refresh() {
         refreshTrigger.emit(Unit)
     }
-    
+
     private suspend fun fetchFromNetwork(): List<Item> = withContext(Dispatchers.IO) {
         delay(1000)
         api.getItems()
     }
-    
+
     private suspend fun fetchFromCache(): List<Item> {
         return database.itemDao().getAll()
     }
@@ -167,13 +167,13 @@ class DataRepository {
         code = """
 class Html {
     private val children = mutableListOf<Element>()
-    
+
     fun head(init: Head.() -> Unit) {
         val head = Head()
         head.init()
         children.add(head)
     }
-    
+
     fun body(init: Body.() -> Unit) {
         val body = Body()
         body.init()
@@ -211,19 +211,19 @@ class Logger private constructor(private val tag: String) {
     companion object {
         @JvmStatic
         private val instances = mutableMapOf<String, Logger>()
-        
+
         @JvmStatic
         fun getInstance(tag: String): Logger {
             return instances.getOrPut(tag) { Logger(tag) }
         }
-        
+
         const val DEFAULT_TAG = "App"
     }
-    
+
     fun log(message: String) {
         println("[$tag] $message")
     }
-    
+
     inline fun debug(lazyMessage: () -> String) {
         if (BuildConfig.DEBUG) {
             log(lazyMessage())
@@ -233,7 +233,7 @@ class Logger private constructor(private val tag: String) {
 
 enum class LogLevel {
     DEBUG, INFO, WARN, ERROR;
-    
+
     companion object {
         fun fromString(value: String): LogLevel {
             return values().find { it.name == value.uppercase() } ?: INFO

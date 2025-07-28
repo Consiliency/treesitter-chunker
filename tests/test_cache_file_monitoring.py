@@ -1,5 +1,7 @@
 """Integration tests for cache file monitoring."""
 
+import builtins
+import contextlib
 import hashlib
 import json
 import os
@@ -202,7 +204,7 @@ class MockCache:
                 }
         return None
 
-    def put(self, file_path: str, content: str, metadata: dict = None):
+    def put(self, file_path: str, content: str, metadata: dict | None = None):
         """Store entry in cache."""
         timestamp = time.time()
         content_hash = hashlib.md5(content.encode()).hexdigest()
@@ -301,7 +303,7 @@ class MockFileMonitor:
                 "path": dir_path,
                 "callback": callback,
                 "recursive": recursive,
-                "known_files": set(f.name for f in dir_path.iterdir() if f.is_file()),
+                "known_files": {f.name for f in dir_path.iterdir() if f.is_file()},
             }
 
             # Track as resource
@@ -318,7 +320,7 @@ class MockFileMonitor:
 
         with self._lock:
             # Check file changes
-            for str_path, info in self.monitored_files.items():
+            for info in self.monitored_files.values():
                 path = info["path"]
                 if path.exists():
                     current_mtime = path.stat().st_mtime
@@ -330,10 +332,10 @@ class MockFileMonitor:
                     info["last_mtime"] = None
 
             # Check directory changes
-            for str_path, info in self.monitored_dirs.items():
+            for info in self.monitored_dirs.values():
                 path = info["path"]
                 if path.exists():
-                    current_files = set(f.name for f in path.iterdir() if f.is_file())
+                    current_files = {f.name for f in path.iterdir() if f.is_file()}
                     added = current_files - info["known_files"]
                     removed = info["known_files"] - current_files
 
@@ -963,8 +965,8 @@ class TestCacheFileMonitoring:
         content_hash = hashlib.md5(test_file.read_text().encode()).hexdigest()
         should_invalidate_content = cached_content["hash"] != content_hash
 
-        assert should_invalidate_ts == True
-        assert should_invalidate_content == False
+        assert should_invalidate_ts
+        assert not should_invalidate_content
 
         # Test 2: Actual content change
         time.sleep(0.1)
@@ -1390,7 +1392,6 @@ class TestCacheFileMonitoring:
             assert cached["content"] == file.read_text()
 
         # Test 5: Memory cache fallback
-        fallback_test = []
 
         class CacheWithFallback:
             def __init__(self, primary_cache, fallback_cache):
@@ -1410,10 +1411,8 @@ class TestCacheFileMonitoring:
 
             def put(self, key, value, metadata=None):
                 # Write to both
-                try:
+                with contextlib.suppress(builtins.BaseException):
                     self.primary.put(key, value, metadata)
-                except:
-                    pass
                 self.fallback.put(key, value, metadata)
 
         # Create corrupted primary cache

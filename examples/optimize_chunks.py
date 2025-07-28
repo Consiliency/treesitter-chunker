@@ -87,7 +87,7 @@ def demonstrate_optimization():
     # Find merge suggestions
     merge_suggestions = analyzer.suggest_merge_points(chunks[:5])  # First 5 chunks
     print(f"   Merge suggestions: {len(merge_suggestions)}")
-    for i, (idx1, idx2, score) in enumerate(merge_suggestions[:3]):
+    for _i, (idx1, idx2, score) in enumerate(merge_suggestions[:3]):
         print(f"   - Merge chunks {idx1} and {idx2} (score: {score:.2f})")
 
 
@@ -102,12 +102,12 @@ from typing import List, Dict, Optional
 
 class DataProcessor:
     """Processes data with various methods."""
-    
+
     def __init__(self, config: Dict[str, any]):
         self.config = config
         self.data = []
         self.results = {}
-    
+
     def load_data(self, filepath: str) -> bool:
         """Load data from file."""
         try:
@@ -117,7 +117,7 @@ class DataProcessor:
         except Exception as e:
             print(f"Error loading data: {e}")
             return False
-    
+
     def process_batch(self, batch_size: int = 100) -> List[Dict]:
         """Process data in batches."""
         results = []
@@ -126,7 +126,7 @@ class DataProcessor:
             processed = self._process_single_batch(batch)
             results.extend(processed)
         return results
-    
+
     def _process_single_batch(self, batch: List[str]) -> List[Dict]:
         """Process a single batch of data."""
         processed = []
@@ -139,7 +139,7 @@ class DataProcessor:
             }
             processed.append(result)
         return processed
-    
+
     def save_results(self, output_path: str) -> bool:
         """Save processing results."""
         try:
@@ -156,26 +156,26 @@ def analyze_text(text: str) -> Dict[str, int]:
     """Analyze text and return statistics."""
     words = text.split()
     lines = text.split('\\n')
-    
+
     stats = {
         'characters': len(text),
         'words': len(words),
         'lines': len(lines),
         'avg_word_length': sum(len(w) for w in words) / len(words) if words else 0
     }
-    
+
     return stats
 
 
 def main():
     """Main entry point."""
     processor = DataProcessor({'debug': True})
-    
+
     if processor.load_data('input.txt'):
         results = processor.process_batch(50)
         processor.results = results
         processor.save_results('output.txt')
-        
+
         # Analyze results
         for result in results[:10]:
             stats = analyze_text(result['processed'])

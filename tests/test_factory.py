@@ -226,7 +226,7 @@ class TestParserFactory:
         factory.return_parser("python", parser1)
 
         # Get parser again - should reuse from pool
-        parser2 = factory.get_parser("python")
+        factory.get_parser("python")
         assert factory._parser_count == initial_count  # No new parser created
 
     def test_clear_cache(self, registry):
@@ -235,7 +235,7 @@ class TestParserFactory:
 
         # Populate cache
         parser1 = factory.get_parser("python")
-        parser2 = factory.get_parser("javascript")
+        factory.get_parser("javascript")
 
         factory.clear_cache()
 
@@ -266,7 +266,7 @@ class TestParserFactory:
 
         def worker(lang, thread_id):
             try:
-                for i in range(5):
+                for _i in range(5):
                     parser = factory.get_parser(lang)
                     parsers.append((thread_id, parser))
                     factory.return_parser(lang, parser)

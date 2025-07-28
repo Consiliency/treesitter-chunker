@@ -149,7 +149,7 @@ Contributions are welcome! Please read the guidelines."""
         assert len(chunks) > 1
 
         # Check overlap between chunks
-        lines = log_content.strip().split("\n")
+        log_content.strip().split("\n")
         for i in range(1, len(chunks)):
             prev_lines = chunks[i - 1].content.strip().split("\n")
             curr_lines = chunks[i].content.strip().split("\n")
@@ -462,7 +462,7 @@ class TestOverlappingFallbackIntegration:
         assert chunker.config.overlap == 20
 
     @pytest.mark.parametrize(
-        "extension,should_fail",
+        ("extension", "should_fail"),
         [
             # Currently available languages (actually loaded)
             (".go", True),  # go is available

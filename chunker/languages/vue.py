@@ -4,9 +4,8 @@ Support for Vue language (Single File Components).
 
 from __future__ import annotations
 
-from tree_sitter import Node
+from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 
-from ..contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
 
@@ -81,7 +80,12 @@ class VueConfig(LanguageConfig):
 
 
 # Register the Vue configuration
+from typing import TYPE_CHECKING
+
 from . import language_config_registry
+
+if TYPE_CHECKING:
+    from tree_sitter import Node
 
 language_config_registry.register(VueConfig())
 
@@ -132,7 +136,7 @@ class VuePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         """Extract semantic chunks specific to Vue SFCs."""
         chunks = []
 
-        def extract_chunks(n: Node, section: str = None):
+        def extract_chunks(n: Node, section: str | None = None):
             # Handle main SFC sections
             if n.type in {"template_element", "script_element", "style_element"}:
                 content = source[n.start_byte : n.end_byte].decode(

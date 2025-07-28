@@ -133,13 +133,13 @@ class HomebrewFormulaGenerator:
 
   test do
     system "#{{bin}}/chunker", "--version"
-    
+
     # Test basic functionality
     (testpath/"test.py").write <<~EOS
       def hello():
           print("Hello, world!")
     EOS
-    
+
     output = shell_output("#{{bin}}/chunker chunk #{{testpath}}/test.py -l python")
     assert_match "hello", output
   end

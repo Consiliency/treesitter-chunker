@@ -54,7 +54,7 @@ class TestMarkdownProcessor:
     def test_extract_structure_headers(self, processor):
         """Test header extraction."""
         content = """# Main Title
-        
+
 ## Section 1
 Content here.
 
@@ -444,7 +444,7 @@ Here's a Python example:
 class MarkdownProcessor:
     def __init__(self):
         self.config = {}
-        
+
     def process(self, content):
         # Process the content
         return chunks
@@ -522,7 +522,7 @@ Footer content with horizontal rule above.
 ```python
 def unclosed():
     pass
-    
+
 More content without closing fence.
 """
         chunks1 = processor.process(content1, "malformed1.md")
@@ -584,7 +584,7 @@ Term 2
 
 Regular content here.
 
-<!-- 
+<!--
 Multi-line
 HTML comment
 -->

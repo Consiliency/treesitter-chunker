@@ -2,21 +2,24 @@
 
 from __future__ import annotations
 
-import io
 import xml.etree.ElementTree as ET
-from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from xml.dom import minidom
 
-from ...interfaces.export import (
+from chunker.interfaces.export import (
     ChunkRelationship,
     ExportFormat,
     ExportMetadata,
     GraphExporter,
     RelationshipType,
 )
-from ...types import CodeChunk
+
+if TYPE_CHECKING:
+    import io
+    from collections.abc import Iterator
+
+    from chunker.types import CodeChunk
 
 
 class GraphMLExporter(GraphExporter):
@@ -56,7 +59,7 @@ class GraphMLExporter(GraphExporter):
         xml_str = self._prettify_xml(ET.tostring(graphml, encoding="unicode"))
 
         # Write to output
-        if isinstance(output, (str, Path)):
+        if isinstance(output, str | Path):
             Path(output).write_text(xml_str, encoding="utf-8")
         else:
             output.write(xml_str)
@@ -266,7 +269,7 @@ class DOTExporter(GraphExporter):
         dot_content = self._build_dot(chunks, relationships, metadata)
 
         # Write to output
-        if isinstance(output, (str, Path)):
+        if isinstance(output, str | Path):
             Path(output).write_text(dot_content, encoding="utf-8")
         else:
             output.write(dot_content)
@@ -279,7 +282,7 @@ class DOTExporter(GraphExporter):
     ) -> None:
         """Export using iterators for large datasets."""
         # Open output for streaming
-        if isinstance(output, (str, Path)):
+        if isinstance(output, str | Path):
             with open(output, "w", encoding="utf-8") as f:
                 self._stream_dot(chunk_iterator, relationship_iterator, f)
         else:

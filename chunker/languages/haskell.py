@@ -4,9 +4,8 @@ Support for Haskell language.
 
 from __future__ import annotations
 
-from tree_sitter import Node
+from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 
-from ..contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
 
@@ -75,7 +74,12 @@ class HaskellConfig(LanguageConfig):
 
 
 # Register the Haskell configuration
+from typing import TYPE_CHECKING
+
 from . import language_config_registry
+
+if TYPE_CHECKING:
+    from tree_sitter import Node
 
 language_config_registry.register(HaskellConfig(), aliases=["hs"])
 
@@ -113,17 +117,17 @@ class HaskellPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         # For functions, look for variable identifier
         if node.type in {"function", "function_declaration"}:
             for child in node.children:
-                if child.type == "variable" or child.type == "variable_identifier":
+                if child.type in {"variable", "variable_identifier"}:
                     return source[child.start_byte : child.end_byte].decode("utf-8")
         # For type declarations
         elif node.type in {"type_alias", "data_type", "newtype"}:
             for child in node.children:
-                if child.type == "type" or child.type == "type_constructor_identifier":
+                if child.type in {"type", "type_constructor_identifier"}:
                     return source[child.start_byte : child.end_byte].decode("utf-8")
         # For class/instance declarations
         elif node.type in {"class_declaration", "instance_declaration"}:
             for child in node.children:
-                if child.type == "class_name" or child.type == "type_class_identifier":
+                if child.type in {"class_name", "type_class_identifier"}:
                     return source[child.start_byte : child.end_byte].decode("utf-8")
         return None
 
@@ -131,7 +135,7 @@ class HaskellPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         """Extract semantic chunks specific to Haskell."""
         chunks = []
 
-        def extract_chunks(n: Node, parent_context: str = None):
+        def extract_chunks(n: Node, parent_context: str | None = None):
             if n.type in self.default_chunk_types:
                 content = source[n.start_byte : n.end_byte].decode(
                     "utf-8",

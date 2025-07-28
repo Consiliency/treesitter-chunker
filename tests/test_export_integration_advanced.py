@@ -141,7 +141,7 @@ def uses_import():
 class Referencer:
     def __init__(self):
         self.func = uses_import
-    
+
     def call_func(self):
         return self.func()
 """,
@@ -275,7 +275,7 @@ def test_function(param1, param2):
 class TestClass:
     def __init__(self, value):
         self.value = value
-    
+
     def process(self):
         return self.value * 3
 """,
@@ -332,10 +332,10 @@ class TestClass:
             flat_content = flat_chunks[i]["content"]
 
             # Full format might have nested structure
-            full_content = full_chunks[i].get("content", full_chunks[i].get("code", ""))
+            full_chunks[i].get("content", full_chunks[i].get("code", ""))
 
             # Minimal might have different field names
-            minimal_content = minimal_chunks[i].get(
+            minimal_chunks[i].get(
                 "content",
                 minimal_chunks[i].get("code", ""),
             )
@@ -583,7 +583,7 @@ def medium_function():
 
 def large_function_with_many_lines():
     # Line 1
-    # Line 2  
+    # Line 2
     # Line 3
     # Line 4
     # Line 5
@@ -696,7 +696,7 @@ def test_export_format_auto_detection(tmp_path):
         ("output.ndjson", JSONLExporter),  # Alternative JSONL extension
     ]
 
-    for filename, expected_exporter_class in test_cases:
+    for filename, _expected_exporter_class in test_cases:
         output_file = tmp_path / filename
 
         # Use appropriate exporter based on extension

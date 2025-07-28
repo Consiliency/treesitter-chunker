@@ -4,11 +4,15 @@ Support for R language.
 
 from __future__ import annotations
 
-from tree_sitter import Node
+from typing import TYPE_CHECKING
 
-from ..contracts.language_plugin_contract import ExtendedLanguagePluginContract
+from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
+
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
+
+if TYPE_CHECKING:
+    from tree_sitter import Node
 
 
 class RConfig(LanguageConfig):
@@ -68,10 +72,7 @@ class RConfig(LanguageConfig):
     def _is_function_assignment(self, node: Node, source: bytes) -> bool:
         """Check if an assignment is a function assignment."""
         # Look for function keyword in the right-hand side
-        for child in node.children:
-            if child.type == "function_definition":
-                return True
-        return False
+        return any(child.type == "function_definition" for child in node.children)
 
 
 # Register the R configuration
@@ -132,7 +133,7 @@ class RPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         """Extract semantic chunks specific to R."""
         chunks = []
 
-        def extract_chunks(n: Node, parent_type: str = None):
+        def extract_chunks(n: Node, parent_type: str | None = None):
             if n.type in self.default_chunk_types:
                 # Special handling for assignments that contain functions
                 if n.type in {"assignment", "left_assignment"}:
@@ -203,10 +204,7 @@ class RPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             return True
 
         # Comments
-        if node.type == "comment":
-            return True
-
-        return False
+        return node.type == "comment"
 
     def get_node_context(self, node: Node, source: bytes) -> str | None:
         """Extract meaningful context for a node."""

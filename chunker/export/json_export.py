@@ -5,7 +5,8 @@ import json
 from pathlib import Path
 from typing import IO
 
-from ..chunker import CodeChunk
+from chunker.chunker import CodeChunk
+
 from .formatters import SchemaType, get_formatter
 
 
@@ -33,7 +34,7 @@ class JSONExporter:
         formatted_data = self.formatter.format(chunks)
         json_str = json.dumps(formatted_data, indent=indent)
 
-        if isinstance(output, (str, Path)):
+        if isinstance(output, str | Path):
             output_path = Path(output)
             if compress:
                 with gzip.open(f"{output_path}.gz", "wt", encoding="utf-8") as f:
@@ -68,7 +69,7 @@ class JSONLExporter:
             output: Output file path or file-like object
             compress: Whether to gzip compress the output
         """
-        if isinstance(output, (str, Path)):
+        if isinstance(output, str | Path):
             output_path = Path(output)
             if compress:
                 with gzip.open(f"{output_path}.gz", "wt", encoding="utf-8") as f:
@@ -126,7 +127,7 @@ class JSONLExporter:
             output: Output file path or file-like object
             compress: Whether to gzip compress the output
         """
-        if isinstance(output, (str, Path)):
+        if isinstance(output, str | Path):
             output_path = Path(output)
             if compress:
                 with gzip.open(f"{output_path}.gz", "wt", encoding="utf-8") as f:

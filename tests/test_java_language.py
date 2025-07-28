@@ -26,29 +26,29 @@ public class User {
     private String name;
     private String email;
     private List<Role> roles;
-    
+
     public User(String name, String email) {
         this.name = name;
         this.email = email;
         this.roles = new ArrayList<>();
     }
-    
+
     public String getName() {
         return name;
     }
-    
+
     public void setName(String name) {
         this.name = name;
     }
-    
+
     public String getEmail() {
         return email;
     }
-    
+
     public void addRole(Role role) {
         this.roles.add(role);
     }
-    
+
     @Override
     public String toString() {
         return "User{name='" + name + "', email='" + email + "'}";
@@ -89,17 +89,17 @@ import java.util.Optional;
 
 public interface UserRepository {
     Optional<User> findById(Long id);
-    
+
     List<User> findByEmail(String email);
-    
+
     User save(User user);
-    
+
     void delete(User user);
-    
+
     default List<User> findAll() {
         return findAll(0, 100);
     }
-    
+
     List<User> findAll(int offset, int limit);
 }
 """
@@ -127,17 +127,17 @@ public enum UserRole {
     ADMIN("Administrator"),
     USER("Regular User"),
     GUEST("Guest User");
-    
+
     private final String displayName;
-    
+
     UserRole(String displayName) {
         this.displayName = displayName;
     }
-    
+
     public String getDisplayName() {
         return displayName;
     }
-    
+
     public boolean hasAdminPrivileges() {
         return this == ADMIN;
     }
@@ -167,21 +167,21 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
-    
+
     @Autowired
     private UserService userService;
-    
+
     @GetMapping("/{id}")
     public User getUser(@PathVariable Long id) {
         return userService.findById(id);
     }
-    
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public User createUser(@RequestBody @Valid User user) {
         return userService.save(user);
     }
-    
+
     @ExceptionHandler(UserNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ErrorResponse handleNotFound(UserNotFoundException e) {
@@ -207,19 +207,19 @@ public class UserController {
         code = """
 public class OuterClass {
     private String outerField;
-    
+
     public class InnerClass {
         public void innerMethod() {
             System.out.println(outerField);
         }
     }
-    
+
     public static class StaticNestedClass {
         public void staticMethod() {
             System.out.println("Static nested");
         }
     }
-    
+
     public void methodWithAnonymousClass() {
         Runnable r = new Runnable() {
             @Override

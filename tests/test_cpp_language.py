@@ -82,15 +82,15 @@ template<typename T>
 class Vector {
 public:
     Vector() : size_(0), capacity_(0), data_(nullptr) {}
-    
+
     void push_back(const T& value) {
         // Implementation
     }
-    
+
     T& operator[](size_t index) {
         return data_[index];
     }
-    
+
 private:
     size_t size_;
     size_t capacity_;
@@ -102,11 +102,11 @@ template<>
 class Vector<bool> {
 public:
     Vector() : size_(0) {}
-    
+
     void push_back(bool value) {
         // Bit-packed implementation
     }
-    
+
 private:
     size_t size_;
     std::vector<uint8_t> data_;
@@ -137,14 +137,14 @@ namespace MyLib {
     void globalFunction() {
         // Global function in namespace
     }
-    
+
     class Logger {
     public:
         void log(const std::string& msg) {
             // Implementation
         }
     };
-    
+
     namespace Utils {
         template<typename T>
         void swap(T& a, T& b) {
@@ -152,11 +152,11 @@ namespace MyLib {
             a = b;
             b = temp;
         }
-        
+
         class Helper {
         public:
             static void help() {
-                // Implementation  
+                // Implementation
             }
         };
     }
@@ -197,10 +197,10 @@ namespace MyLib::Network {  // C++17 nested namespace
 class Shape {
 public:
     virtual ~Shape() = default;
-    
+
     virtual double area() const = 0;
     virtual double perimeter() const = 0;
-    
+
     virtual void draw() {
         // Default implementation
     }
@@ -209,36 +209,36 @@ public:
 class Circle : public Shape {
 public:
     Circle(double radius) : radius_(radius) {}
-    
+
     double area() const override {
         return 3.14159 * radius_ * radius_;
     }
-    
+
     double perimeter() const override {
         return 2 * 3.14159 * radius_;
     }
-    
+
     void draw() override {
         // Circle-specific drawing
     }
-    
+
 private:
     double radius_;
 };
 
 class Rectangle final : public Shape {
 public:
-    Rectangle(double width, double height) 
+    Rectangle(double width, double height)
         : width_(width), height_(height) {}
-    
+
     double area() const override {
         return width_ * height_;
     }
-    
+
     double perimeter() const override {
         return 2 * (width_ + height_);
     }
-    
+
 private:
     double width_;
     double height_;
@@ -270,54 +270,54 @@ private:
             """
 class Complex {
 public:
-    Complex(double real = 0, double imag = 0) 
+    Complex(double real = 0, double imag = 0)
         : real_(real), imag_(imag) {}
-    
+
     // Arithmetic operators
     Complex operator+(const Complex& other) const {
         return Complex(real_ + other.real_, imag_ + other.imag_);
     }
-    
+
     Complex operator-(const Complex& other) const {
         return Complex(real_ - other.real_, imag_ - other.imag_);
     }
-    
+
     Complex& operator+=(const Complex& other) {
         real_ += other.real_;
         imag_ += other.imag_;
         return *this;
     }
-    
+
     // Comparison operators
     bool operator==(const Complex& other) const {
         return real_ == other.real_ && imag_ == other.imag_;
     }
-    
+
     bool operator!=(const Complex& other) const {
         return !(*this == other);
     }
-    
+
     // Stream operators (friend functions)
     friend std::ostream& operator<<(std::ostream& os, const Complex& c) {
         os << c.real_ << " + " << c.imag_ << "i";
         return os;
     }
-    
+
     // Conversion operator
     operator double() const {
         return std::sqrt(real_ * real_ + imag_ * imag_);
     }
-    
+
     // Function call operator
     double operator()() const {
         return real_ * real_ + imag_ * imag_;
     }
-    
+
     // Subscript operator
     double& operator[](int index) {
         return (index == 0) ? real_ : imag_;
     }
-    
+
 private:
     double real_;
     double imag_;
@@ -358,17 +358,17 @@ class DataProcessor {
 public:
     using DataMap = std::map<std::string, std::vector<int>>;
     using ProcessFunc = std::function<void(int&)>;
-    
+
     void addData(const std::string& key, std::initializer_list<int> values) {
         data_[key] = std::vector<int>(values);
     }
-    
+
     void processAll(ProcessFunc func) {
         for (auto& [key, values] : data_) {
             std::for_each(values.begin(), values.end(), func);
         }
     }
-    
+
     std::vector<int> getSorted(const std::string& key) {
         auto it = data_.find(key);
         if (it != data_.end()) {
@@ -378,7 +378,7 @@ public:
         }
         return {};
     }
-    
+
     template<typename Predicate>
     std::vector<int> filter(const std::string& key, Predicate pred) {
         std::vector<int> result;
@@ -389,7 +389,7 @@ public:
         }
         return result;
     }
-    
+
 private:
     DataMap data_;
     std::unique_ptr<ProcessFunc> custom_processor_;
@@ -403,13 +403,13 @@ auto makeProcessor() -> std::unique_ptr<DataProcessor> {
 // Lambda and STL algorithms
 void demonstrateSTL() {
     std::vector<int> nums = {1, 2, 3, 4, 5};
-    
+
     // Lambda with capture
     int sum = 0;
     std::for_each(nums.begin(), nums.end(), [&sum](int n) {
         sum += n;
     });
-    
+
     // Transform with lambda
     std::vector<int> squares;
     std::transform(nums.begin(), nums.end(), std::back_inserter(squares),
@@ -449,34 +449,34 @@ public:
     Resource() : data_(nullptr), size_(0) {
         std::cout << "Default constructor\\n";
     }
-    
+
     // Parameterized constructor
     Resource(size_t size) : size_(size) {
         data_ = new int[size];
         std::cout << "Parameterized constructor\\n";
     }
-    
+
     // Copy constructor
     Resource(const Resource& other) : size_(other.size_) {
         data_ = new int[size_];
         std::copy(other.data_, other.data_ + size_, data_);
         std::cout << "Copy constructor\\n";
     }
-    
+
     // Move constructor
-    Resource(Resource&& other) noexcept 
+    Resource(Resource&& other) noexcept
         : data_(other.data_), size_(other.size_) {
         other.data_ = nullptr;
         other.size_ = 0;
         std::cout << "Move constructor\\n";
     }
-    
+
     // Destructor
     ~Resource() {
         delete[] data_;
         std::cout << "Destructor\\n";
     }
-    
+
     // Copy assignment
     Resource& operator=(const Resource& other) {
         if (this != &other) {
@@ -487,7 +487,7 @@ public:
         }
         return *this;
     }
-    
+
     // Move assignment
     Resource& operator=(Resource&& other) noexcept {
         if (this != &other) {
@@ -499,7 +499,7 @@ public:
         }
         return *this;
     }
-    
+
 private:
     int* data_;
     size_t size_;
@@ -629,7 +629,7 @@ public:
         void innerMethod() {
             // Inner class method
         }
-        
+
         struct InnerStruct {
             int value;
             void structMethod() {
@@ -637,13 +637,13 @@ public:
             }
         };
     };
-    
+
     struct OuterStruct {
         void outerStructMethod() {
             // Outer struct method
         }
     };
-    
+
 private:
     class PrivateNested {
         void privateMethod() {
@@ -657,19 +657,19 @@ struct Container {
     struct Node {
         int data;
         Node* next;
-        
+
         Node(int val) : data(val), next(nullptr) {}
     };
-    
+
     class Iterator {
     public:
         Iterator(Node* node) : current_(node) {}
-        
+
         Iterator& operator++() {
             current_ = current_->next;
             return *this;
         }
-        
+
     private:
         Node* current_;
     };

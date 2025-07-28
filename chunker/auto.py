@@ -8,13 +8,15 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .chunker import chunk_file, chunk_text
 from .contracts.auto_contract import AutoChunkResult, ZeroConfigContract
-from .contracts.registry_contract import UniversalRegistryContract
 from .exceptions import ChunkerError
 from .fallback.sliding_window_fallback import SlidingWindowFallback
+
+if TYPE_CHECKING:
+    from .contracts.registry_contract import UniversalRegistryContract
 
 
 class ZeroConfigAPI(ZeroConfigContract):
@@ -86,7 +88,6 @@ class ZeroConfigAPI(ZeroConfigContract):
         ".v": "verilog",
         ".vhdl": "vhdl",
         ".m": "matlab",
-        ".jl": "julia",
         ".f90": "fortran",
         ".f95": "fortran",
         ".cob": "cobol",

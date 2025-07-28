@@ -3,8 +3,9 @@
 import logging
 import warnings
 
-from ..interfaces.fallback import FallbackReason
-from ..types import CodeChunk
+from chunker.interfaces.fallback import FallbackReason
+from chunker.types import CodeChunk
+
 from .base import FallbackChunker, FallbackWarning
 from .detection.file_type import EncodingDetector, FileType, FileTypeDetector
 from .strategies.line_based import LineBasedChunker
@@ -50,7 +51,7 @@ class FallbackManager:
             True if file can be chunked
         """
         file_type = self.detector.detect_file_type(file_path)
-        return file_type != FileType.BINARY and file_type != FileType.UNKNOWN
+        return file_type not in (FileType.BINARY, FileType.UNKNOWN)
 
     def chunk_file(
         self,

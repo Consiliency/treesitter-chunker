@@ -55,14 +55,14 @@ class TestPerformanceImpactOfConfigLookups:
                 tokens = text.split()
                 chunks = []
 
-                for i, token in enumerate(tokens):
+                for i, _token in enumerate(tokens):
                     # Perform config lookup based on frequency
                     if i % lookup_frequency == 0:
                         self.lookup_count += 1
                         # Simulate config lookup hierarchy
-                        chunk_size = self._lookup_config("parser.chunk_size", 1000)
-                        enabled = self._lookup_config("parser.enabled", True)
-                        language = self._lookup_config("parser.language", "python")
+                        self._lookup_config("parser.chunk_size", 1000)
+                        self._lookup_config("parser.enabled", True)
+                        self._lookup_config("parser.language", "python")
 
                     # Simulate parsing work
                     if i % 50 == 0:  # Create chunk every 50 tokens
@@ -322,8 +322,8 @@ class TestPerformanceImpactOfConfigLookups:
                 for i in range(iterations):
                     # Frequent config lookups
                     chunk_size = config_store.get("chunk_size")
-                    threads = config_store.get("parallel_threads")
-                    cache = config_store.get("cache_enabled")
+                    config_store.get("parallel_threads")
+                    config_store.get("cache_enabled")
 
                     # Simulate parsing work
                     time.sleep(0.0001)
@@ -478,10 +478,9 @@ class TestConfigHotReloadingDuringChunking:
                     i = 0
                     while i < len(lines) and (time.time() - start_time) < duration:
                         # Check for config reload periodically
-                        if i % 50 == 0:
-                            if self.reload_config():
-                                # Update chunk size if changed
-                                chunk_size = self.config["chunk_size"]
+                        if i % 50 == 0 and self.reload_config():
+                            # Update chunk size if changed
+                            chunk_size = self.config["chunk_size"]
 
                         # Create chunk
                         chunk_end = min(i + chunk_size, len(lines))
@@ -556,7 +555,7 @@ class TestConfigHotReloadingDuringChunking:
         assert len(chunks) > 0
 
         # Check that different config versions were used
-        config_versions = set(chunk["config_version"] for chunk in chunks)
+        config_versions = {chunk["config_version"] for chunk in chunks}
         print(f"Config versions used: {config_versions}")
         print(f"Total reload events: {len(chunker.config_reload_events)}")
 
@@ -570,7 +569,7 @@ class TestConfigHotReloadingDuringChunking:
 
         # Verify hot reload events
         for event in chunker.config_reload_events:
-            assert event["active_chunking"] == True
+            assert event["active_chunking"]
             assert len(event["changes"]) > 0
 
         # Check chunk sizes reflect config changes
@@ -620,7 +619,7 @@ class TestConfigHotReloadingDuringChunking:
 
         def reader_thread(thread_id: int, iterations: int):
             """Read config and check consistency."""
-            for i in range(iterations):
+            for _i in range(iterations):
                 config = manager.get_config()
 
                 # Check consistency
@@ -1051,13 +1050,17 @@ class TestCircularDependencyDetectionEdgeCases:
                 """Add a configuration."""
                 self.configs[name] = config
 
-            def resolve(self, name: str, path: list[str] = None) -> dict[str, Any]:
+            def resolve(
+                self,
+                name: str,
+                path: list[str] | None = None,
+            ) -> dict[str, Any]:
                 """Resolve config with circular dependency detection."""
                 if path is None:
                     path = []
 
                 if name in self.resolving:
-                    cycle = path[path.index(name) :] + [name]
+                    cycle = [*path[path.index(name) :], name]
                     raise ConfigurationError(
                         f"Circular dependency detected: {' -> '.join(cycle)}",
                     )
@@ -1138,7 +1141,7 @@ class TestCircularDependencyDetectionEdgeCases:
                 # Check for cycles
                 if name in self.resolution_stack:
                     cycle_start = self.resolution_stack.index(name)
-                    cycle = self.resolution_stack[cycle_start:] + [name]
+                    cycle = [*self.resolution_stack[cycle_start:], name]
                     raise ConfigurationError(
                         f"Circular dependency: {' -> '.join(cycle)}",
                     )
@@ -1231,7 +1234,8 @@ class TestCircularDependencyDetectionEdgeCases:
 
         with pytest.raises(ConfigurationError) as exc_info:
             resolver.resolve("level1")
-        assert "level1" in str(exc_info.value) and "level5" in str(exc_info.value)
+        assert "level1" in str(exc_info.value)
+        assert "level5" in str(exc_info.value)
 
     def test_dynamic_circular_dependencies(self):
         """Test circular dependencies that form dynamically."""
@@ -1267,7 +1271,7 @@ class TestCircularDependencyDetectionEdgeCases:
                         refs.add(includes)
 
                 # Check for value references
-                for key, value in config.items():
+                for value in config.values():
                     if (
                         isinstance(value, str)
                         and value.startswith("${")
@@ -1296,7 +1300,7 @@ class TestCircularDependencyDetectionEdgeCases:
                         elif neighbor in rec_stack:
                             # Found cycle
                             cycle_start = path.index(neighbor)
-                            cycle = path[cycle_start:] + [neighbor]
+                            cycle = [*path[cycle_start:], neighbor]
                             cycles.append(cycle)
 
                     rec_stack.remove(node)
@@ -1373,7 +1377,7 @@ class TestCircularDependencyDetectionEdgeCases:
         try:
             # This would create a cycle in dev but not prod
             system.update_config("common", {"_extends": "dev"})
-            assert False, "Should have raised ConfigurationError"
+            raise AssertionError("Should have raised ConfigurationError")
         except ConfigurationError:
             pass
 
@@ -1417,7 +1421,7 @@ class TestCircularDependencyDetectionEdgeCases:
                             continue
 
                         visited.add(node)
-                        new_path = path + [node]
+                        new_path = [*path, node]
 
                         for neighbor in self.graph.get(node, []):
                             stack.append((neighbor, new_path))
@@ -1439,7 +1443,7 @@ class TestCircularDependencyDetectionEdgeCases:
                                 dfs(neighbor, path.copy(), rec_stack.copy())
                             elif neighbor in rec_stack:
                                 cycle_start = path.index(neighbor)
-                                cycle = path[cycle_start:] + [neighbor]
+                                cycle = [*path[cycle_start:], neighbor]
                                 if cycle not in cycles:
                                     cycles.append(cycle)
 

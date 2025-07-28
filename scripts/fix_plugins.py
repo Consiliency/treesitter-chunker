@@ -37,7 +37,7 @@ def fix_plugin_file(filepath):
         # Extract other parameters
         min_lines = re.search(r"min_lines\s*=\s*(\d+)", full_match)
         max_lines = re.search(r"max_lines\s*=\s*(\d+)", full_match)
-        include_context = re.search(r"include_context\s*=\s*(\w+)", full_match)
+        re.search(r"include_context\s*=\s*(\w+)", full_match)
 
         # Build new ChunkRule
         new_rule = f'ChunkRule(\n            node_types={node_types_set},\n            include_children=True,\n            priority=5,\n            metadata={{"type": "{name}"'

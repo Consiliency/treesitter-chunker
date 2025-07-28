@@ -68,7 +68,7 @@ class DockerBuilder:
             return False
 
         try:
-            result = subprocess.run(
+            subprocess.run(
                 [self.docker_cmd, "buildx", "version"],
                 capture_output=True,
                 check=True,
@@ -166,7 +166,7 @@ class DockerBuilder:
                 ".",
             ]
 
-            result = subprocess.run(
+            subprocess.run(
                 build_cmd,
                 capture_output=True,
                 text=True,

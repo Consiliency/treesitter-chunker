@@ -191,18 +191,18 @@ def multiply(x, y):
         content = '''
 class LargeClass:
     """A class with many methods."""
-    
+
     def __init__(self):
         self.value = 0
-        
+
     def method1(self):
         """First method."""
         return self.value + 1
-        
+
     def method2(self):
         """Second method."""
         return self.value + 2
-        
+
     def method3(self):
         """Third method with more content."""
         result = 0
@@ -320,9 +320,7 @@ def very_large_function():
 
         if split_chunks:
             # All split chunks should reference the same original
-            original_ids = set(
-                c.metadata.get("original_chunk_id") for c in split_chunks
-            )
+            original_ids = {c.metadata.get("original_chunk_id") for c in split_chunks}
             assert len(original_ids) == 1
 
             # Split indices should be sequential
@@ -398,7 +396,7 @@ def small_function():
 # -*- coding: utf-8 -*-
 def greet():
     return "Hello, 世界! 🌍"
-    
+
 def calculate():
     # Greek letters: α, β, γ
     return "π ≈ 3.14159"

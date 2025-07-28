@@ -6,8 +6,9 @@ from typing import Any
 
 from tree_sitter import Node, Tree
 
-from ..interfaces.rules import CustomRule, RegexRule, RuleEngine
-from ..types import CodeChunk
+from chunker.interfaces.rules import CustomRule, RegexRule, RuleEngine
+from chunker.types import CodeChunk
+
 from .custom import BaseRegexRule
 
 logger = logging.getLogger(__name__)

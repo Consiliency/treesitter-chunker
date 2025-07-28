@@ -56,7 +56,7 @@ def main():
     """Main entry point."""
     # TODO: Implement main logic
     print("Starting application...")
-    
+
     result = helper1() + len(helper2())
     return result
 

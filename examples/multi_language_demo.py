@@ -31,7 +31,7 @@ import React, { useState } from 'react';
 
 const Counter = () => {
     const [count, setCount] = useState(0);
-    
+
     return (
         <div className="counter">
             <h1>Count: {count}</h1>
@@ -100,7 +100,7 @@ def get_active_users(conn):
         WHERE u.is_active = 1
         ORDER BY u.created_at DESC
     """
-    
+
     cursor = conn.execute(query)
     return cursor.fetchall()
 '''
@@ -144,12 +144,12 @@ def login():
     data = request.get_json()
     username = data.get('username')
     password = data.get('password')
-    
+
     user = User.query.filter_by(username=username).first()
     if user and user.check_password(password):
         token = generate_token(user.id)
         return jsonify({'token': token, 'user_id': user.id})
-    
+
     return jsonify({'error': 'Invalid credentials'}), 401
 ''',
         ),
@@ -170,11 +170,11 @@ export async function login(username: string, password: string): Promise<AuthRes
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
     });
-    
+
     if (!response.ok) {
         throw new Error('Login failed');
     }
-    
+
     return response.json();
 }
 """,

@@ -3,8 +3,8 @@
 import re
 from collections import defaultdict
 
-from ..interfaces.semantic import RelationshipAnalyzer
-from ..types import CodeChunk
+from chunker.interfaces.semantic import RelationshipAnalyzer
+from chunker.types import CodeChunk
 
 
 class TreeSitterRelationshipAnalyzer(RelationshipAnalyzer):
@@ -412,11 +412,7 @@ class TreeSitterRelationshipAnalyzer(RelationshipAnalyzer):
             {"import_statement", "import_from_statement"},
         ]
 
-        for group in related_groups:
-            if type1 in group and type2 in group:
-                return True
-
-        return False
+        return any(type1 in group and type2 in group for group in related_groups)
 
     def _is_interface(self, chunk: CodeChunk) -> bool:
         """Check if a chunk represents an interface."""
@@ -427,11 +423,7 @@ class TreeSitterRelationshipAnalyzer(RelationshipAnalyzer):
         indicators = self.interface_indicators.get(chunk.language, [])
         content_lower = chunk.content.lower()
 
-        for indicator in indicators:
-            if indicator.lower() in content_lower:
-                return True
-
-        return False
+        return any(indicator.lower() in content_lower for indicator in indicators)
 
     def _extract_implemented_interfaces(self, chunk: CodeChunk) -> list[str]:
         """Extract names of interfaces implemented by a class."""

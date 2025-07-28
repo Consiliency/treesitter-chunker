@@ -5,6 +5,7 @@ This module tracks performance metrics over time and detects regressions.
 
 import json
 import statistics
+import sys
 import warnings
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
@@ -45,7 +46,7 @@ class RegressionResult:
 class PerformanceRegressionTracker:
     """Track performance over time and detect regressions."""
 
-    def __init__(self, baseline_file: Path = None):
+    def __init__(self, baseline_file: Path | None = None):
         """Initialize tracker with optional baseline file."""
         if baseline_file is None:
             baseline_file = Path(__file__).parent / "baselines.json"
@@ -62,7 +63,7 @@ class PerformanceRegressionTracker:
                     for key, value in data.items():
                         self.baselines[key] = PerformanceBaseline(**value)
             except Exception as e:
-                warnings.warn(f"Failed to load baselines: {e}")
+                warnings.warn(f"Failed to load baselines: {e}", stacklevel=2)
 
     def save_baselines(self):
         """Save performance baselines to file."""
@@ -76,7 +77,7 @@ class PerformanceRegressionTracker:
         name: str,
         measurements: list[float],
         commit_hash: str | None = None,
-        metadata: dict[str, Any] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> PerformanceBaseline:
         """Record a new performance baseline.
 
@@ -268,7 +269,7 @@ class PerformanceRegressionTracker:
         return "\n".join(lines)
 
 
-def track_performance_history(history_file: Path = None) -> "PerformanceHistory":
+def track_performance_history(history_file: Path | None = None) -> "PerformanceHistory":
     """Track performance metrics over time."""
     if history_file is None:
         history_file = Path(__file__).parent / "performance_history.json"
@@ -290,7 +291,7 @@ class PerformanceHistory:
                 with open(self.history_file) as f:
                     self.history = json.load(f)
             except Exception as e:
-                warnings.warn(f"Failed to load history: {e}")
+                warnings.warn(f"Failed to load history: {e}", stacklevel=2)
 
     def save_history(self):
         """Save performance history to file."""
@@ -303,7 +304,7 @@ class PerformanceHistory:
         metric: str,
         value: float,
         timestamp: str | None = None,
-        metadata: dict[str, Any] = None,
+        metadata: dict[str, Any] | None = None,
     ):
         """Add a measurement to history."""
         if metric not in self.history:
@@ -357,7 +358,7 @@ class PerformanceHistory:
         try:
             import matplotlib.pyplot as plt
         except ImportError:
-            warnings.warn("matplotlib not installed, cannot plot history")
+            warnings.warn("matplotlib not installed, cannot plot history", stacklevel=2)
             return
 
         if metric not in self.history:
@@ -387,7 +388,7 @@ class PerformanceHistory:
 
 
 # Convenience functions
-def check_for_regressions(test_dir: Path = None, threshold: float = 0.1) -> bool:
+def check_for_regressions(test_dir: Path | None = None, threshold: float = 0.1) -> bool:
     """Check for performance regressions and return True if any found."""
     if test_dir is None:
         test_dir = Path.cwd()
@@ -407,7 +408,7 @@ def check_for_regressions(test_dir: Path = None, threshold: float = 0.1) -> bool
     return False
 
 
-def update_baselines(test_dir: Path = None, force: bool = False):
+def update_baselines(test_dir: Path | None = None, force: bool = False):
     """Update performance baselines."""
     if test_dir is None:
         test_dir = Path.cwd()
@@ -463,7 +464,7 @@ if __name__ == "__main__":
 
     if args.command == "check":
         has_regressions = check_for_regressions(args.directory, args.threshold)
-        exit(1 if has_regressions else 0)
+        sys.exit(1 if has_regressions else 0)
     elif args.command == "update":
         update_baselines(args.directory, args.force)
     elif args.command == "report":

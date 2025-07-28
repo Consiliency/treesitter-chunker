@@ -40,12 +40,12 @@ def process_data(data):
     # Step 1: Validate input
     if not isinstance(data, list):
         raise ValueError("Data must be a list")
-    
+
     # Step 2: Initialize variables
     results = []
     errors = []
     processed_count = 0
-    
+
     # Step 3: Process each item
     for i, item in enumerate(data):
         try:
@@ -53,32 +53,32 @@ def process_data(data):
             if not isinstance(item, dict):
                 errors.append(f"Item {i} is not a dict")
                 continue
-                
+
             # Extract fields
             value = item.get('value', 0)
             multiplier = item.get('multiplier', 1)
-            
+
             # Calculate result
             result = value * multiplier
-            
+
             # Apply transformations
             if result > 100:
                 result = result * 0.9
             elif result < 10:
                 result = result * 1.1
-                
+
             # Store result
             results.append({
                 'index': i,
                 'original': value,
                 'result': result
             })
-            
+
             processed_count += 1
-            
+
         except Exception as e:
             errors.append(f"Error processing item {i}: {e}")
-    
+
     # Step 4: Generate summary
     summary = {
         'total': len(data),
@@ -86,7 +86,7 @@ def process_data(data):
         'errors': len(errors),
         'average': sum(r['result'] for r in results) / len(results) if results else 0
     }
-    
+
     return results, errors, summary
 '''
 
@@ -106,22 +106,22 @@ def process_data(data):
         class_code = '''
 class Calculator:
     """A calculator class."""
-    
+
     def __init__(self):
         self.history = []
-        
+
     def add(self, a, b):
         """Add two numbers."""
         result = a + b
         self.history.append(f"add({a}, {b}) = {result}")
         return result
-        
+
     def multiply(self, a, b):
         """Multiply two numbers."""
         result = a * b
         self.history.append(f"multiply({a}, {b}) = {result}")
         return result
-        
+
     def divide(self, a, b):
         """Divide two numbers."""
         if b == 0:

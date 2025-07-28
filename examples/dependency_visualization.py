@@ -165,16 +165,16 @@ class Config:
     BASE_DIR = Path(__file__).parent
     DATA_DIR = BASE_DIR / "data"
     LOG_DIR = BASE_DIR / "logs"
-    
+
     # Database settings
     DB_HOST = os.getenv("DB_HOST", "localhost")
     DB_PORT = int(os.getenv("DB_PORT", 5432))
     DB_NAME = os.getenv("DB_NAME", "myapp")
-    
+
     # API settings
     API_KEY = os.getenv("API_KEY", "")
     API_TIMEOUT = 30
-    
+
     @classmethod
     def get_db_url(cls):
         """Get database connection URL."""
@@ -192,23 +192,23 @@ from .config import Config
 
 class Database:
     """Database connection handler."""
-    
+
     def __init__(self):
         self.connection_url = Config.get_db_url()
         self.connection = None
-        
+
     def connect(self):
         """Establish database connection."""
         print(f"Connecting to {self.connection_url}")
         # Simulated connection
         self.connection = {"connected": True}
-        
+
     def disconnect(self):
         """Close database connection."""
         if self.connection:
             print("Disconnecting from database")
             self.connection = None
-            
+
     def execute(self, query):
         """Execute a database query."""
         if not self.connection:
@@ -233,19 +233,19 @@ from .database import get_db
 
 class Model:
     """Base model class."""
-    
+
     table_name = None
-    
+
     def __init__(self, **kwargs):
         for key, value in kwargs.items():
             setattr(self, key, value)
-            
+
     def save(self):
         """Save model to database."""
         db = get_db()
         query = f"INSERT INTO {self.table_name} ..."
         db.execute(query)
-        
+
     @classmethod
     def find(cls, id):
         """Find model by ID."""
@@ -257,12 +257,12 @@ class Model:
 
 class User(Model):
     """User model."""
-    
+
     table_name = "users"
-    
+
     def __init__(self, id=None, username=None, email=None):
         super().__init__(id=id, username=username, email=email)
-        
+
     def get_profile(self):
         """Get user profile."""
         return Profile.find_by_user(self.id)
@@ -270,12 +270,12 @@ class User(Model):
 
 class Profile(Model):
     """User profile model."""
-    
+
     table_name = "profiles"
-    
+
     def __init__(self, id=None, user_id=None, bio=None):
         super().__init__(id=id, user_id=user_id, bio=bio)
-        
+
     @classmethod
     def find_by_user(cls, user_id):
         """Find profile by user ID."""
@@ -298,30 +298,30 @@ from .config import Config
 
 class UserService:
     """User-related business logic."""
-    
+
     def __init__(self):
         self.db = get_db()
-        
+
     def create_user(self, username, email, bio=None):
         """Create a new user with profile."""
         # Create user
         user = User(username=username, email=email)
         user.save()
-        
+
         # Create profile
         if bio:
             profile = Profile(user_id=user.id, bio=bio)
             profile.save()
-            
+
         return user
-        
+
     def get_user_with_profile(self, user_id):
         """Get user with their profile."""
         user = User.find(user_id)
         if user:
             user.profile = user.get_profile()
         return user
-        
+
     def update_user_email(self, user_id, new_email):
         """Update user email."""
         user = User.find(user_id)
@@ -333,15 +333,15 @@ class UserService:
 
 class NotificationService:
     """Notification service."""
-    
+
     def __init__(self):
         self.api_key = Config.API_KEY
-        
+
     def send_email(self, user, subject, message):
         """Send email notification."""
         print(f"Sending email to {user.email}: {subject}")
         # Simulated email sending
-        
+
     def notify_user_created(self, user):
         """Send notification for new user."""
         self.send_email(
@@ -363,38 +363,38 @@ from .config import Config
 
 class Application:
     """Main application class."""
-    
+
     def __init__(self):
         self.user_service = UserService()
         self.notification_service = NotificationService()
         self.config = Config()
-        
+
     def register_user(self, username, email, bio=None):
         """Register a new user."""
         # Create user
         user = self.user_service.create_user(username, email, bio)
-        
+
         # Send welcome notification
         self.notification_service.notify_user_created(user)
-        
+
         return user
-        
+
     def get_user_info(self, user_id):
         """Get complete user information."""
         return self.user_service.get_user_with_profile(user_id)
-        
+
 
 def main():
     """Run the application."""
     app = Application()
-    
+
     # Register a user
     user = app.register_user(
         "john_doe",
         "john@example.com",
         "Software developer"
     )
-    
+
     # Get user info
     user_info = app.get_user_info(user.id)
     print(f"User: {user_info.username} ({user_info.email})")

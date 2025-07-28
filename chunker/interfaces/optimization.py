@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 
-from ..types import CodeChunk
+from chunker.types import CodeChunk
 
 
 class OptimizationStrategy(Enum):

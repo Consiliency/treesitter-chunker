@@ -24,22 +24,22 @@ def create_large_file() -> tuple[Path, str]:
         func = f'''
 def function_{i}(param1, param2, param3):
     """Function {i} documentation.
-    
+
     This is a longer docstring to make the file more realistic.
     It has multiple lines and describes what the function does.
     """
     result = param1 + param2
-    
+
     if param3 > 0:
         for j in range(param3):
             result += j * 2
             if j % 10 == 0:
                 print(f"Processing {{j}}")
-    
+
     # Some more complex logic
     data = [x * 2 for x in range(100) if x % 2 == 0]
     mapped = {{str(x): x ** 2 for x in data}}
-    
+
     return result + sum(mapped.values())
 '''
         functions.append(func)
@@ -92,10 +92,10 @@ def make_medium_change(file_path: Path, content: str) -> str:
 def new_function_added(x, y, z):
     """Newly added function for testing."""
     result = x * y + z
-    
+
     for i in range(10):
         result += i
-        
+
     return result
 '''
 
@@ -130,13 +130,13 @@ def make_large_change(file_path: Path, content: str) -> str:
     new_class = '''
 class NewTestClass:
     """A new class added for testing."""
-    
+
     def __init__(self):
         self.data = []
-        
+
     def add_item(self, item):
         self.data.append(item)
-        
+
     def process_all(self):
         return [x * 2 for x in self.data]
 '''

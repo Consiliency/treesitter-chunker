@@ -60,7 +60,7 @@ def function_two_{file_idx}(items):
 class MyClass_{file_idx}:
     def __init__(self):
         self.value = {file_idx}
-    
+
     def method(self):
         return self.value * 2
 '''
@@ -98,7 +98,7 @@ class JsClass{i} {{
     constructor() {{
         this.value = {i};
     }}
-    
+
     method() {{
         return this.value * 2;
     }}
@@ -204,7 +204,7 @@ def benchmark_memory_pool_efficiency():
             processor1.add_file(str(file_path))
 
         start = time.perf_counter()
-        results1 = processor1.process_batch(batch_size=len(py_files), parallel=False)
+        processor1.process_batch(batch_size=len(py_files), parallel=False)
         time1 = time.perf_counter() - start
         print(f"   Time: {time1:.3f}s")
 
@@ -219,7 +219,7 @@ def benchmark_memory_pool_efficiency():
             processor2.add_file(str(file_path))
 
         start = time.perf_counter()
-        results2 = processor2.process_batch(batch_size=len(py_files), parallel=False)
+        processor2.process_batch(batch_size=len(py_files), parallel=False)
         time2 = time.perf_counter() - start
         print(f"   Time: {time2:.3f}s")
         print(f"   Speedup: {time1 / time2:.2f}x")
@@ -275,7 +275,7 @@ def benchmark_priority_processing():
             elapsed = time.perf_counter() - start
 
             # Track processing order
-            for file_path in results.keys():
+            for file_path in results:
                 size = Path(file_path).stat().st_size
                 processed_order.append((file_path, size))
 

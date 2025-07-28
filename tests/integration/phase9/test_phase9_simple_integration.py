@@ -39,14 +39,14 @@ def process_data(data):
 
 class DataHandler:
     """Handle data operations."""
-    
+
     def __init__(self):
         self.data = []
-    
+
     def add(self, item):
         """Add item to data."""
         self.data.append(item)
-    
+
     def get_all(self):
         """Get all data."""
         return self.data

@@ -4,9 +4,9 @@ from typing import Any
 
 from tree_sitter import Node
 
-from ..analysis import ComplexityAnalyzer, CouplingAnalyzer, SemanticAnalyzer
-from ..interfaces.base import ChunkingStrategy
-from ..types import CodeChunk
+from chunker.analysis import ComplexityAnalyzer, CouplingAnalyzer, SemanticAnalyzer
+from chunker.interfaces.base import ChunkingStrategy
+from chunker.types import CodeChunk
 
 
 class SemanticChunker(ChunkingStrategy):
@@ -269,7 +269,7 @@ class SemanticChunker(ChunkingStrategy):
             return False
 
         # Check for cohesive groups
-        for group_name, node_types in self.cohesive_groups.items():
+        for node_types in self.cohesive_groups.values():
             if chunk1.node_type in node_types and chunk2.node_type in node_types:
                 return True
 

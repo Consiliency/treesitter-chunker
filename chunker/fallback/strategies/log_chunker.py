@@ -5,10 +5,10 @@ import re
 from datetime import datetime, timedelta
 from re import Pattern
 
-from ...interfaces.fallback import ChunkingMethod, FallbackConfig
-from ...interfaces.fallback import LogChunker as ILogChunker
-from ...types import CodeChunk
-from ..base import FallbackChunker
+from chunker.fallback.base import FallbackChunker
+from chunker.interfaces.fallback import ChunkingMethod, FallbackConfig
+from chunker.interfaces.fallback import LogChunker as ILogChunker
+from chunker.types import CodeChunk
 
 logger = logging.getLogger(__name__)
 

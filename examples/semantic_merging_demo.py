@@ -22,45 +22,45 @@ class Person:
     def __init__(self, name, age):
         self._name = name
         self._age = age
-    
+
     def get_name(self):
         """Get person's name."""
         return self._name
-    
+
     def set_name(self, name):
         """Set person's name."""
         self._name = name
-    
+
     def get_age(self):
         """Get person's age."""
         return self._age
-    
+
     def set_age(self, age):
         """Set person's age."""
         if age < 0:
             raise ValueError("Age cannot be negative")
         self._age = age
-    
+
     @property
     def email(self):
         """Get email address."""
         return self._email
-    
+
     @email.setter
     def email(self, value):
         """Set email address."""
         if '@' not in value:
             raise ValueError("Invalid email")
         self._email = value
-    
+
     def greet(self):
         """Greet the person."""
         print(f"Hello, {self._name}!")
-    
+
     def is_adult(self):
         """Check if person is adult."""
         return self._age >= 18
-    
+
     def is_senior(self):
         """Check if person is senior."""
         return self._age >= 65
@@ -70,11 +70,11 @@ class Calculator:
     def add_two(self, a, b):
         """Add two numbers."""
         return a + b
-    
+
     def add_three(self, a, b, c):
         """Add three numbers."""
         return a + b + c
-    
+
     def add_many(self, *args):
         """Add many numbers."""
         return sum(args)

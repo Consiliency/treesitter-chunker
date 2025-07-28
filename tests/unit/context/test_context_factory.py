@@ -122,10 +122,10 @@ class TestContextFactory:
 
     def test_is_language_supported(self):
         """Test checking if a language is supported."""
-        assert ContextFactory.is_language_supported("python") == True
-        assert ContextFactory.is_language_supported("javascript") == True
-        assert ContextFactory.is_language_supported("rust") == False
-        assert ContextFactory.is_language_supported("unknown") == False
+        assert ContextFactory.is_language_supported("python")
+        assert ContextFactory.is_language_supported("javascript")
+        assert not ContextFactory.is_language_supported("rust")
+        assert not ContextFactory.is_language_supported("unknown")
 
     def test_get_supported_languages(self):
         """Test getting list of supported languages."""

@@ -8,7 +8,7 @@ from typing import Any
 
 from tree_sitter import Node
 
-from ..interfaces.context import ContextExtractor, ContextItem, ContextType
+from chunker.interfaces.context import ContextExtractor, ContextItem, ContextType
 
 
 class BaseContextExtractor(ContextExtractor):
@@ -117,7 +117,7 @@ class BaseContextExtractor(ContextExtractor):
         references = self._find_references_in_node(node, source)
 
         # For each reference, try to find its definition
-        for ref_name, ref_node in references:
+        for ref_name, _ref_node in references:
             definition = self._find_definition(ref_name, node, ast, source)
             if definition:
                 dependencies.append(definition)

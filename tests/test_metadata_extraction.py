@@ -157,11 +157,11 @@ async def fetch_data(url: str) -> dict:
         code = '''
 def calculate(x: int, y: int) -> int:
     """Calculate the sum of two numbers.
-    
+
     Args:
         x: First number
         y: Second number
-        
+
     Returns:
         The sum of x and y
     """
@@ -279,12 +279,12 @@ def nested_function():
 def example():
     # This is a comment
     x = 1  # inline comment
-    
+
     """
     This is a docstring
     spanning multiple lines
     """
-    
+
     y = 2
     return x + y
 '''
@@ -502,7 +502,7 @@ def factorial(n: int) -> int:
     if n <= 1:
         return 1
     return n * factorial(n - 1)
-    
+
 class Calculator:
     def add(self, a: int, b: int) -> int:
         return a + b

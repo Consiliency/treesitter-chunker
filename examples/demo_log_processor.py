@@ -26,7 +26,7 @@ def print_chunk_info(chunk, index):
     lines = chunk.content.split("\n")
     preview_lines = min(5, len(lines))
     print(f"\nContent preview (first {preview_lines} lines):")
-    for i, line in enumerate(lines[:preview_lines]):
+    for _i, line in enumerate(lines[:preview_lines]):
         print(f"  {line}")
     if len(lines) > preview_lines:
         print(f"  ... ({len(lines) - preview_lines} more lines)")
@@ -213,8 +213,7 @@ def demo_streaming():
 
     def line_generator():
         with open(log_file) as f:
-            for line in f:
-                yield line
+            yield from f
 
     chunk_count = 0
     total_lines = 0

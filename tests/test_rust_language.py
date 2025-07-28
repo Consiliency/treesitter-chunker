@@ -64,9 +64,9 @@ impl Display for Point {
 }
 
 // Generic trait implementation
-impl<T> Display for Vec<T> 
-where 
-    T: Display 
+impl<T> Display for Vec<T>
+where
+    T: Display
 {
     fn fmt(&self, f: &mut Formatter) -> Result {
         // implementation
@@ -90,7 +90,7 @@ trait Iterator {
 
 impl Iterator for Counter {
     type Item = u32;
-    
+
     fn next(&mut self) -> Option<Self::Item> {
         self.count += 1;
         Some(self.count)
@@ -209,7 +209,7 @@ unsafe fn dangerous_operation(ptr: *const u32) -> u32 {
 fn use_unsafe() {
     let mut num = 5;
     let ptr = &mut num as *mut i32;
-    
+
     unsafe {
         *ptr = 10;
         dangerous_operation(ptr as *const u32);
@@ -287,7 +287,7 @@ impl<'a> ImportantExcerpt<'a> {
     fn level(&self) -> i32 {
         3
     }
-    
+
     fn announce_and_return_part(&self, announcement: &str) -> &str {
         println!("Announcement: {}", announcement);
         self.part
@@ -295,8 +295,8 @@ impl<'a> ImportantExcerpt<'a> {
 }
 
 // Multiple lifetime parameters
-fn complex_lifetimes<'a, 'b>(x: &'a str, y: &'b str) -> &'a str 
-where 
+fn complex_lifetimes<'a, 'b>(x: &'a str, y: &'b str) -> &'a str
+where
     'b: 'a  // 'b outlives 'a
 {
     x
@@ -346,7 +346,7 @@ mod utils {
     pub fn helper() {
         println!("Helper function");
     }
-    
+
     // Nested module
     pub mod nested {
         pub fn deep_function() {}
@@ -357,11 +357,11 @@ mod utils {
 pub mod public_api {
     // Re-exports
     pub use crate::utils::helper;
-    
+
     pub struct PublicStruct {
         pub field: i32,
     }
-    
+
     impl PublicStruct {
         pub fn new() -> Self {
             Self { field: 0 }
@@ -377,7 +377,7 @@ use crate::utils::*;
 // Private module
 mod private {
     use super::*;
-    
+
     pub(crate) fn internal_only() {}
     pub(super) fn parent_only() {}
 }
@@ -483,7 +483,7 @@ trait Container {
 
 impl<T> Container for Box<T> {
     type Item = T;
-    
+
     fn get(&self) -> &Self::Item {
         &**self
     }
@@ -557,7 +557,7 @@ pub fn public_function() {}
 pub struct PublicStruct;
 pub enum PublicEnum { A, B }
 
-// Crate-visible items  
+// Crate-visible items
 pub(crate) fn crate_function() {}
 pub(crate) struct CrateStruct;
 
@@ -626,7 +626,7 @@ fn test_another_thing() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn internal_test() {
         regular_function();
@@ -719,8 +719,8 @@ struct Array<T, const N: usize> {
 }
 
 impl<T, const N: usize> Array<T, N> {
-    fn new(value: T) -> Self 
-    where 
+    fn new(value: T) -> Self
+    where
         T: Clone
     {
         Self {

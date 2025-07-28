@@ -5,17 +5,17 @@ Chunk comparison implementation
 from pathlib import Path
 from typing import Any
 
-from ...chunker import chunk_file
-from ...contracts.debug_contract import ChunkComparisonContract
-from ...fallback.fallback_manager import FallbackManager
-from ...strategies import (
+from chunker.chunker import chunk_file
+from chunker.contracts.debug_contract import ChunkComparisonContract
+from chunker.fallback.fallback_manager import FallbackManager
+from chunker.strategies import (
     AdaptiveChunker,
     CompositeChunker,
     HierarchicalChunker,
     SemanticChunker,
 )
-from ...token.chunker import TreeSitterTokenAwareChunker
-from ...token.counter import TiktokenCounter
+from chunker.token.chunker import TreeSitterTokenAwareChunker
+from chunker.token.counter import TiktokenCounter
 
 
 class ChunkComparison(ChunkComparisonContract):

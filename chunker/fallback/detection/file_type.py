@@ -8,7 +8,7 @@ from typing import Any
 
 import chardet
 
-from ...interfaces.fallback import FallbackReason, FallbackStrategy
+from chunker.interfaces.fallback import FallbackReason, FallbackStrategy
 
 logger = logging.getLogger(__name__)
 

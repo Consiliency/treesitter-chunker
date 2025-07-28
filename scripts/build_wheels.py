@@ -125,7 +125,7 @@ class WheelBuilder:
         self.ensure_grammars_built()
 
         # Copy platform-specific binaries
-        build_dir = self.project_dir / "build"
+        self.project_dir / "build"
         wheel_build_dir = self.output_dir / "wheel_build"
         wheel_build_dir.mkdir(exist_ok=True)
 

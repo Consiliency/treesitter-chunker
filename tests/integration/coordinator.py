@@ -94,10 +94,7 @@ class IntegrationCoordinator(ErrorPropagationMixin):
 
         # Check grammars are built
         build_dir = worktree_path / "build"
-        if not build_dir.exists() or not any(build_dir.glob("*.so")):
-            return False
-
-        return True
+        return not (not build_dir.exists() or not any(build_dir.glob("*.so")))
 
     def setup_worktree(self, worktree_name: str, branch_name: str) -> bool:
         """Set up a new worktree.

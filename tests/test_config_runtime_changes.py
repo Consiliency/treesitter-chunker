@@ -35,7 +35,7 @@ class TestConfigRuntimeChanges:
     ):
         """Test config change during active parsing."""
         # Create a large file that takes time to parse
-        large_file = test_file_generator.create_large_file(
+        test_file_generator.create_large_file(
             "large_test.py",
             size_mb=5,
             pattern="function",
@@ -202,11 +202,11 @@ class TestConfigRuntimeChanges:
 
         def reader_thread(thread_id: int):
             """Read config repeatedly."""
-            for i in range(iterations):
+            for _i in range(iterations):
                 try:
                     with config_lock:
                         # Read config
-                        version = config_state["version"]
+                        config_state["version"]
                         data = config_state["data"].copy()
 
                         # Verify consistency
@@ -228,7 +228,7 @@ class TestConfigRuntimeChanges:
                 try:
                     with config_lock:
                         # Read current state
-                        old_version = config_state["version"]
+                        config_state["version"]
                         old_chunk_size = config_state["data"]["chunk_size"]
 
                         # Update config
@@ -549,7 +549,7 @@ class TestConfigRuntimeChanges:
 
                 # Check timeout
                 assert "timeout" in new_config
-                assert isinstance(new_config["timeout"], (int, float))
+                assert isinstance(new_config["timeout"], int | float)
                 assert new_config["timeout"] > 0
 
                 # Check parser config
@@ -592,7 +592,7 @@ class TestConfigRuntimeChanges:
         with performance_monitor.measure("valid_config_change"):
             success = apply_config_change(valid_config)
 
-        assert success == True
+        assert success
         assert len(config_history) == 2
         assert config_history[-1]["chunk_size"] == 2000
 
@@ -603,8 +603,8 @@ class TestConfigRuntimeChanges:
         with performance_monitor.measure("invalid_config_rollback"):
             success = apply_config_change(invalid_config1)
 
-        assert success == False
-        assert rollback_triggered == True
+        assert not success
+        assert rollback_triggered
         assert len(config_history) == 2  # No new config added
         assert config_history[-1]["chunk_size"] == 2000  # Still at valid value
 
@@ -615,8 +615,8 @@ class TestConfigRuntimeChanges:
 
         success = apply_config_change(invalid_config2)
 
-        assert success == False
-        assert rollback_triggered == True
+        assert not success
+        assert rollback_triggered
 
         # Test 4: Missing required field
         rollback_triggered = False
@@ -625,8 +625,8 @@ class TestConfigRuntimeChanges:
 
         success = apply_config_change(invalid_config3)
 
-        assert success == False
-        assert rollback_triggered == True
+        assert not success
+        assert rollback_triggered
 
         # Verify rollback events were logged
         change_log = config_change_tracker.get_change_log()
@@ -689,10 +689,10 @@ class TestConfigRuntimeChanges:
                 with read_heavy_lock:
                     # Read operation (99% of time)
                     if i % 100 != 0:
-                        data = config["read_heavy"]["data"][
+                        config["read_heavy"]["data"][
                             i % len(config["read_heavy"]["data"])
                         ]
-                        version = config["read_heavy"]["metadata"]["version"]
+                        config["read_heavy"]["metadata"]["version"]
                         read_ops.increment()
                     else:
                         # Occasional write (1% of time)
@@ -733,7 +733,7 @@ class TestConfigRuntimeChanges:
                     if thread_id % 2 == 0:
                         # Even threads read more
                         config["mixed"]["readers"] += 1
-                        data = config["mixed"]["data"].get(f"key_{i}", None)
+                        config["mixed"]["data"].get(f"key_{i}", None)
                         read_ops.increment()
                     else:
                         # Odd threads write more
@@ -1039,7 +1039,7 @@ class TestConfigRuntimeChanges:
             * 100
         )
 
-        extreme_overhead_per_op = (
+        (
             (extreme_stats["total"] / 1000 - baseline_stats["average"])
             / baseline_stats["average"]
             * 100

@@ -81,7 +81,7 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
 
             # Propagate to higher level
             cli_error = RuntimeError(f"Parallel processing failed: {error}")
-            cli_context = error_tracking_context.capture_and_propagate(
+            error_tracking_context.capture_and_propagate(
                 source="chunker.parallel.ParallelChunker",
                 target="cli.main",
                 error=cli_error,
@@ -113,8 +113,8 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
 
             # Try to get result with timeout
             try:
-                result = future.result(timeout=0.5)
-                assert False, "Should have timed out"
+                future.result(timeout=0.5)
+                raise AssertionError("Should have timed out")
             except FutureTimeoutError:
                 # Capture timeout error
                 error = TimeoutError("Worker process timed out after 0.5 seconds")
@@ -139,8 +139,8 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
             future = executor.submit(time.sleep, 2.0)
 
             try:
-                result = future.result(timeout=0.1)
-                assert False, "Should have timed out"
+                future.result(timeout=0.1)
+                raise AssertionError("Should have timed out")
             except FutureTimeoutError:
                 # Capture timeout error for thread
                 error = TimeoutError("Worker thread timed out")
@@ -241,7 +241,7 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
         resources_to_track = []
 
         # Simulate parallel worker setup
-        with parallel_test_environment as env:
+        with parallel_test_environment:
             # Track multiple resource types
             for i in range(5):
                 # Track worker process
@@ -509,7 +509,7 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
                 break
 
         # Verify deadlock was detected
-        assert deadlock_detected.value == True, "Deadlock should have been detected"
+        assert deadlock_detected.value, "Deadlock should have been detected"
         assert "worker1_timeout" in results or "worker2_timeout" in results
 
         # Ensure processes are terminated
@@ -597,7 +597,7 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
                 # Collect results with error handling
                 for i, future in enumerate(futures):
                     try:
-                        result = future.result(timeout=1.0)
+                        future.result(timeout=1.0)
                     except Exception:
                         # Errors should not cause memory leaks
                         # Only count as leaked if error is unexpected

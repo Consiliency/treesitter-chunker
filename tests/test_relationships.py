@@ -42,7 +42,7 @@ def test_parent_child_relationships():
 class OuterClass:
     def method1(self):
         pass
-    
+
     class InnerClass:
         def method2(self):
             pass

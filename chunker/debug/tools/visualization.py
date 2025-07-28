@@ -8,10 +8,10 @@ import tracemalloc
 from pathlib import Path
 from typing import Any
 
-from ...chunker import chunk_file
-from ...contracts.debug_contract import DebugVisualizationContract
-from ...parser import get_parser
-from ..visualization.ast_visualizer import ASTVisualizer
+from chunker.chunker import chunk_file
+from chunker.contracts.debug_contract import DebugVisualizationContract
+from chunker.debug.visualization.ast_visualizer import ASTVisualizer
+from chunker.parser import get_parser
 
 
 class DebugVisualization(DebugVisualizationContract):
@@ -307,7 +307,7 @@ class DebugVisualization(DebugVisualizationContract):
         tree = parser.parse(content)
 
         # Get language config for chunking rules
-        from ...languages import language_config_registry
+        from chunker.languages import language_config_registry
 
         config = language_config_registry.get(language)
 

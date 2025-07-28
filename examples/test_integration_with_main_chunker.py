@@ -62,10 +62,10 @@ def hello_world():
 
 class Example:
     """Example class."""
-    
+
     def __init__(self):
         self.value = 42
-    
+
     def get_value(self):
         return self.value
 '''
@@ -242,7 +242,7 @@ processors:
     priority: 200
     config:
       custom_option: "value"
-  
+
   generic_sliding_window:
     enabled: true
     config:

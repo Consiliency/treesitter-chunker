@@ -601,7 +601,7 @@ Section 2 content
         def optimized_function():
             # Fast implementation
             return result
-        
+
         @chunk security
         def secure_function():
             # Security-critical code
@@ -919,7 +919,7 @@ def func2():
             engine.add_rule(rule)
 
         source = b"test content"
-        chunks = engine.apply_regex_rules(source, "test.txt")
+        engine.apply_regex_rules(source, "test.txt")
 
         # Check execution order matches priority
         expected_order = ["rule_90", "rule_70", "rule_50", "rule_30"]

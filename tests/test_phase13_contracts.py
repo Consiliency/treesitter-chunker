@@ -128,7 +128,7 @@ class TestPhase13Contracts:
             (DistributionContract, "publish_to_pypi", (None,)),
         ]
 
-        for contract_class, method_name, args in contracts_and_methods:
+        for contract_class, _method_name, _args in contracts_and_methods:
             # Create a minimal implementation
             class TestImpl(contract_class):
                 pass

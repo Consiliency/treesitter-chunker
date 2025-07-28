@@ -62,7 +62,7 @@ end
 # Struct with inner constructor
 struct Circle
     radius::Float64
-    
+
     function Circle(r)
         if r < 0
             error("Radius must be non-negative")

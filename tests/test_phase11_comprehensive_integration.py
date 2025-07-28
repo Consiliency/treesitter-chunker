@@ -42,12 +42,12 @@ class TestPhase11ComprehensiveIntegration:
         python_code = '''
 class DataProcessor:
     """A large class that will exceed token limits."""
-    
+
     def __init__(self, config):
         self.config = config
         self.data = []
         self.results = {}
-        
+
     def process_batch(self, batch):
         """Process a batch of data with lots of logic."""
         results = []
@@ -57,12 +57,12 @@ class DataProcessor:
             validated = self.validate(processed)
             results.append(validated)
         return results
-        
+
     def transform(self, item):
         """Transform data item."""
         # Lots of transformation logic
         return item * 2
-        
+
     def validate(self, item):
         """Validate processed item."""
         if item < 0:
@@ -225,13 +225,13 @@ def calculate_metrics(data):
 
 class MetricsProcessor:
     """Process and store metrics."""
-    
+
     def __init__(self):
         self.metrics = []
-        
+
     def add_metric(self, metric):
         self.metrics.append(metric)
-        
+
     def get_summary(self):
         return calculate_metrics([m['value'] for m in self.metrics])
 ''',
@@ -265,7 +265,7 @@ A class for processing and storing metrics over time.
     - sum
     - average
     - count
-  
+
 reporting:
   format: json
   destination: stdout
@@ -350,7 +350,7 @@ reporting:
         binary_file.write_bytes(b"\x00\x01\x02\x03\x04\x05")
 
         # Should detect as binary and handle appropriately
-        reason = fallback.get_fallback_reason(str(binary_file), "")
+        fallback.get_fallback_reason(str(binary_file), "")
         # Binary files might not be directly detectable from path alone
 
     def test_decision_transparency(self):

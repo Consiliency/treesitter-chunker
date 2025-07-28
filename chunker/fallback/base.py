@@ -5,14 +5,14 @@ import warnings
 from re import Pattern
 from typing import Any
 
-from ..interfaces.fallback import (
+from chunker.interfaces.fallback import (
     FALLBACK_WARNING_TEMPLATE,
     ChunkingMethod,
     FallbackConfig,
     FallbackReason,
 )
-from ..interfaces.fallback import FallbackChunker as IFallbackChunker
-from ..types import CodeChunk
+from chunker.interfaces.fallback import FallbackChunker as IFallbackChunker
+from chunker.types import CodeChunk
 
 logger = logging.getLogger(__name__)
 

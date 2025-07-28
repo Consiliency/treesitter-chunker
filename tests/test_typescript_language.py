@@ -20,11 +20,11 @@ interface User {
 
 class UserService {
     private users: User[] = [];
-    
+
     addUser(user: User): void {
         this.users.push(user);
     }
-    
+
     getUser(id: number): User | undefined {
         return this.users.find(u => u.id === id);
     }
@@ -58,7 +58,7 @@ interface Props {
 
 const Modal: React.FC<Props> = ({ title, onClose }) => {
     const [isVisible, setIsVisible] = useState(true);
-    
+
     useEffect(() => {
         const handleEscape = (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
@@ -66,11 +66,11 @@ const Modal: React.FC<Props> = ({ title, onClose }) => {
                 onClose?.();
             }
         };
-        
+
         document.addEventListener('keydown', handleEscape);
         return () => document.removeEventListener('keydown', handleEscape);
     }, [onClose]);
-    
+
     return isVisible ? (
         <div className="modal">
             <h2>{title}</h2>
@@ -92,7 +92,7 @@ export default Modal;
     def test_typescript_generics(self):
         """Test TypeScript with complex generics."""
         code = """
-type Result<T, E = Error> = 
+type Result<T, E = Error> =
     | { success: true; data: T }
     | { success: false; error: E };
 
@@ -104,11 +104,11 @@ function wrapPromise<T>(promise: Promise<T>): Result<T> {
 
 class Container<T extends Record<string, unknown>> {
     private items: Map<keyof T, T[keyof T]> = new Map();
-    
+
     get<K extends keyof T>(key: K): T[K] | undefined {
         return this.items.get(key) as T[K] | undefined;
     }
-    
+
     set<K extends keyof T>(key: K, value: T[K]): void {
         this.items.set(key, value);
     }
@@ -132,11 +132,11 @@ function log(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
 class BugReport {
     type = "report";
     title: string;
-    
+
     constructor(t: string) {
         this.title = t;
     }
-    
+
     @log
     print() {
         console.log(`type: ${this.type}`);
@@ -159,16 +159,16 @@ namespace Validation {
     export interface StringValidator {
         isAcceptable(s: string): boolean;
     }
-    
+
     const lettersRegexp = /^[A-Za-z]+$/;
     const numberRegexp = /^[0-9]+$/;
-    
+
     export class LettersOnlyValidator implements StringValidator {
         isAcceptable(s: string) {
             return lettersRegexp.test(s);
         }
     }
-    
+
     export class ZipCodeValidator implements StringValidator {
         isAcceptable(s: string) {
             return s.length === 5 && numberRegexp.test(s);

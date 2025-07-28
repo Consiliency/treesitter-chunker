@@ -116,14 +116,14 @@ $$;
         src = tmp_path / "complex_query.sql"
         src.write_text(
             """WITH user_stats AS (
-    SELECT 
+    SELECT
         user_id,
         COUNT(*) as post_count,
         MAX(created_at) as last_post
     FROM posts
     GROUP BY user_id
 )
-SELECT 
+SELECT
     u.name,
     us.post_count,
     us.last_post
@@ -274,7 +274,7 @@ FROM users
 WHERE active = true AND deleted_at IS NULL;
 
 CREATE OR REPLACE VIEW user_statistics AS
-SELECT 
+SELECT
     u.id,
     u.name,
     COUNT(p.id) as post_count,

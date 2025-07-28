@@ -34,7 +34,7 @@ class Task:
     title: str
     completed: bool = False
     metadata: Dict[str, Any] = None
-    
+
     def complete(self) -> None:
         """Mark task as completed."""
         self.completed = True
@@ -42,24 +42,24 @@ class Task:
 
 class TaskManager:
     """Manages a collection of tasks."""
-    
+
     def __init__(self, name: str = "default"):
         """Initialize task manager.
-        
+
         Args:
             name: Name of this task manager instance
         """
         self.name = name
         self.tasks: List[Task] = []
         self._next_id = 1
-    
+
     def add_task(self, title: str, **metadata) -> Task:
         """Add a new task.
-        
+
         Args:
             title: Task title
             **metadata: Additional task metadata
-            
+
         Returns:
             The created task
         """
@@ -71,32 +71,32 @@ class TaskManager:
         self.tasks.append(task)
         self._next_id += 1
         return task
-    
+
     async def process_tasks(self) -> int:
         """Process all pending tasks asynchronously.
-        
+
         Returns:
             Number of tasks processed
         """
         # TODO: Implement actual async processing
         pending = [t for t in self.tasks if not t.completed]
-        
+
         # Simulate async processing
         for task in pending:
             await asyncio.sleep(0.1)
             task.complete()
-        
+
         return len(pending)
-    
+
     def get_stats(self) -> Dict[str, int]:
         """Get task statistics.
-        
+
         Returns:
             Dictionary with task counts
         """
         completed = sum(1 for t in self.tasks if t.completed)
         pending = len(self.tasks) - completed
-        
+
         return {
             'total': len(self.tasks),
             'completed': completed,
@@ -347,10 +347,10 @@ MAX_RETRIES = 3
 @lru_cache(maxsize=128)
 def fibonacci(n: int) -> int:
     """Calculate fibonacci number recursively with memoization.
-    
+
     Args:
         n: The position in fibonacci sequence
-        
+
     Returns:
         The fibonacci number at position n
     """
@@ -360,22 +360,22 @@ def fibonacci(n: int) -> int:
 
 class DataProcessor:
     """Process data with various algorithms."""
-    
+
     # TODO: Add more algorithms
-    
+
     def __init__(self, algorithm: str = "default"):
         self.algorithm = algorithm
         self._cache: Dict[str, Any] = {}
-    
+
     def process(self, data: List[Any]) -> List[Any]:
         """Process data using selected algorithm.
-        
+
         This method demonstrates high complexity with multiple
         branches and nested conditions.
         """
         if not data:
             return []
-        
+
         results = []
         for i, item in enumerate(data):
             # Complex nested logic
@@ -396,7 +396,7 @@ class DataProcessor:
                     results.append(float(item))
                 except (ValueError, TypeError):
                     results.append(None)
-        
+
         return results
 
 # Test section

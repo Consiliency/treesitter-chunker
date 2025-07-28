@@ -378,7 +378,7 @@ const Component = () => {
         color: 'red',
         fontSize: '16px'
     };
-    
+
     return (
         <div style={{backgroundColor: 'blue'}}>
             <h1>Hello</h1>
@@ -523,11 +523,11 @@ Some inline SQL: `SELECT * FROM users`
 def get_users():
     query = "SELECT id, name FROM users WHERE active = true"
     return db.execute(query)
-    
+
 def update_user(user_id, name):
     sql = """
-        UPDATE users 
-        SET name = %s 
+        UPDATE users
+        SET name = %s
         WHERE id = %s
     """
     return db.execute(sql, (name, user_id))
@@ -733,7 +733,7 @@ function Component() {
         assert len(groups["users"]) == 2  # UserService and UserController
 
         # Should also create entity-based groups
-        assert any("user" in k.lower() for k in groups.keys())
+        assert any("user" in k.lower() for k in groups)
 
     def test_embedded_language_detection(self):
         """Test detection of various embedded language scenarios."""
@@ -749,7 +749,7 @@ def get_data():
     return db.execute(query)
 '''
 
-        regions = self.processor.identify_language_regions("data.py", python_content)
+        self.processor.identify_language_regions("data.py", python_content)
         embedded = self.processor._identify_embedded_regions(python_content, "python")
 
         assert any(r.language == "sql" for r in embedded)
@@ -796,7 +796,7 @@ interface ButtonProps {
 
 export const Button: React.FC<ButtonProps> = ({ label, onClick, variant = 'primary' }) => {
     const [isHovered, setIsHovered] = useState(false);
-    
+
     return (
         <button
             className={`btn btn-${variant} ${isHovered ? 'hovered' : ''}`}
@@ -873,7 +873,7 @@ def get_users():
     """Get all users with pagination."""
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
-    
+
     users = User.query.paginate(page=page, per_page=per_page)
     return jsonify({
         'users': [u.to_dict() for u in users.items],
@@ -903,11 +903,11 @@ export async function fetchUsers(page: number = 1, perPage: number = 10): Promis
             'Authorization': `Bearer ${getAuthToken()}`
         }
     });
-    
+
     if (!response.ok) {
         throw new Error('Failed to fetch users');
     }
-    
+
     return response.json();
 }
 """,

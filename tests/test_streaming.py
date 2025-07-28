@@ -309,7 +309,7 @@ class TestMemoryEfficiency:
 
     def test_memory_mapped_file_access(self, medium_python_file):
         """Test that memory-mapped file access is working correctly."""
-        chunker = StreamingChunker("python")
+        StreamingChunker("python")
 
         with open(medium_python_file, "rb") as f:
             with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mmap_data:
@@ -328,7 +328,7 @@ class TestMemoryEfficiency:
         memory_checkpoints = []
         chunk_count = 0
 
-        for chunk in chunk_file_streaming(medium_python_file, "python"):
+        for _chunk in chunk_file_streaming(medium_python_file, "python"):
             chunk_count += 1
             if chunk_count % 100 == 0:
                 current_memory = psutil.Process().memory_info().rss / (1024 * 1024)
@@ -421,7 +421,7 @@ class OuterClass:
             def nested_function():
                 return 42
             return nested_function()
-    
+
     def outer_method(self):
         return self.InnerClass()
 """
@@ -483,7 +483,7 @@ class TestBufferOptimization:
 
         for _ in range(3):
             start_time = time.time()
-            chunks = list(chunk_file_streaming(medium_python_file, "python"))
+            list(chunk_file_streaming(medium_python_file, "python"))
             elapsed = time.time() - start_time
             times.append(elapsed)
 
@@ -561,7 +561,7 @@ class TestProgressCallbacks:
         chunker = CancellableStreamingChunker("python")
         chunks_processed = 0
 
-        for chunk in chunker.chunk_file_streaming(large_python_file):
+        for _chunk in chunker.chunk_file_streaming(large_python_file):
             chunks_processed += 1
             if chunks_processed >= 10:
                 chunker.cancelled = True

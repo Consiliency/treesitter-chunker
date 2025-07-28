@@ -29,7 +29,7 @@ def calculate_sum(numbers):
 class Calculator:
     def __init__(self):
         self.result = 0
-        
+
     def add(self, x, y):
         self.result = x + y
         return self.result
@@ -126,16 +126,16 @@ def medium_function(x, y):
 
 class DataProcessor:
     """Process data with multiple methods."""
-    
+
     def __init__(self, config):
         self.config = config
         self.data = []
-        
+
     def load_data(self, path):
         """Load data from file."""
         with open(path) as f:
             self.data = json.load(f)
-            
+
     def process(self):
         """Process loaded data."""
         results = []
@@ -143,11 +143,11 @@ class DataProcessor:
             if self.validate(item):
                 results.append(self.transform(item))
         return results
-        
+
     def validate(self, item):
         """Validate a single item."""
         return item.get('valid', False)
-        
+
     def transform(self, item):
         """Transform a single item."""
         return {
@@ -168,7 +168,7 @@ class DataProcessor:
 
     # Analyze chunking
     print("\nAnalyzing chunking decisions...")
-    analysis = debugger.analyze_file(
+    debugger.analyze_file(
         temp_file,
         show_decisions=True,
         show_overlap=True,
@@ -197,12 +197,6 @@ def example_interactive_exploration():
     print("\n=== Interactive AST Exploration ===")
 
     # Sample code
-    code = """
-def fibonacci(n):
-    if n <= 1:
-        return n
-    return fibonacci(n-1) + fibonacci(n-2)
-"""
 
     print("Starting interactive AST explorer...")
     print("Try commands like: info, tree, child 0, find if_statement, help")
@@ -253,12 +247,12 @@ from typing import List
 class Point:
     x: int
     y: int
-    
+
     def distance(self, other):
         """Calculate distance to another point."""
         # Use Pythagorean theorem
         return ((self.x - other.x)**2 + (self.y - other.y)**2)**0.5
-        
+
 print("Hello, world!")
 '''
 

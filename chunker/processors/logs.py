@@ -379,10 +379,7 @@ class LogProcessor(SpecializedProcessor):
                 return False
 
         # Lines starting with whitespace are usually continuations
-        if line[0].isspace():
-            return False
-
-        return True
+        return not line[0].isspace()
 
     def _detect_log_format(self, line: str) -> str | None:
         """Detect log format from a line."""
@@ -639,10 +636,7 @@ class LogProcessor(SpecializedProcessor):
 
     def _is_session_end(self, entry: LogEntry) -> bool:
         """Check if entry indicates session end."""
-        for pattern in SESSION_PATTERNS["end"]:
-            if pattern.search(entry.content):
-                return True
-        return False
+        return any(pattern.search(entry.content) for pattern in SESSION_PATTERNS["end"])
 
     def _get_session_id(self) -> str:
         """Get current session ID."""

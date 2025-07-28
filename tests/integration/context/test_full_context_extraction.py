@@ -32,24 +32,24 @@ class Config:
 
 class DatabaseManager:
     """Manages database connections."""
-    
+
     def __init__(self, config: Config):
         self.config = config
         self._connection = None
-    
+
     @property
     def is_connected(self) -> bool:
         return self._connection is not None
-    
+
     @lru_cache(maxsize=MAX_CACHE_SIZE)
     def get_user(self, user_id: int) -> Optional[Dict]:
         """Get user by ID."""
         if not self.is_connected:
             raise RuntimeError("Not connected to database")
-        
+
         # Simulate database query
         return {"id": user_id, "name": f"User{user_id}"}
-    
+
     def update_user(self, user_id: int, data: Dict) -> bool:
         """Update user data."""
         user = self.get_user(user_id)
@@ -61,7 +61,7 @@ class DatabaseManager:
 def process_users(manager: DatabaseManager, user_ids: List[int]) -> Dict[int, Dict]:
     """Process multiple users."""
     results = {}
-    
+
     for user_id in user_ids:
         try:
             user_data = manager.get_user(user_id)
@@ -69,7 +69,7 @@ def process_users(manager: DatabaseManager, user_ids: List[int]) -> Dict[int, Di
                 results[user_id] = user_data
         except Exception as e:
             print(f"Error processing user {user_id}: {e}")
-    
+
     return results
 
 # Module-level function
@@ -195,7 +195,7 @@ def create_manager(name: str = "default") -> DatabaseManager:
         parser = get_parser("python")
         tree = parser.parse(complex_python_code.encode())
 
-        resolver = ContextFactory.create_symbol_resolver("python")
+        ContextFactory.create_symbol_resolver("python")
         analyzer = ContextFactory.create_scope_analyzer("python")
 
         # Find the get_user method
@@ -254,24 +254,24 @@ class UserService {
         this.apiClient = apiClient;
         this.cache = new Map();
     }
-    
+
     async getUser(userId) {
         if (this.cache.has(userId)) {
             return this.cache.get(userId);
         }
-        
+
         const user = await this.apiClient.fetch(`/users/${userId}`);
         this.cache.set(userId, user);
         return user;
     }
-    
+
     async updateUser(userId, data) {
         const user = await this.getUser(userId);
         const updated = { ...user, ...data };
-        
+
         await this.apiClient.put(`/users/${userId}`, updated);
         this.cache.set(userId, updated);
-        
+
         return updated;
     }
 }
@@ -279,7 +279,7 @@ class UserService {
 const UserList = ({ users, loadUsers }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    
+
     useEffect(() => {
         const fetchUsers = async () => {
             setLoading(true);
@@ -291,13 +291,13 @@ const UserList = ({ users, loadUsers }) => {
                 setLoading(false);
             }
         };
-        
+
         fetchUsers();
     }, [loadUsers]);
-    
+
     if (loading) return <div>Loading...</div>;
     if (error) return <div>Error: {error}</div>;
-    
+
     return (
         <ul>
             {users.map(user => (
@@ -347,7 +347,7 @@ export default connect(mapStateToProps, mapDispatchToProps)(UserList);
 
         # Extract context
         imports = extractor.extract_imports(tree.root_node, source)
-        type_defs = extractor.extract_type_definitions(tree.root_node, source)
+        extractor.extract_type_definitions(tree.root_node, source)
         parent_context = extractor.extract_parent_context(
             update_method,
             tree.root_node,

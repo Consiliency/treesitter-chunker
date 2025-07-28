@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import io
-from collections.abc import Iterator
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from ..exceptions import ChunkerError
-from ..interfaces.export import (
+from chunker.exceptions import ChunkerError
+from chunker.interfaces.export import (
     ChunkRelationship,
     ExportFilter,
     ExportFormat,
@@ -17,7 +15,12 @@ from ..interfaces.export import (
     ExportTransformer,
     StructuredExporter,
 )
-from ..types import CodeChunk
+
+if TYPE_CHECKING:
+    import io
+    from collections.abc import Iterator
+
+    from chunker.types import CodeChunk
 
 
 class StructuredExportOrchestrator(StructuredExporter):
@@ -151,7 +154,7 @@ class StructuredExportOrchestrator(StructuredExporter):
             Schema definition for this exporter
         """
         return {
-            "supported_formats": [f.value for f in self._exporters.keys()],
+            "supported_formats": [f.value for f in self._exporters],
             "filters": len(self._filters),
             "transformers": len(self._transformers),
             "batch_size": self._batch_size,
@@ -178,7 +181,7 @@ class StructuredExportOrchestrator(StructuredExporter):
             return metadata.format
 
         # Try to determine from file extension
-        if isinstance(output, (str, Path)):
+        if isinstance(output, str | Path):
             path = Path(output)
             ext = path.suffix.lower()
 
@@ -256,10 +259,10 @@ class StructuredExportOrchestrator(StructuredExporter):
     ) -> ExportMetadata:
         """Create export metadata."""
         source_files = list(
-            set(
+            {
                 c.file_path if hasattr(c, "file_path") else c.get("file_path", "")
                 for c in chunks
-            ),
+            },
         )
 
         return ExportMetadata(

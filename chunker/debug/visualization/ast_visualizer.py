@@ -15,8 +15,8 @@ from rich.console import Console
 from rich.tree import Tree
 from tree_sitter import Node
 
-from ...parser import get_parser
-from ...types import CodeChunk
+from chunker.parser import get_parser
+from chunker.types import CodeChunk
 
 
 class ASTVisualizer:

@@ -129,10 +129,6 @@ ignore_errors = true
 [tool.ruff]
 target-version = "py38"
 line-length = 88
-select = ["E", "F", "I", "N", "W"]
-ignore = ["E501"]
-fixable = ["ALL"]
-unfixable = []
 exclude = [
     ".git",
     ".mypy_cache",
@@ -142,6 +138,12 @@ exclude = [
     "build",
     "dist",
 ]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+ignore = ["E501"]
+fixable = ["ALL"]
+unfixable = []
 
 [tool.poetry]
 # Alternative package manager configuration

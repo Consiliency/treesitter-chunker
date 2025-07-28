@@ -329,11 +329,10 @@ class WorkflowValidator:
                         )
 
         # Validate 'with' parameters
-        if "with" in step:
-            if not isinstance(step["with"], dict):
-                self.errors.append(
-                    f"Job '{job_id}' {step_name} 'with' must be a dictionary",
-                )
+        if "with" in step and not isinstance(step["with"], dict):
+            self.errors.append(
+                f"Job '{job_id}' {step_name} 'with' must be a dictionary",
+            )
 
     def _validate_strategy(self, job_id: str, strategy: dict):
         """Validate job strategy"""

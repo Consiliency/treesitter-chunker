@@ -47,27 +47,27 @@ app = Flask(__name__)
 
 class DataProcessor:
     """Process incoming data with validation."""
-    
+
     def __init__(self):
         self.cache = {}
-        
+
     def validate(self, data: Dict[str, Any]) -> bool:
         """Validate input data."""
         required_fields = ['id', 'value', 'type']
         return all(field in data for field in required_fields)
-    
+
     def transform(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Transform data according to business rules."""
         if not self.validate(data):
             raise ValueError("Invalid data format")
-            
+
         return {
             'id': data['id'],
             'processed_value': data['value'] * 2,
             'type': data['type'].upper(),
             'timestamp': '2024-01-01T00:00:00Z'
         }
-    
+
     def process_batch(self, items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Process multiple items."""
         results = []
@@ -114,7 +114,7 @@ class APIClient {
         this.baseUrl = baseUrl;
         this.cache = new Map();
     }
-    
+
     async processData(items) {
         const response = await fetch(`${this.baseUrl}/process`, {
             method: 'POST',
@@ -123,24 +123,24 @@ class APIClient {
             },
             body: JSON.stringify(items),
         });
-        
+
         const results = await response.json();
-        
+
         // Cache results
         results.forEach((item) => {
             if (item.id) {
                 this.cache.set(item.id, item);
             }
         });
-        
+
         return results;
     }
-    
+
     async checkStatus() {
         const response = await fetch(`${this.baseUrl}/status`);
         return response.json();
     }
-    
+
     getCached(id) {
         return this.cache.get(id);
     }
@@ -205,9 +205,9 @@ CREATE TABLE IF NOT EXISTS processing_log (
         assert "javascript" in project_languages
 
         # Analyze project structure
-        project_info = project_analyzer.analyze_structure(self.test_dir)
+        project_analyzer.analyze_structure(self.test_dir)
         file_language_map = {}
-        for root, dirs, files in os.walk(self.test_dir):
+        for root, _dirs, files in os.walk(self.test_dir):
             for file in files:
                 file_path = os.path.join(root, file)
                 lang, _ = lang_detector.detect_from_file(file_path)
@@ -258,7 +258,7 @@ CREATE TABLE IF NOT EXISTS processing_log (
             query_index.add_chunk(chunk)
 
         query_engine = NaturalLanguageQueryEngine(query_index)
-        optimizer = SmartQueryOptimizer()
+        SmartQueryOptimizer()
 
         # Natural language query
         results = query_engine.search("functions that process data")
@@ -293,8 +293,8 @@ CREATE TABLE IF NOT EXISTS processing_log (
 
         # 6. Incremental Processing
         incremental_processor = DefaultIncrementalProcessor()
-        change_detector = DefaultChangeDetector()
-        chunk_cache = DefaultChunkCache()
+        DefaultChangeDetector()
+        DefaultChunkCache()
 
         # Initial processing
         for file_path, chunks in chunk_map.items():
@@ -362,7 +362,7 @@ def clear_cache():
         feature_groups = project_analyzer.suggest_chunk_grouping(all_chunks)
 
         # Optimize each feature group
-        for feature_name, feature_chunks in feature_groups.items():
+        for feature_chunks in feature_groups.values():
             if len(feature_chunks) > 1:
                 optimized, _ = chunk_optimizer.optimize_for_llm(
                     feature_chunks,

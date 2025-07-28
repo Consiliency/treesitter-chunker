@@ -26,7 +26,7 @@ class TestEndToEndWorkflow:
 
             # 1. Setup development environment
             dev_env = DevelopmentEnvironment()
-            qa = QualityAssurance()
+            QualityAssurance()
 
             # Create a simple project structure
             src_dir = project_dir / "src"
@@ -44,7 +44,7 @@ class Calculator:
     def multiply(self, x, y):
         # TODO: Add type hints
         return x * y
-            
+
 def unused_function():
     import os  # unused import
     pass
@@ -57,7 +57,7 @@ def unused_function():
             # Visualize AST
             ast_output = debug_tools.visualize_ast(str(test_file), "python", "json")
             assert ast_output is not None
-            assert isinstance(ast_output, (str, dict))
+            assert isinstance(ast_output, str | dict)
 
             # Profile chunking
             profile = debug_tools.profile_chunking(str(test_file), "python")
@@ -109,7 +109,7 @@ version = "0.1.0"
 
             # 7. Prepare for distribution
             dist = Distributor()
-            release_mgr = ReleaseManager()
+            ReleaseManager()
 
             # Test distribution validation
             validation_success, validation_info = dist.publish_to_pypi(
@@ -132,7 +132,7 @@ class DataProcessor:
     def __init__(self, config):
         self.config = config
         self.cache = {}
-    
+
     def process_batch(self, items):
         results = []
         for item in items:
@@ -143,7 +143,7 @@ class DataProcessor:
                 self.cache[item['id']] = processed
                 results.append(processed)
         return results
-    
+
     def _process_single(self, item):
         # Complex processing logic
         value = item.get('value', 0)
@@ -153,7 +153,7 @@ class DataProcessor:
             return value * 1.5
         else:
             return value
-            
+
     def clear_cache(self):
         self.cache.clear()
 """,
@@ -179,7 +179,7 @@ class DataProcessor:
                 assert "relationships" in chunk_info
 
             # 2. Use development tools to improve code quality
-            dev_env = DevelopmentEnvironment()
+            DevelopmentEnvironment()
             qa = QualityAssurance()
 
             # Check current quality metrics
@@ -241,7 +241,7 @@ impl Config {
                 assert viz is not None
 
             # 2. Build system should handle multiple languages
-            build_sys = BuildSystem()
+            BuildSystem()
             platform_support = PlatformSupport()
             platform_info = platform_support.detect_platform()
             assert "os" in platform_info
@@ -278,14 +278,14 @@ def process_large_dataset(data):
     squared = [x**2 for x in filtered]
     normalized = [x / max(squared) for x in squared]
     return normalized
-    
+
 class DataCache:
     def __init__(self):
         self.cache = {}  # Unbounded cache
-        
+
     def get(self, key):
         return self.cache.get(key)
-        
+
     def set(self, key, value):
         self.cache[key] = value  # No eviction policy
 """,
@@ -300,8 +300,8 @@ class DataCache:
             assert "phases" in profile
 
             # Record baseline metrics
-            baseline_time = profile["total_time"]
-            baseline_memory = profile["memory_peak"]
+            profile["total_time"]
+            profile["memory_peak"]
 
             # 2. Analyze chunk structure for optimization opportunities
             from chunker.chunker import chunk_file
@@ -315,7 +315,7 @@ class DataCache:
             assert len(function_chunks) >= 2  # At least the two functions
 
             # 3. Use quality tools to identify issues
-            qa = QualityAssurance()
+            QualityAssurance()
             dev_env = DevelopmentEnvironment()
 
             # Linting should catch some issues

@@ -44,16 +44,16 @@ def function_two_{i}(items):
 
 class TestClass_{i}:
     """A test class."""
-    
+
     def __init__(self, name):
         self.name = name
         self.value = 0
-    
+
     def method_one(self, x):
         """Increment value by x."""
         self.value += x
         return self.value
-    
+
     def method_two(self):
         """Get current value."""
         return self.value
@@ -98,7 +98,7 @@ def benchmark_cache_performance(num_files: int = 50, iterations: int = 3):
             start = time.perf_counter()
 
             for file_path in files:
-                chunks = chunk_file(file_path, "python")
+                chunk_file(file_path, "python")
 
             elapsed = time.perf_counter() - start
             baseline_times.append(elapsed)
@@ -113,7 +113,7 @@ def benchmark_cache_performance(num_files: int = 50, iterations: int = 3):
 
         cold_start = time.perf_counter()
         for file_path in files:
-            chunks = chunker.chunk_file(file_path, "python")
+            chunker.chunk_file(file_path, "python")
         cold_elapsed = time.perf_counter() - cold_start
         print(f"   Cold start: {cold_elapsed:.3f}s")
 
@@ -125,7 +125,7 @@ def benchmark_cache_performance(num_files: int = 50, iterations: int = 3):
             start = time.perf_counter()
 
             for file_path in files:
-                chunks = chunker.chunk_file(file_path, "python")
+                chunker.chunk_file(file_path, "python")
 
             elapsed = time.perf_counter() - start
             warm_times.append(elapsed)

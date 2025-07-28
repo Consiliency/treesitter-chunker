@@ -106,7 +106,7 @@ def manage_grammars(action: str, languages: list):
 def show_status():
     """Show status of all managed grammars."""
     manager = TreeSitterGrammarManager()
-    validator = TreeSitterGrammarValidator()
+    TreeSitterGrammarValidator()
 
     print("\n=== Grammar Status ===")
     grammars = manager.list_grammars()
@@ -170,20 +170,20 @@ def main():
 Examples:
   # List all available grammars
   %(prog)s list
-  
+
   # Search for grammars
   %(prog)s search javascript
-  
+
   # Add and fetch grammars
   %(prog)s add python go ruby
   %(prog)s fetch python go ruby
-  
+
   # Build grammars
   %(prog)s build python go ruby
-  
+
   # Show status
   %(prog)s status
-  
+
   # Check file support
   %(prog)s check example.py
 """,

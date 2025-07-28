@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 
-from ..types import CodeChunk
+from chunker.types import CodeChunk
 
 
 class SemanticMerger(ABC):

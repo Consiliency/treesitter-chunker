@@ -2,7 +2,8 @@
 
 from tree_sitter import Node
 
-from ..types import CodeChunk
+from chunker.types import CodeChunk
+
 from .base import LanguageChunker
 
 
@@ -88,10 +89,7 @@ class RubyChunker(LanguageChunker):
             return method_name in ["attr_accessor", "attr_reader", "attr_writer"]
 
         # Skip anonymous methods/lambdas
-        if node.type in ["method", "lambda"] and not self._has_name(node):
-            return False
-
-        return True
+        return not (node.type in ["method", "lambda"] and not self._has_name(node))
 
     def extract_chunk_info(self, node: Node, source_code: bytes) -> dict:
         """Extract additional information for a chunk."""

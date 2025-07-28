@@ -38,7 +38,7 @@ def main():
     app = BlogApp()
 
     # Create a post
-    post = app.create_post(
+    app.create_post(
         "user@example.com",
         "password",
         "Hello World",

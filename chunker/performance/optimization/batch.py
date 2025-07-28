@@ -8,9 +8,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from threading import Event, RLock
 
-from ...chunker import chunk_file as chunk_file_original
-from ...interfaces.performance import BatchProcessor as BatchProcessorInterface
-from ...types import CodeChunk
+from chunker.chunker import chunk_file as chunk_file_original
+from chunker.interfaces.performance import BatchProcessor as BatchProcessorInterface
+from chunker.types import CodeChunk
+
 from .memory_pool import MemoryPool
 from .monitor import PerformanceMonitor
 

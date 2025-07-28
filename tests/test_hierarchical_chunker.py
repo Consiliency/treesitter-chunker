@@ -20,31 +20,31 @@ class TestHierarchicalChunker:
         return '''
 class OuterClass:
     """Top-level class."""
-    
+
     class MiddleClass:
         """Nested class."""
-        
+
         class InnerClass:
             """Deeply nested class."""
-            
+
             def inner_method(self):
                 """Method in deeply nested class."""
                 return "inner"
-        
+
         def middle_method(self):
             """Method in nested class."""
             inner = self.InnerClass()
             return inner.inner_method()
-    
+
     def outer_method(self):
         """Method in top-level class."""
         middle = self.MiddleClass()
         return middle.middle_method()
-    
+
     def complex_method(self):
         """Method with nested control structures."""
         results = []
-        
+
         for i in range(10):
             if i % 2 == 0:
                 for j in range(5):
@@ -57,17 +57,17 @@ class OuterClass:
                             print(f"Error: {e}")
             else:
                 results.append(i)
-        
+
         return results
 
 def standalone_function():
     """A standalone function outside classes."""
     data = [1, 2, 3, 4, 5]
-    
+
     def process_item(item):
         """Nested function."""
         return item * 2
-    
+
     return [process_item(x) for x in data]
 '''
 
@@ -260,36 +260,36 @@ z = x + y
         code_with_imbalance = '''
 class LargeClass:
     """A class with imbalanced methods."""
-    
+
     def tiny1(self):
         return 1
-    
+
     def tiny2(self):
         return 2
-    
+
     def tiny3(self):
         return 3
-    
+
     def large_method(self):
         """A very large method."""
         result = []
-        
+
         # Many lines of code...
         for i in range(100):
             if i % 2 == 0:
                 result.append(i)
             else:
                 result.append(i * 2)
-        
+
         # More processing...
         for i in range(50):
             if i % 3 == 0:
                 result.append(i * 3)
-        
+
         # Even more...
         for i in range(25):
             result.extend([i, i*2, i*3])
-        
+
         return result
 '''
 
@@ -320,14 +320,14 @@ class App {
             loading: false
         };
     }
-    
+
     async loadUsers() {
         this.state.loading = true;
-        
+
         try {
             const response = await fetch('/api/users');
             const data = await response.json();
-            
+
             this.state.users = data.map(user => ({
                 id: user.id,
                 name: user.name,
@@ -339,7 +339,7 @@ class App {
             this.state.loading = false;
         }
     }
-    
+
     renderUser(user) {
         return {
             type: 'div',
@@ -353,11 +353,11 @@ class App {
 
 function createApp() {
     const app = new App();
-    
+
     function handleClick() {
         app.loadUsers();
     }
-    
+
     return { app, handleClick };
 }
 """

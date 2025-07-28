@@ -11,7 +11,7 @@ from rich.syntax import Syntax
 from rich.table import Table
 from tree_sitter import Node, Query
 
-from ...parser import get_parser
+from chunker.parser import get_parser
 
 
 @dataclass

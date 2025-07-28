@@ -40,9 +40,8 @@ def send_event_to_server(event_data, server_url="http://localhost:4000/events"):
         with urllib.request.urlopen(req, timeout=5) as response:
             if response.status == 200:
                 return True
-            else:
-                print(f"Server returned status: {response.status}", file=sys.stderr)
-                return False
+            print(f"Server returned status: {response.status}", file=sys.stderr)
+            return False
 
     except urllib.error.URLError as e:
         print(f"Failed to send event: {e}", file=sys.stderr)
@@ -126,7 +125,7 @@ def main():
         # Continue even if summary generation fails
 
     # Send to server
-    success = send_event_to_server(event_data, args.server_url)
+    send_event_to_server(event_data, args.server_url)
 
     # Always exit with 0 to not block Claude Code operations
     sys.exit(0)

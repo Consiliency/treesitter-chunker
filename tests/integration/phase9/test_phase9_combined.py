@@ -1,5 +1,8 @@
 """Integration tests combining multiple Phase 9 features."""
 
+import builtins
+import contextlib
+
 import pytest
 
 from chunker import BaseMetadataExtractor as MetadataExtractor
@@ -51,7 +54,7 @@ app = Flask(__name__)
 @app.route('/api/users', methods=['GET'])
 def get_users() -> Dict:
     """Get all users.
-    
+
     Returns:
         Dict containing user list
     """
@@ -113,29 +116,29 @@ class User:
     email: str
     created_at: datetime
     updated_at: Optional[datetime] = None
-    
+
     # Getter/setter pair
     def get_email(self) -> str:
         """Get user email."""
         return self.email
-    
+
     def set_email(self, email: str) -> None:
         """Set user email."""
         # TODO: Add email validation
         self.email = email
         self.updated_at = datetime.now()
-    
+
     # Another getter/setter pair
     def get_name(self) -> str:
         """Get user name."""
         return self.name
-    
+
     def set_name(self, name: str) -> None:
         """Set user name."""
         self.name = name
         self.updated_at = datetime.now()
 
-@dataclass 
+@dataclass
 class Post:
     """Blog post model."""
     id: int
@@ -144,12 +147,12 @@ class Post:
     author_id: int
     tags: List[str]
     published: bool = False
-    
+
     def publish(self) -> None:
         """Publish the post."""
         # TODO: Send notification to subscribers
         self.published = True
-    
+
     def unpublish(self) -> None:
         """Unpublish the post."""
         self.published = False
@@ -238,7 +241,7 @@ def get_default(value: Any, default: Any) -> Any:
 
         # Step 2: Build hierarchy
         hierarchy_builder = ChunkHierarchyBuilder()
-        hierarchy = hierarchy_builder.build_hierarchy(repo_results.chunks)
+        hierarchy_builder.build_hierarchy(repo_results.chunks)
 
         # Step 3: Extract metadata with custom rules
         metadata_extractor = MetadataExtractor()
@@ -319,7 +322,7 @@ def get_default(value: Any, default: Any) -> Any:
 
         # Build hierarchy
         builder = ChunkHierarchyBuilder()
-        hierarchy = builder.build_hierarchy(chunks)
+        builder.build_hierarchy(chunks)
 
         # Merge semantically
         merger = TreeSitterSemanticMerger()
@@ -344,27 +347,25 @@ def get_default(value: Any, default: Any) -> Any:
 def incomplete_function(
     # This function is incomplete and will cause parsing issues
     print("This is inside an incomplete function"
-    
+
 class AlsoIncomplete:
     def method(self):
         # Missing closing
         return "something
-        
+
 # But this part is fine
 def valid_function():
     """This function is complete."""
     return True
-    
+
 # TODO: Fix the incomplete parts above
 # TODO: Add proper error handling
 ''',
         )
 
         # Try normal chunking (might fail or give incomplete results)
-        try:
-            chunks = chunk_file(bad_file, "python")
-        except:
-            chunks = []
+        with contextlib.suppress(builtins.BaseException):
+            chunk_file(bad_file, "python")
 
         # Use fallback chunking
         fallback = FallbackChunker(
@@ -411,7 +412,7 @@ def valid_function():
         # 4. Token counting
         counter = TiktokenCounter()
         for chunk in results.chunks:
-            tokens = counter.count_tokens(chunk.content)
+            counter.count_tokens(chunk.content)
 
         # 5. Semantic merging
         merger = TreeSitterSemanticMerger()

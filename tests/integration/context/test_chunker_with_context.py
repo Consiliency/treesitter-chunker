@@ -21,7 +21,7 @@ class Point:
     def __init__(self, x: float, y: float):
         self.x = x
         self.y = y
-    
+
     def distance_to(self, other: 'Point') -> float:
         """Calculate distance to another point."""
         dx = self.x - other.x
@@ -33,7 +33,7 @@ class Polygon:
         if len(points) < 3:
             raise ValueError("Polygon must have at least 3 points")
         self.points = points
-    
+
     def perimeter(self) -> float:
         """Calculate the perimeter of the polygon."""
         total = 0.0
@@ -42,7 +42,7 @@ class Polygon:
             p2 = self.points[(i + 1) % len(self.points)]
             total += p1.distance_to(p2)
         return total
-    
+
     def add_point(self, point: Point) -> None:
         """Add a point to the polygon."""
         self.points.append(point)
@@ -196,7 +196,7 @@ const LoginForm = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const { login, isLoading } = useAuth();
-    
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
@@ -205,7 +205,7 @@ const LoginForm = () => {
             console.error('Login failed:', error);
         }
     };
-    
+
     return (
         <form onSubmit={handleSubmit}>
             <input

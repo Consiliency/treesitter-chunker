@@ -69,7 +69,7 @@ def process_data(data):
     results = []
     errors = []
     processed = 0
-    
+
     # Process each item
     for item in data:
         try:
@@ -77,16 +77,16 @@ def process_data(data):
             if not isinstance(item, dict):
                 errors.append(f"Invalid item: {item}")
                 continue
-                
+
             # Transform
             value = item.get('value', 0) * 2
             result = {'original': item, 'processed': value}
             results.append(result)
             processed += 1
-            
+
         except Exception as e:
             errors.append(f"Error: {e}")
-    
+
     # Return summary
     return {
         'results': results,

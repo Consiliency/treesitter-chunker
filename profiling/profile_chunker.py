@@ -82,20 +82,20 @@ def complex_function_{i}(data, options=None):
     """Complex function {i} with multiple operations."""
     if options is None:
         options = {{}}
-    
+
     result = 0
     for item in data:
         if isinstance(item, int):
             result += item
         elif isinstance(item, list):
             result += sum(item)
-    
+
     # Some nested logic
     if result > 100:
         for i in range(result):
             if i % 2 == 0:
                 result -= 1
-    
+
     return result
 ''',
             )
@@ -342,7 +342,7 @@ def generate_performance_report():
                 chunker.clear_caches()
 
             start = time.perf_counter()
-            chunks = chunker.chunk_file(test_file, "python")
+            chunker.chunk_file(test_file, "python")
             elapsed = time.perf_counter() - start
             times.append(elapsed)
 

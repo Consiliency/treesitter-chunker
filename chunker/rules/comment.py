@@ -4,7 +4,8 @@ import re
 
 from tree_sitter import Node
 
-from ..types import CodeChunk
+from chunker.types import CodeChunk
+
 from .custom import BaseCommentBlockRule
 
 
@@ -13,7 +14,7 @@ class TodoBlockRule(BaseCommentBlockRule):
 
     def __init__(
         self,
-        keywords: list[str] = None,
+        keywords: list[str] | None = None,
         include_context_lines: int = 2,
         priority: int = 55,
     ):
@@ -89,7 +90,7 @@ class TodoBlockRule(BaseCommentBlockRule):
         match = self._keyword_pattern.search(content)
         if match:
             keyword = match.group(1).upper()
-            message = match.group(2).strip()
+            match.group(2).strip()
 
             # Update chunk metadata
             chunk.node_type = f"todo_block_{keyword.lower()}"

@@ -180,13 +180,13 @@ class TestCICDPipelineImpl:
 
         # Check checksums
         assert len(result["checksums"]) == len(platforms) + 1  # wheels + sdist
-        for filename, checksum in result["checksums"].items():
+        for checksum in result["checksums"].values():
             assert isinstance(checksum, str)
             assert len(checksum) == 64  # SHA256 hex length
 
         # Check build logs
         assert len(result["build_logs"]) == len(platforms)
-        for platform, logs in result["build_logs"].items():
+        for logs in result["build_logs"].values():
             assert isinstance(logs, list)
             assert len(logs) > 0
 

@@ -46,7 +46,7 @@ def main():
         result = debug_tools.visualize_ast(sample_python_file, "python", "svg")
 
         # Verify SVG output
-        assert isinstance(result, (str, bytes))
+        assert isinstance(result, str | bytes)
         if isinstance(result, str):
             assert result.startswith(("<?xml", "<svg", "digraph"))
 

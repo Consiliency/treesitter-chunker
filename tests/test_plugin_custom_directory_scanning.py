@@ -34,19 +34,19 @@ class SimplePlugin(LanguagePlugin):
     @property
     def language_name(self):
         return "simple"
-    
+
     @property
     def supported_extensions(self):
         return {".simp"}
-    
+
     @property
     def default_chunk_types(self):
         return {"function", "class"}
-    
+
     @property
     def plugin_metadata(self):
         return {"name": "simple-plugin", "version": "1.0.0"}
-    
+
     def get_node_name(self, node, source):
         return "test"
 """,
@@ -65,23 +65,23 @@ class ComplexPlugin(LanguagePlugin):
     def __init__(self, config=None):
         super().__init__(config)
         self.patterns = [re.compile(r'\\bfunction\\b'), re.compile(r'\\bclass\\b')]
-    
+
     @property
     def language_name(self):
         return "complex"
-    
+
     @property
     def supported_extensions(self):
         return {".comp", ".cmplx"}
-    
+
     @property
     def default_chunk_types(self):
         return {"function", "class", "method"}
-    
+
     @property
     def plugin_metadata(self):
         return {"name": "complex-plugin", "version": "2.0.0", "author": "test"}
-    
+
     def get_node_name(self, node, source):
         return "test"
 """,
@@ -145,19 +145,19 @@ class {class_name}(LanguagePlugin):
     @property
     def language_name(self):
         return "{lang_name}"
-    
+
     @property
     def supported_extensions(self):
         return {{".{ext}"}}
-    
+
     @property
     def default_chunk_types(self):
         return {{"function"}}
-    
+
     @property
     def plugin_metadata(self):
         return {{"name": "{lang_name}-plugin", "version": "1.0.0"}}
-    
+
     def get_node_name(self, node, source):
         return "test"
 """
@@ -244,19 +244,19 @@ class {class_name}(LanguagePlugin):
     @property
     def language_name(self):
         return "{name}"
-    
+
     @property
     def supported_extensions(self):
         return {{".{ext}"}}
-    
+
     @property
     def default_chunk_types(self):
         return {{"function"}}
-    
+
     @property
     def plugin_metadata(self):
         return {{"name": "{name}-plugin", "version": "1.0.0", "location": "{location}"}}
-    
+
     def get_node_name(self, node, source):
         return "test"
 """
@@ -345,19 +345,19 @@ class ValidPlugin(LanguagePlugin):
     @property
     def language_name(self):
         return "valid"
-    
+
     @property
     def supported_extensions(self):
         return {".valid"}
-    
+
     @property
     def default_chunk_types(self):
         return {"function"}
-    
+
     @property
     def plugin_metadata(self):
         return {"name": "valid-plugin", "version": "1.0.0"}
-    
+
     def get_node_name(self, node, source):
         return "test"
 """,
@@ -447,19 +447,19 @@ class ReadablePlugin(LanguagePlugin):
     @property
     def language_name(self):
         return "readable"
-    
+
     @property
     def supported_extensions(self):
         return {".read"}
-    
+
     @property
     def default_chunk_types(self):
         return {"function"}
-    
+
     @property
     def plugin_metadata(self):
         return {"name": "readable-plugin", "version": "1.0.0"}
-    
+
     def get_node_name(self, node, source):
         return "test"
 """,
@@ -518,19 +518,19 @@ class {class_name}(LanguagePlugin):
     @property
     def language_name(self):
         return "{name}"
-    
+
     @property
     def supported_extensions(self):
         return {{".{ext}"}}
-    
+
     @property
     def default_chunk_types(self):
         return {{"function"}}
-    
+
     @property
     def plugin_metadata(self):
         return {{"name": "{name}-plugin", "version": "1.0.0"}}
-    
+
     def get_node_name(self, node, source):
         return "test"
 """
@@ -593,19 +593,19 @@ class HotPlugin1(LanguagePlugin):
     @property
     def language_name(self):
         return "hot1"
-    
+
     @property
     def supported_extensions(self):
         return {".hot1"}
-    
+
     @property
     def default_chunk_types(self):
         return {"function"}
-    
+
     @property
     def plugin_metadata(self):
         return {"name": "hot1-plugin", "version": "1.0.0"}
-    
+
     def get_node_name(self, node, source):
         return "test"
 """,
@@ -625,19 +625,19 @@ class HotPlugin2(LanguagePlugin):
     @property
     def language_name(self):
         return "hot2"
-    
+
     @property
     def supported_extensions(self):
         return {".hot2"}
-    
+
     @property
     def default_chunk_types(self):
         return {"function"}
-    
+
     @property
     def plugin_metadata(self):
         return {"name": "hot2-plugin", "version": "1.0.0"}
-    
+
     def get_node_name(self, node, source):
         return "test"
 """,
@@ -684,19 +684,19 @@ class SymlinkedPlugin(LanguagePlugin):
     @property
     def language_name(self):
         return "symlinked"
-    
+
     @property
     def supported_extensions(self):
         return {".sym"}
-    
+
     @property
     def default_chunk_types(self):
         return {"function"}
-    
+
     @property
     def plugin_metadata(self):
         return {"name": "symlinked-plugin", "version": "1.0.0"}
-    
+
     def get_node_name(self, node, source):
         return "test"
 """,

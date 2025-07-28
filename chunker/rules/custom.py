@@ -5,8 +5,8 @@ from re import Pattern
 
 from tree_sitter import Node
 
-from ..interfaces.rules import CommentBlockRule, CustomRule, RegexRule, RuleMatch
-from ..types import CodeChunk
+from chunker.interfaces.rules import CommentBlockRule, CustomRule, RegexRule, RuleMatch
+from chunker.types import CodeChunk
 
 
 class BaseCustomRule(CustomRule):

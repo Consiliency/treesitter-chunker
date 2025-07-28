@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
-from ..types import CodeChunk
+from chunker.types import CodeChunk
 
 
 class DatabaseExporterBase(ABC):
@@ -168,9 +168,9 @@ class DatabaseExporterBase(ABC):
                     SELECT target_id as chunk_id, 1 as depth
                     FROM relationships
                     WHERE source_id = ? AND relationship_type IN ('IMPORTS', 'CALLS')
-                    
+
                     UNION
-                    
+
                     SELECT r.target_id, d.depth + 1
                     FROM relationships r
                     JOIN deps d ON r.source_id = d.chunk_id

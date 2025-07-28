@@ -5,8 +5,8 @@ from typing import Any
 
 from tree_sitter import Node
 
-from ..interfaces.base import ChunkingStrategy
-from ..types import CodeChunk
+from chunker.interfaces.base import ChunkingStrategy
+from chunker.types import CodeChunk
 
 
 class HierarchicalChunker(ChunkingStrategy):
@@ -445,7 +445,7 @@ class HierarchicalChunker(ChunkingStrategy):
 
         # For now, just return the chunk and its children
         # In a more sophisticated implementation, we'd create intermediate chunks
-        return [chunk] + children
+        return [chunk, *children]
 
     def _merge_with_children(
         self,

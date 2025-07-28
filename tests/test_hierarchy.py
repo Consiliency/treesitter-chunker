@@ -466,18 +466,18 @@ class TestHierarchyIntegration:
         python_code = '''
 class Calculator:
     """A simple calculator class."""
-    
+
     def __init__(self):
         self.result = 0
-    
+
     def add(self, x, y):
         """Add two numbers."""
         return x + y
-    
+
     def multiply(self, x, y):
         """Multiply two numbers."""
         return x * y
-    
+
     class NestedClass:
         def nested_method(self):
             pass
@@ -524,11 +524,11 @@ class Component {
     constructor() {
         this.state = {};
     }
-    
+
     render() {
         return null;
     }
-    
+
     static defaultProps = {
         name: "Component"
     };

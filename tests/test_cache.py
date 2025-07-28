@@ -23,11 +23,11 @@ def calculate_sum(a, b):
 
 class MathOperations:
     """A class for basic math operations."""
-    
+
     def multiply(self, x, y):
         """Multiply two numbers."""
         return x * y
-    
+
     def divide(self, x, y):
         """Divide x by y."""
         if y == 0:
@@ -51,7 +51,7 @@ class Person {
         this.name = name;
         this.age = age;
     }
-    
+
     introduce() {
         return `My name is ${this.name} and I'm ${this.age} years old.`;
     }
@@ -227,8 +227,10 @@ class TestCacheBasics:
         cached_py = cache.get_cached_chunks(temp_python_file, "python")
         cached_js = cache.get_cached_chunks(temp_python_file, "javascript")
 
-        assert len(cached_py) == 1 and cached_py[0].chunk_id == "py1"
-        assert len(cached_js) == 1 and cached_js[0].chunk_id == "js1"
+        assert len(cached_py) == 1
+        assert cached_py[0].chunk_id == "py1"
+        assert len(cached_js) == 1
+        assert cached_js[0].chunk_id == "js1"
 
 
 class TestCacheInvalidation:
@@ -383,14 +385,14 @@ class TestCacheCorruptionRecovery:
 
     def test_recover_from_corrupted_pickle_data(self, cache, temp_python_file):
         """Test recovery when pickled chunk data is corrupted."""
-        chunks = chunk_file(temp_python_file, "python")
+        chunk_file(temp_python_file, "python")
         metadata = get_file_metadata(temp_python_file)
 
         # Insert corrupted pickle data directly
         with cache._get_connection() as conn:
             conn.execute(
                 """
-                INSERT OR REPLACE INTO file_cache 
+                INSERT OR REPLACE INTO file_cache
                 (file_path, file_hash, file_size, mtime, language, chunks_data)
                 VALUES (?, ?, ?, ?, ?, ?)
             """,
@@ -503,7 +505,7 @@ class TestCacheEviction:
         with cache._get_connection() as conn:
             conn.execute(
                 """
-                UPDATE file_cache 
+                UPDATE file_cache
                 SET created_at = datetime('now', '-7 days')
                 WHERE file_path = ?
             """,
@@ -517,7 +519,7 @@ class TestCacheEviction:
         with cache._get_connection() as conn:
             conn.execute(
                 """
-                DELETE FROM file_cache 
+                DELETE FROM file_cache
                 WHERE created_at < datetime('now', '-1 day')
             """,
             )
@@ -547,7 +549,7 @@ class TestMemoryVsDiskCache:
         if cached_meta and cached_meta.hash == current_meta.hash:
             assert len(cached_chunks) == len(chunks)
         else:
-            assert False, "Cache should hit"
+            raise AssertionError("Cache should hit")
 
     def test_hybrid_cache_pattern(self, cache, temp_python_file):
         """Test hybrid caching with memory layer over disk cache."""

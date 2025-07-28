@@ -9,13 +9,16 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from tree_sitter import Node, Parser
+from chunker.types import CodeChunk
 
-from ..types import CodeChunk
-from .base import LanguageConfig
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tree_sitter import Node, Parser
+
+    from .base import LanguageConfig
 
 logger = logging.getLogger(__name__)
 
@@ -162,10 +165,7 @@ class LanguagePlugin(ABC):
         if lines < self.config.min_chunk_size:
             return False
 
-        if self.config.max_chunk_size and lines > self.config.max_chunk_size:
-            return False
-
-        return True
+        return not (self.config.max_chunk_size and lines > self.config.max_chunk_size)
 
     def walk_tree(
         self,

@@ -20,7 +20,7 @@ def fix_language_plugin(file_path):
 
     # Find the class definition section from main branch
     # This is between the first "class XXXConfig" and "language_config_registry.register"
-    class_pattern = rf"class {config_class}\(LanguageConfig\):.*?language_config_registry\.register\({language.lower()}_config\)"
+    rf"class {config_class}\(LanguageConfig\):.*?language_config_registry\.register\({language.lower()}_config\)"
 
     # Extract content before conflict
     before_conflict = content.split("<<<<<<< HEAD")[0]

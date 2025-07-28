@@ -174,9 +174,7 @@ class TestPluginInitializationFailures:
                 # Require specific fields
                 if not hasattr(config, "required_field"):
                     return False
-                if config.min_chunk_size > config.max_chunk_size:
-                    return False
-                return True
+                return not config.min_chunk_size > config.max_chunk_size
 
             @property
             def language_name(self):
@@ -508,11 +506,11 @@ class ImportErrorPlugin(LanguagePlugin):
     @property
     def language_name(self):
         return "import_error"
-    
+
     @property
     def supported_extensions(self):
         return {".imperr"}
-    
+
     @property
     def default_chunk_types(self):
         return {"function_definition"}

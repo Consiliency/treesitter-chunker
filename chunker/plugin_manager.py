@@ -7,11 +7,13 @@ import logging
 import re
 import sys
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from .languages.base import PluginConfig
 from .languages.plugin_base import LanguagePlugin
 from .parser import get_parser
+
+if TYPE_CHECKING:
+    from .languages.base import PluginConfig
 
 logger = logging.getLogger(__name__)
 
@@ -202,7 +204,7 @@ class PluginManager:
 
                 # Find all LanguagePlugin subclasses
                 plugins = []
-                for name, obj in inspect.getmembers(module):
+                for _name, obj in inspect.getmembers(module):
                     if (
                         inspect.isclass(obj)
                         and issubclass(obj, LanguagePlugin)
@@ -240,7 +242,7 @@ class PluginManager:
 
             # Find all LanguagePlugin subclasses
             plugins = []
-            for name, obj in inspect.getmembers(module):
+            for _name, obj in inspect.getmembers(module):
                 if (
                     inspect.isclass(obj)
                     and issubclass(obj, LanguagePlugin)

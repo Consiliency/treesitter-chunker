@@ -234,50 +234,50 @@ class ModernClass {
     publicField = "public";
     #privateField = "private";
     static staticField = "static";
-    
+
     // Constructor
     constructor(name) {
         this.name = name;
     }
-    
+
     // Regular method
     regularMethod() {
         return this.publicField;
     }
-    
+
     // Async method
     async asyncMethod() {
         const result = await Promise.resolve(42);
         return result;
     }
-    
+
     // Generator method
     *generatorMethod() {
         yield 1;
         yield 2;
         yield 3;
     }
-    
+
     // Getter
     get fullName() {
         return `${this.name} Smith`;
     }
-    
+
     // Setter
     set fullName(value) {
         this.name = value.split(' ')[0];
     }
-    
+
     // Static method
     static staticMethod() {
         return this.staticField;
     }
-    
+
     // Private method (ES2022)
     #privateMethod() {
         return this.#privateField;
     }
-    
+
     // Method with arrow function property
     arrowMethod = () => {
         return this.name;
@@ -297,12 +297,12 @@ class ExtendedClass extends ModernClass {
         super(name);
         this.age = age;
     }
-    
+
     // Override method
     regularMethod() {
         return super.regularMethod() + " extended";
     }
-    
+
     // New method
     newMethod() {
         return this.age;
@@ -465,11 +465,11 @@ class DataService {
         const result = await this.fetchFromAPI();
         return this.processData(result);
     }
-    
+
     async fetchFromAPI() {
         return fetch('/api/endpoint');
     }
-    
+
     processData(data) {
         return data.map(item => item.value);
     }
@@ -508,7 +508,7 @@ const parallelOperations = async () => {
         fetchPosts(1),
         fetchComments(1)
     ]);
-    
+
     return { user, posts, comments };
 };
 
@@ -582,7 +582,7 @@ class GeneratorClass {
     *generate() {
         yield* [1, 2, 3];
     }
-    
+
     // Async generator method
     async *asyncGenerate() {
         for (let i = 0; i < 5; i++) {
@@ -756,19 +756,19 @@ function blockScopes() {
 // Factory function with closures
 function createCounter(initial = 0) {
     let count = initial;
-    
+
     function increment() {
         count++;
         return count;
     }
-    
+
     function decrement() {
         count--;
         return count;
     }
-    
+
     const getCount = () => count;
-    
+
     return {
         increment,
         decrement,
@@ -795,11 +795,11 @@ function outerFunction() {
 // IIFE with nested functions
 const module = (function() {
     const privateVar = "private";
-    
+
     function privateFunction() {
         return privateVar;
     }
-    
+
     return {
         publicMethod: function() {
             return privateFunction();
@@ -817,12 +817,12 @@ class NestedInClass {
         function validateItem(item) {
             return item != null;
         }
-        
+
         const transformItem = (item) => {
             const processNested = (value) => value * 2;
             return processNested(item.value);
         };
-        
+
         return data
             .filter(validateItem)
             .map(transformItem);
@@ -1035,7 +1035,7 @@ const composed = compose(
 // React-like component
 const TodoList = ({ todos, onToggle }) => {
     const [filter, setFilter] = useState('all');
-    
+
     const filteredTodos = useMemo(() => {
         switch (filter) {
             case 'active':
@@ -1046,7 +1046,7 @@ const TodoList = ({ todos, onToggle }) => {
                 return todos;
         }
     }, [todos, filter]);
-    
+
     return (
         <div>
             {filteredTodos.map(todo => (
@@ -1064,15 +1064,15 @@ const TodoList = ({ todos, onToggle }) => {
 const createUserHandler = async (req, res, next) => {
     try {
         const { name, email } = req.body;
-        
+
         const existingUser = await User.findOne({ email });
         if (existingUser) {
             return res.status(400).json({ error: 'User already exists' });
         }
-        
+
         const newUser = new User({ name, email });
         await newUser.save();
-        
+
         res.status(201).json({
             message: 'User created successfully',
             user: newUser
@@ -1121,7 +1121,7 @@ class APIController {
         const users = await this.userService.findAll();
         res.json(users);
     }
-    
+
     @authenticated
     @validateBody(userSchema)
     async createUser(req, res) {

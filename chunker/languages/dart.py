@@ -4,9 +4,8 @@ Support for Dart language.
 
 from __future__ import annotations
 
-from tree_sitter import Node
+from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 
-from ..contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
 
@@ -77,7 +76,12 @@ class DartConfig(LanguageConfig):
 
 
 # Register the Dart configuration
+from typing import TYPE_CHECKING
+
 from . import language_config_registry
+
+if TYPE_CHECKING:
+    from tree_sitter import Node
 
 language_config_registry.register(DartConfig())
 
@@ -127,7 +131,7 @@ class DartPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         elif node.type == "constructor_declaration":
             # Constructor might have class name or be named
             for child in node.children:
-                if child.type == "identifier" or child.type == "constructor_name":
+                if child.type in {"identifier", "constructor_name"}:
                     return source[child.start_byte : child.end_byte].decode("utf-8")
         # For classes, mixins, extensions
         elif (
@@ -149,7 +153,7 @@ class DartPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         """Extract semantic chunks specific to Dart."""
         chunks = []
 
-        def extract_chunks(n: Node, parent_class: str = None):
+        def extract_chunks(n: Node, parent_class: str | None = None):
             if n.type in self.default_chunk_types:
                 content = source[n.start_byte : n.end_byte].decode(
                     "utf-8",

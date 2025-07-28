@@ -209,7 +209,7 @@ my_label:
 section .text
 my_function:
     push ebp
-    
+
 .local:
     nop
 
@@ -275,7 +275,7 @@ section .text
 _start:
     ; Print message
     PRINT msg, len
-    
+
     ; Exit program
     mov eax, 1
     xor ebx, ebx
@@ -341,8 +341,8 @@ next_label:
         process_tree(tree.root_node)
 
         # Check if procedures are identified
-        procedure_chunks = [c for c in chunks if c.node_type == "procedure"]
-        label_chunks = [c for c in chunks if c.node_type == "label"]
+        [c for c in chunks if c.node_type == "procedure"]
+        [c for c in chunks if c.node_type == "label"]
 
         # The exact detection depends on implementation
         assert len(chunks) > 0

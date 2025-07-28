@@ -169,6 +169,19 @@ skip_glob = ["*/grammars/*", "*/build/*"]
 target-version = "py310"
 line-length = 88
 fix = true
+exclude = [
+    ".git",
+    ".mypy_cache", 
+    ".ruff_cache",
+    ".venv",
+    "__pypackages__",
+    "build",
+    "dist",
+    ".claude",
+    "grammars",
+    "archive",
+    "worktrees",
+]
 
 [tool.ruff.lint]
 select = [

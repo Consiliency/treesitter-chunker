@@ -416,23 +416,23 @@ class NaturalLanguageQueryEngine(ChunkQueryAdvanced):
             and chunk.node_type in ["try_statement", "catch_clause"]
         ) or (intent == "testing" and "test" in chunk.file_path.lower()):
             return True
-        if (intent == "configuration" and "config" in chunk.file_path.lower()) or (
-            intent == "authentication"
-            and any(
-                auth_term in content_lower
-                for auth_term in [
-                    "auth",
-                    "login",
-                    "logout",
-                    "password",
-                    "token",
-                    "credential",
-                ]
-            )
-        ):
-            return True
-
-        return False
+        return bool(
+            (intent == "configuration" and "config" in chunk.file_path.lower())
+            or (
+                intent == "authentication"
+                and any(
+                    auth_term in content_lower
+                    for auth_term in [
+                        "auth",
+                        "login",
+                        "logout",
+                        "password",
+                        "token",
+                        "credential",
+                    ]
+                )
+            ),
+        )
 
     def _calculate_text_similarity(
         self,
@@ -1110,7 +1110,7 @@ class SmartQueryOptimizer(QueryOptimizer):
         # Natural language suggestions
         if not any(c in partial_query for c in ":="):
             # Suggest common terms
-            for term, count in term_freq.most_common(5):
+            for term, _count in term_freq.most_common(5):
                 if term != partial_lower:
                     suggestions.append(term)
 
@@ -1138,13 +1138,13 @@ class SmartQueryOptimizer(QueryOptimizer):
 
             if key == "type":
                 # Suggest node types
-                for node_type, count in type_freq.most_common(5):
+                for node_type, _count in type_freq.most_common(5):
                     if node_type.startswith(partial_value):
                         suggestions.append(f"{key}:{node_type}")
 
             elif key == "language":
                 # Suggest languages
-                languages = set(chunk.language for chunk in chunks[:50])
+                languages = {chunk.language for chunk in chunks[:50]}
                 for lang in sorted(languages):
                     if lang.startswith(partial_value):
                         suggestions.append(f"{key}:{lang}")

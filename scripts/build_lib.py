@@ -31,7 +31,7 @@ def main():
     cmd = ["gcc", "-shared", "-fPIC"]
     for inc in include_dirs:
         cmd.extend(["-I", inc])
-    cmd += ["-o", str(lib_path)] + c_files
+    cmd += ["-o", str(lib_path), *c_files]
 
     print("Compiling Tree-sitter grammars into", lib_path)
     subprocess.run(cmd, check=True)

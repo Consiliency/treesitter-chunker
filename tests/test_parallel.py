@@ -37,10 +37,10 @@ def function_{idx}():
 PYTHON_CLASS_TEMPLATE = '''
 class TestClass{idx}:
     """Test class {idx}."""
-    
+
     def __init__(self):
         self.value = {idx}
-    
+
     def method_{idx}(self):
         """Method in class {idx}."""
         return self.value * {complexity}

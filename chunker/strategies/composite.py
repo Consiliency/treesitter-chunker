@@ -6,8 +6,9 @@ from typing import Any
 
 from tree_sitter import Node
 
-from ..interfaces.base import ChunkFilter, ChunkingStrategy, ChunkMerger
-from ..types import CodeChunk
+from chunker.interfaces.base import ChunkFilter, ChunkingStrategy, ChunkMerger
+from chunker.types import CodeChunk
+
 from .adaptive import AdaptiveChunker
 from .hierarchical import HierarchicalChunker
 from .semantic import SemanticChunker
@@ -279,7 +280,7 @@ class CompositeChunker(ChunkingStrategy):
         intersection_chunks = []
         min_strategies = max(2, len(strategy_results) // 2)
 
-        for position, strategy_chunks in position_map.items():
+        for strategy_chunks in position_map.values():
             if len(strategy_chunks) >= min_strategies:
                 # Use the chunk from the highest-weighted strategy
                 best_chunk = self._select_best_chunk(strategy_chunks)

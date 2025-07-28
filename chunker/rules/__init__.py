@@ -33,37 +33,37 @@ from .regex import (
 )
 
 __all__ = [
+    "AnnotationRule",
+    "BaseCommentBlockRule",
     # Base classes
     "BaseCustomRule",
     "BaseRegexRule",
-    "BaseCommentBlockRule",
-    "MetadataRule",
+    "ConfigurationBlockRule",
+    "CopyrightHeaderRule",
+    "CustomMarkerRule",
+    "DebugStatementRule",
     # Engine
     "DefaultRuleEngine",
-    # Built-in rules
-    "TodoCommentRule",
-    "CopyrightHeaderRule",
     "DocstringRule",
+    "DocumentationBlockRule",
+    "FoldingMarkerRule",
+    "HeaderCommentRule",
     "ImportBlockRule",
-    "CustomMarkerRule",
-    "SectionHeaderRule",
-    "ConfigurationBlockRule",
+    "InlineCommentGroupRule",
     "LanguageSpecificCommentRule",
-    "DebugStatementRule",
-    "TestAnnotationRule",
-    "get_builtin_rules",
+    "MetadataRule",
+    "PatternBoundaryRule",
     # Regex rules
     "RegionMarkerRule",
-    "PatternBoundaryRule",
-    "AnnotationRule",
-    "FoldingMarkerRule",
+    "SectionHeaderRule",
     "SeparatorLineRule",
-    "create_custom_regex_rule",
+    "StructuredCommentRule",
+    "TestAnnotationRule",
     # Comment rules
     "TodoBlockRule",
-    "DocumentationBlockRule",
-    "HeaderCommentRule",
-    "InlineCommentGroupRule",
-    "StructuredCommentRule",
+    # Built-in rules
+    "TodoCommentRule",
     "create_comment_rule_chain",
+    "create_custom_regex_rule",
+    "get_builtin_rules",
 ]

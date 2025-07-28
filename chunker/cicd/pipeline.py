@@ -55,7 +55,7 @@ class CICDPipelineImpl(CICDPipelineContract):
             # Validate 'on' section
             if "on" in workflow:
                 on_section = workflow["on"]
-                if not isinstance(on_section, (dict, list, str)):
+                if not isinstance(on_section, dict | list | str):
                     errors.append("'on' section must be a string, list, or object")
 
             # Validate jobs

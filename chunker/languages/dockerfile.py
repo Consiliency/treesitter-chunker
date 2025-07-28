@@ -4,9 +4,8 @@ Support for Dockerfile language.
 
 from __future__ import annotations
 
-from tree_sitter import Node
+from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 
-from ..contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
 
@@ -63,7 +62,12 @@ class DockerfileConfig(LanguageConfig):
 
 
 # Register the Dockerfile configuration
+from typing import TYPE_CHECKING
+
 from . import language_config_registry
+
+if TYPE_CHECKING:
+    from tree_sitter import Node
 
 language_config_registry.register(DockerfileConfig(), aliases=["docker"])
 
@@ -122,7 +126,7 @@ class DockerfilePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         """Extract semantic chunks specific to Dockerfile."""
         chunks = []
 
-        def extract_chunks(n: Node, parent_type: str = None):
+        def extract_chunks(n: Node, parent_type: str | None = None):
             if n.type in self.default_chunk_types:
                 content = source[n.start_byte : n.end_byte].decode(
                     "utf-8",
@@ -153,9 +157,7 @@ class DockerfilePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         if node.type.endswith("_instruction"):
             return True
         # Comments are also chunks
-        if node.type == "comment":
-            return True
-        return False
+        return node.type == "comment"
 
     def get_node_context(self, node: Node, source: bytes) -> str | None:
         """Extract meaningful context for a node."""

@@ -2,8 +2,9 @@
 
 from tree_sitter import Node
 
-from ..interfaces.rules import RuleMatch
-from ..types import CodeChunk
+from chunker.interfaces.rules import RuleMatch
+from chunker.types import CodeChunk
+
 from .custom import BaseRegexRule
 
 
@@ -58,7 +59,7 @@ class PatternBoundaryRule(BaseRegexRule):
         self,
         name: str,
         pattern: str,
-        description: str = None,
+        description: str | None = None,
         priority: int = 50,
         extract_match_only: bool = False,
     ):

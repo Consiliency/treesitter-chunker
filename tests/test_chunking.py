@@ -26,7 +26,7 @@ def func1():
 class MyClass:
     def method1(self):
         pass
-        
+
 def func2():
     return 42
 """,
@@ -77,6 +77,7 @@ def test_parser_availability():
         warnings.warn(
             f"Some languages unavailable due to version mismatch: {unavailable}. "
             "Consider upgrading tree-sitter library.",
+            stacklevel=2,
         )
 
 

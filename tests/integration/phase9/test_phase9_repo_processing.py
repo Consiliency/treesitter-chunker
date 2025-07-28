@@ -91,12 +91,12 @@ def logout():
 class Database:
     def __init__(self):
         self.connection = None
-    
+
     def connect(self):
         """Connect to database."""
         # TODO: Implement database connection
         self.connection = "mock_connection"
-    
+
     def disconnect(self):
         """Disconnect from database."""
         self.connection = None
@@ -249,7 +249,7 @@ def test_authenticate():
             )
 
         # Process with progress callback
-        results = processor.process_repository(
+        processor.process_repository(
             str(test_repo),
             config,
             progress_callback=progress_callback,

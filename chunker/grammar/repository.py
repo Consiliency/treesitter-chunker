@@ -4,7 +4,7 @@ import json
 import logging
 from pathlib import Path
 
-from ..interfaces.grammar import GrammarInfo, GrammarRepository, GrammarStatus
+from chunker.interfaces.grammar import GrammarInfo, GrammarRepository, GrammarStatus
 
 logger = logging.getLogger(__name__)
 

@@ -7,7 +7,7 @@ from typing import Any
 
 from tree_sitter import Node, Tree
 
-from ..types import CodeChunk
+from chunker.types import CodeChunk
 
 
 @dataclass

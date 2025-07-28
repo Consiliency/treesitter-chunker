@@ -3,10 +3,10 @@
 import logging
 import re
 
-from ...interfaces.fallback import ChunkingMethod, FallbackConfig
-from ...interfaces.fallback import MarkdownChunker as IMarkdownChunker
-from ...types import CodeChunk
-from ..base import FallbackChunker
+from chunker.fallback.base import FallbackChunker
+from chunker.interfaces.fallback import ChunkingMethod, FallbackConfig
+from chunker.interfaces.fallback import MarkdownChunker as IMarkdownChunker
+from chunker.types import CodeChunk
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ class MarkdownChunker(FallbackChunker, IMarkdownChunker):
             return self.chunk_by_lines(content, 100, 10)
 
         # Create chunks based on headers
-        for idx, (line_num, level, text, header_line) in enumerate(headers):
+        for idx, (line_num, level, text, _header_line) in enumerate(headers):
             # Find the end of this section
             end_line_num = len(lines)
 

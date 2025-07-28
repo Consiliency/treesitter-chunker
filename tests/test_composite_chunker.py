@@ -29,17 +29,17 @@ from typing import List, Dict
 
 class DataAnalyzer:
     """Analyzes data using various methods."""
-    
+
     def __init__(self):
         self.data = []
         self.results = {}
-    
+
     def load_data(self, source: str) -> None:
         """Load data from source."""
         # Simple loading logic
         with open(source, 'r') as f:
             self.data = f.readlines()
-    
+
     def analyze(self) -> Dict:
         """Main analysis method with complex logic."""
         stats = {
@@ -47,27 +47,27 @@ class DataAnalyzer:
             'mean': 0,
             'std': 0
         }
-        
+
         if not self.data:
             return stats
-        
+
         # Calculate mean
         values = [float(x) for x in self.data if x.strip()]
         stats['mean'] = sum(values) / len(values)
-        
+
         # Calculate standard deviation
         variance = sum((x - stats['mean']) ** 2 for x in values) / len(values)
         stats['std'] = math.sqrt(variance)
-        
+
         # Store results
         self.results = stats
         return stats
-    
+
     def generate_report(self) -> str:
         """Generate analysis report."""
         if not self.results:
             return "No analysis performed"
-        
+
         report = f"""
         Data Analysis Report
         ===================
@@ -75,13 +75,13 @@ class DataAnalyzer:
         Mean: {self.results['mean']:.2f}
         Std Dev: {self.results['std']:.2f}
         """
-        
+
         return report.strip()
 
 def process_files(file_list: List[str]) -> Dict[str, Dict]:
     """Process multiple files."""
     results = {}
-    
+
     for file_path in file_list:
         analyzer = DataAnalyzer()
         try:
@@ -89,7 +89,7 @@ def process_files(file_list: List[str]) -> Dict[str, Dict]:
             results[file_path] = analyzer.analyze()
         except Exception as e:
             results[file_path] = {'error': str(e)}
-    
+
     return results
 '''
 
@@ -181,7 +181,7 @@ def process_files(file_list: List[str]) -> Dict[str, Dict]:
 
         # Check that no chunks significantly overlap
         for i, chunk1 in enumerate(chunks):
-            for j, chunk2 in enumerate(chunks[i + 1 :], i + 1):
+            for _j, chunk2 in enumerate(chunks[i + 1 :], i + 1):
                 overlap_start = max(chunk1.start_line, chunk2.start_line)
                 overlap_end = min(chunk1.end_line, chunk2.end_line)
 
@@ -210,7 +210,7 @@ def process_files(file_list: List[str]) -> Dict[str, Dict]:
                 },
             },
         )
-        equal_chunks = composite_chunker.chunk(
+        composite_chunker.chunk(
             tree.root_node,
             test_code.encode(),
             "test.py",

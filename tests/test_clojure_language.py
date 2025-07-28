@@ -110,8 +110,8 @@ class TestClojureBasicChunking:
 (deftype Circle [center-x center-y radius]
   Drawable
   (draw [this canvas]
-    (.drawOval canvas 
-               (- center-x radius) 
+    (.drawOval canvas
+               (- center-x radius)
                (- center-y radius)
                (* 2 radius)
                (* 2 radius)))

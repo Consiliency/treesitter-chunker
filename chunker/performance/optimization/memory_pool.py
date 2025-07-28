@@ -8,8 +8,8 @@ from typing import Any
 
 from tree_sitter import Parser
 
-from ...interfaces.performance import MemoryPool as MemoryPoolInterface
-from ...parser import get_parser
+from chunker.interfaces.performance import MemoryPool as MemoryPoolInterface
+from chunker.parser import get_parser
 
 logger = logging.getLogger(__name__)
 

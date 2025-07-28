@@ -11,7 +11,8 @@ from typing import Any
 
 from tree_sitter import Node
 
-from ..types import CodeChunk
+from chunker.types import CodeChunk
+
 from .query import Query, QueryMatch
 
 

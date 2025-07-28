@@ -1,11 +1,12 @@
 """Factory for creating language-specific context extractors."""
 
-from ..interfaces.context import (
+from chunker.interfaces.context import (
     ContextExtractor,
     ContextFilter,
     ScopeAnalyzer,
     SymbolResolver,
 )
+
 from .languages.javascript import (
     JavaScriptContextExtractor,
     JavaScriptContextFilter,
@@ -173,4 +174,4 @@ class ContextFactory:
         all_langs &= set(cls._scope_analyzers.keys())
         all_langs &= set(cls._context_filters.keys())
 
-        return sorted(list(all_langs))
+        return sorted(all_langs)

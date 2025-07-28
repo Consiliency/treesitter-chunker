@@ -49,14 +49,14 @@ def complex_algorithm(data, options):
     """Complex processing with many branches."""
     results = []
     cache = {}
-    
+
     for i, item in enumerate(data):
         key = f"{item['type']}_{item['id']}"
-        
+
         if key in cache:
             results.append(cache[key])
             continue
-        
+
         if item['type'] == 'A':
             if item['priority'] == 1:
                 if item['value'] > 100:
@@ -82,13 +82,13 @@ def complex_algorithm(data, options):
                 processed = {'error': 'Unknown error'}
         else:
             processed = process_unknown_type(item)
-        
+
         cache[key] = processed
         results.append(processed)
-        
+
         if options.get('log_progress') and i % 10 == 0:
             print(f"Processed {i} items")
-    
+
     return results
 
 # Dense code with many tokens
@@ -260,7 +260,7 @@ def dense_function():
 class Calculator:
     def add(self, a, b):
         return a + b
-    
+
     def complex_calc(self, data):
         # This should not be split despite complexity
         result = 0
@@ -341,11 +341,11 @@ def another_helper():
 # Sparse code
 def simple():
     x = 1
-    
+
     y = 2
-    
+
     z = 3
-    
+
     return x + y + z
 
 # Dense code

@@ -1,6 +1,7 @@
 """Factory for creating language-specific metadata extractors."""
 
-from ..interfaces.metadata import ComplexityAnalyzer, MetadataExtractor
+from chunker.interfaces.metadata import ComplexityAnalyzer, MetadataExtractor
+
 from .languages import (
     JavaScriptComplexityAnalyzer,
     JavaScriptMetadataExtractor,

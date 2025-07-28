@@ -51,7 +51,7 @@ class TestPhase13RealIntegration:
 
         # Test JSON visualization (doesn't require graphviz)
         result = debug.visualize_ast(str(test_file), "python", "json")
-        assert isinstance(result, (str, dict))
+        assert isinstance(result, str | dict)
 
         # If it's a string, it should be valid JSON
         if isinstance(result, str):

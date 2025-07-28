@@ -5,7 +5,7 @@ Provides functionality to find symbol definitions and references in the AST.
 
 from tree_sitter import Node
 
-from ..interfaces.context import SymbolResolver
+from chunker.interfaces.context import SymbolResolver
 
 
 class BaseSymbolResolver(SymbolResolver):

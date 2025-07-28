@@ -2,9 +2,9 @@
 
 import logging
 
-from ...interfaces.fallback import ChunkingMethod, FallbackConfig
-from ...types import CodeChunk
-from ..base import FallbackChunker
+from chunker.fallback.base import FallbackChunker
+from chunker.interfaces.fallback import ChunkingMethod, FallbackConfig
+from chunker.types import CodeChunk
 
 logger = logging.getLogger(__name__)
 

@@ -8,7 +8,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from ..interfaces.repo import GitAwareProcessor
+from chunker.interfaces.repo import GitAwareProcessor
+
 from .patterns import GitignoreMatcher, load_gitignore_patterns
 
 logger = logging.getLogger(__name__)
@@ -36,7 +37,7 @@ class GitAwareProcessorImpl(GitAwareProcessor):
         """
         try:
             result = subprocess.run(
-                ["git"] + cmd,
+                ["git", *cmd],
                 cwd=repo_path,
                 capture_output=True,
                 text=True,

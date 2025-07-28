@@ -439,8 +439,8 @@ class TestCrossExporterIntegration:
             exporter.add_chunks([chunk])
 
         # Get IDs
-        graphml_id = list(graphml.nodes.keys())[0]
-        neo4j_id = list(neo4j.nodes.keys())[0]
+        graphml_id = next(iter(graphml.nodes.keys()))
+        neo4j_id = next(iter(neo4j.nodes.keys()))
         sqlite_id = sqlite._get_chunk_id(chunk)
         postgres_id = postgres._get_chunk_id(chunk)
 

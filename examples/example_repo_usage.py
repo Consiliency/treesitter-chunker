@@ -62,7 +62,7 @@ def process_with_iterator_example():
         total_chunks += len(file_result.chunks)
 
         # Process chunks immediately (e.g., save to database)
-        for chunk in file_result.chunks:
+        for _chunk in file_result.chunks:
             # Your processing logic here
             pass
 

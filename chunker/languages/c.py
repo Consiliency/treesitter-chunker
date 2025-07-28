@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-from tree_sitter import Node
-
-from ..types import CodeChunk
 from .base import LanguageConfig
 from .plugin_base import LanguagePlugin
 
@@ -31,7 +28,14 @@ class CConfig(LanguageConfig):
 
 
 # Register the C configuration
+from typing import TYPE_CHECKING
+
 from . import language_config_registry
+
+if TYPE_CHECKING:
+    from tree_sitter import Node
+
+    from chunker.types import CodeChunk
 
 language_config_registry.register(CConfig())
 
@@ -71,7 +75,7 @@ class CPlugin(LanguagePlugin):
 
         # For structs, unions, enums - direct identifier child
         for child in node.children:
-            if child.type == "identifier" or child.type == "type_identifier":
+            if child.type in {"identifier", "type_identifier"}:
                 return source[child.start_byte : child.end_byte].decode("utf-8")
 
         return None

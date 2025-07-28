@@ -3,21 +3,24 @@
 from __future__ import annotations
 
 import io
-from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from ...exceptions import ChunkerError
-from ...interfaces.export import (
+from chunker.exceptions import ChunkerError
+from chunker.interfaces.export import (
     ChunkRelationship,
     ExportFormat,
     ExportMetadata,
     StructuredExporter,
 )
-from ...types import CodeChunk
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from chunker.types import CodeChunk
 
 
 class StructuredParquetExporter(StructuredExporter):

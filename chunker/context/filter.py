@@ -5,7 +5,7 @@ Provides functionality to filter context items for relevance to chunks.
 
 from tree_sitter import Node
 
-from ..interfaces.context import ContextFilter, ContextItem, ContextType
+from chunker.interfaces.context import ContextFilter, ContextItem, ContextType
 
 
 class BaseContextFilter(ContextFilter):

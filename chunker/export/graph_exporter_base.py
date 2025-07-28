@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
-from ..types import CodeChunk
+from chunker.types import CodeChunk
 
 
 class GraphNode:

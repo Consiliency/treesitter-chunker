@@ -17,7 +17,7 @@ import pytest
 class SimpleChunkerError(Exception):
     """Test base exception."""
 
-    def __init__(self, message: str, details: dict = None):
+    def __init__(self, message: str, details: dict | None = None):
         super().__init__(message)
         self.message = message
         self.details = details or {}
@@ -95,11 +95,9 @@ def worker_with_traceback_info():
         raise RuntimeError(f"Error at level 3 with x={x}, y={y}")
 
     def level_2():
-        data = [1, 2, 3]
         level_3()
 
     def level_1():
-        config = {"debug": True}
         level_2()
 
     level_1()

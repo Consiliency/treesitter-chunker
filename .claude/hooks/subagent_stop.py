@@ -94,7 +94,7 @@ def main():
 
         # Extract required fields
         session_id = input_data.get("session_id", "")
-        stop_hook_active = input_data.get("stop_hook_active", False)
+        input_data.get("stop_hook_active", False)
 
         # Ensure session log directory exists
         log_dir = ensure_session_log_dir(session_id)

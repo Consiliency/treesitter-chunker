@@ -2,11 +2,11 @@
 
 from tree_sitter import Node
 
-from ...interfaces.context import ContextItem, ContextType
-from ..extractor import BaseContextExtractor
-from ..filter import BaseContextFilter
-from ..scope_analyzer import BaseScopeAnalyzer
-from ..symbol_resolver import BaseSymbolResolver
+from chunker.context.extractor import BaseContextExtractor
+from chunker.context.filter import BaseContextFilter
+from chunker.context.scope_analyzer import BaseScopeAnalyzer
+from chunker.context.symbol_resolver import BaseSymbolResolver
+from chunker.interfaces.context import ContextItem, ContextType
 
 
 class PythonContextExtractor(BaseContextExtractor):
@@ -144,7 +144,7 @@ class PythonContextExtractor(BaseContextExtractor):
             return True
 
         # Import aliases
-        if parent.type == "aliased_import" or parent.type == "dotted_name":
+        if parent.type in {"aliased_import", "dotted_name"}:
             if parent.parent and parent.parent.type in (
                 "import_statement",
                 "import_from_statement",
@@ -165,7 +165,7 @@ class PythonContextExtractor(BaseContextExtractor):
         # Search for the definition
         def find_definition(node: Node, target_name: str) -> Node | None:
             # Check class definitions
-            if node.type == "class_definition" or node.type == "function_definition":
+            if node.type in {"class_definition", "function_definition"}:
                 for child in node.children:
                     if (
                         child.type == "identifier"
@@ -175,7 +175,6 @@ class PythonContextExtractor(BaseContextExtractor):
 
             # Check assignments
             elif node.type == "assignment":
-                left_side = None
                 for child in node.children:
                     if child.type == "=":
                         break

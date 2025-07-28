@@ -17,11 +17,11 @@ def example_in_memory_vfs():
 def main():
     '''Main entry point.'''
     print("Hello, World!")
-    
+
 class Application:
     def __init__(self):
         self.name = "MyApp"
-    
+
     def run(self):
         print(f"Running {self.name}")
 """,

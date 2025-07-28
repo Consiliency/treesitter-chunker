@@ -4,9 +4,9 @@ from typing import Any
 
 from tree_sitter import Node
 
-from ...interfaces.metadata import SignatureInfo
-from ..extractor import BaseMetadataExtractor
-from ..metrics import BaseComplexityAnalyzer
+from chunker.interfaces.metadata import SignatureInfo
+from chunker.metadata.extractor import BaseMetadataExtractor
+from chunker.metadata.metrics import BaseComplexityAnalyzer
 
 
 class JavaScriptMetadataExtractor(BaseMetadataExtractor):
@@ -406,7 +406,7 @@ class JavaScriptMetadataExtractor(BaseMetadataExtractor):
 
         def collect_definitions(n: Node, depth: int):
             # Function declarations
-            if n.type == "function_declaration" or n.type == "class_declaration":
+            if n.type in {"function_declaration", "class_declaration"}:
                 name_node = self._find_child_by_type(n, "identifier")
                 if name_node:
                     defined.add(self._get_node_text(name_node, source))
@@ -525,10 +525,4 @@ class JavaScriptComplexityAnalyzer(BaseComplexityAnalyzer):
     def _is_comment_line(self, line: str) -> bool:
         """Check if line is a JavaScript comment."""
         line = line.strip()
-        return (
-            line.startswith("//")
-            or line.startswith("/*")
-            or line.startswith("*")
-            or line.endswith("*/")
-            or line == "*/"
-        )
+        return line.startswith(("//", "/*", "*")) or line.endswith("*/") or line == "*/"

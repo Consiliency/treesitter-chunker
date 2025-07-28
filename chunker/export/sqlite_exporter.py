@@ -116,7 +116,7 @@ END;
 
 -- Views for common queries
 CREATE VIEW IF NOT EXISTS chunk_summary AS
-SELECT 
+SELECT
     c.id,
     f.path as file_path,
     c.chunk_type,
@@ -133,7 +133,7 @@ JOIN files f ON c.file_id = f.id
 LEFT JOIN chunk_complexity cc ON c.id = cc.chunk_id;
 
 CREATE VIEW IF NOT EXISTS file_summary AS
-SELECT 
+SELECT
     f.path as file_path,
     f.language,
     COUNT(c.id) as chunk_count,
@@ -154,12 +154,12 @@ WITH RECURSIVE hierarchy AS (
     FROM chunks c
     JOIN files f ON c.file_id = f.id
     WHERE NOT EXISTS (
-        SELECT 1 FROM relationships r 
+        SELECT 1 FROM relationships r
         WHERE r.target_id = c.id AND r.relationship_type = 'CONTAINS'
     )
-    
+
     UNION ALL
-    
+
     -- Recursive case: children chunks
     SELECT c.id, c.chunk_type, f.path as file_path, c.start_line, c.end_line,
            h.depth + 1, h.root_id
@@ -351,7 +351,7 @@ SELECT * FROM hierarchy ORDER BY root_id, depth, start_line;
             # Add statistics
             conn.execute(
                 """
-                INSERT INTO schema_info (key, value) 
+                INSERT INTO schema_info (key, value)
                 SELECT 'total_chunks', COUNT(*) FROM chunks
             """,
             )

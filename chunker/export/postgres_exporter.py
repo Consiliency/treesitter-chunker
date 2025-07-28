@@ -76,7 +76,7 @@ CREATE INDEX IF NOT EXISTS idx_chunks_content_trgm ON chunks USING GIN (content 
 
 -- Materialized view for fast aggregations
 CREATE MATERIALIZED VIEW IF NOT EXISTS file_stats AS
-SELECT 
+SELECT
     file_path,
     language,
     COUNT(*) as chunk_count,
@@ -92,7 +92,7 @@ CREATE UNIQUE INDEX ON file_stats (file_path);
 
 -- Materialized view for relationship graph
 CREATE MATERIALIZED VIEW IF NOT EXISTS chunk_graph AS
-SELECT 
+SELECT
     c.id,
     c.file_path,
     c.chunk_type,
@@ -121,7 +121,7 @@ RETURNS TABLE (
 ) AS $$
 WITH RECURSIVE deps AS (
     -- Base case
-    SELECT 
+    SELECT
         c.id,
         c.file_path,
         c.chunk_type,
@@ -129,11 +129,11 @@ WITH RECURSIVE deps AS (
         ARRAY[c.id] as path
     FROM chunks c
     WHERE c.id = chunk_id
-    
+
     UNION
-    
+
     -- Recursive case
-    SELECT 
+    SELECT
         c.id,
         c.file_path,
         c.chunk_type,
@@ -433,7 +433,7 @@ ON CONFLICT (source_id, target_id, relationship_type) DO UPDATE SET
             {
                 "similarity_search": """
                 -- Find chunks similar to a given chunk
-                SELECT 
+                SELECT
                     c2.id,
                     c2.file_path,
                     c2.chunk_type,
@@ -449,7 +449,7 @@ ON CONFLICT (source_id, target_id, relationship_type) DO UPDATE SET
             """,
                 "full_text_search": """
                 -- Full-text search with ranking
-                SELECT 
+                SELECT
                     id,
                     file_path,
                     chunk_type,
@@ -463,7 +463,7 @@ ON CONFLICT (source_id, target_id, relationship_type) DO UPDATE SET
             """,
                 "jsonb_metadata_query": """
                 -- Query chunks by metadata fields
-                SELECT 
+                SELECT
                     id,
                     file_path,
                     chunk_type,
@@ -478,7 +478,7 @@ ON CONFLICT (source_id, target_id, relationship_type) DO UPDATE SET
                 -- Get full dependency graph for visualization
                 WITH RECURSIVE dep_tree AS (
                     -- Start nodes (no incoming dependencies)
-                    SELECT 
+                    SELECT
                         c.id,
                         c.file_path,
                         c.chunk_type,
@@ -487,15 +487,15 @@ ON CONFLICT (source_id, target_id, relationship_type) DO UPDATE SET
                         ARRAY[c.id] as path
                     FROM chunks c
                     WHERE NOT EXISTS (
-                        SELECT 1 FROM relationships r 
-                        WHERE r.target_id = c.id 
+                        SELECT 1 FROM relationships r
+                        WHERE r.target_id = c.id
                         AND r.relationship_type IN ('IMPORTS', 'EXTENDS')
                     )
-                    
+
                     UNION ALL
-                    
+
                     -- Recursive part
-                    SELECT 
+                    SELECT
                         c.id,
                         c.file_path,
                         c.chunk_type,
@@ -513,7 +513,7 @@ ON CONFLICT (source_id, target_id, relationship_type) DO UPDATE SET
             """,
                 "hot_spots": """
                 -- Find code hot spots (high complexity + many dependencies)
-                SELECT 
+                SELECT
                     cg.id,
                     cg.file_path,
                     cg.chunk_type,

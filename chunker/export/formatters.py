@@ -3,7 +3,7 @@
 from enum import Enum
 from typing import Any, Protocol
 
-from ..chunker import CodeChunk
+from chunker.chunker import CodeChunk
 
 
 class SchemaType(Enum):
@@ -112,9 +112,9 @@ class FullFormatter:
         return {
             "metadata": {
                 "total_chunks": len(chunks),
-                "languages": list(set(c.language for c in chunks)),
-                "files": list(set(c.file_path for c in chunks)),
-                "node_types": list(set(c.node_type for c in chunks)),
+                "languages": list({c.language for c in chunks}),
+                "files": list({c.file_path for c in chunks}),
+                "node_types": list({c.node_type for c in chunks}),
             },
             "chunks": [self._chunk_to_dict(chunk) for chunk in chunks],
             "relationships": self._extract_relationships(chunks),

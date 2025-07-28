@@ -104,7 +104,7 @@ class TestIncrementalProcessor:
             chunk_id="chunk1",
         )
 
-        mock_chunk_text.return_value = [modified_chunk] + sample_chunks[1:]
+        mock_chunk_text.return_value = [modified_chunk, *sample_chunks[1:]]
 
         processor = DefaultIncrementalProcessor()
         modified_content = "modified content"
@@ -131,7 +131,7 @@ class TestIncrementalProcessor:
             chunk_id="chunk4",
         )
 
-        mock_chunk_text.return_value = sample_chunks + [new_chunk]
+        mock_chunk_text.return_value = [*sample_chunks, new_chunk]
 
         processor = DefaultIncrementalProcessor()
         diff = processor.compute_diff(sample_chunks, "modified content", "python")

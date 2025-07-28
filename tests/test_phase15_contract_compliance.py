@@ -63,7 +63,7 @@ def verify_contract_compliance(contract_class, implementation_class):
         )
 
         # Check each parameter
-        for c_param, i_param in zip(contract_params, impl_params):
+        for c_param, i_param in zip(contract_params, impl_params, strict=False):
             assert (
                 c_param.name == i_param.name
             ), f"Parameter name mismatch in {method_name}: {c_param.name} != {i_param.name}"

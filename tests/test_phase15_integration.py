@@ -79,7 +79,7 @@ class TestPhase15Integration:
         # Assert: Verify return types
         assert isinstance(success, bool)
         assert isinstance(build_info, dict)
-        assert isinstance(ast_viz, (str, bytes))
+        assert isinstance(ast_viz, str | bytes)
         assert isinstance(profile_data, dict)
         assert "total_time" in profile_data
         assert "memory_usage" in profile_data

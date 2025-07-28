@@ -907,7 +907,7 @@ class TestAdvancedSemanticMerging:
         """Test handling of overloaded constructors."""
         analyzer = TreeSitterRelationshipAnalyzer()
         config = MergeConfig(merge_overloaded_functions=True)
-        merger = TreeSitterSemanticMerger(config)
+        TreeSitterSemanticMerger(config)
 
         constructor1 = CodeChunk(
             language="java",
@@ -1031,7 +1031,7 @@ class TestAdvancedSemanticMerging:
             content="public void reset() {\n    this.result = 0;\n}",
         )
 
-        all_chunks = overloaded_chunks + [unrelated]
+        all_chunks = [*overloaded_chunks, unrelated]
         merged = merger.merge_chunks(all_chunks)
 
         # Should merge all overloaded methods into one, keep unrelated separate
@@ -1306,7 +1306,7 @@ class TestAdvancedSemanticMerging:
         # Subsequent calls should use cache (we can't directly test this without
         # accessing private attributes, but we can verify consistent results)
         result2 = merger.should_merge(chunk1, chunk2)
-        result3 = merger.should_merge(chunk2, chunk1)  # Different order
+        merger.should_merge(chunk2, chunk1)  # Different order
 
         assert result1 == result2
         # Note: The implementation might not cache reverse order, but results should be consistent

@@ -4,9 +4,8 @@ Support for OCaml language.
 
 from __future__ import annotations
 
-from tree_sitter import Node
+from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 
-from ..contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
 
@@ -70,7 +69,12 @@ class OCamlConfig(LanguageConfig):
 
 
 # Register the OCaml configuration
+from typing import TYPE_CHECKING
+
 from . import language_config_registry
+
+if TYPE_CHECKING:
+    from tree_sitter import Node
 
 language_config_registry.register(OCamlConfig(), aliases=["ml", "mli"])
 
@@ -124,28 +128,22 @@ class OCamlPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         elif node.type in {"type_definition", "type_binding"}:
             # Look for type name
             for child in node.children:
-                if (
-                    child.type == "type_constructor"
-                    or child.type == "lowercase_identifier"
-                ):
+                if child.type in {"type_constructor", "lowercase_identifier"}:
                     return source[child.start_byte : child.end_byte].decode("utf-8")
         elif node.type in {"module_definition", "module_binding"}:
             # Look for module name
             for child in node.children:
-                if child.type == "module_name" or child.type == "uppercase_identifier":
+                if child.type in {"module_name", "uppercase_identifier"}:
                     return source[child.start_byte : child.end_byte].decode("utf-8")
         elif node.type == "exception_definition":
             # Look for exception name
             for child in node.children:
-                if (
-                    child.type == "constructor_name"
-                    or child.type == "uppercase_identifier"
-                ):
+                if child.type in {"constructor_name", "uppercase_identifier"}:
                     return source[child.start_byte : child.end_byte].decode("utf-8")
         elif node.type in {"class_definition", "class_binding"}:
             # Look for class name
             for child in node.children:
-                if child.type == "class_name" or child.type == "lowercase_identifier":
+                if child.type in {"class_name", "lowercase_identifier"}:
                     return source[child.start_byte : child.end_byte].decode("utf-8")
         return None
 
@@ -153,7 +151,7 @@ class OCamlPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         """Extract semantic chunks specific to OCaml."""
         chunks = []
 
-        def extract_chunks(n: Node, module_context: str = None):
+        def extract_chunks(n: Node, module_context: str | None = None):
             if n.type in self.default_chunk_types:
                 content = source[n.start_byte : n.end_byte].decode(
                     "utf-8",
@@ -211,9 +209,7 @@ class OCamlPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         if node.type in {"signature", "structure"}:
             return True
         # Comments
-        if node.type == "comment":
-            return True
-        return False
+        return node.type == "comment"
 
     def get_node_context(self, node: Node, source: bytes) -> str | None:
         """Extract meaningful context for a node."""

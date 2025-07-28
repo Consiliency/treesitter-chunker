@@ -99,7 +99,7 @@ class TestParserPoolManagement:
 
             # Create parser pool for dynamic language
             parsers = []
-            for i in range(5):
+            for _i in range(5):
                 parser = Mock(spec=tree_sitter.Parser)
                 parser.set_language = Mock()
                 parser.set_timeout_micros = Mock()
@@ -131,7 +131,7 @@ class TestParserPoolManagement:
 
         # Try to add more parsers than limit
         parsers_added = 0
-        for i in range(max_pool_size + 2):
+        for _i in range(max_pool_size + 2):
             parser = Mock(spec=tree_sitter.Parser)
             try:
                 self.parser_factory._pools[dynamic_lang].put_nowait(parser)
@@ -153,7 +153,7 @@ class TestParserPoolManagement:
 
         # Add parsers
         parser_refs = []
-        for i in range(3):
+        for _i in range(3):
             parser = Mock(spec=tree_sitter.Parser)
             parser_refs.append(weakref.ref(parser))
             self.parser_factory._pools[dynamic_lang].put(parser)
@@ -246,7 +246,7 @@ class TestMemoryLeaks:
             pools[lang] = Queue()
 
             # Add parsers to pool
-            for j in range(5):
+            for _j in range(5):
                 parser = MockDynamicParser(lang)
                 parser_refs.append(weakref.ref(parser))
                 pools[lang].put(parser)
@@ -317,7 +317,7 @@ class TestThreadSafety:
         """Test thread-safe access pattern for parser pools."""
         # Create thread-safe pool
         pool = Queue()
-        pool_lock = threading.Lock()
+        threading.Lock()
 
         # Pre-populate pool
         for i in range(10):
@@ -326,7 +326,7 @@ class TestThreadSafety:
         def worker(worker_id):
             """Worker that safely accesses pool."""
             try:
-                for i in range(10):
+                for _i in range(10):
                     # Get parser from pool
                     parser = pool.get()
 
@@ -551,7 +551,7 @@ class TestIntegrationPatterns:
         successful_parses = 0
         failed_parses = 0
 
-        for i in range(10):
+        for _i in range(10):
             try:
                 parser.parse(b"test code")
                 successful_parses += 1

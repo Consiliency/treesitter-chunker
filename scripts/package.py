@@ -246,7 +246,7 @@ from pathlib import Path
 def test_installation():
     """Test the installation."""
     print("Testing treesitter-chunker installation...")
-    
+
     # Test import
     try:
         import chunker
@@ -254,7 +254,7 @@ def test_installation():
     except ImportError as e:
         print(f"✗ Import failed: {e}")
         return False
-    
+
     # Test CLI
     try:
         result = subprocess.run(
@@ -270,21 +270,21 @@ def test_installation():
     except Exception as e:
         print(f"✗ CLI test failed: {e}")
         return False
-    
+
     # Test basic functionality
     try:
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
             f.write("def test(): pass")
             temp_file = f.name
-        
+
         result = subprocess.run(
             [sys.executable, "-m", "cli.main", "chunk", temp_file, "-l", "python"],
             capture_output=True,
             text=True
         )
-        
+
         Path(temp_file).unlink()
-        
+
         if result.returncode == 0:
             print("✓ Basic chunking works")
         else:
@@ -293,7 +293,7 @@ def test_installation():
     except Exception as e:
         print(f"✗ Functionality test failed: {e}")
         return False
-    
+
     print("\\nAll tests passed!")
     return True
 

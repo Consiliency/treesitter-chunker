@@ -4,11 +4,15 @@ Support for Julia language.
 
 from __future__ import annotations
 
-from tree_sitter import Node
+from typing import TYPE_CHECKING
 
-from ..contracts.language_plugin_contract import ExtendedLanguagePluginContract
+from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
+
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
+
+if TYPE_CHECKING:
+    from tree_sitter import Node
 
 
 class JuliaConfig(LanguageConfig):
@@ -167,7 +171,7 @@ class JuliaPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         """Extract semantic chunks specific to Julia."""
         chunks = []
 
-        def extract_chunks(n: Node, module_context: str = None):
+        def extract_chunks(n: Node, module_context: str | None = None):
             if n.type in self.default_chunk_types:
                 content = source[n.start_byte : n.end_byte].decode(
                     "utf-8",
@@ -213,9 +217,7 @@ class JuliaPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         if node.type.endswith("_definition"):
             return True
         # Constants and comments
-        if node.type in {"const_statement", "comment", "block_comment"}:
-            return True
-        return False
+        return node.type in {"const_statement", "comment", "block_comment"}
 
     def get_node_context(self, node: Node, source: bytes) -> str | None:
         """Extract meaningful context for a node."""

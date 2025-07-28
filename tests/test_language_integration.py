@@ -269,11 +269,11 @@ class OuterClass:
             def deeply_nested():
                 pass
             return deeply_nested
-        
+
         class InnerClass:
             def inner_method(self):
                 pass
-                
+
 def top_level_function():
     def nested_function():
         pass
@@ -423,7 +423,7 @@ def incomplete_function(
 class IncompleteClass:
     def method(self):
         # Missing closing
-        
+
 # Random syntax error
 if True
     print("missing colon")
@@ -517,7 +517,7 @@ double = lambda x: x * 2
 def use_lambdas():
     filtered = filter(lambda x: x > 0, [1, -2, 3, -4])
     mapped = map(lambda x: x ** 2, [1, 2, 3])
-    
+
 # Lambda in comprehension
 squared = [(lambda x: x * x)(i) for i in range(5)]
 
@@ -644,7 +644,7 @@ def complex_decorated():
 class DecoratedClass:
     field1: str
     field2: int
-    
+
     def method(self):
         pass
 
@@ -653,7 +653,7 @@ class Container:
     @property
     def prop(self):
         return self._value
-    
+
     @staticmethod
     def static_method():
         pass

@@ -13,11 +13,12 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from ..chunker import chunk_text, chunk_text_with_token_limit
-from ..interfaces.fallback import FallbackReason
-from ..parser import list_languages
-from ..token.counter import TiktokenCounter
-from ..types import CodeChunk
+from chunker.chunker import chunk_text, chunk_text_with_token_limit
+from chunker.interfaces.fallback import FallbackReason
+from chunker.parser import list_languages
+from chunker.token.counter import TiktokenCounter
+from chunker.types import CodeChunk
+
 from .base import FallbackChunker
 from .detection.file_type import FileType, FileTypeDetector
 from .sliding_window_fallback import SlidingWindowFallback

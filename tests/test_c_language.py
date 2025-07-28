@@ -233,7 +233,7 @@ int process_data(int* data, int size) {
         return -1;
     }
     #endif
-    
+
     for (int i = 0; i < size; i++) {
         data[i] = data[i] * 2;
     }
@@ -267,7 +267,7 @@ struct Company {
         char city[50];
         int zipcode;
     } address;
-    
+
     struct Employee {
         char name[50];
         int id;
@@ -408,10 +408,10 @@ static inline bool connection_is_active(const Connection* conn) {
             """
 struct Outer {
     int outer_field;
-    
+
     struct Inner {
         int inner_field;
-        
+
         union Data {
             int i;
             float f;
@@ -614,12 +614,12 @@ int modern_func(int a, char* b, double c) {
 int sum(int count, ...) {
     va_list args;
     va_start(args, count);
-    
+
     int total = 0;
     for (int i = 0; i < count; i++) {
         total += va_arg(args, int);
     }
-    
+
     va_end(args);
     return total;
 }
@@ -698,7 +698,7 @@ int outer_function(int x) {
     int inner_function(int y) {
         return x + y;
     }
-    
+
     return inner_function(10);
 }
 

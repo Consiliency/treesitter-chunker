@@ -106,7 +106,7 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
 
             line_changes = []
             differ = difflib.SequenceMatcher(None, old_lines, new_lines)
-            for tag, i1, i2, j1, j2 in differ.get_opcodes():
+            for tag, i1, i2, _j1, _j2 in differ.get_opcodes():
                 if tag != "equal":
                     start_line = old_chunk.start_line + i1
                     end_line = old_chunk.start_line + i2
@@ -183,13 +183,16 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
         for change in diff.changes:
             if change.change_type == ChangeType.DELETED:
                 chunk_map.pop(change.chunk_id, None)
-            elif change.change_type in (
-                ChangeType.ADDED,
-                ChangeType.MODIFIED,
-                ChangeType.MOVED,
+            elif (
+                change.change_type
+                in (
+                    ChangeType.ADDED,
+                    ChangeType.MODIFIED,
+                    ChangeType.MOVED,
+                )
+                and change.new_chunk
             ):
-                if change.new_chunk:
-                    chunk_map[change.new_chunk.chunk_id] = change.new_chunk
+                chunk_map[change.new_chunk.chunk_id] = change.new_chunk
 
         # Add unchanged chunks (ensure they're in the map)
         for chunk in diff.unchanged_chunks:
@@ -226,13 +229,16 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
                 ).ratio()
 
                 # High similarity and different location = moved
-                if similarity > 0.85 and (
-                    old_chunk.start_line != new_chunk.start_line
-                    or old_chunk.file_path != new_chunk.file_path
+                if (
+                    similarity > 0.85
+                    and (
+                        old_chunk.start_line != new_chunk.start_line
+                        or old_chunk.file_path != new_chunk.file_path
+                    )
+                    and similarity > best_similarity
                 ):
-                    if similarity > best_similarity:
-                        best_match = new_chunk
-                        best_similarity = similarity
+                    best_match = new_chunk
+                    best_similarity = similarity
 
             if best_match:
                 moved_pairs.append((old_chunk, best_match))
@@ -523,7 +529,7 @@ class DefaultChangeDetector(ChangeDetector):
         differ = difflib.SequenceMatcher(None, old_lines, new_lines)
         changed_regions = []
 
-        for tag, i1, i2, j1, j2 in differ.get_opcodes():
+        for tag, i1, i2, _j1, _j2 in differ.get_opcodes():
             if tag != "equal":
                 # Convert to 1-based line numbers
                 start_line = i1 + 1

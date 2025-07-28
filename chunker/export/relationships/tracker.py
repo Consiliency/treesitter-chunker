@@ -4,17 +4,19 @@ from __future__ import annotations
 
 import re
 from collections import defaultdict
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from tree_sitter import Node, Parser
-
-from ...interfaces.export import (
+from chunker.interfaces.export import (
     ChunkRelationship,
     RelationshipTracker,
     RelationshipType,
 )
-from ...parser import get_parser
-from ...types import CodeChunk
+from chunker.parser import get_parser
+
+if TYPE_CHECKING:
+    from tree_sitter import Node, Parser
+
+    from chunker.types import CodeChunk
 
 
 class ASTRelationshipTracker(RelationshipTracker):
@@ -74,8 +76,7 @@ class ASTRelationshipTracker(RelationshipTracker):
             results = [
                 r
                 for r in results
-                if r.source_chunk_id == chunk.chunk_id
-                or r.target_chunk_id == chunk.chunk_id
+                if chunk.chunk_id in (r.source_chunk_id, r.target_chunk_id)
             ]
 
         if relationship_type:
@@ -101,7 +102,7 @@ class ASTRelationshipTracker(RelationshipTracker):
             chunks_by_file[chunk.file_path].append(chunk)
 
         # Analyze each file
-        for file_path, file_chunks in chunks_by_file.items():
+        for file_chunks in chunks_by_file.values():
             if file_chunks:
                 self._analyze_file_chunks(file_chunks)
 
@@ -134,7 +135,6 @@ class ASTRelationshipTracker(RelationshipTracker):
         # Get file content and parser
         first_chunk = chunks[0]
         language = first_chunk.language
-        file_path = first_chunk.file_path
 
         try:
             parser = self._get_parser(language)
@@ -200,7 +200,7 @@ class ASTRelationshipTracker(RelationshipTracker):
         if node.type in ["import_statement", "import_from_statement"]:
             # Extract imported names
             for child in node.children:
-                if child.type == "dotted_name" or child.type == "identifier":
+                if child.type in {"dotted_name", "identifier"}:
                     imported_name = chunk.content[child.start_byte : child.end_byte]
                     # Track as a dependency
                     self._add_dependency_relationship(chunk, imported_name)
@@ -389,7 +389,7 @@ class ASTRelationshipTracker(RelationshipTracker):
         if node.type == "use_declaration":
             # Extract used module/item
             for child in node.children:
-                if child.type == "scoped_identifier" or child.type == "identifier":
+                if child.type in {"scoped_identifier", "identifier"}:
                     use_name = chunk.content[child.start_byte : child.end_byte]
                     self._add_dependency_relationship(chunk, use_name)
 
@@ -408,10 +408,7 @@ class ASTRelationshipTracker(RelationshipTracker):
             # Get the function being called
             if node.children:
                 func_node = node.children[0]
-                if (
-                    func_node.type == "identifier"
-                    or func_node.type == "scoped_identifier"
-                ):
+                if func_node.type in {"identifier", "scoped_identifier"}:
                     func_name = chunk.content[func_node.start_byte : func_node.end_byte]
                     # Find matching chunk
                     target_chunk = self._find_chunk_by_name(

@@ -34,7 +34,7 @@ def hello_world():
 class Greeter:
     def __init__(self, name):
         self.name = name
-    
+
     def greet(self):
         return f"Hello, {self.name}!"
 
@@ -133,7 +133,7 @@ impl App {
     fn new(name: &str) -> Self {
         App { name: name.to_string() }
     }
-    
+
     fn run(&self) {
         println!("Running {}", self.name);
     }
@@ -157,7 +157,7 @@ impl App {
                     print(f"Error processing {file_path}: {e}")
 
         # Verify we got chunks from all languages
-        languages = {chunk.language for chunk in all_chunks}
+        {chunk.language for chunk in all_chunks}
 
         # At minimum we should have chunks from different files
         file_paths = {chunk.file_path for chunk in all_chunks}
@@ -197,7 +197,7 @@ class Class_{i}:
 
         # Collect all chunks - results is a dict[Path, List[CodeChunk]]
         all_chunks = []
-        for path, chunks in results.items():
+        for chunks in results.values():
             all_chunks.extend(chunks)
 
         # Should have at least 2 chunks per file
@@ -459,14 +459,13 @@ class TestPerformanceBaseline:
         jsonl_time = time.time() - jsonl_start
 
         # Export to Parquet - TODO: Add when ParquetExporter is available
-        parquet_time = 0  # Placeholder
         # parquet_start = time.time()
         # parquet_file = tmp_path / "large.parquet"
         # parquet_exporter = ParquetExporter()
         # parquet_exporter.export(chunks, parquet_file)
         # parquet_time = time.time() - parquet_start
 
-        total_time = time.time() - start
+        time.time() - start
 
         # Performance assertions
         assert len(chunks) >= 100
@@ -529,7 +528,7 @@ class TestErrorPropagation:
 
         # Should handle binary file gracefully
         try:
-            chunks = chunk_file(binary_file, language="python")
+            chunk_file(binary_file, language="python")
             # Might return empty or raise, both acceptable
         except Exception as e:
             # Should be a specific chunker error, not generic
@@ -584,14 +583,14 @@ class TestErrorPropagation:
 
         # Check successes and failures by examining chunk lists
         successes = {path: chunks for path, chunks in results.items() if chunks}
-        failures = {path: chunks for path, chunks in results.items() if not chunks}
+        {path: chunks for path, chunks in results.items() if not chunks}
 
         assert len(successes) >= 1  # At least good.py should succeed
         # Note: ParallelChunker might process all files without raising errors
 
         # Export only successful chunks
         all_chunks = []
-        for path, chunks in successes.items():
+        for chunks in successes.values():
             all_chunks.extend(chunks)
 
         if all_chunks:

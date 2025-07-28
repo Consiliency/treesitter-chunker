@@ -17,11 +17,11 @@ class TestElixirBasicChunking:
   def factorial(n) when n > 0 do
     n * factorial(n - 1)
   end
-  
+
   defp fibonacci(0), do: 0
   defp fibonacci(1), do: 1
   defp fibonacci(n), do: fibonacci(n - 1) + fibonacci(n - 2)
-  
+
   @doc \"\"\"
   Calculates the sum of a list.
   \"\"\"
@@ -54,18 +54,18 @@ end
       if !unquote(condition), do: unquote(clause)
     end
   end
-  
+
   defmacrop debug(msg) do
     quote do
       IO.puts("[DEBUG] #{unquote(msg)}")
     end
   end
-  
+
   @spec add(number, number) :: number
   def add(a, b), do: a + b
-  
+
   @type color :: :red | :green | :blue
-  
+
   @callback process(binary) :: {:ok, term} | {:error, String.t}
 end
 """,
@@ -97,31 +97,31 @@ end
         src.write_text(
             """defmodule Counter do
   use GenServer
-  
+
   # Client API
   def start_link(initial \\\\ 0) do
     GenServer.start_link(__MODULE__, initial, name: __MODULE__)
   end
-  
+
   def increment do
     GenServer.call(__MODULE__, :increment)
   end
-  
+
   def get_value do
     GenServer.call(__MODULE__, :get_value)
   end
-  
+
   # Server callbacks
   @impl true
   def init(initial) do
     {:ok, initial}
   end
-  
+
   @impl true
   def handle_call(:increment, _from, state) do
     {:reply, state + 1, state + 1}
   end
-  
+
   @impl true
   def handle_call(:get_value, _from, state) do
     {:reply, state, state}
@@ -154,12 +154,12 @@ end
   def process_message({:ok, data}), do: {:success, data}
   def process_message({:error, reason}), do: {:failure, reason}
   def process_message(_), do: {:unknown}
-  
+
   def describe_list([]), do: "empty"
   def describe_list([_]), do: "single element"
   def describe_list([_, _]), do: "two elements"
   def describe_list(list), do: "#{length(list)} elements"
-  
+
   def handle_user(%{name: name, age: age}) when age >= 18 do
     "Adult: #{name}"
   end
@@ -295,23 +295,23 @@ class TestElixirEdgeCases:
             """defmodule Anon do
   def map_example do
     list = [1, 2, 3, 4, 5]
-    
+
     # Anonymous function
     Enum.map(list, fn x -> x * 2 end)
-    
+
     # Capture syntax
     Enum.map(list, &(&1 * 2))
-    
+
     # Function capture
     Enum.reduce(list, 0, &+/2)
   end
-  
+
   def complex_anon do
     process = fn
       {:ok, data} -> data
       {:error, _} -> nil
     end
-    
+
     process.({:ok, "hello"})
   end
 end
@@ -374,7 +374,7 @@ end
     |> Enum.map(&String.capitalize/1)
     |> Enum.join(" ")
   end
-  
+
   def complex_pipeline(data) do
     data
     |> validate()
@@ -384,7 +384,7 @@ end
       {:error, reason} -> log_error(reason)
     end
   end
-  
+
   defp validate(data), do: {:ok, data}
   defp transform(data), do: {:ok, data}
   defp persist(data), do: data
@@ -412,19 +412,19 @@ end
         src.write_text(
             """defmodule User do
   @behaviour Access
-  
+
   defstruct [:name, :email, age: 0, active: true]
-  
+
   @impl Access
   def fetch(%User{} = user, key) do
     Map.fetch(user, key)
   end
-  
+
   @impl Access
   def get_and_update(%User{} = user, key, fun) do
     Map.get_and_update(user, key, fun)
   end
-  
+
   @impl Access
   def pop(%User{} = user, key) do
     Map.pop(user, key)

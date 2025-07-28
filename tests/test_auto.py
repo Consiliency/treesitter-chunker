@@ -35,7 +35,7 @@ class MockRegistry:
         return language in self.installed_languages
 
     def list_installed_languages(self) -> list[str]:
-        return sorted(list(self.installed_languages))
+        return sorted(self.installed_languages)
 
     def list_available_languages(self) -> list[str]:
         return sorted(self.available_languages)

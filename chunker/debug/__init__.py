@@ -5,21 +5,21 @@ Tree-sitter Chunker Debug Module - Tools for debugging and visualization.
 __all__ = [
     # Core visualizer
     "ASTVisualizer",
-    # Debuggers
-    "QueryDebugger",
+    "ChunkComparisonImpl",
     "ChunkDebugger",
-    "NodeExplorer",
-    # Visualization utilities
-    "render_ast_graph",
-    "print_ast_tree",
-    "highlight_chunk_boundaries",
-    # Interactive tools
-    "start_repl",
-    "debug_query",
-    "explore_ast",
     # Contract implementations
     "DebugVisualizationImpl",
-    "ChunkComparisonImpl",
+    "NodeExplorer",
+    # Debuggers
+    "QueryDebugger",
+    "debug_query",
+    "explore_ast",
+    "highlight_chunk_boundaries",
+    "print_ast_tree",
+    # Visualization utilities
+    "render_ast_graph",
+    # Interactive tools
+    "start_repl",
 ]
 
 from .comparison import ChunkComparisonImpl

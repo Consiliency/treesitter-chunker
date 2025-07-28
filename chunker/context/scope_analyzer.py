@@ -5,7 +5,7 @@ Provides functionality to analyze scope relationships and visible symbols.
 
 from tree_sitter import Node
 
-from ..interfaces.context import ScopeAnalyzer
+from chunker.interfaces.context import ScopeAnalyzer
 
 
 class BaseScopeAnalyzer(ScopeAnalyzer):

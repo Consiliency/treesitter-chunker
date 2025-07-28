@@ -114,7 +114,7 @@ def demo_error_on_code_file():
 
     try:
         # This should fail because Go has Tree-sitter support
-        chunks = chunker.chunk_with_overlap(
+        chunker.chunk_with_overlap(
             "package main\n\nfunc main() {}",
             "main.go",
             chunk_size=100,

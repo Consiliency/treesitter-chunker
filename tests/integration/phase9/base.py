@@ -33,28 +33,28 @@ from typing import List, Optional
 
 class Calculator:
     """A simple calculator class."""
-    
+
     def __init__(self):
         self.history: List[float] = []
-    
+
     def add(self, a: float, b: float) -> float:
         """Add two numbers."""
         result = a + b
         self.history.append(result)
         return result
-    
+
     def subtract(self, a: float, b: float) -> float:
         """Subtract b from a."""
         result = a - b
         self.history.append(result)
         return result
-    
+
     def multiply(self, a: float, b: float) -> float:
         """Multiply two numbers."""
         result = a * b
         self.history.append(result)
         return result
-    
+
     def divide(self, a: float, b: float) -> float:
         """Divide a by b."""
         if b == 0:
@@ -62,11 +62,11 @@ class Calculator:
         result = a / b
         self.history.append(result)
         return result
-    
+
     def get_history(self) -> List[float]:
         """Get calculation history."""
         return self.history.copy()
-    
+
     def clear_history(self) -> None:
         """Clear calculation history."""
         self.history.clear()
@@ -104,14 +104,14 @@ def format_name(first: str, last: str) -> str:
 
 class StringUtils:
     """String manipulation utilities."""
-    
+
     @staticmethod
     def truncate(text: str, max_length: int = 50) -> str:
         """Truncate text to maximum length."""
         if len(text) <= max_length:
             return text
         return text[:max_length-3] + "..."
-    
+
     @staticmethod
     def word_count(text: str) -> int:
         """Count words in text."""
@@ -142,7 +142,7 @@ class Application extends EventEmitter {
         this.config = {};
         this.isRunning = false;
     }
-    
+
     /**
      * Initialize the application
      * @param {Object} config - Configuration object
@@ -150,14 +150,14 @@ class Application extends EventEmitter {
     async initialize(config) {
         this.config = config;
         this.emit('initializing');
-        
+
         // Perform initialization
         await this.loadModules();
         await this.connectDatabase();
-        
+
         this.emit('initialized');
     }
-    
+
     /**
      * Load application modules
      * @private
@@ -166,7 +166,7 @@ class Application extends EventEmitter {
         // Module loading logic
         console.log('Loading modules...');
     }
-    
+
     /**
      * Connect to database
      * @private
@@ -175,7 +175,7 @@ class Application extends EventEmitter {
         // Database connection logic
         console.log('Connecting to database...');
     }
-    
+
     /**
      * Start the application
      */
@@ -183,12 +183,12 @@ class Application extends EventEmitter {
         if (this.isRunning) {
             throw new Error('Application is already running');
         }
-        
+
         this.isRunning = true;
         this.emit('started');
         console.log('Application started');
     }
-    
+
     /**
      * Stop the application
      */
@@ -196,7 +196,7 @@ class Application extends EventEmitter {
         if (!this.isRunning) {
             throw new Error('Application is not running');
         }
-        
+
         this.isRunning = false;
         this.emit('stopped');
         console.log('Application stopped');
@@ -412,19 +412,19 @@ Thumbs.db
             '''
 class DataProcessor:
     """Process data with various operations."""
-    
+
     def __init__(self, name: str):
         self.name = name
         self._data = []
-    
+
     def add_data(self, item: Any) -> None:
         """Add data item."""
         self._data.append(item)
-    
+
     def get_data(self) -> List[Any]:
         """Get all data."""
         return self._data.copy()
-    
+
     def process(self) -> Dict[str, Any]:
         """Process all data."""
         return {
@@ -432,7 +432,7 @@ class DataProcessor:
             "count": len(self._data),
             "data": self._data
         }
-    
+
     def clear(self) -> None:
         """Clear all data."""
         self._data.clear()

@@ -5,14 +5,14 @@ import re
 import warnings
 from typing import Literal
 
-from ..exceptions import ChunkerError
-from ..fallback.base import FallbackWarning
-from ..interfaces.fallback_overlap import (
+from chunker.exceptions import ChunkerError
+from chunker.fallback.base import FallbackWarning
+from chunker.interfaces.fallback_overlap import (
     OverlappingFallbackChunker as IOverlappingFallbackChunker,
 )
-from ..interfaces.fallback_overlap import OverlapStrategy
-from ..parser import list_languages
-from ..types import CodeChunk
+from chunker.interfaces.fallback_overlap import OverlapStrategy
+from chunker.parser import list_languages
+from chunker.types import CodeChunk
 
 logger = logging.getLogger(__name__)
 

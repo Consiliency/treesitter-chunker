@@ -73,14 +73,14 @@ def calculate_average(numbers):
 
 class Statistics:
     """A class for statistical calculations."""
-    
+
     def __init__(self):
         self.data = []
-        
+
     def add_data(self, values):
         """Add data values."""
         self.data.extend(values)
-        
+
     def mean(self):
         """Calculate mean."""
         return calculate_average(self.data)

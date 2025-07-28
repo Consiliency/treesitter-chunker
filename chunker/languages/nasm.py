@@ -4,9 +4,8 @@ Support for NASM (Netwide Assembler) language.
 
 from __future__ import annotations
 
-from tree_sitter import Node
+from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 
-from ..contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
 
@@ -73,7 +72,13 @@ class NASMConfig(LanguageConfig):
 
 
 # Register the NASM configuration
+import contextlib
+from typing import TYPE_CHECKING
+
 from . import language_config_registry
+
+if TYPE_CHECKING:
+    from tree_sitter import Node
 
 language_config_registry.register(NASMConfig(), aliases=["asm", "assembly"])
 
@@ -378,12 +383,6 @@ class NASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
     def _is_procedure_prologue(self, instructions: list[str]) -> bool:
         """Check if instructions look like a procedure prologue."""
         # Common patterns: push rbp/ebp, mov rbp/ebp rsp/esp
-        prologue_patterns = [
-            ["push", "rbp"],
-            ["push", "ebp"],
-            ["mov", "rbp", "rsp"],
-            ["mov", "ebp", "esp"],
-        ]
         # Simplified check
         return False
 
@@ -394,11 +393,9 @@ class NASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         param_count = 0
         for i, child in enumerate(node.children):
             if child.type == "number" and i > 1:
-                try:
+                with contextlib.suppress(ValueError):
                     param_count = int(
                         source[child.start_byte : child.end_byte].decode("utf-8"),
                     )
-                except ValueError:
-                    pass
                 break
         return param_count

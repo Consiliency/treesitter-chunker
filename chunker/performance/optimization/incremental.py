@@ -5,9 +5,11 @@ import logging
 
 from tree_sitter import Parser, Tree
 
-from ...interfaces.performance import IncrementalParser as IncrementalParserInterface
-from ...parser import get_parser
-from ...types import CodeChunk
+from chunker.interfaces.performance import (
+    IncrementalParser as IncrementalParserInterface,
+)
+from chunker.parser import get_parser
+from chunker.types import CodeChunk
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +45,6 @@ class IncrementalParser(IncrementalParserInterface):
             raise ValueError("Invalid old_tree provided")
 
         # Get language from the old tree
-        language = old_tree.root_node.type if old_tree.root_node else "unknown"
 
         # Get or create parser for this language
         parser = self._get_parser_for_tree(old_tree)
@@ -95,18 +96,11 @@ class IncrementalParser(IncrementalParserInterface):
         matcher = difflib.SequenceMatcher(None, old_lines, new_lines)
         changes = []
 
-        old_pos = 0
-        new_pos = 0
-
         for tag, old_start, old_end, new_start, new_end in matcher.get_opcodes():
             if tag == "equal":
                 # No change, just update positions
-                old_pos = sum(
-                    len(line.encode("utf-8")) for line in old_lines[old_start:old_end]
-                )
-                new_pos = sum(
-                    len(line.encode("utf-8")) for line in new_lines[new_start:new_end]
-                )
+                sum(len(line.encode("utf-8")) for line in old_lines[old_start:old_end])
+                sum(len(line.encode("utf-8")) for line in new_lines[new_start:new_end])
             else:
                 # Calculate byte positions
                 start_byte = sum(
@@ -154,16 +148,15 @@ class IncrementalParser(IncrementalParserInterface):
 
         # Create a set of affected byte ranges
         affected_ranges = set()
-        for start_byte, old_end_byte, new_end_byte, _ in changed_ranges:
+        for start_byte, old_end_byte, _new_end_byte, _ in changed_ranges:
             affected_ranges.add((start_byte, old_end_byte))
 
         # Determine which chunks are affected
         affected_chunk_ids = set()
-        byte_offset = 0
 
         for chunk in old_chunks:
             # Check if chunk overlaps with any changed range
-            for start_byte, old_end_byte, new_end_byte, _ in changed_ranges:
+            for start_byte, old_end_byte, _new_end_byte, _ in changed_ranges:
                 if chunk.byte_start < old_end_byte and chunk.byte_end > start_byte:
                     affected_chunk_ids.add(chunk.chunk_id)
                     break

@@ -64,7 +64,7 @@ fn add(a: i32, b: i32) i32 {
 const Point = struct {
     x: f32,
     y: f32,
-    
+
     pub fn distance(self: Point, other: Point) f32 {
         const dx = self.x - other.x;
         const dy = self.y - other.y;
@@ -94,7 +94,7 @@ const Color = enum {
     red,
     green,
     blue,
-    
+
     pub fn toRgb(self: Color) [3]u8 {
         return switch (self) {
             .red => [3]u8{ 255, 0, 0 },
@@ -140,7 +140,7 @@ const Value = union(enum) {
     int: i32,
     float: f32,
     string: []const u8,
-    
+
     pub fn isNumeric(self: Value) bool {
         return switch (self) {
             .int, .float => true,
@@ -255,7 +255,7 @@ const std = @import("std");
 pub const Config = struct {
     name: []const u8,
     value: i32,
-    
+
     pub fn init(name: []const u8, value: i32) Config {
         return Config{ .name = name, .value = value };
     }

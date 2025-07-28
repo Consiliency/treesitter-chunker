@@ -53,7 +53,7 @@ def example_streaming_processing():
     stream_count = 0
     for i in range(10000):
         # Process stream item
-        data = {"item": i, "value": i * 2}
+        {"item": i, "value": i * 2}
         stream_count += 1
 
         # GC will run more frequently for gen0
@@ -80,8 +80,8 @@ def example_context_manager():
         print(f"GC enabled: {gc.isenabled()}")
         # Critical performance section
         critical_data = []
-        for i in range(1000):
-            critical_data.append([j for j in range(100)])
+        for _i in range(1000):
+            critical_data.append(list(range(100)))
 
     print(f"GC enabled after context: {gc.isenabled()}")
 

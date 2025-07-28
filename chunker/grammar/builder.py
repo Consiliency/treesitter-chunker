@@ -6,8 +6,8 @@ from pathlib import Path
 
 from tree_sitter import Language
 
-from ..exceptions import ChunkerError
-from ..interfaces.grammar import GrammarBuilder
+from chunker.exceptions import ChunkerError
+from chunker.interfaces.grammar import GrammarBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -138,13 +138,7 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
             # Compile using gcc
             import subprocess
 
-            cmd = [
-                "gcc",
-                "-shared",
-                "-fPIC",
-                "-o",
-                str(lib_path),
-            ] + c_files
+            cmd = ["gcc", "-shared", "-fPIC", "-o", str(lib_path), *c_files]
 
             result = subprocess.run(cmd, check=False, capture_output=True, text=True)
             if result.returncode != 0:

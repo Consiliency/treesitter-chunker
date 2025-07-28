@@ -286,7 +286,7 @@ dist/
             """
 def main():
     print("Updated version")
-    
+
 def new_function():
     print("New feature")
 """,
@@ -404,7 +404,7 @@ def new_function():
         with patch.object(git_processor, "get_changed_files") as mock_changed:
             mock_changed.return_value = ["new_file.py"]
 
-            result2 = git_processor.process_repository(str(repo_path), incremental=True)
+            git_processor.process_repository(str(repo_path), incremental=True)
 
             # Should have called get_changed_files with last commit
             mock_changed.assert_called_once()
@@ -416,7 +416,7 @@ def new_function():
             bare_repo_path = Path(tmpdir) / "bare.git"
 
             # Create bare repo
-            repo = git.Repo.init(str(bare_repo_path), bare=True)
+            git.Repo.init(str(bare_repo_path), bare=True)
 
             # Bare repos don't have working directory
             with pytest.raises(ChunkerError):

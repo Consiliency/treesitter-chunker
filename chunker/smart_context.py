@@ -129,7 +129,6 @@ class TreeSitterSmartContextProvider(SmartContextProvider):
             List of (chunk, metadata) tuples for dependencies
         """
         # Check cache first
-        cache_key = f"{chunk.chunk_id}_dependencies"
         cached = self.cache.get(chunk.chunk_id, "dependency")
         if cached is not None:
             return cached

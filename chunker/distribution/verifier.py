@@ -133,7 +133,7 @@ from chunker import Chunker
 with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
     f.write("def test():\\n    pass")
     f.flush()
-    
+
     chunker = Chunker("python")
     chunks = chunker.chunk(Path(f.name))
     assert len(chunks) > 0

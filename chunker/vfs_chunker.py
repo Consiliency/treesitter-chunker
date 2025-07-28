@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterator
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from .chunker import chunk_text
 from .gc_tuning import get_memory_optimizer, optimized_gc
 from .streaming import StreamingChunker
-from .types import CodeChunk
 from .vfs import (
     HTTPFileSystem,
     LocalFileSystem,
@@ -17,6 +16,11 @@ from .vfs import (
     ZipFileSystem,
     create_vfs,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from .types import CodeChunk
 
 logger = logging.getLogger(__name__)
 
@@ -96,44 +100,43 @@ class VFSChunker:
         # For streaming from VFS, we need to adapt the approach
         # since we can't use mmap directly on VFS files
 
-        with optimized_gc("streaming"):
-            with self.vfs.open(path, "rb") as f:
-                # Read in chunks and process
-                chunk_size = 1024 * 1024  # 1MB chunks
-                content_buffer = b""
+        with optimized_gc("streaming"), self.vfs.open(path, "rb") as f:
+            # Read in chunks and process
+            chunk_size = 1024 * 1024  # 1MB chunks
+            content_buffer = b""
 
-                while True:
-                    chunk = f.read(chunk_size)
-                    if not chunk:
-                        break
+            while True:
+                chunk = f.read(chunk_size)
+                if not chunk:
+                    break
 
-                    content_buffer += chunk
+                content_buffer += chunk
 
-                    # Try to parse when we have enough content
-                    if len(content_buffer) > chunk_size * 2:
-                        # Parse accumulated content
-                        tree = chunker.parser.parse(content_buffer)
-
-                        # Extract chunks from parsed tree
-                        for code_chunk in chunker._walk_streaming(
-                            tree.root_node,
-                            content_buffer,
-                            path,
-                        ):
-                            yield code_chunk
-
-                        # Keep last chunk for context
-                        content_buffer = content_buffer[-chunk_size:]
-
-                # Process remaining content
-                if content_buffer:
+                # Try to parse when we have enough content
+                if len(content_buffer) > chunk_size * 2:
+                    # Parse accumulated content
                     tree = chunker.parser.parse(content_buffer)
+
+                    # Extract chunks from parsed tree
                     for code_chunk in chunker._walk_streaming(
                         tree.root_node,
                         content_buffer,
                         path,
                     ):
                         yield code_chunk
+
+                    # Keep last chunk for context
+                    content_buffer = content_buffer[-chunk_size:]
+
+            # Process remaining content
+            if content_buffer:
+                tree = chunker.parser.parse(content_buffer)
+                for code_chunk in chunker._walk_streaming(
+                    tree.root_node,
+                    content_buffer,
+                    path,
+                ):
+                    yield code_chunk
 
     def chunk_directory(
         self,
@@ -163,11 +166,10 @@ class VFSChunker:
                 continue
 
             # Check file patterns
-            if file_patterns:
-                if not any(
-                    self._match_pattern(vf.path, pattern) for pattern in file_patterns
-                ):
-                    continue
+            if file_patterns and not any(
+                self._match_pattern(vf.path, pattern) for pattern in file_patterns
+            ):
+                continue
 
             # Skip if language cannot be detected
             if self._detect_language(vf.path):

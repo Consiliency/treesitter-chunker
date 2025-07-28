@@ -14,7 +14,7 @@ class TestScalaBasicChunking:
         src.write_text(
             """package example
 
-def factorial(n: Int): Int = 
+def factorial(n: Int): Int =
   if (n <= 1) 1 else n * factorial(n - 1)
 
 def fibonacci(n: Int): Int = {
@@ -53,7 +53,7 @@ val double: Int => Int = _ * 2
 
 class Person(val name: String, var age: Int) {
   def greet(): String = s"Hello, I'm $name"
-  
+
   private def secretMethod(): Unit = {
     println("This is private")
   }
@@ -61,7 +61,7 @@ class Person(val name: String, var age: Int) {
 
 object Person {
   def apply(name: String): Person = new Person(name, 0)
-  
+
   val DefaultAge = 18
 }
 
@@ -267,7 +267,7 @@ class TestScalaEdgeCases:
         """Test for comprehensions."""
         src = tmp_path / "ForComprehensions.scala"
         src.write_text(
-            """def cartesianProduct(xs: List[Int], ys: List[Int]): List[(Int, Int)] = 
+            """def cartesianProduct(xs: List[Int], ys: List[Int]): List[(Int, Int)] =
   for {
     x <- xs
     y <- ys
@@ -331,9 +331,9 @@ type StringMap[V] = Map[String, V]
   class Inner(val id: Int) {
     def innerMethod(): String = s"$name-$id"
   }
-  
+
   def createInner(id: Int): Inner = new Inner(id)
-  
+
   object InnerCompanion {
     val DefaultId = 0
   }
@@ -342,7 +342,7 @@ type StringMap[V] = Map[String, V]
 object Utils {
   def process(): Unit = {
     def helper(x: Int): Int = x * 2
-    
+
     val result = helper(42)
     println(result)
   }
