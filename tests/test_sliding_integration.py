@@ -142,12 +142,12 @@ class TestLogProcessor(TextProcessor):
 class TestSlidingWindowIntegration:
     """Test sliding window fallback integration."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def fallback(self):
         """Create sliding window fallback instance."""
         return SlidingWindowFallback()
 
-    @pytest.fixture()
+    @pytest.fixture
     def temp_dir(self):
         """Create temporary directory for test files."""
         with tempfile.TemporaryDirectory() as tmpdir:

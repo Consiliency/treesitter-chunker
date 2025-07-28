@@ -11,12 +11,12 @@ from chunker.processors.logs import LogProcessor
 class TestLogProcessor:
     """Test suite for LogProcessor."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def processor(self):
         """Create a default LogProcessor instance."""
         return LogProcessor()
 
-    @pytest.fixture()
+    @pytest.fixture
     def syslog_content(self):
         """Sample syslog format content."""
         return dedent(
@@ -29,7 +29,7 @@ class TestLogProcessor:
         """,
         ).strip()
 
-    @pytest.fixture()
+    @pytest.fixture
     def apache_content(self):
         """Sample Apache log content."""
         return dedent(
@@ -42,7 +42,7 @@ class TestLogProcessor:
         """,
         ).strip()
 
-    @pytest.fixture()
+    @pytest.fixture
     def application_log_content(self):
         """Sample application log with ISO timestamps and levels."""
         return dedent(
@@ -61,7 +61,7 @@ class TestLogProcessor:
         """,
         ).strip()
 
-    @pytest.fixture()
+    @pytest.fixture
     def java_log_content(self):
         """Sample Java/Log4j style log content."""
         return dedent(

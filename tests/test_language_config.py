@@ -336,7 +336,7 @@ class TestConfigValidation:
 class TestLanguageConfigRegistry:
     """Test the language configuration registry."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def registry(self):
         """Create a fresh registry for each test."""
         reg = LanguageConfigRegistry()

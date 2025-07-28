@@ -14,12 +14,12 @@ from chunker.debug.tools.visualization import DebugVisualization
 class TestDebugVisualization:
     """Unit tests for DebugVisualization class"""
 
-    @pytest.fixture()
+    @pytest.fixture
     def visualizer(self):
         """Create a DebugVisualization instance"""
         return DebugVisualization()
 
-    @pytest.fixture()
+    @pytest.fixture
     def simple_python_file(self):
         """Create a simple Python file for testing"""
         content = "print('hello')"

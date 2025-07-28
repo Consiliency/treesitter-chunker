@@ -39,7 +39,7 @@ except ImportError:
         def get_all_resources(self, state="active"):
             return []
 
-    @pytest.fixture()
+    @pytest.fixture
     def resource_monitor():
         return ResourceTracker()
 

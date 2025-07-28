@@ -9,12 +9,12 @@ from chunker.strategies.semantic import SemanticChunker
 class TestSemanticChunker:
     """Test suite for SemanticChunker."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def semantic_chunker(self):
         """Create a semantic chunker instance."""
         return SemanticChunker()
 
-    @pytest.fixture()
+    @pytest.fixture
     def sample_python_code(self):
         """Sample Python code with various semantic patterns."""
         return '''

@@ -20,7 +20,7 @@ import pytest
 from .interfaces import ConfigChangeObserver, ErrorPropagationMixin, ResourceTracker
 
 
-@pytest.fixture()
+@pytest.fixture
 def temp_workspace() -> Generator[Path, None, None]:
     """Provide a temporary workspace directory for integration tests.
 
@@ -42,7 +42,7 @@ def temp_workspace() -> Generator[Path, None, None]:
     shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_code_files() -> dict[str, str]:
     """Provide sample code files for different languages.
 
@@ -194,13 +194,13 @@ class ErrorTrackingContext(ErrorPropagationMixin):
             return self.captured_errors.copy()
 
 
-@pytest.fixture()
+@pytest.fixture
 def error_tracking_context():
     """Context manager for tracking errors across modules."""
     return ErrorTrackingContext()
 
 
-@pytest.fixture()
+@pytest.fixture
 def config_change_tracker():
     """Fixture for tracking configuration changes."""
     tracker = ConfigChangeObserver()
@@ -217,7 +217,7 @@ def config_change_tracker():
     return tracker
 
 
-@pytest.fixture()
+@pytest.fixture
 def resource_monitor():
     """Fixture for monitoring resource allocation/cleanup."""
     monitor = ResourceTracker()
@@ -236,7 +236,7 @@ def resource_monitor():
     return monitor
 
 
-@pytest.fixture()
+@pytest.fixture
 def parallel_test_environment(temp_workspace):
     """Set up environment for parallel processing tests."""
 
@@ -309,7 +309,7 @@ def parallel_test_environment(temp_workspace):
     env.cleanup()
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_parser_factory():
     """Mock parser with controllable failures."""
 
@@ -388,7 +388,7 @@ def mock_parser_factory():
     return MockParserFactory()
 
 
-@pytest.fixture()
+@pytest.fixture
 def test_file_generator(temp_workspace):
     """Generate test files with specific patterns."""
 
@@ -487,7 +487,7 @@ function {pattern}_{{i}}(x) {{
     generator.cleanup()
 
 
-@pytest.fixture()
+@pytest.fixture
 def async_test_runner():
     """Runner for async test scenarios."""
 
@@ -542,7 +542,7 @@ def async_test_runner():
 
 
 # Thread-safe fixtures for concurrent testing
-@pytest.fixture()
+@pytest.fixture
 def thread_safe_counter():
     """Thread-safe counter for tracking concurrent operations."""
 
@@ -569,7 +569,7 @@ def thread_safe_counter():
     return ThreadSafeCounter()
 
 
-@pytest.fixture()
+@pytest.fixture
 def performance_monitor():
     """Monitor performance metrics during tests."""
 

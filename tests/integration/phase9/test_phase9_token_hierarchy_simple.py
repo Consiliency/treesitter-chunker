@@ -8,7 +8,7 @@ from chunker import chunk_file, get_parser
 class TestTokenHierarchyIntegrationSimple:
     """Test token counting integrated with hierarchy building."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def sample_python_file(self, tmp_path):
         """Create a sample Python file for testing."""
         file_path = tmp_path / "sample.py"

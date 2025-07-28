@@ -184,7 +184,7 @@ class Neo4jExporter(GraphExporterBase):
                 if value is not None and value != "":
                     props.append(f"{key}: {self._escape_property_value(value)}")
 
-            cypher = f"CREATE (n:{labels} {{\n  {',\n  '.join(props)}\n}});"
+            cypher = f"CREATE (n:{labels} {{" + "\n  " + ",\n  ".join(props) + "\n}});"
             statements.append(cypher)
 
         # Generate relationship creation statements

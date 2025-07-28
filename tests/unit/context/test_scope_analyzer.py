@@ -77,7 +77,7 @@ class TestBaseScopeAnalyzer:
 class TestPythonScopeAnalyzer:
     """Test Python-specific scope analysis."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def python_code(self):
         """Sample Python code for testing."""
         return """
@@ -190,7 +190,7 @@ class TopLevel:
 class TestJavaScriptScopeAnalyzer:
     """Test JavaScript-specific scope analysis."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def javascript_code(self):
         """Sample JavaScript code for testing."""
         return """

@@ -9,12 +9,12 @@ from chunker.strategies.hierarchical import HierarchicalChunker
 class TestHierarchicalChunker:
     """Test suite for HierarchicalChunker."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def hierarchical_chunker(self):
         """Create a hierarchical chunker instance."""
         return HierarchicalChunker()
 
-    @pytest.fixture()
+    @pytest.fixture
     def nested_python_code(self):
         """Sample Python code with deep nesting."""
         return '''

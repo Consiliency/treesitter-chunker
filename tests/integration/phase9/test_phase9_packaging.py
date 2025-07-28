@@ -10,7 +10,7 @@ from chunker import DistributionConfig, PackageDistributor, PlatformConfig, Whee
 class TestPackagingIntegration:
     """Test packaging and distribution features."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def package_config(self, tmp_path):
         """Create distribution configuration."""
         return DistributionConfig(

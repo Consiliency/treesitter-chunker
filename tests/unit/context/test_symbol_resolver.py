@@ -63,7 +63,7 @@ class TestBaseSymbolResolver:
 class TestPythonSymbolResolver:
     """Test Python-specific symbol resolution."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def python_code(self):
         """Sample Python code for testing."""
         return """
@@ -151,7 +151,7 @@ result = calculate(5, PI)
 class TestJavaScriptSymbolResolver:
     """Test JavaScript-specific symbol resolution."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def javascript_code(self):
         """Sample JavaScript code for testing."""
         return """

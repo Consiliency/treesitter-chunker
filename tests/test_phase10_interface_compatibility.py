@@ -35,7 +35,7 @@ from chunker.types import CodeChunk
 class TestPhase10InterfaceCompatibility:
     """Test that Phase 10 interfaces work together correctly."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def sample_chunks(self, tmp_path) -> list[CodeChunk]:
         """Create sample chunks for testing."""
         test_file = tmp_path / "test.py"

@@ -13,7 +13,7 @@ from chunker.types import CodeChunk
 class TestGraphMLExporter:
     """Test GraphML export functionality."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def sample_chunk(self):
         """Create a sample code chunk."""
         return CodeChunk(
@@ -29,7 +29,7 @@ class TestGraphMLExporter:
             metadata={"name": "test", "chunk_type": "function"},
         )
 
-    @pytest.fixture()
+    @pytest.fixture
     def exporter(self):
         """Create a GraphMLExporter instance."""
         return GraphMLExporter()

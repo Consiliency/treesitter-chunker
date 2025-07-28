@@ -14,7 +14,7 @@ from chunker.repo.processor import GitAwareRepoProcessor, RepoProcessor
 class TestRepoProcessor:
     """Test basic repository processor."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def temp_repo(self):
         """Create a temporary repository structure."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -75,7 +75,7 @@ def test_goodbye():
 
             yield repo_path
 
-    @pytest.fixture()
+    @pytest.fixture
     def processor(self):
         """Create a repository processor."""
         return RepoProcessor(show_progress=False)
@@ -229,7 +229,7 @@ def greeting():
 class TestGitAwareRepoProcessor:
     """Test Git-aware repository processor."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def git_repo(self):
         """Create a temporary git repository."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -262,7 +262,7 @@ dist/
 
             yield repo_path, repo
 
-    @pytest.fixture()
+    @pytest.fixture
     def git_processor(self):
         """Create a Git-aware repository processor."""
         return GitAwareRepoProcessor(show_progress=False)

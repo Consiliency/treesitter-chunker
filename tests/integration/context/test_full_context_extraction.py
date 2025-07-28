@@ -9,7 +9,7 @@ from chunker.parser import get_parser
 class TestPythonContextExtraction:
     """Test full context extraction for Python code."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def complex_python_code(self):
         """Complex Python code with multiple contexts."""
         return '''
@@ -230,7 +230,7 @@ def create_manager(name: str = "default") -> DatabaseManager:
 class TestJavaScriptContextExtraction:
     """Test full context extraction for JavaScript code."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def complex_javascript_code(self):
         """Complex JavaScript code with multiple contexts."""
         return """

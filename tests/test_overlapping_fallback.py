@@ -16,12 +16,12 @@ from chunker.interfaces.fallback import ChunkingMethod
 class TestOverlappingFallbackChunker:
     """Test overlapping fallback chunker implementation."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def chunker(self):
         """Create an overlapping fallback chunker instance."""
         return OverlappingFallbackChunker()
 
-    @pytest.fixture()
+    @pytest.fixture
     def log_content(self):
         """Sample log file content."""
         return """2024-01-15 10:00:00 INFO Starting application
@@ -36,7 +36,7 @@ class TestOverlappingFallbackChunker:
 2024-01-15 10:00:09 INFO Results processed
 2024-01-15 10:00:10 INFO Application ready"""
 
-    @pytest.fixture()
+    @pytest.fixture
     def markdown_content(self):
         """Sample markdown content."""
         return """# Project Documentation

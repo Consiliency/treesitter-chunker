@@ -15,7 +15,7 @@ from chunker.grammar.discovery import GrammarDiscoveryService
 class TestGrammarDiscoveryService:
     """Test the real GrammarDiscoveryService implementation"""
 
-    @pytest.fixture()
+    @pytest.fixture
     def discovery_service(self):
         """Create a discovery service with a temporary cache directory"""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -24,7 +24,7 @@ class TestGrammarDiscoveryService:
             service.cache_file = service.cache_dir / "discovery_cache.json"
             yield service
 
-    @pytest.fixture()
+    @pytest.fixture
     def mock_github_response(self):
         """Mock GitHub API response"""
         return [

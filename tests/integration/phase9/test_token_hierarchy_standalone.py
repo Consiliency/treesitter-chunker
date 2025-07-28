@@ -6,7 +6,7 @@ import pytest
 class TestTokenHierarchyStandalone:
     """Test token counting integrated with hierarchy building - standalone version."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def sample_python_file(self, tmp_path):
         """Create a sample Python file for testing."""
         file_path = tmp_path / "sample.py"

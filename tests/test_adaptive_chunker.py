@@ -9,12 +9,12 @@ from chunker.strategies.adaptive import AdaptiveChunker, AdaptiveMetrics
 class TestAdaptiveChunker:
     """Test suite for AdaptiveChunker."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def adaptive_chunker(self):
         """Create an adaptive chunker instance."""
         return AdaptiveChunker()
 
-    @pytest.fixture()
+    @pytest.fixture
     def variable_complexity_code(self):
         """Code with varying complexity levels."""
         return '''

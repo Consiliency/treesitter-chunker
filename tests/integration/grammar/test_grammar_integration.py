@@ -34,8 +34,8 @@ class TestGrammarIntegration:
         if self.temp_dir.exists():
             shutil.rmtree(self.temp_dir)
 
-    @pytest.mark.integration()
-    @pytest.mark.slow()
+    @pytest.mark.integration
+    @pytest.mark.slow
     def test_full_grammar_workflow(self):
         """Test complete workflow: add, fetch, build, validate."""
         # Skip if no internet connection
@@ -78,7 +78,7 @@ class TestGrammarIntegration:
         assert valid is True
         assert error is None
 
-    @pytest.mark.integration()
+    @pytest.mark.integration
     def test_repository_search_workflow(self):
         """Test discovering and adding grammars from repository."""
         # Search for JavaScript-related grammars
@@ -101,7 +101,7 @@ class TestGrammarIntegration:
         if "typescript" in [g.name for g in results]:
             assert "typescript" in names
 
-    @pytest.mark.integration()
+    @pytest.mark.integration
     def test_file_extension_discovery(self):
         """Test discovering grammar by file extension."""
         test_files = [
@@ -130,7 +130,7 @@ class TestGrammarIntegration:
         all_grammars = self.manager.list_grammars()
         assert len(all_grammars) == len(test_files)
 
-    @pytest.mark.integration()
+    @pytest.mark.integration
     def test_popular_grammars(self):
         """Test getting and managing popular grammars."""
         # Get top 5 popular grammars
@@ -166,7 +166,7 @@ class TestGrammarIntegration:
                 "kotlin",
             ]
 
-    @pytest.mark.integration()
+    @pytest.mark.integration
     def test_builder_integration(self):
         """Test builder integration with manager."""
         # Add some grammars
@@ -195,7 +195,7 @@ class TestGrammarIntegration:
 
         assert len(languages) == len(grammars_to_test)
 
-    @pytest.mark.integration()
+    @pytest.mark.integration
     def test_grammar_removal(self):
         """Test removing grammars."""
         # Add a grammar

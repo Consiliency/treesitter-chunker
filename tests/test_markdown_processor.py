@@ -18,12 +18,12 @@ from chunker.types import CodeChunk
 class TestMarkdownProcessor:
     """Test suite for MarkdownProcessor."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def processor(self):
         """Create a default processor instance."""
         return MarkdownProcessor()
 
-    @pytest.fixture()
+    @pytest.fixture
     def custom_processor(self):
         """Create a processor with custom configuration."""
         config = ProcessorConfig(

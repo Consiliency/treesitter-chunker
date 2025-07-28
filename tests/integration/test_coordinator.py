@@ -16,7 +16,7 @@ from tests.integration.coordinator import (
 class TestIntegrationCoordinator:
     """Test the IntegrationCoordinator class."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def coordinator(self, tmp_path):
         """Create a coordinator instance."""
         base_path = tmp_path / "worktrees"

@@ -11,12 +11,12 @@ from chunker.parser import get_parser
 class TestNASMPlugin:
     """Test suite for NASM language plugin."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def plugin(self):
         """Create a NASM plugin instance."""
         return NASMPlugin()
 
-    @pytest.fixture()
+    @pytest.fixture
     def parser(self):
         """Get a NASM parser."""
         return get_parser("nasm")

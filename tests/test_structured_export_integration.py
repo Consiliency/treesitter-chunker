@@ -21,7 +21,7 @@ from chunker.export import (
 from chunker.interfaces.export import ExportFormat
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_python_file(tmp_path):
     """Create a sample Python file with relationships."""
     file_path = tmp_path / "sample.py"
@@ -70,7 +70,7 @@ if __name__ == "__main__":
     return file_path
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_javascript_file(tmp_path):
     """Create a sample JavaScript file with relationships."""
     file_path = tmp_path / "sample.js"

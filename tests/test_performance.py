@@ -35,7 +35,7 @@ if __name__ == "__main__":
 '''
 
 
-@pytest.fixture()
+@pytest.fixture
 def temp_python_file():
     """Create a temporary Python file for testing."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
@@ -45,7 +45,7 @@ def temp_python_file():
     temp_path.unlink()
 
 
-@pytest.fixture()
+@pytest.fixture
 def temp_directory_with_files():
     """Create a temporary directory with multiple Python files."""
     temp_dir = Path(tempfile.mkdtemp())

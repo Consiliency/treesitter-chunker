@@ -11,12 +11,12 @@ from chunker.parser import get_parser
 class TestWASMPlugin:
     """Test suite for WebAssembly language plugin."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def plugin(self):
         """Create a WASM plugin instance."""
         return WASMPlugin()
 
-    @pytest.fixture()
+    @pytest.fixture
     def parser(self):
         """Get a WASM parser."""
         return get_parser("wat")

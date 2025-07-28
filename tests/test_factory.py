@@ -158,7 +158,7 @@ class TestParserPool:
 class TestParserFactory:
     """Test ParserFactory functionality."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def registry(self):
         """Create a real registry for testing."""
         from pathlib import Path

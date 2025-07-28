@@ -25,7 +25,7 @@ from chunker import (  # Supporting; Core
 class TestPhase9CombinedFeatures:
     """Test multiple Phase 9 features working together."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def complex_project(self, tmp_path):
         """Create a complex project structure."""
         # Initialize git

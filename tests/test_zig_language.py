@@ -11,12 +11,12 @@ from chunker.parser import get_parser
 class TestZigPlugin:
     """Test suite for Zig language plugin."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def plugin(self):
         """Create a Zig plugin instance."""
         return ZigPlugin()
 
-    @pytest.fixture()
+    @pytest.fixture
     def parser(self):
         """Get a Zig parser."""
         return get_parser("zig")

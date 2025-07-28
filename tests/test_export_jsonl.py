@@ -11,7 +11,7 @@ from chunker.chunker import CodeChunk
 from chunker.export import JSONLExporter, SchemaType
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_chunks():
     """Create sample chunks with relationships."""
     chunks = [

@@ -15,7 +15,7 @@ from chunker import (
 class TestRepoProcessingIntegration:
     """Test repository processing working with other Phase 9 features."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def test_repo(self, tmp_path):
         """Create a test repository structure."""
         # Create git repo

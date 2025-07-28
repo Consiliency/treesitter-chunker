@@ -17,7 +17,7 @@ from chunker import (
 class TestChunkOptimizer:
     """Test suite for ChunkOptimizer."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def sample_chunks(self):
         """Create sample chunks for testing."""
         return [
@@ -63,12 +63,12 @@ class TestChunkOptimizer:
             ),
         ]
 
-    @pytest.fixture()
+    @pytest.fixture
     def optimizer(self):
         """Create a ChunkOptimizer instance."""
         return ChunkOptimizer()
 
-    @pytest.fixture()
+    @pytest.fixture
     def mock_token_counter(self):
         """Mock the token counter."""
         with patch("chunker.optimization.TiktokenCounter") as mock:
@@ -404,7 +404,7 @@ class TestChunkOptimizer:
 class TestChunkBoundaryAnalyzer:
     """Test suite for ChunkBoundaryAnalyzer."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def analyzer(self):
         """Create a ChunkBoundaryAnalyzer instance."""
         return ChunkBoundaryAnalyzer()
@@ -568,7 +568,7 @@ public class MyClass {
 class TestOptimizationIntegration:
     """Integration tests for optimization features."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def real_optimizer(self):
         """Create optimizer with real token counter."""
         # This will use actual tiktoken if available
@@ -772,7 +772,7 @@ class TestOptimizationIntegration:
 class TestOptimizationEdgeCases:
     """Test edge cases and error handling."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def optimizer(self):
         return ChunkOptimizer()
 

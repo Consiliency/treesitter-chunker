@@ -13,12 +13,12 @@ from chunker.debug.tools.comparison import ChunkComparison
 class TestChunkComparison:
     """Unit tests for ChunkComparison class"""
 
-    @pytest.fixture()
+    @pytest.fixture
     def comparison(self):
         """Create a ChunkComparison instance"""
         return ChunkComparison()
 
-    @pytest.fixture()
+    @pytest.fixture
     def test_file(self):
         """Create a test Python file"""
         content = """def function1():

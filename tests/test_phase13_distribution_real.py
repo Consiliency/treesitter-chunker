@@ -16,7 +16,7 @@ from chunker.distribution import Distributor
 class TestDistributionIntegrationReal:
     """Test actual distribution implementation"""
 
-    @pytest.fixture()
+    @pytest.fixture
     def distributor(self):
         """Provide a real distributor instance"""
         with tempfile.TemporaryDirectory() as tmpdir:

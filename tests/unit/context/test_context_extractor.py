@@ -143,7 +143,7 @@ class TestBaseContextExtractor:
 class TestPythonContextExtractor:
     """Test Python-specific context extraction."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def python_code(self):
         """Sample Python code for testing."""
         return '''
@@ -266,7 +266,7 @@ class UserManager:
 class TestJavaScriptContextExtractor:
     """Test JavaScript-specific context extraction."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def javascript_code(self):
         """Sample JavaScript code for testing."""
         return """

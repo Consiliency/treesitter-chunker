@@ -15,12 +15,12 @@ from chunker.debug.visualization_impl import DebugVisualizationImpl
 class TestDebugVisualizationImpl:
     """Test DebugVisualizationImpl contract implementation"""
 
-    @pytest.fixture()
+    @pytest.fixture
     def impl(self):
         """Create implementation instance"""
         return DebugVisualizationImpl()
 
-    @pytest.fixture()
+    @pytest.fixture
     def sample_file(self):
         """Create a sample Python file"""
         content = """def hello():
@@ -104,12 +104,12 @@ class Example:
 class TestChunkComparisonImpl:
     """Test ChunkComparisonImpl contract implementation"""
 
-    @pytest.fixture()
+    @pytest.fixture
     def impl(self):
         """Create implementation instance"""
         return ChunkComparisonImpl()
 
-    @pytest.fixture()
+    @pytest.fixture
     def sample_file(self):
         """Create a sample Python file"""
         content = """def process_data(data):

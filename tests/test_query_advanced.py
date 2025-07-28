@@ -15,12 +15,12 @@ from chunker.types import CodeChunk
 class TestNaturalLanguageQueryEngine:
     """Test natural language query engine."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def query_engine(self):
         """Create query engine instance."""
         return NaturalLanguageQueryEngine()
 
-    @pytest.fixture()
+    @pytest.fixture
     def sample_chunks(self):
         """Create sample code chunks for testing."""
         return [
@@ -275,12 +275,12 @@ class TestNaturalLanguageQueryEngine:
 class TestAdvancedQueryIndex:
     """Test advanced query index functionality."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def index(self):
         """Create index instance."""
         return AdvancedQueryIndex()
 
-    @pytest.fixture()
+    @pytest.fixture
     def sample_chunks(self):
         """Create sample chunks."""
         return [
@@ -445,7 +445,7 @@ class TestAdvancedQueryIndex:
 class TestSmartQueryOptimizer:
     """Test query optimization functionality."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def optimizer(self):
         """Create optimizer instance."""
         return SmartQueryOptimizer()
@@ -570,7 +570,7 @@ class TestSmartQueryOptimizer:
 class TestIntegration:
     """Integration tests for the complete query system."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def query_system(self):
         """Create complete query system."""
         engine = NaturalLanguageQueryEngine()

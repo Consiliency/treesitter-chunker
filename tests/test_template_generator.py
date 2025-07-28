@@ -11,13 +11,13 @@ from chunker.template_generator import TemplateGenerator
 class TestTemplateGenerator:
     """Test suite for TemplateGenerator."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def temp_dir(self):
         """Create a temporary directory for test outputs."""
         with tempfile.TemporaryDirectory() as tmpdir:
             yield Path(tmpdir)
 
-    @pytest.fixture()
+    @pytest.fixture
     def generator(self):
         """Create a TemplateGenerator instance."""
         return TemplateGenerator()

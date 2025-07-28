@@ -19,7 +19,7 @@ from chunker import (
 class TestPhase9SimpleIntegration:
     """Test Phase 9 features with actual available APIs."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def test_file(self, tmp_path):
         """Create a simple test file."""
         test_file = tmp_path / "example.py"

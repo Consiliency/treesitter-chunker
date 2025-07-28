@@ -14,7 +14,7 @@ from chunker.distribution import Distributor
 class TestDistributionAdapter:
     """Adapter to make integration tests work with our implementation"""
 
-    @pytest.fixture()
+    @pytest.fixture
     def distributor(self):
         """Provide a real distributor instance"""
         return Distributor()

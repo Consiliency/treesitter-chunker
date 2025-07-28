@@ -15,7 +15,7 @@ from chunker.semantic_merging import MergeStrategy
 class TestSemanticMergingIntegration:
     """Test semantic merging working with other Phase 9 features."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def test_file(self, tmp_path):
         """Create a test file with getter/setter pairs and small methods."""
         test_file = tmp_path / "user.py"

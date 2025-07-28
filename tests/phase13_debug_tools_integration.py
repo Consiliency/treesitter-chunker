@@ -13,7 +13,7 @@ from chunker.debug.tools import DebugVisualization
 class TestDebugToolsIntegration:
     """Test debug tools integrate with core chunker"""
 
-    @pytest.fixture()
+    @pytest.fixture
     def test_file(self):
         """Create a test Python file"""
         content = """def hello():

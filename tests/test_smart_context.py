@@ -17,12 +17,12 @@ from chunker.types import CodeChunk
 class TestTreeSitterSmartContextProvider:
     """Test the TreeSitterSmartContextProvider implementation."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def provider(self):
         """Create a smart context provider instance."""
         return TreeSitterSmartContextProvider()
 
-    @pytest.fixture()
+    @pytest.fixture
     def sample_chunks(self):
         """Create sample code chunks for testing."""
         chunks = [

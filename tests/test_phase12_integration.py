@@ -14,7 +14,7 @@ from chunker.export.sqlite_exporter import SQLiteExporter
 from chunker.types import CodeChunk
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_chunks():
     """Create sample code chunks for testing."""
     return [
