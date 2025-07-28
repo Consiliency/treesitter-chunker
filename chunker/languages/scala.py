@@ -4,8 +4,6 @@ Support for Scala language.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from tree_sitter import Node
 
 from ..contracts.language_plugin_contract import ExtendedLanguagePluginContract
@@ -207,25 +205,25 @@ class ScalaPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             return len(node.children) > 3
         return False
 
-    def get_node_context(self, node: Node, source: bytes) -> Optional[str]:
+    def get_node_context(self, node: Node, source: bytes) -> str | None:
         """Extract meaningful context for a node."""
         name = self.get_node_name(node, source)
 
         if node.type in {"function_definition", "method_definition"}:
             return f"def {name}" if name else "method"
-        elif node.type == "class_definition":
+        if node.type == "class_definition":
             return f"class {name}" if name else "class"
-        elif node.type == "case_class_definition":
+        if node.type == "case_class_definition":
             return f"case class {name}" if name else "case class"
-        elif node.type == "object_definition":
+        if node.type == "object_definition":
             return f"object {name}" if name else "object"
-        elif node.type == "trait_definition":
+        if node.type == "trait_definition":
             return f"trait {name}" if name else "trait"
-        elif node.type == "val_definition":
+        if node.type == "val_definition":
             return f"val {name}" if name else "value"
-        elif node.type == "var_definition":
+        if node.type == "var_definition":
             return f"var {name}" if name else "variable"
-        elif node.type == "type_definition":
+        if node.type == "type_definition":
             return f"type {name}" if name else "type alias"
         return None
 

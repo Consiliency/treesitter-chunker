@@ -2,10 +2,7 @@
 Real integration tests for Phase 13 using actual implementations
 """
 
-import os
-import shutil
 import sys
-import tempfile
 from pathlib import Path
 
 import pytest

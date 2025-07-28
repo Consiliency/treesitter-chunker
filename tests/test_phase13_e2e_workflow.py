@@ -4,7 +4,6 @@ Testing real-world development scenarios
 """
 
 import shutil
-import subprocess
 import tempfile
 from pathlib import Path
 
@@ -49,7 +48,7 @@ class Calculator:
 def unused_function():
     import os  # unused import
     pass
-"""
+""",
             )
 
             # 2. Use debug tools to analyze the code
@@ -81,7 +80,8 @@ def unused_function():
 
             # 5. Generate CI configuration
             ci_config = dev_env.generate_ci_config(
-                ["ubuntu-latest", "windows-latest"], ["3.9", "3.10", "3.11"]
+                ["ubuntu-latest", "windows-latest"],
+                ["3.9", "3.10", "3.11"],
             )
             assert "jobs" in ci_config
             assert "test" in ci_config["jobs"]
@@ -100,7 +100,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "test-package"
 version = "0.1.0"
-"""
+""",
             )
 
             # Try to build (may fail without full setup, but test the interface)
@@ -113,7 +113,8 @@ version = "0.1.0"
 
             # Test distribution validation
             validation_success, validation_info = dist.publish_to_pypi(
-                project_dir, dry_run=True
+                project_dir,
+                dry_run=True,
             )
             assert isinstance(validation_success, bool)
             assert isinstance(validation_info, dict)
@@ -155,7 +156,7 @@ class DataProcessor:
             
     def clear_cache(self):
         self.cache.clear()
-"""
+""",
             )
 
             # 1. Use debug tools to understand the code structure
@@ -169,7 +170,9 @@ class DataProcessor:
             # Inspect each chunk
             for chunk in chunks[:2]:  # Test first two chunks
                 chunk_info = debug_tools.inspect_chunk(
-                    str(complex_file), chunk.chunk_id, include_context=True
+                    str(complex_file),
+                    chunk.chunk_id,
+                    include_context=True,
                 )
                 assert "content" in chunk_info
                 assert "metadata" in chunk_info
@@ -249,7 +252,8 @@ impl Config {
 
             # Generate polyglot CI config
             ci_config = dev_env.generate_ci_config(
-                ["ubuntu-latest"], ["3.9"]  # Python version
+                ["ubuntu-latest"],
+                ["3.9"],  # Python version
             )
             assert ci_config is not None
 
@@ -284,7 +288,7 @@ class DataCache:
         
     def set(self, key, value):
         self.cache[key] = value  # No eviction policy
-"""
+""",
             )
 
             # 1. Profile the chunking performance

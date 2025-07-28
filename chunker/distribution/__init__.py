@@ -18,12 +18,12 @@ from .release_manager import ReleaseManager
 from .verifier import InstallationVerifier
 
 __all__ = [
-    "PyPIPublisher",
+    "DistributionImpl",
+    "Distributor",
     "DockerBuilder",
     "HomebrewFormulaGenerator",
-    "ReleaseManager",
     "InstallationVerifier",
-    "Distributor",
-    "DistributionImpl",
+    "PyPIPublisher",
     "ReleaseManagementImpl",
+    "ReleaseManager",
 ]

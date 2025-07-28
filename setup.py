@@ -10,20 +10,14 @@ import subprocess
 import sys
 from pathlib import Path
 
-from setuptools import Extension, find_packages, setup
-from setuptools.command.build_ext import build_ext
+from setuptools import find_packages, setup
 from setuptools.command.develop import develop
 from setuptools.command.egg_info import egg_info
 from setuptools.command.install import install
 
 
-class TreeSitterBuildExt(build_ext):
-    """Custom build extension to compile tree-sitter grammars."""
-
-    def run(self):
-        # Ensure grammars are fetched and built
-        self.build_grammars()
-        super().run()
+class BuildGrammars:
+    """Mixin for commands that need to build grammars."""
 
     def build_grammars(self):
         """Build tree-sitter grammars into shared library."""
@@ -44,19 +38,19 @@ class TreeSitterBuildExt(build_ext):
         subprocess.run([sys.executable, str(scripts_dir / "build_lib.py")], check=True)
 
 
-class CustomInstallCommand(install):
+class CustomInstallCommand(install, BuildGrammars):
     """Custom install command that ensures grammars are built."""
 
     def run(self):
-        self.run_command("build_ext")
+        self.build_grammars()
         install.run(self)
 
 
-class CustomDevelopCommand(develop):
+class CustomDevelopCommand(develop, BuildGrammars):
     """Custom develop command that ensures grammars are built."""
 
     def run(self):
-        self.run_command("build_ext")
+        self.build_grammars()
         develop.run(self)
 
 
@@ -166,14 +160,7 @@ setup(
         "Operating System :: Microsoft :: Windows",
     ],
     keywords="tree-sitter, code-analysis, chunking, parsing, ast, semantic-analysis",
-    ext_modules=[
-        Extension(
-            "treesitter_chunker._grammars",
-            sources=[],  # No C sources, we're just triggering the build
-        ),
-    ],
     cmdclass={
-        "build_ext": TreeSitterBuildExt,
         "install": CustomInstallCommand,
         "develop": CustomDevelopCommand,
         "egg_info": CustomEggInfoCommand,

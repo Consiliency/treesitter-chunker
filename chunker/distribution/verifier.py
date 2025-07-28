@@ -42,15 +42,14 @@ class InstallationVerifier:
         # Route to appropriate verification method
         if method == "pip":
             return self._verify_pip_installation(platform, details)
-        elif method == "conda":
+        if method == "conda":
             return self._verify_conda_installation(platform, details)
-        elif method == "docker":
+        if method == "docker":
             return self._verify_docker_installation(platform, details)
-        elif method == "homebrew":
+        if method == "homebrew":
             return self._verify_homebrew_installation(platform, details)
-        else:
-            details["errors"].append(f"Unknown installation method: {method}")
-            return False, details
+        details["errors"].append(f"Unknown installation method: {method}")
+        return False, details
 
     def _verify_pip_installation(
         self,

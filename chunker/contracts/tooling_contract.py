@@ -4,14 +4,14 @@
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 
 class DeveloperToolingContract(ABC):
     """Abstract contract defining developer tooling interface"""
 
     @abstractmethod
-    def run_pre_commit_checks(self, files: List[Path]) -> Tuple[bool, Dict[str, Any]]:
+    def run_pre_commit_checks(self, files: list[Path]) -> tuple[bool, dict[str, Any]]:
         """Run all pre-commit checks on specified files
 
         Args:
@@ -35,7 +35,7 @@ class DeveloperToolingContract(ABC):
         """
 
     @abstractmethod
-    def format_code(self, files: List[Path], fix: bool = False) -> Dict[str, Any]:
+    def format_code(self, files: list[Path], fix: bool = False) -> dict[str, Any]:
         """Format code files according to project standards
 
         Args:
@@ -60,9 +60,9 @@ class DeveloperToolingContract(ABC):
     @abstractmethod
     def run_linting(
         self,
-        files: List[Path],
+        files: list[Path],
         fix: bool = False,
-    ) -> Dict[str, List[Dict[str, Any]]]:
+    ) -> dict[str, list[dict[str, Any]]]:
         """Run linting checks on specified files
 
         Args:
@@ -87,7 +87,7 @@ class DeveloperToolingContract(ABC):
         """
 
     @abstractmethod
-    def run_type_checking(self, files: List[Path]) -> Dict[str, List[Dict[str, Any]]]:
+    def run_type_checking(self, files: list[Path]) -> dict[str, list[dict[str, Any]]]:
         """Run static type checking on files
 
         Args:

@@ -1,7 +1,7 @@
 # File: chunker/contracts/debug_stub.py
 # Purpose: Concrete stub implementation for testing
 
-from typing import Any, Union
+from typing import Any
 
 from .debug_contract import ChunkComparisonContract, DebugVisualizationContract
 
@@ -14,7 +14,7 @@ class DebugVisualizationStub(DebugVisualizationContract):
         file_path: str,
         language: str,
         output_format: str = "svg",
-    ) -> Union[str, bytes]:
+    ) -> str | bytes:
         """Stub that returns valid default values"""
         if output_format in ["svg", "dot", "json"]:
             return "Not implemented - Debug Tools team will implement"

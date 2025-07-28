@@ -4,8 +4,6 @@ Support for OCaml language.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from tree_sitter import Node
 
 from ..contracts.language_plugin_contract import ExtendedLanguagePluginContract
@@ -116,7 +114,7 @@ class OCamlPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             for child in node.children:
                 if child.type == "value_name":
                     return source[child.start_byte : child.end_byte].decode("utf-8")
-                elif child.type == "let_binding":
+                if child.type == "let_binding":
                     # Recursive case for let rec
                     for subchild in child.children:
                         if subchild.type == "value_name":
@@ -217,7 +215,7 @@ class OCamlPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             return True
         return False
 
-    def get_node_context(self, node: Node, source: bytes) -> Optional[str]:
+    def get_node_context(self, node: Node, source: bytes) -> str | None:
         """Extract meaningful context for a node."""
         name = self.get_node_name(node, source)
 
@@ -225,29 +223,29 @@ class OCamlPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             if name:
                 return f"let {name}"
             return "let binding"
-        elif node.type == "let_rec_binding":
+        if node.type == "let_rec_binding":
             if name:
                 return f"let rec {name}"
             return "let rec binding"
-        elif node.type in {"type_definition", "type_binding"}:
+        if node.type in {"type_definition", "type_binding"}:
             if name:
                 return f"type {name}"
             return "type definition"
-        elif node.type in {"module_definition", "module_binding"}:
+        if node.type in {"module_definition", "module_binding"}:
             if name:
                 return f"module {name}"
             return "module"
-        elif node.type == "exception_definition":
+        if node.type == "exception_definition":
             if name:
                 return f"exception {name}"
             return "exception"
-        elif node.type in {"class_definition", "class_binding"}:
+        if node.type in {"class_definition", "class_binding"}:
             if name:
                 return f"class {name}"
             return "class"
-        elif node.type == "signature":
+        if node.type == "signature":
             return "module signature"
-        elif node.type == "structure":
+        if node.type == "structure":
             return "module structure"
         return None
 

@@ -4,7 +4,7 @@ Note: The C++ language plugin (CppPlugin) exists and supports many C++ construct
 including classes, namespaces, templates, constructors/destructors, etc. However,
 without a proper LanguageConfig registration (like Python has), the chunker falls
 back to default chunk types which only includes function_definition, class_definition,
-and method_definition. 
+and method_definition.
 
 As a result, these tests verify that C++ code can be parsed and that functions/methods
 are properly detected, but more advanced chunking (classes, namespaces, templates as

@@ -4,8 +4,6 @@ Support for SQL language.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from tree_sitter import Node
 
 from ..contracts.language_plugin_contract import ExtendedLanguagePluginContract
@@ -116,7 +114,7 @@ class SQLPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             for child in node.children:
                 if child.type == "relation" or child.type == "identifier":
                     return source[child.start_byte : child.end_byte].decode("utf-8")
-                elif child.type == "object_reference":
+                if child.type == "object_reference":
                     # Handle schema.table notation
                     for subchild in child.children:
                         if subchild.type == "identifier":
@@ -181,7 +179,7 @@ class SQLPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             return True
         return False
 
-    def get_node_context(self, node: Node, source: bytes) -> Optional[str]:
+    def get_node_context(self, node: Node, source: bytes) -> str | None:
         """Extract meaningful context for a node."""
         obj_name = self.get_node_name(node, source)
 
@@ -190,7 +188,7 @@ class SQLPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             if obj_name:
                 return f"CREATE {stmt_type.upper()} {obj_name}"
             return f"CREATE {stmt_type.upper()}"
-        elif node.type == "select_statement":
+        if node.type == "select_statement":
             # Try to extract main table reference
             for child in node.children:
                 if child.type == "from_clause":
@@ -201,7 +199,7 @@ class SQLPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                             ].decode("utf-8")
                             return f"SELECT FROM {table_name}"
             return "SELECT statement"
-        elif node.type in {"function_definition", "procedure_definition"}:
+        if node.type in {"function_definition", "procedure_definition"}:
             if obj_name:
                 return f"{node.type.replace('_definition', '').upper()} {obj_name}"
         return None

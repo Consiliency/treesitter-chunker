@@ -1,0 +1,23 @@
+[
+  {
+    "session_id": "06db8e1e-2b32-483c-9bd5-2d02a7d3947c",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/06db8e1e-2b32-483c-9bd5-2d02a7d3947c.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "Stop",
+    "stop_hook_active": false
+  },
+  {
+    "session_id": "06db8e1e-2b32-483c-9bd5-2d02a7d3947c",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/06db8e1e-2b32-483c-9bd5-2d02a7d3947c.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "Stop",
+    "stop_hook_active": false
+  },
+  {
+    "session_id": "06db8e1e-2b32-483c-9bd5-2d02a7d3947c",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/06db8e1e-2b32-483c-9bd5-2d02a7d3947c.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "Stop",
+    "stop_hook_active": false
+  }
+]

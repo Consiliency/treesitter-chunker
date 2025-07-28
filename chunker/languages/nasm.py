@@ -4,8 +4,6 @@ Support for NASM (Netwide Assembler) language.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from tree_sitter import Node
 
 from ..contracts.language_plugin_contract import ExtendedLanguagePluginContract
@@ -282,7 +280,7 @@ class NASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
 
         return False
 
-    def get_node_context(self, node: Node, source: bytes) -> Optional[str]:
+    def get_node_context(self, node: Node, source: bytes) -> str | None:
         """Extract meaningful context for a node."""
         name = self.get_node_name(node, source)
 
@@ -292,19 +290,19 @@ class NASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 return f".{name}" if name else "local label"
             return f"{name}:" if name else "label"
 
-        elif node.type in {"section", "segment"}:
+        if node.type in {"section", "segment"}:
             return f"section {name}" if name else "section"
 
-        elif node.type == "macro_definition":
+        if node.type == "macro_definition":
             return f"%macro {name}" if name else "%macro"
 
-        elif node.type == "struc_definition":
+        if node.type == "struc_definition":
             return f"struc {name}" if name else "struc"
 
-        elif node.type == "global_directive":
+        if node.type == "global_directive":
             return f"global {name}" if name else "global"
 
-        elif node.type == "extern_directive":
+        if node.type == "extern_directive":
             return f"extern {name}" if name else "extern"
 
         return None

@@ -29,7 +29,8 @@ class DeveloperToolingImpl(DeveloperToolingContract):
         return Path.cwd()
 
     def run_pre_commit_checks(
-        self, files: List[Path],
+        self,
+        files: list[Path],
     ) -> Tuple[bool, Dict[str, Any]]:  # noqa: UP006
         """Run all pre-commit checks on specified files
 
@@ -97,7 +98,9 @@ class DeveloperToolingImpl(DeveloperToolingContract):
         return all_success, results
 
     def format_code(
-        self, files: List[Path], fix: bool = False,
+        self,
+        files: list[Path],
+        fix: bool = False,
     ) -> Dict[str, Any]:  # noqa: UP006
         """Format code files according to project standards
 
@@ -187,7 +190,7 @@ class DeveloperToolingImpl(DeveloperToolingContract):
 
     def run_linting(
         self,
-        files: List[Path],
+        files: list[Path],
         fix: bool = False,
     ) -> Dict[str, List[Dict[str, Any]]]:  # noqa: UP006
         """Run linting checks on specified files
@@ -263,7 +266,8 @@ class DeveloperToolingImpl(DeveloperToolingContract):
         return results
 
     def run_type_checking(
-        self, files: List[Path],
+        self,
+        files: list[Path],
     ) -> Dict[str, List[Dict[str, Any]]]:  # noqa: UP006
         """Run static type checking on files
 

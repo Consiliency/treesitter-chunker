@@ -13,9 +13,8 @@ import pytest
 
 # Try to import CLI runner
 try:
-    from click.testing import CliRunner
-
     from cli.main import cli
+    from click.testing import CliRunner
 except ImportError:
     CliRunner = MagicMock()
     cli = MagicMock()

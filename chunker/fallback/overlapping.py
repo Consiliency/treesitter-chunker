@@ -10,6 +10,8 @@ from ..interfaces.fallback_overlap import (
 from ..interfaces.fallback_overlap import OverlapStrategy
 from ..types import CodeChunk
 
+__all__ = ["OverlappingFallbackChunker", "OverlapConfig", "OverlapStrategy"]
+
 
 @dataclass
 class OverlapConfig:
@@ -586,11 +588,6 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
 
         # Calculate content density metrics
         empty_lines = sum(1 for line in recent_lines if not line.strip())
-        avg_line_length = (
-            sum(len(line) for line in recent_lines) / len(recent_lines)
-            if recent_lines
-            else 0
-        )
 
         # Higher density = more overlap needed
         density_ratio = 1.0 - (empty_lines / len(recent_lines)) if recent_lines else 0.5

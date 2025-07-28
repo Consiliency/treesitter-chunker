@@ -10,7 +10,9 @@ from ..fallback.base import FallbackWarning
 from ..interfaces.fallback_overlap import (
     OverlappingFallbackChunker as IOverlappingFallbackChunker,
 )
-from ..interfaces.fallback_overlap import OverlapStrategy
+from ..interfaces.fallback_overlap import (
+    OverlapStrategy,
+)
 from ..parser import list_languages
 from ..types import CodeChunk
 

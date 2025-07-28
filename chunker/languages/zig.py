@@ -4,8 +4,6 @@ Support for Zig language.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from tree_sitter import Node
 
 from ..contracts.language_plugin_contract import ExtendedLanguagePluginContract
@@ -107,7 +105,7 @@ class ZigPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             if child.type == "identifier":
                 return source[child.start_byte : child.end_byte].decode("utf-8")
             # For test declarations, look for string literal
-            elif node.type == "test_declaration" and child.type == "string_literal":
+            if node.type == "test_declaration" and child.type == "string_literal":
                 # Remove quotes from test name
                 test_name = source[child.start_byte : child.end_byte].decode("utf-8")
                 return test_name.strip('"')
@@ -284,7 +282,7 @@ class ZigPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
 
         return False
 
-    def get_node_context(self, node: Node, source: bytes) -> Optional[str]:
+    def get_node_context(self, node: Node, source: bytes) -> str | None:
         """Extract meaningful context for a node."""
         name = self.get_node_name(node, source)
 
@@ -301,22 +299,22 @@ class ZigPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             visibility = "pub " if is_public else ""
             return f"{visibility}fn {name}" if name else f"{visibility}fn"
 
-        elif node.type == "struct_declaration":
+        if node.type == "struct_declaration":
             return f"struct {name}" if name else "struct"
 
-        elif node.type == "enum_declaration":
+        if node.type == "enum_declaration":
             return f"enum {name}" if name else "enum"
 
-        elif node.type == "union_declaration":
+        if node.type == "union_declaration":
             return f"union {name}" if name else "union"
 
-        elif node.type == "test_declaration":
+        if node.type == "test_declaration":
             return f'test "{name}"' if name else "test"
 
-        elif node.type == "error_set_declaration":
+        if node.type == "error_set_declaration":
             return f"error {name}" if name else "error"
 
-        elif node.type == "comptime_declaration":
+        if node.type == "comptime_declaration":
             return f"comptime {name}" if name else "comptime"
 
         return None

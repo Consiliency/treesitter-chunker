@@ -2,7 +2,7 @@
 Debug visualization implementation
 """
 
-from typing import Any, Union
+from typing import Any
 
 from chunker.contracts.debug_contract import DebugVisualizationContract
 
@@ -21,7 +21,7 @@ class DebugVisualizationImpl(DebugVisualizationContract):
         file_path: str,
         language: str,
         output_format: str = "svg",
-    ) -> Union[str, bytes]:
+    ) -> str | bytes:
         """
         Generate visual representation of the AST for a file
 
@@ -71,7 +71,7 @@ class DebugVisualizationImpl(DebugVisualizationContract):
         self,
         file_path: str,
         language: str,
-        breakpoints: Union[list[str], None] = None,
+        breakpoints: list[str] | None = None,
     ) -> dict[str, Any]:
         """
         Run chunking in debug mode with detailed trace information

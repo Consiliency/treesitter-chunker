@@ -6,4 +6,4 @@ Provides visualization and inspection capabilities
 from .comparison import ChunkComparison
 from .visualization import DebugVisualization
 
-__all__ = ["DebugVisualization", "ChunkComparison"]
+__all__ = ["ChunkComparison", "DebugVisualization"]

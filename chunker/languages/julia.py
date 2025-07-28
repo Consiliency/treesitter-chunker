@@ -4,8 +4,6 @@ Support for Julia language.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from tree_sitter import Node
 
 from ..contracts.language_plugin_contract import ExtendedLanguagePluginContract
@@ -56,7 +54,6 @@ class JuliaConfig(LanguageConfig):
                 include_children=True,
                 priority=5,
                 metadata={"type": "method_definition"},
-                condition=lambda node, source: self._is_method_definition(node, source),
             ),
         )
 
@@ -119,7 +116,7 @@ class JuliaPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             for child in node.children:
                 if child.type == "identifier":
                     return source[child.start_byte : child.end_byte].decode("utf-8")
-                elif child.type == "call_expression":
+                if child.type == "call_expression":
                     # Method definition with function call syntax
                     for subchild in child.children:
                         if subchild.type == "identifier":
@@ -142,7 +139,7 @@ class JuliaPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             for child in node.children:
                 if child.type == "identifier":
                     return source[child.start_byte : child.end_byte].decode("utf-8")
-                elif child.type == "parameterized_identifier":
+                if child.type == "parameterized_identifier":
                     # Generic type like MyType{T}
                     for subchild in child.children:
                         if subchild.type == "identifier":
@@ -220,7 +217,7 @@ class JuliaPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             return True
         return False
 
-    def get_node_context(self, node: Node, source: bytes) -> Optional[str]:
+    def get_node_context(self, node: Node, source: bytes) -> str | None:
         """Extract meaningful context for a node."""
         name = self.get_node_name(node, source)
 
@@ -228,11 +225,11 @@ class JuliaPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             if name:
                 return f"function {name}"
             return "function"
-        elif node.type == "macro_definition":
+        if node.type == "macro_definition":
             if name:
                 return f"macro {name}"
             return "macro"
-        elif node.type == "struct_definition":
+        if node.type == "struct_definition":
             if name:
                 # Check if mutable
                 content = source[node.start_byte : node.end_byte].decode("utf-8")
@@ -240,19 +237,19 @@ class JuliaPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     return f"mutable struct {name}"
                 return f"struct {name}"
             return "struct"
-        elif node.type == "abstract_type_definition":
+        if node.type == "abstract_type_definition":
             if name:
                 return f"abstract type {name}"
             return "abstract type"
-        elif node.type == "primitive_type_definition":
+        if node.type == "primitive_type_definition":
             if name:
                 return f"primitive type {name}"
             return "primitive type"
-        elif node.type == "module_definition":
+        if node.type == "module_definition":
             if name:
                 return f"module {name}"
             return "module"
-        elif node.type == "const_statement":
+        if node.type == "const_statement":
             if name:
                 return f"const {name}"
             return "const"

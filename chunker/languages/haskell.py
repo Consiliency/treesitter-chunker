@@ -4,8 +4,6 @@ Support for Haskell language.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from tree_sitter import Node
 
 from ..contracts.language_plugin_contract import ExtendedLanguagePluginContract
@@ -185,23 +183,23 @@ class HaskellPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             return len(node.children) > 2
         return False
 
-    def get_node_context(self, node: Node, source: bytes) -> Optional[str]:
+    def get_node_context(self, node: Node, source: bytes) -> str | None:
         """Extract meaningful context for a node."""
         name = self.get_node_name(node, source)
 
         if node.type == "function":
             return f"function {name}" if name else "function"
-        elif node.type in {"type_alias", "type_synonym"}:
+        if node.type in {"type_alias", "type_synonym"}:
             return f"type {name}" if name else "type alias"
-        elif node.type == "data_type":
+        if node.type == "data_type":
             return f"data {name}" if name else "data type"
-        elif node.type == "newtype":
+        if node.type == "newtype":
             return f"newtype {name}" if name else "newtype"
-        elif node.type == "class_declaration":
+        if node.type == "class_declaration":
             return f"class {name}" if name else "typeclass"
-        elif node.type == "instance_declaration":
+        if node.type == "instance_declaration":
             return f"instance {name}" if name else "instance"
-        elif node.type == "module_declaration":
+        if node.type == "module_declaration":
             return "module declaration"
         return None
 

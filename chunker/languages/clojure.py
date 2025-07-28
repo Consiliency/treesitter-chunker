@@ -4,8 +4,6 @@ Support for Clojure language.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from tree_sitter import Node
 
 from ..contracts.language_plugin_contract import ExtendedLanguagePluginContract
@@ -275,7 +273,7 @@ class ClojurePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             return len(node.children) > 2
         return False
 
-    def get_node_context(self, node: Node, source: bytes) -> Optional[str]:
+    def get_node_context(self, node: Node, source: bytes) -> str | None:
         """Extract meaningful context for a node."""
         name = self.get_node_name(node, source)
 

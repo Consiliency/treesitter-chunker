@@ -4,8 +4,6 @@ Support for Vue language (Single File Components).
 
 from __future__ import annotations
 
-from typing import Optional
-
 from tree_sitter import Node
 
 from ..contracts.language_plugin_contract import ExtendedLanguagePluginContract
@@ -226,23 +224,23 @@ class VuePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     return len(node.children) > 3
         return False
 
-    def get_node_context(self, node: Node, source: bytes) -> Optional[str]:
+    def get_node_context(self, node: Node, source: bytes) -> str | None:
         """Extract meaningful context for a node."""
         name = self.get_node_name(node, source)
 
         if node.type == "template_element":
             return "<template> section"
-        elif node.type == "script_element":
+        if node.type == "script_element":
             content = source[node.start_byte : node.end_byte].decode("utf-8")
             if "setup" in content[:50]:
                 return "<script setup> section"
             return "<script> section"
-        elif node.type == "style_element":
+        if node.type == "style_element":
             content = source[node.start_byte : node.end_byte].decode("utf-8")
             if "scoped" in content[:50]:
                 return "<style scoped> section"
             return "<style> section"
-        elif node.type == "component_definition":
+        if node.type == "component_definition":
             return f"Component {name}" if name else "Component definition"
         return None
 
@@ -324,10 +322,10 @@ class VuePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         """Detect the style preprocessor from style tag attributes."""
         if 'lang="scss"' in content[:50] or "lang='scss'" in content[:50]:
             return "scss"
-        elif 'lang="sass"' in content[:50] or "lang='sass'" in content[:50]:
+        if 'lang="sass"' in content[:50] or "lang='sass'" in content[:50]:
             return "sass"
-        elif 'lang="less"' in content[:50] or "lang='less'" in content[:50]:
+        if 'lang="less"' in content[:50] or "lang='less'" in content[:50]:
             return "less"
-        elif 'lang="stylus"' in content[:50] or "lang='stylus'" in content[:50]:
+        if 'lang="stylus"' in content[:50] or "lang='stylus'" in content[:50]:
             return "stylus"
         return None

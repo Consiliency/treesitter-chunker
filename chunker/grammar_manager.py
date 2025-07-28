@@ -6,7 +6,6 @@ import subprocess
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Optional
 from urllib.parse import urlparse
 
 from .contracts.grammar_manager_contract import GrammarManagerContract
@@ -24,8 +23,8 @@ class GrammarManager(GrammarManagerContract):
 
     def __init__(
         self,
-        root_dir: Optional[Path] = None,
-        config_file: Optional[Path] = None,
+        root_dir: Path | None = None,
+        config_file: Path | None = None,
         max_workers: int = 4,
     ):
         """Initialize the grammar manager.
@@ -105,7 +104,7 @@ class GrammarManager(GrammarManagerContract):
         logger.info(f"Added grammar source for '{language}': {repo_url}")
         return True
 
-    def fetch_grammars(self, languages: Optional[list[str]] = None) -> dict[str, bool]:
+    def fetch_grammars(self, languages: list[str] | None = None) -> dict[str, bool]:
         """Fetch grammar repositories.
 
         Args:
@@ -173,7 +172,7 @@ class GrammarManager(GrammarManagerContract):
 
     def compile_grammars(
         self,
-        languages: Optional[list[str]] = None,
+        languages: list[str] | None = None,
     ) -> dict[str, bool]:
         """Compile fetched grammars into shared library.
 

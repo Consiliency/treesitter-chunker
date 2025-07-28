@@ -59,9 +59,8 @@ class DockerBuilder:
         if len(platforms) > 1 and self.buildx_available:
             # Multi-platform build using buildx
             return self._build_multiplatform(tag, platforms, dockerfile_path)
-        else:
-            # Single platform build
-            return self._build_single_platform(tag, dockerfile_path)
+        # Single platform build
+        return self._build_single_platform(tag, dockerfile_path)
 
     def _check_buildx(self) -> bool:
         """Check if Docker buildx is available"""

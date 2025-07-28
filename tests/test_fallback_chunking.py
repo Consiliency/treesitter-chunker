@@ -342,9 +342,9 @@ class TestFallbackManager:
         manager = FallbackManager()
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
-            # Write CSV with header and multiple rows
+            # Write CSV with header and multiple rows (>50 to force multiple chunks)
             f.write("id,name,score\n")
-            for i in range(10):
+            for i in range(60):  # More than default chunk size of 50
                 f.write(f"{i},User{i},{i*10}\n")
             f.flush()
 
@@ -352,9 +352,15 @@ class TestFallbackManager:
 
             assert len(chunks) > 0
 
-            # Each chunk should have the header
-            for chunk in chunks:
-                if chunk.start_line > 1:  # Not the first chunk
-                    assert "id,name,score" in chunk.content
+            # Check that we have multiple chunks for proper testing
+            assert len(chunks) > 1, "Need multiple chunks to test header inclusion"
+
+            # First chunk should NOT have header prepended (it starts with actual data)
+            assert chunks[0].start_line == 2  # Starts after header
+            assert "id,name,score" not in chunks[0].content
+
+            # Subsequent chunks should have the header prepended
+            for i, chunk in enumerate(chunks[1:], 1):
+                assert "id,name,score" in chunk.content, f"Chunk {i} missing header"
 
             Path(f.name).unlink()

@@ -4,8 +4,6 @@ Support for WebAssembly Text Format (WAT/WASM) language.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from tree_sitter import Node
 
 from ..contracts.language_plugin_contract import ExtendedLanguagePluginContract
@@ -195,7 +193,7 @@ class WASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 return
 
             # Functions
-            elif n.type in {"function", "func"} and in_module:
+            if n.type in {"function", "func"} and in_module:
                 content = source[n.start_byte : n.end_byte].decode(
                     "utf-8",
                     errors="replace",
@@ -378,32 +376,32 @@ class WASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
 
         return False
 
-    def get_node_context(self, node: Node, source: bytes) -> Optional[str]:
+    def get_node_context(self, node: Node, source: bytes) -> str | None:
         """Extract meaningful context for a node."""
         name = self.get_node_name(node, source)
 
         if node.type == "module":
             return f"(module {name})" if name else "(module)"
 
-        elif node.type in {"function", "func"}:
+        if node.type in {"function", "func"}:
             return f"(func {name})" if name else "(func)"
 
-        elif node.type == "memory":
+        if node.type == "memory":
             return f"(memory {name})" if name else "(memory)"
 
-        elif node.type == "table":
+        if node.type == "table":
             return f"(table {name})" if name else "(table)"
 
-        elif node.type == "global":
+        if node.type == "global":
             return f"(global {name})" if name else "(global)"
 
-        elif node.type == "export":
+        if node.type == "export":
             return f'(export "{name}")' if name else "(export)"
 
-        elif node.type == "import":
+        if node.type == "import":
             return f"(import {name})" if name else "(import)"
 
-        elif node.type in {"type", "type_def"}:
+        if node.type in {"type", "type_def"}:
             return f"(type {name})" if name else "(type)"
 
         return None
@@ -469,7 +467,7 @@ class WASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         self,
         node: Node,
         source: bytes,
-    ) -> tuple[Optional[int], Optional[int]]:
+    ) -> tuple[int | None, int | None]:
         """Extract parameter and result counts from function."""
         param_count = 0
         result_count = 0
@@ -482,7 +480,7 @@ class WASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
 
         return (param_count, result_count)
 
-    def _extract_memory_limits(self, node: Node, source: bytes) -> Optional[dict]:
+    def _extract_memory_limits(self, node: Node, source: bytes) -> dict | None:
         """Extract memory limits (min/max pages)."""
         # Look for numeric limits in memory declaration
         numbers = []
@@ -511,19 +509,19 @@ class WASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 return True
         return False
 
-    def _get_export_kind(self, node: Node, source: bytes) -> Optional[str]:
+    def _get_export_kind(self, node: Node, source: bytes) -> str | None:
         """Determine what kind of export this is."""
         # Look for func, memory, table, global keywords
         for child in node.children:
             if child.type in {"func", "memory", "table", "global"}:
                 return child.type
-            elif child.type == "keyword":
+            if child.type == "keyword":
                 keyword = source[child.start_byte : child.end_byte].decode("utf-8")
                 if keyword in {"func", "memory", "table", "global"}:
                     return keyword
         return None
 
-    def _get_import_kind(self, node: Node, source: bytes) -> Optional[str]:
+    def _get_import_kind(self, node: Node, source: bytes) -> str | None:
         """Determine what kind of import this is."""
         # Similar to export kind
         return self._get_export_kind(node, source)

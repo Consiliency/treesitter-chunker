@@ -2,7 +2,7 @@
 # Purpose: Concrete stub implementation for testing
 
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 from .cicd_contract import CICDPipelineContract
 
@@ -10,15 +10,15 @@ from .cicd_contract import CICDPipelineContract
 class CICDPipelineStub(CICDPipelineContract):
     """Stub implementation that can be instantiated and tested"""
 
-    def validate_workflow_syntax(self, workflow_path: Path) -> Tuple[bool, List[str]]:
+    def validate_workflow_syntax(self, workflow_path: Path) -> tuple[bool, list[str]]:
         """Stub that returns valid default values"""
         return (False, ["CI/CD team will implement workflow validation"])
 
     def run_test_matrix(
         self,
-        python_versions: List[str],
-        platforms: List[str],
-    ) -> Dict[str, Dict[str, Any]]:
+        python_versions: list[str],
+        platforms: list[str],
+    ) -> dict[str, dict[str, Any]]:
         """Stub that returns valid default values"""
         result = {}
         for version in python_versions:
@@ -34,7 +34,7 @@ class CICDPipelineStub(CICDPipelineContract):
                 }
         return result
 
-    def build_distribution(self, version: str, platforms: List[str]) -> Dict[str, Any]:
+    def build_distribution(self, version: str, platforms: list[str]) -> dict[str, Any]:
         """Stub that returns valid default values"""
         return {
             "status": "not_implemented",
@@ -48,9 +48,9 @@ class CICDPipelineStub(CICDPipelineContract):
     def create_release(
         self,
         version: str,
-        artifacts: List[Path],
+        artifacts: list[Path],
         changelog: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Stub that returns valid default values"""
         return {
             "status": "not_implemented",

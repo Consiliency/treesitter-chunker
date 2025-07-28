@@ -4,7 +4,6 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import requests
 
@@ -246,7 +245,7 @@ class GrammarDiscoveryService(GrammarDiscoveryContract):
 
         return grammars
 
-    def _repo_to_grammar_info(self, repo: dict) -> Optional[GrammarInfo]:
+    def _repo_to_grammar_info(self, repo: dict) -> GrammarInfo | None:
         """Convert GitHub repo data to GrammarInfo"""
         try:
             # Extract language name from repo name
@@ -326,7 +325,7 @@ class GrammarDiscoveryService(GrammarDiscoveryContract):
             # If parsing fails, assume no update needed
             return False
 
-    def _load_cache(self) -> Optional[dict]:
+    def _load_cache(self) -> dict | None:
         """Load cache from disk"""
         if not self.cache_file.exists():
             return None

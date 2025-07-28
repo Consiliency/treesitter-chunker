@@ -1,0 +1,16 @@
+[
+  {
+    "session_id": "4fde3103-ae5d-48c7-8721-4ec9cb636bec",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/4fde3103-ae5d-48c7-8721-4ec9cb636bec.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "Stop",
+    "stop_hook_active": false
+  },
+  {
+    "session_id": "4fde3103-ae5d-48c7-8721-4ec9cb636bec",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/4fde3103-ae5d-48c7-8721-4ec9cb636bec.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "Stop",
+    "stop_hook_active": false
+  }
+]

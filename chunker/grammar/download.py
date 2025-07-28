@@ -10,8 +10,9 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, ClassVar, Optional
+from typing import ClassVar
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -81,7 +82,7 @@ class GrammarDownloadManager(GrammarDownloadContract):
         self,
         language: str,
         version: str | None = None,
-        progress_callback: Optional[Callable[[DownloadProgress], None]] = None,
+        progress_callback: Callable[[DownloadProgress], None] | None = None,
     ) -> Path:
         """Download a grammar repository from GitHub"""
         if language not in self.GRAMMAR_REPOS:
@@ -126,7 +127,7 @@ class GrammarDownloadManager(GrammarDownloadContract):
         url: str,
         dest: str,
         language: str,
-        progress_callback: Optional[Callable[[DownloadProgress], None]] = None,
+        progress_callback: Callable[[DownloadProgress], None] | None = None,
     ):
         """Download file with progress tracking"""
         try:
@@ -306,7 +307,7 @@ class GrammarDownloadManager(GrammarDownloadContract):
             version = tree_sitter.__version__
             if version.startswith("0.20"):
                 return 14
-            elif version.startswith("0.21"):
+            if version.startswith("0.21"):
                 return 15
             # Default to latest
             return 15

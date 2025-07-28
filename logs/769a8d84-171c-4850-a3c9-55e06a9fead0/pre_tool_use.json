@@ -1,0 +1,54 @@
+[
+  {
+    "session_id": "769a8d84-171c-4850-a3c9-55e06a9fead0",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/769a8d84-171c-4850-a3c9-55e06a9fead0.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/pyproject.toml"
+    }
+  },
+  {
+    "session_id": "769a8d84-171c-4850-a3c9-55e06a9fead0",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/769a8d84-171c-4850-a3c9-55e06a9fead0.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/chunker/__init__.py"
+    }
+  },
+  {
+    "session_id": "769a8d84-171c-4850-a3c9-55e06a9fead0",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/769a8d84-171c-4850-a3c9-55e06a9fead0.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Glob",
+    "tool_input": {
+      "pattern": ".github/workflows/*.yml"
+    }
+  },
+  {
+    "session_id": "769a8d84-171c-4850-a3c9-55e06a9fead0",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/769a8d84-171c-4850-a3c9-55e06a9fead0.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/.pre-commit-config.yaml"
+    }
+  },
+  {
+    "session_id": "769a8d84-171c-4850-a3c9-55e06a9fead0",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/769a8d84-171c-4850-a3c9-55e06a9fead0.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/README.md",
+      "offset": 530,
+      "limit": 50
+    }
+  }
+]

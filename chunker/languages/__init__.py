@@ -1,6 +1,8 @@
 """
-Per‑language helpers live here (e.g. node‑type mappings, heuristics).
+Per-language helpers live here (e.g. node-type mappings, heuristics).
 """
+
+# ruff: noqa: SIM105 F401
 
 # Phase 2.1 exports (LanguageConfig system)
 from .base import (
@@ -15,7 +17,6 @@ from .base import (
 from .c import CPlugin
 from .clojure import ClojurePlugin
 from .cpp import CppPlugin
-from .css import CSSPlugin
 from .dart import DartPlugin
 
 # Import Tier 2 language plugins
@@ -27,10 +28,8 @@ from .go_plugin import GoPlugin
 from .haskell import HaskellPlugin
 
 # Import Tier 1 language plugins
-from .html import HTMLPlugin
 from .java_plugin import JavaPlugin
 from .javascript import JavaScriptPlugin
-from .json import JSONPlugin
 from .julia import JuliaPlugin
 from .matlab import MATLABPlugin
 
@@ -66,9 +65,6 @@ _plugin_exports = [
     "RubyPlugin",
     "JavaPlugin",
     # Tier 1 languages
-    "CSSPlugin",
-    "HTMLPlugin",
-    "JSONPlugin",
     "TOMLPlugin",
     "XMLPlugin",
     "YAMLPlugin",
@@ -104,7 +100,9 @@ __all__ = [
     # Phase 1.2 exports
     "LanguagePlugin",
     "PluginConfig",
-] + _plugin_exports
+    # Plugin exports
+    *_plugin_exports,
+]
 
 # Auto-import language configurations to register them
 try:

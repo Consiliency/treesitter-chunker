@@ -1,9 +1,9 @@
 """Define the boundary for grammar download and compilation - Team: Grammar Download"""
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Optional
 
 
 @dataclass
@@ -34,7 +34,7 @@ class GrammarDownloadContract(ABC):
         self,
         language: str,
         version: str | None = None,
-        progress_callback: Optional[Callable[[DownloadProgress], None]] = None,
+        progress_callback: Callable[[DownloadProgress], None] | None = None,
     ) -> Path:
         """Download a grammar repository
 

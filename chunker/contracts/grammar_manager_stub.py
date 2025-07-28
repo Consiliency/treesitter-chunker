@@ -1,4 +1,3 @@
-from typing import Optional
 
 from .grammar_manager_contract import GrammarManagerContract
 
@@ -10,13 +9,13 @@ class GrammarManagerStub(GrammarManagerContract):
         """Stub returns False"""
         return False
 
-    def fetch_grammars(self, _languages: Optional[list[str]] = None) -> dict[str, bool]:
+    def fetch_grammars(self, _languages: list[str] | None = None) -> dict[str, bool]:
         """Stub returns empty dict"""
         return {}
 
     def compile_grammars(
         self,
-        _languages: Optional[list[str]] = None,
+        _languages: list[str] | None = None,
     ) -> dict[str, bool]:
         """Stub returns empty dict"""
         return {}

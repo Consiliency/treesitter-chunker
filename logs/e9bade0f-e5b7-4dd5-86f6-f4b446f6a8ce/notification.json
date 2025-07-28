@@ -1,0 +1,9 @@
+[
+  {
+    "session_id": "e9bade0f-e5b7-4dd5-86f6-f4b446f6a8ce",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/e9bade0f-e5b7-4dd5-86f6-f4b446f6a8ce.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "Notification",
+    "message": "Claude needs your permission to use Bash"
+  }
+]

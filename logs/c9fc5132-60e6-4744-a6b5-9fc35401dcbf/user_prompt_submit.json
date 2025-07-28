@@ -1,0 +1,23 @@
+[
+  {
+    "session_id": "c9fc5132-60e6-4744-a6b5-9fc35401dcbf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/c9fc5132-60e6-4744-a6b5-9fc35401dcbf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "It looks like you might be stuck"
+  },
+  {
+    "session_id": "c9fc5132-60e6-4744-a6b5-9fc35401dcbf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/c9fc5132-60e6-4744-a6b5-9fc35401dcbf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "What's next"
+  },
+  {
+    "session_id": "c9fc5132-60e6-4744-a6b5-9fc35401dcbf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/c9fc5132-60e6-4744-a6b5-9fc35401dcbf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "\n  1. Merge the Phase 19 branches first to consolidate all the\n  new language support?\n  2. Start Phase 16 for performance at scale (HIGH priority)?\n  3. Create integration tests to verify all 36 languages work\n  together?\n  4. Update documentation to reflect the new capabilities?\n\nPlan these in order. "
+  }
+]

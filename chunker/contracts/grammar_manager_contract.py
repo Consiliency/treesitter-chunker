@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Optional
 
 
 class GrammarManagerContract(ABC):
@@ -25,7 +24,7 @@ class GrammarManagerContract(ABC):
         """
 
     @abstractmethod
-    def fetch_grammars(self, languages: Optional[list[str]] = None) -> dict[str, bool]:
+    def fetch_grammars(self, languages: list[str] | None = None) -> dict[str, bool]:
         """Fetch grammar repositories
 
         Args:
@@ -44,7 +43,7 @@ class GrammarManagerContract(ABC):
     @abstractmethod
     def compile_grammars(
         self,
-        languages: Optional[list[str]] = None,
+        languages: list[str] | None = None,
     ) -> dict[str, bool]:
         """Compile fetched grammars into shared library
 

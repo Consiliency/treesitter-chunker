@@ -1,8 +1,8 @@
 """Concrete stub implementation for testing - Grammar Download"""
 
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Optional
 
 from .download_contract import (
     CompilationResult,
@@ -22,7 +22,7 @@ class GrammarDownloadStub(GrammarDownloadContract):
         self,
         language: str,
         version: str | None = None,
-        progress_callback: Optional[Callable[[DownloadProgress], None]] = None,
+        progress_callback: Callable[[DownloadProgress], None] | None = None,
     ) -> Path:
         """Stub that simulates download"""
         # Simulate progress callbacks

@@ -4,8 +4,6 @@ Support for R language.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from tree_sitter import Node
 
 from ..contracts.language_plugin_contract import ExtendedLanguagePluginContract
@@ -59,10 +57,6 @@ class RConfig(LanguageConfig):
                 include_children=True,
                 priority=5,
                 metadata={"type": "function_assignment"},
-                condition=lambda node, source: self._is_function_assignment(
-                    node,
-                    source,
-                ),
             ),
         )
 
@@ -214,7 +208,7 @@ class RPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
 
         return False
 
-    def get_node_context(self, node: Node, source: bytes) -> Optional[str]:
+    def get_node_context(self, node: Node, source: bytes) -> str | None:
         """Extract meaningful context for a node."""
         name = self.get_node_name(node, source)
 

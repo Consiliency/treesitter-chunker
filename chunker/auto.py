@@ -301,15 +301,15 @@ class ZeroConfigAPI(ZeroConfigContract):
         # 3. Special cases
         if file_path.name == "Makefile":
             return "makefile"
-        elif file_path.name == "Dockerfile":
+        if file_path.name == "Dockerfile":
             return "dockerfile"
-        elif file_path.name == "CMakeLists.txt":
+        if file_path.name == "CMakeLists.txt":
             return "cmake"
-        elif file_path.name.endswith(".gemspec"):
+        if file_path.name.endswith(".gemspec"):
             return "ruby"
-        elif file_path.name == "Cargo.toml":
+        if file_path.name == "Cargo.toml":
             return "toml"
-        elif file_path.name == "package.json":
+        if file_path.name == "package.json":
             return "json"
 
         return None

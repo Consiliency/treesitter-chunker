@@ -69,8 +69,8 @@ class LineBasedChunker(FallbackChunker):
         for i in range(data_start, len(lines), lines_per_chunk):
             chunk_lines = []
 
-            # Add header to each chunk
-            if header and i > data_start:
+            # Add header to each chunk (except the first which already has it)
+            if include_header and header and i > data_start:
                 chunk_lines.append(header)
 
             # Add data lines
@@ -81,12 +81,9 @@ class LineBasedChunker(FallbackChunker):
             chunk_content = "".join(chunk_lines)
 
             # Calculate positions
-            start_line = i + 1
+            # Note: line numbers should reflect actual file lines
+            start_line = i + 1  # Convert 0-based to 1-based
             end_line = chunk_end
-
-            # Adjust for header
-            if header and i > data_start:
-                start_line -= 1  # Account for header
 
             chunk = CodeChunk(
                 language="csv",

@@ -4,8 +4,6 @@ Support for Svelte language (Single File Components).
 
 from __future__ import annotations
 
-from typing import Optional
-
 from tree_sitter import Node
 
 from ..contracts.language_plugin_contract import ExtendedLanguagePluginContract
@@ -124,7 +122,7 @@ class SveltePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 return "module"
             return "instance"
         # For named slots
-        elif node.type == "slot_element":
+        if node.type == "slot_element":
             for child in node.children:
                 if child.type == "attribute" and "name=" in source[
                     child.start_byte : child.end_byte
@@ -276,30 +274,30 @@ class SveltePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     return len(node.children) > 5
         return False
 
-    def get_node_context(self, node: Node, source: bytes) -> Optional[str]:
+    def get_node_context(self, node: Node, source: bytes) -> str | None:
         """Extract meaningful context for a node."""
         if node.type == "script_element":
             content = source[node.start_byte : node.end_byte].decode("utf-8")
             if 'context="module"' in content[:50]:
                 return "<script context='module'>"
             return "<script>"
-        elif node.type == "style_element":
+        if node.type == "style_element":
             content = source[node.start_byte : node.end_byte].decode("utf-8")
             if "global" in content[:50]:
                 return "<style global>"
             return "<style>"
-        elif node.type == "if_block":
+        if node.type == "if_block":
             return "{#if} block"
-        elif node.type == "each_block":
+        if node.type == "each_block":
             return "{#each} block"
-        elif node.type == "await_block":
+        if node.type == "await_block":
             return "{#await} block"
-        elif node.type == "key_block":
+        if node.type == "key_block":
             return "{#key} block"
-        elif node.type == "slot_element":
+        if node.type == "slot_element":
             name = self.get_node_name(node, source)
             return f"<slot name='{name}'>" if name else "<slot>"
-        elif node.type == "reactive_statement":
+        if node.type == "reactive_statement":
             return "$: reactive statement"
         return None
 

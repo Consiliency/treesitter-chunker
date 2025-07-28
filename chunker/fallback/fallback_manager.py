@@ -1,10 +1,11 @@
 """Manager for fallback chunking strategies."""
 
 import logging
+import warnings
 
 from ..interfaces.fallback import FallbackReason
 from ..types import CodeChunk
-from .base import FallbackChunker
+from .base import FallbackChunker, FallbackWarning
 from .detection.file_type import EncodingDetector, FileType, FileTypeDetector
 from .strategies.line_based import LineBasedChunker
 from .strategies.log_chunker import LogChunker
@@ -85,6 +86,13 @@ class FallbackManager:
         if reason is None:
             _, reason = self.detector.should_use_fallback(file_path)
         chunker.set_fallback_reason(reason)
+
+        # Emit warning that fallback is being used
+        warnings.warn(
+            f"Using fallback chunking for {file_path} (type: {file_type.value}, reason: {reason})",
+            FallbackWarning,
+            stacklevel=2,
+        )
 
         # Read file content
         try:

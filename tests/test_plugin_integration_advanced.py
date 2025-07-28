@@ -1084,7 +1084,6 @@ class TestPluginVersioning:
         import warnings
 
         from packaging import version
-
         from tests.integration.interfaces import ErrorPropagationMixin, ResourceTracker
 
         # Use MockPluginRegistry that tracks versions

@@ -1,4 +1,3 @@
-from typing import Optional
 
 from tree_sitter import Node
 
@@ -20,6 +19,6 @@ class ExtendedLanguagePluginStub(ExtendedLanguagePluginContract):
         """Always returns False"""
         return False
 
-    def get_node_context(self, _node: Node, _source: bytes) -> Optional[str]:
+    def get_node_context(self, _node: Node, _source: bytes) -> str | None:
         """Returns None"""
         return None

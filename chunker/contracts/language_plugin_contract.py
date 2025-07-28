@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Optional
 
 from tree_sitter import Node
 
@@ -60,7 +59,7 @@ class ExtendedLanguagePluginContract(ABC):
         """
 
     @abstractmethod
-    def get_node_context(self, node: Node, source: bytes) -> Optional[str]:
+    def get_node_context(self, node: Node, source: bytes) -> str | None:
         """Extract meaningful context for a node
 
         Args:

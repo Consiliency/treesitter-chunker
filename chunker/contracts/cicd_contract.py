@@ -4,14 +4,14 @@
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 
 class CICDPipelineContract(ABC):
     """Abstract contract defining CI/CD pipeline interface"""
 
     @abstractmethod
-    def validate_workflow_syntax(self, workflow_path: Path) -> Tuple[bool, List[str]]:
+    def validate_workflow_syntax(self, workflow_path: Path) -> tuple[bool, list[str]]:
         """Validate GitHub Actions workflow syntax
 
         Args:
@@ -32,9 +32,9 @@ class CICDPipelineContract(ABC):
     @abstractmethod
     def run_test_matrix(
         self,
-        python_versions: List[str],
-        platforms: List[str],
-    ) -> Dict[str, Dict[str, Any]]:
+        python_versions: list[str],
+        platforms: list[str],
+    ) -> dict[str, dict[str, Any]]:
         """Execute tests across version and platform matrix
 
         Args:
@@ -64,7 +64,7 @@ class CICDPipelineContract(ABC):
         """
 
     @abstractmethod
-    def build_distribution(self, version: str, platforms: List[str]) -> Dict[str, Any]:
+    def build_distribution(self, version: str, platforms: list[str]) -> dict[str, Any]:
         """Build distribution packages for specified platforms
 
         Args:
@@ -91,9 +91,9 @@ class CICDPipelineContract(ABC):
     def create_release(
         self,
         version: str,
-        artifacts: List[Path],
+        artifacts: list[Path],
         changelog: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create a GitHub release with artifacts
 
         Args:

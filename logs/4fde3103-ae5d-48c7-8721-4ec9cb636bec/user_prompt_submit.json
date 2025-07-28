@@ -1,0 +1,37 @@
+[
+  {
+    "session_id": "4fde3103-ae5d-48c7-8721-4ec9cb636bec",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/4fde3103-ae5d-48c7-8721-4ec9cb636bec.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "UserPromptSubmit operation blocked by hook:\n- [uv run .claude/hooks/send_event.py --source-app treesitter_chunker --event-type UserPromptSubmit \n--summarize]: error: Failed to spawn: `.claude/hooks/send_event.py`\n  Caused by: No such file or directory (os error 2)\n\n- [uv run .claude/hooks/user_prompt_submit.py --log-only]: error: Failed to spawn: \n`.claude/hooks/user_prompt_submit.py`\n  Caused by: No such file or directory (os error 2)\n\nWhat's causing this? "
+  },
+  {
+    "session_id": "4fde3103-ae5d-48c7-8721-4ec9cb636bec",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/4fde3103-ae5d-48c7-8721-4ec9cb636bec.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "But those files exist already "
+  },
+  {
+    "session_id": "4fde3103-ae5d-48c7-8721-4ec9cb636bec",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/4fde3103-ae5d-48c7-8721-4ec9cb636bec.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "Well, it seems to be working out now. Let's continue with our last task. "
+  },
+  {
+    "session_id": "4fde3103-ae5d-48c7-8721-4ec9cb636bec",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/4fde3103-ae5d-48c7-8721-4ec9cb636bec.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "All of the plugins should exist. We just spent a huge amount of time adding every possible Treesitter supported language. Check the codebase and make sure you're not making a mistake. "
+  },
+  {
+    "session_id": "4fde3103-ae5d-48c7-8721-4ec9cb636bec",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/4fde3103-ae5d-48c7-8721-4ec9cb636bec.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": " be careful commenting out imports; we're about to add all those languages. "
+  }
+]

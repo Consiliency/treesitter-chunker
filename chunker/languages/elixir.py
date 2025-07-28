@@ -4,8 +4,6 @@ Support for Elixir language.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from tree_sitter import Node
 
 from ..contracts.language_plugin_contract import ExtendedLanguagePluginContract
@@ -239,27 +237,27 @@ class ElixirPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             return len(node.children) > 2
         return False
 
-    def get_node_context(self, node: Node, source: bytes) -> Optional[str]:
+    def get_node_context(self, node: Node, source: bytes) -> str | None:
         """Extract meaningful context for a node."""
         name = self.get_node_name(node, source)
 
         if node.type == "module_definition":
             return f"defmodule {name}" if name else "module"
-        elif node.type == "function_definition" or (
+        if node.type == "function_definition" or (
             node.type == "call" and self.should_chunk_node(node)
         ):
             return f"def {name}" if name else "function"
-        elif node.type == "macro_definition":
+        if node.type == "macro_definition":
             return f"defmacro {name}" if name else "macro"
-        elif node.type == "spec_definition":
+        if node.type == "spec_definition":
             return f"@spec {name}" if name else "spec"
-        elif node.type == "type_definition":
+        if node.type == "type_definition":
             return f"@type {name}" if name else "type"
-        elif node.type == "protocol_definition":
+        if node.type == "protocol_definition":
             return f"defprotocol {name}" if name else "protocol"
-        elif node.type == "implementation_definition":
+        if node.type == "implementation_definition":
             return "defimpl"
-        elif node.type == "struct_definition":
+        if node.type == "struct_definition":
             return "defstruct"
         return None
 

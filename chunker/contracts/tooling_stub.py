@@ -2,7 +2,7 @@
 # Purpose: Concrete stub implementation for testing
 
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 from .tooling_contract import DeveloperToolingContract
 
@@ -10,7 +10,7 @@ from .tooling_contract import DeveloperToolingContract
 class DeveloperToolingStub(DeveloperToolingContract):
     """Stub implementation that can be instantiated and tested"""
 
-    def run_pre_commit_checks(self, files: List[Path]) -> Tuple[bool, Dict[str, Any]]:
+    def run_pre_commit_checks(self, files: list[Path]) -> tuple[bool, dict[str, Any]]:
         """Stub that returns valid default values"""
         return (
             False,
@@ -25,7 +25,7 @@ class DeveloperToolingStub(DeveloperToolingContract):
             },
         )
 
-    def format_code(self, files: List[Path], fix: bool = False) -> Dict[str, Any]:
+    def format_code(self, files: list[Path], fix: bool = False) -> dict[str, Any]:
         """Stub that returns valid default values"""
         return {
             "status": "not_implemented",
@@ -37,12 +37,12 @@ class DeveloperToolingStub(DeveloperToolingContract):
 
     def run_linting(
         self,
-        files: List[Path],
+        files: list[Path],
         fix: bool = False,
-    ) -> Dict[str, List[Dict[str, Any]]]:
+    ) -> dict[str, list[dict[str, Any]]]:
         """Stub that returns valid default values"""
         return {}
 
-    def run_type_checking(self, files: List[Path]) -> Dict[str, List[Dict[str, Any]]]:
+    def run_type_checking(self, files: list[Path]) -> dict[str, list[dict[str, Any]]]:
         """Stub that returns valid default values"""
         return {}

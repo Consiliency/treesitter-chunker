@@ -19,3 +19,15 @@ generated_config.json
 worktrees/
 worktrees/
 __pycache__/
+
+# Test repositories (downloaded for testing)
+TypeScript/
+click/
+flask/
+gin/
+googletest/
+guava/
+lodash/
+ruby/
+rust/
+serde/

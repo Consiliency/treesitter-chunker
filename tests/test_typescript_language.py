@@ -2,7 +2,7 @@
 
 import pytest
 
-from chunker import chunk_text
+from chunker.chunker import chunk_text
 from chunker.languages import language_config_registry
 
 

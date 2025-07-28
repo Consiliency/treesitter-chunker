@@ -4,7 +4,7 @@ Run performance benchmarks for the treesitter-chunker.
 
 Usage:
     python benchmarks/run_benchmarks.py [directory] [language]
-    
+
 Examples:
     python benchmarks/run_benchmarks.py . python
     python benchmarks/run_benchmarks.py ./examples python

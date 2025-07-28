@@ -4,8 +4,6 @@ Support for Dart language.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from tree_sitter import Node
 
 from ..contracts.language_plugin_contract import ExtendedLanguagePluginContract
@@ -234,29 +232,29 @@ class DartPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 return True
         return False
 
-    def get_node_context(self, node: Node, source: bytes) -> Optional[str]:
+    def get_node_context(self, node: Node, source: bytes) -> str | None:
         """Extract meaningful context for a node."""
         name = self.get_node_name(node, source)
 
         if node.type == "function_declaration":
             return f"function {name}" if name else "function"
-        elif node.type == "method_declaration":
+        if node.type == "method_declaration":
             return f"method {name}" if name else "method"
-        elif node.type == "getter_declaration":
+        if node.type == "getter_declaration":
             return f"get {name}" if name else "getter"
-        elif node.type == "setter_declaration":
+        if node.type == "setter_declaration":
             return f"set {name}" if name else "setter"
-        elif node.type == "constructor_declaration":
+        if node.type == "constructor_declaration":
             return f"constructor {name}" if name else "constructor"
-        elif node.type == "class_declaration":
+        if node.type == "class_declaration":
             return f"class {name}" if name else "class"
-        elif node.type == "mixin_declaration":
+        if node.type == "mixin_declaration":
             return f"mixin {name}" if name else "mixin"
-        elif node.type == "extension_declaration":
+        if node.type == "extension_declaration":
             return f"extension {name}" if name else "extension"
-        elif node.type == "enum_declaration":
+        if node.type == "enum_declaration":
             return f"enum {name}" if name else "enum"
-        elif node.type == "typedef_declaration":
+        if node.type == "typedef_declaration":
             return f"typedef {name}" if name else "typedef"
         return None
 

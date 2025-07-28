@@ -4,8 +4,6 @@ Support for MATLAB language.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from tree_sitter import Node
 
 from ..contracts.language_plugin_contract import ExtendedLanguagePluginContract
@@ -118,7 +116,7 @@ class MATLABPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             for child in node.children:
                 if child.type == "identifier":
                     return source[child.start_byte : child.end_byte].decode("utf-8")
-                elif child.type == "function_output":
+                if child.type == "function_output":
                     # Function with output, name comes after '='
                     for subchild in (
                         child.next_sibling.children if child.next_sibling else []
@@ -204,7 +202,7 @@ class MATLABPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             return True
         return False
 
-    def get_node_context(self, node: Node, source: bytes) -> Optional[str]:
+    def get_node_context(self, node: Node, source: bytes) -> str | None:
         """Extract meaningful context for a node."""
         name = self.get_node_name(node, source)
 
@@ -212,15 +210,15 @@ class MATLABPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             if name:
                 return f"function {name}"
             return "function"
-        elif node.type in {"classdef", "class_definition"}:
+        if node.type in {"classdef", "class_definition"}:
             if name:
                 return f"classdef {name}"
             return "classdef"
-        elif node.type in {"methods", "methods_block"}:
+        if node.type in {"methods", "methods_block"}:
             return "methods block"
-        elif node.type in {"properties", "properties_block"}:
+        if node.type in {"properties", "properties_block"}:
             return "properties block"
-        elif node.type == "method_definition":
+        if node.type == "method_definition":
             if name:
                 return f"method {name}"
             return "method"

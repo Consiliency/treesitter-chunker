@@ -1,22 +1,19 @@
 """Tests for Go language support."""
 
 import pytest
-from chunker.parser import get_parser, list_languages
-<<<<<<< HEAD
+
 from chunker.chunker import chunk_text
-=======
-from chunker.chunker import chunk_file, chunk_text
->>>>>>> 0533abd (Implement Phase 9 semantic chunk merging)
 from chunker.languages import language_config_registry
+from chunker.parser import list_languages
 
 
 class TestGoLanguageSupport:
     """Test Go language chunking."""
-    
+
     @pytest.mark.skipif("go" not in list_languages(), reason="Go grammar not available")
     def test_go_function_chunking(self):
         """Test chunking Go functions."""
-        code = '''
+        code = """
 package main
 
 import "fmt"
@@ -38,22 +35,24 @@ func divide(a, b float64) (float64, error) {
 func main() {
     fmt.Println(greet("World"))
 }
-'''
+"""
         chunks = chunk_text(code, "go", "main.go")
-        
+
         # Should find 3 functions
         assert len(chunks) == 3
-        
+
         # Check function names
-        func_names = [c.parent_context for c in chunks if c.node_type == "function_declaration"]
+        func_names = [
+            c.parent_context for c in chunks if c.node_type == "function_declaration"
+        ]
         assert "greet" in func_names
         assert "divide" in func_names
         assert "main" in func_names
-    
+
     @pytest.mark.skipif("go" not in list_languages(), reason="Go grammar not available")
     def test_go_method_chunking(self):
         """Test chunking Go methods."""
-        code = '''
+        code = """
 package main
 
 type User struct {
@@ -78,21 +77,21 @@ func (u *User) Validate() error {
     }
     return nil
 }
-'''
+"""
         chunks = chunk_text(code, "go", "user.go")
-        
+
         # Should find struct and methods
         assert len(chunks) >= 4  # 1 struct + 3 methods
-        
+
         # Check node types
         types = {c.node_type for c in chunks}
         assert "type_declaration" in types or "type_spec" in types
         assert "method_declaration" in types or "function_declaration" in types
-    
+
     @pytest.mark.skipif("go" not in list_languages(), reason="Go grammar not available")
     def test_go_type_declarations(self):
         """Test chunking Go type declarations."""
-        code = '''
+        code = """
 package models
 
 // Simple type alias
@@ -119,22 +118,22 @@ type DetailedProduct struct {
     Description string
     Tags        []string
 }
-'''
+"""
         chunks = chunk_text(code, "go", "models.go")
-        
+
         # Should find multiple type declarations
         type_chunks = [c for c in chunks if "type" in c.node_type]
         assert len(type_chunks) >= 4
-        
+
         # Check for specific types
         type_names = [c.parent_context for c in type_chunks]
         assert any("Product" in n for n in type_names)
         assert any("Repository" in n for n in type_names)
-    
+
     @pytest.mark.skipif("go" not in list_languages(), reason="Go grammar not available")
     def test_go_const_var_declarations(self):
         """Test chunking Go const and var declarations."""
-        code = '''
+        code = """
 package config
 
 import "time"
@@ -158,32 +157,32 @@ var (
     IsDebug   = false
     Config    *AppConfig
 )
-'''
+"""
         chunks = chunk_text(code, "go", "config.go")
-        
+
         # Should find const and var declarations
         const_chunks = [c for c in chunks if c.node_type == "const_declaration"]
         var_chunks = [c for c in chunks if c.node_type == "var_declaration"]
-        
+
         assert len(const_chunks) >= 1
         assert len(var_chunks) >= 1
-    
+
     @pytest.mark.skipif("go" not in list_languages(), reason="Go grammar not available")
     def test_go_language_config(self):
         """Test Go language configuration."""
         config = language_config_registry.get_config("go")
-        
+
         assert config is not None
         assert config.name == "go"
         assert ".go" in config.file_extensions
-        
+
         # Check chunk rules
         rule_names = [rule.name for rule in config.chunk_rules]
         assert "functions" in rule_names
         assert "types" in rule_names
         assert "constants" in rule_names
         assert "variables" in rule_names
-        
+
         # Check scope node types
         assert "source_file" in config.scope_node_types
         assert "function_declaration" in config.scope_node_types
