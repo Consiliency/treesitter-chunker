@@ -183,8 +183,9 @@ __all__ = [
     # Zero-configuration API (Phase 14)
     "ZeroConfigAPI",
     "AutoChunkResult",
-    # Grammar management (Phase 19)
+    # Phase 19 components
     "GrammarManager",
+    "TemplateGenerator",
 ]
 
 # Analysis tools
@@ -391,6 +392,9 @@ from .strategies import (
     SemanticChunker,
 )
 from .streaming import StreamingChunker, chunk_file_streaming
+
+# Template Generator (Phase 19)
+from .template_generator import TemplateGenerator
 
 # Token counting integration
 from .token import TiktokenCounter, TokenAwareChunker

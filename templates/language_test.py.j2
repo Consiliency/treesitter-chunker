@@ -1,0 +1,129 @@
+"""Tests for {{ class_name }} language plugin."""
+
+import pytest
+from pathlib import Path
+
+from chunker.languages.{{ language_name }} import {{ class_name }}Plugin
+from chunker.languages.plugin_base import PluginConfig
+from chunker.parser import get_parser
+from chunker.types import CodeChunk
+
+
+class Test{{ class_name }}Language:
+    """Test suite for {{ class_name }} language plugin."""
+
+    @pytest.fixture
+    def plugin(self):
+        """Create a {{ class_name }} plugin instance."""
+        return {{ class_name }}Plugin(PluginConfig())
+
+    @pytest.fixture
+    def parser(self):
+        """Get a {{ language_name }} parser."""
+        return get_parser("{{ language_name }}")
+
+    def test_plugin_metadata(self, plugin):
+        """Test plugin metadata properties."""
+        assert plugin.language_name == "{{ language_name }}"
+        assert plugin.supported_extensions == {{ '{' }}{% for ext in file_extensions %}"{{ ext }}"{% if not loop.last %}, {% endif %}{% endfor %}{{ '}' }}
+        assert len(plugin.default_chunk_types) > 0
+
+    def test_get_chunk_node_types(self, plugin):
+        """Test get_chunk_node_types returns expected types."""
+        node_types = plugin.get_chunk_node_types()
+        assert isinstance(node_types, set)
+        assert len(node_types) > 0
+        # Check for expected node types
+        {% for node_type in node_types[:3] %}
+        assert "{{ node_type }}" in node_types
+        {% endfor %}
+
+    {% for test_case in test_cases %}
+    def test_{{ test_case.name }}(self, plugin, parser):
+        """Test chunking for {{ test_case.name }}."""
+        code = """{{ test_case.code }}"""
+        
+        # Parse the code
+        plugin.set_parser(parser)
+        tree = parser.parse(code.encode())
+        
+        # Extract chunks
+        chunks = plugin.walk_tree(
+            tree.root_node,
+            code.encode(),
+            "test.{{ language_name }}",
+        )
+        
+        # Verify chunks
+        {% if test_case.expected_chunks %}
+        assert len(chunks) == {{ test_case.expected_chunks }}
+        {% endif %}
+        
+        {% if test_case.expected_types %}
+        chunk_types = {chunk.node_type for chunk in chunks}
+        {% for expected_type in test_case.expected_types %}
+        assert "{{ expected_type }}" in chunk_types
+        {% endfor %}
+        {% endif %}
+
+    {% endfor %}
+    
+    def test_should_chunk_node(self, plugin, parser):
+        """Test should_chunk_node method."""
+        # Create a simple code sample
+        code = """{{ test_cases[0].code if test_cases else "# Test code" }}"""
+        
+        plugin.set_parser(parser)
+        tree = parser.parse(code.encode())
+        
+        # Walk the tree and test should_chunk_node
+        def check_node(node):
+            if node.type in plugin.get_chunk_node_types():
+                assert plugin.should_chunk_node(node)
+            
+            for child in node.children:
+                check_node(child)
+        
+        check_node(tree.root_node)
+
+    def test_get_semantic_chunks(self, plugin, parser):
+        """Test get_semantic_chunks method."""
+        code = """{{ test_cases[0].code if test_cases else "# Test code" }}"""
+        
+        plugin.set_parser(parser)
+        tree = parser.parse(code.encode())
+        
+        # Get semantic chunks
+        chunks = plugin.get_semantic_chunks(tree.root_node, code.encode())
+        
+        # Verify chunk structure
+        for chunk in chunks:
+            assert "type" in chunk
+            assert "start_line" in chunk
+            assert "end_line" in chunk
+            assert "content" in chunk
+            assert chunk["start_line"] <= chunk["end_line"]
+            assert len(chunk["content"]) > 0
+
+    def test_get_node_context(self, plugin, parser):
+        """Test get_node_context method."""
+        code = """{{ test_cases[0].code if test_cases else "# Test code" }}"""
+        
+        plugin.set_parser(parser)
+        tree = parser.parse(code.encode())
+        
+        # Find a chunkable node
+        def find_chunkable_node(node):
+            if node.type in plugin.get_chunk_node_types():
+                return node
+            for child in node.children:
+                result = find_chunkable_node(child)
+                if result:
+                    return result
+            return None
+        
+        chunkable_node = find_chunkable_node(tree.root_node)
+        if chunkable_node:
+            context = plugin.get_node_context(chunkable_node, code.encode())
+            # Context should be None or a non-empty string
+            assert context is None or (isinstance(context, str) and len(context) > 0)
