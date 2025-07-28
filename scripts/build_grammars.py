@@ -74,7 +74,7 @@ def main():
             logger.error("No grammar sources found. Run fetch_grammars.py first.")
             return 1
 
-    logger.info("Building %s languages: ", len(languages), '.join(languages)}")
+    logger.info("Building %s languages: %s", len(languages), ", ".join(languages))
 
     # Build languages
     if args.individual:

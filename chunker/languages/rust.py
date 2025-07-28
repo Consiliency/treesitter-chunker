@@ -61,7 +61,7 @@ class RustPlugin(LanguagePlugin):
                     "reference_type",
                     "pointer_type",
                 }:
-                    impl_type = source[child.start_byte : child.end_byte].decode(
+                    impl_type = chunk.content.encode("utf-8")[child.start_byte : child.end_byte].decode(
                         "utf-8",
                     )
                     break

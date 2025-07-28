@@ -249,7 +249,7 @@ class EnhancedChunker:
             tree = parser.parse(source)
             parse_time_ms = self._monitor.end_operation(op_id)
 
-            logger.debug("Parsed %s in %sms", file_path, parse_time_ms:.2f)
+            logger.debug("Parsed %s in %.2fms", file_path, parse_time_ms)
 
             return tree, parse_time_ms
 

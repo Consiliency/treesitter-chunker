@@ -7,7 +7,7 @@ This example shows how to use the SlidingWindowFallback system with:
 - Processor chaining for hybrid processing
 """
 
-from typing import Any
+from typing import Any, Optional
 
 from chunker.chunker_config import ChunkerConfig
 from chunker.fallback import SlidingWindowFallback, TextProcessor

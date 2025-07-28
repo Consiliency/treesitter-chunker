@@ -111,7 +111,7 @@ class LanguageRegistry:
             Dictionary mapping language name to metadata
         """
         if self._discovered:
-            return {name: meta for _, meta in self._languages.values()}
+            return {lang_name: meta for lang_name, (_, meta) in self._languages.items()}
 
         lib = self._load_library()
         discovered = {}
