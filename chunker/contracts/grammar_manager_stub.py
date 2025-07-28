@@ -1,4 +1,3 @@
-
 from .grammar_manager_contract import GrammarManagerContract
 
 

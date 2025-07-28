@@ -106,135 +106,135 @@ __all__ = [
 
 # Auto-import language configurations to register them
 try:
-    from . import python  # noqa: F401
+    from . import python
 except ImportError:
     pass
 
 try:
-    from . import go_plugin  # noqa: F401
+    from . import go_plugin
 except ImportError:
     pass
 
 try:
-    from . import ruby_plugin  # noqa: F401
+    from . import ruby_plugin
 except ImportError:
     pass
 
 try:
-    from . import java_plugin  # noqa: F401
+    from . import java_plugin
 except ImportError:
     pass
 
 # Auto-import Tier 1 language configurations
 try:
-    from . import css  # noqa: F401
+    from . import css
 except ImportError:
     pass
 
 try:
-    from . import html  # noqa: F401
+    from . import html
 except ImportError:
     pass
 
 try:
-    from . import json  # noqa: F401
+    from . import json
 except ImportError:
     pass
 
 try:
-    from . import toml  # noqa: F401
+    from . import toml
 except ImportError:
     pass
 
 try:
-    from . import xml  # noqa: F401
+    from . import xml
 except ImportError:
     pass
 
 try:
-    from . import yaml  # noqa: F401
+    from . import yaml
 except ImportError:
     pass
 
 # Auto-import Tier 2 language configurations
 try:
-    from . import dockerfile  # noqa: F401
+    from . import dockerfile
 except ImportError:
     pass
 
 try:
-    from . import sql  # noqa: F401
+    from . import sql
 except ImportError:
     pass
 
 try:
-    from . import matlab  # noqa: F401
+    from . import matlab
 except ImportError:
     pass
 
 try:
-    from . import r  # noqa: F401
+    from . import r
 except ImportError:
     pass
 
 try:
-    from . import julia  # noqa: F401
+    from . import julia
 except ImportError:
     pass
 
 try:
-    from . import ocaml  # noqa: F401
+    from . import ocaml
 except ImportError:
     pass
 
 # Auto-import Tier 3 language configurations
 try:
-    from . import haskell  # noqa: F401
+    from . import haskell
 except ImportError:
     pass
 
 try:
-    from . import scala  # noqa: F401
+    from . import scala
 except ImportError:
     pass
 
 try:
-    from . import elixir  # noqa: F401
+    from . import elixir
 except ImportError:
     pass
 
 try:
-    from . import clojure  # noqa: F401
+    from . import clojure
 except ImportError:
     pass
 
 try:
-    from . import dart  # noqa: F401
+    from . import dart
 except ImportError:
     pass
 
 try:
-    from . import vue  # noqa: F401
+    from . import vue
 except ImportError:
     pass
 
 try:
-    from . import svelte  # noqa: F401
+    from . import svelte
 except ImportError:
     pass
 
 # Auto-import Tier 4 language configurations
 try:
-    from . import zig  # noqa: F401
+    from . import zig
 except ImportError:
     pass
 
 try:
-    from . import nasm  # noqa: F401
+    from . import nasm
 except ImportError:
     pass
 
 try:
-    from . import wasm  # noqa: F401
+    from . import wasm
 except ImportError:
     pass

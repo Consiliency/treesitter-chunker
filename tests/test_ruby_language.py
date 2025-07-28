@@ -11,7 +11,8 @@ class TestRubyLanguageSupport:
     """Test Ruby language chunking."""
 
     @pytest.mark.skipif(
-        "ruby" not in list_languages(), reason="Ruby grammar not available",
+        "ruby" not in list_languages(),
+        reason="Ruby grammar not available",
     )
     def test_ruby_method_chunking(self):
         """Test chunking Ruby methods."""
@@ -55,7 +56,8 @@ end
         assert class_chunks[0].parent_context == "User"
 
     @pytest.mark.skipif(
-        "ruby" not in list_languages(), reason="Ruby grammar not available",
+        "ruby" not in list_languages(),
+        reason="Ruby grammar not available",
     )
     def test_ruby_module_chunking(self):
         """Test chunking Ruby modules."""
@@ -95,7 +97,8 @@ end
         assert len(auth_modules) == 1
 
     @pytest.mark.skipif(
-        "ruby" not in list_languages(), reason="Ruby grammar not available",
+        "ruby" not in list_languages(),
+        reason="Ruby grammar not available",
     )
     def test_ruby_dsl_blocks(self):
         """Test chunking Ruby DSL blocks."""
@@ -134,7 +137,8 @@ end
         assert len(block_chunks) >= 5  # describe, context, it blocks, namespace, task
 
     @pytest.mark.skipif(
-        "ruby" not in list_languages(), reason="Ruby grammar not available",
+        "ruby" not in list_languages(),
+        reason="Ruby grammar not available",
     )
     def test_ruby_attr_methods(self):
         """Test chunking Ruby attr_* methods."""
@@ -166,7 +170,8 @@ end
         assert len(class_chunks) == 1
 
     @pytest.mark.skipif(
-        "ruby" not in list_languages(), reason="Ruby grammar not available",
+        "ruby" not in list_languages(),
+        reason="Ruby grammar not available",
     )
     def test_ruby_singleton_methods(self):
         """Test chunking Ruby singleton methods."""
@@ -199,7 +204,8 @@ end
         assert len(chunks) >= 2  # At least main class and some methods
 
     @pytest.mark.skipif(
-        "ruby" not in list_languages(), reason="Ruby grammar not available",
+        "ruby" not in list_languages(),
+        reason="Ruby grammar not available",
     )
     def test_ruby_language_config(self):
         """Test Ruby language configuration."""

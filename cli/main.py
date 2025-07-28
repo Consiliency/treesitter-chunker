@@ -4,12 +4,12 @@ import fnmatch
 import json
 import os
 import sys
-import tomllib
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
+import tomllib
 import typer
 from rich import print
 from rich.console import Console

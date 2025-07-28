@@ -125,7 +125,9 @@ class BuildSystem(BuildSystemContract):
 
             languages = self._get_available_languages()
             success, build_info = self.compile_grammars(
-                languages, platform, grammar_dir,
+                languages,
+                platform,
+                grammar_dir,
             )
 
             if not success:
@@ -178,7 +180,8 @@ Requires-Python: >=3.8
 
                     # Write top_level.txt
                     whl.writestr(
-                        f"{metadata_dir}/top_level.txt", "treesitter_chunker\nchunker",
+                        f"{metadata_dir}/top_level.txt",
+                        "treesitter_chunker\nchunker",
                     )
 
                 return True, wheel_path
@@ -248,7 +251,10 @@ Summary: Tree-sitter based code chunking library""",
         # Check for conda-build
         try:
             result = subprocess.run(
-                ["conda", "build", "--version"], capture_output=True, timeout=5, check=False,
+                ["conda", "build", "--version"],
+                capture_output=True,
+                timeout=5,
+                check=False,
             )
             if result.returncode != 0:
                 return False, Path()
@@ -273,7 +279,8 @@ Summary: Tree-sitter based code chunking library""",
                     str(output_dir),
                 ],
                 capture_output=True,
-                text=True, check=False,
+                text=True,
+                check=False,
             )
 
             if result.returncode == 0:
@@ -325,7 +332,11 @@ Summary: Tree-sitter based code chunking library""",
             return False, report
 
     def _compile_unix(
-        self, languages: list[str], output_dir: Path, build_info: dict, platform: str,
+        self,
+        languages: list[str],
+        output_dir: Path,
+        build_info: dict,
+        platform: str,
     ) -> bool:
         """Compile grammars on Unix-like systems"""
         compiler = build_info["compiler"]
@@ -381,7 +392,10 @@ Summary: Tree-sitter based code chunking library""",
             return False
 
     def _compile_windows(
-        self, languages: list[str], output_dir: Path, build_info: dict,
+        self,
+        languages: list[str],
+        output_dir: Path,
+        build_info: dict,
     ) -> bool:
         """Compile grammars on Windows"""
         # Find cl.exe
@@ -424,7 +438,13 @@ Summary: Tree-sitter based code chunking library""",
         cmd.extend([f"/Fe{dll_path}"] + all_c_files)
 
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, shell=True, check=False)
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                shell=True,
+                check=False,
+            )
             if result.returncode == 0:
                 build_info["libraries"]["combined"] = str(dll_path)
                 return True
@@ -469,7 +489,10 @@ Summary: Tree-sitter based code chunking library""",
         return languages
 
     def _fix_wheel_name(
-        self, wheel_path: Path, python_version: str, platform_tag: str,
+        self,
+        wheel_path: Path,
+        python_version: str,
+        platform_tag: str,
     ) -> Path:
         """Fix wheel filename with correct tags"""
         # Parse wheel filename
@@ -483,7 +506,10 @@ Summary: Tree-sitter based code chunking library""",
         return wheel_path
 
     def _verify_wheel(
-        self, wheel_path: Path, platform: str, report: dict,
+        self,
+        wheel_path: Path,
+        platform: str,
+        report: dict,
     ) -> tuple[bool, dict]:
         """Verify wheel contents"""
         try:
@@ -545,7 +571,10 @@ Summary: Tree-sitter based code chunking library""",
         return report["valid"], report
 
     def _verify_conda(
-        self, package_path: Path, platform: str, report: dict,
+        self,
+        package_path: Path,
+        platform: str,
+        report: dict,
     ) -> tuple[bool, dict]:
         """Verify conda package contents"""
         try:
@@ -611,5 +640,3 @@ Summary: Tree-sitter based code chunking library""",
             report["valid"] = False
 
         return report["valid"], report
-
-

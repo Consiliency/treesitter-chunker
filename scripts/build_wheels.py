@@ -13,9 +13,8 @@ import sys
 from pathlib import Path
 
 try:
-    from build.env import IsolatedEnvBuilder
-
     from build import ProjectBuilder
+    from build.env import IsolatedEnvBuilder
 except ImportError:
     print("Please install 'build' package: pip install build")
     sys.exit(1)

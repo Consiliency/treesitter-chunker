@@ -1,4 +1,3 @@
-
 from tree_sitter import Node
 
 from .language_plugin_contract import ExtendedLanguagePluginContract

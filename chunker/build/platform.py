@@ -84,7 +84,11 @@ class PlatformSupport(PlatformSupportContract):
         for compiler in compilers:
             try:
                 result = subprocess.run(
-                    [compiler, "--version"], capture_output=True, text=True, timeout=5, check=False,
+                    [compiler, "--version"],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                    check=False,
                 )
                 if result.returncode == 0:
                     return compiler
@@ -98,7 +102,11 @@ class PlatformSupport(PlatformSupportContract):
         try:
             # Try ldd first
             result = subprocess.run(
-                ["ldd", "--version"], capture_output=True, text=True, timeout=5, check=False,
+                ["ldd", "--version"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=False,
             )
             output = result.stdout.lower()
 
@@ -166,7 +174,10 @@ class PlatformSupport(PlatformSupportContract):
         # Check for Xcode Command Line Tools
         try:
             result = subprocess.run(
-                ["xcode-select", "-p"], capture_output=True, timeout=5, check=False,
+                ["xcode-select", "-p"],
+                capture_output=True,
+                timeout=5,
+                check=False,
             )
             if result.returncode == 0:
                 return True
@@ -183,7 +194,10 @@ class PlatformSupport(PlatformSupportContract):
         # Check for gcc/g++
         try:
             result = subprocess.run(
-                ["gcc", "--version"], capture_output=True, timeout=5, check=False,
+                ["gcc", "--version"],
+                capture_output=True,
+                timeout=5,
+                check=False,
             )
             if result.returncode == 0:
                 return True
@@ -192,12 +206,16 @@ class PlatformSupport(PlatformSupportContract):
             if Path("/etc/apt/sources.list").exists():
                 print("Installing build-essential...")
                 subprocess.run(["sudo", "apt-get", "update"], check=False)
-                subprocess.run(["sudo", "apt-get", "install", "-y", "build-essential"], check=False)
+                subprocess.run(
+                    ["sudo", "apt-get", "install", "-y", "build-essential"],
+                    check=False,
+                )
                 return True
             elif Path("/etc/yum.conf").exists():
                 print("Installing development tools...")
                 subprocess.run(
-                    ["sudo", "yum", "groupinstall", "-y", "Development Tools"], check=False,
+                    ["sudo", "yum", "groupinstall", "-y", "Development Tools"],
+                    check=False,
                 )
                 return True
 

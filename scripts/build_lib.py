@@ -25,7 +25,7 @@ def main():
                 c_files.append(str(src))
 
     if not c_files:
-        print("⚠️ No C source files found. Did you fetch grammars?")
+        print("WARNING: No C source files found. Did you fetch grammars?")
         return
 
     cmd = ["gcc", "-shared", "-fPIC"]
@@ -35,7 +35,7 @@ def main():
 
     print("Compiling Tree-sitter grammars into", lib_path)
     subprocess.run(cmd, check=True)
-    print("✅ Built", lib_path)
+    print("SUCCESS: Built", lib_path)
 
 
 if __name__ == "__main__":

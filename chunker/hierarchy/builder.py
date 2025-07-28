@@ -2,9 +2,7 @@
 
 from collections import defaultdict
 
-from ..interfaces.hierarchy import (
-    ChunkHierarchy,
-)
+from ..interfaces.hierarchy import ChunkHierarchy
 from ..interfaces.hierarchy import (
     ChunkHierarchyBuilder as ChunkHierarchyBuilderInterface,
 )

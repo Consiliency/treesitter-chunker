@@ -41,13 +41,17 @@ class CrossCompiler:
             if platform == current_platform["os"]:
                 # Native build
                 success, wheel = self.build_system.build_wheel(
-                    platform, current_platform["python_tag"], output_dir,
+                    platform,
+                    current_platform["python_tag"],
+                    output_dir,
                 )
                 results[platform] = (success, wheel)
             else:
                 # Cross-compilation attempt
                 success, wheel = self._cross_compile(
-                    platform, current_platform["python_tag"], output_dir,
+                    platform,
+                    current_platform["python_tag"],
+                    output_dir,
                 )
                 results[platform] = (success, wheel)
 
@@ -90,7 +94,10 @@ class CrossCompiler:
         # Check if Docker is available
         try:
             result = subprocess.run(
-                ["docker", "--version"], capture_output=True, timeout=5, check=False,
+                ["docker", "--version"],
+                capture_output=True,
+                timeout=5,
+                check=False,
             )
             if result.returncode != 0:
                 print("Docker not available for manylinux builds")
@@ -208,7 +215,10 @@ class CrossCompiler:
         """Check if Docker is available"""
         try:
             result = subprocess.run(
-                ["docker", "--version"], capture_output=True, timeout=5, check=False,
+                ["docker", "--version"],
+                capture_output=True,
+                timeout=5,
+                check=False,
             )
             return result.returncode == 0
         except (subprocess.SubprocessError, FileNotFoundError):

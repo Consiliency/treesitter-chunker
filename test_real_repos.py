@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Test treesitter-chunker with real repositories."""
 
-import os
 from pathlib import Path
 
 from chunker import chunk_file, list_languages
