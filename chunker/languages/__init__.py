@@ -28,6 +28,9 @@ from .java_plugin import JavaPlugin
 from .javascript import JavaScriptPlugin
 from .julia import JuliaPlugin
 from .matlab import MATLABPlugin
+
+# Import Tier 4 language plugins
+from .nasm import NASMPlugin
 from .ocaml import OCamlPlugin
 
 # Phase 1.2 exports (Plugin system)
@@ -42,6 +45,8 @@ from .scala import ScalaPlugin
 from .sql import SQLPlugin
 from .svelte import SveltePlugin
 from .vue import VuePlugin
+from .wasm import WASMPlugin
+from .zig import ZigPlugin
 
 _plugin_exports = [
     "PythonPlugin",
@@ -67,6 +72,10 @@ _plugin_exports = [
     "DartPlugin",
     "VuePlugin",
     "SveltePlugin",
+    # Tier 4 languages
+    "ZigPlugin",
+    "NASMPlugin",
+    "WASMPlugin",
 ]
 
 __all__ = [
@@ -167,5 +176,21 @@ except ImportError:
 
 try:
     from . import svelte  # noqa: F401
+except ImportError:
+    pass
+
+# Auto-import Tier 4 language configurations
+try:
+    from . import zig  # noqa: F401
+except ImportError:
+    pass
+
+try:
+    from . import nasm  # noqa: F401
+except ImportError:
+    pass
+
+try:
+    from . import wasm  # noqa: F401
 except ImportError:
     pass

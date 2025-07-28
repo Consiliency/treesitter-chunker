@@ -11,7 +11,7 @@ class TestSwiftLanguage:
 
     def test_swift_basic_chunking(self):
         """Test basic Swift chunking."""
-        code = '''
+        code = """
 import Foundation
 
 struct User {
@@ -50,10 +50,10 @@ func validateEmail(_ email: String) -> Bool {
     let emailRegex = #"^[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"#
     return email.range(of: emailRegex, options: .regularExpression) != nil
 }
-'''
+"""
         chunks = chunk_text(code, language="swift")
         assert len(chunks) >= 3  # struct with methods, class with methods, function
-        
+
         # Verify chunk types
         chunk_contents = [chunk.content for chunk in chunks]
         assert any("struct User" in c for c in chunk_contents)
@@ -62,7 +62,7 @@ func validateEmail(_ email: String) -> Bool {
 
     def test_swift_protocols_extensions(self):
         """Test Swift protocols and extensions."""
-        code = '''
+        code = """
 protocol Vehicle {
     var numberOfWheels: Int { get }
     func startEngine()
@@ -108,13 +108,13 @@ extension Array where Element: Numeric {
         return total / Double(count)
     }
 }
-'''
+"""
         chunks = chunk_text(code, language="swift")
         assert len(chunks) >= 5  # protocols, struct, extensions
 
     def test_swift_enums_associated_values(self):
         """Test Swift enums with associated values."""
-        code = '''
+        code = """
 enum Result<Success, Failure: Error> {
     case success(Success)
     case failure(Failure)
@@ -155,13 +155,13 @@ enum ViewState<T> {
     case loaded(T)
     case error(Error)
 }
-'''
+"""
         chunks = chunk_text(code, language="swift")
         assert len(chunks) >= 3  # multiple enums with methods
 
     def test_swift_async_await(self):
         """Test Swift async/await and actors."""
-        code = '''
+        code = """
 actor UserCache {
     private var cache: [UUID: User] = [:]
     
@@ -221,13 +221,13 @@ class ViewModel: ObservableObject {
         }
     }
 }
-'''
+"""
         chunks = chunk_text(code, language="swift")
         assert len(chunks) >= 3  # actor, class with async methods, view model
 
     def test_swift_property_wrappers(self):
         """Test Swift property wrappers."""
-        code = '''
+        code = """
 @propertyWrapper
 struct UserDefault<T> {
     let key: String
@@ -266,13 +266,13 @@ struct Settings {
     @UserDefault(key: "isDarkMode", defaultValue: false)
     var isDarkMode: Bool
 }
-'''
+"""
         chunks = chunk_text(code, language="swift")
         assert len(chunks) >= 3  # property wrappers and struct
 
     def test_swift_generics_constraints(self):
         """Test Swift generics with constraints."""
-        code = '''
+        code = """
 protocol Identifiable {
     associatedtype ID: Hashable
     var id: ID { get }
@@ -320,7 +320,7 @@ struct Container<T> where T: Equatable {
         return items.contains(item)
     }
 }
-'''
+"""
         chunks = chunk_text(code, language="swift")
         assert len(chunks) >= 4  # protocol, generic class, function, struct
 

@@ -49,7 +49,8 @@ class TestGrammarManager:
     def test_add_grammar_source_success(self, grammar_manager):
         """Test successfully adding a new grammar source."""
         result = grammar_manager.add_grammar_source(
-            "rust", "https://github.com/tree-sitter/tree-sitter-rust.git",
+            "rust",
+            "https://github.com/tree-sitter/tree-sitter-rust.git",
         )
         assert result is True
         assert "rust" in grammar_manager._grammar_sources
@@ -63,7 +64,8 @@ class TestGrammarManager:
         """Test adding a duplicate grammar source."""
         # Try to add existing language
         result = grammar_manager.add_grammar_source(
-            "python", "https://github.com/other/tree-sitter-python.git",
+            "python",
+            "https://github.com/other/tree-sitter-python.git",
         )
         assert result is False
         # Original URL should be preserved
@@ -84,7 +86,9 @@ class TestGrammarManager:
     def test_fetch_grammars_success(self, mock_run, grammar_manager):
         """Test successfully fetching grammars."""
         mock_run.return_value = MagicMock(
-            returncode=0, stdout="Cloning into...", stderr="",
+            returncode=0,
+            stdout="Cloning into...",
+            stderr="",
         )
 
         results = grammar_manager.fetch_grammars()
@@ -144,7 +148,9 @@ class TestGrammarManager:
             c_file.write_text("/* dummy parser */")
 
         mock_run.return_value = MagicMock(
-            returncode=0, stdout="Compilation successful", stderr="",
+            returncode=0,
+            stdout="Compilation successful",
+            stderr="",
         )
 
         results = grammar_manager.compile_grammars()
@@ -268,14 +274,16 @@ class TestGrammarManager:
     def test_empty_config_handling(self, temp_dir):
         """Test handling of missing config file."""
         manager = GrammarManager(
-            root_dir=temp_dir, config_file=temp_dir / "nonexistent" / "config.json",
+            root_dir=temp_dir,
+            config_file=temp_dir / "nonexistent" / "config.json",
         )
 
         assert len(manager._grammar_sources) == 0
 
         # Should still be able to add sources
         result = manager.add_grammar_source(
-            "test", "https://github.com/test/tree-sitter-test.git",
+            "test",
+            "https://github.com/test/tree-sitter-test.git",
         )
         assert result is True
         assert manager._config_file.exists()

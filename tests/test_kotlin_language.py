@@ -11,7 +11,7 @@ class TestKotlinLanguage:
 
     def test_kotlin_basic_chunking(self):
         """Test basic Kotlin chunking."""
-        code = '''
+        code = """
 package com.example.app
 
 import kotlinx.coroutines.*
@@ -46,10 +46,10 @@ fun main() {
         println("Created user: $user")
     }
 }
-'''
+"""
         chunks = chunk_text(code, language="kotlin")
         assert len(chunks) >= 4  # data class, class with methods, main function
-        
+
         # Verify chunk types
         chunk_contents = [chunk.content for chunk in chunks]
         assert any("data class User" in c for c in chunk_contents)
@@ -58,7 +58,7 @@ fun main() {
 
     def test_kotlin_interfaces_sealed(self):
         """Test Kotlin interfaces and sealed classes."""
-        code = '''
+        code = """
 interface Repository<T> {
     suspend fun findById(id: Int): T?
     suspend fun save(entity: T): T
@@ -83,13 +83,13 @@ abstract class BaseViewModel : ViewModel() {
     
     abstract fun onEvent(event: ViewEvent)
 }
-'''
+"""
         chunks = chunk_text(code, language="kotlin")
         assert len(chunks) >= 3  # interface, sealed class, abstract class
 
     def test_kotlin_extension_functions(self):
         """Test Kotlin extension functions and properties."""
-        code = '''
+        code = """
 fun String.isEmail(): Boolean {
     return this.matches(Regex("[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}"))
 }
@@ -118,13 +118,13 @@ class ValidationExtensions {
         }
     }
 }
-'''
+"""
         chunks = chunk_text(code, language="kotlin")
         assert len(chunks) >= 5  # multiple extension functions, object, class
 
     def test_kotlin_coroutines(self):
         """Test Kotlin coroutines and flow."""
-        code = '''
+        code = """
 import kotlinx.coroutines.flow.*
 
 class DataRepository {
@@ -158,13 +158,13 @@ class DataRepository {
         return database.itemDao().getAll()
     }
 }
-'''
+"""
         chunks = chunk_text(code, language="kotlin")
         assert len(chunks) >= 1  # class with multiple methods
 
     def test_kotlin_dsl_builders(self):
         """Test Kotlin DSL and builder patterns."""
-        code = '''
+        code = """
 class Html {
     private val children = mutableListOf<Element>()
     
@@ -200,13 +200,13 @@ fun html(init: Html.() -> Unit): Html {
 inline fun <reified T : Any> buildConfig(builder: ConfigBuilder<T>.() -> Unit): T {
     return ConfigBuilder(T::class).apply(builder).build()
 }
-'''
+"""
         chunks = chunk_text(code, language="kotlin")
         assert len(chunks) >= 4  # multiple classes and functions
 
     def test_kotlin_companion_object(self):
         """Test Kotlin companion objects."""
-        code = '''
+        code = """
 class Logger private constructor(private val tag: String) {
     companion object {
         @JvmStatic
@@ -240,7 +240,7 @@ enum class LogLevel {
         }
     }
 }
-'''
+"""
         chunks = chunk_text(code, language="kotlin")
         assert len(chunks) >= 2  # class with companion object, enum with companion
 

@@ -126,7 +126,10 @@ class OCamlPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         elif node.type in {"type_definition", "type_binding"}:
             # Look for type name
             for child in node.children:
-                if child.type == "type_constructor" or child.type == "lowercase_identifier":
+                if (
+                    child.type == "type_constructor"
+                    or child.type == "lowercase_identifier"
+                ):
                     return source[child.start_byte : child.end_byte].decode("utf-8")
         elif node.type in {"module_definition", "module_binding"}:
             # Look for module name
@@ -136,7 +139,10 @@ class OCamlPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         elif node.type == "exception_definition":
             # Look for exception name
             for child in node.children:
-                if child.type == "constructor_name" or child.type == "uppercase_identifier":
+                if (
+                    child.type == "constructor_name"
+                    or child.type == "uppercase_identifier"
+                ):
                     return source[child.start_byte : child.end_byte].decode("utf-8")
         elif node.type in {"class_definition", "class_binding"}:
             # Look for class name
@@ -152,7 +158,8 @@ class OCamlPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         def extract_chunks(n: Node, module_context: str = None):
             if n.type in self.default_chunk_types:
                 content = source[n.start_byte : n.end_byte].decode(
-                    "utf-8", errors="replace",
+                    "utf-8",
+                    errors="replace",
                 )
                 chunk = {
                     "type": n.type,
@@ -274,7 +281,10 @@ class OCamlPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             for child in node.children:
                 if child.type == "let_binding":
                     sub_chunk = self.create_chunk(
-                        child, source, file_path, parent_context,
+                        child,
+                        source,
+                        file_path,
+                        parent_context,
                     )
                     if sub_chunk and self.should_include_chunk(sub_chunk):
                         sub_chunk.node_type = "recursive_function"

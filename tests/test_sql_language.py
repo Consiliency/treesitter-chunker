@@ -1,6 +1,5 @@
 """Comprehensive tests for SQL language support."""
 
-
 from chunker import chunk_file
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from chunker.languages.sql import SQLPlugin

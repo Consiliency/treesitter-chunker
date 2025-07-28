@@ -74,11 +74,8 @@ class GrammarDiscoveryStub(GrammarDiscoveryContract):
         """Stub that simulates updates available"""
         updates = {}
         for lang, version in installed_grammars.items():
-            if (
-                (lang == "python"
-                and version < "0.20.0")
-                or (lang == "rust"
-                and version < "0.20.0")
+            if (lang == "python" and version < "0.20.0") or (
+                lang == "rust" and version < "0.20.0"
             ):
                 updates[lang] = (version, "0.20.0")
         return updates

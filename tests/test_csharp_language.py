@@ -11,7 +11,7 @@ class TestCSharpLanguage:
 
     def test_csharp_basic_chunking(self):
         """Test basic C# chunking."""
-        code = '''
+        code = """
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -53,10 +53,10 @@ namespace MyApp.Models
         }
     }
 }
-'''
+"""
         chunks = chunk_text(code, language="csharp")
         assert len(chunks) >= 2  # class with methods and static class
-        
+
         # Verify chunk types
         chunk_contents = [chunk.content for chunk in chunks]
         assert any("class User" in c for c in chunk_contents)
@@ -64,7 +64,7 @@ namespace MyApp.Models
 
     def test_csharp_interfaces_generics(self):
         """Test C# interfaces and generics."""
-        code = '''
+        code = """
 public interface IRepository<T> where T : class
 {
     Task<T> GetByIdAsync(int id);
@@ -105,13 +105,13 @@ public class UserRepository : BaseRepository<User>
             .ToListAsync();
     }
 }
-'''
+"""
         chunks = chunk_text(code, language="csharp")
         assert len(chunks) >= 3  # interface, abstract class, concrete class
 
     def test_csharp_async_await(self):
         """Test C# async/await patterns."""
-        code = '''
+        code = """
 public class ApiService
 {
     private readonly HttpClient _httpClient;
@@ -153,13 +153,13 @@ public class ApiService
         return await Task.WhenAll(tasks);
     }
 }
-'''
+"""
         chunks = chunk_text(code, language="csharp")
         assert len(chunks) >= 1  # class with async methods
 
     def test_csharp_linq_expressions(self):
         """Test C# LINQ and expression patterns."""
-        code = '''
+        code = """
 public class DataProcessor
 {
     public IEnumerable<ProductSummary> GetProductSummaries(List<Product> products)
@@ -189,13 +189,13 @@ public class DataProcessor
             (!criteria.ActiveOnly || user.IsActive);
     }
 }
-'''
+"""
         chunks = chunk_text(code, language="csharp")
         assert len(chunks) >= 1  # class with LINQ methods
 
     def test_csharp_modern_features(self):
         """Test modern C# features (C# 9+)."""
-        code = '''
+        code = """
 public record Person(string FirstName, string LastName)
 {
     public string FullName => $"{FirstName} {LastName}";
@@ -240,13 +240,13 @@ public class Calculator
             _ => throw new ArgumentException($"Unknown operation: {operation}")
         };
 }
-'''
+"""
         chunks = chunk_text(code, language="csharp")
         assert len(chunks) >= 4  # records and classes with methods
 
     def test_csharp_attributes_properties(self):
         """Test C# attributes and properties."""
-        code = '''
+        code = """
 [AttributeUsage(AttributeTargets.Property)]
 public class RequiredAttribute : ValidationAttribute
 {
@@ -296,7 +296,7 @@ public class ProductsController : ControllerBase
         return product == null ? NotFound() : Ok(product);
     }
 }
-'''
+"""
         chunks = chunk_text(code, language="csharp")
         assert len(chunks) >= 3  # attribute class, product class, controller
 

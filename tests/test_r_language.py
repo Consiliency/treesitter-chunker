@@ -1,6 +1,5 @@
 """Comprehensive tests for R language support."""
 
-
 from chunker import chunk_file
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from chunker.languages.r import RPlugin

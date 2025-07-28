@@ -11,7 +11,7 @@ class TestPHPLanguage:
 
     def test_php_basic_chunking(self):
         """Test basic PHP chunking."""
-        code = '''<?php
+        code = """<?php
 namespace App\\Models;
 
 use Illuminate\\Database\\Eloquent\\Model;
@@ -47,10 +47,10 @@ trait HasTimestamps {
         return $this->save();
     }
 }
-?>'''
+?>"""
         chunks = chunk_text(code, language="php")
         assert len(chunks) >= 5  # class with methods, function, trait
-        
+
         # Verify chunk types
         chunk_contents = [chunk.content for chunk in chunks]
         assert any("class User" in c for c in chunk_contents)
@@ -59,7 +59,7 @@ trait HasTimestamps {
 
     def test_php_interface_abstract(self):
         """Test PHP interfaces and abstract classes."""
-        code = '''<?php
+        code = """<?php
 interface PaymentGateway {
     public function charge($amount);
     public function refund($transactionId, $amount);
@@ -81,13 +81,13 @@ abstract class BaseController {
         return response()->json(['status' => 'ok']);
     }
 }
-?>'''
+?>"""
         chunks = chunk_text(code, language="php")
         assert len(chunks) >= 2  # interface and abstract class
 
     def test_php_anonymous_functions(self):
         """Test PHP anonymous functions and closures."""
-        code = '''<?php
+        code = """<?php
 $users = [
     ['name' => 'John', 'age' => 30],
     ['name' => 'Jane', 'age' => 25],
@@ -115,13 +115,13 @@ class EventEmitter {
         }
     }
 }
-?>'''
+?>"""
         chunks = chunk_text(code, language="php")
         assert len(chunks) >= 1  # class with methods
 
     def test_php_modern_syntax(self):
         """Test modern PHP syntax features."""
-        code = '''<?php
+        code = """<?php
 declare(strict_types=1);
 
 namespace App\\Services;
@@ -163,13 +163,13 @@ class UserController {
         );
     }
 }
-?>'''
+?>"""
         chunks = chunk_text(code, language="php")
         assert len(chunks) >= 3  # multiple classes and enum
 
     def test_php_mixed_content(self):
         """Test PHP with mixed HTML content."""
-        code = '''<!DOCTYPE html>
+        code = """<!DOCTYPE html>
 <html>
 <head>
     <title><?php echo $title; ?></title>
@@ -200,13 +200,13 @@ class UserController {
         <?php endforeach; ?>
     </div>
 </body>
-</html>'''
+</html>"""
         chunks = chunk_text(code, language="php")
         assert len(chunks) >= 2  # class and function
 
     def test_php_namespace_use(self):
         """Test PHP namespace and use statements."""
-        code = '''<?php
+        code = """<?php
 namespace App\\Http\\Controllers\\Api\\V1;
 
 use App\\Models\\{User, Post, Comment};
@@ -238,11 +238,14 @@ class PostController extends Controller
         return response()->json($post, 201);
     }
 }
-?>'''
+?>"""
         chunks = chunk_text(code, language="php")
         assert len(chunks) >= 1  # class with constructor and method
 
-    @pytest.mark.parametrize("file_extension", [".php", ".php3", ".php4", ".php5", ".phtml"])
+    @pytest.mark.parametrize(
+        "file_extension",
+        [".php", ".php3", ".php4", ".php5", ".phtml"],
+    )
     def test_php_file_extensions(self, file_extension):
         """Test PHP file extension detection."""
         config = language_config_registry.get_for_file(f"test{file_extension}")

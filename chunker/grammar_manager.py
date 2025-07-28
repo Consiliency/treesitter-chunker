@@ -19,7 +19,6 @@ class GrammarManagerError(ChunkerError):
     """Base exception for grammar manager operations."""
 
 
-
 class GrammarManager(GrammarManagerContract):
     """Manages tree-sitter grammar downloads and compilation."""
 
@@ -173,7 +172,8 @@ class GrammarManager(GrammarManagerContract):
         return results
 
     def compile_grammars(
-        self, languages: Optional[list[str]] = None,
+        self,
+        languages: Optional[list[str]] = None,
     ) -> dict[str, bool]:
         """Compile fetched grammars into shared library.
 

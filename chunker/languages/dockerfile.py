@@ -127,7 +127,8 @@ class DockerfilePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         def extract_chunks(n: Node, parent_type: str = None):
             if n.type in self.default_chunk_types:
                 content = source[n.start_byte : n.end_byte].decode(
-                    "utf-8", errors="replace",
+                    "utf-8",
+                    errors="replace",
                 )
                 chunk = {
                     "type": n.type,

@@ -60,7 +60,8 @@ class RConfig(LanguageConfig):
                 priority=5,
                 metadata={"type": "function_assignment"},
                 condition=lambda node, source: self._is_function_assignment(
-                    node, source,
+                    node,
+                    source,
                 ),
             ),
         )
@@ -156,7 +157,8 @@ class RPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                         return
 
                 content = source[n.start_byte : n.end_byte].decode(
-                    "utf-8", errors="replace",
+                    "utf-8",
+                    errors="replace",
                 )
                 chunk = {
                     "type": n.type,

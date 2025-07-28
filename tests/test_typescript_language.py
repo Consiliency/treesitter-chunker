@@ -11,7 +11,7 @@ class TestTypeScriptLanguage:
 
     def test_typescript_basic_chunking(self):
         """Test basic TypeScript chunking."""
-        code = '''
+        code = """
 interface User {
     id: number;
     name: string;
@@ -36,10 +36,10 @@ async function fetchUserData(id: number): Promise<User> {
 }
 
 export { User, UserService, fetchUserData };
-'''
+"""
         chunks = chunk_text(code, language="typescript")
         assert len(chunks) >= 4  # interface, class, 2 methods, function
-        
+
         # Verify chunk types
         chunk_types = [chunk.metadata.get("type") for chunk in chunks]
         assert "interface_declaration" in chunk_types
@@ -48,7 +48,7 @@ export { User, UserService, fetchUserData };
 
     def test_tsx_component_chunking(self):
         """Test TSX React component chunking."""
-        code = '''
+        code = """
 import React, { useState, useEffect } from 'react';
 
 interface Props {
@@ -80,10 +80,10 @@ const Modal: React.FC<Props> = ({ title, onClose }) => {
 };
 
 export default Modal;
-'''
+"""
         chunks = chunk_text(code, language="tsx")
         assert len(chunks) >= 2  # interface and component
-        
+
         # Check for JSX handling
         component_chunk = next((c for c in chunks if "Modal" in c.content), None)
         assert component_chunk is not None
@@ -91,7 +91,7 @@ export default Modal;
 
     def test_typescript_generics(self):
         """Test TypeScript with complex generics."""
-        code = '''
+        code = """
 type Result<T, E = Error> = 
     | { success: true; data: T }
     | { success: false; error: E };
@@ -113,13 +113,13 @@ class Container<T extends Record<string, unknown>> {
         this.items.set(key, value);
     }
 }
-'''
+"""
         chunks = chunk_text(code, language="typescript")
         assert len(chunks) >= 3  # type alias, function, class
 
     def test_typescript_decorators(self):
         """Test TypeScript decorators."""
-        code = '''
+        code = """
 function log(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
     const original = descriptor.value;
     descriptor.value = function(...args: any[]) {
@@ -148,13 +148,13 @@ function sealed(constructor: Function) {
     Object.seal(constructor);
     Object.seal(constructor.prototype);
 }
-'''
+"""
         chunks = chunk_text(code, language="typescript")
         assert len(chunks) >= 3  # decorator functions and class
 
     def test_typescript_namespace(self):
         """Test TypeScript namespace chunking."""
-        code = '''
+        code = """
 namespace Validation {
     export interface StringValidator {
         isAcceptable(s: string): boolean;
@@ -175,17 +175,17 @@ namespace Validation {
         }
     }
 }
-'''
+"""
         chunks = chunk_text(code, language="typescript")
         assert len(chunks) >= 1  # namespace should be chunked
-        
+
         # Verify namespace is properly captured
         namespace_chunk = next((c for c in chunks if "namespace" in c.content), None)
         assert namespace_chunk is not None
 
     def test_typescript_enum_chunking(self):
         """Test TypeScript enum chunking."""
-        code = '''
+        code = """
 enum Direction {
     Up = 1,
     Down,
@@ -204,7 +204,7 @@ enum BooleanLikeHeterogeneousEnum {
     No = 0,
     Yes = "YES",
 }
-'''
+"""
         chunks = chunk_text(code, language="typescript")
         assert len(chunks) >= 3  # three enums
 
