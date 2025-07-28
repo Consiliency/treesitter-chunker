@@ -49,7 +49,7 @@ jobs:
         python -m build --wheel --outdir dist/
 
     - name: Upload wheel artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: wheels-${{ matrix.os }}-py${{ matrix.python-version }}
         path: dist/*.whl
@@ -75,7 +75,7 @@ jobs:
       run: python -m build --sdist --outdir dist/
 
     - name: Upload sdist artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: sdist
         path: dist/*.tar.gz
@@ -106,7 +106,7 @@ jobs:
         done
 
     - name: Upload manylinux wheels
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: manylinux-wheels-${{ matrix.python }}
         path: dist/*.whl
@@ -118,7 +118,7 @@ jobs:
     
     steps:
     - name: Download all artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         path: dist/
 
@@ -133,7 +133,7 @@ jobs:
         cat checksums.txt
 
     - name: Upload final artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: distribution-artifacts
         path: |

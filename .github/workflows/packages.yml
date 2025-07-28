@@ -30,7 +30,7 @@ jobs:
         dpkg-buildpackage -us -uc -b
     
     - name: Upload deb packages
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: debian-packages
         path: ../*.deb
@@ -64,7 +64,7 @@ jobs:
         rpmbuild -ba SPECS/treesitter-chunker.spec
     
     - name: Upload RPM packages
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: rpm-packages
         path: ~/rpmbuild/RPMS/**/*.rpm
@@ -85,7 +85,7 @@ jobs:
         brew bottle treesitter-chunker.rb
     
     - name: Upload Homebrew bottle
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: homebrew-bottle
         path: '*.bottle.tar.gz'
@@ -99,7 +99,7 @@ jobs:
     - uses: actions/checkout@v4
     
     - name: Download all artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
     
     - name: Create package directory
       run: |
