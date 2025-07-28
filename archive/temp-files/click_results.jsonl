@@ -1,0 +1,318 @@
+{
+  "repo_path": "/home/jenner/code/treesitter-chunker/click",
+  "total_files": 61,
+  "total_chunks": 0,
+  "processing_time": 0.19835400581359863,
+  "metadata": {
+    "traversal_strategy": "depth-first",
+    "max_workers": 4,
+    "incremental": true
+  },
+  "files": [
+    {
+      "path": "examples/completion/completion.py",
+      "processing_time": 0.01325082778930664,
+      "chunks": []
+    },
+    {
+      "path": "docs/conf.py",
+      "processing_time": 0.014327287673950195,
+      "chunks": []
+    },
+    {
+      "path": "examples/aliases/aliases.py",
+      "processing_time": 0.014390945434570312,
+      "chunks": []
+    },
+    {
+      "path": "examples/colors/colors.py",
+      "processing_time": 0.01433706283569336,
+      "chunks": []
+    },
+    {
+      "path": "examples/complex/complex/commands/__init__.py",
+      "processing_time": 0.001561880111694336,
+      "chunks": []
+    },
+    {
+      "path": "examples/complex/complex/__init__.py",
+      "processing_time": 0.0024042129516601562,
+      "chunks": []
+    },
+    {
+      "path": "examples/complex/complex/commands/cmd_init.py",
+      "processing_time": 0.002581357955932617,
+      "chunks": []
+    },
+    {
+      "path": "examples/complex/complex/cli.py",
+      "processing_time": 0.003148317337036133,
+      "chunks": []
+    },
+    {
+      "path": "examples/complex/complex/commands/cmd_status.py",
+      "processing_time": 0.0014393329620361328,
+      "chunks": []
+    },
+    {
+      "path": "examples/imagepipe/imagepipe.py",
+      "processing_time": 0.001538991928100586,
+      "chunks": []
+    },
+    {
+      "path": "examples/inout/inout.py",
+      "processing_time": 0.0017807483673095703,
+      "chunks": []
+    },
+    {
+      "path": "examples/repo/repo.py",
+      "processing_time": 0.0017828941345214844,
+      "chunks": []
+    },
+    {
+      "path": "examples/termui/termui.py",
+      "processing_time": 0.0018854141235351562,
+      "chunks": []
+    },
+    {
+      "path": "examples/naval/naval.py",
+      "processing_time": 0.002721548080444336,
+      "chunks": []
+    },
+    {
+      "path": "examples/validation/validation.py",
+      "processing_time": 0.001982450485229492,
+      "chunks": []
+    },
+    {
+      "path": "src/click/_termui_impl.py",
+      "processing_time": 0.0015583038330078125,
+      "chunks": []
+    },
+    {
+      "path": "src/click/_compat.py",
+      "processing_time": 0.001962900161743164,
+      "chunks": []
+    },
+    {
+      "path": "src/click/__init__.py",
+      "processing_time": 0.002803802490234375,
+      "chunks": []
+    },
+    {
+      "path": "src/click/_textwrap.py",
+      "processing_time": 0.0013353824615478516,
+      "chunks": []
+    },
+    {
+      "path": "src/click/decorators.py",
+      "processing_time": 0.0016109943389892578,
+      "chunks": []
+    },
+    {
+      "path": "src/click/core.py",
+      "processing_time": 0.002262115478515625,
+      "chunks": []
+    },
+    {
+      "path": "src/click/_winconsole.py",
+      "processing_time": 0.002588033676147461,
+      "chunks": []
+    },
+    {
+      "path": "src/click/exceptions.py",
+      "processing_time": 0.0023436546325683594,
+      "chunks": []
+    },
+    {
+      "path": "src/click/formatting.py",
+      "processing_time": 0.0015652179718017578,
+      "chunks": []
+    },
+    {
+      "path": "src/click/parser.py",
+      "processing_time": 0.001964569091796875,
+      "chunks": []
+    },
+    {
+      "path": "src/click/shell_completion.py",
+      "processing_time": 0.001947641372680664,
+      "chunks": []
+    },
+    {
+      "path": "src/click/termui.py",
+      "processing_time": 0.0015254020690917969,
+      "chunks": []
+    },
+    {
+      "path": "src/click/globals.py",
+      "processing_time": 0.003142833709716797,
+      "chunks": []
+    },
+    {
+      "path": "src/click/testing.py",
+      "processing_time": 0.0014886856079101562,
+      "chunks": []
+    },
+    {
+      "path": "src/click/utils.py",
+      "processing_time": 0.0016994476318359375,
+      "chunks": []
+    },
+    {
+      "path": "src/click/types.py",
+      "processing_time": 0.0025255680084228516,
+      "chunks": []
+    },
+    {
+      "path": "tests/test_arguments.py",
+      "processing_time": 0.0018429756164550781,
+      "chunks": []
+    },
+    {
+      "path": "tests/conftest.py",
+      "processing_time": 0.003076791763305664,
+      "chunks": []
+    },
+    {
+      "path": "tests/test_basic.py",
+      "processing_time": 0.001983642578125,
+      "chunks": []
+    },
+    {
+      "path": "tests/test_chain.py",
+      "processing_time": 0.0017921924591064453,
+      "chunks": []
+    },
+    {
+      "path": "tests/test_compat.py",
+      "processing_time": 0.0011165142059326172,
+      "chunks": []
+    },
+    {
+      "path": "tests/test_command_decorators.py",
+      "processing_time": 0.002206563949584961,
+      "chunks": []
+    },
+    {
+      "path": "tests/test_commands.py",
+      "processing_time": 0.0024907588958740234,
+      "chunks": []
+    },
+    {
+      "path": "tests/test_context.py",
+      "processing_time": 0.002049684524536133,
+      "chunks": []
+    },
+    {
+      "path": "tests/test_custom_classes.py",
+      "processing_time": 0.0017833709716796875,
+      "chunks": []
+    },
+    {
+      "path": "tests/test_formatting.py",
+      "processing_time": 0.0014545917510986328,
+      "chunks": []
+    },
+    {
+      "path": "tests/test_defaults.py",
+      "processing_time": 0.0028274059295654297,
+      "chunks": []
+    },
+    {
+      "path": "tests/test_info_dict.py",
+      "processing_time": 0.0018324851989746094,
+      "chunks": []
+    },
+    {
+      "path": "tests/test_imports.py",
+      "processing_time": 0.002338886260986328,
+      "chunks": []
+    },
+    {
+      "path": "tests/test_options.py",
+      "processing_time": 0.0019092559814453125,
+      "chunks": []
+    },
+    {
+      "path": "tests/test_normalization.py",
+      "processing_time": 0.0023794174194335938,
+      "chunks": []
+    },
+    {
+      "path": "tests/test_parser.py",
+      "processing_time": 0.0019714832305908203,
+      "chunks": []
+    },
+    {
+      "path": "tests/test_shell_completion.py",
+      "processing_time": 0.0018832683563232422,
+      "chunks": []
+    },
+    {
+      "path": "tests/test_termui.py",
+      "processing_time": 0.001373291015625,
+      "chunks": []
+    },
+    {
+      "path": "tests/test_testing.py",
+      "processing_time": 0.0023860931396484375,
+      "chunks": []
+    },
+    {
+      "path": "tests/test_types.py",
+      "processing_time": 0.0018994808197021484,
+      "chunks": []
+    },
+    {
+      "path": "tests/test_utils.py",
+      "processing_time": 0.002454996109008789,
+      "chunks": []
+    },
+    {
+      "path": "tests/typing/typing_aliased_group.py",
+      "processing_time": 0.002225160598754883,
+      "chunks": []
+    },
+    {
+      "path": "tests/typing/typing_confirmation_option.py",
+      "processing_time": 0.0016169548034667969,
+      "chunks": []
+    },
+    {
+      "path": "tests/typing/typing_group_kw_options.py",
+      "processing_time": 0.0020134449005126953,
+      "chunks": []
+    },
+    {
+      "path": "tests/typing/typing_help_option.py",
+      "processing_time": 0.0018155574798583984,
+      "chunks": []
+    },
+    {
+      "path": "tests/typing/typing_password_option.py",
+      "processing_time": 0.001714944839477539,
+      "chunks": []
+    },
+    {
+      "path": "tests/typing/typing_options.py",
+      "processing_time": 0.0023369789123535156,
+      "chunks": []
+    },
+    {
+      "path": "tests/typing/typing_simple_example.py",
+      "processing_time": 0.0014374256134033203,
+      "chunks": []
+    },
+    {
+      "path": "tests/typing/typing_version_option.py",
+      "processing_time": 0.0009436607360839844,
+      "chunks": []
+    },
+    {
+      "path": "tests/typing/typing_progressbar.py",
+      "processing_time": 0.002213001251220703,
+      "chunks": []
+    }
+  ]
+}

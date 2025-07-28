@@ -1,0 +1,12 @@
+{
+  "repo_path": "/home/jenner/code/treesitter-chunker/click",
+  "total_files": 0,
+  "total_chunks": 0,
+  "processing_time": 0.0807955265045166,
+  "metadata": {
+    "traversal_strategy": "depth-first",
+    "max_workers": 4,
+    "incremental": true
+  },
+  "files": []
+}

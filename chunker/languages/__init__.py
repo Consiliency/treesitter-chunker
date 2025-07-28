@@ -15,6 +15,7 @@ from .base import (
 from .c import CPlugin
 from .clojure import ClojurePlugin
 from .cpp import CppPlugin
+from .css import CSSPlugin
 from .dart import DartPlugin
 
 # Import Tier 2 language plugins
@@ -24,8 +25,12 @@ from .go_plugin import GoPlugin
 
 # Import Tier 3 language plugins
 from .haskell import HaskellPlugin
+
+# Import Tier 1 language plugins
+from .html import HTMLPlugin
 from .java_plugin import JavaPlugin
 from .javascript import JavaScriptPlugin
+from .json import JSONPlugin
 from .julia import JuliaPlugin
 from .matlab import MATLABPlugin
 
@@ -44,8 +49,11 @@ from .rust import RustPlugin
 from .scala import ScalaPlugin
 from .sql import SQLPlugin
 from .svelte import SveltePlugin
+from .toml import TOMLPlugin
 from .vue import VuePlugin
 from .wasm import WASMPlugin
+from .xml import XMLPlugin
+from .yaml import YAMLPlugin
 from .zig import ZigPlugin
 
 _plugin_exports = [
@@ -57,6 +65,13 @@ _plugin_exports = [
     "GoPlugin",
     "RubyPlugin",
     "JavaPlugin",
+    # Tier 1 languages
+    "CSSPlugin",
+    "HTMLPlugin",
+    "JSONPlugin",
+    "TOMLPlugin",
+    "XMLPlugin",
+    "YAMLPlugin",
     # Tier 2 languages
     "DockerfilePlugin",
     "SQLPlugin",
@@ -109,6 +124,37 @@ except ImportError:
 
 try:
     from . import java_plugin  # noqa: F401
+except ImportError:
+    pass
+
+# Auto-import Tier 1 language configurations
+try:
+    from . import css  # noqa: F401
+except ImportError:
+    pass
+
+try:
+    from . import html  # noqa: F401
+except ImportError:
+    pass
+
+try:
+    from . import json  # noqa: F401
+except ImportError:
+    pass
+
+try:
+    from . import toml  # noqa: F401
+except ImportError:
+    pass
+
+try:
+    from . import xml  # noqa: F401
+except ImportError:
+    pass
+
+try:
+    from . import yaml  # noqa: F401
 except ImportError:
     pass
 
