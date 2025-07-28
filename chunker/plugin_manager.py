@@ -92,7 +92,7 @@ class PluginRegistry:
             # Remove plugin
             self._plugins.pop(language)
             self._instances.pop(language, None)
-            logger.info(f"Unregistered plugin for language: {language}")
+            logger.info("Unregistered plugin for language: %s", language)
 
     def get_plugin(
         self,
@@ -116,7 +116,7 @@ class PluginRegistry:
             parser = get_parser(language)
             instance.set_parser(parser)
         except Exception as e:
-            logger.error(f"Failed to set parser for {language}: {e}")
+            logger.error("Failed to set parser for %s: %s", language, e)
             raise
 
         # Cache if using default config
@@ -152,9 +152,9 @@ class PluginManager:
         directory = Path(directory).resolve()
         if directory.exists() and directory.is_dir():
             self._plugin_dirs.append(directory)
-            logger.info(f"Added plugin directory: {directory}")
+            logger.info("Added plugin directory: %s", directory)
         else:
-            logger.warning(f"Plugin directory does not exist: {directory}")
+            logger.warning("Plugin directory does not exist: %s", directory)
 
     def discover_plugins(
         self,
@@ -180,7 +180,7 @@ class PluginManager:
                     plugin_classes = self._load_plugin_from_file(py_file)
                     plugins.extend(plugin_classes)
                 except Exception as e:
-                    logger.error(f"Failed to load plugin from {py_file}: {e}")
+                    logger.error("Failed to load plugin from %s: %s", py_file, e)
 
         return plugins
 
@@ -218,7 +218,7 @@ class PluginManager:
 
                 return plugins
             except ImportError as e:
-                logger.error(f"Failed to import builtin plugin {file_path.stem}: {e}")
+                logger.error("Failed to import builtin plugin %s: %s", file_path.stem, e)
                 return []
 
         # For external plugins, use dynamic loading
@@ -250,11 +250,11 @@ class PluginManager:
                     and not inspect.isabstract(obj)
                 ):
                     plugins.append(obj)
-                    logger.info(f"Found plugin class: {obj.__name__} in {file_path}")
+                    logger.info("Found plugin class: %s in %s", obj.__name__, file_path)
 
             return plugins
         except Exception as e:
-            logger.error(f"Failed to load plugin from {file_path}: {e}")
+            logger.error("Failed to load plugin from %s: %s", file_path, e)
             return []
 
     def load_builtin_plugins(self) -> None:
@@ -267,7 +267,7 @@ class PluginManager:
             try:
                 self.registry.register(plugin_class)
             except Exception as e:
-                logger.error(f"Failed to register {plugin_class.__name__}: {e}")
+                logger.error("Failed to register %s: %s", plugin_class.__name__, e)
 
     def load_plugins_from_directory(self, directory: Path) -> int:
         """Load all plugins from a directory."""
@@ -280,7 +280,7 @@ class PluginManager:
                 self.registry.register(plugin_class)
                 loaded += 1
             except Exception as e:
-                logger.error(f"Failed to register {plugin_class.__name__}: {e}")
+                logger.error("Failed to register %s: %s", plugin_class.__name__, e)
 
         return loaded
 
@@ -319,7 +319,7 @@ class PluginManager:
 
             return "c"  # Default to C if no C++ features found
         except Exception as e:
-            logger.debug(f"Could not detect language for {file_path}: {e}")
+            logger.debug("Could not detect language for %s: %s", file_path, e)
             return None  # Detection failed
 
     def chunk_file(
@@ -341,7 +341,7 @@ class PluginManager:
                 detected_lang = self._detect_h_file_language(file_path)
                 if detected_lang:
                     language = detected_lang
-                    logger.info(f"Detected {file_path} as {language} based on content")
+                    logger.info("Detected %s as %s based on content", file_path, language)
                 # Detection failed, keep the registry default (C)
                 elif language:
                     logger.info(

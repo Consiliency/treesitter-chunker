@@ -96,10 +96,10 @@ class ChunkerConfig:
             if self.use_env_vars:
                 self._apply_env_overrides()
 
-            logger.info(f"Loaded configuration from: {config_path}")
+            logger.info("Loaded configuration from: %s", config_path)
 
         except Exception as e:
-            logger.error(f"Failed to load config from {config_path}: {e}")
+            logger.error("Failed to load config from %s: %s", config_path, e)
             raise
 
     def save(self, config_path: Path | None = None) -> None:
@@ -127,10 +127,10 @@ class ChunkerConfig:
                 else:
                     raise ValueError(f"Unsupported config format: {ext}")
 
-            logger.info(f"Saved configuration to: {config_path}")
+            logger.info("Saved configuration to: %s", config_path)
 
         except Exception as e:
-            logger.error(f"Failed to save config to {config_path}: {e}")
+            logger.error("Failed to save config to %s: %s", config_path, e)
             raise
 
     def _parse_config(self) -> None:
@@ -381,11 +381,11 @@ class ChunkerConfig:
             # Special handling for known list types
             if config_path == "enabled_languages":
                 self.enabled_languages = set(value.split(","))
-                logger.info(f"Set enabled_languages from env: {self.enabled_languages}")
+                logger.info("Set enabled_languages from env: %s", self.enabled_languages)
                 continue
             if config_path == "plugin_dirs":
                 self.plugin_dirs = [Path(p.strip()) for p in value.split(",")]
-                logger.info(f"Set plugin_dirs from env: {self.plugin_dirs}")
+                logger.info("Set plugin_dirs from env: %s", self.plugin_dirs)
                 continue
 
             # Handle nested configuration
@@ -411,7 +411,7 @@ class ChunkerConfig:
                         # Custom option
                         self.plugin_configs[lang].custom_options[setting] = value
 
-                    logger.info(f"Set {lang}.{setting} from env: {value}")
+                    logger.info("Set %s.%s from env: %s", lang, setting, value)
             elif (
                 len(path_parts) >= 2
                 and path_parts[0] == "default"
@@ -425,7 +425,7 @@ class ChunkerConfig:
                 elif setting == "max_chunk_size":
                     self.default_plugin_config.max_chunk_size = int(value)
 
-                logger.info(f"Set default_plugin_config.{setting} from env: {value}")
+                logger.info("Set default_plugin_config.%s from env: %s", setting, value)
 
     @classmethod
     def get_env_var_info(cls) -> dict[str, str]:

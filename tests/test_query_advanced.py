@@ -68,7 +68,7 @@ class TestNaturalLanguageQueryEngine:
                 parent_context="",
                 content="""class ErrorHandler:
     def handle_exception(self, e):
-        logger.error(f"Exception occurred: {e}")
+        logger.error("Exception occurred: %s", e)
         if isinstance(e, ValidationError):
             return {"error": "Invalid input", "details": str(e)}
         return {"error": "Internal server error"}""",

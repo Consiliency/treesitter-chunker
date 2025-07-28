@@ -88,11 +88,9 @@ class StreamingChunker:
         if path.stat().st_size == 0:
             return
 
-        with open(path, "rb") as f:
-            # Memory-map the file for efficient access
-            with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mmap_data:
-                tree = self.parser.parse(mmap_data)
-                yield from self._walk_streaming(tree.root_node, mmap_data, str(path))
+        with open(path, "rb") as f, mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mmap_data:
+            tree = self.parser.parse(mmap_data)
+            yield from self._walk_streaming(tree.root_node, mmap_data, str(path))
 
 
 def chunk_file_streaming(path: str | Path, language: str) -> Iterator[CodeChunk]:

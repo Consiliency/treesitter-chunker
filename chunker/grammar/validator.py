@@ -119,7 +119,7 @@ class TreeSitterGrammarValidator(GrammarValidator):
             return missing
 
         except Exception as e:
-            logger.error(f"Failed to validate node types for {language}: {e}")
+            logger.error("Failed to validate node types for %s: %s", language, e)
             return list(expected_types)  # Assume all are missing on error
 
     def test_parse(self, language: str, sample_code: str) -> tuple[bool, str | None]:
@@ -202,7 +202,7 @@ class TreeSitterGrammarValidator(GrammarValidator):
             return features
 
         except Exception as e:
-            logger.error(f"Failed to validate features for {language}: {e}")
+            logger.error("Failed to validate features for %s: %s", language, e)
             return {"error": str(e)}
 
     def _collect_node_types(self, node, types: set[str]) -> None:

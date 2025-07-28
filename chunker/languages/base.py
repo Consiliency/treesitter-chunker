@@ -334,7 +334,7 @@ class LanguageConfigRegistry:
 
         # Register the configuration
         self._configs[config.language_id] = config
-        logger.info(f"Registered language configuration: {config.language_id}")
+        logger.info("Registered language configuration: %s", config.language_id)
 
         # Register aliases
         if aliases:

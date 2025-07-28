@@ -330,7 +330,7 @@ class LogChunker(FallbackChunker, ILogChunker):
 
                 return datetime.strptime(timestamp_str.split(".")[0], format_str)
             except ValueError as e:
-                logger.debug(f"Failed to parse timestamp: {e}")
+                logger.debug("Failed to parse timestamp: %s", e)
 
         return None
 

@@ -132,7 +132,7 @@ class TreeSitterGrammarManager(GrammarManager):
 
             # Checkout specific commit if provided
             if grammar.commit_hash:
-                logger.info(f"Checking out commit {grammar.commit_hash}")
+                logger.info("Checking out commit %s", grammar.commit_hash)
                 result = subprocess.run(
                     ["git", "checkout", grammar.commit_hash],
                     check=False,
@@ -277,7 +277,7 @@ class TreeSitterGrammarManager(GrammarManager):
                 shutil.rmtree(grammar.path)
                 logger.info(f"Removed grammar source for '{name}'")
             except Exception as e:
-                logger.error(f"Failed to remove grammar source: {e}")
+                logger.error("Failed to remove grammar source: %s", e)
                 return False
 
         # Remove from registry
@@ -359,10 +359,10 @@ class TreeSitterGrammarManager(GrammarManager):
                 )
                 self._grammars[name] = grammar
 
-            logger.info(f"Loaded {len(self._grammars)} grammars from config")
+            logger.info("Loaded %s grammars from config", len(self._grammars))
 
         except Exception as e:
-            logger.error(f"Failed to load grammar config: {e}")
+            logger.error("Failed to load grammar config: %s", e)
 
     def _save_config(self) -> None:
         """Save grammar configuration to file."""
@@ -383,7 +383,7 @@ class TreeSitterGrammarManager(GrammarManager):
                 json.dump(data, f, indent=2)
             logger.debug("Saved grammar config")
         except Exception as e:
-            logger.error(f"Failed to save grammar config: {e}")
+            logger.error("Failed to save grammar config: %s", e)
 
     def _get_test_code(self, language: str) -> str:
         """Get simple test code for a language."""

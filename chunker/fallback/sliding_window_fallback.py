@@ -112,7 +112,7 @@ class ProcessorRegistry:
         name = processor_info.name
 
         if name in self._processors:
-            logger.warning(f"Overwriting existing processor: {name}")
+            logger.warning("Overwriting existing processor: %s", name)
 
         self._processors[name] = processor_info
 
@@ -128,7 +128,7 @@ class ProcessorRegistry:
                 self._extension_map[ext] = []
             self._extension_map[ext].append(name)
 
-        logger.info(f"Registered processor: {name}")
+        logger.info("Registered processor: %s", name)
 
     def unregister(self, name: str) -> None:
         """Unregister a processor.
@@ -155,7 +155,7 @@ class ProcessorRegistry:
             del self._processor_cache[name]
 
         del self._processors[name]
-        logger.info(f"Unregistered processor: {name}")
+        logger.info("Unregistered processor: %s", name)
 
     def get_processor(self, name: str) -> TextProcessor | None:
         """Get a processor instance by name.
@@ -183,7 +183,7 @@ class ProcessorRegistry:
             self._processor_cache[name] = processor
             return processor
         except Exception as e:
-            logger.error(f"Failed to create processor {name}: {e}")
+            logger.error("Failed to create processor %s: %s", name, e)
             return None
 
     def find_processors(
@@ -311,7 +311,7 @@ class SlidingWindowFallback(FallbackChunker):
             self.registry.register(processor_info)
             logger.info("Registered MarkdownProcessor")
         except ImportError as e:
-            logger.debug(f"Could not import MarkdownProcessor: {e}")
+            logger.debug("Could not import MarkdownProcessor: %s", e)
 
         try:
             from chunker.processors.logs import LogProcessor
@@ -329,7 +329,7 @@ class SlidingWindowFallback(FallbackChunker):
             self.registry.register(processor_info)
             logger.info("Registered LogProcessor")
         except ImportError as e:
-            logger.debug(f"Could not import LogProcessor: {e}")
+            logger.debug("Could not import LogProcessor: %s", e)
 
         try:
             from chunker.processors.config import ConfigProcessor
@@ -355,7 +355,7 @@ class SlidingWindowFallback(FallbackChunker):
             self.registry.register(processor_info)
             logger.info("Registered ConfigProcessor")
         except ImportError as e:
-            logger.debug(f"Could not import ConfigProcessor: {e}")
+            logger.debug("Could not import ConfigProcessor: %s", e)
 
         # Try to import processors from parallel worktrees
         processor_modules = [
@@ -407,7 +407,7 @@ class SlidingWindowFallback(FallbackChunker):
                         break
 
             except ImportError as e:
-                logger.debug(f"Could not import {module_name}: {e}")
+                logger.debug("Could not import %s: %s", module_name, e)
                 # Fall back to basic processors from strategies
                 self._load_strategy_processor(
                     module_name,
@@ -459,7 +459,7 @@ class SlidingWindowFallback(FallbackChunker):
                         break
 
         except ImportError as e:
-            logger.debug(f"Could not load strategy processor {name}: {e}")
+            logger.debug("Could not load strategy processor %s: %s", name, e)
 
     def _create_processor_adapter(
         self,
@@ -576,7 +576,7 @@ class SlidingWindowFallback(FallbackChunker):
                         self.registry.register(info)
 
             except Exception as e:
-                logger.error(f"Failed to load processor from {file_path}: {e}")
+                logger.error("Failed to load processor from %s: %s", file_path, e)
 
     def chunk_text(
         self,

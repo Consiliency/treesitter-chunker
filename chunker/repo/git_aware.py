@@ -74,7 +74,7 @@ class GitAwareProcessorImpl(GitAwareProcessor):
             List of changed file paths relative to repo root
         """
         if not self._is_git_repository(repo_path):
-            logger.debug(f"{repo_path} is not a git repository")
+            logger.debug("%s is not a git repository", repo_path)
             return []
 
         # Build git diff command
@@ -227,7 +227,7 @@ class GitAwareProcessorImpl(GitAwareProcessor):
                             else:
                                 patterns.append(line)
             except Exception as e:
-                logger.debug(f"Error reading {gitignore_path}: {e}")
+                logger.debug("Error reading %s: %s", gitignore_path, e)
 
         return patterns
 
@@ -258,7 +258,7 @@ class GitAwareProcessorImpl(GitAwareProcessor):
             with open(state_file, "w", encoding="utf-8") as f:
                 json.dump(state, f, indent=2)
         except Exception as e:
-            logger.error(f"Failed to save incremental state: {e}")
+            logger.error("Failed to save incremental state: %s", e)
 
     def load_incremental_state(self, repo_path: str) -> dict[str, Any] | None:
         """
@@ -281,12 +281,12 @@ class GitAwareProcessorImpl(GitAwareProcessor):
 
             # Validate state version
             if state.get("version") != "1.0":
-                logger.warning(f"Incompatible state version: {state.get('version')}")
+                logger.warning("Incompatible state version: %s", state.get("version"))
                 return None
 
             return state
         except Exception as e:
-            logger.error(f"Failed to load incremental state: {e}")
+            logger.error("Failed to load incremental state: %s", e)
             return None
 
     def get_file_hash(self, file_path: Path) -> str:

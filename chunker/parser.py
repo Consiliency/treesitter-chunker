@@ -78,7 +78,7 @@ def get_parser(language: str, config: ParserConfig | None = None) -> Parser:
         # Re-raise config errors as-is
         raise
     except Exception as e:
-        logger.error(f"Failed to get parser for {language}: {e}")
+        logger.error("Failed to get parser for %s: %s", language, e)
         raise ParserError(f"Parser initialization failed: {e}")
 
 

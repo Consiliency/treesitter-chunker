@@ -58,7 +58,7 @@ class EncodingDetector:
             return "utf-8", 0.0
 
         except Exception as e:
-            logger.warning(f"Error detecting encoding for {file_path}: {e}")
+            logger.warning("Error detecting encoding for %s: %s", file_path, e)
             return "utf-8", 0.0
 
     @staticmethod
@@ -87,10 +87,10 @@ class EncodingDetector:
             try:
                 with open(file_path, encoding=encoding, errors="replace") as f:
                     content = f.read()
-                logger.warning(f"Had to use error replacement for {file_path}")
+                logger.warning("Had to use error replacement for %s", file_path)
                 return content, encoding
             except Exception as e:
-                logger.error(f"Failed to read {file_path}: {e}")
+                logger.error("Failed to read %s: %s", file_path, e)
                 raise
 
 
@@ -191,7 +191,7 @@ class FileTypeDetector(FallbackStrategy):
                         return file_type
 
         except Exception as e:
-            logger.warning(f"Error detecting file type for {file_path}: {e}")
+            logger.warning("Error detecting file type for %s: %s", file_path, e)
 
         return FileType.UNKNOWN
 
@@ -289,7 +289,7 @@ class FileTypeDetector(FallbackStrategy):
             metadata["mime_type"] = mime_type
 
         except Exception as e:
-            logger.warning(f"Error getting metadata for {file_path}: {e}")
+            logger.warning("Error getting metadata for %s: %s", file_path, e)
 
         return metadata
 

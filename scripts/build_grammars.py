@@ -74,24 +74,24 @@ def main():
             logger.error("No grammar sources found. Run fetch_grammars.py first.")
             return 1
 
-    logger.info(f"Building {len(languages)} languages: {', '.join(languages)}")
+    logger.info("Building %s languages: ", len(languages), '.join(languages)}")
 
     # Build languages
     if args.individual:
         # Build each language separately
         success_count = 0
         for lang in languages:
-            logger.info(f"\nBuilding {lang}...")
+            logger.info("\nBuilding %s...", lang)
             if builder.build_individual(lang):
                 success_count += 1
                 builder.compile_queries(lang)
             else:
-                logger.error(f"Failed to build {lang}")
+                logger.error("Failed to build %s", lang)
                 log = builder.get_build_log(lang)
                 if log:
-                    logger.error(f"Build log:\n{log}")
+                    logger.error("Build log:\n%s", log)
 
-        logger.info(f"\nSuccessfully built {success_count}/{len(languages)} languages")
+        logger.info("\nSuccessfully built %s/%s languages", success_count, len(languages))
     else:
         # Build all languages into one library
         results = builder.build(languages)
@@ -103,14 +103,14 @@ def main():
 
         # Report results
         success_count = sum(1 for success in results.values() if success)
-        logger.info(f"\nSuccessfully built {success_count}/{len(languages)} languages")
+        logger.info("\nSuccessfully built %s/%s languages", success_count, len(languages))
 
         # Show errors
         for lang, success in results.items():
             if not success:
                 log = builder.get_build_log(lang)
                 if log:
-                    logger.error(f"\n{lang} error:\n{log}")
+                    logger.error("\n%s error:\n%s", lang, log)
 
     return 0 if success_count == len(languages) else 1
 

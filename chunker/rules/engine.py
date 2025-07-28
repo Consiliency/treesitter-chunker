@@ -28,7 +28,7 @@ class DefaultRuleEngine(RuleEngine):
         rule_name = rule.get_name()
 
         if rule_name in self._rules:
-            logger.warning(f"Replacing existing rule: {rule_name}")
+            logger.warning("Replacing existing rule: %s", rule_name)
 
         self._rules[rule_name] = rule
         self._priorities[rule_name] = (
@@ -66,7 +66,7 @@ class DefaultRuleEngine(RuleEngine):
                 r for r in self._node_rules if r.get_name() != rule_name
             ]
 
-        logger.info(f"Removed rule: {rule_name}")
+        logger.info("Removed rule: %s", rule_name)
         return True
 
     def apply_rules(self, tree: Tree, source: bytes, file_path: str) -> list[CodeChunk]:
@@ -94,7 +94,7 @@ class DefaultRuleEngine(RuleEngine):
             self._apply_cross_boundary_regex_rules(source, file_path, processed_ranges),
         )
 
-        logger.info(f"Extracted {len(chunks)} chunks from {file_path}")
+        logger.info("Extracted %s chunks from %s", len(chunks), file_path)
         return chunks
 
     def apply_regex_rules(self, source: bytes, file_path: str) -> list[CodeChunk]:

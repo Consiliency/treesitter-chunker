@@ -63,7 +63,7 @@ class IncrementalParser(IncrementalParserInterface):
         # Parse with the edited tree as the old tree
         new_tree = parser.parse(source, old_tree)
 
-        logger.debug(f"Incremental parse completed. Changes: {len(changed_ranges)}")
+        logger.debug("Incremental parse completed. Changes: %s", len(changed_ranges))
 
         return new_tree
 
@@ -118,7 +118,7 @@ class IncrementalParser(IncrementalParserInterface):
 
                 changes.append((start_byte, old_end_byte, new_end_byte, start_point))
 
-        logger.debug(f"Detected {len(changes)} change ranges")
+        logger.debug("Detected %s change ranges", len(changes))
         return changes
 
     def update_chunks(
@@ -182,7 +182,7 @@ class IncrementalParser(IncrementalParserInterface):
             else:
                 # Chunk affected, would need re-parsing
                 # For now, we'll skip it (in real implementation, re-parse this section)
-                logger.debug(f"Chunk {chunk.chunk_id} needs re-parsing")
+                logger.debug("Chunk %s needs re-parsing", chunk.chunk_id)
 
         return updated_chunks
 

@@ -256,7 +256,7 @@ class IntelligentFallbackChunker(FallbackChunker):
             except Exception as e:
                 metrics.parse_success = False
                 metrics.parse_error = str(e)
-                logger.debug(f"Tree-sitter parse failed for {file_path}: {e}")
+                logger.debug("Tree-sitter parse failed for %s: %s", file_path, e)
 
         # Count total tokens in content
         if not metrics.total_tokens:
@@ -335,7 +335,7 @@ class IntelligentFallbackChunker(FallbackChunker):
         # Make decision
         decision, reason = self._make_decision(metrics)
 
-        logger.info(f"Chunking decision for {file_path}: {decision.value} - {reason}")
+        logger.info("Chunking decision for %s: %s - %s", file_path, decision.value, reason)
 
         # Execute decision
         chunks = []
@@ -347,7 +347,7 @@ class IntelligentFallbackChunker(FallbackChunker):
             if not lang_to_use:
                 lang_to_use = self._detect_language(file_path, content)
             if not lang_to_use:
-                logger.error(f"No language detected for {file_path}")
+                logger.error("No language detected for %s", file_path)
                 # Fall back to sliding window
                 return self.sliding_window.chunk_text(content, file_path, language)
             chunks = chunk_text(content, lang_to_use, file_path)
@@ -359,7 +359,7 @@ class IntelligentFallbackChunker(FallbackChunker):
             if not lang_to_use:
                 lang_to_use = self._detect_language(file_path, content)
             if not lang_to_use:
-                logger.error(f"No language detected for {file_path}")
+                logger.error("No language detected for %s", file_path)
                 # Fall back to sliding window
                 return self.sliding_window.chunk_text(content, file_path, language)
             chunks = chunk_text_with_token_limit(

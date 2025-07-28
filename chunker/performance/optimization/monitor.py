@@ -67,7 +67,7 @@ class PerformanceMonitor(PerformanceMonitorInterface):
             )
 
             self._operations[operation_id] = timing_info
-            logger.debug(f"Started operation: {operation_name} (ID: {operation_id})")
+            logger.debug("Started operation: %s (ID: %s)", operation_name, operation_id)
 
             return operation_id
 
@@ -82,7 +82,7 @@ class PerformanceMonitor(PerformanceMonitorInterface):
         """
         with self._lock:
             if operation_id not in self._operations:
-                logger.warning(f"Unknown operation ID: {operation_id}")
+                logger.warning("Unknown operation ID: %s", operation_id)
                 return 0.0
 
             timing_info = self._operations[operation_id]

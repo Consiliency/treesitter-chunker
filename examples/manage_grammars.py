@@ -86,21 +86,21 @@ def manage_grammars(action: str, languages: list):
             if manager.fetch_grammar(lang):
                 print(f"Successfully fetched {lang}")
             else:
-                logger.error(f"Failed to fetch {lang}")
+                logger.error("Failed to fetch %s", lang)
 
         elif action == "build":
             # Build grammar
             if manager.build_grammar(lang):
                 print(f"Successfully built {lang}")
             else:
-                logger.error(f"Failed to build {lang}")
+                logger.error("Failed to build %s", lang)
 
         elif action == "remove":
             # Remove grammar
             if manager.remove_grammar(lang):
                 print(f"Removed {lang}")
             else:
-                logger.error(f"Failed to remove {lang}")
+                logger.error("Failed to remove %s", lang)
 
 
 def show_status():

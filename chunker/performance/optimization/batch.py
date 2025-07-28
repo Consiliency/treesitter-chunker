@@ -58,7 +58,7 @@ class BatchProcessor(BatchProcessorInterface):
         self._max_workers = max_workers
         self._cancel_event = Event()
 
-        logger.info(f"Initialized BatchProcessor with {max_workers} workers")
+        logger.info("Initialized BatchProcessor with %s workers", max_workers)
 
     def add_file(self, file_path: str, priority: int = 0) -> None:
         """Add a file to the batch.
@@ -70,13 +70,13 @@ class BatchProcessor(BatchProcessorInterface):
         with self._lock:
             # Check if already processed or queued
             if file_path in self._processed:
-                logger.debug(f"File already processed: {file_path}")
+                logger.debug("File already processed: %s", file_path)
                 return
 
             # Check if already in queue
             for task in self._queue:
                 if task.file_path == file_path:
-                    logger.debug(f"File already queued: {file_path}")
+                    logger.debug("File already queued: %s", file_path)
                     return
 
             # Add to priority queue (negate priority for min heap)
@@ -85,7 +85,7 @@ class BatchProcessor(BatchProcessorInterface):
             task = FileTask(-priority, file_path, time.time())
             heapq.heappush(self._queue, task)
 
-            logger.debug(f"Added file to batch: {file_path} (priority: {priority})")
+            logger.debug("Added file to batch: %s (priority: %s)", file_path, priority)
 
     def process_batch(
         self,
@@ -144,7 +144,7 @@ class BatchProcessor(BatchProcessorInterface):
         with self._lock:
             count = len(self._queue)
             self._queue.clear()
-            logger.info(f"Cleared {count} pending files")
+            logger.info("Cleared %s pending files", count)
             return count
 
     def reset_processed(self) -> None:
@@ -152,7 +152,7 @@ class BatchProcessor(BatchProcessorInterface):
         with self._lock:
             count = len(self._processed)
             self._processed.clear()
-            logger.info(f"Reset {count} processed file records")
+            logger.info("Reset %s processed file records", count)
 
     def _get_batch(self, batch_size: int) -> list[str]:
         """Get a batch of files from the queue.
@@ -226,7 +226,7 @@ class BatchProcessor(BatchProcessorInterface):
                     if chunks is not None:
                         results[file_path] = chunks
                 except Exception as e:
-                    logger.error(f"Error processing {file_path}: {e}")
+                    logger.error("Error processing %s: %s", file_path, e)
 
         return results
 
@@ -247,7 +247,7 @@ class BatchProcessor(BatchProcessorInterface):
                 language = self._get_language_from_extension(path.suffix)
 
                 if not language:
-                    logger.warning(f"Unknown file type: {file_path}")
+                    logger.warning("Unknown file type: %s", file_path)
                     return None
 
                 # Acquire parser from pool
@@ -261,7 +261,7 @@ class BatchProcessor(BatchProcessorInterface):
                     self._monitor.record_metric("batch.file_size", path.stat().st_size)
                     self._monitor.record_metric("batch.chunk_count", len(chunks))
 
-                    logger.debug(f"Processed {file_path}: {len(chunks)} chunks")
+                    logger.debug("Processed %s: %s chunks", file_path, len(chunks))
 
                     return chunks
 
@@ -270,7 +270,7 @@ class BatchProcessor(BatchProcessorInterface):
                     self._memory_pool.release_parser(parser, language)
 
         except Exception as e:
-            logger.error(f"Failed to process {file_path}: {e}")
+            logger.error("Failed to process %s: %s", file_path, e)
             self._monitor.record_metric("batch.errors", 1)
             return None
 
@@ -321,7 +321,7 @@ class BatchProcessor(BatchProcessorInterface):
         dir_path = Path(directory)
 
         if not dir_path.is_dir():
-            logger.error(f"Not a directory: {directory}")
+            logger.error("Not a directory: %s", directory)
             return {}
 
         # Find matching files
@@ -336,7 +336,7 @@ class BatchProcessor(BatchProcessorInterface):
             if file.is_file() and self._get_language_from_extension(file.suffix):
                 valid_files.append(file)
 
-        logger.info(f"Found {len(valid_files)} files to process in {directory}")
+        logger.info("Found %s files to process in %s", len(valid_files), directory)
 
         # Add all files to queue
         for file in valid_files:

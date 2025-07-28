@@ -671,8 +671,8 @@ class MarkdownProcessor(SpecializedProcessor):
                 # Must have opening and closing ```
                 if not (content.startswith("```") and content.endswith("```")):
                     logger.warning("Invalid code block chunk: missing delimiters")
-                    logger.debug(f"Content starts with: {content[:20]}")
-                    logger.debug(f"Content ends with: {content[-20:]}")
+                    logger.debug("Content starts with: %s", content[:20])
+                    logger.debug("Content ends with: %s", content[-20:])
                     return False
             elif chunk.node_type == "table":
                 # Must have header row and separator

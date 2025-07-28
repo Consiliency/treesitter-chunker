@@ -114,7 +114,7 @@ class GCTuner:
         # For streaming, we want more frequent gen0 collections
         # but less frequent higher generation collections
         gc.set_threshold(400, 20, 20)
-        logger.info(f"Tuned GC for streaming: thresholds={gc.get_threshold()}")
+        logger.info("Tuned GC for streaming: thresholds=%s", gc.get_threshold())
 
     def tune_for_memory_intensive(self):
         """Tune GC for memory-intensive operations."""

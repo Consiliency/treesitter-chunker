@@ -80,7 +80,7 @@ class EnhancedChunker:
                 cached_chunks = self._cache.get_cached_chunks(file_path, source_hash)
                 if cached_chunks is not None:
                     self._monitor.record_metric("cache.chunk_hits", 1)
-                    logger.debug(f"Returning cached chunks for {file_path}")
+                    logger.debug("Returning cached chunks for %s", file_path)
                     return cached_chunks
 
             self._monitor.record_metric("cache.chunk_misses", 1)
@@ -95,7 +95,7 @@ class EnhancedChunker:
                 self._monitor.record_metric("cache.ast_hits", 1)
                 tree = cached_ast_data["ast"]
                 parse_time_ms = 0  # No parsing needed
-                logger.debug(f"Using cached AST for {file_path}")
+                logger.debug("Using cached AST for %s", file_path)
             else:
                 # Parse the file
                 self._monitor.record_metric("cache.ast_misses", 1)
@@ -225,7 +225,7 @@ class EnhancedChunker:
             }
 
             self._monitor.record_metric("incremental.success", 1)
-            logger.info(f"Incremental parse of {file_path}: {len(changes)} changes")
+            logger.info("Incremental parse of %s: %s changes", file_path, len(changes))
 
             return new_chunks
 
@@ -249,7 +249,7 @@ class EnhancedChunker:
             tree = parser.parse(source)
             parse_time_ms = self._monitor.end_operation(op_id)
 
-            logger.debug(f"Parsed {file_path} in {parse_time_ms:.2f}ms")
+            logger.debug("Parsed %s in %sms", file_path, parse_time_ms:.2f)
 
             return tree, parse_time_ms
 
@@ -300,7 +300,7 @@ class EnhancedChunker:
         if file_path in self._file_state:
             del self._file_state[file_path]
 
-        logger.info(f"Invalidated {count} cache entries for {file_path}")
+        logger.info("Invalidated %s cache entries for %s", count, file_path)
 
     def get_stats(self) -> dict[str, Any]:
         """Get performance statistics.
@@ -323,7 +323,7 @@ class EnhancedChunker:
         Args:
             languages: List of languages to prepare for
         """
-        logger.info(f"Warming up for languages: {languages}")
+        logger.info("Warming up for languages: %s", languages)
 
         # Pre-create parsers
         for language in languages:

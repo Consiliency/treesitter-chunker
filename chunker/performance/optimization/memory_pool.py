@@ -33,7 +33,7 @@ class MemoryPool(MemoryPoolInterface):
         self._lock = RLock()
         self._stats = defaultdict(lambda: {"acquired": 0, "released": 0, "created": 0})
 
-        logger.info(f"Initialized MemoryPool with max size {max_pool_size} per type")
+        logger.info("Initialized MemoryPool with max size %s per type", max_pool_size)
 
     def acquire(self, resource_type: str) -> Any:
         """Acquire a resource from the pool.
@@ -58,7 +58,7 @@ class MemoryPool(MemoryPoolInterface):
                 # Create new resource
                 resource = self._create_resource(resource_type)
                 self._stats[resource_type]["created"] += 1
-                logger.debug(f"Created new {resource_type} (no pooled instances)")
+                logger.debug("Created new %s (no pooled instances)", resource_type)
 
             # Track in-use resources
             self._in_use[resource_type].add(resource)
@@ -91,7 +91,7 @@ class MemoryPool(MemoryPoolInterface):
                 )
             else:
                 # Pool is full, let it be garbage collected
-                logger.debug(f"Pool full for {resource_type}, discarding resource")
+                logger.debug("Pool full for %s, discarding resource", resource_type)
 
     def size(self, resource_type: str) -> int:
         """Get current pool size for a resource type.
@@ -116,13 +116,13 @@ class MemoryPool(MemoryPoolInterface):
                 if resource_type in self._pools:
                     count = len(self._pools[resource_type])
                     self._pools[resource_type].clear()
-                    logger.info(f"Cleared {count} pooled {resource_type} resources")
+                    logger.info("Cleared %s pooled %s resources", count, resource_type)
             else:
                 total = sum(len(pool) for pool in self._pools.values())
                 self._pools.clear()
                 self._in_use.clear()
                 self._stats.clear()
-                logger.info(f"Cleared all {total} pooled resources")
+                logger.info("Cleared all %s pooled resources", total)
 
     def get_stats(self) -> dict[str, dict[str, int]]:
         """Get pool statistics.
@@ -228,7 +228,7 @@ class MemoryPool(MemoryPoolInterface):
             if len(pool) < self._max_size:
                 pool.append(parser)
                 self._stats[resource_type]["released"] += 1
-                logger.debug(f"Released parser:{language} to pool")
+                logger.debug("Released parser:%s to pool", language)
 
     def warm_up(self, resource_type: str, count: int) -> None:
         """Pre-create resources for the pool.
@@ -247,4 +247,4 @@ class MemoryPool(MemoryPoolInterface):
                 resource = self._create_resource(resource_type)
                 pool.append(resource)
 
-            logger.info(f"Warmed up {to_create} {resource_type} resources")
+            logger.info("Warmed up %s %s resources", to_create, resource_type)

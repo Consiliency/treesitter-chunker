@@ -440,9 +440,8 @@ class ZeroConfigAPI(ZeroConfigContract):
             Configured chunker instance
         """
         # Ensure language is available
-        if auto_download and not self.registry.is_language_installed(language):
-            if not self.ensure_language(language):
-                raise ChunkerError(f"Failed to setup language: {language}")
+        if auto_download and not self.registry.is_language_installed(language) and not self.ensure_language(language):
+            raise ChunkerError(f"Failed to setup language: {language}")
 
         # Get parser from registry
         parser = self.registry.get_parser(language, auto_download=False)

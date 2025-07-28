@@ -46,9 +46,9 @@ class CacheManager(CacheManagerInterface):
         """
         value = self._cache.get(key)
         if value is not None:
-            logger.debug(f"Cache hit for key: {key}")
+            logger.debug("Cache hit for key: %s", key)
         else:
-            logger.debug(f"Cache miss for key: {key}")
+            logger.debug("Cache miss for key: %s", key)
         return value
 
     def put(self, key: str, value: Any, ttl_seconds: int | None = None) -> None:
@@ -60,7 +60,7 @@ class CacheManager(CacheManagerInterface):
             ttl_seconds: Time to live (None for no expiry)
         """
         self._cache.put(key, value, ttl_seconds)
-        logger.debug(f"Cached value for key: {key} (TTL: {ttl_seconds}s)")
+        logger.debug("Cached value for key: %s (TTL: %ss)", key, ttl_seconds)
 
     def invalidate(self, key: str) -> bool:
         """Invalidate a cache entry.
@@ -73,7 +73,7 @@ class CacheManager(CacheManagerInterface):
         """
         result = self._cache.invalidate(key)
         if result:
-            logger.debug(f"Invalidated cache key: {key}")
+            logger.debug("Invalidated cache key: %s", key)
         return result
 
     def invalidate_pattern(self, pattern: str) -> int:
@@ -121,7 +121,7 @@ class CacheManager(CacheManagerInterface):
         """
         count = self._cache.evict_expired()
         if count > 0:
-            logger.info(f"Evicted {count} expired cache entries")
+            logger.info("Evicted %s expired cache entries", count)
         return count
 
     def get_stats(self) -> dict[str, Any]:

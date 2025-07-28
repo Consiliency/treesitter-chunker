@@ -79,7 +79,7 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
         lib_path = self._build_dir / f"languages{self._lib_extension}"
 
         try:
-            logger.info(f"Building {len(language_paths)} languages...")
+            logger.info("Building %s languages...", len(language_paths))
 
             # Use tree-sitter Language.build_library
             Language.build_library(
@@ -89,7 +89,7 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
 
             # Verify the library was created
             if lib_path.exists():
-                logger.info(f"Successfully built library at {lib_path}")
+                logger.info("Successfully built library at %s", lib_path)
                 for lang, _ in language_paths:
                     results[lang] = True
                     self._build_logs[lang] = "Build successful"
@@ -97,7 +97,7 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
                 raise BuildError(f"Library file not created at {lib_path}")
 
         except Exception as e:
-            logger.error(f"Build failed: {e}")
+            logger.error("Build failed: %s", e)
             for lang, _ in language_paths:
                 if lang not in results:
                     results[lang] = False
@@ -123,7 +123,7 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
         lib_path = self._build_dir / f"{language}{self._lib_extension}"
 
         try:
-            logger.info(f"Building {language}...")
+            logger.info("Building %s...", language)
 
             # Gather C source files
             c_files = []
@@ -145,13 +145,13 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
                 raise BuildError(f"Compilation failed: {result.stderr}")
 
             if lib_path.exists():
-                logger.info(f"Successfully built {language} at {lib_path}")
+                logger.info("Successfully built %s at %s", language, lib_path)
                 self._build_logs[language] = "Build successful"
                 return True
             raise BuildError(f"Library file not created at {lib_path}")
 
         except Exception as e:
-            logger.error(f"Failed to build {language}: {e}")
+            logger.error("Failed to build %s: %s", language, e)
             self._build_logs[language] = str(e)
             return False
 
@@ -183,12 +183,12 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
                 try:
                     file.unlink()
                     cleaned += 1
-                    logger.debug(f"Removed {file}")
+                    logger.debug("Removed %s", file)
                 except Exception as e:
-                    logger.error(f"Failed to remove {file}: {e}")
+                    logger.error("Failed to remove %s: %s", file, e)
 
         if cleaned > 0:
-            logger.info(f"Cleaned {cleaned} build artifacts")
+            logger.info("Cleaned %s build artifacts", cleaned)
 
     def get_build_log(self, language: str) -> str | None:
         """Get build log for a language.
@@ -214,7 +214,7 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
         queries_dir = lang_path / "queries"
 
         if not queries_dir.exists():
-            logger.debug(f"No queries directory for {language}")
+            logger.debug("No queries directory for %s", language)
             return True
 
         # Copy query files to build directory
@@ -227,12 +227,12 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
             for query_file in queries_dir.glob("*.scm"):
                 target_file = target_dir / query_file.name
                 shutil.copy2(query_file, target_file)
-                logger.debug(f"Copied {query_file.name} for {language}")
+                logger.debug("Copied %s for %s", query_file.name, language)
 
             return True
 
         except Exception as e:
-            logger.error(f"Failed to copy queries for {language}: {e}")
+            logger.error("Failed to copy queries for %s: %s", language, e)
             return False
 
 

@@ -54,14 +54,14 @@ class GrammarManager(GrammarManagerContract):
     def _load_config(self) -> dict[str, str]:
         """Load grammar sources from config file."""
         if not self._config_file.exists():
-            logger.warning(f"Config file not found: {self._config_file}")
+            logger.warning("Config file not found: %s", self._config_file)
             return {}
 
         try:
             with self._config_file.open() as f:
                 return json.load(f)
         except Exception as e:
-            logger.error(f"Failed to load config: {e}")
+            logger.error("Failed to load config: %s", e)
             return {}
 
     def _save_config(self) -> None:
@@ -120,7 +120,7 @@ class GrammarManager(GrammarManagerContract):
             # Validate requested languages
             missing = set(languages) - set(self._grammar_sources.keys())
             if missing:
-                logger.warning(f"Unknown languages requested: {missing}")
+                logger.warning("Unknown languages requested: %s", missing)
             languages_to_fetch = [
                 lang for lang in languages if lang in self._grammar_sources
             ]
@@ -138,20 +138,20 @@ class GrammarManager(GrammarManagerContract):
 
             # Skip if already exists
             if target_dir.exists():
-                logger.info(f"[skip] {lang} already present at {target_dir}")
+                logger.info("[skip] %s already present at %s", lang, target_dir)
                 return lang, True
 
             try:
-                logger.info(f"[clone] {lang} from {repo_url}")
+                logger.info("[clone] %s from %s", lang, repo_url)
                 cmd = ["git", "clone", "--depth=1", repo_url, str(target_dir)]
                 result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-                logger.debug(f"Clone output for {lang}: {result.stdout}")
+                logger.debug("Clone output for %s: %s", lang, result.stdout)
                 return lang, True
             except subprocess.CalledProcessError as e:
-                logger.error(f"Failed to clone {lang}: {e.stderr}")
+                logger.error("Failed to clone %s: %s", lang, e.stderr)
                 return lang, False
             except Exception as e:
-                logger.error(f"Unexpected error cloning {lang}: {e}")
+                logger.error("Unexpected error cloning %s: %s", lang, e)
                 return lang, False
 
         # Fetch in parallel
@@ -166,7 +166,7 @@ class GrammarManager(GrammarManagerContract):
 
         # Log summary
         successful = sum(1 for s in results.values() if s)
-        logger.info(f"Fetched {successful}/{len(results)} grammars successfully")
+        logger.info("Fetched %s/%s grammars successfully", successful, len(results))
 
         return results
 
@@ -197,7 +197,7 @@ class GrammarManager(GrammarManagerContract):
             # Validate requested languages
             missing = set(languages) - set(available_grammars.keys())
             if missing:
-                logger.warning(f"Languages not fetched: {missing}")
+                logger.warning("Languages not fetched: %s", missing)
             languages_to_compile = [
                 lang for lang in languages if lang in available_grammars
             ]
@@ -216,7 +216,7 @@ class GrammarManager(GrammarManagerContract):
             src_dir = gram_dir / "src"
 
             if not src_dir.exists():
-                logger.warning(f"No src directory for {lang} at {src_dir}")
+                logger.warning("No src directory for %s at %s", lang, src_dir)
                 results[lang] = False
                 continue
 
@@ -226,7 +226,7 @@ class GrammarManager(GrammarManagerContract):
             # Collect C files
             lang_c_files = list(src_dir.glob("*.c"))
             if not lang_c_files:
-                logger.warning(f"No C files found for {lang} in {src_dir}")
+                logger.warning("No C files found for %s in %s", lang, src_dir)
                 results[lang] = False
             else:
                 c_files.extend(str(f) for f in lang_c_files)
@@ -252,19 +252,19 @@ class GrammarManager(GrammarManagerContract):
             )
 
             subprocess.run(cmd, capture_output=True, text=True, check=True)
-            logger.info(f"✅ Successfully compiled to {self._lib_path}")
+            logger.info("✅ Successfully compiled to %s", self._lib_path)
 
             # Mark all as successful (they were already marked True if they had C files)
             return results
 
         except subprocess.CalledProcessError as e:
-            logger.error(f"Compilation failed: {e.stderr}")
+            logger.error("Compilation failed: %s", e.stderr)
             # Mark all as failed
             for lang in languages_to_compile:
                 results[lang] = False
             return results
         except Exception as e:
-            logger.error(f"Unexpected compilation error: {e}")
+            logger.error("Unexpected compilation error: %s", e)
             for lang in languages_to_compile:
                 results[lang] = False
             return results
@@ -314,7 +314,7 @@ class GrammarManager(GrammarManagerContract):
             return available
 
         except Exception as e:
-            logger.error(f"Error discovering available languages: {e}")
+            logger.error("Error discovering available languages: %s", e)
             # Fallback: assume all fetched grammars are available
             available = set()
             for gram_dir in self._grammars_dir.glob("tree-sitter-*"):

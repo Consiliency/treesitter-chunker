@@ -316,10 +316,10 @@ class TreeSitterGrammarRepository(GrammarRepository):
             # Rebuild extension map
             self._build_extension_map()
 
-            logger.info(f"Loaded {len(custom_repos)} custom grammar repositories")
+            logger.info("Loaded %s custom grammar repositories", len(custom_repos))
 
         except Exception as e:
-            logger.error(f"Failed to load custom repositories: {e}")
+            logger.error("Failed to load custom repositories: %s", e)
 
 
 # Singleton instance

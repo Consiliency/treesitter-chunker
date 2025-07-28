@@ -188,7 +188,7 @@ class VFSChunker:
                         chunks = list(chunks)
                     yield (file_path, chunks)
                 except Exception as e:
-                    logger.error(f"Error processing {file_path}: {e}")
+                    logger.error("Error processing %s: %s", file_path, e)
                     continue
 
     def _walk_directory(self, directory: str, recursive: bool) -> Iterator:

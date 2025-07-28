@@ -53,7 +53,7 @@ class LanguageRegistry:
         if self._library is None:
             try:
                 self._library = ctypes.CDLL(str(self._library_path))
-                logger.info(f"Loaded library from {self._library_path}")
+                logger.info("Loaded library from %s", self._library_path)
             except OSError as e:
                 raise LibraryLoadError(self._library_path, str(e))
         return self._library
@@ -118,7 +118,7 @@ class LanguageRegistry:
 
         # Discover available symbols
         symbols = self._discover_symbols()
-        logger.info(f"Discovered {len(symbols)} potential language symbols")
+        logger.info("Discovered %s potential language symbols", len(symbols))
 
         for lang_name, symbol_name in symbols:
             try:
@@ -177,7 +177,7 @@ class LanguageRegistry:
                 logger.error(f"Error loading language '{lang_name}': {e}")
 
         self._discovered = True
-        logger.info(f"Successfully loaded {len(discovered)} languages")
+        logger.info("Successfully loaded %s languages", len(discovered))
 
         return discovered
 
