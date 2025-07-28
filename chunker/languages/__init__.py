@@ -13,11 +13,17 @@ from .base import (
     validate_language_config,
 )
 from .c import CPlugin
+from .clojure import ClojurePlugin
 from .cpp import CppPlugin
+from .dart import DartPlugin
 
 # Import Tier 2 language plugins
 from .dockerfile import DockerfilePlugin
+from .elixir import ElixirPlugin
 from .go_plugin import GoPlugin
+
+# Import Tier 3 language plugins
+from .haskell import HaskellPlugin
 from .java_plugin import JavaPlugin
 from .javascript import JavaScriptPlugin
 from .julia import JuliaPlugin
@@ -32,7 +38,10 @@ from .python import PythonPlugin
 from .r import RPlugin
 from .ruby_plugin import RubyPlugin
 from .rust import RustPlugin
+from .scala import ScalaPlugin
 from .sql import SQLPlugin
+from .svelte import SveltePlugin
+from .vue import VuePlugin
 
 _plugin_exports = [
     "PythonPlugin",
@@ -50,6 +59,14 @@ _plugin_exports = [
     "RPlugin",
     "JuliaPlugin",
     "OCamlPlugin",
+    # Tier 3 languages
+    "HaskellPlugin",
+    "ScalaPlugin",
+    "ElixirPlugin",
+    "ClojurePlugin",
+    "DartPlugin",
+    "VuePlugin",
+    "SveltePlugin",
 ]
 
 __all__ = [
@@ -114,5 +131,41 @@ except ImportError:
 
 try:
     from . import ocaml  # noqa: F401
+except ImportError:
+    pass
+
+# Auto-import Tier 3 language configurations
+try:
+    from . import haskell  # noqa: F401
+except ImportError:
+    pass
+
+try:
+    from . import scala  # noqa: F401
+except ImportError:
+    pass
+
+try:
+    from . import elixir  # noqa: F401
+except ImportError:
+    pass
+
+try:
+    from . import clojure  # noqa: F401
+except ImportError:
+    pass
+
+try:
+    from . import dart  # noqa: F401
+except ImportError:
+    pass
+
+try:
+    from . import vue  # noqa: F401
+except ImportError:
+    pass
+
+try:
+    from . import svelte  # noqa: F401
 except ImportError:
     pass
