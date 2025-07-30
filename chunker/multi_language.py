@@ -1098,30 +1098,40 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
         if host_language == "html" and target_language == "javascript":
             # Extract from script tags
             pattern = r"<script[^>]*>(.*?)</script>"
-            for match in re.finditer(pattern, content, re.DOTALL | re.IGNORECASE):
-                snippets.append((match.group(1), match.start(1), match.end(1)))
+            snippets.extend(
+                (match.group(1), match.start(1), match.end(1))
+                for match in re.finditer(pattern, content, re.DOTALL | re.IGNORECASE)
+            )
 
             # Extract from event handlers
             event_pattern = r'on\w+\s*=\s*["\']([^"\']+)["\']'
-            for match in re.finditer(event_pattern, content):
-                snippets.append((match.group(1), match.start(1), match.end(1)))
+            snippets.extend(
+                (match.group(1), match.start(1), match.end(1))
+                for match in re.finditer(event_pattern, content)
+            )
 
         elif host_language == "html" and target_language == "css":
             # Extract from style tags
             pattern = r"<style[^>]*>(.*?)</style>"
-            for match in re.finditer(pattern, content, re.DOTALL | re.IGNORECASE):
-                snippets.append((match.group(1), match.start(1), match.end(1)))
+            snippets.extend(
+                (match.group(1), match.start(1), match.end(1))
+                for match in re.finditer(pattern, content, re.DOTALL | re.IGNORECASE)
+            )
 
             # Extract from style attributes
             style_pattern = r'style\s*=\s*["\']([^"\']+)["\']'
-            for match in re.finditer(style_pattern, content):
-                snippets.append((match.group(1), match.start(1), match.end(1)))
+            snippets.extend(
+                (match.group(1), match.start(1), match.end(1))
+                for match in re.finditer(style_pattern, content)
+            )
 
         elif host_language == "markdown" and target_language:
             # Extract code blocks with specific language
             pattern = rf"```{target_language}\n(.*?)```"
-            for match in re.finditer(pattern, content, re.DOTALL):
-                snippets.append((match.group(1), match.start(1), match.end(1)))
+            snippets.extend(
+                (match.group(1), match.start(1), match.end(1))
+                for match in re.finditer(pattern, content, re.DOTALL)
+            )
 
         elif target_language == "sql":
             # Extract SQL queries from strings
