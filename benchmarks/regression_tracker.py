@@ -60,7 +60,7 @@ class PerformanceRegressionTracker:
         """Load performance baselines from file."""
         if self.baseline_file.exists():
             try:
-                with open(self.baseline_file) as f:
+                with Path(self.baseline_file).open() as f:
                     data = json.load(f)
                     for key, value in data.items():
                         self.baselines[key] = PerformanceBaseline(**value)
@@ -71,7 +71,7 @@ class PerformanceRegressionTracker:
         """Save performance baselines to file."""
         self.baseline_file.parent.mkdir(parents=True, exist_ok=True)
         data = {key: asdict(baseline) for key, baseline in self.baselines.items()}
-        with open(self.baseline_file, "w") as f:
+        with Path(self.baseline_file).open("w") as f:
             json.dump(data, f, indent=2)
 
     def record_baseline(
@@ -289,7 +289,7 @@ class PerformanceHistory:
         """Load performance history from file."""
         if self.history_file.exists():
             try:
-                with open(self.history_file) as f:
+                with Path(self.history_file).open() as f:
                     self.history = json.load(f)
             except (json.JSONDecodeError, ValueError) as e:
                 warnings.warn(f"Failed to load history: {e}", stacklevel=2)
@@ -297,7 +297,7 @@ class PerformanceHistory:
     def save_history(self):
         """Save performance history to file."""
         self.history_file.parent.mkdir(parents=True, exist_ok=True)
-        with open(self.history_file, "w") as f:
+        with Path(self.history_file).open("w") as f:
             json.dump(self.history, f, indent=2)
 
     def add_measurement(

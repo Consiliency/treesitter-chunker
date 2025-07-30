@@ -53,7 +53,9 @@ class HomebrewFormulaGenerator:
             formula_path = output_path / "treesitter-chunker.rb"
 
         try:
-            with Path(formula_path).open("w") as f:
+            with Path(formula_path).open(
+                "w",
+            ) as f:
                 f.write(formula_content)
             return True, formula_path
         except (FileNotFoundError, OSError):
@@ -90,7 +92,9 @@ class HomebrewFormulaGenerator:
         if pyproject_path.exists():
             try:
 
-                with Path(pyproject_path).open("rb") as f:
+                with Path(pyproject_path).open(
+                    "rb",
+                ) as f:
                     data = tomllib.load(f)
                     project = data.get("project", {})
                     info["description"] = project.get(
@@ -162,14 +166,18 @@ end
                 sha256 = hashlib.sha256(data).hexdigest()
 
             # Read formula
-            with Path(formula_path).open("r") as f:
+            with Path(formula_path).open(
+                "r",
+            ) as f:
                 content = f.read()
 
             # Replace placeholder
             content = content.replace("PLACEHOLDER_SHA256", sha256)
 
             # Write back
-            with Path(formula_path).open("w") as f:
+            with Path(formula_path).open(
+                "w",
+            ) as f:
                 f.write(content)
 
             return True
@@ -204,7 +212,9 @@ end
                 issues.extend(audit_result.stderr.strip().split("\n"))
         else:
             # Basic validation without brew
-            with Path(formula_path).open("r") as f:
+            with Path(formula_path).open(
+                "r",
+            ) as f:
                 content = f.read()
 
             if "PLACEHOLDER_SHA256" in content:
@@ -214,8 +224,10 @@ end
                 issues.append("Missing class definition")
 
             required_fields = ["desc", "homepage", "url", "license"]
-            for field in required_fields:
-                if f'{field} "' not in content:
-                    issues.append(f"Missing required field: {field}")
+            issues.extend(
+                f"Missing required field: {field}"
+                for field in required_fields
+                if f'{field} "' not in content
+            )
 
         return len(issues) == 0, issues

@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from chunker.chunker import CodeChunk
+if TYPE_CHECKING:
+    from chunker.chunker import CodeChunk
 
 
 class ParquetExporter:

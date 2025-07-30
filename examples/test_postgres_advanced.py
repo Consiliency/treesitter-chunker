@@ -164,7 +164,9 @@ def test_postgres_advanced_features():
         assert (output_dir / "test_import.sql").exists()
 
         # Verify CSV content
-        with Path(output_dir / "test_chunks.csv").open("r") as f:
+        with Path(output_dir / "test_chunks.csv").open(
+            "r",
+        ) as f:
             reader = csv.reader(f)
             rows = list(reader)
             assert len(rows) == 2  # Two chunks

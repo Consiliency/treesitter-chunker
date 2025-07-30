@@ -499,7 +499,6 @@ class TestIntegrationPatterns:
         ParserFactory._instance = None
         LanguageRegistry._instance = None
 
-
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_hot_reload_pattern(self):

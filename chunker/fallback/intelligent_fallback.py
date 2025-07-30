@@ -335,7 +335,12 @@ class IntelligentFallbackChunker(FallbackChunker):
         # Make decision
         decision, reason = self._make_decision(metrics)
 
-        logger.info("Chunking decision for %s: %s - %s", file_path, decision.value, reason)
+        logger.info(
+            "Chunking decision for %s: %s - %s",
+            file_path,
+            decision.value,
+            reason,
+        )
 
         # Execute decision
         chunks = []

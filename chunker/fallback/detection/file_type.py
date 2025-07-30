@@ -44,7 +44,9 @@ class EncodingDetector:
             Tuple of (encoding, confidence)
         """
         try:
-            with Path(file_path).open("rb") as f:
+            with Path(file_path).open(
+                "rb",
+            ) as f:
                 raw_data = f.read(sample_size)
 
             if not raw_data:
@@ -305,7 +307,9 @@ class FileTypeDetector(FallbackStrategy):
             True if file appears to be binary
         """
         try:
-            with Path(file_path).open("rb") as f:
+            with Path(file_path).open(
+                "rb",
+            ) as f:
                 chunk = f.read(sample_size)
 
             if not chunk:

@@ -289,11 +289,15 @@ class SemanticChunker(ChunkingStrategy):
                 return True
 
         # Adjacent chunks with low complexity
-        if chunk2.start_line - chunk1.end_line <= 2 and hasattr(chunk1, "metadata") and hasattr(chunk2, "metadata"):
-                comp1 = chunk1.metadata.get("complexity", {}).get("score", 0)
-                comp2 = chunk2.metadata.get("complexity", {}).get("score", 0)
-                if comp1 < 5 and comp2 < 5:
-                    return True
+        if (
+            chunk2.start_line - chunk1.end_line <= 2
+            and hasattr(chunk1, "metadata")
+            and hasattr(chunk2, "metadata")
+        ):
+            comp1 = chunk1.metadata.get("complexity", {}).get("score", 0)
+            comp2 = chunk2.metadata.get("complexity", {}).get("score", 0)
+            if comp1 < 5 and comp2 < 5:
+                return True
 
         return False
 

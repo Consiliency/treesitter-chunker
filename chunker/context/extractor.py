@@ -251,14 +251,12 @@ class BaseContextExtractor(ContextExtractor):
 
         # Add imports first
         if ContextType.IMPORT in grouped:
-            for item in grouped[ContextType.IMPORT]:
-                lines.append(item.content)
+            lines.extend(item.content for item in grouped[ContextType.IMPORT])
             lines.append("")  # Empty line after imports
 
         # Add type definitions
         if ContextType.TYPE_DEF in grouped:
-            for item in grouped[ContextType.TYPE_DEF]:
-                lines.append(item.content)
+            lines.extend(item.content for item in grouped[ContextType.TYPE_DEF])
             lines.append("")
 
         # Add other context types
@@ -271,8 +269,7 @@ class BaseContextExtractor(ContextExtractor):
             ContextType.GLOBAL_VAR,
         ]:
             if context_type in grouped:
-                for item in grouped[context_type]:
-                    lines.append(item.content)
+                lines.extend(item.content for item in grouped[context_type])
 
         # Build final string
         context_str = "\n".join(lines).strip()

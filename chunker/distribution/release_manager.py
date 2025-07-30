@@ -124,7 +124,9 @@ class ReleaseManager:
         """Get current version from pyproject.toml"""
         pyproject_path = self.project_root / "pyproject.toml"
         if pyproject_path.exists():
-            with Path(pyproject_path).open("r") as f:
+            with Path(pyproject_path).open(
+                "r",
+            ) as f:
                 content = f.read()
                 match = re.search(r'version\s*=\s*["\']([^"\']+)["\']', content)
                 if match:
@@ -145,7 +147,9 @@ class ReleaseManager:
     def _update_version_in_file(self, file_path: Path, version: str) -> bool:
         """Update version string in a file_path"""
         try:
-            with Path(file_path).open("r") as f:
+            with Path(file_path).open(
+                "r",
+            ) as f:
                 content = f.read()
 
             # Different patterns for different files
@@ -168,7 +172,9 @@ class ReleaseManager:
                     content,
                 )
 
-            with Path(file_path).open("w") as f:
+            with Path(file_path).open(
+                "w",
+            ) as f:
                 f.write(content)
             return True
         except (OSError, FileNotFoundError, IndexError):
@@ -179,7 +185,9 @@ class ReleaseManager:
         try:
             # Read existing content
             if changelog_path.exists():
-                with Path(changelog_path).open("r") as f:
+                with Path(changelog_path).open(
+                    "r",
+                ) as f:
                     existing_content = f.read()
             else:
                 existing_content = "# Changelog\n\n"
@@ -201,7 +209,9 @@ class ReleaseManager:
             lines.insert(insert_index, new_entry)
 
             # Write back
-            with Path(changelog_path).open("w") as f:
+            with Path(changelog_path).open(
+                "w",
+            ) as f:
                 f.write("\n".join(lines))
             return True
         except (OSError, FileNotFoundError, IndexError):
@@ -282,10 +292,14 @@ class ReleaseManager:
 
         checksum_path = output_dir / "checksums.txt"
         try:
-            with Path(checksum_path).open("w") as f:
+            with Path(checksum_path).open(
+                "w",
+            ) as f:
                 for file_path in files:
                     if file_path.exists():
-                        with Path(file_path).open("rb") as file_path:
+                        with Path(file_path).open(
+                            "rb",
+                        ) as file_path:
                             sha256 = hashlib.sha256(file_path.read()).hexdigest()
                         f.write(f"{sha256}  {file_path.name}\n")
             return checksum_path
@@ -300,7 +314,9 @@ class ReleaseManager:
             notes = ""
 
             if changelog_path.exists():
-                with Path(changelog_path).open("r") as f:
+                with Path(changelog_path).open(
+                    "r",
+                ) as f:
                     content = f.read()
 
                 # Extract section for this version
@@ -315,7 +331,9 @@ class ReleaseManager:
             if not notes:
                 notes = f"# Release {version}\n\nNo release notes available."
 
-            with Path(output_path).open("w") as f:
+            with Path(output_path).open(
+                "w",
+            ) as f:
                 f.write(notes)
             return True
         except (OSError, FileNotFoundError, IndexError):

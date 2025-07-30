@@ -4,9 +4,7 @@ from __future__ import annotations
 
 import re
 from collections import defaultdict
-from typing import Any
-
-from tree_sitter import Node, Parser
+from typing import TYPE_CHECKING, Any
 
 from chunker.interfaces.export import (
     ChunkRelationship,
@@ -14,7 +12,11 @@ from chunker.interfaces.export import (
     RelationshipType,
 )
 from chunker.parser import get_parser
-from chunker.types import CodeChunk
+
+if TYPE_CHECKING:
+    from tree_sitter import Node, Parser
+
+    from chunker.types import CodeChunk
 
 
 class ASTRelationshipTracker(RelationshipTracker):

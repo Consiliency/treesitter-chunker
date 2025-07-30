@@ -109,7 +109,9 @@ def process(
 
                 output_data["files"].append(file_data)
 
-            with Path(output).open("w") as f:
+            with Path(output).open(
+                "w",
+            ) as f:
                 json.dump(output_data, f, indent=2)
 
             console.print(f"\n[green]Results saved to: {output}[/green]")

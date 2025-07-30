@@ -7,7 +7,9 @@ from pathlib import Path
 
 def fix_plugin_file(filepath):
     """Fix a single plugin file."""
-    with Path(filepath).open("r") as f:
+    with Path(filepath).open(
+        "r",
+    ) as f:
         content = f.read()
 
     # Check if file has the problematic pattern
@@ -60,7 +62,9 @@ def fix_plugin_file(filepath):
     )
 
     if new_content != content:
-        with Path(filepath).open("w") as f:
+        with Path(filepath).open(
+            "w",
+        ) as f:
             f.write(new_content)
         return True
 

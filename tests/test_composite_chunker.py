@@ -15,12 +15,12 @@ from chunker.types import CodeChunk
 class TestCompositeChunker:
     """Test suite for CompositeChunker."""
 
-    @pytest.fixture
+    @pytest.fixture()
     def composite_chunker(self):
         """Create a composite chunker instance."""
         return CompositeChunker()
 
-    @pytest.fixture
+    @pytest.fixture()
     def test_code(self):
         """Sample code for testing composite strategies."""
         return '''
@@ -238,8 +238,12 @@ def process_files(file_list: List[str]) -> Dict[str, Dict]:
         # Results should differ based on weights
         # Can't guarantee exact differences, but metadata should reflect weights
         for chunk in semantic_weighted:
-            if hasattr(chunk, "metadata") and "weight_score" in chunk.metadata and "semantic" in chunk.metadata.get("strategies", []):
-                    assert chunk.metadata["weight_score"] > 0
+            if (
+                hasattr(chunk, "metadata")
+                and "weight_score" in chunk.metadata
+                and "semantic" in chunk.metadata.get("strategies", [])
+            ):
+                assert chunk.metadata["weight_score"] > 0
 
     def test_quality_filtering(self, composite_chunker, test_code):
         """Test chunk quality filtering."""

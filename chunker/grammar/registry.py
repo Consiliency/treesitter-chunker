@@ -5,15 +5,17 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import tree_sitter
 
-from chunker.contracts.discovery_contract import GrammarDiscoveryContract
-from chunker.contracts.download_contract import GrammarDownloadContract
 from chunker.contracts.registry_contract import UniversalRegistryContract
 from chunker.exceptions import LanguageNotFoundError
 from chunker.registry import LanguageRegistry
+
+if TYPE_CHECKING:
+    from chunker.contracts.discovery_contract import GrammarDiscoveryContract
+    from chunker.contracts.download_contract import GrammarDownloadContract
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +70,10 @@ class UniversalLanguageRegistry(UniversalRegistryContract):
             # Update auto_downloaded list
             self._metadata["auto_downloaded"] = list(self._auto_downloaded)
 
-            with self._metadata_path.Path("w").open("r") as f:
+            with self._metadata_path.open(
+                "w",
+                "r",
+            ) as f:
                 json.dump(self._metadata, f, indent=2)
         except (OSError, json.JSONEncodeError) as e:
             logger.error("Failed to save metadata: %s", e)

@@ -10,7 +10,7 @@ from chunker.chunker import CodeChunk
 from chunker.export import JSONExporter, SchemaType
 
 
-@pytest.fixture
+@pytest.fixture()
 def sample_chunks():
     """Create sample chunks with relationships."""
     chunks = [
@@ -107,7 +107,9 @@ def test_json_export_to_file(sample_chunks, tmp_path):
     exporter.export(sample_chunks, output_path)
 
     assert output_path.exists()
-    with Path(output_path).open("r") as f:
+    with Path(output_path).open(
+        "r",
+    ) as f:
         data = json.load(f)
     assert len(data) == 2
 
@@ -122,7 +124,9 @@ def test_json_export_compressed(sample_chunks, tmp_path):
     compressed_path = Path(f"{output_path}.gz")
     assert compressed_path.exists()
 
-    with gzip.Path(compressed_path).open("rt") as f:
+    with gzip.Path(compressed_path).open(
+        "rt",
+    ) as f:
         data = json.load(f)
     assert len(data) == 2
 

@@ -10,14 +10,16 @@ import logging
 import subprocess
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any
-
-from tree_sitter import Node, Parser
+from typing import TYPE_CHECKING, Any
 
 from chunker.types import CodeChunk
 
-from .base import LanguageConfig
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tree_sitter import Node, Parser
+
+    from .base import LanguageConfig
 
 logger = logging.getLogger(__name__)
 

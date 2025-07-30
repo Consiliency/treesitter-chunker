@@ -104,7 +104,7 @@ class QueryDebugger:
         except (IndexError, KeyError, SyntaxError) as e:
             # Provide helpful error messages
             if "Invalid syntax" in str(e):
-                raise ValueError(f"Invalid query syntax: {e}")
+                raise ValueError(f"Invalid query syntax: {e}") from e
             if "Invalid node type" in str(e):
                 # Extract the invalid node type
                 match = re.search(r"node type '(\w+)'", str(e))
@@ -113,7 +113,7 @@ class QueryDebugger:
                     raise ValueError(
                         f"Invalid node type '{invalid_type}'. "
                         f"Use 'list_node_types' to see valid types for {self.language}.",
-                    )
+                    ) from e
             raise
 
     def _execute_query(

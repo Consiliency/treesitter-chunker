@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import io
 import xml.etree.ElementTree as ET
-from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from xml.dom import minidom
 
 from chunker.interfaces.export import (
@@ -16,7 +14,12 @@ from chunker.interfaces.export import (
     GraphExporter,
     RelationshipType,
 )
-from chunker.types import CodeChunk
+
+if TYPE_CHECKING:
+    import io
+    from collections.abc import Iterator
+
+    from chunker.types import CodeChunk
 
 
 class GraphMLExporter(GraphExporter):

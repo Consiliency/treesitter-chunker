@@ -9,6 +9,7 @@ import os
 import subprocess
 import sys
 import time
+from pathlib import Path
 
 import psutil
 import pytest
@@ -59,7 +60,7 @@ async def async_hello():
         json_exporter = JSONExporter(schema_type=SchemaType.FLAT)
         json_exporter.export(chunks, json_file)
         assert json_file.exists()
-        with open(json_file) as f:
+        with Path(json_file).open() as f:
             json_data = json.load(f)
             assert len(json_data) == len(chunks)
 
@@ -171,7 +172,7 @@ impl App {
         json_exporter = JSONExporter(schema_type=SchemaType.FLAT)
         json_exporter.export(all_chunks, output_file)
 
-        with open(output_file) as f:
+        with Path(output_file).open() as f:
             exported_data = json.load(f)
             assert len(exported_data) >= 4  # At least 2 chunks per working file
 
@@ -315,7 +316,9 @@ class Example:
         assert len(data) >= 2  # function and class
 
         # Save to file for testing
-        with open(output_file, "w") as f:
+        with Path(output_file).open(
+            "w",
+        ) as f:
             json.dump(data, f)
 
     def test_cli_batch_processing(self, tmp_path):

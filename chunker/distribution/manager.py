@@ -87,7 +87,10 @@ class DistributionImpl(DistributionContract):
 
         # Calculate file hashes
         for dist_file in dist_files:
-            with dist_file.Path("rb").open("r") as f:
+            with dist_file.open(
+                "rb",
+                "r",
+            ) as f:
                 file_hash = hashlib.sha256(f.read()).hexdigest()
 
             file_info = {

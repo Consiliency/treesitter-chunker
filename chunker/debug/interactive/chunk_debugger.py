@@ -51,7 +51,9 @@ class ChunkDebugger:
         chunks = chunk_file(file_path, self.language)
 
         # Read file content
-        with Path(file_path).open("rb") as f:
+        with Path(file_path).open(
+            "rb",
+        ) as f:
             content = f.read()
 
         # Parse AST

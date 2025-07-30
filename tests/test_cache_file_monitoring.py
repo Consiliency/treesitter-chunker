@@ -262,7 +262,7 @@ class MockCache:
         """Corrupt the database for testing recovery."""
         if self.cache_type == "sqlite" and self._db_path.exists():
             # Write garbage to the database file
-            with open(self._db_path, "wb") as f:
+            with Path(self._db_path).open("wb") as f:
                 f.write(b"CORRUPTED DATABASE FILE" * 100)
 
 

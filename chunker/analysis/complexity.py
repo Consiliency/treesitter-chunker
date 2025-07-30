@@ -170,10 +170,11 @@ class ComplexityAnalyzer(ASTProcessor):
             return func_node.text.decode()
         if func_node.type == "attribute":
             # Handle method calls like obj.method()
-            parts = []
-            for child in func_node.children:
-                if child.type in ["identifier", "attribute"]:
-                    parts.append(child.text.decode())
+            parts = [
+                child.text.decode()
+                for child in func_node.children
+                if child.type in ["identifier", "attribute"]
+            ]
             return ".".join(parts)
         if func_node.type == "member_expression":
             # Handle JavaScript-style member access

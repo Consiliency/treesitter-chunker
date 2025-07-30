@@ -28,7 +28,7 @@ from .tooling_stub import DeveloperToolingStub
 
 # Import actual implementations if available
 try:
-    from ..cicd.pipeline import CICDPipeline as CICDPipelineImpl
+    from chunker.cicd.pipeline import CICDPipeline as CICDPipelineImpl
 except ImportError:
     CICDPipelineImpl = CICDPipelineStub  # Fallback to stub
 

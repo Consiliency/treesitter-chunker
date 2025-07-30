@@ -2,14 +2,17 @@ from __future__ import annotations
 
 import hashlib
 import mmap
-from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-
-from tree_sitter import Node
+from typing import TYPE_CHECKING
 
 from .parser import get_parser
 from .types import CodeChunk
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from tree_sitter import Node
 
 
 @dataclass
@@ -23,7 +26,9 @@ class FileMetadata:
 def compute_file_hash(file_path: Path, chunk_size: int = 8192) -> str:
     """Compute SHA256 hash of a file efficiently."""
     hasher = hashlib.sha256()
-    with Path(file_path).open("rb") as f:
+    with Path(file_path).open(
+        "rb",
+    ) as f:
         while chunk := f.read(chunk_size):
             hasher.update(chunk)
     return hasher.hexdigest()
@@ -86,7 +91,9 @@ class StreamingChunker:
             return
 
         with (
-            Path(path).open("rb") as f,
+            Path(path).open(
+                "rb",
+            ) as f,
             mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mmap_data,
         ):
             tree = self.parser.parse(mmap_data)

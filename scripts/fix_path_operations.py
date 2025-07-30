@@ -46,8 +46,10 @@ def fix_path_open(file_path):
             if mode == "r":
                 return f"with Path({file_var}).open() as {var_name}:"
             if mode in ["rb", "r+b", "rb+"]:
-                return f'with Path({file_var}).Path("{mode}").open("r") as {var_name}:'
-            return f'with Path({file_var}).Path("{mode}").open("r") as {var_name}:'
+                return (
+                    f'with Path({file_var}).Path("{mode}").open("r", ) as {var_name}:'
+                )
+            return f'with Path({file_var}).Path("{mode}").open("r", ) as {var_name}:'
 
         # Replace all occurrences
         new_lines = []

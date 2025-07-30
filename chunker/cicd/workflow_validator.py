@@ -320,12 +320,10 @@ class WorkflowValidator:
             else:
                 # Check if it's a known action
                 base_action = action.split("@")[0]
-                if base_action in self.COMMON_ACTIONS:
-                    # Verify version is specified
-                    if "@" not in action:
-                        self.warnings.append(
-                            f"Job '{job_id}' {step_name} should specify action version",
-                        )
+                if base_action in self.COMMON_ACTIONS and "@" not in action:
+                    self.warnings.append(
+                        f"Job '{job_id}' {step_name} should specify action version",
+                    )
 
         # Validate 'with' parameters
         if "with" in step and not isinstance(step["with"], dict):

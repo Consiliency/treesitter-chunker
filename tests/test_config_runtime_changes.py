@@ -829,7 +829,9 @@ class TestConfigRuntimeChanges:
 
         def load_config_from_file():
             """Load config from file."""
-            with Path(config_file).open("r") as f:
+            with Path(config_file).open(
+                "r",
+            ) as f:
                 return json.load(f)
 
         def simulate_active_operation(op_id: int, duration: float):

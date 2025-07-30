@@ -54,7 +54,9 @@ class ASTVisualizer:
         Returns:
             String representation for graph fmt, None for console output
         """
-        with Path(file_path).open("rb") as f:
+        with Path(file_path).open(
+            "rb",
+        ) as f:
             content = f.read()
 
         tree = self.parser.parse(content)

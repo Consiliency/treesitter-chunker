@@ -386,7 +386,9 @@ def validate(
     try:
 
         # Parse file_path
-        with Path(file_path).open("rb") as f:
+        with Path(file_path).open(
+            "rb",
+        ) as f:
             content = f.read()
 
         parser = get_parser(language)

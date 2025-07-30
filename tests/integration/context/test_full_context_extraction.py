@@ -9,7 +9,7 @@ from chunker.parser import get_parser
 class TestPythonContextExtraction:
     """Test full context extraction for Python code."""
 
-    @pytest.fixture
+    @pytest.fixture()
     def complex_python_code(self):
         """Complex Python code with multiple contexts."""
         return '''
@@ -230,7 +230,7 @@ def create_manager(name: str = "default") -> DatabaseManager:
 class TestJavaScriptContextExtraction:
     """Test full context extraction for JavaScript code."""
 
-    @pytest.fixture
+    @pytest.fixture()
     def complex_javascript_code(self):
         """Complex JavaScript code with multiple contexts."""
         return """
@@ -325,7 +325,9 @@ export default connect(mapStateToProps, mapDispatchToProps)(UserList);
         source = complex_javascript_code.encode()
 
         # Create context components
-        extractor, resolver, analyzer, filter_func = ContextFactory.create_all("javascript")
+        extractor, resolver, analyzer, filter_func = ContextFactory.create_all(
+            "javascript",
+        )
 
         # Find the updateUser method
         def find_method(node, method_name):

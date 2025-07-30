@@ -69,7 +69,9 @@ class GrammarManager(GrammarManagerContract):
         """Save grammar sources to config file."""
         with self._lock:
             self._config_file.parent.mkdir(parents=True, exist_ok=True)
-            with self._config_file.open("w") as f:
+            with self._config_file.open(
+                "w",
+            ) as f:
                 json.dump(self._grammar_sources, f, indent=2, sort_keys=True)
 
     def add_grammar_source(self, language: str, repo_url: str) -> bool:

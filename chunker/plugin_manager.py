@@ -7,11 +7,13 @@ import logging
 import re
 import sys
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from .languages.base import PluginConfig
 from .languages.plugin_base import LanguagePlugin
 from .parser import get_parser
+
+if TYPE_CHECKING:
+    from .languages.base import PluginConfig
 
 logger = logging.getLogger(__name__)
 

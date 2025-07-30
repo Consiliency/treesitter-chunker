@@ -317,7 +317,6 @@ Available commands:
         if not self._check_ready():
             return
 
-
         visualizer = ASTVisualizer(self.current_language)
 
         # Save to temp file
@@ -357,7 +356,9 @@ Available commands:
             return
 
         try:
-            with Path(file_path).open("w") as f:
+            with Path(file_path).open(
+                "w",
+            ) as f:
                 f.write("# Tree-sitter Debug Session\n")
                 f.write(f"# Language: {self.current_language or 'none'}\n")
                 f.write(f"# File: {self.current_file or 'none'}\n\n")

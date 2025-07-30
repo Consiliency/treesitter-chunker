@@ -34,7 +34,11 @@ class CICDPipelineStub(CICDPipelineContract):
                 }
         return result
 
-    def build_distribution(self, _version: str, _platforms: list[str]) -> dict[str, Any]:
+    def build_distribution(
+        self,
+        _version: str,
+        _platforms: list[str],
+    ) -> dict[str, Any]:
         """Stub that returns valid default values"""
         return {
             "status": "not_implemented",

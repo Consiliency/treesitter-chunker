@@ -4,10 +4,9 @@ import fnmatch
 import json
 import os
 import sys
-from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import tomllib
 import typer
@@ -31,6 +30,9 @@ app.add_typer(debug_commands.app, name="debug", help="Debug and visualization to
 # Import repo commands
 from .repo_command import app as repo_app
 
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
 app.add_typer(repo_app, name="repo", help="Repository processing commands")
 
 
@@ -50,7 +52,9 @@ def load_config(config_path: Path | None = None) -> dict[str, Any]:
     for config_file in config_files:
         if config_file.exists():
             try:
-                with Path(config_file).open("rb") as f:
+                with Path(config_file).open(
+                    "rb",
+                ) as f:
                     config = tomllib.load(f)
                 break
             except (OSError, FileNotFoundError, IndexError) as e:
@@ -93,12 +97,10 @@ def should_include_file(
         return False
 
     # If exclude patterns specified, file_path must not match any
-    if exclude_patterns and any(
-        fnmatch.fnmatch(file_str, pattern) for pattern in exclude_patterns
-    ):
-        return False
-
-    return True
+    return not (
+        exclude_patterns
+        and any(fnmatch.fnmatch(file_str, pattern) for pattern in exclude_patterns)
+    )
 
 
 def process_file(

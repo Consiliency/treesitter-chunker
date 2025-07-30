@@ -1,9 +1,5 @@
 from __future__ import annotations
 
-from tree_sitter import Node
-
-from chunker.types import CodeChunk
-
 from .base import LanguageConfig
 from .plugin_base import LanguagePlugin
 
@@ -33,7 +29,14 @@ class CConfig(LanguageConfig):
 
 # Register the C configuration
 
+from typing import TYPE_CHECKING
+
 from . import language_config_registry
+
+if TYPE_CHECKING:
+    from tree_sitter import Node
+
+    from chunker.types import CodeChunk
 
 language_config_registry.register(CConfig())
 

@@ -374,7 +374,7 @@ ON CONFLICT (source_id, target_id, relationship_type) DO UPDATE SET
 
             # Write CSV data
 
-            with open(chunks_path, "w", newline="", encoding="utf-8") as f:
+            with Path(chunks_path).open("w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
                 writer.writerows(rows)
 
@@ -395,7 +395,7 @@ ON CONFLICT (source_id, target_id, relationship_type) DO UPDATE SET
                     for rel in self.relationships
                 ]
 
-                with open(rels_path, "w", newline="", encoding="utf-8") as f:
+                with Path(rels_path).open("w", newline="", encoding="utf-8") as f:
                     writer = csv.writer(f)
                     writer.writerows(rel_rows)
 

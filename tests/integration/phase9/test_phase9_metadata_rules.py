@@ -191,14 +191,14 @@ def create_default_manager() -> TaskManager:
 
         # Apply custom rule
         async_rule = AsyncFunctionRule()
-        async_chunks = []
-
-        for chunk in chunks:
-            if hasattr(chunk, "metadata") and async_rule.matches_metadata(
+        async_chunks = [
+            chunk
+            for chunk in chunks
+            if hasattr(chunk, "metadata")
+            and async_rule.matches_metadata(
                 chunk.metadata,
-            ):
-                async_chunks.append(chunk)
-
+            )
+        ]
         # Should find the async process_tasks method
         assert len(async_chunks) > 0, "Should find async functions"
         assert any("process_tasks" in chunk.content for chunk in async_chunks)
@@ -234,14 +234,14 @@ def create_default_manager() -> TaskManager:
 
         # Find complex functions
         complex_rule = ComplexFunctionRule()
-        complex_chunks = []
-
-        for chunk in chunks:
-            if hasattr(chunk, "metadata") and complex_rule.matches_metadata(
+        complex_chunks = [
+            chunk
+            for chunk in chunks
+            if hasattr(chunk, "metadata")
+            and complex_rule.matches_metadata(
                 chunk.metadata,
-            ):
-                complex_chunks.append(chunk)
-
+            )
+        ]
         # Check that we can identify complexity
         for chunk in chunks:
             if chunk.node_type in ["function_definition", "method"]:

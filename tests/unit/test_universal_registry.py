@@ -83,7 +83,6 @@ class TestUniversalLanguageRegistry:
 
         # Mock discovery to return info for go
 
-
         go_info = GrammarInfo(
             name="go",
             url="https://github.com/tree-sitter/tree-sitter-go",

@@ -149,7 +149,7 @@ java.sql.SQLException: Unable to connect to database
     at com.example.Application.main(Application.java:15)
 Caused by: java.net.ConnectException: Connection refused
     at java.net.Socket.connect(Socket.java:589)
-    at com.mysql.jdbc.Connection.Path(Connection.java:123).open("r")
+    at com.mysql.jdbc.Connection.Path(Connection.java:123).open("r", )
 2024-01-23 10:00:04 INFO [db] Retrying connection...
 2024-01-23 10:00:05 INFO [db] Connection established
 2024-01-23 10:00:06 INFO [main] Application started successfully
@@ -449,7 +449,10 @@ def process(items):
 
         # Generate a large Python file
         large_py = self.temp_path / "large.py"
-        with large_py.Path("w").open("r") as f:
+        with large_py.open(
+            "w",
+            "r",
+        ) as f:
             for i in range(50):
                 f.write(
                     f'''

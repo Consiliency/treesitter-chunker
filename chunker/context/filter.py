@@ -148,11 +148,15 @@ class BaseContextFilter(ContextFilter):
             elif sibling == target_node:
                 target_index = i
 
-        if decorator_index >= 0 and target_index >= 0 and decorator_index < target_index:
-                for i in range(decorator_index + 1, target_index):
-                    if not self._is_decorator_node(siblings[i]):
-                        return False
-                return True
+        if (
+            decorator_index >= 0
+            and target_index >= 0
+            and decorator_index < target_index
+        ):
+            for i in range(decorator_index + 1, target_index):
+                if not self._is_decorator_node(siblings[i]):
+                    return False
+            return True
 
         return False
 

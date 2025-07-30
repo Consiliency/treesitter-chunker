@@ -108,7 +108,9 @@ class TestContextFactory:
 
     def test_create_all_javascript(self):
         """Test creating all components for JavaScript."""
-        extractor, resolver, analyzer, filter_func = ContextFactory.create_all("javascript")
+        extractor, resolver, analyzer, filter_func = ContextFactory.create_all(
+            "javascript",
+        )
 
         assert isinstance(extractor, JavaScriptContextExtractor)
         assert isinstance(resolver, JavaScriptSymbolResolver)

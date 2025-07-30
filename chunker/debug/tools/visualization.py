@@ -191,7 +191,9 @@ class DebugVisualization(DebugVisualizationContract):
         # Add context if requested
         if include_context:
             # Get surrounding lines
-            with Path(file_path).open("r") as f:
+            with Path(file_path).open(
+                "r",
+            ) as f:
                 lines = f.readlines()
 
             # Before context (5 lines)
@@ -234,7 +236,9 @@ class DebugVisualization(DebugVisualizationContract):
         # Phase 1: Parse file
         phase_start = time.perf_counter()
         parser = get_parser(language)
-        with Path(file_path).open("rb") as f:
+        with Path(file_path).open(
+            "rb",
+        ) as f:
             content = f.read()
         tree = parser.parse(content)  # noqa: F841
         phase_times["parsing"] = time.perf_counter() - phase_start
@@ -306,7 +310,9 @@ class DebugVisualization(DebugVisualizationContract):
 
         # Parse the file
         parser = get_parser(language)
-        with Path(file_path).open("rb") as f:
+        with Path(file_path).open(
+            "rb",
+        ) as f:
             content = f.read()
         tree = parser.parse(content)
 

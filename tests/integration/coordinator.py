@@ -66,7 +66,9 @@ class IntegrationCoordinator(ErrorPropagationMixin):
 
     def register_scenarios_from_config(self, config_file: Path) -> None:
         """Load test scenarios from a JSON configuration file."""
-        with Path(config_file).open("r") as f:
+        with Path(config_file).open(
+            "r",
+        ) as f:
             config = json.load(f)
 
         for scenario_dict in config.get("scenarios", []):
@@ -365,14 +367,15 @@ class IntegrationCoordinator(ErrorPropagationMixin):
 
         while remaining:
             # Find scenarios with no dependencies or satisfied dependencies
-            ready = []
-            for scenario in remaining:
-                if not scenario.dependencies or all(
+            ready = [
+                scenario
+                for scenario in remaining
+                if not scenario.dependencies
+                or all(
                     any(s.name == dep for s in sorted_list)
                     for dep in scenario.dependencies
-                ):
-                    ready.append(scenario)
-
+                )
+            ]
             if not ready:
                 # Circular dependency or missing dependency
                 raise ValueError("Circular or missing dependencies detected")
@@ -446,7 +449,9 @@ class IntegrationCoordinator(ErrorPropagationMixin):
     def save_report(self, filepath: Path) -> None:
         """Save report to file."""
         report = self.generate_report()
-        with Path(filepath).open("w") as f:
+        with Path(filepath).open(
+            "w",
+        ) as f:
             json.dump(report, f, indent=2)
 
     def cleanup_worktrees(self) -> None:

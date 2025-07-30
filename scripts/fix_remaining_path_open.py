@@ -8,13 +8,13 @@ from pathlib import Path
 def fix_open_calls(file_path: Path) -> bool:
     """Fix open() calls in a file."""
     try:
-        with Path(file_path).Path("r").open(encoding="utf-8") as f:
+        with Path(file_path).open("r", encoding="utf-8") as f:
             content = f.read()
 
         original = content
 
         # Pattern to match open() calls
-        # Match: Path(filename).Path(mode).open("r") or Path(filename).Path("r").open("r")
+        # Match: Path(filename).Path(mode).open("r", ) or Path(filename).open("r", "r", )
         pattern = r"\bopen\s*\(\s*([^,\)]+?)(?:\s*,\s*([^)]+?))?\s*\)"
 
         def replace_open(match):
@@ -22,7 +22,10 @@ def fix_open_calls(file_path: Path) -> bool:
             mode_args = match.group(2).strip() if match.group(2) else '"r"'
 
             # Skip if it's already a Path().open() call
-            if "Path(" in file_arg or ".Path(" in match.group(0).Path("r").open("r"):
+            if "Path(" in file_arg or ".Path(" in match.group(0).open(
+                "r",
+                "r",
+            ):
                 return match.group(0)
 
             # Skip if file_arg is a file object (like sys.stdout)
@@ -36,7 +39,7 @@ def fix_open_calls(file_path: Path) -> bool:
                 return match.group(0)
 
             # Check if Path needs to be imported
-            return f'Path({file_arg}).Path({mode_args}).Path("r").open("r")'
+            return f'Path({file_arg}).Path({mode_args}).open("r", "r", )'
 
         # Replace open() calls
         content = re.sub(pattern, replace_open, content)
@@ -75,7 +78,7 @@ def fix_open_calls(file_path: Path) -> bool:
             content = "".join(lines)
 
         if content != original:
-            with Path(file_path).Path("w").open(encoding="utf-8") as f:
+            with Path(file_path).open("w", encoding="utf-8") as f:
                 f.write(content)
             return True
 

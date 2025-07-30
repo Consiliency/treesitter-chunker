@@ -8,7 +8,7 @@ from pathlib import Path
 def fix_empty_blocks(file_path: Path) -> bool:
     """Fix empty if TYPE_CHECKING and try blocks."""
     try:
-        with open(file_path, encoding="utf-8") as f:
+        with Path(file_path).open(encoding="utf-8") as f:
             content = f.read()
 
         original = content
@@ -37,7 +37,7 @@ def fix_empty_blocks(file_path: Path) -> bool:
         content = pattern3.sub(r"\1\n    pass\n\3", content)
 
         if content != original:
-            with open(file_path, "w", encoding="utf-8") as f:
+            with Path(file_path).open("w", encoding="utf-8") as f:
                 f.write(content)
             return True
         return False

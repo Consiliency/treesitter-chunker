@@ -9,13 +9,13 @@ import pytest
 from chunker.build import BuildSystem, PlatformSupport
 
 
-@pytest.fixture
+@pytest.fixture()
 def build_system():
     """Provide real BuildSystem instance"""
     return BuildSystem()
 
 
-@pytest.fixture
+@pytest.fixture()
 def platform_support():
     """Provide real PlatformSupport instance"""
     return PlatformSupport()
@@ -26,7 +26,6 @@ def pytest_runtest_setup(item):
     """Setup test to use real implementations instead of mocks"""
     if "test_phase13_integration" in str(item.fspath):
         # Import here to avoid circular imports
-
 
         # Patch Mock to return real instances for our contracts
         original_mock = (
@@ -50,6 +49,5 @@ def pytest_runtest_setup(item):
             # Otherwise use original Mock
             if original_mock:
                 return original_mock(*args, **kwargs)
-
 
             return Mock(*args, **kwargs)

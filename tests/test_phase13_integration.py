@@ -13,12 +13,12 @@ import pytest
 from chunker.build.builder import BuildSystem
 from chunker.build.platform import PlatformSupport
 from chunker.chunker import chunk_file
-from chunker.contracts.build_contract import BuildSystemContract
 from chunker.debug.tools.visualization import DebugVisualization
 from chunker.devenv import DevelopmentEnvironment, QualityAssurance
 from chunker.distribution import Distributor, ReleaseManager
 
 if TYPE_CHECKING:
+    from chunker.contracts.build_contract import BuildSystemContract
     from chunker.contracts.devenv_contract import (
         DevelopmentEnvironmentContract,
         QualityAssuranceContract,

@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import fnmatch
 import logging
-from collections.abc import Iterator
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from .chunker import chunk_text
 from .gc_tuning import get_memory_optimizer, optimized_gc
 from .streaming import StreamingChunker
-from .types import CodeChunk
 from .vfs import (
     HTTPFileSystem,
     LocalFileSystem,
@@ -18,6 +17,11 @@ from .vfs import (
     ZipFileSystem,
     create_vfs,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from .types import CodeChunk
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +101,12 @@ class VFSChunker:
         # For streaming from VFS, we need to adapt the approach
         # since we can't use mmap directly on VFS files
 
-        with optimized_gc("streaming"), self.vfs.Path(path).open("rb") as f:
+        with (
+            optimized_gc("streaming"),
+            self.vfs.Path(path).open(
+                "rb",
+            ) as f,
+        ):
             # Read in chunks and process
             chunk_size = 1024 * 1024  # 1MB chunks
             content_buffer = b""

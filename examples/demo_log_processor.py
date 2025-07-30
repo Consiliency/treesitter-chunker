@@ -212,7 +212,9 @@ def demo_streaming():
     print(f"\nStreaming {log_file.name}...")
 
     def line_generator():
-        with Path(log_file).open("r") as f:
+        with Path(log_file).open(
+            "r",
+        ) as f:
             yield from f
 
     chunk_count = 0

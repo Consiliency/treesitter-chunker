@@ -345,7 +345,7 @@ class TreeSitterGrammarManager(GrammarManager):
             return
 
         try:
-            with open(self._config_file) as f:
+            with Path(self._config_file).open() as f:
                 data = json.load(f)
 
             for name, info in data.items():
@@ -380,7 +380,7 @@ class TreeSitterGrammarManager(GrammarManager):
             }
 
         try:
-            with open(self._config_file, "w") as f:
+            with Path(self._config_file).open("w") as f:
                 json.dump(data, f, indent=2)
             logger.debug("Saved grammar config")
         except (FileNotFoundError, OSError) as e:

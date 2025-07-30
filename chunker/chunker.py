@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-
-from tree_sitter import Node
+from typing import TYPE_CHECKING
 
 from .languages import language_config_registry
 from .metadata import MetadataExtractorFactory
@@ -10,6 +9,9 @@ from .parser import get_parser
 from .token.chunker import TreeSitterTokenAwareChunker
 from .token.counter import TiktokenCounter
 from .types import CodeChunk
+
+if TYPE_CHECKING:
+    from tree_sitter import Node
 
 
 def _walk(

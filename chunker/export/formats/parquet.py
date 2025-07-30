@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import io
 import json
-from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -18,7 +17,11 @@ from chunker.interfaces.export import (
     ExportMetadata,
     StructuredExporter,
 )
-from chunker.types import CodeChunk
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from chunker.types import CodeChunk
 
 
 class StructuredParquetExporter(StructuredExporter):

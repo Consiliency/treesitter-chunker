@@ -309,10 +309,11 @@ class CouplingAnalyzer(ASTProcessor):
             return func_node.text.decode()
         if func_node.type in ["attribute", "member_expression"]:
             # Handle method calls
-            parts = []
-            for child in func_node.children:
-                if child.type == "identifier":
-                    parts.append(child.text.decode())
+            parts = [
+                child.text.decode()
+                for child in func_node.children
+                if child.type == "identifier"
+            ]
             return ".".join(parts) if parts else func_node.text.decode()
 
         return ""

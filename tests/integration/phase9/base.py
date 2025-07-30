@@ -546,7 +546,9 @@ def merge_processors(p1: DataProcessor, p2: DataProcessor) -> DataProcessor:
     def create_test_config_file(self, path: Path, config: dict[str, Any]) -> Path:
         """Create a test configuration file."""
         config_path = path / ".chunkerrc"
-        with Path(config_path).open("w") as f:
+        with Path(config_path).open(
+            "w",
+        ) as f:
             import toml
 
             toml.dump(config, f)

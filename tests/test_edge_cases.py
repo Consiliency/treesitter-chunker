@@ -482,7 +482,9 @@ class TestExportEdgeCases:
 
         # Should be valid JSON
 
-        with Path(json_file).open("r") as f:
+        with Path(json_file).open(
+            "r",
+        ) as f:
             data = json.load(f)
             assert len(data) == 1
             assert '\\"' in data[0]["content"] or '"' in data[0]["content"]
@@ -529,7 +531,9 @@ class TestExportEdgeCases:
 
         # Verify JSON is valid
 
-        with Path(json_file).open("r") as f:
+        with Path(json_file).open(
+            "r",
+        ) as f:
             data = json.load(f)
             assert len(data) == 1
 

@@ -219,7 +219,7 @@ class LogProcessor(SpecializedProcessor):
         config: dict[str, Any] | None = None,
     ) -> list[TextChunk]:
         """Process a log file and return text chunks."""
-        with open(file_path, encoding="utf-8") as f:
+        with Path(file_path).open(encoding="utf-8") as f:
             content = f.read()
         return self.process(content, Path(file_path))
 
@@ -293,7 +293,6 @@ class LogProcessor(SpecializedProcessor):
             if self._is_new_entry(line):
                 if current_entry:
                     entries.append(current_entry)
-
                 current_entry = self._parse_line(line, i + 1, byte_offset)
             # Continuation of previous entry
             elif current_entry:
@@ -462,7 +461,10 @@ class LogProcessor(SpecializedProcessor):
                     chunk_start_time = entry.timestamp
 
                 # Check if this entry exceeds time window
-                if entry.timestamp - chunk_start_time > self.time_window:
+                if (
+                    chunk_start_time
+                    and entry.timestamp - chunk_start_time > self.time_window
+                ):
                     # Create chunk from accumulated entries
                     if current_chunk_entries:
                         chunk = self._create_chunk(current_chunk_entries)

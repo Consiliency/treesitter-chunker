@@ -151,21 +151,21 @@ class FullFormatter:
                     },
                 )
 
-            for ref in chunk.references:
-                references.append(
-                    {
-                        "from": chunk.chunk_id,
-                        "to": ref,
-                    },
-                )
+            references.extend(
+                {
+                    "from": chunk.chunk_id,
+                    "to": ref,
+                }
+                for ref in chunk.references
+            )
 
-            for dep in chunk.dependencies:
-                dependencies.append(
-                    {
-                        "from": chunk.chunk_id,
-                        "to": dep,
-                    },
-                )
+            dependencies.extend(
+                {
+                    "from": chunk.chunk_id,
+                    "to": dep,
+                }
+                for dep in chunk.dependencies
+            )
 
         return {
             "parent_child": parent_child,

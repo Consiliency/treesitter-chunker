@@ -8,12 +8,14 @@ import threading
 from collections import OrderedDict
 from dataclasses import dataclass
 from queue import Empty, Queue
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from tree_sitter import Parser, Range
 
 from .exceptions import LanguageNotFoundError, ParserConfigError, ParserInitError
-from .registry import LanguageRegistry
+
+if TYPE_CHECKING:
+    from .registry import LanguageRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -28,21 +30,24 @@ class ParserConfig:
 
     def validate(self):
         """Validate configuration values."""
-        if self.timeout_ms is not None:
-            if not isinstance(self.timeout_ms, int) or self.timeout_ms < 0:
-                raise ParserConfigError(
-                    "timeout_ms",
-                    self.timeout_ms,
-                    "Must be a non-negative integer",
-                )
+        if self.timeout_ms is not None and (
+            not isinstance(self.timeout_ms, int) or self.timeout_ms < 0
+        ):
+            raise ParserConfigError(
+                "timeout_ms",
+                self.timeout_ms,
+                "Must be a non-negative integer",
+            )
 
-        if self.included_ranges is not None:
-            if not isinstance(self.included_ranges, list):
-                raise ParserConfigError(
-                    "included_ranges",
-                    self.included_ranges,
-                    "Must be a list of Range objects",
-                )
+        if self.included_ranges is not None and not isinstance(
+            self.included_ranges,
+            list,
+        ):
+            raise ParserConfigError(
+                "included_ranges",
+                self.included_ranges,
+                "Must be a list of Range objects",
+            )
 
 
 class LRUCache:
@@ -171,10 +176,10 @@ class ParserFactory:
                         f"Grammar compiled with language version {grammar_ver}, "
                         f"but tree-sitter library supports versions {min_ver}-{max_ver}. "
                         f"Consider updating tree-sitter library or recompiling grammars.",
-                    )
-            raise ParserInitError(language, str(e))
+                    ) from e
+            raise ParserInitError(language, str(e)) from e
         except (IndexError, KeyError, SyntaxError) as e:
-            raise ParserInitError(language, str(e))
+            raise ParserInitError(language, str(e)) from e
 
     def _get_pool(self, language: str) -> ParserPool:
         """Get or create a parser pool for the language."""

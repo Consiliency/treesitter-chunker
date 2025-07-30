@@ -8,7 +8,9 @@ from pathlib import Path
 def fix_sim102_in_file(file_path):
     """Fix SIM102 errors in a single file."""
     try:
-        with Path(file_path).open("r") as f:
+        with Path(file_path).open(
+            "r",
+        ) as f:
             content = f.read()
 
         original = content
@@ -67,7 +69,9 @@ def fix_sim102_in_file(file_path):
         content = pattern3.sub(replace3, content)
 
         if content != original:
-            with Path(file_path).open("w") as f:
+            with Path(file_path).open(
+                "w",
+            ) as f:
                 f.write(content)
             return True
         return False

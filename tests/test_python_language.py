@@ -797,7 +797,7 @@ async def process_async_resource():
 
     async with AsyncExitStack() as stack:
         files = [
-            await stack.enter_async_context(aiofiles.Path(f).open("r"))
+            await stack.enter_async_context(aiofiles.Path(f).open("r", ))
             for f in filenames
         ]
         return await process_files(files)

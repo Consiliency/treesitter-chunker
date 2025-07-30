@@ -27,7 +27,7 @@ def convert_fstring_to_percent(fstring_content):
 def fix_logging_fstrings(file_path: Path) -> bool:
     """Fix logging f-strings in a file."""
     try:
-        with open(file_path, encoding="utf-8") as f:
+        with Path(file_path).open(encoding="utf-8") as f:
             content = f.read()
 
         original = content
@@ -109,7 +109,7 @@ def fix_logging_fstrings(file_path: Path) -> bool:
         modified = multiline_pattern.sub(replace_multiline_fstring, modified)
 
         if modified != original:
-            with open(file_path, "w", encoding="utf-8") as f:
+            with Path(file_path).open("w", encoding="utf-8") as f:
                 f.write(modified)
             return True
 

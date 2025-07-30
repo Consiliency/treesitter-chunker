@@ -57,7 +57,9 @@ class TestLanguageDetector:
         with tempfile.TemporaryDirectory() as tmpdir:
             for filename, expected_lang in test_cases:
                 file_path = Path(tmpdir) / filename
-                with Path(file_path).open("w") as f:
+                with Path(file_path).open(
+                    "w",
+                ) as f:
                     f.write("// test content")
 
                 lang, confidence = self.detector.detect_from_file(file_path)
@@ -79,7 +81,9 @@ class TestLanguageDetector:
         with tempfile.TemporaryDirectory() as tmpdir:
             for content, expected_lang in test_cases:
                 file_path = Path(tmpdir) / "script"
-                with Path(file_path).open("w") as f:
+                with Path(file_path).open(
+                    "w",
+                ) as f:
                     f.write(content)
 
                 lang, confidence = self.detector.detect_from_file(file_path)

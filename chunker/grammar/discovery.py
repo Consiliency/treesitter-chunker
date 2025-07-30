@@ -340,7 +340,10 @@ class GrammarDiscoveryService(GrammarDiscoveryContract):
     def _save_cache(self, data: dict) -> None:
         """Save cache to disk"""
         try:
-            with self.cache_file.Path("w").open("r") as f:
+            with self.cache_file.open(
+                "w",
+                "r",
+            ) as f:
                 json.dump(data, f, indent=2)
         except (OSError, FileNotFoundError, IndexError):
             logger.exception("Failed to save cache")

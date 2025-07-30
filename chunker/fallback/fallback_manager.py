@@ -77,7 +77,10 @@ class FallbackManager:
             raise ValueError(f"Cannot chunk binary file: {file_path}")
 
         if file_type == FileType.UNKNOWN:
-            logger.warning("Unknown file type, using line-based chunking: %s", file_path)
+            logger.warning(
+                "Unknown file type, using line-based chunking: %s",
+                file_path,
+            )
             file_type = FileType.TEXT
 
         # Get appropriate chunker

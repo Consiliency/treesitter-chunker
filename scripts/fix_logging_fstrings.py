@@ -8,7 +8,7 @@ from pathlib import Path
 def fix_logging_fstrings(file_path):
     """Fix G004 errors in a single file."""
     try:
-        with open(file_path, encoding="utf-8") as f:
+        with Path(file_path).open(encoding="utf-8") as f:
             content = f.read()
 
         original = content
@@ -107,7 +107,7 @@ def fix_logging_fstrings(file_path):
         content = "\n".join(new_lines)
 
         if content != original:
-            with open(file_path, "w", encoding="utf-8") as f:
+            with Path(file_path).open("w", encoding="utf-8") as f:
                 f.write(content)
             return True
         return False
@@ -122,7 +122,14 @@ def main():
 
     # Get all Python files
     files_to_check = []
-    for pattern in ["chunker/**/*.py", "tests/**/*.py", "cli/**/*.py", "benchmarks/**/*.py", "examples/**/*.py", "scripts/**/*.py"]:
+    for pattern in [
+        "chunker/**/*.py",
+        "tests/**/*.py",
+        "cli/**/*.py",
+        "benchmarks/**/*.py",
+        "examples/**/*.py",
+        "scripts/**/*.py",
+    ]:
         files_to_check.extend(Path().glob(pattern))
 
     fixed = 0
@@ -134,7 +141,7 @@ def main():
 
         # Check if file has logging f-strings
         try:
-            with open(file_path, encoding="utf-8") as f:
+            with Path(file_path).open(encoding="utf-8") as f:
                 content = f.read()
                 if "logger." in content and ('(f"' in content or "(f'" in content):
                     total += 1

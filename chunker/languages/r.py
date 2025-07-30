@@ -4,12 +4,15 @@ Support for R language.
 
 from __future__ import annotations
 
-from tree_sitter import Node
+from typing import TYPE_CHECKING
 
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
+
+if TYPE_CHECKING:
+    from tree_sitter import Node
 
 
 class RConfig(LanguageConfig):

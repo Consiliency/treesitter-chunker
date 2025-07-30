@@ -147,9 +147,17 @@ def organize_imports(file_path: Path) -> bool:
         new_lines = lines[:docstring_end]
 
         # Add blank line after docstring if needed
-        if docstring_end > skip_lines and (
-            future_imports or standard_imports or third_party_imports or local_imports
-        ) and new_lines and new_lines[-1].strip() != "":
+        if (
+            docstring_end > skip_lines
+            and (
+                future_imports
+                or standard_imports
+                or third_party_imports
+                or local_imports
+            )
+            and new_lines
+            and new_lines[-1].strip() != ""
+        ):
             new_lines.append("\n")
 
         # Add imports in order
@@ -172,8 +180,11 @@ def organize_imports(file_path: Path) -> bool:
 
         # Add blank line before non-import code
         if (
-            future_imports or standard_imports or third_party_imports or local_imports
-        ) and non_import_lines and new_lines and new_lines[-1].strip() != "":
+            (future_imports or standard_imports or third_party_imports or local_imports)
+            and non_import_lines
+            and new_lines
+            and new_lines[-1].strip() != ""
+        ):
             new_lines.append("\n")
 
         # Add remaining code

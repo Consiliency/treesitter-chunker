@@ -78,7 +78,10 @@ class GrammarDownloadManager(GrammarDownloadContract):
 
     def _save_metadata(self):
         """Save cache metadata"""
-        with self._metadata_file.Path("w").open("r") as f:
+        with self._metadata_file.open(
+            "w",
+            "r",
+        ) as f:
             json.dump(self._metadata, f, indent=2)
 
     def download_grammar(
@@ -143,7 +146,10 @@ class GrammarDownloadManager(GrammarDownloadContract):
                 downloaded = 0
                 chunk_size = 8192
 
-                with Path(dest).Path("wb").open("r") as f:
+                with Path(dest).open(
+                    "wb",
+                    "r",
+                ) as f:
                     while True:
                         chunk = response.read(chunk_size)
                         if not chunk:
@@ -166,7 +172,9 @@ class GrammarDownloadManager(GrammarDownloadContract):
     def _extract_archive(self, archive_path: str, dest_dir: Path):
         """Extract tar.gz archive"""
         with (
-            tarfile.Path(archive_path).open("r:gz") as tar,
+            tarfile.Path(archive_path).open(
+                "r:gz",
+            ) as tar,
             tempfile.TemporaryDirectory() as tmpdir,
         ):
             # Extract with safety filter (Python 3.12+)

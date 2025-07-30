@@ -434,7 +434,7 @@ class TestConfigHotReloadingDuringChunking:
 
             def _load_config(self) -> dict[str, Any]:
                 """Load config from file."""
-                with open(self.config_path) as f:
+                with Path(self.config_path).open() as f:
                     return json.load(f)
 
             def reload_config(self) -> bool:

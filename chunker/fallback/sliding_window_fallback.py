@@ -749,7 +749,7 @@ class SlidingWindowFallback(FallbackChunker):
             List of code chunks
         """
         # Read the file content
-        with open(file_path, encoding="utf-8") as f:
+        with Path(file_path).open(encoding="utf-8") as f:
             content = f.read()
 
         # Use chunk_text method to process the content

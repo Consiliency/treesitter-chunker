@@ -576,9 +576,8 @@ class ConfigProcessor(SpecializedProcessor):
             # Collect all root key lines
             root_lines = []
             for i, line in enumerate(lines):
-                if not line.strip() or line.strip().startswith("#"):
-                    if i == 0 or (i > 0 and root_lines):
-                        root_lines.append(i)
+                if not line.strip() or line.strip().startswith("#") and i == 0 or (i > 0 and root_lines):
+                    root_lines.append(i)
                     continue
 
                 match = self._yaml_key_pattern.match(line)

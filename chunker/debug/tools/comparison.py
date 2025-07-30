@@ -125,30 +125,30 @@ class ChunkComparison(ChunkComparisonContract):
             chunks2 = all_chunks[strategies[1]]
 
             # Find unique chunks in first strategy
-            for c1 in chunks1:
-                if not any(self._chunks_overlap(c1, c2) for c2 in chunks2):
-                    differences.append(
-                        {
-                            "strategy": strategies[0],
-                            "unique_chunk": {
-                                "type": c1.node_type,
-                                "lines": f"{c1.start_line}-{c1.end_line}",
-                            },
-                        },
-                    )
+            differences.extend(
+                {
+                    "strategy": strategies[0],
+                    "unique_chunk": {
+                        "type": c1.node_type,
+                        "lines": f"{c1.start_line}-{c1.end_line}",
+                    },
+                }
+                for c1 in chunks1
+                if not any(self._chunks_overlap(c1, c2) for c2 in chunks2)
+            )
 
             # Find unique chunks in second strategy
-            for c2 in chunks2:
-                if not any(self._chunks_overlap(c1, c2) for c1 in chunks1):
-                    differences.append(
-                        {
-                            "strategy": strategies[1],
-                            "unique_chunk": {
-                                "type": c2.node_type,
-                                "lines": f"{c2.start_line}-{c2.end_line}",
-                            },
-                        },
-                    )
+            differences.extend(
+                {
+                    "strategy": strategies[1],
+                    "unique_chunk": {
+                        "type": c2.node_type,
+                        "lines": f"{c2.start_line}-{c2.end_line}",
+                    },
+                }
+                for c2 in chunks2
+                if not any(self._chunks_overlap(c1, c2) for c1 in chunks1)
+            )
 
         return {
             "file_path": file_path,

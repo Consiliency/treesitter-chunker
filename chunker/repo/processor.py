@@ -317,8 +317,10 @@ class RepoProcessor(RepoProcessorInterface):
                                 dirs_to_process.append(item)
                         elif item.is_file():
                             rel_path = item.relative_to(repo_path)
-                            if not exclude_spec.match_file(str(rel_path)) and self._should_process_file(item, file_pattern):
-                                    files.append(item)
+                            if not exclude_spec.match_file(
+                                str(rel_path),
+                            ) and self._should_process_file(item, file_pattern):
+                                files.append(item)
                 except PermissionError:
                     pass
         else:
@@ -337,8 +339,10 @@ class RepoProcessor(RepoProcessorInterface):
                     file_path = root_path / filename
                     rel_path = file_path.relative_to(repo_path)
 
-                    if not exclude_spec.match_file(str(rel_path)) and self._should_process_file(file_path, file_pattern):
-                            files.append(file_path)
+                    if not exclude_spec.match_file(
+                        str(rel_path),
+                    ) and self._should_process_file(file_path, file_pattern):
+                        files.append(file_path)
 
         return sorted(files)
 
@@ -559,7 +563,9 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
 
         if gitignore_path.exists():
             try:
-                with Path(gitignore_path).open("r") as f:
+                with Path(gitignore_path).open(
+                    "r",
+                ) as f:
                     for line in f:
                         line = line.strip()
                         if line and not line.startswith("#"):
@@ -574,7 +580,9 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
             if excludes_file:
                 excludes_path = Path(excludes_file).expanduser()
                 if excludes_path.exists():
-                    with Path(excludes_path).open("r") as f:
+                    with Path(excludes_path).open(
+                        "r",
+                    ) as f:
                         for line in f:
                             line = line.strip()
                             if line and not line.startswith("#"):
@@ -595,7 +603,9 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
         state_path = Path(repo_path) / self._incremental_state_file
 
         try:
-            with Path(state_path).open("w") as f:
+            with Path(state_path).open(
+                "w",
+            ) as f:
                 json.dump(state, f, indent=2)
         except (OSError, FileNotFoundError, IndexError):
             # Log error but don't fail
@@ -615,7 +625,9 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
 
         if state_path.exists():
             try:
-                with Path(state_path).open("r") as f:
+                with Path(state_path).open(
+                    "r",
+                ) as f:
                     return json.load(f)
             except (OSError, FileNotFoundError, IndexError):
                 pass
@@ -658,8 +670,10 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
                 filtered_files = []
                 for file_path in files:
                     rel_path = file_path.relative_to(repo_path)
-                    if not gitignore_spec.match_file(str(rel_path)) and self.should_process_file(str(file_path), repo_path):
-                            filtered_files.append(file_path)
+                    if not gitignore_spec.match_file(
+                        str(rel_path),
+                    ) and self.should_process_file(str(file_path), repo_path):
+                        filtered_files.append(file_path)
 
                 return filtered_files
         except (FileNotFoundError, IndexError, KeyError):

@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 import gzip
-import io
 import json
-from collections.abc import Iterator
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from chunker.interfaces.export import (
     ChunkRelationship,
@@ -16,7 +14,12 @@ from chunker.interfaces.export import (
     ExportMetadata,
     StructuredExporter,
 )
-from chunker.types import CodeChunk
+
+if TYPE_CHECKING:
+    import io
+    from collections.abc import Iterator
+
+    from chunker.types import CodeChunk
 
 
 class StructuredJSONExporter(StructuredExporter):

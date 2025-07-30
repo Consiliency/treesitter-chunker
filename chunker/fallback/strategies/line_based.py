@@ -178,7 +178,8 @@ class LineBasedChunker(FallbackChunker):
                     end_line=current_start + len(current_chunk) - 1,
                     byte_start=sum(len(line) for line in lines[: current_start - 1]),
                     byte_end=sum(
-                        len(line) for line in lines[: current_start - 1 + len(current_chunk)]
+                        len(line)
+                        for line in lines[: current_start - 1 + len(current_chunk)]
                     ),
                     parent_context=f"adaptive_{current_start}",
                     content=chunk_content,

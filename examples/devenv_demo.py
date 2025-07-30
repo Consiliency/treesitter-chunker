@@ -120,7 +120,9 @@ class BadlySpaced:
         print(f"Formatting applied: {'success' if success else 'failed'}")
 
         # Show the formatted content
-        with Path(format_file).open("r") as f:
+        with Path(format_file).open(
+            "r",
+        ) as f:
             print("\nFormatted code:")
             print(f.read())
 

@@ -323,7 +323,6 @@ class TestMemoryEfficiency:
         """Test that parsers are properly reused from cache/pool."""
         # Import and initialize properly
 
-
         # Ensure proper initialization
         if _factory is None:
             lib_path = Path(__file__).parent.parent / "build" / "my-languages.so"

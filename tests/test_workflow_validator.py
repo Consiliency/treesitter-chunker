@@ -297,7 +297,9 @@ class TestValidateAllWorkflows:
                     },
                 },
             }
-            with Path(workflows_dir / "valid.yml").open("w") as f:
+            with Path(workflows_dir / "valid.yml").open(
+                "w",
+            ) as f:
                 yaml.dump(valid_workflow, f)
 
             # Create invalid workflow
@@ -311,7 +313,9 @@ class TestValidateAllWorkflows:
                     },
                 },
             }
-            with Path(workflows_dir / "invalid.yaml").open("w") as f:
+            with Path(workflows_dir / "invalid.yaml").open(
+                "w",
+            ) as f:
                 yaml.dump(invalid_workflow, f)
 
             # Validate all

@@ -109,7 +109,6 @@ def parallel_processing():
     """Example with different parallelization settings."""
     print("\n=== Parallel Processing Comparison ===")
 
-
     # Single-threaded processing
     processor_single = RepoProcessor(show_progress=False, max_workers=1)
     start = time.time()

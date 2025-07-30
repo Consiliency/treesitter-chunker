@@ -4,8 +4,6 @@ Support for WebAssembly Text Format (WAT/WASM) language.
 
 from __future__ import annotations
 
-from tree_sitter import Node
-
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 
 from .base import ChunkRule, LanguageConfig
@@ -83,7 +81,12 @@ class WASMConfig(LanguageConfig):
 
 # Register the WASM configuration
 
+from typing import TYPE_CHECKING
+
 from . import language_config_registry
+
+if TYPE_CHECKING:
+    from tree_sitter import Node
 
 language_config_registry.register(WASMConfig(), aliases=["wat", "wast", "wasm"])
 

@@ -91,7 +91,11 @@ def main():
                 if log:
                     logger.error("Build log:\n%s", log)
 
-        logger.info("\nSuccessfully built %s/%s languages", success_count, len(languages))
+        logger.info(
+            "\nSuccessfully built %s/%s languages",
+            success_count,
+            len(languages),
+        )
     else:
         # Build all languages into one library
         results = builder.build(languages)
@@ -103,7 +107,11 @@ def main():
 
         # Report results
         success_count = sum(1 for success in results.values() if success)
-        logger.info("\nSuccessfully built %s/%s languages", success_count, len(languages))
+        logger.info(
+            "\nSuccessfully built %s/%s languages",
+            success_count,
+            len(languages),
+        )
 
         # Show errors
         for lang, success in results.items():

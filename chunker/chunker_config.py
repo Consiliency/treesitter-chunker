@@ -74,7 +74,7 @@ class ChunkerConfig:
         ext = config_path.suffix.lower()
 
         try:
-            with open(config_path) as f:
+            with Path(config_path).open() as f:
                 if ext == ".toml":
                     self.data = toml.load(f)
                 elif ext in {".yaml", ".yml"}:
@@ -117,7 +117,7 @@ class ChunkerConfig:
         save_data = self._prepare_save_data()
 
         try:
-            with open(config_path, "w") as f:
+            with Path(config_path).open("w") as f:
                 if ext == ".toml":
                     toml.dump(save_data, f)
                 elif ext in {".yaml", ".yml"}:
@@ -381,7 +381,10 @@ class ChunkerConfig:
             # Special handling for known list types
             if config_path == "enabled_languages":
                 self.enabled_languages = set(value.split(","))
-                logger.info("Set enabled_languages from env: %s", self.enabled_languages)
+                logger.info(
+                    "Set enabled_languages from env: %s",
+                    self.enabled_languages,
+                )
                 continue
             if config_path == "plugin_dirs":
                 self.plugin_dirs = [Path(p.strip()) for p in value.split(",")]

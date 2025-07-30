@@ -8,7 +8,7 @@ from pathlib import Path
 def fix_bare_except(file_path):
     """Fix E722 errors in a single file."""
     try:
-        with open(file_path, encoding="utf-8") as f:
+        with Path(file_path).open(encoding="utf-8") as f:
             content = f.read()
 
         original = content
@@ -20,7 +20,7 @@ def fix_bare_except(file_path):
         content = pattern.sub(r"\1except Exception:", content)
 
         if content != original:
-            with open(file_path, "w", encoding="utf-8") as f:
+            with Path(file_path).open("w", encoding="utf-8") as f:
                 f.write(content)
             return True
         return False
@@ -33,7 +33,14 @@ def main():
     """Fix E722 errors in the codebase."""
     # Get all Python files
     files_to_check = []
-    for pattern in ["chunker/**/*.py", "tests/**/*.py", "cli/**/*.py", "benchmarks/**/*.py", "examples/**/*.py", "scripts/**/*.py"]:
+    for pattern in [
+        "chunker/**/*.py",
+        "tests/**/*.py",
+        "cli/**/*.py",
+        "benchmarks/**/*.py",
+        "examples/**/*.py",
+        "scripts/**/*.py",
+    ]:
         files_to_check.extend(Path().glob(pattern))
 
     fixed = 0
@@ -45,7 +52,7 @@ def main():
 
         # Check if file has bare except
         try:
-            with open(file_path, encoding="utf-8") as f:
+            with Path(file_path).open(encoding="utf-8") as f:
                 content = f.read()
                 if re.search(r"^\s*except\s*:\s*$", content, re.MULTILINE):
                     total += 1

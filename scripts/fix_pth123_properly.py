@@ -14,7 +14,7 @@ def fix_open_calls(file_path: Path) -> bool:
         original = content
 
         # Pattern to match open() calls
-        # Match: Path(filename).open(mode) or Path(filename).open("r")
+        # Match: Path(filename).open(mode) or Path(filename).open("r", )
         pattern = r"\bopen\s*\(\s*([^,\)]+?)(?:\s*,\s*([^)]+?))?\s*\)"
 
         def replace_open(match):
@@ -22,7 +22,9 @@ def fix_open_calls(file_path: Path) -> bool:
             mode_args = match.group(2).strip() if match.group(2) else '"r"'
 
             # Skip if it's already a Path().open() call
-            if "Path(" in file_arg or ".Path(" in match.group(0).open("r"):
+            if "Path(" in file_arg or ".Path(" in match.group(0).open(
+                "r",
+            ):
                 return match.group(0)
 
             # Skip if file_arg is a file object (like sys.stdout)
@@ -44,7 +46,7 @@ def fix_open_calls(file_path: Path) -> bool:
                 return match.group(0)
 
             # Return proper replacement
-            return f'Path({file_arg}).Path({mode_args}).open("r")'
+            return f'Path({file_arg}).Path({mode_args}).open("r", )'
 
         # Replace open() calls
         content = re.sub(pattern, replace_open, content)

@@ -132,18 +132,18 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
                 # Parse ruff JSON output
                 try:
                     ruff_output = json.loads(result.stdout)
-                    for issue in ruff_output:
-                        issues.append(
-                            {
-                                "tool": "ruff",
-                                "file": issue.get("filename", ""),
-                                "line": issue.get("location", {}).get("row", 0),
-                                "column": issue.get("location", {}).get("column", 0),
-                                "code": issue.get("code", ""),
-                                "message": issue.get("message", ""),
-                                "fixable": issue.get("fix") is not None,
-                            },
-                        )
+                    issues.extend(
+                        {
+                            "tool": "ruff",
+                            "file": issue.get("filename", ""),
+                            "line": issue.get("location", {}).get("row", 0),
+                            "column": issue.get("location", {}).get("column", 0),
+                            "code": issue.get("code", ""),
+                            "message": issue.get("message", ""),
+                            "fixable": issue.get("fix") is not None,
+                        }
+                        for issue in ruff_output
+                    )
                 except json.JSONDecodeError:
                     # Fallback for non-JSON output
                     if result.returncode != 0:

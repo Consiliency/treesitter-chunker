@@ -15,7 +15,7 @@ from chunker.export.sqlite_exporter import SQLiteExporter
 from chunker.types import CodeChunk
 
 
-@pytest.fixture
+@pytest.fixture()
 def sample_chunks():
     """Create sample code chunks for testing."""
     return [
@@ -172,7 +172,9 @@ class TestNeo4jExporter:
         assert import_file.exists()
 
         # Verify CSV content
-        with Path(nodes_file).open("r") as f:
+        with Path(nodes_file).open(
+            "r",
+        ) as f:
             reader = csv.DictReader(f)
             rows = list(reader)
             assert len(rows) == 3
@@ -399,7 +401,9 @@ class TestPostgresExporter:
         assert import_file.exists()
 
         # Verify CSV content
-        with Path(chunks_file).open("r") as f:
+        with Path(chunks_file).open(
+            "r",
+        ) as f:
             reader = csv.reader(f)
             rows = list(reader)
             assert len(rows) == 3  # 3 chunks

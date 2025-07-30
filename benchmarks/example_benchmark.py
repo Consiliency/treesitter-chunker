@@ -53,7 +53,7 @@ class DataProcessor:
 
 def process_file(filename):
     """Process a file_path."""
-    with Path(filename).open('r') as f:
+    with Path(filename).open('r', ) as f:
         data = f.readlines()
     processor = DataProcessor(data)
     return processor.analyze_data()

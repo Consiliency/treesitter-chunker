@@ -15,7 +15,7 @@ from chunker.grammar.discovery import GrammarDiscoveryService
 class TestGrammarDiscoveryService:
     """Test the real GrammarDiscoveryService implementation"""
 
-    @pytest.fixture
+    @pytest.fixture()
     def discovery_service(self):
         """Create a discovery service with a temporary cache directory"""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -24,7 +24,7 @@ class TestGrammarDiscoveryService:
             service.cache_file = service.cache_dir / "discovery_cache.json"
             yield service
 
-    @pytest.fixture
+    @pytest.fixture()
     def mock_github_response(self):
         """Mock GitHub API response"""
         return [
@@ -133,7 +133,10 @@ class TestGrammarDiscoveryService:
 
         # Write cache
         discovery_service.cache_file.parent.mkdir(parents=True, exist_ok=True)
-        with discovery_service.cache_file.Path("w").open("r") as f:
+        with discovery_service.cache_file.open(
+            "w",
+            "r",
+        ) as f:
             json.dump(cache_data, f)
 
         with patch.object(discovery_service._session, "get") as mock_get:
@@ -189,7 +192,10 @@ class TestGrammarDiscoveryService:
         }
 
         discovery_service.cache_file.parent.mkdir(parents=True, exist_ok=True)
-        with discovery_service.cache_file.Path("w").open("r") as f:
+        with discovery_service.cache_file.open(
+            "w",
+            "r",
+        ) as f:
             json.dump(cache_data, f)
 
         # Test exact match
@@ -237,7 +243,10 @@ class TestGrammarDiscoveryService:
         }
 
         discovery_service.cache_file.parent.mkdir(parents=True, exist_ok=True)
-        with discovery_service.cache_file.Path("w").open("r") as f:
+        with discovery_service.cache_file.open(
+            "w",
+            "r",
+        ) as f:
             json.dump(cache_data, f)
 
         installed = {
@@ -293,7 +302,10 @@ class TestGrammarDiscoveryService:
         }
 
         discovery_service.cache_file.parent.mkdir(parents=True, exist_ok=True)
-        with discovery_service.cache_file.Path("w").open("r") as f:
+        with discovery_service.cache_file.open(
+            "w",
+            "r",
+        ) as f:
             json.dump(cache_data, f)
 
         # Search by name

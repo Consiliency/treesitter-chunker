@@ -67,7 +67,6 @@ class TestClass:
         return 3
 '''
 
-
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
         f.write(test_content)
         test_file = Path(f.name)
@@ -155,7 +154,6 @@ def demo_batch_processing():
 def demo_memory_pooling():
     """Demonstrate memory pooling benefits."""
     print("\n\n=== Memory Pooling Demo ===")
-
 
     pool = MemoryPool(max_pool_size=5)
 

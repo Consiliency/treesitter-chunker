@@ -301,7 +301,9 @@ class DefaultChunkCache(ChunkCache):
         index_path = self.cache_dir / "index.json"
         if index_path.exists():
             try:
-                with Path(index_path).open("r") as f:
+                with Path(index_path).open(
+                    "r",
+                ) as f:
                     return json.load(f)
             except (OSError, FileNotFoundError, IndexError):
                 return {}
@@ -310,7 +312,9 @@ class DefaultChunkCache(ChunkCache):
     def _save_index(self) -> None:
         """Save cache index."""
         index_path = self.cache_dir / "index.json"
-        with Path(index_path).open("w") as f:
+        with Path(index_path).open(
+            "w",
+        ) as f:
             json.dump(self._index, f, indent=2)
 
     def _get_cache_path(self, file_path: str) -> Path:
@@ -338,7 +342,9 @@ class DefaultChunkCache(ChunkCache):
 
         # Save to file
         cache_path = self._get_cache_path(file_path)
-        with Path(cache_path).open("wb") as f:
+        with Path(cache_path).open(
+            "wb",
+        ) as f:
             pickle.dump(entry, f)
 
         # Update index
@@ -378,7 +384,9 @@ class DefaultChunkCache(ChunkCache):
             return None
 
         try:
-            with Path(cache_path).open("rb") as f:
+            with Path(cache_path).open(
+                "rb",
+            ) as f:
                 entry = pickle.load(f)
             self.stats["hits"] += 1
             return entry
@@ -473,12 +481,16 @@ class DefaultChunkCache(ChunkCache):
                     ],
                 }
 
-        with Path(output_path).open("w") as f:
+        with Path(output_path).open(
+            "w",
+        ) as f:
             json.dump(export_data, f, indent=2)
 
     def import_cache(self, input_path: str) -> None:
         """Import cache from file."""
-        with Path(input_path).open("r") as f:
+        with Path(input_path).open(
+            "r",
+        ) as f:
             import_data = json.load(f)
 
         # Clear existing cache

@@ -14,6 +14,7 @@ import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import psutil
@@ -249,7 +250,9 @@ class TestStatePersistence:
 
             # Save checkpoint every 3 files
             if (i + 1) % 3 == 0:
-                with open(checkpoint_file, "w") as f:
+                with Path(checkpoint_file).open(
+                    "w",
+                ) as f:
                     json.dump(
                         {
                             "processed": processed,
@@ -261,7 +264,7 @@ class TestStatePersistence:
 
         # Verify checkpoint exists and is valid
         assert checkpoint_file.exists()
-        with open(checkpoint_file) as f:
+        with Path(checkpoint_file).open() as f:
             checkpoint_data = json.load(f)
             assert len(checkpoint_data["processed"]) >= 9
             assert checkpoint_data["total"] == 10
@@ -284,11 +287,13 @@ class TestStatePersistence:
             "timestamp": time.time(),
         }
 
-        with open(checkpoint_file, "w") as f:
+        with Path(checkpoint_file).open(
+            "w",
+        ) as f:
             json.dump(checkpoint_data, f)
 
         # Resume from checkpoint
-        with open(checkpoint_file) as f:
+        with Path(checkpoint_file).open() as f:
             state = json.load(f)
 
         already_processed = set(state["processed"])
@@ -315,7 +320,7 @@ class TestStatePersistence:
         # Try to load checkpoint
         checkpoint_data = None
         try:
-            with open(checkpoint_file) as f:
+            with Path(checkpoint_file).open() as f:
                 checkpoint_data = json.load(f)
         except json.JSONDecodeError:
             # Handle corruption - start fresh
@@ -356,7 +361,7 @@ class TestStatePersistence:
             try:
                 # Read current state
                 if state_file.exists() and state_file.stat().st_size > 0:
-                    with open(state_file) as f:
+                    with Path(state_file).open() as f:
                         try:
                             state = json.load(f)
                         except json.JSONDecodeError:
@@ -377,7 +382,9 @@ class TestStatePersistence:
                     state_file.parent
                     / f"tmp_{worker_id}_{random.randint(1000,9999)}.json"
                 )
-                with open(temp_file, "w") as f:
+                with Path(temp_file).open(
+                    "w",
+                ) as f:
                     json.dump(state, f)
                     f.flush()
                     os.fsync(f.fileno())
@@ -415,7 +422,7 @@ class TestStatePersistence:
 
         # Verify state consistency
         if state_file.exists():
-            with open(state_file) as f:
+            with Path(state_file).open() as f:
                 final_state = json.load(f)
 
             # Should have some results from workers
@@ -535,7 +542,9 @@ class OuterClass:
         partial_export = tmp_path / "partial_export.jsonl"
 
         # Write some complete chunks
-        with open(partial_export, "w") as f:
+        with Path(partial_export).open(
+            "w",
+        ) as f:
             for i in range(3):
                 chunk_data = {
                     "content": f"def func{i}(): pass",
@@ -556,7 +565,7 @@ class OuterClass:
         complete_chunks = []
         incomplete_chunks = []
 
-        with open(partial_export) as f:
+        with Path(partial_export).open() as f:
             for line in f:
                 line = line.strip()
                 if line:
@@ -586,13 +595,15 @@ class OuterClass:
         ]
 
         # Append to complete export
-        with open(partial_export, "a") as f:
+        with Path(partial_export).open(
+            "a",
+        ) as f:
             f.write("\n")  # Complete the incomplete line
             for chunk in remaining_chunks:
                 f.write(json.dumps(chunk) + "\n")
 
         # Verify completed export
-        with open(partial_export) as f:
+        with Path(partial_export).open() as f:
             all_lines = f.readlines()
             assert len(all_lines) >= 5
 
@@ -622,7 +633,9 @@ class OuterClass:
                 "chunks": len(chunks),
             }
 
-        with open(results_file, "w") as f:
+        with Path(results_file).open(
+            "w",
+        ) as f:
             json.dump(results, f)
 
         # Modify one file, add another
@@ -633,7 +646,7 @@ class OuterClass:
         (project_dir / "module3.py").write_text("def func3(): pass")
 
         # Incremental update
-        with open(results_file) as f:
+        with Path(results_file).open() as f:
             previous_results = json.load(f)
 
         updated_files = []
@@ -700,7 +713,7 @@ def simple_function():
             except ParserError:
                 # Fallback: simple line-based parsing
                 chunks = []
-                with open(test_file) as f:
+                with Path(test_file).open() as f:
                     lines = f.readlines()
 
                 current_chunk = []
@@ -822,7 +835,7 @@ function test() {
         chunks_processed = 0
         batch_size = 100
 
-        with open(large_file) as f:
+        with Path(large_file).open() as f:
             lines = f.readlines()
 
         while chunks_processed < len(lines) // 4:  # Process by function (4 lines each)

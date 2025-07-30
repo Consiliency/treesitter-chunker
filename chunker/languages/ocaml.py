@@ -4,8 +4,6 @@ Support for OCaml language.
 
 from __future__ import annotations
 
-from tree_sitter import Node
-
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 
 from .base import ChunkRule, LanguageConfig
@@ -72,7 +70,12 @@ class OCamlConfig(LanguageConfig):
 
 # Register the OCaml configuration
 
+from typing import TYPE_CHECKING
+
 from . import language_config_registry
+
+if TYPE_CHECKING:
+    from tree_sitter import Node
 
 language_config_registry.register(OCamlConfig(), aliases=["ml", "mli"])
 

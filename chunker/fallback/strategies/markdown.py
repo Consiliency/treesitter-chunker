@@ -308,7 +308,9 @@ class MarkdownChunker(FallbackChunker, IMarkdownChunker):
             current_section_lines.append(line)
 
         # Handle remaining lines
-        if current_section_lines and any(line.strip() for line in current_section_lines):
+        if current_section_lines and any(
+            line.strip() for line in current_section_lines
+        ):
             chunk = self._create_section_chunk(
                 current_section_lines,
                 current_start_line,

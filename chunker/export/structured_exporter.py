@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import io
-from collections.abc import Iterator
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from chunker.exceptions import ChunkerError
 from chunker.interfaces.export import (
@@ -17,7 +15,12 @@ from chunker.interfaces.export import (
     ExportTransformer,
     StructuredExporter,
 )
-from chunker.types import CodeChunk
+
+if TYPE_CHECKING:
+    import io
+    from collections.abc import Iterator
+
+    from chunker.types import CodeChunk
 
 
 class StructuredExportOrchestrator(StructuredExporter):

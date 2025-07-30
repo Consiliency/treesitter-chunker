@@ -10,7 +10,7 @@ from chunker.parser import get_parser
 class TestChunkerWithContext:
     """Test integrating context extraction with chunking."""
 
-    @pytest.fixture
+    @pytest.fixture()
     def python_code_with_dependencies(self):
         """Python code with interdependencies."""
         return '''
@@ -116,7 +116,9 @@ def create_square(size: float) -> Polygon:
         # Filter relevant context
         all_context = imports + type_defs + parent_context + dependencies
         relevant_context = [
-            item for item in all_context if filter_func.is_relevant(item, perimeter_node)
+            item
+            for item in all_context
+            if filter_func.is_relevant(item, perimeter_node)
         ]
 
         # Build context prefix
@@ -176,7 +178,9 @@ def create_square(size: float) -> Polygon:
         # Build context
         all_context = dependencies + type_defs
         relevant_context = [
-            item for item in all_context if filter_func.is_relevant(item, create_square_node)
+            item
+            for item in all_context
+            if filter_func.is_relevant(item, create_square_node)
         ]
 
         context_prefix = extractor.build_context_prefix(relevant_context)

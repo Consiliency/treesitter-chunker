@@ -37,7 +37,7 @@ class TestPhase10FullIntegration:
         # Create a Python backend file_path
         self.backend_file = Path(self.test_dir) / "api" / "server.py"
         Path(Path(self.backend_file).mkdir(parents=True).parent, exist_ok=True)
-        with open(self.backend_file, "w") as f:
+        with Path(self.backend_file).open("w") as f:
             f.write(
                 '''
 """API server for data processing."""
@@ -107,7 +107,7 @@ def status():
         # Create a JavaScript frontend file_path
         self.frontend_file = Path(self.test_dir) / "frontend" / "client.js"
         Path(Path(self.frontend_file).mkdir(parents=True).parent, exist_ok=True)
-        with open(self.frontend_file, "w") as f:
+        with Path(self.frontend_file).open("w") as f:
             f.write(
                 """
 // JavaScript API Client
@@ -164,7 +164,7 @@ client.processData(testData).then(results => {
 
         # Create a SQL file_path
         self.sql_file = Path(self.test_dir) / "schema.sql"
-        with open(self.sql_file, "w") as f:
+        with Path(self.sql_file).open("w") as f:
             f.write(
                 """
 -- Database schema for processed data
@@ -303,7 +303,7 @@ CREATE TABLE IF NOT EXISTS processing_log (
             incremental_processor.update_chunks(file_path, chunks)
 
         # Simulate file_path modification
-        with open(self.backend_file, "a") as f:
+        with Path(self.backend_file).open("a") as f:
             f.write(
                 '''
 
@@ -396,7 +396,9 @@ def clear_cache():
         """Test error handling across all Phase 10 features."""
         # Empty file_path handling
         empty_file = Path(self.test_dir) / "empty.py"
-        with Path(empty_file).open("w") as f:
+        with Path(empty_file).open(
+            "w",
+        ) as f:
             f.write("")
 
         # Multi-language processor should handle empty files

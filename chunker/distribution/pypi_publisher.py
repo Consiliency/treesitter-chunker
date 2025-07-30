@@ -138,7 +138,9 @@ class PyPIPublisher:
         pypirc_path = Path.home() / ".pypirc"
         if pypirc_path.exists():
             # Simple check if repository section exists
-            with Path(pypirc_path).open("r") as f:
+            with Path(pypirc_path).open(
+                "r",
+            ) as f:
                 content = f.read()
                 if f"[{repository}]" in content:
                     return True

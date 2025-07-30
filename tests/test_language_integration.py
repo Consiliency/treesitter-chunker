@@ -17,7 +17,6 @@ class TestLanguageIntegration:
 
         # Force re-import of python config
 
-
         importlib.reload(chunker.languages.python)
 
     def test_python_config_registered(self):
@@ -146,7 +145,6 @@ class TestClass {
         language_config_registry.clear()
         # Re-register Python config for other tests
 
-
         importlib.reload(chunker.languages.python)
 
     def test_ignore_types_work(self, tmp_path):
@@ -247,7 +245,6 @@ class MyClass:
             )
         else:
             # Re-register default Python config
-
 
             importlib.reload(chunker.languages.python)
 
@@ -367,7 +364,6 @@ lambda x: x + 1
                 aliases=["py", "python3"],
             )
         else:
-
 
             importlib.reload(chunker.languages.python)
 
@@ -494,7 +490,6 @@ class TestPythonConfigSpecific:
 
         # Force re-import of python config
 
-
         importlib.reload(chunker.languages.python)
 
     def test_lambda_chunking(self, tmp_path):
@@ -595,7 +590,6 @@ def my_function():
                 aliases=["py", "python3"],
             )
         else:
-
 
             importlib.reload(chunker.languages.python)
 

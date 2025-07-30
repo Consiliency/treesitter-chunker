@@ -50,9 +50,7 @@ def fix_imports_simple(file_path: Path) -> bool:
             stripped = line.strip()
 
             # Track docstring
-            if not in_docstring and (
-                stripped.startswith(('"""', "'''"))
-            ):
+            if not in_docstring and (stripped.startswith(('"""', "'''"))):
                 docstring_char = stripped[:3]
                 if stripped.endswith(docstring_char) and len(stripped) > 6:
                     # Single line docstring

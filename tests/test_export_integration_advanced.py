@@ -120,7 +120,7 @@ class ParentClass:
         exporter = JSONExporter(schema_type=SchemaType.FLAT)
         exporter.export(chunks, json_file)
 
-        with open(json_file) as f:
+        with Path(json_file).open() as f:
             data = json.load(f)
 
         # Flat schema should have simple structure
@@ -157,7 +157,7 @@ class Referencer:
         exporter = JSONExporter(schema_type=SchemaType.FULL)
         exporter.export(chunks, json_file)
 
-        with open(json_file) as f:
+        with Path(json_file).open() as f:
             data = json.load(f)
 
         # Full schema should have metadata and structure
@@ -190,7 +190,7 @@ class SimpleClass:
         exporter = JSONExporter(schema_type=SchemaType.MINIMAL)
         exporter.export(chunks, json_file)
 
-        with open(json_file) as f:
+        with Path(json_file).open() as f:
             data = json.load(f)
 
         # Minimal schema should have minimal fields
@@ -233,7 +233,9 @@ class Module_{i}:
         results = chunk_files_parallel(files, language="python", num_workers=2)
 
         # Collect all chunks
-        all_chunks = [item for chunks in results.values() for item in chunks]        # Export to all formats
+        all_chunks = [
+            item for chunks in results.values() for item in chunks
+        ]  # Export to all formats
         export_dir = tmp_path / "exports"
         export_dir.mkdir()
 
@@ -291,7 +293,7 @@ class TestClass:
             exporter = JSONExporter(schema_type=schema_type)
             exporter.export(chunks, json_file)
 
-            with open(json_file) as f:
+            with Path(json_file).open() as f:
                 formats_data[schema_type.value] = json.load(f)
 
         # JSONL
@@ -300,7 +302,7 @@ class TestClass:
         jsonl_exporter.export(chunks, jsonl_file)
 
         jsonl_data = []
-        with open(jsonl_file) as f:
+        with Path(jsonl_file).open() as f:
             for line in f:
                 jsonl_data.append(json.loads(line))
         formats_data["jsonl"] = jsonl_data
@@ -457,7 +459,6 @@ class TestLargeScaleExport:
     def test_export_memory_efficiency(self, tmp_path):
         """Test memory efficiency during large exports."""
 
-
         # Create many chunks
         chunks = []
         for i in range(1000):
@@ -606,7 +607,7 @@ class TestClass:
         exporter = JSONExporter()
         exporter.export(large_chunks, output_file)
 
-        with open(output_file) as f:
+        with Path(output_file).open() as f:
             data = json.load(f)
 
         # Should only have large function
@@ -653,7 +654,7 @@ class TestClass:
         ]
 
         # Manually append to test incremental export
-        with open(output_file, "a") as f:
+        with Path(output_file).open("a") as f:
             for chunk in chunks_batch2:
                 formatter = FlatFormatter()
                 chunk_dict = formatter._chunk_to_dict(chunk)

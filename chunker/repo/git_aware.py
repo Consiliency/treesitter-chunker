@@ -215,7 +215,7 @@ class GitAwareProcessorImpl(GitAwareProcessor):
         # Find all .gitignore files
         for gitignore_path in repo_path_obj.rglob(".gitignore"):
             try:
-                with open(gitignore_path, encoding="utf-8") as f:
+                with Path(gitignore_path).open(encoding="utf-8") as f:
                     for line in f:
                         line = line.strip()
                         if line and not line.startswith("#"):
@@ -255,7 +255,7 @@ class GitAwareProcessorImpl(GitAwareProcessor):
         # Save state
         state_file = state_dir / self._state_file
         try:
-            with open(state_file, "w", encoding="utf-8") as f:
+            with Path(state_file).open("w", encoding="utf-8") as f:
                 json.dump(state, f, indent=2)
         except (OSError, FileNotFoundError, IndexError) as e:
             logger.error("Failed to save incremental state: %s", e)
@@ -276,7 +276,7 @@ class GitAwareProcessorImpl(GitAwareProcessor):
             return None
 
         try:
-            with open(state_file, encoding="utf-8") as f:
+            with Path(state_file).open(encoding="utf-8") as f:
                 state = json.load(f)
 
             # Validate state version
@@ -300,7 +300,7 @@ class GitAwareProcessorImpl(GitAwareProcessor):
             SHA256 hash of file contents
         """
         try:
-            with open(file_path, "rb") as f:
+            with Path(file_path).open("rb") as f:
                 return hashlib.sha256(f.read()).hexdigest()
         except (FileNotFoundError, OSError):
             return ""

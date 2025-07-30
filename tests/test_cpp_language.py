@@ -31,7 +31,6 @@ class TestCppLanguageFeatures:
 
         # Force re-import of cpp config
 
-
         importlib.reload(chunker.languages.cpp)
 
     def test_cpp_parser_available(self):

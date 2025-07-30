@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .chunker import (
     chunk_file,
@@ -17,9 +17,11 @@ from .chunker import (
     chunk_text_with_token_limit,
 )
 from .contracts.auto_contract import AutoChunkResult, ZeroConfigContract
-from .contracts.registry_contract import UniversalRegistryContract
 from .exceptions import ChunkerError
 from .fallback.sliding_window_fallback import SlidingWindowFallback
+
+if TYPE_CHECKING:
+    from .contracts.registry_contract import UniversalRegistryContract
 
 
 class ZeroConfigAPI(ZeroConfigContract):
@@ -291,7 +293,9 @@ class ZeroConfigAPI(ZeroConfigContract):
 
         # 2. Check shebang for scripts
         try:
-            with Path(file_path).open("rb") as f:
+            with Path(file_path).open(
+                "rb",
+            ) as f:
                 first_line = f.readline()
                 if first_line.startswith(b"#!"):
                     shebang = first_line.decode("utf-8", errors="ignore").strip()

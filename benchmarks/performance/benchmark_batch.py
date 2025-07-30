@@ -66,18 +66,17 @@ class MyClass_{file_idx}:
 '''
             else:
                 # Larger file
-                functions = []
-                for i in range(10):
-                    functions.append(
-                        f'''
+                functions = [
+                    f'''
 def function_{i}_{file_idx}(param):
     """Function {i} in file {file_idx}."""
     result = param * {i}
     for j in range(10):
         result += j
     return result
-''',
-                    )
+'''
+                    for i in range(10)
+                ]
                 content = "\n".join(functions)
 
             file_path.write_text(content)

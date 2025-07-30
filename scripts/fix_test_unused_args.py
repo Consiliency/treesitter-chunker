@@ -25,9 +25,7 @@ def fix_test_file(file_path: Path) -> bool:
                 # Check if next line is already a del statement or docstring
                 if i + 1 < len(lines):
                     next_line = lines[i + 1].strip()
-                    if not (
-                        next_line.startswith(('"""', "'''", "del "))
-                    ):
+                    if not (next_line.startswith(('"""', "'''", "del "))):
                         # Look for fixture names in the function signature
                         fixtures = re.findall(
                             r"\b(tmp_path|temp_dir|capsys|caplog|monkeypatch|mock_\w+|fixture_\w+)\b",

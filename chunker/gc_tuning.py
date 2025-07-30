@@ -280,7 +280,6 @@ class MemoryOptimizer:
     def get_memory_usage(self) -> dict[str, Any]:
         """Get current memory usage statistics."""
 
-
         process = psutil.Process(os.getpid())
         memory_info = process.memory_info()
 

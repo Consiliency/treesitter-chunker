@@ -1,5 +1,6 @@
 """Integration tests for Phase 15: Production Readiness & Developer Experience."""
 
+import contextlib
 from pathlib import Path
 
 from chunker.cicd.pipeline import CICDPipelineImpl as CICDPipelineStub
@@ -13,9 +14,7 @@ from chunker.contracts.distribution_stub import DistributionStub, ReleaseManagem
 from chunker.tooling.developer import DeveloperToolingImpl
 
 # Import actual implementation for CI/CD
-try:
-    pass
-except ImportError:
+with contextlib.suppress(ImportError):
     pass
 
 

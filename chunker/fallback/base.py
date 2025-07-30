@@ -363,7 +363,6 @@ class FallbackChunker(IFallbackChunker):
             ".conf": "config",
         }
 
-
         ext = os.path.splitext(self.file_path)[1].lower()
         return ext_map.get(ext, "unknown")
 

@@ -17,7 +17,7 @@ from tests.integration.coordinator import (
 class TestIntegrationCoordinator:
     """Test the IntegrationCoordinator class."""
 
-    @pytest.fixture
+    @pytest.fixture()
     def coordinator(self, tmp_path):
         """Create a coordinator instance."""
         base_path = tmp_path / "worktrees"
@@ -62,7 +62,9 @@ class TestIntegrationCoordinator:
             ],
         }
 
-        with Path(config_file).open("w") as f:
+        with Path(config_file).open(
+            "w",
+        ) as f:
             json.dump(config_data, f)
 
         coordinator.register_scenarios_from_config(config_file)
@@ -335,7 +337,9 @@ class TestIntegrationCoordinator:
 
         assert report_file.exists()
 
-        with Path(report_file).open("r") as f:
+        with Path(report_file).open(
+            "r",
+        ) as f:
             loaded_report = json.load(f)
 
         assert loaded_report["summary"]["total"] == 1
