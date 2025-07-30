@@ -9,8 +9,6 @@ This script automates the entire packaging process including:
 - Preparing release artifacts
 """
 
-import requests
-import toml
 import argparse
 import hashlib
 import os
@@ -20,7 +18,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+import requests
+import toml
+
 try:
+    pass
 except ImportError:
     requests = None
 

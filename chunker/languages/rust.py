@@ -1,11 +1,8 @@
 from __future__ import annotations
+
 from tree_sitter import Node
 
-from typing import TYPE_CHECKING
-
 from .plugin_base import LanguagePlugin
-
-if TYPE_CHECKING:
 
 
 class RustPlugin(LanguagePlugin):
@@ -61,7 +58,9 @@ class RustPlugin(LanguagePlugin):
                     "reference_type",
                     "pointer_type",
                 }:
-                    impl_type = chunk.content.encode("utf-8")[child.start_byte : child.end_byte].decode(
+                    impl_type = chunk.content.encode("utf-8")[
+                        child.start_byte : child.end_byte
+                    ].decode(
                         "utf-8",
                     )
                     break

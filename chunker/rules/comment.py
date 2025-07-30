@@ -399,7 +399,12 @@ class InlineCommentGroupRule(BaseCommentBlockRule):
 
         # Get all sibling comment nodes
         parent = start_node.parent
-        comment_nodes = [child for child in parent.children if child.type in ["comment", "line_comment"]]        if not comment_nodes:
+        comment_nodes = [
+            child
+            for child in parent.children
+            if child.type in ["comment", "line_comment"]
+        ]
+        if not comment_nodes:
             return None
 
         # Group comments by proximity

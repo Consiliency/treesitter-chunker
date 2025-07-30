@@ -3,7 +3,6 @@ Integration tests for Development Environment Component
 Tests the actual implementation against the contract
 """
 
-from chunker.contracts.devenv_contract import (
 import shutil
 import subprocess
 import tempfile
@@ -15,6 +14,7 @@ import pytest
 from chunker.devenv import DevelopmentEnvironment, QualityAssurance
 
 if TYPE_CHECKING:
+    from chunker.contracts.devenv_contract import (
         DevelopmentEnvironmentContract,
         QualityAssuranceContract,
     )

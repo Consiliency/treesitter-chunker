@@ -6,32 +6,34 @@ Per-language helpers live here (e.g. node-type mappings, heuristics).
 
 # Phase 2.1 exports (LanguageConfig system)
 
-from . import clojure
-from . import css
-from . import dart
-from . import dockerfile
-from . import elixir
-from . import go_plugin
-from . import haskell
-from . import html
-from . import java_plugin
-from . import json
-from . import julia
-from . import matlab
-from . import nasm
-from . import ocaml
-from . import python
-from . import r
-from . import ruby_plugin
-from . import scala
-from . import sql
-from . import svelte
-from . import toml
-from . import vue
-from . import wasm
-from . import xml
-from . import yaml
-from . import zig
+from . import (
+    clojure,
+    css,
+    dart,
+    dockerfile,
+    elixir,
+    go_plugin,
+    haskell,
+    html,
+    java_plugin,
+    json,
+    julia,
+    matlab,
+    nasm,
+    ocaml,
+    python,
+    r,
+    ruby_plugin,
+    scala,
+    sql,
+    svelte,
+    toml,
+    vue,
+    wasm,
+    xml,
+    yaml,
+    zig,
+)
 from .base import (
     ChunkRule,
     CompositeLanguageConfig,
@@ -133,109 +135,135 @@ __all__ = [
 
 # Auto-import language configurations to register them
 try:
+    pass
 except ImportError:
     pass
 
 try:
+    pass
 except ImportError:
     pass
 
 try:
+    pass
 except ImportError:
     pass
 
 try:
+    pass
 except ImportError:
     pass
 
 # Auto-import Tier 1 language configurations
 try:
+    pass
 except ImportError:
     pass
 
 try:
+    pass
 except ImportError:
     pass
 
 try:
+    pass
 except ImportError:
     pass
 
 try:
+    pass
 except ImportError:
     pass
 
 try:
+    pass
 except ImportError:
     pass
 
 try:
+    pass
 except ImportError:
     pass
 
 # Auto-import Tier 2 language configurations
 try:
+    pass
 except ImportError:
     pass
 
 try:
+    pass
 except ImportError:
     pass
 
 try:
+    pass
 except ImportError:
     pass
 
 try:
+    pass
 except ImportError:
     pass
 
 try:
+    pass
 except ImportError:
     pass
 
 try:
+    pass
 except ImportError:
     pass
 
 # Auto-import Tier 3 language configurations
 try:
+    pass
 except ImportError:
     pass
 
 try:
+    pass
 except ImportError:
     pass
 
 try:
+    pass
 except ImportError:
     pass
 
 try:
+    pass
 except ImportError:
     pass
 
 try:
+    pass
 except ImportError:
     pass
 
 try:
+    pass
 except ImportError:
     pass
 
 try:
+    pass
 except ImportError:
     pass
 
 # Auto-import Tier 4 language configurations
 try:
+    pass
 except ImportError:
     pass
 
 try:
+    pass
 except ImportError:
     pass
 
 try:
+    pass
 except ImportError:
     pass

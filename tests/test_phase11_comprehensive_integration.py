@@ -8,10 +8,9 @@ Tests the integration of:
 - All processors working together
 """
 
-from chunker.sliding_window import (
 import shutil
-import time
 import tempfile
+import time
 from pathlib import Path
 
 import pytest
@@ -378,6 +377,7 @@ def process(items):
     def test_streaming_with_token_limits(self):
         """Test streaming processing with token limits."""
         try:
+            from chunker.sliding_window import (
                 DefaultSlidingWindowEngine,
                 WindowConfig,
                 WindowUnit,
@@ -461,7 +461,6 @@ def function_{i}(param1, param2):
 
 ''',
                 )
-
 
         start_time = time.time()
 

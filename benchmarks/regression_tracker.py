@@ -4,10 +4,9 @@ This module tracks performance metrics over time and detects regressions.
 """
 
 import argparse
-import matplotlib.pyplot as plt
-import subprocess
 import json
 import statistics
+import subprocess
 import sys
 import warnings
 from dataclasses import asdict, dataclass, field
@@ -358,6 +357,7 @@ class PerformanceHistory:
     def plot_history(self, metric: str, output_file: Path | None = None):
         """Plot performance history for a metric (requires matplotlib)."""
         try:
+            import matplotlib.pyplot as plt
         except ImportError:
             warnings.warn("matplotlib not installed, cannot plot history", stacklevel=2)
             return
@@ -389,7 +389,10 @@ class PerformanceHistory:
 
 
 # Convenience functions
-def check_for_regressions(test_dir: Path | None = None, _threshold: float = 0.1) -> bool:
+def check_for_regressions(
+    test_dir: Path | None = None,
+    _threshold: float = 0.1,
+) -> bool:
     """Check for performance regressions and return True if any found."""
     if test_dir is None:
         test_dir = Path.cwd()

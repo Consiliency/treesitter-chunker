@@ -2,17 +2,18 @@
 Real integration tests for Phase 13 using actual implementations
 """
 
-from chunker.build.builder import BuildSystem
-from chunker.build.platform import PlatformSupport
-from chunker.debug.tools import ChunkComparison, DebugVisualization
-from chunker.devenv.environment import DevelopmentEnvironment
-from chunker.devenv.quality import QualityAssurance
-from chunker.distribution.distributor import Distributor
 import json
 import sys
 from pathlib import Path
 
 import pytest
+
+from chunker.build.builder import BuildSystem
+from chunker.build.platform import PlatformSupport
+from chunker.debug.tools import DebugVisualization
+from chunker.devenv.environment import DevelopmentEnvironment
+from chunker.devenv.quality import QualityAssurance
+from chunker.distribution.distributor import Distributor
 
 # Add worktree paths to Python path to import implementations
 worktree_base = Path(__file__).parent.parent / "worktrees"
@@ -23,18 +24,22 @@ sys.path.insert(0, str(worktree_base / "phase13-distribution"))
 
 # Import real implementations
 try:
+    pass
 except ImportError:
     pytest.skip("Debug tools not available", allow_module_level=True)
 
 try:
+    pass
 except ImportError:
     pytest.skip("Dev environment not available", allow_module_level=True)
 
 try:
+    pass
 except ImportError:
     pytest.skip("Build system not available", allow_module_level=True)
 
 try:
+    pass
 except ImportError:
     pytest.skip("Distribution not available", allow_module_level=True)
 

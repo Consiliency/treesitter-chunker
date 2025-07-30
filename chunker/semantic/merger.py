@@ -207,7 +207,10 @@ class TreeSitterSemanticMerger(SemanticMerger):
         max_byte_end = max(c.byte_end for c in chunks)
 
         # Merge content (this is simplified - in reality might need file access)
-        merged_content_lines = [chunk.content for chunk in chunks]            if chunk != chunks[-1]:  # Add separator except for last chunk
+        merged_content_lines = []
+        for i, chunk in enumerate(chunks):
+            merged_content_lines.append(chunk.content)
+            if i < len(chunks) - 1:  # Add separator except for last chunk
                 merged_content_lines.append("")  # Empty line separator
 
         merged_content = "\n".join(merged_content_lines)

@@ -3,8 +3,10 @@ Support for Vue language (Single File Components).
 """
 
 from __future__ import annotations
-from tree_sitter import Node
+
 import re
+
+from tree_sitter import Node
 
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 
@@ -82,11 +84,8 @@ class VueConfig(LanguageConfig):
 
 
 # Register the Vue configuration
-from typing import TYPE_CHECKING
 
 from . import language_config_registry
-
-if TYPE_CHECKING:
 
 language_config_registry.register(VueConfig())
 

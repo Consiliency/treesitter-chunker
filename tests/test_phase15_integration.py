@@ -1,10 +1,10 @@
 """Integration tests for Phase 15: Production Readiness & Developer Experience."""
 
-from chunker.cicd.pipeline import CICDPipelineImpl as CICDPipelineStub
-from chunker.contracts.cicd_stub import CICDPipelineStub
 from pathlib import Path
 
+from chunker.cicd.pipeline import CICDPipelineImpl as CICDPipelineStub
 from chunker.contracts.build_stub import BuildSystemStub, PlatformSupportStub
+from chunker.contracts.cicd_stub import CICDPipelineStub
 from chunker.contracts.debug_stub import ChunkComparisonStub, DebugVisualizationStub
 from chunker.contracts.distribution_stub import DistributionStub, ReleaseManagementStub
 
@@ -14,7 +14,9 @@ from chunker.tooling.developer import DeveloperToolingImpl
 
 # Import actual implementation for CI/CD
 try:
+    pass
 except ImportError:
+    pass
 
 
 class TestPhase15Integration:

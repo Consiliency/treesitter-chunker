@@ -3,8 +3,6 @@
 Tests section-based chunking for INI, TOML, YAML, and JSON files.
 """
 
-import toml
-import yaml
 import json
 
 import pytest
@@ -259,6 +257,7 @@ features:
 """
 
         try:
+            import yaml
         except ImportError:
             pytest.skip("yaml library not available")
 
@@ -301,6 +300,7 @@ path = "src/cli.rs"
 """
 
         try:
+            import toml
         except ImportError:
             pytest.skip("toml library not available")
 

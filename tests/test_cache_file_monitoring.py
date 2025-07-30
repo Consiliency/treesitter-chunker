@@ -1,8 +1,5 @@
 """Integration tests for cache file monitoring."""
 
-from chunker.cache import Cache, CacheEntry
-from chunker.file_monitor import FileMonitor
-from pathlib import Path
 import builtins
 import contextlib
 import hashlib
@@ -19,10 +16,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from chunker.cache import Cache, CacheEntry
+from chunker.file_monitor import FileMonitor
 from tests.integration.interfaces import ResourceTracker
 
 # Try to import actual cache modules
 try:
+    pass
 except ImportError:
     # Mock if not available
     Cache = MagicMock()

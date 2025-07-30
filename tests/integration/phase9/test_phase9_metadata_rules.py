@@ -1,19 +1,19 @@
 """Integration tests for metadata extraction with custom rules."""
 
-from chunker.chunker import chunk_file
-from chunker.rules.builtin import (
-from chunker.rules.builtin import ImportBlockRule
-from chunker.rules.custom import MetadataRule
-from chunker.rules.engine import DefaultRuleEngine
 from typing import Any
 
 import pytest
+
+from chunker.chunker import chunk_file
+from chunker.rules.builtin import ImportBlockRule
+from chunker.rules.custom import MetadataRule
+from chunker.rules.engine import DefaultRuleEngine
 
 
 class TestMetadataRulesIntegration:
     """Test metadata extraction integrated with custom rules."""
 
-    @pytest.fixture
+    @pytest.fixture()
     def sample_python_file_with_todos(self, tmp_path):
         """Create a Python file with TODO comments and various metadata."""
         file_path = tmp_path / "tasks.py"
@@ -404,6 +404,7 @@ if __name__ == "__main__":
 ''',
         )
 
+        from chunker.rules.builtin import (
             ConfigurationBlockRule,
             DebugStatementRule,
             DocstringRule,

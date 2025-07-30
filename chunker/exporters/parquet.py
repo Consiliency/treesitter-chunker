@@ -1,15 +1,14 @@
 """Parquet export functionality for code chunks."""
 
 from __future__ import annotations
-from chunker.chunker import CodeChunk
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-if TYPE_CHECKING:
+from chunker.chunker import CodeChunk
 
 
 class ParquetExporter:

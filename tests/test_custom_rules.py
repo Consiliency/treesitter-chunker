@@ -1,20 +1,5 @@
 """Tests for custom chunking rules."""
 
-from chunker.rules.comment import (
-from chunker.rules.comment import DocumentationBlockRule
-from chunker.rules.comment import HeaderCommentRule
-from chunker.rules.comment import HeaderCommentRule, TodoBlockRule
-from chunker.rules.comment import InlineCommentGroupRule
-from chunker.rules.comment import StructuredCommentRule
-from chunker.rules.comment import TodoBlockRule
-from chunker.rules.regex import AnnotationRule
-from chunker.rules.regex import FoldingMarkerRule
-from chunker.rules.regex import PatternBoundaryRule
-from chunker.rules.regex import PatternBoundaryRule, RegionMarkerRule
-from chunker.rules.regex import RegionMarkerRule
-from chunker.rules.regex import RegionMarkerRule, SeparatorLineRule
-from chunker.rules.regex import SeparatorLineRule
-from chunker.rules.regex import create_custom_regex_rule
 import pytest
 
 from chunker.parser import get_parser
@@ -31,8 +16,23 @@ from chunker.rules.builtin import (
     TodoCommentRule,
     get_builtin_rules,
 )
+from chunker.rules.comment import (
+    DocumentationBlockRule,
+    HeaderCommentRule,
+    InlineCommentGroupRule,
+    StructuredCommentRule,
+    TodoBlockRule,
+)
 from chunker.rules.custom import BaseCustomRule, BaseRegexRule, MetadataRule
 from chunker.rules.engine import DefaultRuleEngine
+from chunker.rules.regex import (
+    AnnotationRule,
+    FoldingMarkerRule,
+    PatternBoundaryRule,
+    RegionMarkerRule,
+    SeparatorLineRule,
+    create_custom_regex_rule,
+)
 from chunker.types import CodeChunk
 
 
@@ -800,6 +800,7 @@ Module documentation with structure:
 
     def test_comment_rule_chain(self):
         """Test comment rule chaining."""
+        from chunker.rules.comment import (
             DocumentationBlockRule,
             HeaderCommentRule,
             TodoBlockRule,

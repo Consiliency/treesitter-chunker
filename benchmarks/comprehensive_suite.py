@@ -4,12 +4,10 @@ This module provides extensive benchmarking across different scenarios.
 """
 
 import gc
-import os
-import psutil
-import shutil
-import tracemalloc
 import json
 import multiprocessing
+import os
+import shutil
 import statistics
 import tempfile
 import time
@@ -817,8 +815,9 @@ Additional text content here.
         """Benchmark memory usage."""
         try:
             # Check imports are available
-            import psutil
             import tracemalloc
+
+            import psutil
         except ImportError:
             return {"error": "psutil or tracemalloc not available"}
 
@@ -959,6 +958,7 @@ This is a test repository for benchmarking.
 
         # Test different export formats
         try:
+            from chunker.export import (
                 CSVExporter,
                 JSONExporter,
                 JSONLExporter,

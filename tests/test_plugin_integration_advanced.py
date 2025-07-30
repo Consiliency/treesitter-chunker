@@ -4,37 +4,40 @@ This module tests advanced plugin scenarios including hot-reloading,
 version conflicts, custom directories, and plugin interactions.
 """
 
-from packaging import version
-from packaging import version as pkg_version
-from tests.integration.fixtures import resource_monitor
-from tests.integration.interfaces import ConfigChangeObserver, ResourceTracker
-from tests.integration.interfaces import ErrorPropagationMixin, ResourceTracker
-from tests.integration.interfaces import ResourceTracker
-import chunker_plugins.lang_support.namespace_plugin as ns_module
 import gc
 import hashlib
-import json
-import queue
-import toml
-import warnings
 import importlib
 import importlib.util
 import inspect
+import json
 import logging
 import os
+import queue
 import sys
 import threading
 import time
+import warnings
 from typing import Any
 from unittest.mock import MagicMock, patch
 
+import chunker_plugins.lang_support.namespace_plugin as ns_module
 import pytest
+import toml
 
 from chunker.languages.plugin_base import LanguagePlugin
 from chunker.plugin_manager import PluginRegistry
+from packaging import version
+from packaging import version as pkg_version
+from tests.integration.fixtures import resource_monitor
+from tests.integration.interfaces import (
+    ConfigChangeObserver,
+    ErrorPropagationMixin,
+    ResourceTracker,
+)
 
 # Import integration test interfaces
 try:
+    pass
 except ImportError:
     # Create mock if not available
     class ResourceTracker:
@@ -50,7 +53,7 @@ except ImportError:
         def get_all_resources(self, state="active"):
             return []
 
-    @pytest.fixture
+    @pytest.fixture()
     def resource_monitor():
         return ResourceTracker()
 
@@ -863,7 +866,6 @@ class HotReloadPlugin(LanguagePlugin):
     def test_plugin_resource_contention(self):
         """Test handling of resource contention between plugins."""
 
-
         resource_tracker = ResourceTracker()
         ErrorPropagationMixin()
 
@@ -1049,7 +1051,11 @@ class HotReloadPlugin(LanguagePlugin):
             key=lambda p: p.priority,
             reverse=True,
         )
-        priority_success = [plugin.language_name for plugin in sorted_plugins if plugin.acquire_resources(resource_pool)]        # Higher priority plugins should succeed
+        priority_success = [
+            plugin.language_name
+            for plugin in sorted_plugins
+            if plugin.acquire_resources(resource_pool)
+        ]  # Higher priority plugins should succeed
         assert "critical" in priority_success
         assert "low" not in priority_success
 
@@ -1076,7 +1082,6 @@ class TestPluginVersioning:
 
     def test_plugin_version_conflicts(self):
         """Test handling of conflicting plugin versions."""
-
 
         # Use MockPluginRegistry that tracks versions
         registry = MockPluginRegistry()
@@ -1417,7 +1422,6 @@ option3 = "project"
     def test_plugin_config_hot_reload(self, tmp_path):
         """Test config changes without restart."""
 
-
         resource_tracker = ResourceTracker()
         config_observer = ConfigChangeObserver()
 
@@ -1743,7 +1747,6 @@ class TestPluginInteractions:
 
     def test_plugin_conflict_resolution(self):
         """Test handling of conflicting plugins with enhanced conflict detection."""
-
 
         registry = MockPluginRegistry()
         resource_tracker = ResourceTracker()

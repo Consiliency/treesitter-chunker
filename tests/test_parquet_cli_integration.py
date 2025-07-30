@@ -1,7 +1,5 @@
 """Integration tests for Parquet export with CLI options."""
 
-from cli.main import cli
-from click.testing import CliRunner
 import subprocess
 import sys
 import threading
@@ -13,8 +11,12 @@ import psutil
 import pyarrow.parquet as pq
 import pytest
 
+from cli.main import cli
+from click.testing import CliRunner
+
 # Try to import CLI runner
 try:
+    pass
 except ImportError:
     CliRunner = MagicMock()
     cli = MagicMock()
@@ -425,7 +427,10 @@ class Class_{i}:
     def method(self):
         return {i}
 """
-            file_path = test_file_generator.create_file(f"parallel_test_{i}.py", content)
+            file_path = test_file_generator.create_file(
+                f"parallel_test_{i}.py",
+                content,
+            )
             test_files.append(file_path)
 
         output_file = temp_workspace / "output" / "parallel.parquet"
@@ -823,7 +828,10 @@ namespace Utils {
         test_files = []
         for i in range(10):
             content = sample_code_files["example.py"] * 10  # Replicate for size
-            file_path = test_file_generator.create_file(f"compress_test_{i}.py", content)
+            file_path = test_file_generator.create_file(
+                f"compress_test_{i}.py",
+                content,
+            )
             test_files.append(file_path)
 
         compression_types = ["snappy", "gzip", "brotli", "lz4", "zstd", None]
@@ -1190,7 +1198,12 @@ class Class_{i}:
             ), "Too many large jumps in progress"
 
         # Test ETA calculation
-        eta_updates = [update for update in progress_updates if "ETA" in update["line"] or "remaining" in update["line"]]        if eta_updates:
+        eta_updates = [
+            update
+            for update in progress_updates
+            if "ETA" in update["line"] or "remaining" in update["line"]
+        ]
+        if eta_updates:
             # ETA should generally decrease
             # Extract time values and verify they decrease
             pass  # Mock CLI might not provide real ETAs

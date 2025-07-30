@@ -1,11 +1,11 @@
 """Parser module for tree-sitter chunker with dynamic language discovery."""
 
 from __future__ import annotations
-from tree_sitter import Parser
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING
+
+from tree_sitter import Parser
 
 from .exceptions import (
     LanguageNotFoundError,
@@ -15,8 +15,6 @@ from .exceptions import (
 )
 from .factory import ParserConfig, ParserFactory
 from .registry import LanguageMetadata, LanguageRegistry
-
-if TYPE_CHECKING:
 
 # Module-level logger
 logger = logging.getLogger(__name__)

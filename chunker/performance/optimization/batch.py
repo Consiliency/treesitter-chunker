@@ -85,7 +85,11 @@ class BatchProcessor(BatchProcessorInterface):
             task = FileTask(-priority, file_path, time.time())
             heapq.heappush(self._queue, task)
 
-            logger.debug("Added file_path to batch: %s (priority: %s)", file_path, priority)
+            logger.debug(
+                "Added file_path to batch: %s (priority: %s)",
+                file_path,
+                priority,
+            )
 
     def process_batch(
         self,
@@ -331,7 +335,13 @@ class BatchProcessor(BatchProcessorInterface):
             files = list(dir_path.glob(pattern))
 
         # Filter to only files with known extensions
-        valid_files = [file_path for file_path in files if file_path.is_file() and self._get_language_from_extension(file_path.suffix)]        logger.info("Found %s files to process in %s", len(valid_files), directory)
+        valid_files = [
+            file_path
+            for file_path in files
+            if file_path.is_file()
+            and self._get_language_from_extension(file_path.suffix)
+        ]
+        logger.info("Found %s files to process in %s", len(valid_files), directory)
 
         # Add all files to queue
         for file_path in valid_files:

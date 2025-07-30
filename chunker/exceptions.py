@@ -1,11 +1,9 @@
 """Custom exception hierarchy for the tree-sitter chunker."""
 
 from __future__ import annotations
+
 from pathlib import Path
-
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
+from typing import Any
 
 
 class ChunkerError(Exception):

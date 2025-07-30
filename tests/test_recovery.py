@@ -423,7 +423,12 @@ class TestStatePersistence:
             assert len(final_state["items"]) >= 5  # At least some items
 
             # Items should match between workers and items list
-            all_items = [item for worker_items in final_state["workers"].values() for item in worker_items]            assert len(all_items) == len(final_state["items"])
+            all_items = [
+                item
+                for worker_items in final_state["workers"].values()
+                for item in worker_items
+            ]
+            assert len(all_items) == len(final_state["items"])
         else:
             # If no state file, workers failed completely
             pytest.skip("Workers failed to create state file")

@@ -1,5 +1,4 @@
 from __future__ import annotations
-from .languages.base import PluginConfig
 
 import importlib
 import importlib.util
@@ -8,12 +7,11 @@ import logging
 import re
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
+from .languages.base import PluginConfig
 from .languages.plugin_base import LanguagePlugin
 from .parser import get_parser
-
-if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
@@ -218,7 +216,11 @@ class PluginManager:
 
                 return plugins
             except ImportError as e:
-                logger.error("Failed to import builtin plugin %s: %s", file_path.stem, e)
+                logger.error(
+                    "Failed to import builtin plugin %s: %s",
+                    file_path.stem,
+                    e,
+                )
                 return []
 
         # For external plugins, use dynamic loading
@@ -341,7 +343,11 @@ class PluginManager:
                 detected_lang = self._detect_h_file_language(file_path)
                 if detected_lang:
                     language = detected_lang
-                    logger.info("Detected %s as %s based on content", file_path, language)
+                    logger.info(
+                        "Detected %s as %s based on content",
+                        file_path,
+                        language,
+                    )
                 # Detection failed, keep the registry default (C)
                 elif language:
                     logger.info(

@@ -93,7 +93,11 @@ class LanguageConfig(ABC):
         """Return advanced chunking rules for more complex scenarios."""
         return self._chunk_rules
 
-    def should_chunk_node(self, node_type: str, _parent_type: str | None = None) -> bool:
+    def should_chunk_node(
+        self,
+        node_type: str,
+        _parent_type: str | None = None,
+    ) -> bool:
         """Determine if a node should be treated as a chunk.
 
         Args:
@@ -220,7 +224,8 @@ class CompositeLanguageConfig(LanguageConfig):
     @property
     def chunk_rules(self) -> list[ChunkRule]:
         """Return merged chunk rules from all parent configs plus own rules."""
-        rules = [item for parent in self._parent_configs for item in parent.chunk_rules]        rules.extend(self._chunk_rules)
+        rules = [item for parent in self._parent_configs for item in parent.chunk_rules]
+        rules.extend(self._chunk_rules)
         # Sort by priority
         rules.sort(key=lambda r: r.priority, reverse=True)
         return rules

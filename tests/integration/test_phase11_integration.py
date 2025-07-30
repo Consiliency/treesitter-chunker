@@ -9,21 +9,22 @@ This test suite verifies that all Phase 11 components work together correctly:
 - Integration layer with fallback system
 """
 
-from chunker.fallback.sliding_window_fallback import SlidingWindowFallback
-from chunker.processors import ProcessorConfig
-from chunker.processors.config import ConfigProcessor
-from chunker.processors.logs import LogProcessor
-from chunker.processors.markdown import MarkdownProcessor
-from chunker.sliding_window import (
-from chunker.text_processing import ParagraphDetector, SentenceBoundaryDetector
 import shutil
 import tempfile
 from pathlib import Path
 
 import pytest
 
+from chunker.fallback.sliding_window_fallback import SlidingWindowFallback
+from chunker.processors import ProcessorConfig
+from chunker.processors.config import ConfigProcessor
+from chunker.processors.logs import LogProcessor
+from chunker.processors.markdown import MarkdownProcessor
+from chunker.text_processing import SentenceBoundaryDetector
+
 # Try to import all Phase 11 components
 try:
+    from chunker.sliding_window import (
         DefaultSlidingWindowEngine,
         OverlapStrategy,
         WindowConfig,

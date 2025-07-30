@@ -317,16 +317,14 @@ SELECT * FROM hierarchy ORDER BY root_id, depth, start_line;
             # Insert relationships
             if self.relationships:
                 rel_data = [
-                        (
-                            rel["source_id"],
-                            rel["target_id"],
-                            rel["relationship_type"],
-                            (
-                                json.dumps(rel["properties"] for rel in self.relationships]                                if rel["properties"]
-                                else None
-                            ),
-                        ),
+                    (
+                        rel["source_id"],
+                        rel["target_id"],
+                        rel["relationship_type"],
+                        (json.dumps(rel["properties"]) if rel["properties"] else None),
                     )
+                    for rel in self.relationships
+                ]
 
                 conn.executemany(
                     "INSERT OR IGNORE INTO relationships (source_id, target_id, relationship_type, properties) "

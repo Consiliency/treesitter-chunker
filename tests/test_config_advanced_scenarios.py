@@ -7,16 +7,11 @@ This module tests:
 4. Circular dependency detection edge cases
 """
 
-from chunker.config import StrategyConfig
-from chunker.exceptions import ConfigurationError
-from chunker.languages.base import LanguageConfig, PluginConfig
-import sys
-import threading
-import time
 import gc
 import json
 import os
 import queue
+import sys
 import threading
 import time
 import weakref
@@ -26,7 +21,12 @@ from typing import Any
 import psutil
 import pytest
 
+from chunker.config import StrategyConfig
+from chunker.exceptions import ConfigurationError
+from chunker.languages.base import LanguageConfig, PluginConfig
+
 try:
+    pass
 except ImportError:
     # Mock if not available
     StrategyConfig = type("StrategyConfig", (), {})

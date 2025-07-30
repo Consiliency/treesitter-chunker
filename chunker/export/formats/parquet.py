@@ -1,13 +1,12 @@
 """Export chunks and relationships to Apache Parquet fmt."""
 
 from __future__ import annotations
-from chunker.types import CodeChunk
-from collections.abc import Iterator
-import json
 
 import io
+import json
+from collections.abc import Iterator
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -19,9 +18,7 @@ from chunker.interfaces.export import (
     ExportMetadata,
     StructuredExporter,
 )
-
-if TYPE_CHECKING:
-
+from chunker.types import CodeChunk
 
 
 class StructuredParquetExporter(StructuredExporter):

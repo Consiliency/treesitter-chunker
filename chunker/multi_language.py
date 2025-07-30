@@ -1,7 +1,5 @@
 """Multi-language project processing implementation."""
 
-from .chunker import chunk_file
-from .parser import get_parser, list_languages
 import json
 import os
 import re
@@ -9,6 +7,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
+from .chunker import chunk_file
 from .interfaces.multi_language import (
     CrossLanguageReference,
     EmbeddedLanguageType,
@@ -17,10 +16,12 @@ from .interfaces.multi_language import (
     MultiLanguageProcessor,
     ProjectAnalyzer,
 )
+from .parser import get_parser, list_languages
 from .types import CodeChunk
 
 # Conditional imports - these may not be available in test environment
 try:
+    pass
 except ImportError:
     # Define stubs for testing
     def list_languages():
@@ -481,7 +482,10 @@ class ProjectAnalyzerImpl(ProjectAnalyzer):
         # Web application
         if structure["has_frontend"] and structure["has_backend"]:
             return "fullstack_webapp"
-        if "javascript" in indicators or "typescript" in indicators and "node" in indicators:
+        if structure["has_frontend"]:
+            if "javascript" in indicators or (
+                "typescript" in indicators and "node" in indicators
+            ):
                 return "node_application"
             return "frontend_webapp"
 
@@ -618,9 +622,15 @@ class ProjectAnalyzerImpl(ProjectAnalyzer):
             # Common feature patterns
             feature = None
             for i, part in enumerate(path_parts):
-                if part in ["features", "modules", "components", "services", "domains"] and i + 1 < len(path_parts):
-                        feature = path_parts[i + 1]
-                        break
+                if part in [
+                    "features",
+                    "modules",
+                    "components",
+                    "services",
+                    "domains",
+                ] and i + 1 < len(path_parts):
+                    feature = path_parts[i + 1]
+                    break
 
             if feature:
                 groupings[f"feature_{feature}"].append(chunk)
@@ -1313,9 +1323,15 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
             # Look for feature indicators in path
             feature_name = None
             for i, part in enumerate(parts):
-                if part in ["features", "modules", "components", "domains", "services"] and i + 1 < len(parts):
-                        feature_name = parts[i + 1]
-                        break
+                if part in [
+                    "features",
+                    "modules",
+                    "components",
+                    "domains",
+                    "services",
+                ] and i + 1 < len(parts):
+                    feature_name = parts[i + 1]
+                    break
 
             if feature_name:
                 path_features[chunk.chunk_id] = feature_name

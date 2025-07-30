@@ -386,16 +386,14 @@ ON CONFLICT (source_id, target_id, relationship_type) DO UPDATE SET
             if self.relationships:
                 rels_path = output_path.parent / f"{output_path.stem}_relationships.csv"
                 rel_rows = [
-                        [
-                            rel["source_id"],
-                            rel["target_id"],
-                            rel["relationship_type"],
-                            (
-                                json.dumps(rel["properties"] for rel in self.relationships]                                if rel["properties"]
-                                else "{}"
-                            ),
-                        ],
-                    )
+                    [
+                        rel["source_id"],
+                        rel["target_id"],
+                        rel["relationship_type"],
+                        (json.dumps(rel["properties"]) if rel["properties"] else "{}"),
+                    ]
+                    for rel in self.relationships
+                ]
 
                 with open(rels_path, "w", newline="", encoding="utf-8") as f:
                     writer = csv.writer(f)

@@ -1,21 +1,18 @@
 """Language registry for dynamic discovery and management of tree-sitter languages."""
 
 from __future__ import annotations
-from pathlib import Path
-import re
 
 import ctypes
 import logging
 import re
 import subprocess
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from pathlib import Path
+from typing import Any
 
 from tree_sitter import Language, Parser
 
 from .exceptions import LanguageNotFoundError, LibraryLoadError, LibraryNotFoundError
-
-if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 

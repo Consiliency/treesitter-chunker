@@ -1,17 +1,16 @@
 """Chunker integration with Virtual File System support."""
 
 from __future__ import annotations
-from .types import CodeChunk
-from collections.abc import Iterator
-import fnmatch
 
+import fnmatch
 import logging
+from collections.abc import Iterator
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from .chunker import chunk_text
 from .gc_tuning import get_memory_optimizer, optimized_gc
 from .streaming import StreamingChunker
+from .types import CodeChunk
 from .vfs import (
     HTTPFileSystem,
     LocalFileSystem,
@@ -19,9 +18,6 @@ from .vfs import (
     ZipFileSystem,
     create_vfs,
 )
-
-if TYPE_CHECKING:
-
 
 logger = logging.getLogger(__name__)
 

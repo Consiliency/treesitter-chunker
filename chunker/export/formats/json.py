@@ -1,15 +1,14 @@
 """Export chunks and relationships to JSON/JSONL formats."""
 
 from __future__ import annotations
-from chunker.types import CodeChunk
-from collections.abc import Iterator
-import io
 
 import gzip
+import io
 import json
+from collections.abc import Iterator
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from chunker.interfaces.export import (
     ChunkRelationship,
@@ -17,9 +16,7 @@ from chunker.interfaces.export import (
     ExportMetadata,
     StructuredExporter,
 )
-
-if TYPE_CHECKING:
-
+from chunker.types import CodeChunk
 
 
 class StructuredJSONExporter(StructuredExporter):

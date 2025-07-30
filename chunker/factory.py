@@ -1,21 +1,19 @@
 """Parser factory with caching and pooling for efficient parser management."""
 
 from __future__ import annotations
-from .registry import LanguageRegistry
-import re
 
 import logging
+import re
 import threading
 from collections import OrderedDict
 from dataclasses import dataclass
 from queue import Empty, Queue
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from tree_sitter import Parser, Range
 
 from .exceptions import LanguageNotFoundError, ParserConfigError, ParserInitError
-
-if TYPE_CHECKING:
+from .registry import LanguageRegistry
 
 logger = logging.getLogger(__name__)
 

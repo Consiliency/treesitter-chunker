@@ -197,7 +197,9 @@ class Class_{i}:
         results = chunk_files_parallel(file_paths, language="python", num_workers=3)
 
         # Collect all chunks - results is a dict[Path, List[CodeChunk]]
-        all_chunks = [item for chunks in results.values() for item in chunks]        # Should have at least 2 chunks per file
+        all_chunks = [
+            item for chunks in results.values() for item in chunks
+        ]  # Should have at least 2 chunks per file
         assert len(all_chunks) >= 10
 
         # Export results
@@ -478,7 +480,6 @@ class TestPerformanceBaseline:
     def test_memory_usage_monitoring(self, tmp_path):
         """Monitor memory usage during processing."""
 
-
         process = psutil.Process(os.getpid())
         initial_memory = process.memory_info().rss / 1024 / 1024  # MB
 
@@ -583,6 +584,7 @@ class TestErrorPropagation:
         # Note: ParallelChunker might process all files without raising errors
 
         # Export only successful chunks
-        all_chunks = [item for chunks in successes.values() for item in chunks]        if all_chunks:
+        all_chunks = [item for chunks in successes.values() for item in chunks]
+        if all_chunks:
             json_exporter = JSONExporter(schema_type=SchemaType.FLAT)
             json_exporter.export(all_chunks, tmp_path / "partial_results.json")

@@ -3,9 +3,6 @@ Integration tests for Phase 13: Developer Tools & Distribution
 These tests define expected behavior across component boundaries
 """
 
-from chunker.chunker import chunk_file
-from chunker.contracts.build_contract import BuildSystemContract
-from chunker.contracts.devenv_contract import (
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -15,11 +12,14 @@ import pytest
 
 from chunker.build.builder import BuildSystem
 from chunker.build.platform import PlatformSupport
+from chunker.chunker import chunk_file
+from chunker.contracts.build_contract import BuildSystemContract
 from chunker.debug.tools.visualization import DebugVisualization
 from chunker.devenv import DevelopmentEnvironment, QualityAssurance
 from chunker.distribution import Distributor, ReleaseManager
 
 if TYPE_CHECKING:
+    from chunker.contracts.devenv_contract import (
         DevelopmentEnvironmentContract,
         QualityAssuranceContract,
     )

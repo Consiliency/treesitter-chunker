@@ -290,7 +290,8 @@ class LogProcessor(SpecializedProcessor):
             line_bytes = len(line.encode("utf-8"))
 
             # Check if this is a new entry or continuation
-            if self._is_new_entry(line) and current_entry:
+            if self._is_new_entry(line):
+                if current_entry:
                     entries.append(current_entry)
 
                 current_entry = self._parse_line(line, i + 1, byte_offset)
@@ -456,7 +457,8 @@ class LogProcessor(SpecializedProcessor):
         chunk_start_time = None
 
         for entry in entries:
-            if entry.timestamp and chunk_start_time is None:
+            if entry.timestamp:
+                if chunk_start_time is None:
                     chunk_start_time = entry.timestamp
 
                 # Check if this entry exceeds time window
@@ -646,7 +648,8 @@ class LogProcessor(SpecializedProcessor):
         content = "\n".join(entry.content for entry in entries)
 
         # Calculate line range
-        all_lines = [item for entry in entries for item in entry.line_numbers]        start_line = min(all_lines)
+        all_lines = [item for entry in entries for item in entry.line_numbers]
+        start_line = min(all_lines)
         end_line = max(all_lines)
 
         # Calculate byte range

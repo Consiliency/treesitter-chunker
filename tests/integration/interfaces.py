@@ -155,7 +155,12 @@ class ResourceTracker:
 
     def verify_cleanup(self, module: str) -> list[dict[str, Any]]:
         """Verify all resources for module are cleaned up."""
-        leaked = [resource for resource in self._resources.values() if resource["owner_module"] == module and resource["state"] == "active"]        return leaked
+        leaked = [
+            resource
+            for resource in self._resources.values()
+            if resource["owner_module"] == module and resource["state"] == "active"
+        ]
+        return leaked
 
     def get_resource_state(self, resource_id: str) -> dict[str, Any] | None:
         """Get current state of a resource."""

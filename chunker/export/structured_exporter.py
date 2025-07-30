@@ -1,13 +1,12 @@
 """Main structured export orchestrator with streaming support."""
 
 from __future__ import annotations
-from chunker.types import CodeChunk
-from collections.abc import Iterator
-import io
 
+import io
+from collections.abc import Iterator
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from chunker.exceptions import ChunkerError
 from chunker.interfaces.export import (
@@ -18,9 +17,7 @@ from chunker.interfaces.export import (
     ExportTransformer,
     StructuredExporter,
 )
-
-if TYPE_CHECKING:
-
+from chunker.types import CodeChunk
 
 
 class StructuredExportOrchestrator(StructuredExporter):
@@ -298,7 +295,8 @@ class StructuredExportOrchestrator(StructuredExporter):
         """Create a filtering iterator for relationships."""
         for rel in iterator:
             should_include = all(
-                filter_func.should_include_relationship(rel) for filter_func in self._filters
+                filter_func.should_include_relationship(rel)
+                for filter_func in self._filters
             )
             if should_include:
                 yield rel

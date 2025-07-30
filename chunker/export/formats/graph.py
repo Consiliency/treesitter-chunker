@@ -1,13 +1,12 @@
 """Export chunks to graph formats (GraphML, DOT)."""
 
 from __future__ import annotations
-from chunker.types import CodeChunk
-from collections.abc import Iterator
-import io
 
+import io
 import xml.etree.ElementTree as ET
+from collections.abc import Iterator
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 from xml.dom import minidom
 
 from chunker.interfaces.export import (
@@ -17,9 +16,7 @@ from chunker.interfaces.export import (
     GraphExporter,
     RelationshipType,
 )
-
-if TYPE_CHECKING:
-
+from chunker.types import CodeChunk
 
 
 class GraphMLExporter(GraphExporter):
