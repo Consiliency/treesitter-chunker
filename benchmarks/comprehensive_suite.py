@@ -528,7 +528,7 @@ async def process_async(items: List):
 
         # Parse file once
         parser = get_parser("python")
-        with open(test_file, "rb") as f:
+        with Path(test_file).open("rb") as f:
             source = f.read()
         tree = parser.parse(source)
 
@@ -1050,7 +1050,7 @@ This is a test repository for benchmarking.
         # Save results
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         output_file = self.output_dir / f"benchmark_results_{timestamp}.json"
-        with open(output_file, "w") as f:
+        with Path(output_file).open("w") as f:
             json.dump(results, f, indent=2, default=str)
 
         print(f"\nResults saved to: {output_file}")

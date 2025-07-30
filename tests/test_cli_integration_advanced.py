@@ -550,7 +550,7 @@ class TestSignalHandling:
                 "*.py",
                 "--jsonl",
             ],
-            stdout=open(output_file, "w"),
+            stdout=Path(output_file).open("w"),
             stderr=subprocess.PIPE,
         )
 
@@ -632,7 +632,7 @@ class Test:
                 "--json",
             ],
             check=False,
-            stdout=open(output_file, "w"),
+            stdout=Path(output_file).open("w"),
             stderr=subprocess.PIPE,
         )
 
@@ -640,7 +640,7 @@ class Test:
         assert output_file.exists()
 
         # Verify output
-        with open(output_file) as f:
+        with Path(output_file).open("r") as f:
             data = json.load(f)
             assert len(data) >= 1
 

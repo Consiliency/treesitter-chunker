@@ -101,7 +101,7 @@ def main():
             print_results(suite)
 
         if args.save:
-            with open(args.save, "w") as f:
+            with Path(args.save).open("w") as f:
                 f.write(suite.to_json())
             print(f"\nResults saved to {args.save}")
 

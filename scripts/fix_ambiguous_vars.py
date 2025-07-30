@@ -8,7 +8,7 @@ from pathlib import Path
 def fix_ambiguous_vars(file_path):
     """Fix E741 errors in a single file."""
     try:
-        with open(file_path, encoding="utf-8") as f:
+        with Path(file_path).open(encoding="utf-8") as f:
             content = f.read()
 
         original = content
@@ -42,7 +42,7 @@ def fix_ambiguous_vars(file_path):
         content = re.sub(r"\(I\)\s+for\s+I\s+in", "(idx) for idx in", content)
 
         if content != original:
-            with open(file_path, "w", encoding="utf-8") as f:
+            with Path(file_path).open("w", encoding="utf-8") as f:
                 f.write(content)
             return True
         return False

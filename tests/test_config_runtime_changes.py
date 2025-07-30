@@ -5,6 +5,7 @@ import threading
 import time
 import weakref
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -828,7 +829,7 @@ class TestConfigRuntimeChanges:
 
         def load_config_from_file():
             """Load config from file."""
-            with open(config_file) as f:
+            with Path(config_file).open("r") as f:
                 return json.load(f)
 
         def simulate_active_operation(op_id: int, duration: float):

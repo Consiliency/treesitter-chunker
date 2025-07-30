@@ -52,7 +52,7 @@ def load_config(config_path: Path | None = None) -> dict[str, Any]:
     for config_file in config_files:
         if config_file.exists():
             try:
-                with open(config_file, "rb") as f:
+                with Path(config_file).open("rb") as f:
                     config = tomllib.load(f)
                 break
             except (OSError, FileNotFoundError, IndexError) as e:

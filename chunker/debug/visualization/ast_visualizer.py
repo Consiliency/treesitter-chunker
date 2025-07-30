@@ -2,6 +2,7 @@
 AST Visualizer for Tree-sitter parse trees.
 """
 
+from pathlib import Path
 from typing import Any
 
 try:
@@ -51,7 +52,7 @@ class ASTVisualizer:
         Returns:
             String representation for graph fmt, None for console output
         """
-        with open(file_path, "rb") as f:
+        with Path(file_path).open("rb") as f:
             content = f.read()
 
         tree = self.parser.parse(content)

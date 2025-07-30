@@ -146,7 +146,7 @@ class PackageAutomation:
                 checksums[file_path.name] = sha256
 
                 # Write individual checksum file
-                with open(f"{file_path}.sha256", "w") as f:
+                with Path(f"{file_path}.sha256").open("w") as f:
                     f.write(f"{sha256}  {file_path.name}\n")
 
         # Write combined checksums
@@ -159,7 +159,7 @@ class PackageAutomation:
     def _calculate_sha256(self, file_path: Path) -> str:
         """Calculate SHA256 checksum of a file."""
         sha256_hash = hashlib.sha256()
-        with open(file_path, "rb") as f:
+        with Path(file_path).open("rb") as f:
             for byte_block in iter(lambda: f.read(4096), b""):
                 sha256_hash.update(byte_block)
         return sha256_hash.hexdigest()
@@ -225,7 +225,7 @@ pip install treesitter-chunker=={self.version}
 See `dist/checksums.txt` for SHA256 checksums of all release artifacts.
 """
 
-        with open(notes_path, "w") as f:
+        with Path(notes_path).open("w") as f:
             f.write(template)
 
         print(f"Created release notes template: {notes_path}")
@@ -302,7 +302,7 @@ if __name__ == "__main__":
     sys.exit(0 if test_installation() else 1)
 '''
 
-        with open(script_path, "w") as f:
+        with Path(script_path).open("w") as f:
             f.write(script)
 
         script_path.chmod(0o755)
@@ -321,7 +321,7 @@ if __name__ == "__main__":
 
         # Create build script
         build_script = docker_dir / "build.sh"
-        with open(build_script, "w") as f:
+        with Path(build_script).open("w") as f:
             f.write(
                 f"""#!/bin/bash
 # Build Docker images for treesitter-chunker v{self.version}

@@ -307,7 +307,7 @@ class TreeSitterGrammarRepository(GrammarRepository):
             repo_file: Path to JSON file with custom repos
         """
         try:
-            with open(repo_file) as f:
+            with Path(repo_file).open("r") as f:
                 custom_repos = json.load(f)
 
             # Merge with existing grammars

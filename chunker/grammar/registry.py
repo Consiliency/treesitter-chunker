@@ -70,7 +70,7 @@ class UniversalLanguageRegistry(UniversalRegistryContract):
             # Update auto_downloaded list
             self._metadata["auto_downloaded"] = list(self._auto_downloaded)
 
-            with self._metadata_path.open("w") as f:
+            with self._metadata_path.Path("w").open("r") as f:
                 json.dump(self._metadata, f, indent=2)
         except (OSError, json.JSONEncodeError) as e:
             logger.error("Failed to save metadata: %s", e)

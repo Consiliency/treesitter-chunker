@@ -289,7 +289,7 @@ class ZeroConfigAPI(ZeroConfigContract):
 
         # 2. Check shebang for scripts
         try:
-            with open(file_path, "rb") as f:
+            with Path(file_path).open("rb") as f:
                 first_line = f.readline()
                 if first_line.startswith(b"#!"):
                     shebang = first_line.decode("utf-8", errors="ignore").strip()
@@ -440,7 +440,11 @@ class ZeroConfigAPI(ZeroConfigContract):
             Configured chunker instance
         """
         # Ensure language is available
-        if auto_download and not self.registry.is_language_installed(language) and not self.ensure_language(language):
+        if (
+            auto_download
+            and not self.registry.is_language_installed(language)
+            and not self.ensure_language(language)
+        ):
             raise ChunkerError(f"Failed to setup language: {language}")
 
         # Get parser from registry

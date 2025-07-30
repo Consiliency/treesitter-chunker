@@ -22,7 +22,10 @@ def process(
         help="Glob pattern for files to include",
     ),
     exclude: list[str] | None = typer.Option(None, help="Patterns to exclude"),
-    output: Path | None = typer.Option(None, help="Output file_path for results (JSON)"),
+    output: Path | None = typer.Option(
+        None,
+        help="Output file_path for results (JSON)",
+    ),
     max_workers: int = typer.Option(4, help="Maximum parallel workers"),
     no_progress: bool = typer.Option(False, help="Disable progress bar"),
     traversal: str = typer.Option(
@@ -106,7 +109,7 @@ def process(
 
                 output_data["files"].append(file_data)
 
-            with open(output, "w") as f:
+            with Path(output).open("w") as f:
                 json.dump(output_data, f, indent=2)
 
             console.print(f"\n[green]Results saved to: {output}[/green]")

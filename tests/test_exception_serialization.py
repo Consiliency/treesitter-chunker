@@ -8,6 +8,7 @@ import multiprocessing
 import pickle
 import traceback
 from concurrent.futures import ProcessPoolExecutor
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -49,7 +50,7 @@ class CustomNonSerializableError(Exception):
     def __init__(self, message: str, non_serializable_obj: Any):
         super().__init__(message)
         self.non_serializable_obj = non_serializable_obj
-        self.file_handle = open(__file__)  # Intentionally non-serializable
+        self.file_handle = Path(__file__).open("r")  # Intentionally non-serializable
 
     def __del__(self):
         if hasattr(self, "file_handle") and not self.file_handle.closed:

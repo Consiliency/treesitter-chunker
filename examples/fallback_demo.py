@@ -73,7 +73,7 @@ Here's a Python example:
 ```python
 def process_file(path):
     # This is example code
-    with open(path) as f:
+    with Path(path).open("r") as f:
         return f.read()
 ```
 
@@ -224,7 +224,7 @@ def demo_specialized_chunking(sample_files):
     log_chunker = LogChunker()
     log_chunker.file_path = sample_files["log"]
 
-    with open(sample_files["log"]) as f:
+    with Path(sample_files["log"]).open("r") as f:
         log_content = f.read()
 
     severity_chunks = log_chunker.chunk_by_severity(log_content, group_consecutive=True)
@@ -238,7 +238,7 @@ def demo_specialized_chunking(sample_files):
     md_chunker = MarkdownChunker()
     md_chunker.file_path = sample_files["markdown"]
 
-    with open(sample_files["markdown"]) as f:
+    with Path(sample_files["markdown"]).open("r") as f:
         md_content = f.read()
 
     code_blocks = md_chunker.extract_code_blocks(md_content)
@@ -251,7 +251,7 @@ def demo_specialized_chunking(sample_files):
     line_chunker = LineBasedChunker()
     line_chunker.file_path = sample_files["csv"]
 
-    with open(sample_files["csv"]) as f:
+    with Path(sample_files["csv"]).open("r") as f:
         csv_content = f.read()
 
     adaptive_chunks = line_chunker.adaptive_chunk(

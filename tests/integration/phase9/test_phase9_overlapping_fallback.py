@@ -14,7 +14,7 @@ from chunker import (
 class TestOverlappingFallbackIntegration:
     """Test overlapping fallback working with other Phase 9 features."""
 
-    @pytest.fixture
+    @pytest.fixture()
     def complex_file(self, tmp_path):
         """Create a complex file that benefits from overlapping."""
         test_file = tmp_path / "complex.py"
@@ -47,7 +47,7 @@ class DataProcessor:
         file formats and encodings.
         """
         try:
-            with open(path, 'r') as f:
+            with Path(path).open('r') as f:
                 # Process line by line for memory efficiency
                 for line in f:
                     if line.strip():
@@ -108,7 +108,7 @@ class DataProcessor:
 
     def save_results(self, output_path: str) -> None:
         """Save processed results to file."""
-        with open(output_path, 'w') as f:
+        with Path(output_path).open('w') as f:
             for item in self.transform_data():
                 f.write(f"{item}\\n")
 

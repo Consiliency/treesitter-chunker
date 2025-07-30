@@ -13,7 +13,7 @@ from chunker.types import CodeChunk
 class Phase9IntegrationTestBase:
     """Base class for Phase 9 integration tests."""
 
-    @pytest.fixture
+    @pytest.fixture()
     def test_repo_path(self, tmp_path):
         """Create a test repository with various file types."""
         repo_path = tmp_path / "test_repo"
@@ -404,7 +404,7 @@ Thumbs.db
 
         return repo_path
 
-    @pytest.fixture
+    @pytest.fixture()
     def sample_python_file(self, tmp_path):
         """Create a sample Python file for testing."""
         file_path = tmp_path / "sample.py"
@@ -546,7 +546,7 @@ def merge_processors(p1: DataProcessor, p2: DataProcessor) -> DataProcessor:
     def create_test_config_file(self, path: Path, config: dict[str, Any]) -> Path:
         """Create a test configuration file."""
         config_path = path / ".chunkerrc"
-        with open(config_path, "w") as f:
+        with Path(config_path).open("w") as f:
             import toml
 
             toml.dump(config, f)

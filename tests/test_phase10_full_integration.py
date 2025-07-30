@@ -395,7 +395,7 @@ def clear_cache():
         """Test error handling across all Phase 10 features."""
         # Empty file_path handling
         empty_file = Path(self.test_dir) / "empty.py"
-        with open(empty_file, "w") as f:
+        with Path(empty_file).open("w") as f:
             f.write("")
 
         # Multi-language processor should handle empty files

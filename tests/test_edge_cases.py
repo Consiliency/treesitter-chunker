@@ -5,6 +5,7 @@ to ensure robust handling of edge cases.
 """
 
 import os
+from pathlib import Path
 
 import pytest
 
@@ -481,7 +482,7 @@ class TestExportEdgeCases:
         # Should be valid JSON
         import json
 
-        with open(json_file) as f:
+        with Path(json_file).open("r") as f:
             data = json.load(f)
             assert len(data) == 1
             assert '\\"' in data[0]["content"] or '"' in data[0]["content"]
@@ -530,7 +531,7 @@ class TestExportEdgeCases:
         # Verify JSON is valid
         import json
 
-        with open(json_file) as f:
+        with Path(json_file).open("r") as f:
             data = json.load(f)
             assert len(data) == 1
 

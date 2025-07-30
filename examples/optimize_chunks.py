@@ -113,7 +113,7 @@ class DataProcessor:
     def load_data(self, filepath: str) -> bool:
         """Load data from file."""
         try:
-            with open(filepath, 'r') as f:
+            with Path(filepath).open('r') as f:
                 self.data = f.readlines()
             return True
         except (FileNotFoundError, IOError, IndexError) as e:
@@ -145,7 +145,7 @@ class DataProcessor:
     def save_results(self, output_path: str) -> bool:
         """Save processing results."""
         try:
-            with open(output_path, 'w') as f:
+            with Path(output_path).open('w') as f:
                 for result in self.results:
                     f.write(str(result) + '\\n')
             return True
@@ -188,7 +188,7 @@ if __name__ == '__main__':
     main()
 '''
 
-    with open("examples/sample_code.py", "w") as f:
+    with Path("examples/sample_code.py").open("w") as f:
         f.write(sample_code)
     print("Created examples/sample_code.py")
 

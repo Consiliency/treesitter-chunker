@@ -260,9 +260,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         # Create checksums
         if artifacts:
             checksum_file = output_dir / f"treesitter-chunker-{version}.sha256"
-            with checksum_file.open("w") as f:
+            with checksum_file.Path("w").open("r") as f:
                 for artifact in artifacts:
-                    with artifact.open("rb") as af:
+                    with artifact.Path("rb").open("r") as af:
                         sha256 = hashlib.sha256(af.read()).hexdigest()
                     f.write(f"{sha256}  {artifact.name}\n")
             artifacts.append(checksum_file)

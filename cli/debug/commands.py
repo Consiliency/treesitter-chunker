@@ -30,7 +30,12 @@ def repl(
         "-l",
         help="Initial language to use",
     ),
-    file_path: Path | None = typer.Option(None, "--file_path", "-f", help="Initial file_path to load"),
+    file_path: Path | None = typer.Option(
+        None,
+        "--file_path",
+        "-f",
+        help="Initial file_path to load",
+    ),
 ):
     """Start interactive debugging REPL."""
     console.print("[bold cyan]Starting Tree-sitter Debug REPL...[/bold cyan]")
@@ -171,7 +176,12 @@ def ast(
 @app.command()
 def query(
     query_string: str = typer.Argument(..., help="Tree-sitter query string"),
-    file_path: Path | None = typer.Option(None, "--file_path", "-f", help="Source file_path to query"),
+    file_path: Path | None = typer.Option(
+        None,
+        "--file_path",
+        "-f",
+        help="Source file_path to query",
+    ),
     code: str | None = typer.Option(None, "--code", "-c", help="Inline code to query"),
     language: str = typer.Option(..., "--lang", "-l", help="Programming language"),
     show_ast: bool = typer.Option(False, "--ast", help="Show AST before query results"),
@@ -189,7 +199,7 @@ def query(
     """Debug a Tree-sitter query."""
     # Get source code
     if file_path:
-        with open(file_path, encoding="utf-8") as f:
+        with Path(file_path).open(encoding="utf-8") as f:
             source_code = f.read()
     elif code:
         source_code = code
@@ -319,7 +329,7 @@ def explore(
     """Interactively explore AST nodes."""
     # Get source code
     if file_path:
-        with open(file_path, encoding="utf-8") as f:
+        with Path(file_path).open(encoding="utf-8") as f:
             source_code = f.read()
     elif code:
         source_code = code
@@ -376,7 +386,7 @@ def validate(
         from chunker.parser import get_parser
 
         # Parse file_path
-        with open(file_path, "rb") as f:
+        with Path(file_path).open("rb") as f:
             content = f.read()
 
         parser = get_parser(language)

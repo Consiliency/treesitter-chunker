@@ -44,7 +44,7 @@ class EncodingDetector:
             Tuple of (encoding, confidence)
         """
         try:
-            with open(file_path, "rb") as f:
+            with Path(file_path).open("rb") as f:
                 raw_data = f.read(sample_size)
 
             if not raw_data:
@@ -80,13 +80,13 @@ class EncodingDetector:
             encoding, _ = EncodingDetector.detect_encoding(file_path)
 
         try:
-            with open(file_path, encoding=encoding) as f:
+            with Path(file_path).open(encoding=encoding) as f:
                 content = f.read()
             return content, encoding
         except UnicodeDecodeError:
             # Try with error handling
             try:
-                with open(file_path, encoding=encoding, errors="replace") as f:
+                with Path(file_path).open(encoding=encoding, errors="replace") as f:
                     content = f.read()
                 logger.warning("Had to use error replacement for %s", file_path)
                 return content, encoding
@@ -305,7 +305,7 @@ class FileTypeDetector(FallbackStrategy):
             True if file appears to be binary
         """
         try:
-            with open(file_path, "rb") as f:
+            with Path(file_path).open("rb") as f:
                 chunk = f.read(sample_size)
 
             if not chunk:

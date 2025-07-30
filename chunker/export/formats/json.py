@@ -69,7 +69,7 @@ class StructuredJSONExporter(StructuredExporter):
         if isinstance(output, str | Path):
             output_path = Path(output)
             if self.compress:
-                with gzip.open(f"{output_path}.gz", "wt", encoding="utf-8") as f:
+                with gzip.Path(f"{output_path}.gz").open("wt", encoding="utf-8") as f:
                     f.write(json_str)
             else:
                 output_path.write_text(json_str, encoding="utf-8")
@@ -201,10 +201,10 @@ class StructuredJSONLExporter(StructuredExporter):
         if isinstance(output, str | Path):
             output_path = Path(output)
             if self.compress:
-                with gzip.open(f"{output_path}.gz", "wt", encoding="utf-8") as f:
+                with gzip.Path(f"{output_path}.gz").open("wt", encoding="utf-8") as f:
                     self._write_jsonl(chunks, relationships, f, metadata)
             else:
-                with open(output_path, "w", encoding="utf-8") as f:
+                with Path(output_path).open("w", encoding="utf-8") as f:
                     self._write_jsonl(chunks, relationships, f, metadata)
         else:
             self._write_jsonl(chunks, relationships, output, metadata)
@@ -219,10 +219,10 @@ class StructuredJSONLExporter(StructuredExporter):
         if isinstance(output, str | Path):
             output_path = Path(output)
             if self.compress:
-                with gzip.open(f"{output_path}.gz", "wt", encoding="utf-8") as f:
+                with gzip.Path(f"{output_path}.gz").open("wt", encoding="utf-8") as f:
                     self._stream_jsonl(chunk_iterator, relationship_iterator, f)
             else:
-                with open(output_path, "w", encoding="utf-8") as f:
+                with Path(output_path).open("w", encoding="utf-8") as f:
                     self._stream_jsonl(chunk_iterator, relationship_iterator, f)
         else:
             self._stream_jsonl(chunk_iterator, relationship_iterator, output)

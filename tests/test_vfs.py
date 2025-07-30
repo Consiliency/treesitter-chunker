@@ -35,7 +35,7 @@ class TestLocalFileSystem:
         assert vfs.is_dir(".")
 
         # Test open and read
-        with vfs.open("test.py", "r") as f:
+        with vfs.Path("test.py").open("r") as f:
             content = f.read()
         assert "def hello():" in content
 
@@ -97,10 +97,10 @@ class TestInMemoryFileSystem:
         assert vfs.read_bytes("/data.bin") == b"\x00\x01\x02\x03"
 
         # Test open
-        with vfs.open("/test.py", "r") as f:
+        with vfs.Path("/test.py").open("r") as f:
             assert f.read() == "def test():\n    pass"
 
-        with vfs.open("/data.bin", "rb") as f:
+        with vfs.Path("/data.bin").open("rb") as f:
             assert f.read() == b"\x00\x01\x02\x03"
 
     def test_in_memory_directory_structure(self):

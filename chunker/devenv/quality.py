@@ -105,7 +105,7 @@ class QualityAssurance(QualityAssuranceContract):
         }
 
         try:
-            with open(linecount_file) as f:
+            with Path(linecount_file).open("r") as f:
                 for line in f:
                     line = line.strip()
                     if line and not line.startswith("Total"):
@@ -208,7 +208,7 @@ class QualityAssurance(QualityAssuranceContract):
             # Parse coverage.json if it exists
             coverage_json = Path("coverage.json")
             if coverage_json.exists():
-                with open(coverage_json) as f:
+                with Path(coverage_json).open("r") as f:
                     coverage_data = json.load(f)
 
                 # Extract coverage percentage

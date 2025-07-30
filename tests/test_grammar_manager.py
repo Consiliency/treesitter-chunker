@@ -10,14 +10,14 @@ import pytest
 from chunker.grammar_manager import GrammarManager, GrammarManagerError
 
 
-@pytest.fixture
+@pytest.fixture()
 def temp_dir():
     """Create a temporary directory for tests."""
     with tempfile.TemporaryDirectory() as tmpdir:
         yield Path(tmpdir)
 
 
-@pytest.fixture
+@pytest.fixture()
 def grammar_manager(temp_dir):
     """Create a GrammarManager instance with temporary directories."""
     config_file = temp_dir / "config" / "grammar_sources.json"
@@ -28,7 +28,7 @@ def grammar_manager(temp_dir):
         "python": "https://github.com/tree-sitter/tree-sitter-python.git",
         "javascript": "https://github.com/tree-sitter/tree-sitter-javascript.git",
     }
-    with config_file.open("w") as f:
+    with config_file.Path("w").open("r") as f:
         json.dump(test_sources, f)
 
     return GrammarManager(root_dir=temp_dir, config_file=config_file, max_workers=2)

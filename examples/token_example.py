@@ -60,7 +60,7 @@ class DataProcessor:
 
     def load_data(self, file_path):
         """Load data from file."""
-        with open(file_path, 'r') as f:
+        with Path(file_path).open('r') as f:
             self.data = json.load(f)
         return len(self.data)
 

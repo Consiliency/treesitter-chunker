@@ -51,7 +51,7 @@ class HomebrewFormulaGenerator:
             formula_path = output_path / "treesitter-chunker.rb"
 
         try:
-            with open(formula_path, "w") as f:
+            with Path(formula_path).open("w") as f:
                 f.write(formula_content)
             return True, formula_path
         except (FileNotFoundError, OSError):
@@ -89,7 +89,7 @@ class HomebrewFormulaGenerator:
             try:
                 import tomllib
 
-                with open(pyproject_path, "rb") as f:
+                with Path(pyproject_path).open("rb") as f:
                     data = tomllib.load(f)
                     project = data.get("project", {})
                     info["description"] = project.get(
@@ -161,14 +161,14 @@ end
                 sha256 = hashlib.sha256(data).hexdigest()
 
             # Read formula
-            with open(formula_path) as f:
+            with Path(formula_path).open("r") as f:
                 content = f.read()
 
             # Replace placeholder
             content = content.replace("PLACEHOLDER_SHA256", sha256)
 
             # Write back
-            with open(formula_path, "w") as f:
+            with Path(formula_path).open("w") as f:
                 f.write(content)
 
             return True
@@ -203,7 +203,7 @@ end
                 issues.extend(audit_result.stderr.strip().split("\n"))
         else:
             # Basic validation without brew
-            with open(formula_path) as f:
+            with Path(formula_path).open("r") as f:
                 content = f.read()
 
             if "PLACEHOLDER_SHA256" in content:

@@ -96,7 +96,9 @@ class DebugVisualization(DebugVisualizationContract):
                     dot.render(tmp.name.replace(f".{output_format}", ""), cleanup=True)
                     result_path = tmp.name
 
-                with open(result_path, "rb" if output_format == "png" else "r") as f:
+                with Path(result_path).open(
+                    "rb" if output_format == "png" else "r",
+                ) as f:
                     result = f.read()
 
                 os.unlink(result_path)
@@ -187,7 +189,7 @@ class DebugVisualization(DebugVisualizationContract):
         # Add context if requested
         if include_context:
             # Get surrounding lines
-            with open(file_path) as f:
+            with Path(file_path).open("r") as f:
                 lines = f.readlines()
 
             # Before context (5 lines)
@@ -230,7 +232,7 @@ class DebugVisualization(DebugVisualizationContract):
         # Phase 1: Parse file
         phase_start = time.perf_counter()
         parser = get_parser(language)
-        with open(file_path, "rb") as f:
+        with Path(file_path).open("rb") as f:
             content = f.read()
         tree = parser.parse(content)  # noqa: F841
         phase_times["parsing"] = time.perf_counter() - phase_start
@@ -302,7 +304,7 @@ class DebugVisualization(DebugVisualizationContract):
 
         # Parse the file
         parser = get_parser(language)
-        with open(file_path, "rb") as f:
+        with Path(file_path).open("rb") as f:
             content = f.read()
         tree = parser.parse(content)
 

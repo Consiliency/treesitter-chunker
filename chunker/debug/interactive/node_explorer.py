@@ -3,6 +3,7 @@ Interactive AST node explorer for Tree-sitter.
 """
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from rich.console import Console
 from rich.panel import Panel
@@ -48,7 +49,7 @@ class NodeExplorer:
 
     def explore_file(self, file_path: str) -> None:
         """Start exploring a file's AST."""
-        with open(file_path, encoding="utf-8") as f:
+        with Path(file_path).open(encoding="utf-8") as f:
             content = f.read()
 
         self.explore_code(content)

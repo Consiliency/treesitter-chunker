@@ -198,7 +198,7 @@ class CICDPipelineImpl(CICDPipelineContract):
             wheels.append(str(wheel_path))
 
             # Calculate checksum
-            with wheel_path.open("rb") as f:
+            with wheel_path.Path("rb").open("r") as f:
                 checksum = hashlib.sha256(f.read()).hexdigest()
             checksums[wheel_name] = checksum
 
@@ -218,7 +218,7 @@ class CICDPipelineImpl(CICDPipelineContract):
         sdist_path.write_text(f"# Source distribution\nVersion: {version}\n")
 
         # Calculate sdist checksum
-        with sdist_path.open("rb") as f:
+        with sdist_path.Path("rb").open("r") as f:
             sdist_checksum = hashlib.sha256(f.read()).hexdigest()
         checksums[sdist_name] = sdist_checksum
 

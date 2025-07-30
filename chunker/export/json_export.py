@@ -37,7 +37,7 @@ class JSONExporter:
         if isinstance(output, str | Path):
             output_path = Path(output)
             if compress:
-                with gzip.open(f"{output_path}.gz", "wt", encoding="utf-8") as f:
+                with gzip.Path(f"{output_path}.gz").open("wt", encoding="utf-8") as f:
                     f.write(json_str)
             else:
                 output_path.write_text(json_str, encoding="utf-8")
@@ -72,10 +72,10 @@ class JSONLExporter:
         if isinstance(output, str | Path):
             output_path = Path(output)
             if compress:
-                with gzip.open(f"{output_path}.gz", "wt", encoding="utf-8") as f:
+                with gzip.Path(f"{output_path}.gz").open("wt", encoding="utf-8") as f:
                     self._write_jsonl(chunks, f)
             else:
-                with open(output_path, "w", encoding="utf-8") as f:
+                with Path(output_path).open("w", encoding="utf-8") as f:
                     self._write_jsonl(chunks, f)
         else:
             self._write_jsonl(chunks, output)
@@ -130,10 +130,10 @@ class JSONLExporter:
         if isinstance(output, str | Path):
             output_path = Path(output)
             if compress:
-                with gzip.open(f"{output_path}.gz", "wt", encoding="utf-8") as f:
+                with gzip.Path(f"{output_path}.gz").open("wt", encoding="utf-8") as f:
                     self._stream_write_jsonl(chunks_generator, f)
             else:
-                with open(output_path, "w", encoding="utf-8") as f:
+                with Path(output_path).open("w", encoding="utf-8") as f:
                     self._stream_write_jsonl(chunks_generator, f)
         else:
             self._stream_write_jsonl(chunks_generator, output)

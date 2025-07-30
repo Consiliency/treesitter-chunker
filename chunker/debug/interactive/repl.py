@@ -195,7 +195,7 @@ Available commands:
             return
 
         try:
-            with open(file_path, encoding="utf-8") as f:
+            with Path(file_path).open(encoding="utf-8") as f:
                 self.current_code = f.read()
             self.current_file = file_path
 
@@ -358,7 +358,7 @@ Available commands:
             return
 
         try:
-            with open(file_path, "w") as f:
+            with Path(file_path).open("w") as f:
                 f.write("# Tree-sitter Debug Session\n")
                 f.write(f"# Language: {self.current_language or 'none'}\n")
                 f.write(f"# File: {self.current_file or 'none'}\n\n")

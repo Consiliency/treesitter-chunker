@@ -66,7 +66,7 @@ class IntegrationCoordinator(ErrorPropagationMixin):
 
     def register_scenarios_from_config(self, config_file: Path) -> None:
         """Load test scenarios from a JSON configuration file."""
-        with open(config_file) as f:
+        with Path(config_file).open("r") as f:
             config = json.load(f)
 
         for scenario_dict in config.get("scenarios", []):
@@ -446,7 +446,7 @@ class IntegrationCoordinator(ErrorPropagationMixin):
     def save_report(self, filepath: Path) -> None:
         """Save report to file."""
         report = self.generate_report()
-        with open(filepath, "w") as f:
+        with Path(filepath).open("w") as f:
             json.dump(report, f, indent=2)
 
     def cleanup_worktrees(self) -> None:

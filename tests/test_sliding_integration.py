@@ -141,12 +141,12 @@ class TestLogProcessor(TextProcessor):
 class TestSlidingWindowIntegration:
     """Test sliding window fallback integration."""
 
-    @pytest.fixture
+    @pytest.fixture()
     def fallback(self):
         """Create sliding window fallback instance."""
         return SlidingWindowFallback()
 
-    @pytest.fixture
+    @pytest.fixture()
     def temp_dir(self):
         """Create temporary directory for test files."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -335,7 +335,7 @@ class TestSlidingWindowIntegration:
         config_path = Path(temp_dir) / "chunker.config.yaml"
         import yaml
 
-        with open(config_path, "w") as f:
+        with Path(config_path).open("w") as f:
             yaml.dump(config_data, f)
 
         # Create fallback with config
@@ -428,7 +428,7 @@ class TestSlidingWindowIntegration:
         """Test handling of binary files."""
         # Create a binary file
         binary_file = Path(temp_dir) / "test.bin"
-        with open(binary_file, "wb") as f:
+        with Path(binary_file).open("wb") as f:
             f.write(b"\x00\x01\x02\x03\x04")
 
         # Should not process binary files
@@ -527,7 +527,7 @@ class TestIntegrationScenarios:
 
         for filename, content in files.items():
             file_path = Path(temp_dir) / filename
-            with open(file_path, "w") as f:
+            with Path(file_path).open("w") as f:
                 f.write(content)
 
             chunks = fallback.chunk_text(content, file_path)
@@ -579,7 +579,7 @@ class CustomProcessor(TextProcessor):
 """
 
         plugin_path = Path(temp_dir) / "custom_processor.py"
-        with open(plugin_path, "w") as f:
+        with Path(plugin_path).open("w") as f:
             f.write(plugin_content)
 
         # Create config

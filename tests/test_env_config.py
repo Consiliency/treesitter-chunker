@@ -90,7 +90,7 @@ class TestEnvironmentVariableExpansion:
         }
 
         config_file = tmp_path / "config.json"
-        with open(config_file, "w") as f:
+        with Path(config_file).open("w") as f:
             json.dump(config_data, f)
 
         config = ChunkerConfig(config_file)
@@ -211,7 +211,7 @@ class TestEnvironmentVariableOverrides:
         }
 
         config_file = tmp_path / "config.json"
-        with open(config_file, "w") as f:
+        with Path(config_file).open("w") as f:
             json.dump(config_data, f)
 
         # Set environment overrides
@@ -257,7 +257,7 @@ class TestIntegration:
 
         config_data = {"chunker": {"enabled_languages": ["python", "rust"]}}
         config_file = tmp_path / "config.json"
-        with open(config_file, "w") as f:
+        with Path(config_file).open("w") as f:
             json.dump(config_data, f)
 
         # Load with env vars disabled
@@ -295,7 +295,7 @@ class TestIntegration:
         }
 
         config_file = tmp_path / "config.json"
-        with open(config_file, "w") as f:
+        with Path(config_file).open("w") as f:
             json.dump(config_data, f)
 
         # Load config

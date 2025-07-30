@@ -17,7 +17,6 @@ def analyze_exception_context(lines: list[str], except_line_idx: int) -> str:
         pattern in context
         for pattern in [
             "open(",
-            "Path(",
             ".read",
             ".write",
             "os.",

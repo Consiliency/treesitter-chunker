@@ -8,7 +8,7 @@ from pathlib import Path
 def fix_test_file(file_path: Path) -> bool:
     """Fix unused arguments in test files by adding comments."""
     try:
-        with open(file_path, encoding="utf-8") as f:
+        with Path(file_path).open(encoding="utf-8") as f:
             lines = f.readlines()
 
         modified = False
@@ -16,15 +16,25 @@ def fix_test_file(file_path: Path) -> bool:
         # Simple approach: look for common test patterns and add del statements
         for i, line in enumerate(lines):
             # Match function definitions with common test fixture names
-            match = re.match(r"^(\s*)def\s+test_\w+\([^)]*\b(tmp_path|temp_dir|capsys|caplog|monkeypatch|mock_\w+|fixture_\w+)\b[^)]*\):", line)
+            match = re.match(
+                r"^(\s*)def\s+test_\w+\([^)]*\b(tmp_path|temp_dir|capsys|caplog|monkeypatch|mock_\w+|fixture_\w+)\b[^)]*\):",
+                line,
+            )
             if match:
                 indent = match.group(1)
                 # Check if next line is already a del statement or docstring
                 if i + 1 < len(lines):
                     next_line = lines[i + 1].strip()
-                    if not (next_line.startswith('"""') or next_line.startswith("'''") or next_line.startswith("del ")):
+                    if not (
+                        next_line.startswith('"""')
+                        or next_line.startswith("'''")
+                        or next_line.startswith("del ")
+                    ):
                         # Look for fixture names in the function signature
-                        fixtures = re.findall(r"\b(tmp_path|temp_dir|capsys|caplog|monkeypatch|mock_\w+|fixture_\w+)\b", line)
+                        fixtures = re.findall(
+                            r"\b(tmp_path|temp_dir|capsys|caplog|monkeypatch|mock_\w+|fixture_\w+)\b",
+                            line,
+                        )
                         if fixtures:
                             # Add del statement for fixtures
                             del_line = f"{indent}    del {', '.join(set(fixtures))}  # unused fixtures\n"
@@ -32,7 +42,7 @@ def fix_test_file(file_path: Path) -> bool:
                             modified = True
 
         if modified:
-            with open(file_path, "w", encoding="utf-8") as f:
+            with Path(file_path).open("w", encoding="utf-8") as f:
                 f.writelines(lines)
             print(f"Fixed {file_path}")
             return True
@@ -41,6 +51,7 @@ def fix_test_file(file_path: Path) -> bool:
         print(f"Error processing {file_path}: {e}")
 
     return False
+
 
 def main():
     """Main function."""
@@ -55,13 +66,31 @@ def main():
             test_files.extend(tests_dir.glob("**/*.py"))
 
     # Exclude certain directories
-    exclude_dirs = {".git", ".mypy_cache", ".ruff_cache", ".venv", "__pycache__",
-                   "build", "dist", ".claude", "grammars", "archive", "worktrees",
-                   "flask", "rust", "click", "gin", "guava", "googletest", "lodash", "ruby", "serde"}
+    exclude_dirs = {
+        ".git",
+        ".mypy_cache",
+        ".ruff_cache",
+        ".venv",
+        "__pycache__",
+        "build",
+        "dist",
+        ".claude",
+        "grammars",
+        "archive",
+        "worktrees",
+        "flask",
+        "rust",
+        "click",
+        "gin",
+        "guava",
+        "googletest",
+        "lodash",
+        "ruby",
+        "serde",
+    }
 
     test_files = [
-        f for f in test_files
-        if not any(exc in f.parts for exc in exclude_dirs)
+        f for f in test_files if not any(exc in f.parts for exc in exclude_dirs)
     ]
 
     # Remove duplicates
@@ -73,6 +102,7 @@ def main():
             fixed_count += 1
 
     print(f"\nFixed {fixed_count} test files")
+
 
 if __name__ == "__main__":
     main()

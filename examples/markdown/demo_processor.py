@@ -42,7 +42,7 @@ def process_file(file_path, config=None):
     processor = MarkdownProcessor(config)
 
     # Read file
-    with open(file_path, encoding="utf-8") as f:
+    with Path(file_path).open(encoding="utf-8") as f:
         content = f.read()
 
     # Check if processor can handle file

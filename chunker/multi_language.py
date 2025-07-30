@@ -189,7 +189,7 @@ class LanguageDetectorImpl(LanguageDetector):
 
         # Try to read file_path for content analysis
         try:
-            with open(file_path, encoding="utf-8", errors="ignore") as f:
+            with Path(file_path).open(encoding="utf-8", errors="ignore") as f:
                 content = f.read(4096)  # Read first 4KB
 
             # Check shebang
@@ -419,7 +419,10 @@ class ProjectAnalyzerImpl(ProjectAnalyzer):
 
                     # Count lines
                     try:
-                        with open(file_path, encoding="utf-8", errors="ignore") as f:
+                        with Path(file_path).open(
+                            encoding="utf-8",
+                            errors="ignore",
+                        ) as f:
                             analysis["total_lines"] += sum(1 for _ in f)
                     except (OSError, FileNotFoundError, IndexError):
                         pass
@@ -1009,7 +1012,7 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
     ) -> list[CodeChunk]:
         """Process files with embedded languages."""
         if content is None:
-            with open(file_path, encoding="utf-8") as f:
+            with Path(file_path).open(encoding="utf-8") as f:
                 content = f.read()
 
         chunks = []

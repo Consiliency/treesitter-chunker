@@ -196,7 +196,7 @@ class SpecializedProcessor(ABC):
         Returns:
             List of text chunks
         """
-        with open(file_path, encoding="utf-8") as f:
+        with Path(file_path).open(encoding="utf-8") as f:
             content = f.read()
 
         # Update config if provided

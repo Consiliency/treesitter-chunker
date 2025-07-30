@@ -100,7 +100,7 @@ class VFSChunker:
         # For streaming from VFS, we need to adapt the approach
         # since we can't use mmap directly on VFS files
 
-        with optimized_gc("streaming"), self.vfs.open(path, "rb") as f:
+        with optimized_gc("streaming"), self.vfs.Path(path).open("rb") as f:
             # Read in chunks and process
             chunk_size = 1024 * 1024  # 1MB chunks
             content_buffer = b""

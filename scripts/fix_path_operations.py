@@ -8,7 +8,7 @@ from pathlib import Path
 def fix_path_open(file_path):
     """Fix PTH123 errors in a single file."""
     try:
-        with open(file_path, encoding="utf-8") as f:
+        with Path(file_path).open(encoding="utf-8") as f:
             content = f.read()
 
         original = content
@@ -21,7 +21,7 @@ def fix_path_open(file_path):
         needs_path_import = False
 
         # Pattern to match open() calls
-        # Match: with open(something, mode) as f:
+        # Match: with Path(something).open(mode) as f:
         pattern1 = re.compile(
             r'with\s+open\s*\(\s*([^,\)]+)\s*(?:,\s*["\']([^"\']+)["\']\s*)?\)\s+as\s+(\w+)\s*:',
         )
@@ -46,14 +46,14 @@ def fix_path_open(file_path):
             if mode == "r":
                 return f"with Path({file_var}).open() as {var_name}:"
             if mode in ["rb", "r+b", "rb+"]:
-                return f'with Path({file_var}).open("{mode}") as {var_name}:'
-            return f'with Path({file_var}).open("{mode}") as {var_name}:'
+                return f'with Path({file_var}).Path("{mode}").open("r") as {var_name}:'
+            return f'with Path({file_var}).Path("{mode}").open("r") as {var_name}:'
 
         # Replace all occurrences
         new_lines = []
         for line in lines:
-            if "with open(" in line:
-                new_line = pattern1.sub(replace_open, line)
+            if "with Path(" in line:
+                new_line = pattern1.sub(replace_open).open(line)
                 new_lines.append(new_line)
             else:
                 new_lines.append(line)
@@ -84,7 +84,8 @@ def fix_path_open(file_path):
                     if "(" in new_lines[pathlib_line]:
                         # Multi-line import
                         new_lines[pathlib_line] = new_lines[pathlib_line].replace(
-                            ")", ", Path)",
+                            ")",
+                            ", Path)",
                         )
                     else:
                         # Single line import
@@ -100,7 +101,7 @@ def fix_path_open(file_path):
         content = "\n".join(new_lines)
 
         if content != original:
-            with open(file_path, "w", encoding="utf-8") as f:
+            with Path(file_path).open("w", encoding="utf-8") as f:
                 f.write(content)
             return True
         return False
@@ -134,13 +135,14 @@ def main():
 
         # Check if file has open() calls
         try:
-            with open(file_path, encoding="utf-8") as f:
+            with Path(file_path).open(encoding="utf-8") as f:
                 content = f.read()
                 if "with open(" in content:
                     total += 1
                     # Skip files that already use Path extensively
-                    if "Path(" in content and content.count("Path(") > content.count(
-                        "with open(",
+                    if (
+                        "Path(" in content
+                        and content.count("Path(") > content.count("with Path(").open()
                     ):
                         skipped += 1
                         print(f"Skipped (already uses Path): {file_path}")

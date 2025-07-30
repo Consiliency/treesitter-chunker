@@ -26,7 +26,7 @@ class FileMetadata:
 def compute_file_hash(file_path: Path, chunk_size: int = 8192) -> str:
     """Compute SHA256 hash of a file efficiently."""
     hasher = hashlib.sha256()
-    with open(file_path, "rb") as f:
+    with Path(file_path).open("rb") as f:
         while chunk := f.read(chunk_size):
             hasher.update(chunk)
     return hasher.hexdigest()
@@ -88,7 +88,10 @@ class StreamingChunker:
         if path.stat().st_size == 0:
             return
 
-        with open(path, "rb") as f, mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mmap_data:
+        with (
+            Path(path).open("rb") as f,
+            mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mmap_data,
+        ):
             tree = self.parser.parse(mmap_data)
             yield from self._walk_streaming(tree.root_node, mmap_data, str(path))
 

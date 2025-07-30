@@ -64,7 +64,7 @@ const main = () => {
 """
 
 
-@pytest.fixture
+@pytest.fixture()
 def temp_cache_dir():
     """Create a temporary cache directory."""
     cache_dir = Path(tempfile.mkdtemp()) / "cache"
@@ -73,13 +73,13 @@ def temp_cache_dir():
         shutil.rmtree(cache_dir.parent)
 
 
-@pytest.fixture
+@pytest.fixture()
 def cache(temp_cache_dir):
     """Create a cache instance with temporary directory."""
     return ASTCache(cache_dir=temp_cache_dir)
 
 
-@pytest.fixture
+@pytest.fixture()
 def temp_python_file():
     """Create a temporary Python file."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
@@ -89,7 +89,7 @@ def temp_python_file():
     temp_path.unlink()
 
 
-@pytest.fixture
+@pytest.fixture()
 def temp_js_file():
     """Create a temporary JavaScript file."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".js", delete=False) as f:
@@ -99,7 +99,7 @@ def temp_js_file():
     temp_path.unlink()
 
 
-@pytest.fixture
+@pytest.fixture()
 def sample_chunks():
     """Create sample code chunks for testing."""
     return [
@@ -181,7 +181,7 @@ class TestCacheBasics:
 
         # Modify file
         time.sleep(0.01)  # Ensure mtime changes
-        with open(temp_python_file, "a") as f:
+        with Path(temp_python_file).open("a") as f:
             f.write("\n# Modified")
 
         # Should get cache miss
@@ -370,7 +370,7 @@ class TestCacheCorruptionRecovery:
         cache.cache_chunks(temp_python_file, "python", chunks)
 
         # Corrupt the database
-        with open(cache.db_path, "wb") as f:
+        with Path(cache.db_path).open("wb") as f:
             f.write(b"corrupted data")
 
         # Should handle gracefully - reinitialize database
@@ -647,7 +647,7 @@ class TestCacheIntegration:
 
         # Modifying actual file should invalidate cache
         time.sleep(0.01)
-        with open(actual_file, "a") as f:
+        with Path(actual_file).open("a") as f:
             f.write("\n# Modified")
 
         assert cache.get_cached_chunks(symlink, "python") is None

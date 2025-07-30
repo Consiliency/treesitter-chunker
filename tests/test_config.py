@@ -14,7 +14,7 @@ from chunker.languages.base import PluginConfig
 class TestConfigLoading:
     """Test configuration loading from different formats."""
 
-    @pytest.fixture
+    @pytest.fixture()
     def temp_config_dir(self):
         """Create a temporary directory for config files."""
         temp_dir = Path(tempfile.mkdtemp())
@@ -42,7 +42,7 @@ class TestConfigLoading:
             },
         }
 
-        with open(config_path, "w") as f:
+        with Path(config_path).open("w") as f:
             yaml.safe_dump(config_data, f)
 
         config = ChunkerConfig(config_path)
@@ -78,7 +78,7 @@ class TestConfigLoading:
             },
         }
 
-        with open(config_path, "w") as f:
+        with Path(config_path).open("w") as f:
             json.dump(config_data, f)
 
         config = ChunkerConfig(config_path)
@@ -109,7 +109,7 @@ class TestConfigLoading:
             },
         }
 
-        with open(config_path, "w") as f:
+        with Path(config_path).open("w") as f:
             toml.dump(config_data, f)
 
         config = ChunkerConfig(config_path)
@@ -161,7 +161,7 @@ class TestConfigLoading:
 class TestConfigSaving:
     """Test configuration saving to different formats."""
 
-    @pytest.fixture
+    @pytest.fixture()
     def temp_config_dir(self):
         """Create a temporary directory for config files."""
         temp_dir = Path(tempfile.mkdtemp())
@@ -300,7 +300,7 @@ class TestConfigSaving:
 class TestPathResolution:
     """Test path resolution in configuration."""
 
-    @pytest.fixture
+    @pytest.fixture()
     def temp_config_dir(self):
         """Create a temporary directory for config files."""
         temp_dir = Path(tempfile.mkdtemp())
@@ -317,7 +317,7 @@ class TestPathResolution:
             },
         }
 
-        with open(config_path, "w") as f:
+        with Path(config_path).open("w") as f:
             yaml.safe_dump(config_data, f)
 
         config = ChunkerConfig(config_path)
@@ -333,7 +333,7 @@ class TestPathResolution:
             },
         }
 
-        with open(config_path, "w") as f:
+        with Path(config_path).open("w") as f:
             yaml.safe_dump(config_data, f)
 
         config = ChunkerConfig(config_path)
@@ -350,7 +350,7 @@ class TestPathResolution:
             },
         }
 
-        with open(config_path, "w") as f:
+        with Path(config_path).open("w") as f:
             yaml.safe_dump(config_data, f)
 
         config = ChunkerConfig(config_path)
@@ -370,7 +370,7 @@ class TestPathResolution:
 class TestConfigFinding:
     """Test configuration file discovery."""
 
-    @pytest.fixture
+    @pytest.fixture()
     def temp_project_dir(self):
         """Create a temporary project directory structure."""
         temp_dir = Path(tempfile.mkdtemp())
@@ -439,7 +439,7 @@ class TestConfigFinding:
 class TestConfigValidation:
     """Test configuration validation and error handling."""
 
-    @pytest.fixture
+    @pytest.fixture()
     def temp_config_dir(self):
         """Create a temporary directory for config files."""
         temp_dir = Path(tempfile.mkdtemp())
@@ -457,7 +457,7 @@ class TestConfigValidation:
             },
         }
 
-        with open(config_path, "w") as f:
+        with Path(config_path).open("w") as f:
             yaml.safe_dump(config_data, f)
 
         config = ChunkerConfig(config_path)
@@ -475,7 +475,7 @@ class TestConfigValidation:
             },
         }
 
-        with open(config_path, "w") as f:
+        with Path(config_path).open("w") as f:
             yaml.safe_dump(config_data, f)
 
         # String will be converted to a set of characters
@@ -494,7 +494,7 @@ class TestConfigValidation:
             },
         }
 
-        with open(config_path, "w") as f:
+        with Path(config_path).open("w") as f:
             yaml.safe_dump(config_data, f)
 
         # Should raise TypeError when trying to create set from int
@@ -513,7 +513,7 @@ class TestConfigValidation:
             },
         }
 
-        with open(config_path, "w") as f:
+        with Path(config_path).open("w") as f:
             yaml.safe_dump(config_data, f)
 
         config = ChunkerConfig(config_path)
@@ -615,7 +615,7 @@ class TestPluginDirectories:
 class TestExampleConfig:
     """Test example configuration creation."""
 
-    @pytest.fixture
+    @pytest.fixture()
     def temp_config_dir(self):
         """Create a temporary directory for config files."""
         temp_dir = Path(tempfile.mkdtemp())
@@ -644,7 +644,7 @@ class TestExampleConfig:
 class TestEnvironmentVariables:
     """Test environment variable expansion in configuration."""
 
-    @pytest.fixture
+    @pytest.fixture()
     def temp_config_dir(self):
         """Create a temporary directory for config files."""
         temp_dir = Path(tempfile.mkdtemp())
@@ -663,7 +663,7 @@ class TestEnvironmentVariables:
             },
         }
 
-        with open(config_path, "w") as f:
+        with Path(config_path).open("w") as f:
             yaml.safe_dump(config_data, f)
 
         # Note: The current implementation doesn't expand env vars
@@ -676,7 +676,7 @@ class TestEnvironmentVariables:
 class TestComplexScenarios:
     """Test complex configuration scenarios."""
 
-    @pytest.fixture
+    @pytest.fixture()
     def temp_config_dir(self):
         """Create a temporary directory for config files."""
         temp_dir = Path(tempfile.mkdtemp())
@@ -698,7 +698,7 @@ class TestComplexScenarios:
             },
         }
 
-        with open(config_path, "w") as f:
+        with Path(config_path).open("w") as f:
             yaml.safe_dump(config_data, f)
 
         config = ChunkerConfig(config_path)
@@ -719,7 +719,7 @@ class TestComplexScenarios:
             },
         }
 
-        with open(config_path, "w", encoding="utf-8") as f:
+        with Path(config_path).open("w", encoding="utf-8") as f:
             yaml.safe_dump(config_data, f, allow_unicode=True)
 
         config = ChunkerConfig(config_path)
@@ -749,7 +749,7 @@ class TestComplexScenarios:
             "languages": languages,
         }
 
-        with open(config_path, "w") as f:
+        with Path(config_path).open("w") as f:
             yaml.safe_dump(config_data, f)
 
         config = ChunkerConfig(config_path)

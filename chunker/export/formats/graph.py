@@ -283,7 +283,7 @@ class DOTExporter(GraphExporter):
         """Export using iterators for large datasets."""
         # Open output for streaming
         if isinstance(output, str | Path):
-            with open(output, "w", encoding="utf-8") as f:
+            with Path(output).open("w", encoding="utf-8") as f:
                 self._stream_dot(chunk_iterator, relationship_iterator, f)
         else:
             self._stream_dot(chunk_iterator, relationship_iterator, output)

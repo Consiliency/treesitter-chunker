@@ -3,6 +3,7 @@
 import csv
 import sqlite3
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 import pytest
 
@@ -14,7 +15,7 @@ from chunker.export.sqlite_exporter import SQLiteExporter
 from chunker.types import CodeChunk
 
 
-@pytest.fixture
+@pytest.fixture()
 def sample_chunks():
     """Create sample code chunks for testing."""
     return [
@@ -171,7 +172,7 @@ class TestNeo4jExporter:
         assert import_file.exists()
 
         # Verify CSV content
-        with open(nodes_file) as f:
+        with Path(nodes_file).open("r") as f:
             reader = csv.DictReader(f)
             rows = list(reader)
             assert len(rows) == 3
@@ -398,7 +399,7 @@ class TestPostgresExporter:
         assert import_file.exists()
 
         # Verify CSV content
-        with open(chunks_file) as f:
+        with Path(chunks_file).open("r") as f:
             reader = csv.reader(f)
             rows = list(reader)
             assert len(rows) == 3  # 3 chunks

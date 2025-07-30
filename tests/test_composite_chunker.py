@@ -15,12 +15,12 @@ from chunker.types import CodeChunk
 class TestCompositeChunker:
     """Test suite for CompositeChunker."""
 
-    @pytest.fixture
+    @pytest.fixture()
     def composite_chunker(self):
         """Create a composite chunker instance."""
         return CompositeChunker()
 
-    @pytest.fixture
+    @pytest.fixture()
     def test_code(self):
         """Sample code for testing composite strategies."""
         return '''
@@ -37,7 +37,7 @@ class DataAnalyzer:
     def load_data(self, source: str) -> None:
         """Load data from source."""
         # Simple loading logic
-        with open(source, 'r') as f:
+        with Path(source).open('r') as f:
             self.data = f.readlines()
 
     def analyze(self) -> Dict:

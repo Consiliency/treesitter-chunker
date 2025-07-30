@@ -34,7 +34,7 @@ def highlight_chunk_boundaries(
     console = Console()
 
     # Read file content
-    with open(file_path, encoding="utf-8") as f:
+    with Path(file_path).open(encoding="utf-8") as f:
         content = f.read()
     lines = content.splitlines()
 
