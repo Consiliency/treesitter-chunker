@@ -136,7 +136,7 @@ class ParentClass:
 import os
 
 def uses_import():
-    return os.path.join("a", "b")
+    return Path("a") / "b"
 
 class Referencer:
     def __init__(self):

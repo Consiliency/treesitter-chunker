@@ -7,7 +7,7 @@ This example shows how to use the SlidingWindowFallback system with:
 - Processor chaining for hybrid processing
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from chunker.chunker_config import ChunkerConfig
 from chunker.fallback import SlidingWindowFallback, TextProcessor
@@ -68,7 +68,7 @@ class SQLProcessor(TextProcessor):
 class DataFileProcessor(TextProcessor):
     """Processor for structured data files (CSV, TSV)."""
 
-    def __init__(self, config: Optional[dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         super().__init__(config)
         self.rows_per_chunk = self.config.get("rows_per_chunk", 100)
         self.include_header = self.config.get("include_header", True)

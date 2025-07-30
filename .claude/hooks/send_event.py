@@ -19,6 +19,7 @@ import sys
 import urllib.error
 import urllib.request
 from datetime import datetime
+from pathlib import Path
 
 from utils.summarizer import generate_event_summary
 
@@ -99,7 +100,7 @@ def main():
     # Handle --add-chat option
     if args.add_chat and "transcript_path" in input_data:
         transcript_path = input_data["transcript_path"]
-        if os.path.exists(transcript_path):
+        if Path(transcript_path).exists():
             # Read .jsonl file and convert to JSON array
             chat_data = []
             try:

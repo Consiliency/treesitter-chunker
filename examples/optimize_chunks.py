@@ -1,5 +1,7 @@
 """Example of chunk optimization for different use cases."""
 
+from pathlib import Path
+
 from chunker import ChunkOptimizer, OptimizationConfig, OptimizationStrategy, chunk_file
 
 
@@ -193,10 +195,9 @@ if __name__ == '__main__':
 
 if __name__ == "__main__":
     # Create sample file if it doesn't exist
-    import os
 
-    if not os.path.exists("examples/sample_code.py"):
-        os.makedirs("examples", exist_ok=True)
+    if not Path("examples/sample_code.py").exists():
+        Path("examples").mkdir(parents=True, exist_ok=True)
         create_sample_code()
 
     demonstrate_optimization()

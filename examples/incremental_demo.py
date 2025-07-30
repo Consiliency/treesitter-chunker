@@ -1,7 +1,7 @@
 """Simple demonstration of incremental processing components."""
 
-import os
 import tempfile
+from pathlib import Path
 
 from chunker import (
     DefaultChangeDetector,
@@ -198,7 +198,7 @@ def demonstrate_cache():
     print("\n=== Cache Demo ===")
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        cache = DefaultChunkCache(os.path.join(temp_dir, ".cache"))
+        cache = DefaultChunkCache(Path(temp_dir) / ".cache")
 
         # Store chunks
         chunks = create_sample_chunks()

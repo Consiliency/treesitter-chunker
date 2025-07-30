@@ -8,9 +8,10 @@ that don't have Tree-sitter support, such as text files, markdown, logs, etc.
 
 import os
 import sys
+from pathlib import Path
 
 # Add the parent directory to sys.path for direct imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, Path(os.path.dirname(Path(__file__).resolve().parent)))
 
 # Direct imports to avoid the full chunker module initialization
 from chunker.fallback.overlapping import OverlappingFallbackChunker, OverlapStrategy

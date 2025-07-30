@@ -5,6 +5,7 @@ Comprehensive Phase 10 Integration Test - All features working together.
 import os
 import shutil
 import tempfile
+from pathlib import Path
 
 from chunker import (  # Incremental; Multi-language; Query Advanced; Smart Context
     AdvancedQueryIndex,
@@ -33,8 +34,8 @@ class TestPhase10FullIntegration:
         self.test_dir = tempfile.mkdtemp()
 
         # Create a Python backend file
-        self.backend_file = os.path.join(self.test_dir, "api", "server.py")
-        os.makedirs(os.path.dirname(self.backend_file), exist_ok=True)
+        self.backend_file = Path(self.test_dir) / "api" / "server.py"
+        Path(Path(self.backend_file).mkdir(parents=True).parent, exist_ok=True)
         with open(self.backend_file, "w") as f:
             f.write(
                 '''
@@ -103,8 +104,8 @@ def status():
             )
 
         # Create a JavaScript frontend file
-        self.frontend_file = os.path.join(self.test_dir, "frontend", "client.js")
-        os.makedirs(os.path.dirname(self.frontend_file), exist_ok=True)
+        self.frontend_file = Path(self.test_dir) / "frontend" / "client.js"
+        Path(Path(self.frontend_file).mkdir(parents=True).parent, exist_ok=True)
         with open(self.frontend_file, "w") as f:
             f.write(
                 """
@@ -161,7 +162,7 @@ client.processData(testData).then(results => {
             )
 
         # Create a SQL file
-        self.sql_file = os.path.join(self.test_dir, "schema.sql")
+        self.sql_file = Path(self.test_dir) / "schema.sql"
         with open(self.sql_file, "w") as f:
             f.write(
                 """
@@ -209,7 +210,7 @@ CREATE TABLE IF NOT EXISTS processing_log (
         file_language_map = {}
         for root, _dirs, files in os.walk(self.test_dir):
             for file in files:
-                file_path = os.path.join(root, file)
+                file_path = Path(root) / file
                 lang, _ = lang_detector.detect_from_file(file_path)
                 if lang:
                     file_language_map[file_path] = lang
@@ -393,7 +394,7 @@ def clear_cache():
     def test_error_handling_and_edge_cases(self):
         """Test error handling across all Phase 10 features."""
         # Empty file handling
-        empty_file = os.path.join(self.test_dir, "empty.py")
+        empty_file = Path(self.test_dir) / "empty.py"
         with open(empty_file, "w") as f:
             f.write("")
 

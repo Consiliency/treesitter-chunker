@@ -4,6 +4,7 @@ import logging
 import mimetypes
 import os
 from enum import Enum
+from pathlib import Path
 from typing import Any
 
 import chardet
@@ -210,7 +211,7 @@ class FileTypeDetector(FallbackStrategy):
             Tuple of (should_use_fallback, reason)
         """
         # Check if file exists
-        if not os.path.exists(file_path):
+        if not Path(file_path).exists():
             return True, FallbackReason.PARSE_FAILURE
 
         file_type = self.detect_file_type(file_path)

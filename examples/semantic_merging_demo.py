@@ -3,8 +3,9 @@
 
 import os
 import sys
+from pathlib import Path
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(Path(os.path.dirname(Path(__file__).resolve().parent)))
 
 from chunker.chunker import chunk_file
 from chunker.semantic import (

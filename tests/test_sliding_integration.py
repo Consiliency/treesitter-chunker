@@ -1,6 +1,5 @@
 """Integration tests for sliding window fallback system."""
 
-import os
 import tempfile
 from pathlib import Path
 
@@ -142,12 +141,12 @@ class TestLogProcessor(TextProcessor):
 class TestSlidingWindowIntegration:
     """Test sliding window fallback integration."""
 
-    @pytest.fixture
+    @pytest.fixture()
     def fallback(self):
         """Create sliding window fallback instance."""
         return SlidingWindowFallback()
 
-    @pytest.fixture
+    @pytest.fixture()
     def temp_dir(self):
         """Create temporary directory for test files."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -234,7 +233,7 @@ class TestSlidingWindowIntegration:
         )
 
         # Test markdown file
-        md_file = os.path.join(temp_dir, "test.md")
+        md_file = Path(temp_dir) / "test.md"
         md_content = "# Header 1\nContent 1\n\n# Header 2\nContent 2"
 
         chunks = fallback.chunk_text(md_content, md_file)
@@ -244,7 +243,7 @@ class TestSlidingWindowIntegration:
         assert chunks[1].content.startswith("# Header 2")
 
         # Test log file
-        log_file = os.path.join(temp_dir, "test.log")
+        log_file = Path(temp_dir) / "test.log"
         log_content = "[INFO] Starting\n[ERROR] Failed\n[ERROR] Retry\n[INFO] Done"
 
         chunks = fallback.chunk_text(log_content, log_file)
@@ -252,7 +251,7 @@ class TestSlidingWindowIntegration:
         assert chunks[0].metadata["processor"] == "test_log"
 
         # Test unknown file - should use generic processor
-        txt_file = os.path.join(temp_dir, "test.txt")
+        txt_file = Path(temp_dir) / "test.txt"
         txt_content = "Just some plain text content that doesn't match any pattern."
 
         chunks = fallback.chunk_text(txt_content, txt_file)
@@ -428,7 +427,7 @@ class TestSlidingWindowIntegration:
     def test_binary_file_handling(self, fallback, temp_dir):
         """Test handling of binary files."""
         # Create a binary file
-        binary_file = os.path.join(temp_dir, "test.bin")
+        binary_file = Path(temp_dir) / "test.bin"
         with open(binary_file, "wb") as f:
             f.write(b"\x00\x01\x02\x03\x04")
 
@@ -527,7 +526,7 @@ class TestIntegrationScenarios:
         results = {}
 
         for filename, content in files.items():
-            file_path = os.path.join(temp_dir, filename)
+            file_path = Path(temp_dir) / filename
             with open(file_path, "w") as f:
                 f.write(content)
 

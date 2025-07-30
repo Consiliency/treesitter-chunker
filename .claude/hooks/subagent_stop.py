@@ -120,7 +120,7 @@ def main():
         # Handle --chat switch (same as stop.py)
         if args.chat and "transcript_path" in input_data:
             transcript_path = input_data["transcript_path"]
-            if os.path.exists(transcript_path):
+            if Path(transcript_path).exists():
                 # Read .jsonl file and convert to JSON array
                 chat_data = []
                 try:
@@ -134,7 +134,7 @@ def main():
                                     pass  # Skip invalid lines
 
                     # Write to logs/chat.json
-                    chat_file = os.path.join(log_dir, "chat.json")
+                    chat_file = Path(log_dir) / "chat.json"
                     with open(chat_file, "w") as f:
                         json.dump(chat_data, f, indent=2)
                 except Exception:
