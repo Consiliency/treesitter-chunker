@@ -1,6 +1,8 @@
 """Example demonstrating token counting integration with Tree-sitter chunks."""
 
 import json
+import os
+import tempfile
 
 from chunker.token import TiktokenCounter
 from chunker.token.chunker import TreeSitterTokenAwareChunker
@@ -109,7 +111,6 @@ class DataProcessor:
 '''
 
     # Write to a temporary file
-    import tempfile
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
         f.write(large_class)
@@ -147,7 +148,6 @@ class DataProcessor:
         print(f"{model}: {count} tokens (limit: {limit})")
 
     # Clean up
-    import os
 
     os.unlink(temp_file)
 

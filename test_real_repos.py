@@ -88,7 +88,7 @@ for repo_name, info in repos.items():
             for chunk in chunks[:2]:
                 print(f"     - {chunk.node_type} at line {chunk.start_line}")
 
-\1except (AttributeError, IndexError, KeyError) as \2:
+        except (AttributeError, IndexError, KeyError) as e:
             print(f"  ❌ Error with {file_path.name}: {e}")
 
 # Test repository processing
@@ -126,7 +126,7 @@ for repo_name, info in repos.items():
         if lang_counts:
             print(f"  📈 Languages: {dict(sorted(lang_counts.items()))}")
 
-\1except (AttributeError, IndexError, KeyError) as \2:
+    except (AttributeError, IndexError, KeyError) as e:
         print(f"  ❌ Error: {e}")
 
 print("\n✅ Repository testing complete!")

@@ -13,6 +13,7 @@ from rich.table import Table
 from rich.tree import Tree as RichTree
 from tree_sitter import Node, Tree
 
+from chunker.debug.interactive.query_debugger import debug_query
 from chunker.parser import get_parser
 
 
@@ -508,7 +509,6 @@ class NodeExplorer:
             return
 
         try:
-            from chunker.debug.interactive.query_debugger import debug_query
 
             # Get subtree content
             subtree_content = self.current_content[

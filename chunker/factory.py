@@ -1,6 +1,8 @@
 """Parser factory with caching and pooling for efficient parser management."""
 
 from __future__ import annotations
+from .registry import LanguageRegistry
+import re
 
 import logging
 import threading
@@ -14,7 +16,6 @@ from tree_sitter import Parser, Range
 from .exceptions import LanguageNotFoundError, ParserConfigError, ParserInitError
 
 if TYPE_CHECKING:
-    from .registry import LanguageRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -160,7 +161,6 @@ class ParserFactory:
             # Check for version compatibility error
             if "Incompatible Language version" in str(e):
                 # Extract version info from error message
-                import re
 
                 match = re.search(
                     r"version (\d+)\. Must be between (\d+) and (\d+)",

@@ -1,11 +1,13 @@
 """Integration tests for parallel processing error handling."""
 
+import gc
 import multiprocessing
 import os
 import time
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeoutError
 from pathlib import Path
+from queue import Empty
 from unittest.mock import MagicMock, patch
 
 import psutil
@@ -431,8 +433,6 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
 
     def test_deadlock_prevention(self, resource_monitor, error_tracking_context):
         """Test deadlock prevention mechanisms."""
-        import time
-        from queue import Empty
 
         # Track resources
         resource_monitor.track_resource(
@@ -547,7 +547,6 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
 
     def test_memory_leak_detection(self, resource_monitor, temp_workspace):
         """Test memory leak detection in parallel processing."""
-        import gc
 
         # Get current process
         process = psutil.Process(os.getpid())

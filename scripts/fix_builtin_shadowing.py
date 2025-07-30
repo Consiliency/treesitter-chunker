@@ -140,7 +140,7 @@ def fix_file(file_path: Path) -> bool:
             return False
 
         # Apply replacements
-        lines = content.splitlines(keepends=True)
+        content.splitlines(keepends=True)
 
         # Sort by line and column (reverse to avoid offset issues)
         fixer.shadows.sort(key=lambda x: (x[0], x[1]), reverse=True)
@@ -148,7 +148,7 @@ def fix_file(file_path: Path) -> bool:
         # Track replacements to apply globally
         replacements = {}
 
-        for line_no, col_offset, old_name, new_name, is_arg in fixer.shadows:
+        for _line_no, _col_offset, old_name, new_name, _is_arg in fixer.shadows:
             replacements[old_name] = new_name
 
         # Now apply replacements throughout the file

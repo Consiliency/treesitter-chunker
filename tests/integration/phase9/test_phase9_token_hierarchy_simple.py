@@ -3,6 +3,9 @@
 import pytest
 
 from chunker import chunk_file, get_parser
+from chunker.hierarchy.builder import ChunkHierarchyBuilder
+from chunker.token.chunker import TokenAwareChunker
+from chunker.token.counter import TiktokenCounter
 
 
 class TestTokenHierarchyIntegrationSimple:
@@ -59,7 +62,6 @@ def merge_processors(p1: DataProcessor, p2: DataProcessor) -> DataProcessor:
     def test_token_counts_in_chunks(self, sample_python_file):
         """Test that we can add token counts to chunks."""
         # Import here to avoid module loading issues
-        from chunker.token.counter import TiktokenCounter
 
         # Create token counter
         token_counter = TiktokenCounter()
@@ -87,8 +89,6 @@ def merge_processors(p1: DataProcessor, p2: DataProcessor) -> DataProcessor:
     def test_token_hierarchy_building(self, sample_python_file):
         """Test building hierarchy with token metadata."""
         # Import here to avoid module loading issues
-        from chunker.hierarchy.builder import ChunkHierarchyBuilder
-        from chunker.token.counter import TiktokenCounter
 
         # Create components
         token_counter = TiktokenCounter()
@@ -125,7 +125,6 @@ def merge_processors(p1: DataProcessor, p2: DataProcessor) -> DataProcessor:
     def test_token_aware_chunking(self, tmp_path):
         """Test token-aware chunking that respects token limits."""
         # Import here
-        from chunker.token.chunker import TokenAwareChunker
 
         # Create a file with content that will exceed token limit
         large_file = tmp_path / "large.py"
@@ -230,8 +229,6 @@ class OuterClass:
         )
 
         # Import components
-        from chunker.hierarchy.builder import ChunkHierarchyBuilder
-        from chunker.token.counter import TiktokenCounter
 
         # Parse and process
         parser = get_parser("python")

@@ -9,7 +9,7 @@ from chunker import (
     DefaultIncrementalProcessor,
     SimpleIncrementalIndex,
 )
-from chunker.interfaces.incremental import ChangeType
+from chunker.interfaces.incremental import ChangeType, ChunkChange, ChunkDiff
 from chunker.types import CodeChunk
 
 
@@ -137,7 +137,6 @@ def demonstrate_diff_computation():
     ]
 
     # Manually create a diff (simulating what compute_diff would do)
-    from chunker.interfaces.incremental import ChunkChange, ChunkDiff
 
     diff = ChunkDiff(
         changes=[

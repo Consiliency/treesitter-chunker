@@ -4,6 +4,7 @@ import os
 
 # Import only what we need, avoiding the problematic plugin imports
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -385,7 +386,6 @@ End of test."""
         large_content = "x" * 80 + "\n"  # 81 bytes per line
         large_content = large_content * 12500  # ~1MB
 
-        import time
 
         start = time.time()
 

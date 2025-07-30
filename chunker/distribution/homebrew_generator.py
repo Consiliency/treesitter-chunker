@@ -10,6 +10,8 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+import tomllib
+
 
 class HomebrewFormulaGenerator:
     """Generates Homebrew formulas for package distribution"""
@@ -87,7 +89,6 @@ class HomebrewFormulaGenerator:
         pyproject_path = Path("pyproject.toml")
         if pyproject_path.exists():
             try:
-                import tomllib
 
                 with Path(pyproject_path).open("rb") as f:
                     data = tomllib.load(f)

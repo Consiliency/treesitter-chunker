@@ -2,6 +2,7 @@
 Integration tests for actual Build System implementation
 """
 
+from chunker.contracts.build_contract import (
 import tempfile
 from pathlib import Path
 
@@ -112,7 +113,6 @@ def test_integration_with_mocked_build_system():
     """Test that mocked version matches our interface"""
     from unittest.mock import Mock
 
-    from chunker.contracts.build_contract import (
         BuildSystemContract,
         PlatformSupportContract,
     )

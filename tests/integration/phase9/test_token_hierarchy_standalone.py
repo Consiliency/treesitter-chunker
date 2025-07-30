@@ -2,6 +2,10 @@
 
 import pytest
 
+from chunker.chunker import chunk_file
+from chunker.hierarchy.builder import ChunkHierarchyBuilder
+from chunker.token.counter import TiktokenCounter
+
 
 class TestTokenHierarchyStandalone:
     """Test token counting integrated with hierarchy building - standalone version."""
@@ -33,8 +37,6 @@ class DataProcessor:
     def test_basic_token_counting(self, sample_python_file):
         """Test basic token counting functionality."""
         # Import only what we need
-        from chunker.chunker import chunk_file
-        from chunker.token.counter import TiktokenCounter
 
         # Parse and chunk
         chunks = chunk_file(sample_python_file, "python")
@@ -56,8 +58,6 @@ class DataProcessor:
     def test_hierarchy_building(self, sample_python_file):
         """Test hierarchy building with chunks."""
         # Import components
-        from chunker.chunker import chunk_file
-        from chunker.hierarchy.builder import ChunkHierarchyBuilder
 
         # Parse and chunk
         chunks = chunk_file(sample_python_file, "python")

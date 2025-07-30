@@ -1,6 +1,9 @@
 """Main structured export orchestrator with streaming support."""
 
 from __future__ import annotations
+from chunker.types import CodeChunk
+from collections.abc import Iterator
+import io
 
 from datetime import datetime, timezone
 from pathlib import Path
@@ -17,10 +20,7 @@ from chunker.interfaces.export import (
 )
 
 if TYPE_CHECKING:
-    import io
-    from collections.abc import Iterator
 
-    from chunker.types import CodeChunk
 
 
 class StructuredExportOrchestrator(StructuredExporter):

@@ -14,11 +14,13 @@ a full integration while working with the existing architecture.
 
 import gc
 import os
+import shutil
 import tempfile
 import threading
 import time
 import weakref
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 from queue import Queue
 from typing import Any
 from unittest.mock import Mock, patch
@@ -61,7 +63,6 @@ class TestParserPoolManagement:
         # Initialize with a mock or real registry
         try:
             # Try to use real registry
-            from pathlib import Path
 
             lib_path = Path(__file__).parent.parent / "build" / "my-languages.so"
             self.registry = LanguageRegistry(lib_path)
@@ -81,7 +82,6 @@ class TestParserPoolManagement:
         LanguageRegistry._instance = None
 
         # Clean up temp directory
-        import shutil
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
@@ -499,7 +499,6 @@ class TestIntegrationPatterns:
         ParserFactory._instance = None
         LanguageRegistry._instance = None
 
-        import shutil
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 

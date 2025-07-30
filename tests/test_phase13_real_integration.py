@@ -2,6 +2,13 @@
 Real integration tests for Phase 13 using actual implementations
 """
 
+from chunker.build.builder import BuildSystem
+from chunker.build.platform import PlatformSupport
+from chunker.debug.tools import ChunkComparison, DebugVisualization
+from chunker.devenv.environment import DevelopmentEnvironment
+from chunker.devenv.quality import QualityAssurance
+from chunker.distribution.distributor import Distributor
+import json
 import sys
 from pathlib import Path
 
@@ -16,24 +23,18 @@ sys.path.insert(0, str(worktree_base / "phase13-distribution"))
 
 # Import real implementations
 try:
-    from chunker.debug.tools import ChunkComparison, DebugVisualization
 except ImportError:
     pytest.skip("Debug tools not available", allow_module_level=True)
 
 try:
-    from chunker.devenv.environment import DevelopmentEnvironment
-    from chunker.devenv.quality import QualityAssurance
 except ImportError:
     pytest.skip("Dev environment not available", allow_module_level=True)
 
 try:
-    from chunker.build.builder import BuildSystem
-    from chunker.build.platform import PlatformSupport
 except ImportError:
     pytest.skip("Build system not available", allow_module_level=True)
 
 try:
-    from chunker.distribution.distributor import Distributor
 except ImportError:
     pytest.skip("Distribution not available", allow_module_level=True)
 
@@ -55,7 +56,6 @@ class TestPhase13RealIntegration:
 
         # If it's a string, it should be valid JSON
         if isinstance(result, str):
-            import json
 
             data = json.loads(result)
             assert "type" in data

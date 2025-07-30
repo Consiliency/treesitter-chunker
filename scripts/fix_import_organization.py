@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Fix import organization errors (PLC0415, E402)."""
 
+import subprocess
 from pathlib import Path
 
 
@@ -22,7 +23,7 @@ def organize_imports(file_path: Path) -> bool:
         if len(lines) > skip_lines:
             # Check for module docstring
             stripped = lines[skip_lines].strip()
-            if stripped.startswith('"""') or stripped.startswith("'''"):
+            if stripped.startswith(('"""', "'''")):
                 quote = stripped[:3]
                 if stripped.endswith(quote) and len(stripped) > 6:
                     # Single line docstring
@@ -35,7 +36,6 @@ def organize_imports(file_path: Path) -> bool:
                             break
 
         # Collect all imports
-        import_lines = []
         future_imports = []
         standard_imports = []
         third_party_imports = []
@@ -115,7 +115,7 @@ def organize_imports(file_path: Path) -> bool:
                     pass
 
                 # Determine import type
-                if stripped.startswith("from .") or stripped.startswith("from .."):
+                if stripped.startswith(("from .", "from ..")):
                     local_imports.append(line)
                 else:
                     # Extract module name
@@ -149,9 +149,8 @@ def organize_imports(file_path: Path) -> bool:
         # Add blank line after docstring if needed
         if docstring_end > skip_lines and (
             future_imports or standard_imports or third_party_imports or local_imports
-        ):
-            if new_lines and new_lines[-1].strip() != "":
-                new_lines.append("\n")
+        ) and new_lines and new_lines[-1].strip() != "":
+            new_lines.append("\n")
 
         # Add imports in order
         if future_imports:
@@ -174,9 +173,8 @@ def organize_imports(file_path: Path) -> bool:
         # Add blank line before non-import code
         if (
             future_imports or standard_imports or third_party_imports or local_imports
-        ) and non_import_lines:
-            if new_lines and new_lines[-1].strip() != "":
-                new_lines.append("\n")
+        ) and non_import_lines and new_lines and new_lines[-1].strip() != "":
+            new_lines.append("\n")
 
         # Add remaining code
         new_lines.extend(non_import_lines)
@@ -198,7 +196,6 @@ def main():
     repo_root = Path.cwd()
 
     # Get Python files from git
-    import subprocess
 
     result = subprocess.run(
         ["git", "ls-files", "*.py"],

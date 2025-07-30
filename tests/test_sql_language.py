@@ -1,6 +1,6 @@
 """Comprehensive tests for SQL language support."""
 
-from chunker import chunk_file
+from chunker import chunk_file, get_parser
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from chunker.languages.sql import SQLPlugin
 
@@ -158,7 +158,6 @@ SELECT * FROM test;
 """
 
         # Parse the source (mock tree-sitter node)
-        from chunker import get_parser
 
         parser = get_parser("sql")
         plugin.set_parser(parser)

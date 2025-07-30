@@ -1,5 +1,20 @@
 """Tests for custom chunking rules."""
 
+from chunker.rules.comment import (
+from chunker.rules.comment import DocumentationBlockRule
+from chunker.rules.comment import HeaderCommentRule
+from chunker.rules.comment import HeaderCommentRule, TodoBlockRule
+from chunker.rules.comment import InlineCommentGroupRule
+from chunker.rules.comment import StructuredCommentRule
+from chunker.rules.comment import TodoBlockRule
+from chunker.rules.regex import AnnotationRule
+from chunker.rules.regex import FoldingMarkerRule
+from chunker.rules.regex import PatternBoundaryRule
+from chunker.rules.regex import PatternBoundaryRule, RegionMarkerRule
+from chunker.rules.regex import RegionMarkerRule
+from chunker.rules.regex import RegionMarkerRule, SeparatorLineRule
+from chunker.rules.regex import SeparatorLineRule
+from chunker.rules.regex import create_custom_regex_rule
 import pytest
 
 from chunker.parser import get_parser
@@ -519,7 +534,6 @@ class TestRegexRules:
 
     def test_region_marker_rule(self):
         """Test region marker extraction."""
-        from chunker.rules.regex import RegionMarkerRule
 
         rule = RegionMarkerRule()
 
@@ -536,7 +550,6 @@ class TestRegexRules:
 
     def test_custom_region_markers(self):
         """Test custom region markers."""
-        from chunker.rules.regex import RegionMarkerRule
 
         rule = RegionMarkerRule("START", "END")
 
@@ -552,7 +565,6 @@ class TestRegexRules:
 
     def test_pattern_boundary_rule_extract_match(self):
         """Test pattern boundary with match extraction."""
-        from chunker.rules.regex import PatternBoundaryRule
 
         rule = PatternBoundaryRule(
             "function_headers",
@@ -570,7 +582,6 @@ class TestRegexRules:
 
     def test_pattern_boundary_rule_between_matches(self):
         """Test pattern boundary extracting between matches."""
-        from chunker.rules.regex import PatternBoundaryRule
 
         rule = PatternBoundaryRule(
             "between_sections",
@@ -592,7 +603,6 @@ Section 2 content
 
     def test_annotation_rule(self):
         """Test annotation-based chunking."""
-        from chunker.rules.regex import AnnotationRule
 
         rule = AnnotationRule()
 
@@ -613,7 +623,6 @@ Section 2 content
 
     def test_folding_marker_rule(self):
         """Test folding marker extraction."""
-        from chunker.rules.regex import FoldingMarkerRule
 
         rule = FoldingMarkerRule()
 
@@ -630,7 +639,6 @@ Section 2 content
 
     def test_separator_line_rule(self):
         """Test separator line chunking."""
-        from chunker.rules.regex import SeparatorLineRule
 
         rule = SeparatorLineRule()
 
@@ -647,7 +655,6 @@ Third section"""
 
     def test_create_custom_regex_rule(self):
         """Test custom regex rule factory."""
-        from chunker.rules.regex import create_custom_regex_rule
 
         rule = create_custom_regex_rule(
             "custom_test",
@@ -665,7 +672,6 @@ class TestCommentRules:
 
     def test_todo_block_rule(self):
         """Test TODO block extraction with context."""
-        from chunker.rules.comment import TodoBlockRule
 
         rule = TodoBlockRule(include_context_lines=1)
         parser = get_parser("python")
@@ -687,7 +693,6 @@ class TestCommentRules:
 
     def test_documentation_block_rule(self):
         """Test documentation block extraction."""
-        from chunker.rules.comment import DocumentationBlockRule
 
         rule = DocumentationBlockRule()
         parser = get_parser("python")
@@ -711,7 +716,6 @@ class TestCommentRules:
 
     def test_header_comment_rule(self):
         """Test header comment extraction."""
-        from chunker.rules.comment import HeaderCommentRule
 
         rule = HeaderCommentRule()
         parser = get_parser("python")
@@ -735,7 +739,6 @@ import os
 
     def test_inline_comment_group_rule(self):
         """Test inline comment grouping."""
-        from chunker.rules.comment import InlineCommentGroupRule
 
         rule = InlineCommentGroupRule(max_gap_lines=1, min_comments=2)
         parser = get_parser("python")
@@ -768,7 +771,6 @@ def function():
 
     def test_structured_comment_rule(self):
         """Test structured comment extraction."""
-        from chunker.rules.comment import StructuredCommentRule
 
         rule = StructuredCommentRule()
         parser = get_parser("python")
@@ -798,7 +800,6 @@ Module documentation with structure:
 
     def test_comment_rule_chain(self):
         """Test comment rule chaining."""
-        from chunker.rules.comment import (
             DocumentationBlockRule,
             HeaderCommentRule,
             TodoBlockRule,
@@ -822,8 +823,6 @@ class TestRuleComposition:
 
     def test_multiple_rule_types(self):
         """Test engine with multiple rule types."""
-        from chunker.rules.comment import HeaderCommentRule, TodoBlockRule
-        from chunker.rules.regex import RegionMarkerRule, SeparatorLineRule
 
         engine = DefaultRuleEngine()
 
@@ -862,7 +861,6 @@ def helper():
 
     def test_overlapping_rules(self):
         """Test handling of overlapping rule matches."""
-        from chunker.rules.regex import PatternBoundaryRule, RegionMarkerRule
 
         engine = DefaultRuleEngine()
 

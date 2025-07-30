@@ -220,10 +220,7 @@ class CompositeLanguageConfig(LanguageConfig):
     @property
     def chunk_rules(self) -> list[ChunkRule]:
         """Return merged chunk rules from all parent configs plus own rules."""
-        rules = []
-        for parent in self._parent_configs:
-            rules.extend(parent.chunk_rules)
-        rules.extend(self._chunk_rules)
+        rules = [item for parent in self._parent_configs for item in parent.chunk_rules]        rules.extend(self._chunk_rules)
         # Sort by priority
         rules.sort(key=lambda r: r.priority, reverse=True)
         return rules

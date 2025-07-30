@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from chunker import chunk_file
 from chunker.debug.tools import DebugVisualization
 
 
@@ -50,7 +51,6 @@ class Example:
         debug_tools = DebugVisualization()
 
         # Get chunks to find a valid ID
-        from chunker import chunk_file
 
         chunks = chunk_file(test_file, "python")
 

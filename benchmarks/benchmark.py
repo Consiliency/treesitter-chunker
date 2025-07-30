@@ -3,18 +3,16 @@ from __future__ import annotations
 import json
 import statistics
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from pathlib import Path
+from typing import Any
 
 from chunker import chunk_file
 from chunker.cache import ASTCache
 from chunker.parallel import chunk_files_parallel
 from chunker.streaming import chunk_file_streaming
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
-    from pathlib import Path
 
 
 @dataclass

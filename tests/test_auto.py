@@ -8,6 +8,7 @@ import pytest
 
 from chunker.auto import ZeroConfigAPI
 from chunker.contracts.auto_contract import AutoChunkResult
+from chunker.exceptions import ChunkerError
 from chunker.types import CodeChunk
 
 
@@ -275,7 +276,6 @@ class TestZeroConfigAPI:
         assert api.registry.is_language_installed("rust")
 
         # Language not available
-        from chunker.exceptions import ChunkerError
 
         with pytest.raises(ChunkerError):
             api.get_chunker_for_language("not-a-language", auto_download=True)

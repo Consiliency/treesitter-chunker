@@ -1,6 +1,9 @@
 """Chunker integration with Virtual File System support."""
 
 from __future__ import annotations
+from .types import CodeChunk
+from collections.abc import Iterator
+import fnmatch
 
 import logging
 from pathlib import Path
@@ -18,9 +21,7 @@ from .vfs import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
 
-    from .types import CodeChunk
 
 logger = logging.getLogger(__name__)
 
@@ -268,7 +269,6 @@ class VFSChunker:
 
     def _match_pattern(self, path: str, pattern: str) -> bool:
         """Check if path matches a pattern."""
-        import fnmatch
 
         return fnmatch.fnmatch(path, pattern)
 

@@ -1,6 +1,8 @@
 """Universal Language Registry with auto-download capabilities."""
 
 from __future__ import annotations
+from chunker.contracts.discovery_contract import GrammarDiscoveryContract
+from chunker.contracts.download_contract import GrammarDownloadContract
 
 import json
 import logging
@@ -14,8 +16,6 @@ from chunker.exceptions import LanguageNotFoundError
 from chunker.registry import LanguageRegistry
 
 if TYPE_CHECKING:
-    from chunker.contracts.discovery_contract import GrammarDiscoveryContract
-    from chunker.contracts.download_contract import GrammarDownloadContract
 
 logger = logging.getLogger(__name__)
 

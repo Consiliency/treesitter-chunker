@@ -36,11 +36,7 @@ def function_one_{i}(x, y):
 
 def function_two_{i}(items):
     """Process a list of items."""
-    result = []
-    for item in items:
-        if item > 0:
-            result.append(item * 2)
-    return result
+    result = [item * 2 for item in items if item > 0]    return result
 
 class TestClass_{i}:
     """A test class."""

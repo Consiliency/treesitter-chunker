@@ -4,9 +4,12 @@ This module specifically tests how the plugin system handles various
 initialization failures and error conditions.
 """
 
+import threading
+import time
 from unittest.mock import MagicMock, patch
 
 import pytest
+import tree_sitter
 
 from chunker.languages.base import PluginConfig
 from chunker.languages.plugin_base import LanguagePlugin
@@ -330,7 +333,6 @@ class CorruptedPlugin(LanguagePlugin:  # Missing closing parenthesis
 
             def _check_version_compatibility(self):
                 # Check for required tree-sitter version
-                import tree_sitter
 
                 current_version = getattr(tree_sitter, "__version__", "0.0.0")
                 required_version = "99.0.0"  # Impossible version
@@ -364,8 +366,6 @@ class CorruptedPlugin(LanguagePlugin:  # Missing closing parenthesis
 
     def test_plugin_thread_safety_initialization(self):
         """Test thread safety during plugin initialization."""
-        import threading
-        import time
 
         manager = PluginManager()
         init_count = 0

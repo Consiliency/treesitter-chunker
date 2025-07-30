@@ -1,6 +1,9 @@
 """Export chunks to Neo4j graph database fmt."""
 
 from __future__ import annotations
+from chunker.types import CodeChunk
+from collections.abc import Iterator
+import io
 
 import json
 from datetime import datetime, timezone
@@ -15,10 +18,7 @@ from chunker.interfaces.export import (
 )
 
 if TYPE_CHECKING:
-    import io
-    from collections.abc import Iterator
 
-    from chunker.types import CodeChunk
 
 
 class Neo4jExporter(StructuredExporter):
@@ -306,10 +306,7 @@ class Neo4jExporter(StructuredExporter):
 
         # Stream nodes in batches
         output.write("// Create code chunk nodes\n")
-        chunk_batch = []
-        for chunk in chunk_iterator:
-            chunk_batch.append(chunk)
-            if len(chunk_batch) >= self._batch_size:
+        chunk_batch = [chunk for chunk in chunk_iterator]            if len(chunk_batch) >= self._batch_size:
                 for line in self._generate_node_queries(chunk_batch):
                     output.write(line + "\n")
                 chunk_batch = []

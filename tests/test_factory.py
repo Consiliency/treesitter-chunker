@@ -2,6 +2,7 @@
 
 import threading
 import time
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
@@ -161,7 +162,6 @@ class TestParserFactory:
     @pytest.fixture
     def registry(self):
         """Create a real registry for testing."""
-        from pathlib import Path
 
         lib_path = Path(__file__).parent.parent / "build" / "my-languages.so"
         return LanguageRegistry(lib_path)

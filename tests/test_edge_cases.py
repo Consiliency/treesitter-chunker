@@ -4,12 +4,13 @@ This module tests unusual, extreme, and error-prone scenarios
 to ensure robust handling of edge cases.
 """
 
+import json
 import os
 from pathlib import Path
 
 import pytest
 
-from chunker import chunk_file, chunk_files_parallel
+from chunker import CodeChunk, chunk_file, chunk_files_parallel
 from chunker.chunker_config import ChunkerConfig
 from chunker.exceptions import LanguageNotFoundError
 from chunker.export import JSONExporter, JSONLExporter, SchemaType
@@ -480,7 +481,6 @@ class TestExportEdgeCases:
         exporter.export(chunks, json_file)
 
         # Should be valid JSON
-        import json
 
         with Path(json_file).open("r") as f:
             data = json.load(f)
@@ -505,7 +505,6 @@ class TestExportEdgeCases:
 
     def test_export_with_null_values(self, tmp_path):
         """Test export of chunks with null/None values."""
-        from chunker import CodeChunk
 
         # Create chunk with some None values
         chunk = CodeChunk(
@@ -529,7 +528,6 @@ class TestExportEdgeCases:
         exporter.export([chunk], json_file)
 
         # Verify JSON is valid
-        import json
 
         with Path(json_file).open("r") as f:
             data = json.load(f)

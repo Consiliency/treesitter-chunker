@@ -1,4 +1,5 @@
 from __future__ import annotations
+from .languages.base import PluginConfig
 
 import importlib
 import importlib.util
@@ -13,7 +14,6 @@ from .languages.plugin_base import LanguagePlugin
 from .parser import get_parser
 
 if TYPE_CHECKING:
-    from .languages.base import PluginConfig
 
 logger = logging.getLogger(__name__)
 

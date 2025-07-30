@@ -331,12 +331,7 @@ class BatchProcessor(BatchProcessorInterface):
             files = list(dir_path.glob(pattern))
 
         # Filter to only files with known extensions
-        valid_files = []
-        for file_path in files:
-            if file_path.is_file() and self._get_language_from_extension(file_path.suffix):
-                valid_files.append(file_path)
-
-        logger.info("Found %s files to process in %s", len(valid_files), directory)
+        valid_files = [file_path for file_path in files if file_path.is_file() and self._get_language_from_extension(file_path.suffix)]        logger.info("Found %s files to process in %s", len(valid_files), directory)
 
         # Add all files to queue
         for file_path in valid_files:

@@ -2,6 +2,7 @@
 
 import pytest
 
+from chunker.chunker import chunk_text
 from chunker.hierarchy.builder import ChunkHierarchyBuilder
 from chunker.hierarchy.navigator import HierarchyNavigator
 from chunker.types import CodeChunk
@@ -461,7 +462,6 @@ class TestHierarchyIntegration:
 
     def test_python_code_hierarchy(self):
         """Test hierarchy building with real Python code."""
-        from chunker.chunker import chunk_text
 
         python_code = '''
 class Calculator:
@@ -517,7 +517,6 @@ async def async_function():
 
     def test_javascript_code_hierarchy(self):
         """Test hierarchy building with JavaScript code."""
-        from chunker.chunker import chunk_text
 
         js_code = """
 class Component {

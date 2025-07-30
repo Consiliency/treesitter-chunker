@@ -1,5 +1,6 @@
 """Tree-sitter grammar validator implementation."""
 
+import ctypes
 import logging
 import platform
 from pathlib import Path
@@ -37,7 +38,6 @@ class TreeSitterGrammarValidator(GrammarValidator):
 
         try:
             # Try to load the grammar
-            import ctypes
 
             # Platform-specific library loading
             system = platform.system()

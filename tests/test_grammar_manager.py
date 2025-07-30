@@ -2,6 +2,7 @@
 
 import json
 import tempfile
+import threading
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -10,14 +11,14 @@ import pytest
 from chunker.grammar_manager import GrammarManager, GrammarManagerError
 
 
-@pytest.fixture()
+@pytest.fixture
 def temp_dir():
     """Create a temporary directory for tests."""
     with tempfile.TemporaryDirectory() as tmpdir:
         yield Path(tmpdir)
 
 
-@pytest.fixture()
+@pytest.fixture
 def grammar_manager(temp_dir):
     """Create a GrammarManager instance with temporary directories."""
     config_file = temp_dir / "config" / "grammar_sources.json"
@@ -238,7 +239,6 @@ class TestGrammarManager:
 
     def test_concurrent_operations(self, grammar_manager):
         """Test thread safety of concurrent operations."""
-        import threading
 
         results = []
         errors = []

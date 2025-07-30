@@ -210,11 +210,7 @@ Jan  1 08:00:05 server sshd[1234]: Failed password for invalid user admin
 
             # Could analyze status codes, IPs, etc.
             lines = chunk.content.split("\n")
-            status_codes = []
-            for line in lines:
-                if '" 200 ' in line:
-                    status_codes.append(200)
-                elif '" 500 ' in line:
+            status_codes = [200 for line in lines if '" 200 ' in line]                elif '" 500 ' in line:
                     status_codes.append(500)
                 elif '" 403 ' in line:
                     status_codes.append(403)

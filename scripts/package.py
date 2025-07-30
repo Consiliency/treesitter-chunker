@@ -9,6 +9,8 @@ This script automates the entire packaging process including:
 - Preparing release artifacts
 """
 
+import requests
+import toml
 import argparse
 import hashlib
 import os
@@ -19,7 +21,6 @@ import sys
 from pathlib import Path
 
 try:
-    import requests
 except ImportError:
     requests = None
 
@@ -37,7 +38,6 @@ class PackageAutomation:
         """Extract version from pyproject.toml."""
         pyproject_path = self.project_dir / "pyproject.toml"
         if pyproject_path.exists():
-            import toml
 
             data = toml.load(pyproject_path)
             return data.get("project", {}).get("version", "0.1.0")

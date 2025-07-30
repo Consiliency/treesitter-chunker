@@ -2,6 +2,8 @@
 Test configuration and fixtures for phase13 tests
 """
 
+from unittest.mock import Mock
+
 import pytest
 
 from chunker.build import BuildSystem, PlatformSupport
@@ -25,7 +27,6 @@ def pytest_runtest_setup(item):
     if "test_phase13_integration" in str(item.fspath):
         # Import here to avoid circular imports
 
-        from chunker.build import BuildSystem, PlatformSupport
 
         # Patch Mock to return real instances for our contracts
         original_mock = (
@@ -50,6 +51,5 @@ def pytest_runtest_setup(item):
             if original_mock:
                 return original_mock(*args, **kwargs)
 
-            from unittest.mock import Mock
 
             return Mock(*args, **kwargs)

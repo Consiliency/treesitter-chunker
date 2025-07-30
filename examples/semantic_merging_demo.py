@@ -3,6 +3,7 @@
 
 import os
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.append(Path(os.path.dirname(Path(__file__).resolve().parent)))
@@ -82,7 +83,6 @@ class Calculator:
 '''
 
     # Write to temporary file
-    import tempfile
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
         f.write(example_code)
@@ -92,7 +92,6 @@ class Calculator:
     chunks = chunk_file(temp_file, "python")
 
     # Clean up
-    import os
 
     os.unlink(temp_file)
 

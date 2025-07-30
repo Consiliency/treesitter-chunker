@@ -2,6 +2,7 @@
 
 import json
 from dataclasses import asdict, fields, replace
+from pathlib import Path
 from typing import get_type_hints
 
 import pytest
@@ -649,7 +650,6 @@ class TestTypeCompatibility:
 
     def test_accept_path_like_objects(self):
         """Test that file_path can accept path-like strings."""
-        from pathlib import Path
 
         # Should accept string representation of Path
         path = Path("/test/file.py")

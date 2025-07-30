@@ -1,5 +1,6 @@
 """PostgreSQL export implementation for code chunks."""
 
+import csv
 import json
 from pathlib import Path
 from typing import Any
@@ -372,7 +373,6 @@ ON CONFLICT (source_id, target_id, relationship_type) DO UPDATE SET
             ]
 
             # Write CSV data
-            import csv
 
             with open(chunks_path, "w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
@@ -385,16 +385,13 @@ ON CONFLICT (source_id, target_id, relationship_type) DO UPDATE SET
             # Relationships COPY file
             if self.relationships:
                 rels_path = output_path.parent / f"{output_path.stem}_relationships.csv"
-                rel_rows = []
-                for rel in self.relationships:
-                    rel_rows.append(
+                rel_rows = [
                         [
                             rel["source_id"],
                             rel["target_id"],
                             rel["relationship_type"],
                             (
-                                json.dumps(rel["properties"])
-                                if rel["properties"]
+                                json.dumps(rel["properties"] for rel in self.relationships]                                if rel["properties"]
                                 else "{}"
                             ),
                         ],

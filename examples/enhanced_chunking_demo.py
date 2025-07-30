@@ -171,12 +171,7 @@ def add(a, b):
 # Complex function - should be in smaller chunk
 def complex_algorithm(data, options):
     cache = {}
-    results = []
-
-    for item in data:
-        if item['id'] in cache:
-            results.append(cache[item['id']])
-            continue
+    results = [cache[item['id']] for item in data if item['id'] in cache]            continue
 
         if item['type'] == 'A':
             if item['priority'] > 5:

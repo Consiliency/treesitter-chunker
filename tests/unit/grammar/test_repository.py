@@ -1,5 +1,7 @@
 """Unit tests for grammar repository."""
 
+import json
+import tempfile
 from pathlib import Path
 
 from chunker.grammar.repository import (
@@ -126,8 +128,6 @@ class TestTreeSitterGrammarRepository:
 
     def test_custom_repository_file(self):
         """Test loading custom repositories."""
-        import json
-        import tempfile
 
         # Create custom repo file
         custom_grammars = {

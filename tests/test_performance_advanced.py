@@ -4,6 +4,7 @@ This module tests the chunker's performance under various loads and
 identifies optimization opportunities.
 """
 
+import gc
 import multiprocessing as mp
 import threading
 import time
@@ -119,10 +120,7 @@ def function_{i}_a():
 
 def function_{i}_b():
     '''Function B in file {i}'''
-    data = []
-    for i in range(50):
-        data.append(i * 2)
-    return data
+    data = [i * 2 for i in range(50)]    return data
 
 class Module_{i}:
     def __init__(self):
@@ -574,7 +572,6 @@ class Handler_{iteration}:
 
 def gc_collect():
     """Force garbage collection for memory tests."""
-    import gc
 
     gc.collect()
     gc.collect()  # Run twice to ensure cleanup

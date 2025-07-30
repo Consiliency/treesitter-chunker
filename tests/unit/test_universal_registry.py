@@ -1,12 +1,15 @@
 """Unit tests for the UniversalLanguageRegistry."""
 
 import json
+import shutil
 import tempfile
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
+from chunker.contracts.discovery_contract import GrammarInfo
 from chunker.contracts.discovery_stub import GrammarDiscoveryStub
 from chunker.contracts.download_stub import GrammarDownloadStub
 from chunker.exceptions import LanguageNotFoundError
@@ -45,7 +48,6 @@ class TestUniversalLanguageRegistry:
 
     def teardown_method(self):
         """Clean up test fixtures."""
-        import shutil
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
@@ -80,9 +82,7 @@ class TestUniversalLanguageRegistry:
         self.mock_base_registry.has_language.side_effect = [False, True]
 
         # Mock discovery to return info for go
-        from datetime import datetime
 
-        from chunker.contracts.discovery_contract import GrammarInfo
 
         go_info = GrammarInfo(
             name="go",

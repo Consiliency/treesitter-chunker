@@ -14,6 +14,7 @@ from chunker import (
     DefaultIncrementalProcessor,
 )
 from chunker.interfaces.incremental import ChangeType
+from chunker.types import CodeChunk
 
 
 class TestIncrementalIntegration:
@@ -237,7 +238,6 @@ def new_function():
         src_dir = Path(temp_project) / "src"
 
         # Create chunks representing a function in file1
-        from chunker.types import CodeChunk
 
         file1_chunk = CodeChunk(
             language="python",
@@ -282,7 +282,6 @@ def new_function():
         # Create and populate first cache
         cache1 = DefaultChunkCache(cache_dir1)
 
-        from chunker.types import CodeChunk
 
         test_chunks = [
             CodeChunk(
@@ -327,7 +326,6 @@ def new_function():
         cache = DefaultChunkCache(str(Path(temp_project) / ".cache"))
 
         # Simulate multiple operations
-        from chunker.types import CodeChunk
 
         dummy_chunk = [
             CodeChunk(

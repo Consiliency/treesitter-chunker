@@ -5,6 +5,9 @@ configuration system from Phase 2.1.
 """
 
 from __future__ import annotations
+from .base import LanguageConfig
+from pathlib import Path
+from tree_sitter import Node, Parser
 
 import logging
 import subprocess
@@ -15,11 +18,8 @@ from typing import TYPE_CHECKING, Any
 from chunker.types import CodeChunk
 
 if TYPE_CHECKING:
-    from pathlib import Path
 
-    from tree_sitter import Node, Parser
 
-    from .base import LanguageConfig
 
 logger = logging.getLogger(__name__)
 

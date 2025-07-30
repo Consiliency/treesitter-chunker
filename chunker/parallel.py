@@ -1,4 +1,5 @@
 from __future__ import annotations
+from .types import CodeChunk
 
 import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -10,7 +11,6 @@ from .chunker import chunk_file
 from .streaming import chunk_file_streaming
 
 if TYPE_CHECKING:
-    from .types import CodeChunk
 
 
 class ParallelChunker:

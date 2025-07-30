@@ -1,5 +1,8 @@
 """Test integration of language configurations with the chunker."""
 
+import importlib
+
+import chunker.languages.python
 from chunker.chunker import chunk_file
 from chunker.languages import LanguageConfig, language_config_registry
 
@@ -13,9 +16,7 @@ class TestLanguageIntegration:
         language_config_registry.clear()
 
         # Force re-import of python config
-        import importlib
 
-        import chunker.languages.python
 
         importlib.reload(chunker.languages.python)
 
@@ -144,9 +145,7 @@ class TestClass {
         # Clean up
         language_config_registry.clear()
         # Re-register Python config for other tests
-        import importlib
 
-        import chunker.languages.python
 
         importlib.reload(chunker.languages.python)
 
@@ -248,9 +247,7 @@ class MyClass:
             )
         else:
             # Re-register default Python config
-            import importlib
 
-            import chunker.languages.python
 
             importlib.reload(chunker.languages.python)
 
@@ -370,9 +367,7 @@ lambda x: x + 1
                 aliases=["py", "python3"],
             )
         else:
-            import importlib
 
-            import chunker.languages.python
 
             importlib.reload(chunker.languages.python)
 
@@ -498,9 +493,7 @@ class TestPythonConfigSpecific:
         language_config_registry.clear()
 
         # Force re-import of python config
-        import importlib
 
-        import chunker.languages.python
 
         importlib.reload(chunker.languages.python)
 
@@ -602,9 +595,7 @@ def my_function():
                 aliases=["py", "python3"],
             )
         else:
-            import importlib
 
-            import chunker.languages.python
 
             importlib.reload(chunker.languages.python)
 

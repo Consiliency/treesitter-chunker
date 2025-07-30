@@ -1,5 +1,7 @@
 """Integration tests for Phase 9 repository processing with other features."""
 
+import subprocess
+
 import pytest
 
 from chunker import BaseMetadataExtractor as MetadataExtractor
@@ -19,7 +21,6 @@ class TestRepoProcessingIntegration:
     def test_repo(self, tmp_path):
         """Create a test repository structure."""
         # Create git repo
-        import subprocess
 
         subprocess.run(["git", "init"], check=False, cwd=tmp_path, capture_output=True)
 

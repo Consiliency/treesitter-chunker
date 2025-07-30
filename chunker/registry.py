@@ -1,6 +1,8 @@
 """Language registry for dynamic discovery and management of tree-sitter languages."""
 
 from __future__ import annotations
+from pathlib import Path
+import re
 
 import ctypes
 import logging
@@ -14,7 +16,6 @@ from tree_sitter import Language, Parser
 from .exceptions import LanguageNotFoundError, LibraryLoadError, LibraryNotFoundError
 
 if TYPE_CHECKING:
-    from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -145,7 +146,6 @@ class LanguageRegistry:
                 except ValueError as e:
                     is_compatible = False
                     # Try to extract version from error
-                    import re
 
                     match = re.search(r"version (\d+)", str(e))
                     language_version = match.group(1) if match else "unknown"

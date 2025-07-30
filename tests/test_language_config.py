@@ -1,5 +1,8 @@
 """Tests for the language configuration framework."""
 
+import threading
+import time
+
 import pytest
 
 from chunker.languages.base import (
@@ -646,8 +649,6 @@ class TestRegistryThreadSafety:
 
     def test_concurrent_registry_access(self):
         """Test concurrent read/write access to registry."""
-        import threading
-        import time
 
         registry = LanguageConfigRegistry()
         errors = []
@@ -933,7 +934,6 @@ class TestCompositeConfigAdvanced:
 
     def test_concurrent_modifications(self):
         """Test concurrent modifications don't corrupt registry state."""
-        import threading
 
         registry = LanguageConfigRegistry()
         errors = []

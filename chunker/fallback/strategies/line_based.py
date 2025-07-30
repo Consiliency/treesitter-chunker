@@ -1,6 +1,7 @@
 """Line-based fallback chunking strategy."""
 
 import logging
+import re
 
 from chunker.fallback.base import FallbackChunker
 from chunker.interfaces.fallback import ChunkingMethod, FallbackConfig
@@ -116,7 +117,6 @@ class LineBasedChunker(FallbackChunker):
         """
         if section_pattern:
             # Use pattern-based chunking for sections
-            import re
 
             pattern = re.compile(section_pattern, re.MULTILINE)
             return self.chunk_by_pattern(content, pattern, include_match=True)

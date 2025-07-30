@@ -1,5 +1,8 @@
 """Integration tests for cache file monitoring."""
 
+from chunker.cache import Cache, CacheEntry
+from chunker.file_monitor import FileMonitor
+from pathlib import Path
 import builtins
 import contextlib
 import hashlib
@@ -20,8 +23,6 @@ from tests.integration.interfaces import ResourceTracker
 
 # Try to import actual cache modules
 try:
-    from chunker.cache import Cache, CacheEntry
-    from chunker.file_monitor import FileMonitor
 except ImportError:
     # Mock if not available
     Cache = MagicMock()
@@ -31,7 +32,6 @@ except ImportError:
 
 def cache_worker(worker_id: int, file_paths: list[str], cache_dir: Path):
     """Worker that reads/writes cache entries - module level for pickle."""
-    from pathlib import Path
 
     # Each worker creates its own cache instance
     worker_cache = MockCache(cache_dir, cache_type="sqlite")
@@ -71,7 +71,6 @@ def cache_worker(worker_id: int, file_paths: list[str], cache_dir: Path):
 
 def modifying_worker(worker_id: int, file_paths: list[str], cache_dir: Path):
     """Worker that modifies files while processing - module level for pickle."""
-    from pathlib import Path
 
     worker_cache = MockCache(cache_dir, cache_type="sqlite")
     results = []
@@ -113,7 +112,6 @@ def modifying_worker(worker_id: int, file_paths: list[str], cache_dir: Path):
 
 def verification_worker(file_paths: list[str], cache_dir: Path):
     """Worker that verifies cache consistency - module level for pickle."""
-    from pathlib import Path
 
     worker_cache = MockCache(cache_dir, cache_type="sqlite")
     results = []

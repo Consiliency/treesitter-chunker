@@ -4,6 +4,7 @@ import tempfile
 from pathlib import Path
 
 import pytest
+import yaml
 
 from chunker.chunker_config import ChunkerConfig
 from chunker.fallback.detection.file_type import FileType
@@ -141,12 +142,12 @@ class TestLogProcessor(TextProcessor):
 class TestSlidingWindowIntegration:
     """Test sliding window fallback integration."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def fallback(self):
         """Create sliding window fallback instance."""
         return SlidingWindowFallback()
 
-    @pytest.fixture()
+    @pytest.fixture
     def temp_dir(self):
         """Create temporary directory for test files."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -333,7 +334,6 @@ class TestSlidingWindowIntegration:
         }
 
         config_path = Path(temp_dir) / "chunker.config.yaml"
-        import yaml
 
         with Path(config_path).open("w") as f:
             yaml.dump(config_data, f)

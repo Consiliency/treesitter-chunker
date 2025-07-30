@@ -8,8 +8,9 @@ def test_overlapping():
     # Import the base fallback chunker
 
     # Now import our overlapping chunker
-    from chunker.fallback.overlapping import OverlappingFallbackChunker
-    from chunker.interfaces.fallback_overlap import OverlapStrategy
+
+from chunker.fallback.overlapping import OverlappingFallbackChunker
+from chunker.interfaces.fallback_overlap import OverlapStrategy
 
     print("Successfully imported OverlappingFallbackChunker!")
 

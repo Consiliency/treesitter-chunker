@@ -8,15 +8,18 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-from .chunker import chunk_file, chunk_text
+from .chunker import (
+    chunk_file,
+    chunk_file_with_token_limit,
+    chunk_text,
+    chunk_text_with_token_limit,
+)
 from .contracts.auto_contract import AutoChunkResult, ZeroConfigContract
+from .contracts.registry_contract import UniversalRegistryContract
 from .exceptions import ChunkerError
 from .fallback.sliding_window_fallback import SlidingWindowFallback
-
-if TYPE_CHECKING:
-    from .contracts.registry_contract import UniversalRegistryContract
 
 
 class ZeroConfigAPI(ZeroConfigContract):
@@ -209,7 +212,6 @@ class ZeroConfigAPI(ZeroConfigContract):
             if self.registry.is_language_installed(language):
                 # Use tree-sitter chunking
                 if token_limit:
-                    from .chunker import chunk_file_with_token_limit
 
                     chunks = chunk_file_with_token_limit(
                         file_path,
@@ -347,7 +349,6 @@ class ZeroConfigAPI(ZeroConfigContract):
             if self.registry.is_language_installed(language):
                 # Use tree-sitter chunking
                 if token_limit:
-                    from .chunker import chunk_text_with_token_limit
 
                     chunks = chunk_text_with_token_limit(
                         text,

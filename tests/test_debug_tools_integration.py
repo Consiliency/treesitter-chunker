@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from chunker import chunk_file
 from chunker.debug.tools import ChunkComparison, DebugVisualization
 
 
@@ -68,7 +69,6 @@ def main():
         result = None
 
         # First get chunks to know what chunk IDs exist
-        from chunker import chunk_file
 
         chunks = chunk_file(sample_python_file, "python")
 

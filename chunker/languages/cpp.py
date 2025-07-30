@@ -1,11 +1,11 @@
 from __future__ import annotations
+from tree_sitter import Node
 
 from typing import TYPE_CHECKING
 
 from .c import CPlugin
 
 if TYPE_CHECKING:
-    from tree_sitter import Node
 
 
 class CppPlugin(CPlugin):

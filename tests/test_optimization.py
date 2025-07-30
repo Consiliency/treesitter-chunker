@@ -577,7 +577,6 @@ class TestOptimizationIntegration:
     def test_real_token_counting(self, real_optimizer):
         """Test with real token counting if tiktoken is available."""
         try:
-            import tiktoken
 
             chunk = CodeChunk(
                 language="python",

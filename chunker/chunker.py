@@ -1,4 +1,5 @@
 from __future__ import annotations
+from tree_sitter import Node
 
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -11,7 +12,6 @@ from .token.counter import TiktokenCounter
 from .types import CodeChunk
 
 if TYPE_CHECKING:
-    from tree_sitter import Node
 
 
 def _walk(

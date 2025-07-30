@@ -2,6 +2,8 @@
 
 import builtins
 import contextlib
+import subprocess
+import time
 
 import pytest
 
@@ -29,7 +31,6 @@ class TestPhase9CombinedFeatures:
     def complex_project(self, tmp_path):
         """Create a complex project structure."""
         # Initialize git
-        import subprocess
 
         subprocess.run(["git", "init"], check=False, cwd=tmp_path, capture_output=True)
 
@@ -390,7 +391,6 @@ def valid_function():
 
     def test_performance_with_combined_features(self, complex_project):
         """Test performance when using multiple features together."""
-        import time
 
         # Time the full pipeline
         start = time.time()

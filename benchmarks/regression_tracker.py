@@ -3,6 +3,9 @@
 This module tracks performance metrics over time and detects regressions.
 """
 
+import argparse
+import matplotlib.pyplot as plt
+import subprocess
 import json
 import statistics
 import sys
@@ -240,7 +243,6 @@ class PerformanceRegressionTracker:
     def _get_git_hash(self) -> str | None:
         """Get current git commit hash."""
         try:
-            import subprocess
 
             result = subprocess.run(
                 ["git", "rev-parse", "HEAD"],
@@ -356,7 +358,6 @@ class PerformanceHistory:
     def plot_history(self, metric: str, output_file: Path | None = None):
         """Plot performance history for a metric (requires matplotlib)."""
         try:
-            import matplotlib.pyplot as plt
         except ImportError:
             warnings.warn("matplotlib not installed, cannot plot history", stacklevel=2)
             return
@@ -437,7 +438,6 @@ def update_baselines(test_dir: Path | None = None, force: bool = False):
 
 
 if __name__ == "__main__":
-    import argparse
 
     parser = argparse.ArgumentParser(description="Performance regression tracking")
     parser.add_argument(

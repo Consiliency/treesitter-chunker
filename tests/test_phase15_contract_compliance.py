@@ -2,6 +2,7 @@
 # Contract compliance tests for Phase 15 components
 
 import inspect
+from pathlib import Path
 
 from chunker.contracts.build_contract import (
     BuildSystemContract,
@@ -151,7 +152,6 @@ class TestContractCompliance:
 
     def test_stub_return_types(self):
         """Verify stubs return correct types"""
-        from pathlib import Path
 
         # Test tooling stub
         tooling = DeveloperToolingStub()

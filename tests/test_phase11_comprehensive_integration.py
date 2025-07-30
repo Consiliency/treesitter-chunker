@@ -8,6 +8,9 @@ Tests the integration of:
 - All processors working together
 """
 
+from chunker.sliding_window import (
+import shutil
+import time
 import tempfile
 from pathlib import Path
 
@@ -26,7 +29,6 @@ class TestPhase11ComprehensiveIntegration:
 
     def teardown_method(self):
         """Clean up temp directory."""
-        import shutil
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
@@ -376,7 +378,6 @@ def process(items):
     def test_streaming_with_token_limits(self):
         """Test streaming processing with token limits."""
         try:
-            from chunker.sliding_window import (
                 DefaultSlidingWindowEngine,
                 WindowConfig,
                 WindowUnit,
@@ -461,7 +462,6 @@ def function_{i}(param1, param2):
 ''',
                 )
 
-        import time
 
         start_time = time.time()
 

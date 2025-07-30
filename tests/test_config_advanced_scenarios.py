@@ -7,6 +7,12 @@ This module tests:
 4. Circular dependency detection edge cases
 """
 
+from chunker.config import StrategyConfig
+from chunker.exceptions import ConfigurationError
+from chunker.languages.base import LanguageConfig, PluginConfig
+import sys
+import threading
+import time
 import gc
 import json
 import os
@@ -21,9 +27,6 @@ import psutil
 import pytest
 
 try:
-    from chunker.config import StrategyConfig
-    from chunker.exceptions import ConfigurationError
-    from chunker.languages.base import LanguageConfig, PluginConfig
 except ImportError:
     # Mock if not available
     StrategyConfig = type("StrategyConfig", (), {})
@@ -273,7 +276,6 @@ class TestPerformanceImpactOfConfigLookups:
 
     def test_parallel_parsing_config_contention(self):
         """Test config lookup performance with parallel parsing."""
-        import threading
 
         class ThreadSafeConfigStore:
             def __init__(self, config: dict[str, Any]):
@@ -831,7 +833,6 @@ class TestMemoryUsageWithLargeConfigHierarchies:
                 }
 
                 # Estimate memory usage
-                import sys
 
                 for config in self.base_configs.values():
                     stats["estimated_memory"] += sys.getsizeof(config)
@@ -1386,8 +1387,6 @@ class TestCircularDependencyDetectionEdgeCases:
 
     def test_cycle_detection_performance(self):
         """Test performance of cycle detection with large graphs."""
-        import sys
-        import time
 
         # Increase recursion limit temporarily
         old_limit = sys.getrecursionlimit()

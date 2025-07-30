@@ -1,5 +1,6 @@
 """Profiling tools for the Tree-sitter chunker."""
 
+import tracemalloc
 import cProfile
 import io
 import pstats
@@ -216,7 +217,6 @@ def profile_memory_usage():
     print("=" * 70)
 
     try:
-        import tracemalloc
     except ImportError:
         print("tracemalloc not available in this Python version")
         return

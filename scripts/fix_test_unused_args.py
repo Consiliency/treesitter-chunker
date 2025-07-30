@@ -26,9 +26,7 @@ def fix_test_file(file_path: Path) -> bool:
                 if i + 1 < len(lines):
                     next_line = lines[i + 1].strip()
                     if not (
-                        next_line.startswith('"""')
-                        or next_line.startswith("'''")
-                        or next_line.startswith("del ")
+                        next_line.startswith(('"""', "'''", "del "))
                     ):
                         # Look for fixture names in the function signature
                         fixtures = re.findall(

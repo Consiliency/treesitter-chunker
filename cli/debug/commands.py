@@ -17,6 +17,8 @@ from chunker.debug import (
     print_ast_tree,
     render_ast_graph,
 )
+from chunker.debug.interactive.repl import DebugREPL
+from chunker.parser import get_parser
 
 app = typer.Typer(help="Debug and visualization tools for Tree-sitter chunker")
 console = Console()
@@ -41,7 +43,6 @@ def repl(
     console.print("[bold cyan]Starting Tree-sitter Debug REPL...[/bold cyan]")
 
     # Start REPL
-    from chunker.debug.interactive.repl import DebugREPL
 
     repl_instance = DebugREPL()
 
@@ -383,7 +384,6 @@ def validate(
             raise typer.Exit(1)
 
     try:
-        from chunker.parser import get_parser
 
         # Parse file_path
         with Path(file_path).open("rb") as f:

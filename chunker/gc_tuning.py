@@ -6,12 +6,15 @@ to optimize performance for large-scale code processing.
 
 import gc
 import logging
+import os
 import time
 import weakref
 from collections.abc import Callable
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any
+
+import psutil
 
 logger = logging.getLogger(__name__)
 
@@ -276,9 +279,7 @@ class MemoryOptimizer:
 
     def get_memory_usage(self) -> dict[str, Any]:
         """Get current memory usage statistics."""
-        import os
 
-        import psutil
 
         process = psutil.Process(os.getpid())
         memory_info = process.memory_info()

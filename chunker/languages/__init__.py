@@ -5,6 +5,33 @@ Per-language helpers live here (e.g. node-type mappings, heuristics).
 # ruff: noqa: SIM105 F401
 
 # Phase 2.1 exports (LanguageConfig system)
+
+from . import clojure
+from . import css
+from . import dart
+from . import dockerfile
+from . import elixir
+from . import go_plugin
+from . import haskell
+from . import html
+from . import java_plugin
+from . import json
+from . import julia
+from . import matlab
+from . import nasm
+from . import ocaml
+from . import python
+from . import r
+from . import ruby_plugin
+from . import scala
+from . import sql
+from . import svelte
+from . import toml
+from . import vue
+from . import wasm
+from . import xml
+from . import yaml
+from . import zig
 from .base import (
     ChunkRule,
     CompositeLanguageConfig,
@@ -106,135 +133,109 @@ __all__ = [
 
 # Auto-import language configurations to register them
 try:
-    from . import python
 except ImportError:
     pass
 
 try:
-    from . import go_plugin
 except ImportError:
     pass
 
 try:
-    from . import ruby_plugin
 except ImportError:
     pass
 
 try:
-    from . import java_plugin
 except ImportError:
     pass
 
 # Auto-import Tier 1 language configurations
 try:
-    from . import css
 except ImportError:
     pass
 
 try:
-    from . import html
 except ImportError:
     pass
 
 try:
-    from . import json
 except ImportError:
     pass
 
 try:
-    from . import toml
 except ImportError:
     pass
 
 try:
-    from . import xml
 except ImportError:
     pass
 
 try:
-    from . import yaml
 except ImportError:
     pass
 
 # Auto-import Tier 2 language configurations
 try:
-    from . import dockerfile
 except ImportError:
     pass
 
 try:
-    from . import sql
 except ImportError:
     pass
 
 try:
-    from . import matlab
 except ImportError:
     pass
 
 try:
-    from . import r
 except ImportError:
     pass
 
 try:
-    from . import julia
 except ImportError:
     pass
 
 try:
-    from . import ocaml
 except ImportError:
     pass
 
 # Auto-import Tier 3 language configurations
 try:
-    from . import haskell
 except ImportError:
     pass
 
 try:
-    from . import scala
 except ImportError:
     pass
 
 try:
-    from . import elixir
 except ImportError:
     pass
 
 try:
-    from . import clojure
 except ImportError:
     pass
 
 try:
-    from . import dart
 except ImportError:
     pass
 
 try:
-    from . import vue
 except ImportError:
     pass
 
 try:
-    from . import svelte
 except ImportError:
     pass
 
 # Auto-import Tier 4 language configurations
 try:
-    from . import zig
 except ImportError:
     pass
 
 try:
-    from . import nasm
 except ImportError:
     pass
 
 try:
-    from . import wasm
 except ImportError:
     pass

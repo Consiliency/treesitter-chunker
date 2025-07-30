@@ -1,10 +1,12 @@
 """Demonstration of performance optimization features."""
 
+import tempfile
 import time
 from pathlib import Path
 
 from chunker.performance.enhanced_chunker import EnhancedChunker
 from chunker.performance.optimization.batch import BatchProcessor
+from chunker.performance.optimization.memory_pool import MemoryPool
 from chunker.performance.optimization.monitor import PerformanceMonitor
 
 
@@ -65,7 +67,6 @@ class TestClass:
         return 3
 '''
 
-    import tempfile
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
         f.write(test_content)
@@ -155,7 +156,6 @@ def demo_memory_pooling():
     """Demonstrate memory pooling benefits."""
     print("\n\n=== Memory Pooling Demo ===")
 
-    from chunker.performance.optimization.memory_pool import MemoryPool
 
     pool = MemoryPool(max_pool_size=5)
 

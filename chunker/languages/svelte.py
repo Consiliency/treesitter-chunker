@@ -3,6 +3,8 @@ Support for Svelte language (Single File Components).
 """
 
 from __future__ import annotations
+from tree_sitter import Node
+import re
 
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 
@@ -87,7 +89,6 @@ from typing import TYPE_CHECKING
 from . import language_config_registry
 
 if TYPE_CHECKING:
-    from tree_sitter import Node
 
 language_config_registry.register(SvelteConfig())
 
@@ -135,7 +136,6 @@ class SveltePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     attr_content = source[child.start_byte : child.end_byte].decode(
                         "utf-8",
                     )
-                    import re
 
                     match = re.search(r'name="([^"]+)"', attr_content)
                     if match:
@@ -218,7 +218,6 @@ class SveltePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 # Add specific metadata
                 if n.type == "each_block":
                     # Try to extract iteration variable
-                    import re
 
                     match = re.search(r"{#each\s+(\w+)\s+as\s+(\w+)", content)
                     if match:

@@ -1,5 +1,6 @@
 """Integration tests for cross-module error propagation."""
 
+import re
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -662,7 +663,6 @@ class TestCrossModuleErrors(ErrorPropagationMixin):
             # Check error type first for proper formatting
             if error_type == "FileNotFoundError":
                 # Extract filename from message
-                import re
 
                 # Try different patterns
                 patterns = [
@@ -683,7 +683,6 @@ class TestCrossModuleErrors(ErrorPropagationMixin):
                     lines.append("File not found")
             elif error_type == "PermissionError":
                 # Extract path from message
-                import re
 
                 patterns = [
                     r"'([^']+)'",  # Single quotes

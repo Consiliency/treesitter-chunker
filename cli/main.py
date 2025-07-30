@@ -1,4 +1,5 @@
 from __future__ import annotations
+from collections.abc import Iterator
 
 import fnmatch
 import json
@@ -31,7 +32,6 @@ app.add_typer(debug_commands.app, name="debug", help="Debug and visualization to
 from .repo_command import app as repo_app
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
 
 app.add_typer(repo_app, name="repo", help="Repository processing commands")
 
@@ -89,13 +89,11 @@ def should_include_file(
     file_str = str(file_path)
 
     # If include patterns specified, file_path must match at least one
-    if include_patterns:
-        if not any(fnmatch.fnmatch(file_str, pattern) for pattern in include_patterns):
+    if include_patterns and not any(fnmatch.fnmatch(file_str, pattern) for pattern in include_patterns):
             return False
 
     # If exclude patterns specified, file_path must not match any
-    if exclude_patterns:
-        if any(fnmatch.fnmatch(file_str, pattern) for pattern in exclude_patterns):
+    if exclude_patterns and any(fnmatch.fnmatch(file_str, pattern) for pattern in exclude_patterns):
             return False
 
     return True
@@ -356,8 +354,7 @@ def batch(
         # Read file_path paths from stdin
         for line in sys.stdin:
             path = Path(line.strip())
-            if path.exists() and path.is_file():
-                if should_include_file(path, include_patterns, exclude_patterns):
+            if path.exists() and path.is_file() and should_include_file(path, include_patterns, exclude_patterns):
                     files_to_process.append(path)
     # Process provided paths
     elif not paths and pattern:
@@ -368,8 +365,7 @@ def batch(
     elif paths:
         # Process provided paths
         for path in paths:
-            if path.is_file():
-                if should_include_file(path, include_patterns, exclude_patterns):
+            if path.is_file() and should_include_file(path, include_patterns, exclude_patterns):
                     files_to_process.append(path)
             elif path.is_dir():
                 # Process directory

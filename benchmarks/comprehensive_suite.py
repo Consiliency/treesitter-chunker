@@ -3,6 +3,11 @@
 This module provides extensive benchmarking across different scenarios.
 """
 
+import gc
+import os
+import psutil
+import shutil
+import tracemalloc
 import json
 import multiprocessing
 import statistics
@@ -811,10 +816,9 @@ Additional text content here.
     def _benchmark_memory(self, context: dict[str, Any]) -> dict[str, Any]:
         """Benchmark memory usage."""
         try:
-            import os
-            import tracemalloc
-
+            # Check imports are available
             import psutil
+            import tracemalloc
         except ImportError:
             return {"error": "psutil or tracemalloc not available"}
 
@@ -955,7 +959,6 @@ This is a test repository for benchmarking.
 
         # Test different export formats
         try:
-            from chunker.export import (
                 CSVExporter,
                 JSONExporter,
                 JSONLExporter,
@@ -1027,7 +1030,6 @@ This is a test repository for benchmarking.
                         if value.is_file():
                             value.unlink()
                         elif value.is_dir():
-                            import shutil
 
                             shutil.rmtree(value)
                     elif isinstance(value, list):
@@ -1114,7 +1116,6 @@ This is a test repository for benchmarking.
 
 def gc_collect():
     """Force garbage collection."""
-    import gc
 
     gc.collect()
 

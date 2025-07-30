@@ -63,7 +63,7 @@ def fix_path_open(file_path):
             # Find where to insert the import
             import_index = 0
             for i, line in enumerate(new_lines):
-                if line.startswith("import ") or line.startswith("from "):
+                if line.startswith(("import ", "from ")):
                     import_index = i + 1
                 elif import_index > 0 and line and not line.startswith(" "):
                     # End of import block

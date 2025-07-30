@@ -3,6 +3,7 @@
 Handles downloading, extracting, and compiling tree-sitter grammars from GitHub.
 """
 
+import ctypes
 import json
 import os
 import platform
@@ -15,6 +16,8 @@ from pathlib import Path
 from typing import ClassVar
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+
+import tree_sitter
 
 from chunker.contracts.download_contract import (
     CompilationResult,
@@ -301,7 +304,6 @@ class GrammarDownloadManager(GrammarDownloadContract):
     def _get_abi_version(self) -> int:
         """Get current tree-sitter ABI version"""
         try:
-            import tree_sitter
 
             # tree-sitter 0.20.0 uses ABI 14, 0.21.0 uses ABI 15
             version = tree_sitter.__version__
@@ -434,7 +436,6 @@ class GrammarDownloadManager(GrammarDownloadContract):
 
         # Try to load the grammar to validate it
         try:
-            import ctypes
 
             # Try to load the shared library
             lib = ctypes.CDLL(str(grammar_path))

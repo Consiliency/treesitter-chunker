@@ -2,6 +2,7 @@
 
 import xml.etree.ElementTree as ET
 from typing import Any
+from xml.dom import minidom
 
 from .graphml_exporter import GraphMLExporter
 
@@ -205,7 +206,6 @@ class GraphMLyEdExporter(GraphMLExporter):
 
             # Convert to string
             if pretty_print:
-                from xml.dom import minidom
 
                 rough_string = ET.tostring(root, encoding="unicode")
                 reparsed = minidom.parseString(rough_string)

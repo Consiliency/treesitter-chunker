@@ -1,6 +1,8 @@
 """Export chunks to database formats (SQLite, PostgreSQL)."""
 
 from __future__ import annotations
+from chunker.types import CodeChunk
+from collections.abc import Iterator
 
 import io
 import json
@@ -18,9 +20,7 @@ from chunker.interfaces.export import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
 
-    from chunker.types import CodeChunk
 
 
 class SQLiteExporter(DatabaseExporter):
@@ -99,10 +99,7 @@ class SQLiteExporter(DatabaseExporter):
             self._create_tables(conn)
 
             # Stream chunks in batches
-            chunk_batch = []
-            for chunk in chunk_iterator:
-                chunk_batch.append(chunk)
-                if len(chunk_batch) >= self._batch_size:
+            chunk_batch = [chunk for chunk in chunk_iterator]                if len(chunk_batch) >= self._batch_size:
                     self._insert_chunks(conn, chunk_batch)
                     chunk_batch = []
 
@@ -111,10 +108,7 @@ class SQLiteExporter(DatabaseExporter):
                 self._insert_chunks(conn, chunk_batch)
 
             # Stream relationships in batches
-            rel_batch = []
-            for rel in relationship_iterator:
-                rel_batch.append(rel)
-                if len(rel_batch) >= self._batch_size:
+            rel_batch = [rel for rel in relationship_iterator]                if len(rel_batch) >= self._batch_size:
                     self._insert_relationships(conn, rel_batch)
                     rel_batch = []
 
@@ -680,10 +674,7 @@ class PostgreSQLExporter(DatabaseExporter):
 
         # Stream chunks in batches
         output.write("-- Chunks\n")
-        chunk_batch = []
-        for chunk in chunk_iterator:
-            chunk_batch.append(chunk)
-            if len(chunk_batch) >= self._batch_size:
+        chunk_batch = [chunk for chunk in chunk_iterator]            if len(chunk_batch) >= self._batch_size:
                 for line in self._generate_insert_chunks(chunk_batch):
                     output.write(line + "\n")
                 chunk_batch = []
@@ -698,10 +689,7 @@ class PostgreSQLExporter(DatabaseExporter):
 
         # Stream relationships in batches
         output.write("-- Relationships\n")
-        rel_batch = []
-        for rel in relationship_iterator:
-            rel_batch.append(rel)
-            if len(rel_batch) >= self._batch_size:
+        rel_batch = [rel for rel in relationship_iterator]            if len(rel_batch) >= self._batch_size:
                 for line in self._generate_insert_relationships(rel_batch):
                     output.write(line + "\n")
                 rel_batch = []

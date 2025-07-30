@@ -2,6 +2,7 @@
 """Fix BLE001 blind except errors by using specific exception types."""
 
 import re
+import subprocess
 from pathlib import Path
 
 
@@ -55,7 +56,7 @@ def fix_blind_except_advanced(file_path: Path) -> bool:
     try:
         content = file_path.read_text()
         lines = content.splitlines(keepends=True)
-        original_lines = lines.copy()
+        lines.copy()
         modified = False
 
         for i, line in enumerate(lines):
@@ -87,7 +88,6 @@ def main():
     repo_root = Path.cwd()
 
     # Get Python files from git
-    import subprocess
 
     result = subprocess.run(
         ["git", "ls-files", "*.py"],

@@ -10,8 +10,10 @@ Tests cover:
 6. Progress callbacks
 """
 
+import concurrent.futures
 import mmap
 import os
+import shutil
 import tempfile
 import threading
 import time
@@ -21,6 +23,7 @@ from pathlib import Path
 import psutil
 import pytest
 
+from chunker import chunk_file
 from chunker.exceptions import LanguageNotFoundError
 from chunker.streaming import (
     StreamingChunker,
@@ -182,7 +185,7 @@ class MemoryMonitor:
             time.sleep(0.1)  # Sample every 100ms
 
 
-@pytest.fixture()
+@pytest.fixture
 def large_python_file():
     """Create a large temporary Python file (>100MB)."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
@@ -208,7 +211,7 @@ def large_python_file():
     temp_path.unlink()
 
 
-@pytest.fixture()
+@pytest.fixture
 def medium_python_file():
     """Create a medium-sized temporary Python file (~10MB)."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
@@ -219,7 +222,7 @@ def medium_python_file():
     temp_path.unlink()
 
 
-@pytest.fixture()
+@pytest.fixture
 def corrupted_python_file():
     """Create a file with invalid UTF-8 sequences."""
     with tempfile.NamedTemporaryFile(mode="wb", suffix=".py", delete=False) as f:
@@ -279,7 +282,6 @@ class TestStreamingLargeFiles:
 
     def test_streaming_vs_regular_memory_usage(self, medium_python_file):
         """Compare memory usage between streaming and regular chunking."""
-        from chunker import chunk_file
 
         # Test regular chunking
         monitor_regular = MemoryMonitor()
@@ -688,8 +690,6 @@ class TestConcurrentStreaming:
 
     def test_multiple_files_concurrent_streaming(self, temp_directory_with_files):
         """Test streaming multiple files concurrently."""
-        import concurrent.futures
-        from pathlib import Path
 
         # Create a temporary directory with files
         temp_dir = Path(tempfile.mkdtemp())
@@ -722,13 +722,11 @@ class TestConcurrentStreaming:
 
         finally:
             # Cleanup
-            import shutil
 
             shutil.rmtree(temp_dir)
 
     def test_thread_safety(self, medium_python_file):
         """Test that StreamingChunker is thread-safe."""
-        import concurrent.futures
 
         chunker = StreamingChunker("python")
         results = []
@@ -752,7 +750,7 @@ class TestConcurrentStreaming:
 
 
 # Additional fixtures for creating test directories
-@pytest.fixture()
+@pytest.fixture
 def temp_directory_with_files():
     """Create a temporary directory with multiple Python files."""
     temp_dir = Path(tempfile.mkdtemp())
@@ -765,6 +763,5 @@ def temp_directory_with_files():
     yield temp_dir
 
     # Cleanup
-    import shutil
 
     shutil.rmtree(temp_dir)

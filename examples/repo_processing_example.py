@@ -1,5 +1,7 @@
 """Example of repository processing with the chunker."""
 
+import time
+
 from chunker.repo.processor import GitAwareRepoProcessor, RepoProcessor
 
 
@@ -107,7 +109,6 @@ def parallel_processing():
     """Example with different parallelization settings."""
     print("\n=== Parallel Processing Comparison ===")
 
-    import time
 
     # Single-threaded processing
     processor_single = RepoProcessor(show_progress=False, max_workers=1)

@@ -7,18 +7,18 @@ Handles chunking of configuration files including:
 - JSON configuration files
 """
 
+import toml
+import yaml
 import json
 import re
 from pathlib import Path
 from typing import Any
 
 try:
-    import toml
 except ImportError:
     toml = None
 
 try:
-    import yaml
 except ImportError:
     yaml = None
 
@@ -196,8 +196,7 @@ class ConfigProcessor(SpecializedProcessor):
             elif "=" in line:
                 # Key-value pair
                 key = line.split("=", 1)[0].strip()
-                if key:
-                    if current_section:
+                if key and current_section:
                         structure["sections"][current_section]["keys"].append(key)
                     else:
                         structure["global_section"]["keys"].append(key)
@@ -286,8 +285,7 @@ class ConfigProcessor(SpecializedProcessor):
                 value = match.group(3).strip()
 
                 # Root level key
-                if indent == 0:
-                    if not value or value in {"|", ">"}:
+                if indent == 0 and not value or value in {"|", ">"}:
                         # This is a section
                         current_section = key
                         section_indent = indent
@@ -566,8 +564,7 @@ class ConfigProcessor(SpecializedProcessor):
             # Collect all root key lines
             root_lines = []
             for i, line in enumerate(lines):
-                if not line.strip() or line.strip().startswith("#"):
-                    if i == 0 or (i > 0 and root_lines):
+                if not line.strip() or line.strip().startswith("#") and i == 0 or (i > 0 and root_lines):
                         root_lines.append(i)
                     continue
 

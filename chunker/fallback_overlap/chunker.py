@@ -1,6 +1,7 @@
 """Implementation of overlapping fallback chunker for non-Tree-sitter files only."""
 
 import logging
+import os
 import re
 import warnings
 from typing import Literal
@@ -64,7 +65,6 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
             raise TreeSitterOverlapError(language)
 
         # Infer language from file extension
-        import os
 
         ext = os.path.splitext(file_path)[1].lower()
 

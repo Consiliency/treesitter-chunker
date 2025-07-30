@@ -6,17 +6,17 @@ that require specialized chunking strategies beyond basic tree-sitter parsing.
 
 from .base import ProcessorConfig, SpecializedProcessor, TextChunk
 from .config import ConfigProcessor
+from .logs import LogProcessor
+from .markdown import MarkdownProcessor
 
 # Import other processors if available
 try:
-    from .markdown import MarkdownProcessor
 
     _has_markdown = True
 except ImportError:
     _has_markdown = False
 
 try:
-    from .logs import LogProcessor
 
     _has_logs = True
 except ImportError:

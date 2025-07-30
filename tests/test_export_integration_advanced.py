@@ -4,11 +4,14 @@ This module tests advanced export scenarios including streaming,
 compression, schema transformations, and error handling.
 """
 
+import gc
 import gzip
 import json
 import os
+import time
 from pathlib import Path
 
+import psutil
 import pytest
 
 from chunker import CodeChunk, chunk_file, chunk_files_parallel
@@ -230,11 +233,7 @@ class Module_{i}:
         results = chunk_files_parallel(files, language="python", num_workers=2)
 
         # Collect all chunks
-        all_chunks = []
-        for chunks in results.values():
-            all_chunks.extend(chunks)
-
-        # Export to all formats
+        all_chunks = [item for chunks in results.values() for item in chunks]        # Export to all formats
         export_dir = tmp_path / "exports"
         export_dir.mkdir()
 
@@ -457,9 +456,7 @@ class TestLargeScaleExport:
 
     def test_export_memory_efficiency(self, tmp_path):
         """Test memory efficiency during large exports."""
-        import gc
 
-        import psutil
 
         # Create many chunks
         chunks = []
@@ -510,7 +507,6 @@ class TestLargeScaleExport:
 
     def test_export_performance_comparison(self, tmp_path):
         """Compare performance of different export formats."""
-        import time
 
         # Create test chunks
         chunks = []

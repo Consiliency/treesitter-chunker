@@ -4,7 +4,9 @@ These interfaces ensure consistent cross-module testing across all parallel work
 The integration coordinator worktree implements the full versions of these interfaces.
 """
 
+import inspect
 import time
+import traceback
 from typing import Any
 
 
@@ -47,13 +49,11 @@ class ErrorPropagationMixin:
 
     def _get_traceback(self, error: Exception) -> list[str]:
         """Extract traceback information."""
-        import traceback
 
         return traceback.format_exception(type(error), error, error.__traceback__)
 
     def _get_call_stack(self) -> list[str]:
         """Get current call stack."""
-        import inspect
 
         return [
             f"{frame.filename}:{frame.lineno} in {frame.function}"
@@ -155,11 +155,7 @@ class ResourceTracker:
 
     def verify_cleanup(self, module: str) -> list[dict[str, Any]]:
         """Verify all resources for module are cleaned up."""
-        leaked = []
-        for resource in self._resources.values():
-            if resource["owner_module"] == module and resource["state"] == "active":
-                leaked.append(resource)
-        return leaked
+        leaked = [resource for resource in self._resources.values() if resource["owner_module"] == module and resource["state"] == "active"]        return leaked
 
     def get_resource_state(self, resource_id: str) -> dict[str, Any] | None:
         """Get current state of a resource."""

@@ -1,5 +1,7 @@
 """Multi-language project processing implementation."""
 
+from .chunker import chunk_file
+from .parser import get_parser, list_languages
 import json
 import os
 import re
@@ -19,8 +21,6 @@ from .types import CodeChunk
 
 # Conditional imports - these may not be available in test environment
 try:
-    from .chunker import chunk_file
-    from .parser import get_parser, list_languages
 except ImportError:
     # Define stubs for testing
     def list_languages():
@@ -481,8 +481,7 @@ class ProjectAnalyzerImpl(ProjectAnalyzer):
         # Web application
         if structure["has_frontend"] and structure["has_backend"]:
             return "fullstack_webapp"
-        if "javascript" in indicators or "typescript" in indicators:
-            if "node" in indicators:
+        if "javascript" in indicators or "typescript" in indicators and "node" in indicators:
                 return "node_application"
             return "frontend_webapp"
 
@@ -619,8 +618,7 @@ class ProjectAnalyzerImpl(ProjectAnalyzer):
             # Common feature patterns
             feature = None
             for i, part in enumerate(path_parts):
-                if part in ["features", "modules", "components", "services", "domains"]:
-                    if i + 1 < len(path_parts):
+                if part in ["features", "modules", "components", "services", "domains"] and i + 1 < len(path_parts):
                         feature = path_parts[i + 1]
                         break
 
@@ -1315,8 +1313,7 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
             # Look for feature indicators in path
             feature_name = None
             for i, part in enumerate(parts):
-                if part in ["features", "modules", "components", "domains", "services"]:
-                    if i + 1 < len(parts):
+                if part in ["features", "modules", "components", "domains", "services"] and i + 1 < len(parts):
                         feature_name = parts[i + 1]
                         break
 

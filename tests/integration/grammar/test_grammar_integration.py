@@ -1,6 +1,7 @@
 """Integration tests for grammar management."""
 
 import shutil
+import socket
 import tempfile
 from pathlib import Path
 
@@ -39,7 +40,6 @@ class TestGrammarIntegration:
     def test_full_grammar_workflow(self):
         """Test complete workflow: add, fetch, build, validate."""
         # Skip if no internet connection
-        import socket
 
         try:
             socket.create_connection(("github.com", 443), timeout=5)

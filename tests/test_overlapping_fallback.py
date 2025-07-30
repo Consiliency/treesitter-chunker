@@ -1,5 +1,6 @@
 """Tests for overlapping fallback chunker."""
 
+import logging
 import warnings
 
 import pytest
@@ -334,7 +335,6 @@ Third paragraph is shorter."""
 
     def test_warning_logging(self, chunker, log_content, caplog):
         """Test that warnings are properly logged."""
-        import logging
 
         caplog.set_level(logging.WARNING)
 

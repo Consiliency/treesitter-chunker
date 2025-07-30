@@ -1,9 +1,11 @@
 """Comprehensive tests for token counting integration."""
 
+import concurrent.futures
+import shutil
 import tempfile
 from pathlib import Path
 
-from chunker import chunk_file
+from chunker import chunk_file, get_parser
 from chunker.token import TiktokenCounter
 from chunker.token.chunker import TreeSitterTokenAwareChunker
 
@@ -114,7 +116,6 @@ class TestTokenAwareChunker:
 
     def teardown_method(self):
         """Clean up test files."""
-        import shutil
 
         shutil.rmtree(self.test_dir)
 
@@ -236,7 +237,6 @@ def test_function():
         file_path = self.create_test_file(content)
 
         # Since chunk() requires an AST, we need to parse first
-        from chunker import get_parser
 
         parser = get_parser("python")
         tree = parser.parse(content.encode())
@@ -415,7 +415,6 @@ def calculate():
 
     def test_concurrent_chunk_processing(self):
         """Test that token counting works correctly with concurrent processing."""
-        import concurrent.futures
 
         # Create multiple test files
         files = []

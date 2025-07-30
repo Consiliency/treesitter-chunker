@@ -1,5 +1,11 @@
 """Integration tests for runtime configuration changes."""
 
+from chunker.chunker import Chunker
+from chunker.config import Config
+from chunker.languages import language_config_registry
+from chunker.parser import get_parser
+import copy
+import json
 import gc
 import threading
 import time
@@ -12,10 +18,6 @@ import pytest
 
 # Import actual modules for realistic testing
 try:
-    from chunker.chunker import Chunker
-    from chunker.config import Config
-    from chunker.languages import language_config_registry
-    from chunker.parser import get_parser
 except ImportError:
     # Mock if not available
     Config = MagicMock()
@@ -531,7 +533,6 @@ class TestConfigRuntimeChanges:
             },
         }
 
-        import copy
 
         # Track config states
         config_history = [copy.deepcopy(stable_config)]
@@ -807,7 +808,6 @@ class TestConfigRuntimeChanges:
         # Create config file
         config_file = temp_workspace / "config.json"
 
-        import json
 
         # Initial config
         initial_config = {

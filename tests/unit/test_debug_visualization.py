@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from chunker import chunk_file
 from chunker.debug.tools.visualization import DebugVisualization
 
 
@@ -134,7 +135,6 @@ def test():
             f.flush()
 
         try:
-            from chunker import chunk_file
 
             chunks = chunk_file(f.name, "python")
 

@@ -1,5 +1,6 @@
 """Grammar manager implementation for tree-sitter language support."""
 
+import ctypes
 import json
 import logging
 import subprocess
@@ -281,7 +282,6 @@ class GrammarManager(GrammarManagerContract):
 
         # Try to dynamically discover languages from the compiled library
         try:
-            import ctypes
 
             # Load the library
             lib = ctypes.CDLL(str(self._lib_path))

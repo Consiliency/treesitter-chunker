@@ -1,4 +1,6 @@
 from __future__ import annotations
+from collections.abc import Iterator
+from tree_sitter import Node
 
 import hashlib
 import mmap
@@ -10,9 +12,7 @@ from .parser import get_parser
 from .types import CodeChunk
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
 
-    from tree_sitter import Node
 
 
 @dataclass

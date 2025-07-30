@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from chunker import chunk_file
 from chunker.debug.comparison import ChunkComparisonImpl
 from chunker.debug.visualization_impl import DebugVisualizationImpl
 
@@ -70,7 +71,6 @@ class Example:
     def test_inspect_chunk(self, impl, sample_file):
         """Test chunk inspection"""
         # First get chunks to find a valid chunk ID
-        from chunker import chunk_file
 
         chunks = chunk_file(sample_file, "python")
 
@@ -113,11 +113,7 @@ class TestChunkComparisonImpl:
     def sample_file(self):
         """Create a sample Python file"""
         content = """def process_data(data):
-    result = []
-    for item in data:
-        if item > 0:
-            result.append(item * 2)
-    return result
+    result = [item * 2 for item in data if item > 0]    return result
 
 class DataProcessor:
     def __init__(self):

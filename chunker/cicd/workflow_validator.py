@@ -123,9 +123,8 @@ class WorkflowValidator:
         triggers = workflow["on"]
 
         # Handle string trigger
-        if isinstance(triggers, str):
-            if triggers not in self.VALID_EVENTS:
-                self.warnings.append(f"Unknown event trigger: {triggers}")
+        if isinstance(triggers, str) and triggers not in self.VALID_EVENTS:
+            self.warnings.append(f"Unknown event trigger: {triggers}")
             return
 
         # Handle list of triggers
@@ -371,9 +370,8 @@ class WorkflowValidator:
                 "statuses",
             }
 
-            if isinstance(perms, str):
-                if perms not in ["read-all", "write-all"]:
-                    self.errors.append(f"Invalid permission level: {perms}")
+            if isinstance(perms, str) and perms not in ["read-all", "write-all"]:
+                self.errors.append(f"Invalid permission level: {perms}")
             elif isinstance(perms, dict):
                 for scope, level in perms.items():
                     if scope not in valid_scopes:

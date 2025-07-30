@@ -17,6 +17,9 @@ from typing import Any
 
 from chunker.chunker_config import ChunkerConfig
 from chunker.interfaces.fallback import FallbackConfig
+from chunker.processors.config import ConfigProcessor
+from chunker.processors.logs import LogProcessor
+from chunker.processors.markdown import MarkdownProcessor
 from chunker.types import CodeChunk
 
 from .base import FallbackChunker
@@ -296,7 +299,6 @@ class SlidingWindowFallback(FallbackChunker):
         """Load built-in processors dynamically."""
         # Try to import processors from Phase 11 components
         try:
-            from chunker.processors.markdown import MarkdownProcessor
 
             processor_info = ProcessorInfo(
                 name="markdown_processor",
@@ -314,7 +316,6 @@ class SlidingWindowFallback(FallbackChunker):
             logger.debug("Could not import MarkdownProcessor: %s", e)
 
         try:
-            from chunker.processors.logs import LogProcessor
 
             processor_info = ProcessorInfo(
                 name="log_processor",
@@ -332,7 +333,6 @@ class SlidingWindowFallback(FallbackChunker):
             logger.debug("Could not import LogProcessor: %s", e)
 
         try:
-            from chunker.processors.config import ConfigProcessor
 
             processor_info = ProcessorInfo(
                 name="config_processor",

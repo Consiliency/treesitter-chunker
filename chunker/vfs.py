@@ -5,6 +5,7 @@ including local files, in-memory files, zip archives, and remote repositories.
 """
 
 from __future__ import annotations
+from collections.abc import Iterator
 
 import io
 import os
@@ -17,7 +18,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
 
 
 @dataclass
@@ -151,8 +151,7 @@ class InMemoryFileSystem(VirtualFileSystem):
 
         content = self.files[path]
 
-        if "b" in mode:
-            if isinstance(content, str):
+        if "b" in mode and isinstance(content, str):
                 content = content.encode()
             return io.BytesIO(content)
         if isinstance(content, bytes):
@@ -443,8 +442,7 @@ class CompositeFileSystem(VirtualFileSystem):
 
         for prefix, fs in self.filesystems:
             # Check if this filesystem could contain items under the requested path
-            if path == "/" or path.startswith(prefix) or prefix.startswith(path):
-                if path == "/":
+            if path == "/" or path.startswith(prefix) or prefix.startswith(path) and path == "/":
                     # List items at root - check if prefix is at root level
                     if prefix.count("/") == 1:  # e.g., /memory, /local
                         # Add the mount point as a directory

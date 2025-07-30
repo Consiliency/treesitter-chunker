@@ -3,14 +3,19 @@ Debug visualization implementation
 """
 
 import json
+import os
+import tempfile
 import time
 import tracemalloc
 from pathlib import Path
 from typing import Any
 
+import graphviz
+
 from chunker.chunker import chunk_file
 from chunker.contracts.debug_contract import DebugVisualizationContract
 from chunker.debug.visualization.ast_visualizer import ASTVisualizer
+from chunker.languages import language_config_registry
 from chunker.parser import get_parser
 
 
@@ -80,14 +85,11 @@ class DebugVisualization(DebugVisualizationContract):
 
             # For SVG/PNG, render using graphviz
             try:
-                import graphviz
 
                 dot = graphviz.Source(graph_source)
                 dot.format = output_format
 
                 # Render to bytes
-                import os
-                import tempfile
 
                 with tempfile.NamedTemporaryFile(
                     delete=False,
@@ -309,7 +311,6 @@ class DebugVisualization(DebugVisualizationContract):
         tree = parser.parse(content)
 
         # Get language config for chunking rules
-        from chunker.languages import language_config_registry
 
         config = language_config_registry.get(language)
 

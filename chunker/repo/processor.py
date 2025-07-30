@@ -317,8 +317,7 @@ class RepoProcessor(RepoProcessorInterface):
                                 dirs_to_process.append(item)
                         elif item.is_file():
                             rel_path = item.relative_to(repo_path)
-                            if not exclude_spec.match_file(str(rel_path)):
-                                if self._should_process_file(item, file_pattern):
+                            if not exclude_spec.match_file(str(rel_path)) and self._should_process_file(item, file_pattern):
                                     files.append(item)
                 except PermissionError:
                     pass
@@ -338,8 +337,7 @@ class RepoProcessor(RepoProcessorInterface):
                     file_path = root_path / filename
                     rel_path = file_path.relative_to(repo_path)
 
-                    if not exclude_spec.match_file(str(rel_path)):
-                        if self._should_process_file(file_path, file_pattern):
+                    if not exclude_spec.match_file(str(rel_path)) and self._should_process_file(file_path, file_pattern):
                             files.append(file_path)
 
         return sorted(files)
@@ -660,8 +658,7 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
                 filtered_files = []
                 for file_path in files:
                     rel_path = file_path.relative_to(repo_path)
-                    if not gitignore_spec.match_file(str(rel_path)):
-                        if self.should_process_file(str(file_path), repo_path):
+                    if not gitignore_spec.match_file(str(rel_path)) and self.should_process_file(str(file_path), repo_path):
                             filtered_files.append(file_path)
 
                 return filtered_files

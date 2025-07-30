@@ -1,6 +1,7 @@
 """Example of using incremental processing for efficient chunk updates."""
 
 import os
+import shutil
 import tempfile
 
 from chunker import (
@@ -184,7 +185,6 @@ def demonstrate_cache_persistence():
         print(f"Successfully retrieved {len(entry.chunks)} chunks from imported cache")
 
     # Cleanup
-    import shutil
 
     shutil.rmtree(".cache1", ignore_errors=True)
     shutil.rmtree(".cache2", ignore_errors=True)

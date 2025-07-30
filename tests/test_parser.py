@@ -5,6 +5,7 @@ from unittest.mock import patch
 import pytest
 from tree_sitter import Parser
 
+import chunker.parser
 from chunker import (
     LanguageNotFoundError,
     LibraryNotFoundError,
@@ -16,6 +17,8 @@ from chunker import (
     list_languages,
     return_parser,
 )
+from chunker.exceptions import ParserConfigError
+from chunker.parser import _factory, _initialize, get_parser
 from chunker.registry import LanguageMetadata
 
 
@@ -61,7 +64,6 @@ class TestParserAPI:
 
     def test_invalid_config(self):
         """Test invalid parser configuration."""
-        from chunker.exceptions import ParserConfigError
 
         config = ParserConfig(timeout_ms=-1)
         with pytest.raises(ParserConfigError):
@@ -121,14 +123,12 @@ class TestBackwardCompatibility:
 
     def test_old_import_still_works(self):
         """Test that old import pattern still works."""
-        from chunker.parser import get_parser
 
         parser = get_parser("python")
         assert isinstance(parser, Parser)
 
     def test_old_usage_pattern(self):
         """Test old usage pattern with 'lang' parameter."""
-        from chunker import get_parser
 
         # Old style: positional argument
         parser = get_parser("python")
@@ -145,7 +145,6 @@ class TestErrorHandling:
         mock_path.__str__.return_value = "/fake/path/lib.so"
 
         # Clear any cached instances
-        import chunker.parser
 
         chunker.parser._registry = None
         chunker.parser._factory = None
@@ -168,7 +167,6 @@ class TestParserFactory:
     def test_factory_stats(self):
         """Test factory statistics."""
         # This requires access to the factory instance
-        from chunker.parser import _factory, _initialize
 
         _initialize()
 

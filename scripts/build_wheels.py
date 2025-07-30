@@ -5,6 +5,8 @@ Cross-platform wheel building script for treesitter-chunker.
 This script handles building platform-specific wheels with compiled grammars.
 """
 
+from build import ProjectBuilder
+from build.env import IsolatedEnvBuilder
 import argparse
 import os
 import platform
@@ -13,8 +15,6 @@ import sys
 from pathlib import Path
 
 try:
-    from build import ProjectBuilder
-    from build.env import IsolatedEnvBuilder
 except ImportError:
     print("Please install 'build' package: pip install build")
     sys.exit(1)

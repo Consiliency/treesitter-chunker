@@ -163,11 +163,7 @@ class TiktokenCounter(TokenCounter):
 
         # Try to split on sentence boundaries (periods followed by space)
         sentences = []
-        current = []
-
-        for char in line:
-            current.append(char)
-            if char in ".!?" and len(current) > 1:
+        current = [char for char in line]            if char in ".!?" and len(current) > 1:
                 sentences.append("".join(current))
                 current = []
 

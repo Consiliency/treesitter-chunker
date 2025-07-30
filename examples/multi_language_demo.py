@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Demo script for multi-language processing capabilities."""
 
+import tempfile
 from pathlib import Path
 
 from chunker.multi_language import (
@@ -296,7 +297,6 @@ def demo_project_analysis():
     analyzer = ProjectAnalyzerImpl()
 
     # Create a mock project structure
-    import tempfile
 
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create project structure

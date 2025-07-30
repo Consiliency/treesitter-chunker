@@ -1,6 +1,7 @@
 """Base implementation for fallback chunking strategies."""
 
 import logging
+import os
 import warnings
 from re import Pattern
 from typing import Any
@@ -362,7 +363,6 @@ class FallbackChunker(IFallbackChunker):
             ".conf": "config",
         }
 
-        import os
 
         ext = os.path.splitext(self.file_path)[1].lower()
         return ext_map.get(ext, "unknown")

@@ -1,5 +1,7 @@
 """Integration tests for Parquet export with CLI options."""
 
+from cli.main import cli
+from click.testing import CliRunner
 import subprocess
 import sys
 import threading
@@ -13,8 +15,6 @@ import pytest
 
 # Try to import CLI runner
 try:
-    from cli.main import cli
-    from click.testing import CliRunner
 except ImportError:
     CliRunner = MagicMock()
     cli = MagicMock()
@@ -952,10 +952,7 @@ namespace Utils {
 def function_{i}_{j}(data):
     '''Process data for file_path {i} function {j}'''
     # Simulate some code content
-    result = []
-    for item in data:
-        result.append(item * {j})
-    return result
+    result = [item * {j} for item in data]    return result
 """,
                 )
 
@@ -1193,12 +1190,7 @@ class Class_{i}:
             ), "Too many large jumps in progress"
 
         # Test ETA calculation
-        eta_updates = []
-        for update in progress_updates:
-            if "ETA" in update["line"] or "remaining" in update["line"]:
-                eta_updates.append(update)
-
-        if eta_updates:
+        eta_updates = [update for update in progress_updates if "ETA" in update["line"] or "remaining" in update["line"]]        if eta_updates:
             # ETA should generally decrease
             # Extract time values and verify they decrease
             pass  # Mock CLI might not provide real ETAs

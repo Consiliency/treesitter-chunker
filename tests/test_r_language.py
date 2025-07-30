@@ -1,6 +1,6 @@
 """Comprehensive tests for R language support."""
 
-from chunker import chunk_file
+from chunker import chunk_file, get_parser
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from chunker.languages.r import RPlugin
 
@@ -189,7 +189,6 @@ class TestRContractCompliance:
 """
 
         # Parse the source (mock tree-sitter node)
-        from chunker import get_parser
 
         parser = get_parser("r")
         plugin.set_parser(parser)

@@ -10,12 +10,14 @@ formats (syslog, apache, custom) with features like:
 """
 
 import re
-from collections import deque
+from collections import OrderedDict, deque
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
+
+from dateutil import parser
 
 from .base import SpecializedProcessor, TextChunk
 
@@ -170,7 +172,6 @@ class LogProcessor(SpecializedProcessor):
     def _init_patterns(self) -> None:
         """Initialize pattern matchers from config and defaults."""
         # Use OrderedDict to preserve pattern matching order
-        from collections import OrderedDict
 
         self.patterns = OrderedDict(LOG_PATTERNS)
 
@@ -289,8 +290,7 @@ class LogProcessor(SpecializedProcessor):
             line_bytes = len(line.encode("utf-8"))
 
             # Check if this is a new entry or continuation
-            if self._is_new_entry(line):
-                if current_entry:
+            if self._is_new_entry(line) and current_entry:
                     entries.append(current_entry)
 
                 current_entry = self._parse_line(line, i + 1, byte_offset)
@@ -406,7 +406,6 @@ class LogProcessor(SpecializedProcessor):
                     "%Y %b %d %H:%M:%S",
                 )
                 # Add UTC timezone for consistency
-                from datetime import timezone
 
                 return dt.replace(tzinfo=timezone.utc)
             if format_name == "apache":
@@ -426,7 +425,6 @@ class LogProcessor(SpecializedProcessor):
                         dt = datetime.strptime(timestamp_str, fmt)
                         # If no timezone info, assume UTC for consistency
                         if dt.tzinfo is None:
-                            from datetime import timezone
 
                             dt = dt.replace(tzinfo=timezone.utc)
                         return dt
@@ -435,12 +433,10 @@ class LogProcessor(SpecializedProcessor):
             else:
                 # Try generic parsing
                 try:
-                    from dateutil import parser
 
                     dt = parser.parse(timestamp_str)
                     # If no timezone info, assume UTC
                     if dt.tzinfo is None:
-                        from datetime import timezone
 
                         dt = dt.replace(tzinfo=timezone.utc)
                     return dt
@@ -460,8 +456,7 @@ class LogProcessor(SpecializedProcessor):
         chunk_start_time = None
 
         for entry in entries:
-            if entry.timestamp:
-                if chunk_start_time is None:
+            if entry.timestamp and chunk_start_time is None:
                     chunk_start_time = entry.timestamp
 
                 # Check if this entry exceeds time window
@@ -651,10 +646,7 @@ class LogProcessor(SpecializedProcessor):
         content = "\n".join(entry.content for entry in entries)
 
         # Calculate line range
-        all_lines = []
-        for entry in entries:
-            all_lines.extend(entry.line_numbers)
-        start_line = min(all_lines)
+        all_lines = [item for entry in entries for item in entry.line_numbers]        start_line = min(all_lines)
         end_line = max(all_lines)
 
         # Calculate byte range

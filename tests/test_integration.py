@@ -15,7 +15,10 @@ from chunker import (
     list_languages,
     return_parser,
 )
+from chunker.exceptions import ParserConfigError
+from chunker.factory import ParserFactory
 from chunker.parser import _factory
+from chunker.registry import LanguageRegistry
 
 
 class TestAllLanguages:
@@ -301,7 +304,6 @@ class TestParserConfiguration:
 
     def test_invalid_configurations(self):
         """Test that invalid configurations are rejected."""
-        from chunker.exceptions import ParserConfigError
 
         invalid_configs = [
             ParserConfig(timeout_ms=-1),
@@ -320,10 +322,7 @@ class TestMemoryEfficiency:
     def test_parser_reuse(self):
         """Test that parsers are properly reused from cache/pool."""
         # Import and initialize properly
-        from pathlib import Path
 
-        from chunker.factory import ParserFactory
-        from chunker.registry import LanguageRegistry
 
         # Ensure proper initialization
         if _factory is None:
@@ -367,8 +366,6 @@ class TestMemoryEfficiency:
     def test_cache_effectiveness(self):
         """Test cache hit rate under typical usage."""
         # Create a fresh factory to test cache effectiveness in isolation
-        from chunker.factory import ParserFactory
-        from chunker.registry import LanguageRegistry
 
         lib_path = Path(__file__).parent.parent / "build" / "my-languages.so"
         test_registry = LanguageRegistry(lib_path)

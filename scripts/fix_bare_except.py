@@ -24,8 +24,7 @@ def fix_bare_except(file_path):
                 f.write(content)
             return True
         return False
-
-\1except (AttributeError, IOError, IndexError) as \2:
+    except (OSError, AttributeError, IndexError) as e:
         print(f"Error processing {file_path}: {e}")
         return False
 
@@ -53,7 +52,7 @@ def main():
                     if fix_bare_except(file_path):
                         print(f"Fixed: {file_path}")
                         fixed += 1
-\1except (AttributeError, IndexError, KeyError) as \2:
+        except (AttributeError, IndexError, KeyError) as e:
             print(f"Error checking {file_path}: {e}")
 
     print(f"\nFixed {fixed}/{total} files with bare except clauses")

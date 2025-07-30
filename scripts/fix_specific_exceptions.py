@@ -71,7 +71,7 @@ def suggest_exceptions(context: str) -> list[str]:
             # Default to common exceptions
             suggestions.update(["ValueError", "RuntimeError", "OSError"])
 
-    return sorted(list(suggestions))
+    return sorted(suggestions)
 
 def create_exception_tuple(exceptions: list[str]) -> str:
     """Create exception tuple string."""
@@ -164,7 +164,6 @@ def fix_file(file_path: Path) -> bool:
 
             if imports_needed:
                 # Find where to insert imports (after existing imports)
-                import_lines = []
                 content_lines = new_content.splitlines(keepends=True)
                 insert_pos = 0
 

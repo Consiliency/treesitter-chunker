@@ -22,7 +22,7 @@ class ImportFixer(ast.NodeVisitor):
 
         # Check for imports in function body
         for stmt in node.body:
-            if isinstance(stmt, (ast.Import, ast.ImportFrom)):
+            if isinstance(stmt, ast.Import | ast.ImportFrom):
                 self._record_import(stmt, f"function {node.name}")
 
         self.generic_visit(node)
@@ -39,7 +39,7 @@ class ImportFixer(ast.NodeVisitor):
 
         # Check for imports in class body
         for stmt in node.body:
-            if isinstance(stmt, (ast.Import, ast.ImportFrom)):
+            if isinstance(stmt, ast.Import | ast.ImportFrom):
                 self._record_import(stmt, f"class {node.name}")
 
         self.generic_visit(node)
@@ -49,7 +49,7 @@ class ImportFixer(ast.NodeVisitor):
         """Visit if statement."""
         # Check for imports in if body
         for stmt in node.body + node.orelse:
-            if isinstance(stmt, (ast.Import, ast.ImportFrom)):
+            if isinstance(stmt, ast.Import | ast.ImportFrom):
                 context = "conditional block"
                 if self.function_stack:
                     context = f"{context} in {self.function_stack[-1]}"
@@ -61,7 +61,7 @@ class ImportFixer(ast.NodeVisitor):
         """Visit try/except block."""
         # Check all parts of try/except
         for stmt in node.body + node.orelse + node.finalbody:
-            if isinstance(stmt, (ast.Import, ast.ImportFrom)):
+            if isinstance(stmt, ast.Import | ast.ImportFrom):
                 context = "try block"
                 if self.function_stack:
                     context = f"{context} in {self.function_stack[-1]}"
@@ -70,7 +70,7 @@ class ImportFixer(ast.NodeVisitor):
         # Check except handlers
         for handler in node.handlers:
             for stmt in handler.body:
-                if isinstance(stmt, (ast.Import, ast.ImportFrom)):
+                if isinstance(stmt, ast.Import | ast.ImportFrom):
                     context = "except block"
                     if self.function_stack:
                         context = f"{context} in {self.function_stack[-1]}"
@@ -111,7 +111,7 @@ def should_move_import(import_stmt: str, context: str) -> bool:
 def fix_file(file_path: Path) -> bool:
     """Fix import placement in a file."""
     try:
-        with Path(file_path).Path("r").open(encoding="utf-8") as f:
+        with Path(file_path).open("r", encoding="utf-8") as f:
             content = f.read()
             lines = content.splitlines(keepends=True)
 
@@ -132,7 +132,7 @@ def fix_file(file_path: Path) -> bool:
         imports_to_move = []
         lines_to_remove = set()
 
-        for line_no, import_stmt, context, node in fixer.non_top_imports:
+        for line_no, import_stmt, context, _node in fixer.non_top_imports:
             if should_move_import(import_stmt, context):
                 imports_to_move.append(import_stmt)
                 lines_to_remove.add(line_no - 1)  # 0-indexed
@@ -148,7 +148,6 @@ def fix_file(file_path: Path) -> bool:
         for i, line in enumerate(lines):
             if line.strip().startswith('"""') and i == 0:
                 # Skip module docstring
-                in_docstring = True
                 for j in range(i + 1, len(lines)):
                     if '"""' in lines[j]:
                         insert_line = j + 1
@@ -198,7 +197,7 @@ def fix_file(file_path: Path) -> bool:
 
         # Write back
         new_content = "".join(new_lines)
-        with Path(file_path).Path("w").open(encoding="utf-8") as f:
+        with Path(file_path).open("w", encoding="utf-8") as f:
             f.write(new_content)
 
         return True

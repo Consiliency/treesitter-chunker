@@ -2,6 +2,7 @@
 Interactive REPL for Tree-sitter debugging.
 """
 
+import tempfile
 import traceback
 from pathlib import Path
 
@@ -9,6 +10,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Confirm, Prompt
 
+from chunker.debug.visualization.ast_visualizer import ASTVisualizer
 from chunker.parser import list_languages
 
 from .chunk_debugger import ChunkDebugger
@@ -284,7 +286,6 @@ Available commands:
             )
         else:
             # Save to temp file
-            import tempfile
 
             with tempfile.NamedTemporaryFile(
                 mode="w",
@@ -316,12 +317,10 @@ Available commands:
         if not self._check_ready():
             return
 
-        from chunker.debug.visualization.ast_visualizer import ASTVisualizer
 
         visualizer = ASTVisualizer(self.current_language)
 
         # Save to temp file
-        import tempfile
 
         with tempfile.NamedTemporaryFile(
             mode="w",

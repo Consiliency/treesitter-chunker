@@ -9,6 +9,13 @@ This test suite verifies that all Phase 11 components work together correctly:
 - Integration layer with fallback system
 """
 
+from chunker.fallback.sliding_window_fallback import SlidingWindowFallback
+from chunker.processors import ProcessorConfig
+from chunker.processors.config import ConfigProcessor
+from chunker.processors.logs import LogProcessor
+from chunker.processors.markdown import MarkdownProcessor
+from chunker.sliding_window import (
+from chunker.text_processing import ParagraphDetector, SentenceBoundaryDetector
 import shutil
 import tempfile
 from pathlib import Path
@@ -17,7 +24,6 @@ import pytest
 
 # Try to import all Phase 11 components
 try:
-    from chunker.sliding_window import (
         DefaultSlidingWindowEngine,
         OverlapStrategy,
         WindowConfig,
@@ -29,7 +35,6 @@ except ImportError:
     HAS_SLIDING_WINDOW = False
 
 try:
-    from chunker.text_processing import ParagraphDetector, SentenceBoundaryDetector
 
     HAS_TEXT_PROCESSING = True
 except ImportError:
@@ -37,28 +42,24 @@ except ImportError:
 
 # Import processors - these should be available from the worktrees
 try:
-    from chunker.processors.markdown import MarkdownProcessor
 
     HAS_MARKDOWN_PROCESSOR = True
 except ImportError:
     HAS_MARKDOWN_PROCESSOR = False
 
 try:
-    from chunker.processors.logs import LogProcessor
 
     HAS_LOG_PROCESSOR = True
 except ImportError:
     HAS_LOG_PROCESSOR = False
 
 try:
-    from chunker.processors.config import ConfigProcessor
 
     HAS_CONFIG_PROCESSOR = True
 except ImportError:
     HAS_CONFIG_PROCESSOR = False
 
 try:
-    from chunker.fallback.sliding_window_fallback import SlidingWindowFallback
 
     HAS_INTEGRATION = True
 except ImportError:
@@ -175,7 +176,6 @@ java.sql.SQLException: Connection refused
         )
 
         # Process the file using the correct config format
-        from chunker.processors import ProcessorConfig
 
         processor.config = ProcessorConfig(
             chunk_size=5,

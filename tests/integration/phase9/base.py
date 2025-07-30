@@ -1,5 +1,10 @@
 """Base class and utilities for Phase 9 integration tests."""
 
+from chunker.hierarchy import ChunkHierarchyBuilder, HierarchyNavigator
+from chunker.metadata import BaseMetadataExtractor
+from chunker.rules import DefaultRuleEngine
+from chunker.semantic import (
+from chunker.token import TiktokenCounter, TokenAwareChunker
 import os
 import subprocess
 from pathlib import Path
@@ -13,7 +18,7 @@ from chunker.types import CodeChunk
 class Phase9IntegrationTestBase:
     """Base class for Phase 9 integration tests."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def test_repo_path(self, tmp_path):
         """Create a test repository with various file types."""
         repo_path = tmp_path / "test_repo"
@@ -404,7 +409,7 @@ Thumbs.db
 
         return repo_path
 
-    @pytest.fixture()
+    @pytest.fixture
     def sample_python_file(self, tmp_path):
         """Create a sample Python file for testing."""
         file_path = tmp_path / "sample.py"
@@ -465,7 +470,6 @@ def merge_processors(p1: DataProcessor, p2: DataProcessor) -> DataProcessor:
         components = {}
 
         if enable_tokens:
-            from chunker.token import TiktokenCounter, TokenAwareChunker
 
             components["token_counter"] = TiktokenCounter()
             if token_limit:
@@ -474,18 +478,15 @@ def merge_processors(p1: DataProcessor, p2: DataProcessor) -> DataProcessor:
                 )
 
         if enable_hierarchy:
-            from chunker.hierarchy import ChunkHierarchyBuilder, HierarchyNavigator
 
             components["hierarchy_builder"] = ChunkHierarchyBuilder()
             components["hierarchy_navigator"] = HierarchyNavigator()
 
         if enable_metadata:
-            from chunker.metadata import BaseMetadataExtractor
 
             components["metadata_extractor"] = BaseMetadataExtractor()
 
         if enable_semantic:
-            from chunker.semantic import (
                 MergeConfig,
                 TreeSitterRelationshipAnalyzer,
                 TreeSitterSemanticMerger,
@@ -497,7 +498,6 @@ def merge_processors(p1: DataProcessor, p2: DataProcessor) -> DataProcessor:
             )
 
         if enable_rules:
-            from chunker.rules import DefaultRuleEngine
 
             components["rule_engine"] = DefaultRuleEngine()
 

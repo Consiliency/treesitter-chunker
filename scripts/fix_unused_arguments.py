@@ -228,12 +228,11 @@ class UnusedArgumentFixer(ast.NodeVisitor):
         # Check if method raises NotImplementedError
         for stmt in node.body:
             if isinstance(stmt, ast.Raise):
-                if isinstance(stmt.exc, ast.Call):
-                    if (
-                        isinstance(stmt.exc.func, ast.Name)
-                        and stmt.exc.func.id == "NotImplementedError"
-                    ):
-                        return True
+                if isinstance(stmt.exc, ast.Call) and (
+                    isinstance(stmt.exc.func, ast.Name)
+                    and stmt.exc.func.id == "NotImplementedError"
+                ):
+                    return True
 
         return False
 
@@ -242,11 +241,7 @@ class UnusedArgumentFixer(ast.NodeVisitor):
         # Simple heuristic: if it has common override patterns
         override_patterns = {"visit_", "process_", "handle_", "on_", "do_"}
 
-        for pattern in override_patterns:
-            if node.name.startswith(pattern):
-                return True
-
-        return False
+        return any(node.name.startswith(pattern) for pattern in override_patterns)
 
 
 def fix_file(file_path: Path) -> bool:

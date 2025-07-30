@@ -8,6 +8,7 @@ from unittest.mock import Mock
 
 import pytest
 
+import tests.test_phase13_integration
 from chunker.build import BuildSystem, PlatformSupport
 
 
@@ -130,7 +131,6 @@ def setup_module(module):
         return original_mock(*args, **kwargs)
 
     # Patch Mock in the test module
-    import tests.test_phase13_integration
 
     tests.test_phase13_integration.Mock = mock_wrapper
 

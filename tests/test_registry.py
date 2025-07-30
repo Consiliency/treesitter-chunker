@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
+from tree_sitter import Language
 
 from chunker.exceptions import (
     LanguageNotFoundError,
@@ -61,7 +62,6 @@ class TestLanguageRegistry:
         registry = LanguageRegistry(lib_path)
 
         # Get Python language
-        from tree_sitter import Language
 
         python_lang = registry.get_language("python")
         assert isinstance(python_lang, Language)

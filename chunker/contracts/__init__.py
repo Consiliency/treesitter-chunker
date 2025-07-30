@@ -1,6 +1,9 @@
 """Phase 13/15/19 Contracts for Developer Tools, Distribution & Language Expansion"""
 
 # Phase 13/15 Contracts
+
+from chunker.cicd.pipeline import CICDPipelineImpl
+
 from .build_contract import BuildSystemContract, PlatformSupportContract
 
 # Phase 13/15 Stub implementations
@@ -25,7 +28,7 @@ from .tooling_stub import DeveloperToolingStub
 
 # Import actual implementations if available
 try:
-    from chunker.cicd.pipeline import CICDPipelineImpl
+    from ..cicd.pipeline import CICDPipeline as CICDPipelineImpl
 except ImportError:
     CICDPipelineImpl = CICDPipelineStub  # Fallback to stub
 

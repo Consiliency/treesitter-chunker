@@ -268,11 +268,7 @@ def very_long_function_with_many_lines():
     # Line 8
     # Line 9
     # Line 10
-    result = []
-    for i in range(100):
-        if i % 2 == 0:
-            result.append(i * 2)
-        else:
+    result = [i * 2 for i in range(100) if i % 2 == 0]        else:
             result.append(i * 3)
     return result
 ```

@@ -1,6 +1,9 @@
 """Export chunks and relationships to Apache Parquet fmt."""
 
 from __future__ import annotations
+from chunker.types import CodeChunk
+from collections.abc import Iterator
+import json
 
 import io
 from pathlib import Path
@@ -18,9 +21,7 @@ from chunker.interfaces.export import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
 
-    from chunker.types import CodeChunk
 
 
 class StructuredParquetExporter(StructuredExporter):
@@ -192,7 +193,6 @@ class StructuredParquetExporter(StructuredExporter):
 
     def _relationship_to_dict(self, rel: ChunkRelationship) -> dict[str, Any]:
         """Convert a ChunkRelationship to a dictionary."""
-        import json
 
         return {
             "source_chunk_id": rel.source_chunk_id,
@@ -244,7 +244,6 @@ class StructuredParquetExporter(StructuredExporter):
 
     def _export_metadata(self, metadata: ExportMetadata, output_path: str) -> None:
         """Export metadata to Parquet file."""
-        import json
 
         record = {
             "fmt": metadata.fmt.value,

@@ -3,6 +3,7 @@
 Team responsible: Developer Tooling Team
 """
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -235,7 +236,6 @@ class DeveloperToolingImpl(DeveloperToolingContract):
 
             # Ruff outputs JSON even on failure
             if proc.stdout:
-                import json
 
                 try:
                     issues = json.loads(proc.stdout)

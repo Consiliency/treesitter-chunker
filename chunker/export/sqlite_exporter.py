@@ -316,16 +316,13 @@ SELECT * FROM hierarchy ORDER BY root_id, depth, start_line;
 
             # Insert relationships
             if self.relationships:
-                rel_data = []
-                for rel in self.relationships:
-                    rel_data.append(
+                rel_data = [
                         (
                             rel["source_id"],
                             rel["target_id"],
                             rel["relationship_type"],
                             (
-                                json.dumps(rel["properties"])
-                                if rel["properties"]
+                                json.dumps(rel["properties"] for rel in self.relationships]                                if rel["properties"]
                                 else None
                             ),
                         ),

@@ -11,12 +11,12 @@ from chunker.types import CodeChunk
 class TestASTRelationshipTracker:
     """Test AST-based relationship tracking."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def tracker(self):
         """Create a tracker instance."""
         return ASTRelationshipTracker()
 
-    @pytest.fixture()
+    @pytest.fixture
     def python_chunks(self, tmp_path):
         """Create Python code chunks for testing."""
         file_path = tmp_path / "test.py"
@@ -45,7 +45,7 @@ dog.speak()
         )
         return chunk_file(file_path, "python")
 
-    @pytest.fixture()
+    @pytest.fixture
     def javascript_chunks(self, tmp_path):
         """Create JavaScript code chunks for testing."""
         file_path = tmp_path / "test.js"

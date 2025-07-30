@@ -2,12 +2,13 @@
 """
 Tests for the plugin architecture components.
 """
+
 import tempfile
 from pathlib import Path
 
 import pytest
 
-from chunker import PluginConfig, PluginManager, get_plugin_manager
+from chunker import CodeChunk, PluginConfig, PluginManager, get_plugin_manager
 from chunker.chunker_config import ChunkerConfig
 from chunker.languages import JavaScriptPlugin, PythonPlugin, RustPlugin
 
@@ -142,7 +143,6 @@ def test_chunk_filtering():
     )
 
     # Create a mock chunk
-    from chunker import CodeChunk
 
     # Too small chunk (3 lines)
     small_chunk = CodeChunk(

@@ -1,5 +1,7 @@
 """Tests for the chunking functionality."""
 
+import warnings
+
 from chunker import chunk_file, get_parser, list_languages
 
 
@@ -72,7 +74,6 @@ def test_parser_availability():
     if unavailable:
         # This is a warning, not a failure - version mismatch is expected
         # with older tree-sitter libraries
-        import warnings
 
         warnings.warn(
             f"Some languages unavailable due to version mismatch: {unavailable}. "

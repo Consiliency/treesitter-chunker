@@ -56,7 +56,6 @@ def fix_open_calls(file_path: Path) -> bool:
             for i, line in enumerate(lines):
                 if line.strip().startswith('"""') and i == 0:
                     # Skip docstring
-                    in_docstring = True
                     for j in range(i + 1, len(lines)):
                         if '"""' in lines[j]:
                             insert_idx = j + 1

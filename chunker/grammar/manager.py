@@ -15,6 +15,8 @@ from chunker.interfaces.grammar import (
 )
 from chunker.parser import get_parser
 
+from .builder import build_language
+
 logger = logging.getLogger(__name__)
 
 
@@ -183,7 +185,6 @@ class TreeSitterGrammarManager(GrammarManager):
             self._save_config()
 
             # Build using tree-sitter CLI or custom build script
-            from .builder import build_language
 
             logger.info(f"Building grammar '{name}'...")
             success = build_language(name, str(grammar.path), str(self.build_dir))

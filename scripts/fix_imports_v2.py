@@ -51,7 +51,7 @@ def fix_imports_simple(file_path: Path) -> bool:
 
             # Track docstring
             if not in_docstring and (
-                stripped.startswith('"""') or stripped.startswith("'''")
+                stripped.startswith(('"""', "'''"))
             ):
                 docstring_char = stripped[:3]
                 if stripped.endswith(docstring_char) and len(stripped) > 6:

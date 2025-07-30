@@ -86,7 +86,7 @@ def fix_logging_fstrings(file_path):
             if not variables:
                 return match.group(0)
 
-            variables_str = ", ".join(vars)
+            ", ".join(vars)
 
             if extra:
                 return f'{method}("{template}", {vars_str}{extra})'

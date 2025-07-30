@@ -1,6 +1,6 @@
 """Comprehensive tests for OCaml language support."""
 
-from chunker import chunk_file
+from chunker import chunk_file, get_parser
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from chunker.languages.ocaml import OCamlPlugin
 
@@ -256,7 +256,6 @@ class TestOCamlContractCompliance:
         source = b"""let square x = x * x"""
 
         # Parse the source (mock tree-sitter node)
-        from chunker import get_parser
 
         parser = get_parser("ocaml")
         plugin.set_parser(parser)

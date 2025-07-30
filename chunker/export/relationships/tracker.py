@@ -1,6 +1,8 @@
 """Track and infer relationships between code chunks using Tree-sitter AST."""
 
 from __future__ import annotations
+from chunker.types import CodeChunk
+from tree_sitter import Node, Parser
 
 import re
 from collections import defaultdict
@@ -14,9 +16,7 @@ from chunker.interfaces.export import (
 from chunker.parser import get_parser
 
 if TYPE_CHECKING:
-    from tree_sitter import Node, Parser
 
-    from chunker.types import CodeChunk
 
 
 class ASTRelationshipTracker(RelationshipTracker):
@@ -440,8 +440,7 @@ class ASTRelationshipTracker(RelationshipTracker):
             type_name = None
 
             for child in node.children:
-                if child.type == "type_identifier":
-                    if trait_name is None:
+                if child.type == "type_identifier" and trait_name is None:
                         trait_name = chunk.content[child.start_byte : child.end_byte]
                     else:
                         type_name = chunk.content[child.start_byte : child.end_byte]

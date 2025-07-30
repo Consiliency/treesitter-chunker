@@ -57,7 +57,7 @@ def fix_manual_comprehensions(file_path: Path) -> bool:
             content = f.read()
 
         original = content
-        lines = content.splitlines()
+        content.splitlines()
 
         # Common patterns for manual list comprehensions
         patterns = [

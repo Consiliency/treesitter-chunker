@@ -4,6 +4,7 @@ Release Manager for version management and release automation
 Handles version bumping, changelog updates, and release preparation
 """
 
+import hashlib
 import re
 import subprocess
 from datetime import datetime
@@ -278,7 +279,6 @@ class ReleaseManager:
 
     def _generate_checksums(self, files: list[Path], output_dir: Path) -> Path | None:
         """Generate SHA256 checksums for artifacts"""
-        import hashlib
 
         checksum_path = output_dir / "checksums.txt"
         try:

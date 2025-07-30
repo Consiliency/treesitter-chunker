@@ -40,7 +40,7 @@ def fix_sim102_in_file(file_path):
         # if condition1:
         #     # comment
         #     if condition2:
-        pattern2 = re.compile(
+        re.compile(
             r"(\s*)if\s+(.+?):\s*\n"
             r"(\1    #.*\n)?"  # Optional comment
             r"\1    if\s+(.+?):\s*\n",

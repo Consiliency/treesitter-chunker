@@ -5,6 +5,7 @@ Comprehensive Phase 10 Integration Test - All features working together.
 import os
 import shutil
 import tempfile
+import time
 from pathlib import Path
 
 from chunker import (  # Incremental; Multi-language; Query Advanced; Smart Context
@@ -459,7 +460,6 @@ class Class_{i}:
             large_chunks.append(chunk)
 
         # Test query performance
-        import time
 
         index = AdvancedQueryIndex()
         start = time.time()

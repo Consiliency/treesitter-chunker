@@ -3,6 +3,8 @@ Support for Vue language (Single File Components).
 """
 
 from __future__ import annotations
+from tree_sitter import Node
+import re
 
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 
@@ -85,7 +87,6 @@ from typing import TYPE_CHECKING
 from . import language_config_registry
 
 if TYPE_CHECKING:
-    from tree_sitter import Node
 
 language_config_registry.register(VueConfig())
 
@@ -120,7 +121,6 @@ class VuePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             content = source[node.start_byte : node.end_byte].decode("utf-8")
             if "name:" in content:
                 # Extract component name from options
-                import re
 
                 match = re.search(r"name:\s*['\"]([^'\"]+)['\"]", content)
                 if match:
@@ -262,7 +262,6 @@ class VuePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             if chunk:
                 # Extract template content without tags
                 content = chunk.content
-                import re
 
                 template_match = re.search(
                     r"<template[^>]*>(.*)</template>",

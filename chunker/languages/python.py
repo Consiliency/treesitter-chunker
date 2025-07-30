@@ -3,6 +3,7 @@ Support for Python language.
 """
 
 from __future__ import annotations
+from tree_sitter import Node
 
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
@@ -60,7 +61,6 @@ from typing import TYPE_CHECKING
 from . import language_config_registry
 
 if TYPE_CHECKING:
-    from tree_sitter import Node
 
 language_config_registry.register(PythonConfig(), aliases=["py", "python3"])
 

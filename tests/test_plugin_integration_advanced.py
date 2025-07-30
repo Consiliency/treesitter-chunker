@@ -4,6 +4,19 @@ This module tests advanced plugin scenarios including hot-reloading,
 version conflicts, custom directories, and plugin interactions.
 """
 
+from packaging import version
+from packaging import version as pkg_version
+from tests.integration.fixtures import resource_monitor
+from tests.integration.interfaces import ConfigChangeObserver, ResourceTracker
+from tests.integration.interfaces import ErrorPropagationMixin, ResourceTracker
+from tests.integration.interfaces import ResourceTracker
+import chunker_plugins.lang_support.namespace_plugin as ns_module
+import gc
+import hashlib
+import json
+import queue
+import toml
+import warnings
 import importlib
 import importlib.util
 import inspect
@@ -22,8 +35,6 @@ from chunker.plugin_manager import PluginRegistry
 
 # Import integration test interfaces
 try:
-    from tests.integration.fixtures import resource_monitor
-    from tests.integration.interfaces import ResourceTracker
 except ImportError:
     # Create mock if not available
     class ResourceTracker:
@@ -78,7 +89,6 @@ class MockPluginRegistry(PluginRegistry):
             existing_version = self._versions.get(lang_name, "1.0.0")
 
             # Compare versions using packaging.version
-            from packaging import version as pkg_version
 
             if pkg_version.parse(version) <= pkg_version.parse(existing_version):
                 # Keep existing plugin with higher version
@@ -304,7 +314,6 @@ class NamespacePlugin(LanguagePlugin):
         sys.path.insert(0, str(tmp_path))
         try:
             # Import namespace package
-            import chunker_plugins.lang_support.namespace_plugin as ns_module
 
             # Find plugin class
             plugin_found = False
@@ -558,7 +567,6 @@ class HotReloadPlugin(LanguagePlugin):
                 del registry._plugins["hotreload"]
 
             # Force garbage collection
-            import gc
 
             gc.collect()
 
@@ -638,7 +646,6 @@ class HotReloadPlugin(LanguagePlugin):
 
     def test_plugin_initialization_order(self):
         """Test plugin dependency resolution with enhanced tracking."""
-        from tests.integration.interfaces import ResourceTracker
 
         registry = MockPluginRegistry()
         resource_tracker = ResourceTracker()
@@ -823,13 +830,11 @@ class HotReloadPlugin(LanguagePlugin):
 
             def load_state(self):
                 if self.state_file.exists():
-                    import json
 
                     with open(self.state_file) as f:
                         self.state = json.load(f)
 
             def save_state(self):
-                import json
 
                 with open(self.state_file, "w") as f:
                     json.dump(self.state, f)
@@ -857,9 +862,7 @@ class HotReloadPlugin(LanguagePlugin):
 
     def test_plugin_resource_contention(self):
         """Test handling of resource contention between plugins."""
-        import queue
 
-        from tests.integration.interfaces import ErrorPropagationMixin, ResourceTracker
 
         resource_tracker = ResourceTracker()
         ErrorPropagationMixin()
@@ -1046,13 +1049,7 @@ class HotReloadPlugin(LanguagePlugin):
             key=lambda p: p.priority,
             reverse=True,
         )
-        priority_success = []
-
-        for plugin in sorted_plugins:
-            if plugin.acquire_resources(resource_pool):
-                priority_success.append(plugin.language_name)
-
-        # Higher priority plugins should succeed
+        priority_success = [plugin.language_name for plugin in sorted_plugins if plugin.acquire_resources(resource_pool)]        # Higher priority plugins should succeed
         assert "critical" in priority_success
         assert "low" not in priority_success
 
@@ -1079,10 +1076,7 @@ class TestPluginVersioning:
 
     def test_plugin_version_conflicts(self):
         """Test handling of conflicting plugin versions."""
-        import warnings
 
-        from packaging import version
-        from tests.integration.interfaces import ErrorPropagationMixin, ResourceTracker
 
         # Use MockPluginRegistry that tracks versions
         registry = MockPluginRegistry()
@@ -1422,9 +1416,7 @@ option3 = "project"
 
     def test_plugin_config_hot_reload(self, tmp_path):
         """Test config changes without restart."""
-        import toml
 
-        from tests.integration.interfaces import ConfigChangeObserver, ResourceTracker
 
         resource_tracker = ResourceTracker()
         config_observer = ConfigChangeObserver()
@@ -1751,9 +1743,7 @@ class TestPluginInteractions:
 
     def test_plugin_conflict_resolution(self):
         """Test handling of conflicting plugins with enhanced conflict detection."""
-        import warnings
 
-        from tests.integration.interfaces import ErrorPropagationMixin, ResourceTracker
 
         registry = MockPluginRegistry()
         resource_tracker = ResourceTracker()
@@ -2053,7 +2043,6 @@ class TestPluginInteractions:
 
             def process_data(self, data):
                 # Simulate expensive operation
-                import hashlib
 
                 for _ in range(10):
                     hashlib.sha256(data.encode()).hexdigest()

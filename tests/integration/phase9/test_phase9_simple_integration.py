@@ -32,10 +32,7 @@ import sys
 def process_data(data):
     """Process the data."""
     # TODO: Validate input
-    result = []
-    for item in data:
-        result.append(item * 2)
-    return result
+    result = [item * 2 for item in data]    return result
 
 class DataHandler:
     """Handle data operations."""

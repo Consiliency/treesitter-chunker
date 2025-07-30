@@ -2,11 +2,13 @@
 AST Visualizer for Tree-sitter parse trees.
 """
 
+import json
 from pathlib import Path
 from typing import Any
 
+import graphviz
+
 try:
-    import graphviz
 
     HAS_GRAPHVIZ = True
 except ImportError:
@@ -310,7 +312,6 @@ class ASTVisualizer:
         _depth: int = 0,
     ) -> str:
         """Convert AST to JSON representation."""
-        import json
 
         def node_to_dict(n: Node, d: int = 0) -> dict[str, Any]:
             result = {

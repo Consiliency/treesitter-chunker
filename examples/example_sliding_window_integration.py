@@ -7,6 +7,7 @@ This example shows how to use the SlidingWindowFallback system with:
 - Processor chaining for hybrid processing
 """
 
+import time
 from typing import Any
 
 from chunker.chunker_config import ChunkerConfig
@@ -288,7 +289,6 @@ def main():
     print("-" * 50)
 
     # Process same file multiple times to test caching
-    import time
 
     large_content = "Line of text\n" * 1000
 

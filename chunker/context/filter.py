@@ -148,9 +148,7 @@ class BaseContextFilter(ContextFilter):
             elif sibling == target_node:
                 target_index = i
 
-        if decorator_index >= 0 and target_index >= 0:
-            # Check if decorator comes before target with no non-decorator nodes between
-            if decorator_index < target_index:
+        if decorator_index >= 0 and target_index >= 0 and decorator_index < target_index:
                 for i in range(decorator_index + 1, target_index):
                     if not self._is_decorator_node(siblings[i]):
                         return False

@@ -11,8 +11,11 @@ are properly detected, but more advanced chunking (classes, namespaces, template
 separate chunks) requires proper configuration setup.
 """
 
+import importlib
+
 import pytest
 
+import chunker.languages.cpp
 from chunker import chunk_file, get_parser
 from chunker.exceptions import LanguageNotFoundError, ParserInitError
 from chunker.languages import language_config_registry
@@ -27,9 +30,7 @@ class TestCppLanguageFeatures:
         language_config_registry.clear()
 
         # Force re-import of cpp config
-        import importlib
 
-        import chunker.languages.cpp
 
         importlib.reload(chunker.languages.cpp)
 

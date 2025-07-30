@@ -5,7 +5,9 @@ import sqlite3
 import tempfile
 import threading
 import time
+from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
@@ -64,7 +66,7 @@ const main = () => {
 """
 
 
-@pytest.fixture()
+@pytest.fixture
 def temp_cache_dir():
     """Create a temporary cache directory."""
     cache_dir = Path(tempfile.mkdtemp()) / "cache"
@@ -73,13 +75,13 @@ def temp_cache_dir():
         shutil.rmtree(cache_dir.parent)
 
 
-@pytest.fixture()
+@pytest.fixture
 def cache(temp_cache_dir):
     """Create a cache instance with temporary directory."""
     return ASTCache(cache_dir=temp_cache_dir)
 
 
-@pytest.fixture()
+@pytest.fixture
 def temp_python_file():
     """Create a temporary Python file."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
@@ -89,7 +91,7 @@ def temp_python_file():
     temp_path.unlink()
 
 
-@pytest.fixture()
+@pytest.fixture
 def temp_js_file():
     """Create a temporary JavaScript file."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".js", delete=False) as f:
@@ -99,7 +101,7 @@ def temp_js_file():
     temp_path.unlink()
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_chunks():
     """Create sample code chunks for testing."""
     return [
@@ -554,7 +556,6 @@ class TestMemoryVsDiskCache:
     def test_hybrid_cache_pattern(self, cache, temp_python_file):
         """Test hybrid caching with memory layer over disk cache."""
         # Simple LRU memory cache
-        from collections import OrderedDict
 
         class HybridCache:
             def __init__(self, disk_cache, max_memory_items=10):
@@ -708,7 +709,6 @@ class TestCacheErrorHandling:
             real_conn = sqlite3.connect(cache.db_path)
             mock_conn = MockConnection(real_conn)
 
-            from contextlib import contextmanager
 
             @contextmanager
             def connection_context():

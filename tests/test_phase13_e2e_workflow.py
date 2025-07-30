@@ -134,11 +134,7 @@ class DataProcessor:
         self.cache = {}
 
     def process_batch(self, items):
-        results = []
-        for item in items:
-            if item['id'] in self.cache:
-                results.append(self.cache[item['id']])
-            else:
+        results = [self.cache[item['id']] for item in items if item['id'] in self.cache]            else:
                 processed = self._process_single(item)
                 self.cache[item['id']] = processed
                 results.append(processed)

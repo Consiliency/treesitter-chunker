@@ -1,5 +1,10 @@
 """Integration tests for metadata extraction with custom rules."""
 
+from chunker.chunker import chunk_file
+from chunker.rules.builtin import (
+from chunker.rules.builtin import ImportBlockRule
+from chunker.rules.custom import MetadataRule
+from chunker.rules.engine import DefaultRuleEngine
 from typing import Any
 
 import pytest
@@ -117,7 +122,6 @@ def create_default_manager() -> TaskManager:
 
     def test_metadata_extraction_with_todo_rules(self, sample_python_file_with_todos):
         """Test extracting metadata while also finding TODO comments."""
-        from chunker.chunker import chunk_file
 
         # Parse and chunk with metadata extraction
         chunks = chunk_file(
@@ -162,8 +166,6 @@ def create_default_manager() -> TaskManager:
 
     def test_custom_rule_with_metadata_filtering(self, sample_python_file_with_todos):
         """Test using custom rules to filter chunks based on metadata."""
-        from chunker.chunker import chunk_file
-        from chunker.rules.custom import MetadataRule
 
         # Create custom rule that looks for async functions
         class AsyncFunctionRule(MetadataRule):
@@ -203,8 +205,6 @@ def create_default_manager() -> TaskManager:
 
     def test_complexity_metadata_with_rules(self, sample_python_file_with_todos):
         """Test complexity analysis with custom complexity rules."""
-        from chunker.chunker import chunk_file
-        from chunker.rules.custom import MetadataRule
 
         # Create rule for complex functions
         class ComplexFunctionRule(MetadataRule):
@@ -253,7 +253,6 @@ def create_default_manager() -> TaskManager:
 
     def test_docstring_extraction_with_rules(self, sample_python_file_with_todos):
         """Test docstring extraction combined with docstring rules."""
-        from chunker.chunker import chunk_file
 
         # Parse and chunk
         chunks = chunk_file(
@@ -283,9 +282,6 @@ def create_default_manager() -> TaskManager:
 
     def test_import_analysis_with_rules(self, sample_python_file_with_todos):
         """Test import dependency analysis with import block rules."""
-        from chunker.chunker import chunk_file
-        from chunker.rules.builtin import ImportBlockRule
-        from chunker.rules.engine import DefaultRuleEngine
 
         # Parse and chunk
         chunks = chunk_file(
@@ -408,15 +404,12 @@ if __name__ == "__main__":
 ''',
         )
 
-        from chunker.chunker import chunk_file
-        from chunker.rules.builtin import (
             ConfigurationBlockRule,
             DebugStatementRule,
             DocstringRule,
             ImportBlockRule,
             TodoCommentRule,
         )
-        from chunker.rules.engine import DefaultRuleEngine
 
         # Parse with metadata extraction
         chunks = chunk_file(complex_file, "python", extract_metadata=True)

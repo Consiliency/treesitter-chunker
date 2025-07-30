@@ -2,6 +2,8 @@
 
 import logging
 import platform
+import shutil
+import subprocess
 from pathlib import Path
 
 from tree_sitter import Language
@@ -136,7 +138,6 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
                 raise BuildError(f"No C source files found in {src_dir}")
 
             # Compile using gcc
-            import subprocess
 
             cmd = ["gcc", "-shared", "-fPIC", "-o", str(lib_path), *c_files]
 
@@ -222,7 +223,6 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
         target_dir.mkdir(parents=True, exist_ok=True)
 
         try:
-            import shutil
 
             for query_file in queries_dir.glob("*.scm"):
                 target_file = target_dir / query_file.name

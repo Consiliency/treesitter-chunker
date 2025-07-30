@@ -2,7 +2,13 @@
 
 from pathlib import Path
 
-from chunker import ChunkOptimizer, OptimizationConfig, OptimizationStrategy, chunk_file
+from chunker import (
+    ChunkBoundaryAnalyzer,
+    ChunkOptimizer,
+    OptimizationConfig,
+    OptimizationStrategy,
+    chunk_file,
+)
 
 
 def demonstrate_optimization():
@@ -82,7 +88,6 @@ def demonstrate_optimization():
 
     # 8. Show chunk boundaries analysis
     print("\n7. Analyzing chunk boundaries...")
-    from chunker import ChunkBoundaryAnalyzer
 
     analyzer = ChunkBoundaryAnalyzer()
 

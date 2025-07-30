@@ -4,6 +4,7 @@ Test adapter for distribution integration tests
 This adapter allows the integration tests to use our actual implementation
 """
 
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -21,7 +22,6 @@ class TestDistributionAdapter:
 
     def test_pypi_publishing_validates_package(self, distributor):
         """PyPI publishing should validate package before upload"""
-        import tempfile
 
         with tempfile.TemporaryDirectory() as tmpdir:
             package_dir = Path(tmpdir)
@@ -59,7 +59,6 @@ class TestDistributionAdapter:
 
     def test_homebrew_formula_generation(self, distributor):
         """Homebrew formula should be generated correctly"""
-        import tempfile
 
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir)
@@ -80,7 +79,6 @@ class TestDistributionAdapter:
 
     def test_release_preparation(self, distributor):
         """Release preparation should update all necessary files"""
-        import tempfile
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Set project root

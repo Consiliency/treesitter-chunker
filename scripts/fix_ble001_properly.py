@@ -76,7 +76,7 @@ def suggest_exceptions(context: str) -> list[str]:
         else:
             suggestions.update(["RuntimeError", "ValueError"])
 
-    return sorted(list(suggestions))[:3]  # Limit to 3 exceptions
+    return sorted(suggestions)[:3]  # Limit to 3 exceptions
 
 
 def fix_file(file_path: Path) -> bool:

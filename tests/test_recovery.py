@@ -4,18 +4,25 @@ This module tests system resilience including crash recovery,
 state persistence, partial processing, and graceful degradation.
 """
 
+import gc
 import json
 import os
+import queue
+import random
+import subprocess
 import sys
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import MagicMock, patch
 
+import psutil
 import pytest
 
 from chunker import chunk_file
 from chunker.exceptions import ParserError
 from chunker.parser import get_parser
+from chunker.streaming import chunk_file_streaming
 
 
 class TestCrashRecovery:
@@ -101,7 +108,6 @@ def problematic_function():
                 chunks = chunk_file(large_file, language="python")
             except MemoryError:
                 # Fallback: process with streaming
-                from chunker.streaming import chunk_file_streaming
 
                 chunks = list(chunk_file_streaming(large_file, language="python"))
 
@@ -125,7 +131,6 @@ def problematic_function():
         for file_path in files:
             try:
                 # Use subprocess to fully isolate
-                import subprocess
 
                 result = subprocess.run(
                     [
@@ -158,8 +163,6 @@ print("processed")
 
     def test_deadlock_detection_and_recovery(self, tmp_path):
         """Test deadlock handling."""
-        import queue
-        import threading
 
         # Create test scenario with potential deadlock
         lock1 = threading.Lock()
@@ -369,7 +372,6 @@ class TestStatePersistence:
                 state["items"].append(item)
 
                 # Write back atomically
-                import random
 
                 temp_file = (
                     state_file.parent
@@ -421,10 +423,7 @@ class TestStatePersistence:
             assert len(final_state["items"]) >= 5  # At least some items
 
             # Items should match between workers and items list
-            all_items = []
-            for worker_items in final_state["workers"].values():
-                all_items.extend(worker_items)
-            assert len(all_items) == len(final_state["items"])
+            all_items = [item for worker_items in final_state["workers"].values() for item in worker_items]            assert len(all_items) == len(final_state["items"])
         else:
             # If no state file, workers failed completely
             pytest.skip("Workers failed to create state file")
@@ -793,7 +792,6 @@ function test() {
 
     def test_resource_limit_adaptation(self, tmp_path):
         """Test adapting to resource constraints."""
-        import psutil
 
         # Create memory-intensive test case
         large_file = tmp_path / "large.py"
@@ -830,7 +828,6 @@ function test() {
                 batch_size = max(10, batch_size // 2)
 
                 # Force garbage collection
-                import gc
 
                 gc.collect()
 
@@ -887,7 +884,6 @@ class TestSystemResilience:
                 return str(file_path), [], str(e)
 
         # Use thread pool for concurrent processing
-        from concurrent.futures import ThreadPoolExecutor
 
         with ThreadPoolExecutor(max_workers=3) as executor:
             futures = {executor.submit(process_file_safe, f): f for f in files}

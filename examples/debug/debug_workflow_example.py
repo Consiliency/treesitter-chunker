@@ -2,6 +2,9 @@
 Example demonstrating Tree-sitter debug workflows.
 """
 
+import os
+import tempfile
+
 from chunker.debug import (
     ASTVisualizer,
     ChunkDebugger,
@@ -36,7 +39,6 @@ class Calculator:
 '''
 
     # Save to temp file
-    import tempfile
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
         f.write(code)
@@ -52,7 +54,6 @@ class Calculator:
     )
 
     # Clean up
-    import os
 
     os.unlink(temp_file)
 
@@ -64,11 +65,7 @@ def example_query_debugging():
     # Sample Python code
     code = """
 def process_data(data):
-    result = []
-    for item in data:
-        if item > 0:
-            result.append(item * 2)
-    return result
+    result = [item * 2 for item in data if item > 0]    return result
 
 async def fetch_data(url):
     response = await http.get(url)
@@ -157,7 +154,6 @@ class DataProcessor:
 '''
 
     # Save to temp file
-    import tempfile
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
         f.write(code)
@@ -187,7 +183,6 @@ class DataProcessor:
     )
 
     # Clean up
-    import os
 
     os.unlink(temp_file)
 

@@ -2,6 +2,7 @@
 Tests for debug and visualization tools.
 """
 
+import json
 import os
 import tempfile
 
@@ -15,6 +16,8 @@ from chunker.debug import (
     print_ast_tree,
     render_ast_graph,
 )
+from chunker.debug.interactive.node_explorer import NodeExplorer
+from chunker.debug.interactive.repl import DebugREPL
 
 
 class TestASTVisualizer:
@@ -59,7 +62,6 @@ class TestASTVisualizer:
             assert isinstance(result, str)
 
             # Check JSON structure
-            import json
 
             data = json.loads(result)
             assert "type" in data
@@ -299,7 +301,6 @@ class TestNodeExplorer:
 
     def test_node_explorer_creation(self):
         """Test creating node explorer."""
-        from chunker.debug.interactive.node_explorer import NodeExplorer
 
         explorer = NodeExplorer("python")
         assert explorer.language == "python"
@@ -309,7 +310,6 @@ class TestNodeExplorer:
 
     def test_node_info(self):
         """Test getting node information."""
-        from chunker.debug.interactive.node_explorer import NodeExplorer
 
         explorer = NodeExplorer("python")
         code = "x = 42"
@@ -331,7 +331,6 @@ class TestDebugREPL:
 
     def test_repl_creation(self):
         """Test creating REPL instance."""
-        from chunker.debug.interactive.repl import DebugREPL
 
         repl = DebugREPL()
         assert repl.current_language is None
@@ -341,7 +340,6 @@ class TestDebugREPL:
 
     def test_set_language(self):
         """Test setting language in REPL."""
-        from chunker.debug.interactive.repl import DebugREPL
 
         repl = DebugREPL()
         repl._set_language("python")
@@ -353,7 +351,6 @@ class TestDebugREPL:
 
     def test_set_code(self):
         """Test setting code in REPL."""
-        from chunker.debug.interactive.repl import DebugREPL
 
         repl = DebugREPL()
         test_code = "def test():\n    pass"

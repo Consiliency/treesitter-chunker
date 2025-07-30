@@ -8,10 +8,12 @@ import json
 import os
 import subprocess
 import sys
+import time
 
+import psutil
 import pytest
 
-from chunker import CodeChunk, ParallelChunker, chunk_file
+from chunker import CodeChunk, ParallelChunker, chunk_file, chunk_files_parallel
 from chunker.chunker_config import ChunkerConfig
 from chunker.export import JSONExporter, JSONLExporter, SchemaType
 
@@ -190,17 +192,12 @@ class Class_{i}:
             )
 
         # Process in parallel using the module function
-        from chunker import chunk_files_parallel
 
         file_paths = list(tmp_path.glob("*.py"))
         results = chunk_files_parallel(file_paths, language="python", num_workers=3)
 
         # Collect all chunks - results is a dict[Path, List[CodeChunk]]
-        all_chunks = []
-        for chunks in results.values():
-            all_chunks.extend(chunks)
-
-        # Should have at least 2 chunks per file
+        all_chunks = [item for chunks in results.values() for item in chunks]        # Should have at least 2 chunks per file
         assert len(all_chunks) >= 10
 
         # Export results
@@ -436,7 +433,6 @@ class TestPerformanceBaseline:
         large_file.write_text("\n".join(content_lines))
 
         # Time the full pipeline
-        import time
 
         start = time.time()
 
@@ -481,9 +477,7 @@ class TestPerformanceBaseline:
 
     def test_memory_usage_monitoring(self, tmp_path):
         """Monitor memory usage during processing."""
-        import os
 
-        import psutil
 
         process = psutil.Process(os.getpid())
         initial_memory = process.memory_info().rss / 1024 / 1024  # MB
@@ -589,10 +583,6 @@ class TestErrorPropagation:
         # Note: ParallelChunker might process all files without raising errors
 
         # Export only successful chunks
-        all_chunks = []
-        for chunks in successes.values():
-            all_chunks.extend(chunks)
-
-        if all_chunks:
+        all_chunks = [item for chunks in successes.values() for item in chunks]        if all_chunks:
             json_exporter = JSONExporter(schema_type=SchemaType.FLAT)
             json_exporter.export(all_chunks, tmp_path / "partial_results.json")

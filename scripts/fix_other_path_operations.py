@@ -101,7 +101,7 @@ def fix_path_operations(file_path: Path) -> bool:
 
         def replace_makedirs(match):
             nonlocal needs_path_import
-            full_match = match.group(0)
+            match.group(0)
             args = match.group(1)
 
             # Check for exist_ok parameter
@@ -133,7 +133,7 @@ def fix_path_operations(file_path: Path) -> bool:
                                 if quote in lines[j]:
                                     import_line = j + 1
                                     break
-                    elif line.startswith("import ") or line.startswith("from "):
+                    elif line.startswith(("import ", "from ")):
                         # Check if we have pathlib import already
                         if "pathlib" in line:
                             if "Path" not in line:
