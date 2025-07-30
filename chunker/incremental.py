@@ -73,30 +73,30 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
         changes = []
 
         # Added chunks
-        for chunk in added_chunks:
-            changes.append(
-                ChunkChange(
-                    chunk_id=chunk.chunk_id,
-                    change_type=ChangeType.ADDED,
-                    old_chunk=None,
-                    new_chunk=chunk,
-                    line_changes=[(chunk.start_line, chunk.end_line)],
-                    confidence=1.0,
-                ),
+        changes.extend(
+            ChunkChange(
+                chunk_id=chunk.chunk_id,
+                change_type=ChangeType.ADDED,
+                old_chunk=None,
+                new_chunk=chunk,
+                line_changes=[(chunk.start_line, chunk.end_line)],
+                confidence=1.0,
             )
+            for chunk in added_chunks
+        )
 
         # Deleted chunks
-        for chunk in deleted_chunks:
-            changes.append(
-                ChunkChange(
-                    chunk_id=chunk.chunk_id,
-                    change_type=ChangeType.DELETED,
-                    old_chunk=chunk,
-                    new_chunk=None,
-                    line_changes=[(chunk.start_line, chunk.end_line)],
-                    confidence=1.0,
-                ),
+        changes.extend(
+            ChunkChange(
+                chunk_id=chunk.chunk_id,
+                change_type=ChangeType.DELETED,
+                old_chunk=chunk,
+                new_chunk=None,
+                line_changes=[(chunk.start_line, chunk.end_line)],
+                confidence=1.0,
             )
+            for chunk in deleted_chunks
+        )
 
         # Modified chunks
         for old_chunk, new_chunk in modified_chunks:

@@ -54,9 +54,11 @@ class PythonMetadataExtractor(BaseMetadataExtractor):
             modifiers.append("async")
 
         # Check decorators for method modifiers
-        for decorator in decorators:
-            if decorator in ("staticmethod", "classmethod"):
-                modifiers.append(decorator)
+        modifiers.extend(
+            decorator
+            for decorator in decorators
+            if decorator in ("staticmethod", "classmethod")
+        )
 
         return SignatureInfo(
             name=name,

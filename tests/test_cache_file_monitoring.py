@@ -1228,7 +1228,7 @@ class TestCacheFileMonitoring:
 
             # Monitor directory
             large_monitor = MockFileMonitor(resource_monitor)
-            large_monitor.watch_directory(large_dir, lambda t, p: None)
+            large_monitor.watch_directory(large_dir, lambda _t, _p: None)
 
             # Make changes
             for i in range(10):

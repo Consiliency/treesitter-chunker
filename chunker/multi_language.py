@@ -289,16 +289,14 @@ class LanguageDetectorImpl(LanguageDetector):
             content,
             re.DOTALL | re.IGNORECASE,
         )
-        for block in script_blocks:
-            language_blocks.append(("javascript", len(block)))
+        language_blocks.extend(("javascript", len(block)) for block in script_blocks)
 
         style_blocks = re.findall(
             r"<style[^>]*>(.*?)</style>",
             content,
             re.DOTALL | re.IGNORECASE,
         )
-        for block in style_blocks:
-            language_blocks.append(("css", len(block)))
+        language_blocks.extend(("css", len(block)) for block in style_blocks)
 
         # JSX/TSX detection
         if re.search(r"<[A-Z]\w*[^>]*>", content) and re.search(

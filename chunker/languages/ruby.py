@@ -180,9 +180,11 @@ class RubyChunker(LanguageChunker):
         args = []
         arguments_node = call_node.child_by_field_name("arguments")
         if arguments_node:
-            for child in arguments_node.children:
-                if child.type in ["string", "symbol", "identifier"]:
-                    args.append(child.text.decode("utf-8").strip("\"'"))
+            args.extend(
+                child.text.decode("utf-8").strip("\"'")
+                for child in arguments_node.children
+                if child.type in ["string", "symbol", "identifier"]
+            )
         return args
 
     def _extract_attr_names(self, attr_call_node: Node) -> list[str]:
