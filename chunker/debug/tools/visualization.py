@@ -103,7 +103,7 @@ class DebugVisualization(DebugVisualizationContract):
                 ) as f:
                     result = f.read()
 
-                os.unlink(result_path)
+                Path(result_path).unlink()
                 return result
 
             except ImportError:

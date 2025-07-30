@@ -144,12 +144,12 @@ class PythonContextExtractor(BaseContextExtractor):
             return True
 
         # Import aliases
-        if parent.type in {"aliased_import", "dotted_name"}:
-            if parent.parent and parent.parent.type in (
-                "import_statement",
-                "import_from_statement",
-            ):
-                return True
+        if (
+            parent.type in {"aliased_import", "dotted_name"}
+            and parent.parent
+            and parent.parent.type in ("import_statement", "import_from_statement")
+        ):
+            return True
 
         return False
 
