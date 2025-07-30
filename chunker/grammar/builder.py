@@ -94,9 +94,9 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
                     results[lang] = True
                     self._build_logs[lang] = "Build successful"
             else:
-                raise BuildError(f"Library file not created at {lib_path}")
+                raise BuildError(f"Library file_path not created at {lib_path}")
 
-        except Exception as e:
+        except (FileNotFoundError, IndexError, KeyError) as e:
             logger.error("Build failed: %s", e)
             for lang, _ in language_paths:
                 if lang not in results:
@@ -148,9 +148,9 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
                 logger.info("Successfully built %s at %s", language, lib_path)
                 self._build_logs[language] = "Build successful"
                 return True
-            raise BuildError(f"Library file not created at {lib_path}")
+            raise BuildError(f"Library file_path not created at {lib_path}")
 
-        except Exception as e:
+        except (FileNotFoundError, IndexError, KeyError) as e:
             logger.error("Failed to build %s: %s", language, e)
             self._build_logs[language] = str(e)
             return False
@@ -179,13 +179,13 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
 
         cleaned = 0
         for pattern in patterns:
-            for file in self._build_dir.glob(pattern):
+            for file_path in self._build_dir.glob(pattern):
                 try:
-                    file.unlink()
+                    file_path.unlink()
                     cleaned += 1
-                    logger.debug("Removed %s", file)
-                except Exception as e:
-                    logger.error("Failed to remove %s: %s", file, e)
+                    logger.debug("Removed %s", file_path)
+                except (FileNotFoundError, OSError) as e:
+                    logger.error("Failed to remove %s: %s", file_path, e)
 
         if cleaned > 0:
             logger.info("Cleaned %s build artifacts", cleaned)
@@ -231,7 +231,7 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
 
             return True
 
-        except Exception as e:
+        except (FileNotFoundError, ImportError, ModuleNotFoundError) as e:
             logger.error("Failed to copy queries for %s: %s", language, e)
             return False
 

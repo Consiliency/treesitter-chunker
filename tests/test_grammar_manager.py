@@ -247,7 +247,7 @@ class TestGrammarManager:
             try:
                 result = grammar_manager.add_grammar_source(lang, url)
                 results.append((lang, result))
-            except Exception as e:
+            except (OSError, ImportError, IndexError) as e:
                 errors.append((lang, str(e)))
 
         # Create multiple threads trying to add languages

@@ -87,7 +87,7 @@ class JavaChunker(LanguageChunker):
 
         return True
 
-    def extract_chunk_info(self, node: Node, source_code: bytes) -> dict:
+    def extract_chunk_info(self, node: Node, _source_code: bytes) -> dict:
         """Extract additional information for a chunk."""
         info = {}
 

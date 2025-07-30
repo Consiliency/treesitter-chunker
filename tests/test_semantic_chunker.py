@@ -64,7 +64,7 @@ class DataProcessor:
                     processed = self._transform_normal(item)
 
                 results.append(processed)
-            except Exception as e:
+            except (IndexError, KeyError) as e:
                 self.errors.append(f"Processing error: {e}")
 
         return results
@@ -212,7 +212,7 @@ def complex_function(data):
                 result.append(process_other(item))
             except ValueError:
                 result.append(None)
-            except Exception as e:
+            except (IndexError, KeyError, SyntaxError) as e:
                 print(f"Error: {e}")
                 result.append(None)
 

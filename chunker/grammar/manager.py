@@ -153,7 +153,7 @@ class TreeSitterGrammarManager(GrammarManager):
             logger.info(f"Successfully fetched grammar '{name}'")
             return True
 
-        except Exception as e:
+        except (FileNotFoundError, OSError, TypeError) as e:
             logger.error(f"Failed to fetch grammar '{name}': {e}")
             grammar.status = GrammarStatus.ERROR
             grammar.error = str(e)
@@ -199,7 +199,7 @@ class TreeSitterGrammarManager(GrammarManager):
             self._save_config()
             return success
 
-        except Exception as e:
+        except (OSError, TypeError) as e:
             logger.error(f"Failed to build grammar '{name}': {e}")
             grammar.status = GrammarStatus.ERROR
             grammar.error = str(e)
@@ -276,7 +276,7 @@ class TreeSitterGrammarManager(GrammarManager):
             try:
                 shutil.rmtree(grammar.path)
                 logger.info(f"Removed grammar source for '{name}'")
-            except Exception as e:
+            except (FileNotFoundError, IndexError, KeyError) as e:
                 logger.error("Failed to remove grammar source: %s", e)
                 return False
 
@@ -302,7 +302,7 @@ class TreeSitterGrammarManager(GrammarManager):
             # This would require parsing the grammar file or using a test file
             logger.warning(f"Node type extraction not yet implemented for '{language}'")
             return []
-        except Exception as e:
+        except (FileNotFoundError, IndexError, KeyError) as e:
             logger.error(f"Failed to get node types for '{language}': {e}")
             return []
 
@@ -335,7 +335,7 @@ class TreeSitterGrammarManager(GrammarManager):
 
             return True, None
 
-        except Exception as e:
+        except (FileNotFoundError, OSError) as e:
             return False, str(e)
 
     def _load_config(self) -> None:
@@ -361,7 +361,7 @@ class TreeSitterGrammarManager(GrammarManager):
 
             logger.info("Loaded %s grammars from config", len(self._grammars))
 
-        except Exception as e:
+        except (AttributeError, FileNotFoundError, IndexError) as e:
             logger.error("Failed to load grammar config: %s", e)
 
     def _save_config(self) -> None:
@@ -382,7 +382,7 @@ class TreeSitterGrammarManager(GrammarManager):
             with open(self._config_file, "w") as f:
                 json.dump(data, f, indent=2)
             logger.debug("Saved grammar config")
-        except Exception as e:
+        except (FileNotFoundError, OSError) as e:
             logger.error("Failed to save grammar config: %s", e)
 
     def _get_test_code(self, language: str) -> str:

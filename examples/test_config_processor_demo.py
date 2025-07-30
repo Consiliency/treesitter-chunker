@@ -47,12 +47,12 @@ def process_file(file_path: str, processor: ConfigProcessor):
 
     content = path.read_text()
 
-    # Detect format
-    format = processor.detect_format(file_path, content)
-    print(f"\nDetected format: {format}")
+    # Detect fmt
+    fmt = processor.detect_format(file_path, content)
+    print(f"\nDetected fmt: {fmt}")
 
-    if format is None:
-        print("Error: Could not detect format")
+    if fmt is None:
+        print("Error: Could not detect fmt")
         return
 
     # Process file
@@ -64,7 +64,7 @@ def process_file(file_path: str, processor: ConfigProcessor):
         for chunk in chunks:
             print_chunk_info(chunk)
 
-    except Exception as e:
+    except (FileNotFoundError, ImportError, ModuleNotFoundError) as e:
         print(f"Error processing file: {e}")
         import traceback
 
@@ -142,10 +142,10 @@ port = 6379
             print(f"# Testing inline: {filename}")
             print("#" * 80)
 
-            format = processor.detect_format(filename, content)
-            print(f"Detected format: {format}")
+            fmt = processor.detect_format(filename, content)
+            print(f"Detected fmt: {fmt}")
 
-            if format:
+            if fmt:
                 chunks = processor.process(filename, content)
                 print(f"Generated {len(chunks)} chunks")
                 for chunk in chunks:

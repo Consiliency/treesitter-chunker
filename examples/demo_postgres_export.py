@@ -122,7 +122,7 @@ def main():
         output_dir = Path(tmpdir)
 
         # Export as SQL
-        print("1. Exporting as SQL file...")
+        print("1. Exporting as SQL file_path...")
         sql_file = output_dir / "export.sql"
         exporter.export(sql_file, format="sql")
 
@@ -149,8 +149,8 @@ def main():
         exporter.export(copy_base, format="copy")
 
         print("   Generated files:")
-        for file in sorted(output_dir.glob("export*")):
-            print(f"   - {file.name}")
+        for file_path in sorted(output_dir.glob("export*")):
+            print(f"   - {file_path.name}")
 
         # Show sample queries
         print("\n4. Advanced query examples:")

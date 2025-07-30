@@ -66,7 +66,7 @@ class JavaPlugin(LanguagePlugin):
 
         return True
 
-    def extract_display_name(self, node: Node, source: bytes) -> str:
+    def extract_display_name(self, node: Node, _source: bytes) -> str:
         """Extract display name for chunk."""
         if node.type == "class_declaration":
             name_node = node.child_by_field_name("name")

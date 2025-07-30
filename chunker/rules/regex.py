@@ -208,7 +208,7 @@ class SeparatorLineRule(BaseRegexRule):
         self.min_lines = min_lines
         self.extract_match_only = False  # We want content between separators
 
-    def find_all_matches(self, source: bytes, file_path: str) -> list[RuleMatch]:
+    def find_all_matches(self, source: bytes, _file_path: str) -> list[RuleMatch]:
         """Find regions between separator lines."""
         matches = []
         text = source.decode("utf-8", errors="replace")

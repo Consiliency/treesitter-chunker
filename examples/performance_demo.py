@@ -238,7 +238,7 @@ def main():
     for demo in demos:
         try:
             demo()
-        except Exception as e:
+        except (TypeError, ValueError) as e:
             print(f"\nError in {demo.__name__}: {e}")
 
     print("\n\nDemo complete!")

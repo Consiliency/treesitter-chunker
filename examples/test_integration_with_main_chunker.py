@@ -296,7 +296,7 @@ def main():
         print("\n" + "=" * 60)
         print("All integration tests completed successfully!")
 
-    except Exception as e:
+    except (ImportError, ModuleNotFoundError, TypeError) as e:
         print(f"\nError during testing: {e}")
         import traceback
 

@@ -226,7 +226,7 @@ class GitAwareProcessorImpl(GitAwareProcessor):
                                 patterns.append(f"{rel_dir}/{line}")
                             else:
                                 patterns.append(line)
-            except Exception as e:
+            except (OSError, FileNotFoundError, IndexError) as e:
                 logger.debug("Error reading %s: %s", gitignore_path, e)
 
         return patterns
@@ -257,7 +257,7 @@ class GitAwareProcessorImpl(GitAwareProcessor):
         try:
             with open(state_file, "w", encoding="utf-8") as f:
                 json.dump(state, f, indent=2)
-        except Exception as e:
+        except (OSError, FileNotFoundError, IndexError) as e:
             logger.error("Failed to save incremental state: %s", e)
 
     def load_incremental_state(self, repo_path: str) -> dict[str, Any] | None:
@@ -285,7 +285,7 @@ class GitAwareProcessorImpl(GitAwareProcessor):
                 return None
 
             return state
-        except Exception as e:
+        except (OSError, AttributeError, FileNotFoundError) as e:
             logger.error("Failed to load incremental state: %s", e)
             return None
 
@@ -302,7 +302,7 @@ class GitAwareProcessorImpl(GitAwareProcessor):
         try:
             with open(file_path, "rb") as f:
                 return hashlib.sha256(f.read()).hexdigest()
-        except Exception:
+        except (FileNotFoundError, OSError):
             return ""
 
     def clear_cache(self):

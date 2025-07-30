@@ -1,4 +1,4 @@
-"""Export chunks to Neo4j graph database format."""
+"""Export chunks to Neo4j graph database fmt."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 
 class Neo4jExporter(StructuredExporter):
-    """Export chunks and relationships to Neo4j Cypher format.
+    """Export chunks and relationships to Neo4j Cypher fmt.
 
     Generates Cypher queries that can be executed against a Neo4j database.
     """
@@ -101,14 +101,14 @@ class Neo4jExporter(StructuredExporter):
         else:
             self._stream_cypher(chunk_iterator, relationship_iterator, output)
 
-    def supports_format(self, format: ExportFormat) -> bool:
-        """Check if this exporter supports a format."""
-        return format == ExportFormat.NEO4J
+    def supports_format(self, fmt: ExportFormat) -> bool:
+        """Check if this exporter supports a fmt."""
+        return fmt == ExportFormat.NEO4J
 
     def get_schema(self) -> dict[str, Any]:
         """Get the export schema."""
         return {
-            "format": "neo4j",
+            "fmt": "neo4j",
             "version": "4.4+",
             "node_label": self._node_label,
             "batch_size": self._batch_size,
@@ -137,7 +137,7 @@ class Neo4jExporter(StructuredExporter):
         return [
             "// Create metadata node",
             "CREATE (m:ExportMetadata {",
-            f"  format: '{metadata.format.value}',",
+            f"  fmt: '{metadata.fmt.value}',",
             f"  version: '{metadata.version}',",
             f"  created_at: datetime('{metadata.created_at}'),",
             f"  source_files: {json.dumps(metadata.source_files)},",
@@ -272,7 +272,7 @@ class Neo4jExporter(StructuredExporter):
         return queries
 
     def _to_neo4j_relationship_type(self, rel_type: str) -> str:
-        """Convert relationship type to Neo4j-friendly format."""
+        """Convert relationship type to Neo4j-friendly fmt."""
         # Neo4j relationship types should be UPPER_CASE
         return rel_type.upper()
 

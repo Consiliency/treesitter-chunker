@@ -134,7 +134,7 @@ class InMemoryFileSystem(VirtualFileSystem):
         self.files: dict[str, bytes | str] = {}
         self.metadata: dict[str, VirtualFile] = {}
 
-    def add_file(self, path: str, content: str | bytes, is_text: bool = True):
+    def add_file(self, path: str, content: str | bytes, _is_text: bool = True):
         """Add a file to the in-memory file system."""
         self.files[path] = content
         size = len(content) if isinstance(content, bytes) else len(content.encode())
@@ -363,18 +363,18 @@ class HTTPFileSystem(VirtualFileSystem):
             req = urllib.request.Request(url, method="HEAD")
             with urllib.request.urlopen(req) as response:
                 return response.status == 200
-        except Exception:
+        except (FileNotFoundError, OSError):
             return False
 
     def is_file(self, path: str) -> bool:
         """Assume all accessible paths are files in HTTP."""
         return self.exists(path)
 
-    def is_dir(self, path: str) -> bool:
+    def is_dir(self, _path: str) -> bool:
         """HTTP doesn't have directories in the traditional sense."""
         return False
 
-    def list_dir(self, path: str = "/") -> Iterator[VirtualFile]:
+    def list_dir(self, _path: str = "/") -> Iterator[VirtualFile]:
         """HTTP doesn't support directory listing."""
         return iter([])
 

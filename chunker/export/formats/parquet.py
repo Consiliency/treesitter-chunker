@@ -1,4 +1,4 @@
-"""Export chunks and relationships to Apache Parquet format."""
+"""Export chunks and relationships to Apache Parquet fmt."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 
 class StructuredParquetExporter(StructuredExporter):
-    """Export chunks and relationships to Parquet format with full structure."""
+    """Export chunks and relationships to Parquet fmt with full structure."""
 
     def __init__(
         self,
@@ -100,14 +100,14 @@ class StructuredParquetExporter(StructuredExporter):
         relationships_path = f"{base_path}_relationships.parquet"
         self._stream_relationships(relationship_iterator, relationships_path)
 
-    def supports_format(self, format: ExportFormat) -> bool:
-        """Check if this exporter supports a format."""
-        return format == ExportFormat.PARQUET
+    def supports_format(self, fmt: ExportFormat) -> bool:
+        """Check if this exporter supports a fmt."""
+        return fmt == ExportFormat.PARQUET
 
     def get_schema(self) -> dict[str, Any]:
         """Get the export schema."""
         return {
-            "format": "parquet",
+            "fmt": "parquet",
             "version": "2.6",
             "compression": self.compression,
             "partition_by": self.partition_by,
@@ -160,7 +160,7 @@ class StructuredParquetExporter(StructuredExporter):
         """Create PyArrow schema for metadata."""
         return pa.schema(
             [
-                pa.field("format", pa.string()),
+                pa.field("fmt", pa.string()),
                 pa.field("version", pa.string()),
                 pa.field("created_at", pa.string()),
                 pa.field("source_files", pa.list_(pa.string())),
@@ -247,7 +247,7 @@ class StructuredParquetExporter(StructuredExporter):
         import json
 
         record = {
-            "format": metadata.format.value,
+            "fmt": metadata.fmt.value,
             "version": metadata.version,
             "created_at": metadata.created_at,
             "source_files": metadata.source_files,

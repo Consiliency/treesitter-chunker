@@ -93,7 +93,7 @@ class QualityAssurance(QualityAssuranceContract):
             # Fallback: estimate from mypy output
             return self._estimate_type_coverage(result.stdout)
 
-        except Exception as e:
+        except (AttributeError, FileNotFoundError, IndexError) as e:
             return 0.0, {"error": str(e)}
 
     def _parse_mypy_linecount(self, linecount_file: Path) -> dict[str, Any]:
@@ -124,7 +124,7 @@ class QualityAssurance(QualityAssuranceContract):
                             coverage_data["total_lines"] += total
                             coverage_data["typed_lines"] += typed
 
-        except Exception:
+        except (FileNotFoundError, IndexError, KeyError):
             pass
 
         return coverage_data
@@ -246,7 +246,7 @@ class QualityAssurance(QualityAssuranceContract):
             # Fallback: parse text output
             return self._parse_coverage_text(result.stdout)
 
-        except Exception as e:
+        except (AttributeError, FileNotFoundError, IndexError) as e:
             return 0.0, {"error": str(e)}
 
     def _parse_coverage_text(

@@ -45,7 +45,7 @@ class ComplexityAnalyzer(ASTProcessor):
             "nested_try": 0.5,
         }
 
-    def calculate_complexity(self, node: Node, source: bytes) -> dict[str, Any]:
+    def calculate_complexity(self, node: Node, _source: bytes) -> dict[str, Any]:
         """Calculate comprehensive complexity metrics for a node."""
         context = {
             "cyclomatic": 1,  # Base complexity
@@ -130,14 +130,14 @@ class ComplexityAnalyzer(ASTProcessor):
 
         return None
 
-    def should_process_children(self, node: Node, context: dict[str, Any]) -> bool:
+    def should_process_children(self, _node: Node, context: dict[str, Any]) -> bool:
         """Always process children to get complete complexity analysis."""
         # Pass current nesting depth to children
         if "nesting_depth" in context:
             context["parent_nesting"] = context["nesting_depth"]
         return True
 
-    def _increases_nesting(self, node_type: str, parent_type: str) -> bool:
+    def _increases_nesting(self, node_type: str, _parent_type: str) -> bool:
         """Check if this node increases nesting depth."""
         nesting_nodes = {
             "if_statement",

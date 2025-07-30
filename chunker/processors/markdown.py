@@ -564,7 +564,7 @@ class MarkdownProcessor(SpecializedProcessor):
         # Default to documentation
         return "documentation"
 
-    def _apply_overlap(self, chunks: list[CodeChunk], content: str) -> list[CodeChunk]:
+    def _apply_overlap(self, chunks: list[CodeChunk], _content: str) -> list[CodeChunk]:
         """Apply overlap between chunks for context preservation.
 
         Args:

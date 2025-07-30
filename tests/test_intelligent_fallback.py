@@ -84,7 +84,7 @@ def process_data(data):
             results.append(result)
             processed += 1
 
-        except Exception as e:
+        except (AttributeError, KeyError) as e:
             errors.append(f"Error: {e}")
 
     # Return summary

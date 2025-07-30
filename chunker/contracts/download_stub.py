@@ -81,7 +81,7 @@ class GrammarDownloadStub(GrammarDownloadContract):
             if result.success:
                 return (True, str(result.output_path))
             return (False, result.error_message or "Compilation failed")
-        except Exception as e:
+        except (FileNotFoundError, IndexError, KeyError) as e:
             return (False, str(e))
 
     def get_grammar_cache_dir(self) -> Path:
@@ -93,21 +93,21 @@ class GrammarDownloadStub(GrammarDownloadContract):
         cached_file = self._cache_dir / f"{language}-{version or 'latest'}.so"
         return cached_file.exists()
 
-    def clean_cache(self, keep_recent: int = 5) -> int:
+    def clean_cache(self, _keep_recent: int = 5) -> int:
         """Stub that simulates cache cleaning"""
         # Simulate removing some files
         removed = 0
-        for file in self._cache_dir.glob("*.so"):
+        for file_path in self._cache_dir.glob("*.so"):
             if removed >= 2:  # Simulate keeping recent files
                 break
-            file.unlink()
+            file_path.unlink()
             removed += 1
         return removed
 
     def validate_grammar(self, grammar_path: Path) -> tuple[bool, str | None]:
         """Stub that validates grammar"""
         if not grammar_path.exists():
-            return (False, "Grammar file does not exist")
+            return (False, "Grammar file_path does not exist")
         if grammar_path.suffix != ".so":
-            return (False, "Grammar file must be a .so file")
+            return (False, "Grammar file_path must be a .so file_path")
         return (True, None)

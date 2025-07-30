@@ -34,24 +34,24 @@ class StructuredExportOrchestrator(StructuredExporter):
 
     def register_exporter(
         self,
-        format: ExportFormat,
+        fmt: ExportFormat,
         exporter: StructuredExporter,
     ) -> None:
-        """Register an exporter for a specific format.
+        """Register an exporter for a specific fmt.
 
         Args:
-            format: Export format
+            fmt: Export fmt
             exporter: Exporter instance
         """
-        self._exporters[format] = exporter
+        self._exporters[fmt] = exporter
 
-    def add_filter(self, filter: ExportFilter) -> None:
-        """Add a filter to the export pipeline.
+    def add_filter(self, filter_func: ExportFilter) -> None:
+        """Add a filter_func to the export pipeline.
 
         Args:
-            filter: Filter to add
+            filter_func: Filter to add
         """
-        self._filters.append(filter)
+        self._filters.append(filter_func)
 
     def add_transformer(self, transformer: ExportTransformer) -> None:
         """Add a transformer to the export pipeline.
@@ -76,11 +76,11 @@ class StructuredExportOrchestrator(StructuredExporter):
             output: Output path or stream
             metadata: Export metadata
         """
-        # Determine format from output path or metadata
-        format = self._determine_format(output, metadata)
+        # Determine fmt from output path or metadata
+        fmt = self._determine_format(output, metadata)
 
-        if format not in self._exporters:
-            raise ChunkerError(f"No exporter registered for format: {format}")
+        if fmt not in self._exporters:
+            raise ChunkerError(f"No exporter registered for fmt: {fmt}")
 
         # Apply filters
         filtered_chunks = self._apply_chunk_filters(chunks)
@@ -89,13 +89,13 @@ class StructuredExportOrchestrator(StructuredExporter):
         # Create metadata if not provided
         if metadata is None:
             metadata = self._create_metadata(
-                format,
+                fmt,
                 filtered_chunks,
                 filtered_relationships,
             )
 
         # Delegate to specific exporter - pass original objects, not transformed
-        exporter = self._exporters[format]
+        exporter = self._exporters[fmt]
         exporter.export(
             filtered_chunks,
             filtered_relationships,
@@ -116,12 +116,12 @@ class StructuredExportOrchestrator(StructuredExporter):
             relationship_iterator: Iterator yielding relationships
             output: Output path or stream
         """
-        format = self._determine_format(output, None)
+        fmt = self._determine_format(output, None)
 
-        if format not in self._exporters:
-            raise ChunkerError(f"No exporter registered for format: {format}")
+        if fmt not in self._exporters:
+            raise ChunkerError(f"No exporter registered for fmt: {fmt}")
 
-        exporter = self._exporters[format]
+        exporter = self._exporters[fmt]
 
         # Create filtering iterators only - don't transform for streaming
         filtered_chunks = self._filter_chunk_iterator(chunk_iterator)
@@ -136,16 +136,16 @@ class StructuredExportOrchestrator(StructuredExporter):
             output,
         )
 
-    def supports_format(self, format: ExportFormat) -> bool:
-        """Check if this exporter supports a format.
+    def supports_format(self, fmt: ExportFormat) -> bool:
+        """Check if this exporter supports a fmt.
 
         Args:
-            format: Export format to check
+            fmt: Export fmt to check
 
         Returns:
-            True if format is supported
+            True if fmt is supported
         """
-        return format in self._exporters
+        return fmt in self._exporters
 
     def get_schema(self) -> dict[str, Any]:
         """Get the export schema.
@@ -175,10 +175,10 @@ class StructuredExportOrchestrator(StructuredExporter):
         output: Path | io.IOBase,
         metadata: ExportMetadata | None,
     ) -> ExportFormat:
-        """Determine export format from output or metadata."""
+        """Determine export fmt from output or metadata."""
         # Check metadata first
-        if metadata and metadata.format:
-            return metadata.format
+        if metadata and metadata.fmt:
+            return metadata.fmt
 
         # Try to determine from file extension
         if isinstance(output, str | Path):
@@ -201,13 +201,13 @@ class StructuredExportOrchestrator(StructuredExporter):
             if ext in format_map:
                 return format_map[ext]
 
-        raise ChunkerError("Cannot determine export format from output path")
+        raise ChunkerError("Cannot determine export fmt from output path")
 
     def _apply_chunk_filters(self, chunks: list[CodeChunk]) -> list[CodeChunk]:
         """Apply all filters to chunks."""
         result = chunks
-        for filter in self._filters:
-            result = [c for c in result if filter.should_include_chunk(c)]
+        for filter_func in self._filters:
+            result = [c for c in result if filter_func.should_include_chunk(c)]
         return result
 
     def _apply_relationship_filters(
@@ -216,8 +216,8 @@ class StructuredExportOrchestrator(StructuredExporter):
     ) -> list[ChunkRelationship]:
         """Apply all filters to relationships."""
         result = relationships
-        for filter in self._filters:
-            result = [r for r in result if filter.should_include_relationship(r)]
+        for filter_func in self._filters:
+            result = [r for r in result if filter_func.should_include_relationship(r)]
         return result
 
     def _apply_chunk_transformers(
@@ -253,7 +253,7 @@ class StructuredExportOrchestrator(StructuredExporter):
 
     def _create_metadata(
         self,
-        format: ExportFormat,
+        fmt: ExportFormat,
         chunks: list[Any],
         relationships: list[Any],
     ) -> ExportMetadata:
@@ -266,7 +266,7 @@ class StructuredExportOrchestrator(StructuredExporter):
         )
 
         return ExportMetadata(
-            format=format,
+            fmt=fmt,
             version="1.0",
             created_at=datetime.now(timezone.utc).isoformat(),
             source_files=source_files,
@@ -286,7 +286,7 @@ class StructuredExportOrchestrator(StructuredExporter):
         """Create a filtering iterator for chunks."""
         for chunk in iterator:
             should_include = all(
-                filter.should_include_chunk(chunk) for filter in self._filters
+                filter_func.should_include_chunk(chunk) for filter_func in self._filters
             )
             if should_include:
                 yield chunk
@@ -298,7 +298,7 @@ class StructuredExportOrchestrator(StructuredExporter):
         """Create a filtering iterator for relationships."""
         for rel in iterator:
             should_include = all(
-                filter.should_include_relationship(rel) for filter in self._filters
+                filter_func.should_include_relationship(rel) for filter_func in self._filters
             )
             if should_include:
                 yield rel

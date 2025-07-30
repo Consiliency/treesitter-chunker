@@ -114,7 +114,7 @@ class SemanticAnalyzer(ASTProcessor):
             "deterministic",
         }
 
-    def analyze_semantics(self, node: Node, source: bytes) -> dict[str, Any]:
+    def analyze_semantics(self, node: Node, _source: bytes) -> dict[str, Any]:
         """Perform semantic analysis on the AST node."""
         context = {
             "semantic_role": None,
@@ -179,7 +179,7 @@ class SemanticAnalyzer(ASTProcessor):
 
         return None
 
-    def should_process_children(self, node: Node, context: dict[str, Any]) -> bool:
+    def should_process_children(self, _node: Node, _context: dict[str, Any]) -> bool:
         """Process all children for complete semantic analysis."""
         return True
 

@@ -71,17 +71,17 @@ class ASTVisualizer(ABC):
         self,
         node: Node,
         source: bytes,
-        format: VisualizationFormat = VisualizationFormat.TEXT,
+        fmt: VisualizationFormat = VisualizationFormat.TEXT,
     ) -> str:
         """Visualize an AST.
 
         Args:
             node: Root node to visualize
             source: Source code
-            format: Output format
+            fmt: Output fmt
 
         Returns:
-            Visualization in requested format
+            Visualization in requested fmt
         """
 
     @abstractmethod
@@ -90,7 +90,7 @@ class ASTVisualizer(ABC):
         node: Node,
         source: bytes,
         chunks: list[CodeChunk],
-        format: VisualizationFormat = VisualizationFormat.TEXT,
+        fmt: VisualizationFormat = VisualizationFormat.TEXT,
     ) -> str:
         """Visualize AST with chunk boundaries highlighted.
 
@@ -98,7 +98,7 @@ class ASTVisualizer(ABC):
             node: Root node
             source: Source code
             chunks: Chunks to highlight
-            format: Output format
+            fmt: Output fmt
 
         Returns:
             Visualization with chunks
@@ -165,7 +165,7 @@ class QueryDebugger(ABC):
         matches: list[QueryMatch],
         node: Node,
         source: bytes,
-        format: VisualizationFormat = VisualizationFormat.TEXT,
+        fmt: VisualizationFormat = VisualizationFormat.TEXT,
     ) -> str:
         """Visualize query matches.
 
@@ -173,7 +173,7 @@ class QueryDebugger(ABC):
             matches: Query matches to visualize
             node: AST root
             source: Source code
-            format: Output format
+            fmt: Output fmt
 
         Returns:
             Visualization of matches

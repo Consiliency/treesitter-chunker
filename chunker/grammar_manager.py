@@ -60,7 +60,7 @@ class GrammarManager(GrammarManagerContract):
         try:
             with self._config_file.open() as f:
                 return json.load(f)
-        except Exception as e:
+        except (OSError, FileNotFoundError, IndexError) as e:
             logger.error("Failed to load config: %s", e)
             return {}
 
@@ -150,7 +150,7 @@ class GrammarManager(GrammarManagerContract):
             except subprocess.CalledProcessError as e:
                 logger.error("Failed to clone %s: %s", lang, e.stderr)
                 return lang, False
-            except Exception as e:
+            except (OSError, IndexError, KeyError) as e:
                 logger.error("Unexpected error cloning %s: %s", lang, e)
                 return lang, False
 
@@ -263,7 +263,7 @@ class GrammarManager(GrammarManagerContract):
             for lang in languages_to_compile:
                 results[lang] = False
             return results
-        except Exception as e:
+        except (OSError, FileNotFoundError, IndexError) as e:
             logger.error("Unexpected compilation error: %s", e)
             for lang in languages_to_compile:
                 results[lang] = False
@@ -313,7 +313,7 @@ class GrammarManager(GrammarManagerContract):
 
             return available
 
-        except Exception as e:
+        except AttributeError as e:
             logger.error("Error discovering available languages: %s", e)
             # Fallback: assume all fetched grammars are available
             available = set()

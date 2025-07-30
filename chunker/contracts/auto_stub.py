@@ -27,7 +27,7 @@ class ZeroConfigStub(ZeroConfigContract):
             ".hpp": "cpp",
         }
 
-    def ensure_language(self, language: str, version: str | None = None) -> bool:
+    def ensure_language(self, language: str, _version: str | None = None) -> bool:
         """Stub that simulates language setup"""
         if language in [
             "python",
@@ -47,7 +47,7 @@ class ZeroConfigStub(ZeroConfigContract):
         self,
         file_path: str | Path,
         language: str | None = None,
-        token_limit: int | None = None,
+        _token_limit: int | None = None,
     ) -> AutoChunkResult:
         """Stub that simulates auto chunking"""
         path = Path(file_path)
@@ -88,7 +88,7 @@ class ZeroConfigStub(ZeroConfigContract):
         self,
         text: str,
         language: str,
-        token_limit: int | None = None,
+        _token_limit: int | None = None,
     ) -> AutoChunkResult:
         """Stub that chunks text"""
         # Ensure language is available

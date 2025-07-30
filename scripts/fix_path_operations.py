@@ -105,7 +105,7 @@ def fix_path_open(file_path):
             return True
         return False
 
-    except Exception as e:
+    except (OSError, FileNotFoundError, ImportError) as e:
         print(f"Error processing {file_path}: {e}")
         return False
 
@@ -149,7 +149,7 @@ def main():
                     if fix_path_open(file_path):
                         print(f"Fixed: {file_path}")
                         fixed += 1
-        except Exception as e:
+        except (FileNotFoundError, OSError) as e:
             print(f"Error checking {file_path}: {e}")
 
     print(f"\nFixed {fixed}/{total} files with open() calls")

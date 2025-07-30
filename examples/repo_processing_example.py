@@ -19,7 +19,7 @@ def basic_repo_processing():
 
     # Show some chunk details
     if result.file_results:
-        print("\nSample chunks from first file:")
+        print("\nSample chunks from first file_path:")
         first_file = result.file_results[0]
         print(f"  File: {first_file.file_path}")
         for i, chunk in enumerate(first_file.chunks[:3]):
@@ -39,9 +39,9 @@ def git_aware_processing():
     try:
         changed_files = processor.get_changed_files(".", since_commit="HEAD~1")
         print(f"Changed files since last commit: {len(changed_files)}")
-        for file in changed_files[:5]:
-            print(f"  - {file}")
-    except Exception as e:
+        for file_path in changed_files[:5]:
+            print(f"  - {file_path}")
+    except (FileNotFoundError, IndexError, KeyError) as e:
         print(f"Not a git repository or no commits: {e}")
 
     # Process with incremental mode
@@ -52,7 +52,7 @@ def git_aware_processing():
 
 
 def filtered_processing():
-    """Example with file filtering."""
+    """Example with file_path filtering."""
     print("\n=== Filtered Repository Processing ===")
 
     processor = RepoProcessor(show_progress=False)
@@ -94,7 +94,7 @@ def memory_efficient_processing():
         file_count += 1
         total_chunks += len(file_result.chunks)
 
-        # Process each file as it comes
+        # Process each file_path as it comes
         if file_count <= 3:
             print(
                 f"Processing: {file_result.file_path} ({len(file_result.chunks)} chunks)",

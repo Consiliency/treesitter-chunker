@@ -211,7 +211,7 @@ class StructuredExporterStub(StructuredExporter):
             "StructuredExporterStub.export_streaming not implemented",
         )
 
-    def supports_format(self, format: ExportFormat) -> bool:
+    def supports_format(self, fmt: ExportFormat) -> bool:
         raise NotImplementedError(
             "StructuredExporterStub.supports_format not implemented",
         )
@@ -323,7 +323,7 @@ class FallbackChunkerStub(FallbackChunker):
 class ASTVisualizerStub(ASTVisualizer):
     """Stub implementation of ASTVisualizer."""
 
-    def visualize(self, node: Node, source: bytes, format: Any = None) -> str:
+    def visualize(self, node: Node, source: bytes, fmt: Any = None) -> str:
         raise NotImplementedError("ASTVisualizerStub.visualize not implemented")
 
     def visualize_with_chunks(
@@ -331,7 +331,7 @@ class ASTVisualizerStub(ASTVisualizer):
         node: Node,
         source: bytes,
         chunks: list[CodeChunk],
-        format: Any = None,
+        fmt: Any = None,
     ) -> str:
         raise NotImplementedError(
             "ASTVisualizerStub.visualize_with_chunks not implemented",

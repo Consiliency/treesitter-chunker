@@ -92,7 +92,7 @@ class ParserPool:
         self.created_count = 0
         self.lock = threading.RLock()
 
-    def get(self, timeout: float | None = None) -> Parser | None:
+    def get(self, _timeout: float | None = None) -> Parser | None:
         """Get a parser from the pool."""
         try:
             return self.pool.get(block=False)
@@ -104,7 +104,7 @@ class ParserPool:
         try:
             self.pool.put(parser, block=False)
             return True
-        except Exception:
+        except (AttributeError, KeyError, SyntaxError):
             # Pool is full
             return False
 
@@ -175,7 +175,7 @@ class ParserFactory:
                         f"Consider updating tree-sitter library or recompiling grammars.",
                     )
             raise ParserInitError(language, str(e))
-        except Exception as e:
+        except (IndexError, KeyError, SyntaxError) as e:
             raise ParserInitError(language, str(e))
 
     def _get_pool(self, language: str) -> ParserPool:

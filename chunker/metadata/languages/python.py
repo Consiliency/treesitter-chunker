@@ -98,7 +98,7 @@ class PythonMetadataExtractor(BaseMetadataExtractor):
         """Extract import statements used within a node."""
         imports = []
 
-        def collect_imports(n: Node, depth: int):
+        def collect_imports(n: Node, _depth: int):
             if n.type in ("import_statement", "import_from_statement"):
                 imports.append(self._get_node_text(n, source).strip())
 
@@ -306,7 +306,7 @@ class PythonMetadataExtractor(BaseMetadataExtractor):
         """Extract symbols defined within this node."""
         defined = set()
 
-        def collect_definitions(n: Node, depth: int):
+        def collect_definitions(n: Node, _depth: int):
             # Function/method definitions
             if (
                 n.type in ("function_definition", "method_definition")

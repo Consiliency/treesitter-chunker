@@ -129,7 +129,7 @@ class NodeExplorer:
             except KeyboardInterrupt:
                 if Confirm.ask("\nExit explorer?"):
                     break
-            except Exception as e:
+            except (IndexError, KeyError, TypeError) as e:
                 self.console.print(f"[red]Error: {e}[/red]")
 
     def _display_current_node(self) -> None:
@@ -527,7 +527,7 @@ class NodeExplorer:
                 f"[green]Found {len(matches)} matches in subtree[/green]",
             )
 
-        except Exception as e:
+        except (IndexError, KeyError, TypeError) as e:
             self.console.print(f"[red]Query error: {e}[/red]")
 
 

@@ -156,7 +156,7 @@ class PythonContextExtractor(BaseContextExtractor):
     def _find_definition(
         self,
         name: str,
-        scope_node: Node,
+        _scope_node: Node,
         ast: Node,
         source: bytes,
     ) -> ContextItem | None:

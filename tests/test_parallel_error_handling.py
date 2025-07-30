@@ -468,7 +468,7 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
                     else:
                         result_queue.put("worker1_timeout")
                         deadlock_detected.value = True
-            except Exception as e:
+            except (RuntimeError, ValueError) as e:
                 result_queue.put(f"worker1_error: {e}")
 
         def worker2():
@@ -486,7 +486,7 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
                     else:
                         result_queue.put("worker2_timeout")
                         deadlock_detected.value = True
-            except Exception as e:
+            except (RuntimeError, ValueError) as e:
                 result_queue.put(f"worker2_error: {e}")
 
         # Start workers
@@ -598,7 +598,7 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
                 for i, future in enumerate(futures):
                     try:
                         future.result(timeout=1.0)
-                    except Exception:
+                    except (FileNotFoundError, OSError):
                         # Errors should not cause memory leaks
                         # Only count as leaked if error is unexpected
                         if iteration % 3 == 0:

@@ -401,7 +401,7 @@ def func2():
                     try:
                         json_objects.append(json.loads(current))
                         current = ""
-                    except Exception:
+                    except (IndexError, KeyError, SyntaxError):
                         pass  # Continue accumulating
 
             assert len(json_objects) == 2

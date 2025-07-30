@@ -104,7 +104,7 @@ class BaseRegexRule(RegexRule):
                 )
         return None
 
-    def find_all_matches(self, source: bytes, file_path: str) -> list[RuleMatch]:
+    def find_all_matches(self, source: bytes, _file_path: str) -> list[RuleMatch]:
         """Find all matches in source text (for cross-boundary matching)."""
         matches = []
         text = source.decode("utf-8", errors="replace")
@@ -184,7 +184,7 @@ class BaseCommentBlockRule(CommentBlockRule):
     def should_merge_adjacent_comments(self) -> bool:
         return self._merge_adjacent
 
-    def matches(self, node: Node, source: bytes) -> bool:
+    def matches(self, node: Node, _source: bytes) -> bool:
         """Check if node is a comment node."""
         comment_types = [
             "comment",
@@ -259,7 +259,7 @@ class MetadataRule(BaseCustomRule):
             priority=priority,
         )
 
-    def matches(self, node: Node, source: bytes) -> bool:
+    def matches(self, node: Node, _source: bytes) -> bool:
         """Match root node for file metadata."""
         return node.parent is None  # Root node
 

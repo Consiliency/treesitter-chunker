@@ -9,7 +9,7 @@
 
 import os
 import sys
-
+import anthropic
 from dotenv import load_dotenv
 
 
@@ -30,7 +30,6 @@ def prompt_llm(prompt_text):
         return None
 
     try:
-        import anthropic
 
         client = anthropic.Anthropic(api_key=api_key)
 

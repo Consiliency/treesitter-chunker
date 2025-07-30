@@ -76,7 +76,7 @@ def process_data(data):
 
             processed_count += 1
 
-        except Exception as e:
+        except (IndexError, KeyError) as e:
             errors.append(f"Error processing item {i}: {e}")
 
     # Step 4: Generate summary

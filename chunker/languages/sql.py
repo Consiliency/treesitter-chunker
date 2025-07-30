@@ -136,7 +136,7 @@ class SQLPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         """Extract semantic chunks specific to SQL."""
         chunks = []
 
-        def extract_chunks(n: Node, parent_type: str | None = None):
+        def extract_chunks(n: Node, _parent_type: str | None = None):
             if n.type in self.default_chunk_types:
                 content = source[n.start_byte : n.end_byte].decode(
                     "utf-8",

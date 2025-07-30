@@ -141,8 +141,8 @@ class PerformanceBenchmark:
     def benchmark_cached_chunking(self) -> BenchmarkResult:
         """Benchmark chunking with cache (cold and warm)."""
         # Clear cache first
-        for file in self.test_files:
-            self.cache.invalidate_cache(file)
+        for file_path in self.test_files:
+            self.cache.invalidate_cache(file_path)
 
         # Cold cache run
         cold_duration = 0

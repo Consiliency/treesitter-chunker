@@ -171,7 +171,7 @@ def fix_path_operations(file_path: Path) -> bool:
             return True
         return False
 
-    except Exception as e:
+    except (OSError, FileNotFoundError, ImportError) as e:
         print(f"Error processing {file_path}: {e}")
         return False
 

@@ -14,7 +14,7 @@ class GrammarDiscoveryStub(GrammarDiscoveryContract):
 
     def list_available_grammars(
         self,
-        include_community: bool = False,
+        _include_community: bool = False,
     ) -> list[GrammarInfo]:
         """Stub that returns valid default values"""
         # Return a minimal list for testing
@@ -82,8 +82,8 @@ class GrammarDiscoveryStub(GrammarDiscoveryContract):
 
     def get_grammar_compatibility(
         self,
-        language: str,
-        version: str,
+        _language: str,
+        _version: str,
     ) -> GrammarCompatibility:
         """Stub that returns valid compatibility info"""
         return GrammarCompatibility(

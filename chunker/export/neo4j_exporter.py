@@ -32,7 +32,7 @@ class Neo4jExporter(GraphExporterBase):
                 else node.chunk.node_type
             )
             if chunk_type:
-                # Convert chunk_type to Neo4j label format (PascalCase)
+                # Convert chunk_type to Neo4j label fmt (PascalCase)
                 label = self._to_pascal_case(chunk_type)
                 labels.add(label)
 
@@ -239,36 +239,36 @@ class Neo4jExporter(GraphExporterBase):
 
         return statements
 
-    def export_string(self, format: str = "cypher", **options) -> str:
-        """Export as string in specified format.
+    def export_string(self, fmt: str = "cypher", **options) -> str:
+        """Export as string in specified fmt.
 
         Args:
-            format: Export format - "cypher", "csv_nodes", or "csv_relationships"
+            fmt: Export fmt - "cypher", "csv_nodes", or "csv_relationships"
             **options: Additional options
 
         Returns:
             Export data as string
         """
-        if format == "cypher":
+        if fmt == "cypher":
             statements = self.generate_cypher_statements(**options)
             return "\n\n".join(statements)
-        if format == "csv_nodes":
+        if fmt == "csv_nodes":
             headers, data = self._generate_node_csv()
             return headers + "\n" + data
-        if format == "csv_relationships":
+        if fmt == "csv_relationships":
             headers, data = self._generate_relationship_csv()
             return headers + "\n" + data
-        raise ValueError(f"Unknown format: {format}")
+        raise ValueError(f"Unknown fmt: {fmt}")
 
-    def export(self, output_path: Path, format: str = "csv", **options) -> None:
-        """Export to Neo4j import format.
+    def export(self, output_path: Path, fmt: str = "csv", **options) -> None:
+        """Export to Neo4j import fmt.
 
         Args:
             output_path: Base path for output files
-            format: Export format - "csv" or "cypher"
+            fmt: Export fmt - "csv" or "cypher"
             **options: Additional options
         """
-        if format == "csv":
+        if fmt == "csv":
             # Export nodes CSV
             nodes_path = output_path.parent / f"{output_path.stem}_nodes.csv"
             headers, data = self._generate_node_csv()
@@ -289,11 +289,11 @@ class Neo4jExporter(GraphExporterBase):
             cmd_path.write_text(import_cmd, encoding="utf-8")
             cmd_path.chmod(0o755)  # Make executable
 
-        elif format == "cypher":
+        elif fmt == "cypher":
             statements = self.generate_cypher_statements(**options)
             output_path.write_text("\n\n".join(statements), encoding="utf-8")
         else:
-            raise ValueError(f"Unknown format: {format}")
+            raise ValueError(f"Unknown fmt: {fmt}")
 
     def _generate_import_command(
         self,

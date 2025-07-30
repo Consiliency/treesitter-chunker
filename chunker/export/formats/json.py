@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 
 class StructuredJSONExporter(StructuredExporter):
-    """Export chunks and relationships to JSON format with full structure."""
+    """Export chunks and relationships to JSON fmt with full structure."""
 
     def __init__(self, indent: int | None = 2, compress: bool = False):
         """Initialize JSON exporter.
@@ -85,7 +85,7 @@ class StructuredJSONExporter(StructuredExporter):
         """Export using iterators for large datasets.
 
         Note: JSON requires the full structure, so we collect all data
-        before writing. For true streaming, use JSONL format.
+        before writing. For true streaming, use JSONL fmt.
         """
         # Collect all data
         chunks = list(chunk_iterator)
@@ -94,14 +94,14 @@ class StructuredJSONExporter(StructuredExporter):
         # Export normally
         self.export(chunks, relationships, output)
 
-    def supports_format(self, format: ExportFormat) -> bool:
-        """Check if this exporter supports a format."""
-        return format == ExportFormat.JSON
+    def supports_format(self, fmt: ExportFormat) -> bool:
+        """Check if this exporter supports a fmt."""
+        return fmt == ExportFormat.JSON
 
     def get_schema(self) -> dict[str, Any]:
         """Get the export schema."""
         return {
-            "format": "json",
+            "fmt": "json",
             "version": "1.0",
             "indent": self.indent,
             "compress": self.compress,
@@ -121,7 +121,7 @@ class StructuredJSONExporter(StructuredExporter):
         """Build metadata object."""
         if metadata:
             return {
-                "format": metadata.format.value,
+                "fmt": metadata.fmt.value,
                 "version": metadata.version,
                 "created_at": metadata.created_at,
                 "source_files": metadata.source_files,
@@ -132,7 +132,7 @@ class StructuredJSONExporter(StructuredExporter):
         # Generate basic metadata
         source_files = list({c.file_path for c in chunks})
         return {
-            "format": "json",
+            "fmt": "json",
             "version": "1.0",
             "created_at": datetime.now(timezone.utc).isoformat(),
             "source_files": source_files,
@@ -173,7 +173,7 @@ class StructuredJSONExporter(StructuredExporter):
 
 
 class StructuredJSONLExporter(StructuredExporter):
-    """Export chunks and relationships to JSONL format with streaming support."""
+    """Export chunks and relationships to JSONL fmt with streaming support."""
 
     def __init__(self, compress: bool = False):
         """Initialize JSONL exporter.
@@ -227,14 +227,14 @@ class StructuredJSONLExporter(StructuredExporter):
         else:
             self._stream_jsonl(chunk_iterator, relationship_iterator, output)
 
-    def supports_format(self, format: ExportFormat) -> bool:
-        """Check if this exporter supports a format."""
-        return format == ExportFormat.JSONL
+    def supports_format(self, fmt: ExportFormat) -> bool:
+        """Check if this exporter supports a fmt."""
+        return fmt == ExportFormat.JSONL
 
     def get_schema(self) -> dict[str, Any]:
         """Get the export schema."""
         return {
-            "format": "jsonl",
+            "fmt": "jsonl",
             "version": "1.0",
             "compress": self.compress,
             "record_types": [
@@ -248,16 +248,16 @@ class StructuredJSONLExporter(StructuredExporter):
         self,
         chunks: list[CodeChunk],
         relationships: list[ChunkRelationship],
-        file: io.IOBase,
+        file_path: io.IOBase,
         metadata: ExportMetadata | None,
     ) -> None:
-        """Write data as JSONL to file."""
+        """Write data as JSONL to file_path."""
         # Write metadata first
         if metadata:
             meta_record = {
                 "type": "metadata",
                 "data": {
-                    "format": metadata.format.value,
+                    "fmt": metadata.fmt.value,
                     "version": metadata.version,
                     "created_at": metadata.created_at,
                     "source_files": metadata.source_files,
@@ -272,7 +272,7 @@ class StructuredJSONLExporter(StructuredExporter):
             meta_record = {
                 "type": "metadata",
                 "data": {
-                    "format": "jsonl",
+                    "fmt": "jsonl",
                     "version": "1.0",
                     "created_at": datetime.now(timezone.utc).isoformat(),
                     "source_files": source_files,
@@ -282,8 +282,8 @@ class StructuredJSONLExporter(StructuredExporter):
                 },
             }
 
-        json.dump(meta_record, file, separators=(",", ":"))
-        file.write("\n")
+        json.dump(meta_record, file_path, separators=(",", ":"))
+        file_path.write("\n")
 
         # Write chunks
         for chunk in chunks:
@@ -291,8 +291,8 @@ class StructuredJSONLExporter(StructuredExporter):
                 "type": "chunk",
                 "data": self._chunk_to_dict(chunk),
             }
-            json.dump(record, file, separators=(",", ":"))
-            file.write("\n")
+            json.dump(record, file_path, separators=(",", ":"))
+            file_path.write("\n")
 
         # Write relationships
         for rel in relationships:
@@ -300,30 +300,30 @@ class StructuredJSONLExporter(StructuredExporter):
                 "type": "relationship",
                 "data": self._relationship_to_dict(rel),
             }
-            json.dump(record, file, separators=(",", ":"))
-            file.write("\n")
+            json.dump(record, file_path, separators=(",", ":"))
+            file_path.write("\n")
 
     def _stream_jsonl(
         self,
         chunk_iterator: Iterator[CodeChunk],
         relationship_iterator: Iterator[ChunkRelationship],
-        file: io.IOBase,
+        file_path: io.IOBase,
     ) -> None:
-        """Stream data as JSONL to file."""
+        """Stream data as JSONL to file_path."""
         # Write metadata header
         meta_record = {
             "type": "metadata",
             "data": {
-                "format": "jsonl",
+                "fmt": "jsonl",
                 "version": "1.0",
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "streaming": True,
                 "options": {"compress": self.compress},
             },
         }
-        json.dump(meta_record, file, separators=(",", ":"))
-        file.write("\n")
-        file.flush()
+        json.dump(meta_record, file_path, separators=(",", ":"))
+        file_path.write("\n")
+        file_path.flush()
 
         # Stream chunks
         for chunk in chunk_iterator:
@@ -331,9 +331,9 @@ class StructuredJSONLExporter(StructuredExporter):
                 "type": "chunk",
                 "data": self._chunk_to_dict(chunk),
             }
-            json.dump(record, file, separators=(",", ":"))
-            file.write("\n")
-            file.flush()
+            json.dump(record, file_path, separators=(",", ":"))
+            file_path.write("\n")
+            file_path.flush()
 
         # Stream relationships
         for rel in relationship_iterator:
@@ -341,9 +341,9 @@ class StructuredJSONLExporter(StructuredExporter):
                 "type": "relationship",
                 "data": self._relationship_to_dict(rel),
             }
-            json.dump(record, file, separators=(",", ":"))
-            file.write("\n")
-            file.flush()
+            json.dump(record, file_path, separators=(",", ":"))
+            file_path.write("\n")
+            file_path.flush()
 
     def _chunk_to_dict(self, chunk: CodeChunk) -> dict[str, Any]:
         """Convert chunk to dictionary."""

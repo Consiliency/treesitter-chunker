@@ -242,7 +242,7 @@ class ZeroConfigAPI(ZeroConfigContract):
                         "tree_sitter_version": "0.20.0",  # Would get from registry
                     },
                 )
-        except Exception:
+        except (OSError, FileNotFoundError, IndexError):
             # Tree-sitter failed, use fallback
             pass
 
@@ -296,7 +296,7 @@ class ZeroConfigAPI(ZeroConfigContract):
                     for pattern, lang in self.SHEBANG_PATTERNS.items():
                         if re.search(pattern, shebang):
                             return lang
-        except Exception:
+        except (FileNotFoundError, OSError):
             pass
 
         # 3. Special cases
@@ -379,7 +379,7 @@ class ZeroConfigAPI(ZeroConfigContract):
                         "tree_sitter_version": "0.20.0",
                     },
                 )
-        except Exception:
+        except (IndexError, KeyError):
             # Tree-sitter failed, use fallback
             pass
 

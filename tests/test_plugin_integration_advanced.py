@@ -60,7 +60,7 @@ class MockPluginRegistry(PluginRegistry):
             temp_instance = plugin_class()
             lang_name = temp_instance.language_name
             version = getattr(temp_instance, "plugin_version", "1.0.0")
-        except Exception:
+        except (AttributeError, IndexError, KeyError):
             # Fallback to class name parsing
             class_name = plugin_class.__name__
             if class_name.endswith("Plugin"):
@@ -145,7 +145,7 @@ class MockPluginRegistry(PluginRegistry):
             self._instance_cache[language] = instance
 
             return instance
-        except Exception:
+        except (IndexError, KeyError, SyntaxError):
             # Remove from cache on error
             if language in self._instance_cache:
                 del self._instance_cache[language]
@@ -1473,7 +1473,7 @@ option3 = "project"
                                     old_value,
                                     value,
                                 )
-                    except Exception:
+                    except (AttributeError, IndexError, KeyError):
                         # Rollback on error
                         self.config = old_config
                         raise
@@ -1577,7 +1577,7 @@ option3 = "project"
                         timeout = plugin.config.get("timeout")
                         concurrent_reads.append((value, timeout))
                     time.sleep(0.001)
-                except Exception as e:
+                except (OSError, AttributeError, KeyError) as e:
                     errors.append(e)
 
         # Start reader thread
@@ -1964,7 +1964,7 @@ class TestPluginInteractions:
                     "message": "Circular dependency detected",
                 },
             )
-        except Exception as e:
+        except (IndexError, KeyError) as e:
             # Capture error as conflict
             error_ctx = error_mixin.capture_cross_module_error(
                 "plugin_manager",
@@ -2114,7 +2114,7 @@ def test_plugin_dependency_injection():
 
     class DatabaseService:
         def query(self, sql):
-            return [{"id": 1, "name": "test"}]
+            return [{"id_": 1, "name": "test"}]
 
     class CacheService:
         def __init__(self):
@@ -2132,13 +2132,13 @@ def test_plugin_dependency_injection():
             self.db = db_service
             self.cache = cache_service
 
-        def fetch_data(self, id):
-            cached = self.cache.get(f"data_{id}")
+        def fetch_data(self, id_):
+            cached = self.cache.get(f"data_{id_}")
             if cached:
                 return cached
 
-            data = self.db.query(f"SELECT * FROM table WHERE id={id}")
-            self.cache.set(f"data_{id}", data)
+            data = self.db.query(f"SELECT * FROM table WHERE id_={id_}")
+            self.cache.set(f"data_{id_}", data)
             return data
 
     # Set up services

@@ -93,7 +93,7 @@ class LanguageConfig(ABC):
         """Return advanced chunking rules for more complex scenarios."""
         return self._chunk_rules
 
-    def should_chunk_node(self, node_type: str, parent_type: str | None = None) -> bool:
+    def should_chunk_node(self, node_type: str, _parent_type: str | None = None) -> bool:
         """Determine if a node should be treated as a chunk.
 
         Args:

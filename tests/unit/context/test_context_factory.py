@@ -79,41 +79,41 @@ class TestContextFactory:
         assert "No scope analyzer available" in str(exc_info.value)
 
     def test_create_context_filter_python(self):
-        """Test creating a Python context filter."""
-        filter = ContextFactory.create_context_filter("python")
-        assert isinstance(filter, PythonContextFilter)
-        assert filter.language == "python"
+        """Test creating a Python context filter_func."""
+        filter_func = ContextFactory.create_context_filter("python")
+        assert isinstance(filter_func, PythonContextFilter)
+        assert filter_func.language == "python"
 
     def test_create_context_filter_javascript(self):
-        """Test creating a JavaScript context filter."""
-        filter = ContextFactory.create_context_filter("javascript")
-        assert isinstance(filter, JavaScriptContextFilter)
-        assert filter.language == "javascript"
+        """Test creating a JavaScript context filter_func."""
+        filter_func = ContextFactory.create_context_filter("javascript")
+        assert isinstance(filter_func, JavaScriptContextFilter)
+        assert filter_func.language == "javascript"
 
     def test_create_context_filter_unsupported(self):
-        """Test creating filter for unsupported language."""
+        """Test creating filter_func for unsupported language."""
         with pytest.raises(ValueError) as exc_info:
             ContextFactory.create_context_filter("java")
 
-        assert "No context filter available" in str(exc_info.value)
+        assert "No context filter_func available" in str(exc_info.value)
 
     def test_create_all_python(self):
         """Test creating all components for Python."""
-        extractor, resolver, analyzer, filter = ContextFactory.create_all("python")
+        extractor, resolver, analyzer, filter_func = ContextFactory.create_all("python")
 
         assert isinstance(extractor, PythonContextExtractor)
         assert isinstance(resolver, PythonSymbolResolver)
         assert isinstance(analyzer, PythonScopeAnalyzer)
-        assert isinstance(filter, PythonContextFilter)
+        assert isinstance(filter_func, PythonContextFilter)
 
     def test_create_all_javascript(self):
         """Test creating all components for JavaScript."""
-        extractor, resolver, analyzer, filter = ContextFactory.create_all("javascript")
+        extractor, resolver, analyzer, filter_func = ContextFactory.create_all("javascript")
 
         assert isinstance(extractor, JavaScriptContextExtractor)
         assert isinstance(resolver, JavaScriptSymbolResolver)
         assert isinstance(analyzer, JavaScriptScopeAnalyzer)
-        assert isinstance(filter, JavaScriptContextFilter)
+        assert isinstance(filter_func, JavaScriptContextFilter)
 
     def test_create_all_unsupported(self):
         """Test creating all components for unsupported language."""

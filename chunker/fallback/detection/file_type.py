@@ -58,7 +58,7 @@ class EncodingDetector:
             # Default to utf-8
             return "utf-8", 0.0
 
-        except Exception as e:
+        except (OSError, FileNotFoundError, IndexError) as e:
             logger.warning("Error detecting encoding for %s: %s", file_path, e)
             return "utf-8", 0.0
 
@@ -90,7 +90,7 @@ class EncodingDetector:
                     content = f.read()
                 logger.warning("Had to use error replacement for %s", file_path)
                 return content, encoding
-            except Exception as e:
+            except (FileNotFoundError, OSError) as e:
                 logger.error("Failed to read %s: %s", file_path, e)
                 raise
 
@@ -191,7 +191,7 @@ class FileTypeDetector(FallbackStrategy):
                     if re.search(pattern, sample, re.MULTILINE):
                         return file_type
 
-        except Exception as e:
+        except (FileNotFoundError, ImportError, IndexError) as e:
             logger.warning("Error detecting file type for %s: %s", file_path, e)
 
         return FileType.UNKNOWN
@@ -289,7 +289,7 @@ class FileTypeDetector(FallbackStrategy):
             mime_type, _ = mimetypes.guess_type(file_path)
             metadata["mime_type"] = mime_type
 
-        except Exception as e:
+        except (FileNotFoundError, IndexError, KeyError) as e:
             logger.warning("Error getting metadata for %s: %s", file_path, e)
 
         return metadata
@@ -322,5 +322,5 @@ class FileTypeDetector(FallbackStrategy):
             # If more than 30% non-text, consider binary
             return non_text / len(chunk) > 0.3
 
-        except Exception:
+        except (RuntimeError, ValueError):
             return True

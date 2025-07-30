@@ -183,7 +183,7 @@ class DeveloperToolingImpl(DeveloperToolingContract):
                 # Error occurred
                 result["errors"] = [proc.stderr]
 
-        except Exception as e:  # noqa: BLE001
+        except (FileNotFoundError, IndexError, KeyError) as e:
             result["errors"] = [str(e)]
 
         return result
@@ -259,7 +259,7 @@ class DeveloperToolingImpl(DeveloperToolingContract):
                     # Fallback to parsing text output
                     pass
 
-        except Exception:  # noqa: BLE001, S110
+        except (AttributeError, FileNotFoundError, IndexError):
             # Return empty results on error
             pass
 
@@ -339,7 +339,7 @@ class DeveloperToolingImpl(DeveloperToolingContract):
                         # Skip malformed lines
                         pass
 
-        except Exception:  # noqa: BLE001, S110
+        except (IndexError, KeyError):
             # Return empty results on error
             pass
 

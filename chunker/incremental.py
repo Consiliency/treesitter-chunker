@@ -303,7 +303,7 @@ class DefaultChunkCache(ChunkCache):
             try:
                 with open(index_path) as f:
                     return json.load(f)
-            except Exception:
+            except (OSError, FileNotFoundError, IndexError):
                 return {}
         return {}
 
@@ -382,7 +382,7 @@ class DefaultChunkCache(ChunkCache):
                 entry = pickle.load(f)
             self.stats["hits"] += 1
             return entry
-        except Exception:
+        except (OSError, FileNotFoundError, IndexError):
             self.stats["errors"] += 1
             return None
 
@@ -542,7 +542,7 @@ class DefaultChangeDetector(ChangeDetector):
     def classify_change(
         self,
         old_chunk: CodeChunk,
-        new_content: str,
+        _new_content: str,
         changed_lines: set[int],
     ) -> ChangeType:
         """Classify the type of change to a chunk."""

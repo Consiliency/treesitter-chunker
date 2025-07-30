@@ -270,7 +270,7 @@ print("Hello, world!")
                 highlight_matches=False,
             )
             print(f"Found {len(matches)} matches")
-        except Exception as e:
+        except (OSError, TypeError, ValueError) as e:
             print(f"Error: {e}")
 
 

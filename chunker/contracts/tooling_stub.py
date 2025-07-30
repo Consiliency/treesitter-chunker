@@ -10,7 +10,7 @@ from .tooling_contract import DeveloperToolingContract
 class DeveloperToolingStub(DeveloperToolingContract):
     """Stub implementation that can be instantiated and tested"""
 
-    def run_pre_commit_checks(self, files: list[Path]) -> tuple[bool, dict[str, Any]]:
+    def run_pre_commit_checks(self, _files: list[Path]) -> tuple[bool, dict[str, Any]]:
         """Stub that returns valid default values"""
         return (
             False,
@@ -25,7 +25,7 @@ class DeveloperToolingStub(DeveloperToolingContract):
             },
         )
 
-    def format_code(self, files: list[Path], fix: bool = False) -> dict[str, Any]:
+    def format_code(self, _files: list[Path], _fix: bool = False) -> dict[str, Any]:
         """Stub that returns valid default values"""
         return {
             "status": "not_implemented",
@@ -37,12 +37,12 @@ class DeveloperToolingStub(DeveloperToolingContract):
 
     def run_linting(
         self,
-        files: list[Path],
-        fix: bool = False,
+        _files: list[Path],
+        _fix: bool = False,
     ) -> dict[str, list[dict[str, Any]]]:
         """Stub that returns valid default values"""
         return {}
 
-    def run_type_checking(self, files: list[Path]) -> dict[str, list[dict[str, Any]]]:
+    def run_type_checking(self, _files: list[Path]) -> dict[str, list[dict[str, Any]]]:
         """Stub that returns valid default values"""
         return {}

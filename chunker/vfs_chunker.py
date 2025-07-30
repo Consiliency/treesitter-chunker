@@ -93,7 +93,7 @@ class VFSChunker:
     def _chunk_file_streaming(
         self,
         path: str,
-        language: str,
+        _language: str,
         chunker: StreamingChunker,
     ) -> Iterator[CodeChunk]:
         """Streaming chunking for large files."""
@@ -187,7 +187,7 @@ class VFSChunker:
                         # Convert iterator to list for consistency
                         chunks = list(chunks)
                     yield (file_path, chunks)
-                except Exception as e:
+                except (FileNotFoundError, OSError) as e:
                     logger.error("Error processing %s: %s", file_path, e)
                     continue
 

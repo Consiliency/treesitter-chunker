@@ -65,7 +65,7 @@ class ProcessorConfig:
 class SpecializedProcessor(ABC):
     """Base interface for specialized file processors.
 
-    Each processor handles a specific file type or format,
+    Each processor handles a specific file type or fmt,
     providing intelligent chunking that preserves the
     semantic structure of the content.
 
@@ -107,8 +107,8 @@ class SpecializedProcessor(ABC):
         return self.can_handle(str(file_path), content)
 
     # Structured processing approach (ConfigProcessor style)
-    def detect_format(self, file_path: str, content: str) -> str | None:
-        """Detect the specific format of the file.
+    def detect_format(self, _file_path: str, _content: str) -> str | None:
+        """Detect the specific fmt of the file.
 
         Args:
             file_path: Path to the file
@@ -120,12 +120,12 @@ class SpecializedProcessor(ABC):
         # Default implementation - can be overridden
         return None
 
-    def parse_structure(self, content: str, format: str) -> dict[str, Any]:
+    def parse_structure(self, _content: str, _format: str) -> dict[str, Any]:
         """Parse the file structure.
 
         Args:
             content: File content
-            format: Detected format
+            fmt: Detected fmt
 
         Returns:
             Parsed structure representation
@@ -135,9 +135,9 @@ class SpecializedProcessor(ABC):
 
     def chunk_content(
         self,
-        content: str,
-        structure: dict[str, Any],
-        file_path: str,
+        _content: str,
+        _structure: dict[str, Any],
+        _file_path: str,
     ) -> list[CodeChunk]:
         """Chunk the content based on its structure.
 
@@ -166,9 +166,9 @@ class SpecializedProcessor(ABC):
             List of chunks (CodeChunk or TextChunk)
         """
         # Try structured approach first
-        format = self.detect_format(file_path, content)
-        if format is not None:
-            structure = self.parse_structure(content, format)
+        fmt = self.detect_format(file_path, content)
+        if fmt is not None:
+            structure = self.parse_structure(content, fmt)
             chunks = self.chunk_content(content, structure, file_path)
             return chunks
 
@@ -257,15 +257,15 @@ class SpecializedProcessor(ABC):
         """Get list of supported file formats.
 
         Returns:
-            List of format identifiers
+            List of fmt identifiers
         """
         return []
 
     def get_format_extensions(self) -> dict[str, list[str]]:
-        """Get file extensions for each format.
+        """Get file extensions for each fmt.
 
         Returns:
-            Mapping of format to list of extensions
+            Mapping of fmt to list of extensions
         """
         return {}
 

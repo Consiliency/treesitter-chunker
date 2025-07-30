@@ -54,7 +54,7 @@ class DataProcessor:
                         self.data.append(self._parse_line(line))
         except FileNotFoundError:
             self.errors.append(f"File not found: {path}")
-        except Exception as e:
+        except (FileNotFoundError, IOError, IndexError) as e:
             self.errors.append(f"Error loading data: {e}")
         return self.data
 

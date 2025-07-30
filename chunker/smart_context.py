@@ -597,7 +597,7 @@ class TreeSitterSmartContextProvider(SmartContextProvider):
         # Different files - use a large distance
         return 10000
 
-    def _get_file_chunks(self, file_path: str, language: str) -> list[CodeChunk]:
+    def _get_file_chunks(self, _file_path: str, _language: str) -> list[CodeChunk]:
         """Get all chunks from a file."""
         # This is a placeholder - in practice would need access to the file chunking
         # For now, return empty list
@@ -621,7 +621,7 @@ class RelevanceContextStrategy(ContextStrategy):
 
     def select_context(
         self,
-        chunk: CodeChunk,
+        _chunk: CodeChunk,
         candidates: list[tuple[CodeChunk, ContextMetadata]],
         max_tokens: int,
     ) -> list[CodeChunk]:
@@ -661,7 +661,7 @@ class RelevanceContextStrategy(ContextStrategy):
 
     def rank_candidates(
         self,
-        chunk: CodeChunk,
+        _chunk: CodeChunk,
         candidates: list[tuple[CodeChunk, ContextMetadata]],
     ) -> list[tuple[CodeChunk, float]]:
         """
@@ -724,7 +724,7 @@ class HybridContextStrategy(ContextStrategy):
 
     def select_context(
         self,
-        chunk: CodeChunk,
+        _chunk: CodeChunk,
         candidates: list[tuple[CodeChunk, ContextMetadata]],
         max_tokens: int,
     ) -> list[CodeChunk]:
@@ -773,7 +773,7 @@ class HybridContextStrategy(ContextStrategy):
 
     def rank_candidates(
         self,
-        chunk: CodeChunk,
+        _chunk: CodeChunk,
         candidates: list[tuple[CodeChunk, ContextMetadata]],
     ) -> list[tuple[CodeChunk, float]]:
         """

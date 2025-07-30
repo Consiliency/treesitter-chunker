@@ -8,7 +8,7 @@ from .database_exporter_base import DatabaseExporterBase
 
 
 class PostgresExporter(DatabaseExporterBase):
-    """Export code chunks to PostgreSQL format."""
+    """Export code chunks to PostgreSQL fmt."""
 
     def get_schema_ddl(self) -> str:
         """Get PostgreSQL schema DDL with advanced features."""
@@ -194,7 +194,7 @@ $$ LANGUAGE SQL;
         ]
 
     def get_copy_data(self) -> tuple[str, list[list[Any]]]:
-        """Generate COPY format data for chunks.
+        """Generate COPY fmt data for chunks.
 
         Returns:
             Tuple of (COPY command, data rows)
@@ -311,15 +311,15 @@ ON CONFLICT (source_id, target_id, relationship_type) DO UPDATE SET
 
         return statements
 
-    def export(self, output_path: Path, format: str = "sql", **options) -> None:
-        """Export to PostgreSQL format.
+    def export(self, output_path: Path, fmt: str = "sql", **options) -> None:
+        """Export to PostgreSQL fmt.
 
         Args:
             output_path: Base path for output files
-            format: Export format - "sql" or "copy"
+            fmt: Export fmt - "sql" or "copy"
             **options: Additional options
         """
-        if format == "sql":
+        if fmt == "sql":
             # Export as SQL file
             statements = []
 
@@ -344,8 +344,8 @@ ON CONFLICT (source_id, target_id, relationship_type) DO UPDATE SET
 
             output_path.write_text("\n".join(statements), encoding="utf-8")
 
-        elif format == "copy":
-            # Export as COPY format files
+        elif fmt == "copy":
+            # Export as COPY fmt files
             # Schema file
             schema_path = output_path.parent / f"{output_path.stem}_schema.sql"
             schema_content = [
@@ -422,7 +422,7 @@ ON CONFLICT (source_id, target_id, relationship_type) DO UPDATE SET
             cmd_path.write_text("\n".join(import_cmds), encoding="utf-8")
 
         else:
-            raise ValueError(f"Unknown format: {format}")
+            raise ValueError(f"Unknown fmt: {fmt}")
 
     def get_advanced_queries(self) -> dict[str, str]:
         """Get PostgreSQL-specific advanced queries."""

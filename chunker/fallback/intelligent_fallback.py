@@ -253,7 +253,7 @@ class IntelligentFallbackChunker(FallbackChunker):
                     ):
                         metrics.token_limit_exceeded = True
 
-            except Exception as e:
+            except (FileNotFoundError, OSError, SyntaxError) as e:
                 metrics.parse_success = False
                 metrics.parse_error = str(e)
                 logger.debug("Tree-sitter parse failed for %s: %s", file_path, e)
@@ -394,7 +394,7 @@ class IntelligentFallbackChunker(FallbackChunker):
 
         return chunks
 
-    def can_handle(self, file_path: str, language: str) -> bool:
+    def can_handle(self, _file_path: str, _language: str) -> bool:
         """Check if this fallback can handle the file.
 
         Args:

@@ -52,7 +52,7 @@ class DataProcessor:
         }
 
 def process_file(filename):
-    """Process a file."""
+    """Process a file_path."""
     with open(filename, 'r') as f:
         data = f.readlines()
     processor = DataProcessor(data)
@@ -173,8 +173,8 @@ def demo_parallel_processing():
     # Sequential processing
     start = time.time()
     sequential_results = {}
-    for file in files:
-        sequential_results[file] = chunk_file(file, "python")
+    for file_path in files:
+        sequential_results[file_path] = chunk_file(file_path, "python")
     seq_duration = time.time() - start
 
     # Parallel processing

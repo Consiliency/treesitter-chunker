@@ -34,7 +34,7 @@ def main():
             try:
                 file_chunks = chunk_file(str(py_file), "python")
                 chunks.extend(file_chunks)
-            except Exception as e:
+            except (FileNotFoundError, IndexError, KeyError) as e:
                 print(f"   Warning: Could not chunk {py_file.name}: {e}")
 
     print(f"   Found {len(chunks)} chunks")

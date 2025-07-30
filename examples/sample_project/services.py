@@ -46,7 +46,7 @@ class NotificationService:
     def __init__(self):
         self.api_key = Config.API_KEY
 
-    def send_email(self, user, subject, message):
+    def send_email(self, user, subject, _message):
         """Send email notification."""
         print(f"Sending email to {user.email}: {subject}")
         # Simulated email sending

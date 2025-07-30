@@ -70,7 +70,7 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
             hooks_dir = git_dir / "hooks" / "pre-commit"
             return hooks_dir.exists()
 
-        except Exception:
+        except (FileNotFoundError, IndexError, KeyError):
             return False
 
     def run_linting(
@@ -159,7 +159,7 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
                             },
                         )
 
-        except Exception as e:
+        except (FileNotFoundError, OSError, TypeError) as e:
             issues.append(
                 {
                     "tool": "ruff",
@@ -209,7 +209,7 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
                                 },
                             )
 
-        except Exception as e:
+        except (FileNotFoundError, IndexError, KeyError) as e:
             issues.append(
                 {
                     "tool": "mypy",
@@ -295,7 +295,7 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
 
             return result.returncode == 0, modified_files
 
-        except Exception:
+        except (FileNotFoundError, IndexError, KeyError):
             return False, []
 
     def _run_black(self, paths: list[str], check_only: bool) -> tuple[bool, list[str]]:
@@ -328,7 +328,7 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
 
             return result.returncode == 0, modified_files
 
-        except Exception:
+        except (FileNotFoundError, IndexError, KeyError):
             return False, []
 
     def generate_ci_config(

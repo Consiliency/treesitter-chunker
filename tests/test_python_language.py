@@ -1056,7 +1056,7 @@ def process_multiple_errors():
         for operation in operations:
             try:
                 operation()
-            except Exception as e:
+            except (IOError, IndexError, KeyError) as e:
                 errors.append(e)
 
         if errors:

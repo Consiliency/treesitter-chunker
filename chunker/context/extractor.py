@@ -136,7 +136,7 @@ class BaseContextExtractor(ContextExtractor):
     def extract_parent_context(
         self,
         node: Node,
-        ast: Node,
+        _ast: Node,
         source: bytes,
     ) -> list[ContextItem]:
         """Extract parent scope context (enclosing class, function, etc).
@@ -287,7 +287,7 @@ class BaseContextExtractor(ContextExtractor):
 
     # Methods to be overridden by language-specific implementations
 
-    def _is_import_node(self, node: Node) -> bool:
+    def _is_import_node(self, _node: Node) -> bool:
         """Check if a node represents an import statement.
 
         Args:
@@ -299,7 +299,7 @@ class BaseContextExtractor(ContextExtractor):
         # Override in language-specific implementations
         return False
 
-    def _is_type_definition_node(self, node: Node) -> bool:
+    def _is_type_definition_node(self, _node: Node) -> bool:
         """Check if a node represents a type definition.
 
         Args:
@@ -311,7 +311,7 @@ class BaseContextExtractor(ContextExtractor):
         # Override in language-specific implementations
         return False
 
-    def _is_scope_node(self, node: Node) -> bool:
+    def _is_scope_node(self, _node: Node) -> bool:
         """Check if a node represents a scope (function, class, etc).
 
         Args:
@@ -323,7 +323,7 @@ class BaseContextExtractor(ContextExtractor):
         # Override in language-specific implementations
         return False
 
-    def _is_decorator_node(self, node: Node) -> bool:
+    def _is_decorator_node(self, _node: Node) -> bool:
         """Check if a node represents a decorator.
 
         Args:
@@ -335,7 +335,7 @@ class BaseContextExtractor(ContextExtractor):
         # Override in language-specific implementations
         return False
 
-    def _extract_type_declaration(self, node: Node, source: bytes) -> str | None:
+    def _extract_type_declaration(self, _node: Node, _source: bytes) -> str | None:
         """Extract just the declaration part of a type definition.
 
         Args:
@@ -348,7 +348,7 @@ class BaseContextExtractor(ContextExtractor):
         # Override in language-specific implementations
         return None
 
-    def _extract_scope_declaration(self, node: Node, source: bytes) -> str | None:
+    def _extract_scope_declaration(self, _node: Node, _source: bytes) -> str | None:
         """Extract just the declaration part of a scope.
 
         Args:
@@ -363,8 +363,8 @@ class BaseContextExtractor(ContextExtractor):
 
     def _find_references_in_node(
         self,
-        node: Node,
-        source: bytes,
+        _node: Node,
+        _source: bytes,
     ) -> list[tuple[str, Node]]:
         """Find all identifier references in a node.
 
@@ -380,10 +380,10 @@ class BaseContextExtractor(ContextExtractor):
 
     def _find_definition(
         self,
-        name: str,
-        scope_node: Node,
-        ast: Node,
-        source: bytes,
+        _name: str,
+        _scope_node: Node,
+        _ast: Node,
+        _source: bytes,
     ) -> ContextItem | None:
         """Find the definition of a name.
 
@@ -412,7 +412,7 @@ class BaseContextExtractor(ContextExtractor):
         # Implementation for ASTProcessor interface
         return None
 
-    def should_process_children(self, node: Node, context: dict[str, Any]) -> bool:
+    def should_process_children(self, _node: Node, _context: dict[str, Any]) -> bool:
         """Determine if children of this node should be processed.
 
         Args:

@@ -188,7 +188,7 @@ class BaseSymbolResolver(SymbolResolver):
 
         return None
 
-    def _get_node_text(self, node: Node) -> str:
+    def _get_node_text(self, _node: Node) -> str:
         """Get the text content of a node.
 
         Args:
@@ -224,7 +224,7 @@ class BaseSymbolResolver(SymbolResolver):
         # Override in language-specific implementations
         return node.type == "identifier"
 
-    def _is_definition_node(self, node: Node) -> bool:
+    def _is_definition_node(self, _node: Node) -> bool:
         """Check if a node defines a symbol.
 
         Args:
@@ -236,7 +236,7 @@ class BaseSymbolResolver(SymbolResolver):
         # Override in language-specific implementations
         return False
 
-    def _is_definition_context(self, node: Node) -> bool:
+    def _is_definition_context(self, _node: Node) -> bool:
         """Check if an identifier node is in a definition context.
 
         Args:
@@ -248,7 +248,7 @@ class BaseSymbolResolver(SymbolResolver):
         # Override in language-specific implementations
         return False
 
-    def _get_defined_name(self, node: Node) -> str | None:
+    def _get_defined_name(self, _node: Node) -> str | None:
         """Get the name being defined by a definition node.
 
         Args:
@@ -260,7 +260,7 @@ class BaseSymbolResolver(SymbolResolver):
         # Override in language-specific implementations
         return None
 
-    def _creates_new_scope(self, node: Node) -> bool:
+    def _creates_new_scope(self, _node: Node) -> bool:
         """Check if a node creates a new scope.
 
         Args:

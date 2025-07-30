@@ -98,7 +98,7 @@ class ChunkerConfig:
 
             logger.info("Loaded configuration from: %s", config_path)
 
-        except Exception as e:
+        except (FileNotFoundError, OSError, SyntaxError) as e:
             logger.error("Failed to load config from %s: %s", config_path, e)
             raise
 
@@ -129,7 +129,7 @@ class ChunkerConfig:
 
             logger.info("Saved configuration to: %s", config_path)
 
-        except Exception as e:
+        except (AttributeError, FileNotFoundError, KeyError) as e:
             logger.error("Failed to save config to %s: %s", config_path, e)
             raise
 

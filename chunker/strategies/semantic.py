@@ -71,7 +71,7 @@ class SemanticChunker(ChunkingStrategy):
             "type_group": ["type_alias", "type_definition", "interface_declaration"],
         }
 
-    def can_handle(self, file_path: str, language: str) -> bool:
+    def can_handle(self, _file_path: str, language: str) -> bool:
         """Semantic chunking can handle any language with proper AST support."""
         supported_languages = {
             "python",
@@ -223,7 +223,7 @@ class SemanticChunker(ChunkingStrategy):
     def _merge_related_chunks(
         self,
         chunks: list[CodeChunk],
-        source: bytes,
+        _source: bytes,
     ) -> list[CodeChunk]:
         """Merge chunks that are semantically related."""
         if not chunks:
@@ -400,7 +400,7 @@ class SemanticChunker(ChunkingStrategy):
 
         return sub_chunks
 
-    def _find_split_points(self, node: Node, source: bytes) -> list[tuple[Node, Node]]:
+    def _find_split_points(self, node: Node, _source: bytes) -> list[tuple[Node, Node]]:
         """Find logical points to split a complex node."""
         split_points = []
 
@@ -474,7 +474,7 @@ class SemanticChunker(ChunkingStrategy):
 
         return optimized
 
-    def _determine_parent_context(self, node: Node, source: bytes) -> str:
+    def _determine_parent_context(self, node: Node, _source: bytes) -> str:
         """Determine the parent context for a chunk."""
         # Walk up the tree to find a meaningful parent
         parent = node.parent

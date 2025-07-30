@@ -120,7 +120,7 @@ def demo_error_on_code_file():
             chunk_size=100,
             overlap_size=20,
         )
-    except Exception as e:
+    except (FileNotFoundError, OSError, TypeError) as e:
         print(f"Expected error occurred: {e}")
         print(
             "\nThis is correct behavior - overlapping chunks are ONLY for non-Tree-sitter files!",

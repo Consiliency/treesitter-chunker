@@ -142,7 +142,7 @@ class ReleaseManager:
             return False
 
     def _update_version_in_file(self, file_path: Path, version: str) -> bool:
-        """Update version string in a file"""
+        """Update version string in a file_path"""
         try:
             with open(file_path) as f:
                 content = f.read()
@@ -170,7 +170,7 @@ class ReleaseManager:
             with open(file_path, "w") as f:
                 f.write(content)
             return True
-        except Exception:
+        except (OSError, FileNotFoundError, IndexError):
             return False
 
     def _update_changelog(self, changelog_path: Path, version: str, notes: str) -> bool:
@@ -203,7 +203,7 @@ class ReleaseManager:
             with open(changelog_path, "w") as f:
                 f.write("\n".join(lines))
             return True
-        except Exception:
+        except (OSError, FileNotFoundError, IndexError):
             return False
 
     def _run_tests(self) -> bool:
@@ -216,7 +216,7 @@ class ReleaseManager:
                 check=False,
             )
             return result.returncode == 0
-        except Exception:
+        except (OSError, IndexError, KeyError):
             return False
 
     def _create_git_tag(self, tag_name: str, message: str) -> bool:
@@ -253,10 +253,10 @@ class ReleaseManager:
                 cwd=self.project_root,
             )
 
-            # Find the created file
-            for file in output_dir.glob("*.tar.gz"):
-                return file
-        except Exception:
+            # Find the created file_path
+            for file_path in output_dir.glob("*.tar.gz"):
+                return file_path
+        except (FileNotFoundError, IndexError, KeyError):
             pass
         return None
 
@@ -269,10 +269,10 @@ class ReleaseManager:
                 cwd=self.project_root,
             )
 
-            # Find the created file
-            for file in output_dir.glob("*.whl"):
-                return file
-        except Exception:
+            # Find the created file_path
+            for file_path in output_dir.glob("*.whl"):
+                return file_path
+        except (FileNotFoundError, ImportError, IndexError):
             pass
         return None
 
@@ -285,11 +285,11 @@ class ReleaseManager:
             with open(checksum_path, "w") as f:
                 for file_path in files:
                     if file_path.exists():
-                        with open(file_path, "rb") as file:
-                            sha256 = hashlib.sha256(file.read()).hexdigest()
+                        with open(file_path, "rb") as file_path:
+                            sha256 = hashlib.sha256(file_path.read()).hexdigest()
                         f.write(f"{sha256}  {file_path.name}\n")
             return checksum_path
-        except Exception:
+        except (FileNotFoundError, OSError):
             return None
 
     def _create_release_notes(self, version: str, output_path: Path) -> bool:
@@ -318,5 +318,5 @@ class ReleaseManager:
             with open(output_path, "w") as f:
                 f.write(notes)
             return True
-        except Exception:
+        except (OSError, FileNotFoundError, IndexError):
             return False

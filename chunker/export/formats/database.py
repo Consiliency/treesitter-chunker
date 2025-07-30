@@ -144,14 +144,14 @@ class SQLiteExporter(DatabaseExporter):
         """Set batch size for inserts."""
         self._batch_size = size
 
-    def supports_format(self, format: ExportFormat) -> bool:
-        """Check if this exporter supports a format."""
-        return format == ExportFormat.SQLITE
+    def supports_format(self, fmt: ExportFormat) -> bool:
+        """Check if this exporter supports a fmt."""
+        return fmt == ExportFormat.SQLITE
 
     def get_schema(self) -> dict[str, Any]:
         """Get the export schema."""
         return {
-            "format": "sqlite",
+            "fmt": "sqlite",
             "version": "3",
             "tables": {
                 "chunks": self._chunks_table,
@@ -209,7 +209,7 @@ class SQLiteExporter(DatabaseExporter):
             f"""
             CREATE TABLE IF NOT EXISTS {self._metadata_table} (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                format TEXT NOT NULL,
+                fmt TEXT NOT NULL,
                 version TEXT NOT NULL,
                 created_at TIMESTAMP NOT NULL,
                 source_files TEXT NOT NULL,  -- JSON array
@@ -232,11 +232,11 @@ class SQLiteExporter(DatabaseExporter):
         cursor.execute(
             f"""
             INSERT INTO {self._metadata_table}
-            (format, version, created_at, source_files, chunk_count, relationship_count, options)
+            (fmt, version, created_at, source_files, chunk_count, relationship_count, options)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
             (
-                metadata.format.value,
+                metadata.fmt.value,
                 metadata.version,
                 metadata.created_at,
                 json.dumps(metadata.source_files),
@@ -452,14 +452,14 @@ class PostgreSQLExporter(DatabaseExporter):
         """Set PostgreSQL schema name."""
         self._schema = schema
 
-    def supports_format(self, format: ExportFormat) -> bool:
-        """Check if this exporter supports a format."""
-        return format == ExportFormat.POSTGRESQL
+    def supports_format(self, fmt: ExportFormat) -> bool:
+        """Check if this exporter supports a fmt."""
+        return fmt == ExportFormat.POSTGRESQL
 
     def get_schema(self) -> dict[str, Any]:
         """Get the export schema."""
         return {
-            "format": "postgresql",
+            "fmt": "postgresql",
             "version": "13+",
             "schema": self._schema,
             "tables": {
@@ -504,7 +504,7 @@ class PostgreSQLExporter(DatabaseExporter):
             "",
             f"CREATE TABLE IF NOT EXISTS {self._metadata_table} (",
             "    id SERIAL PRIMARY KEY,",
-            "    format VARCHAR(32) NOT NULL,",
+            "    fmt VARCHAR(32) NOT NULL,",
             "    version VARCHAR(16) NOT NULL,",
             "    created_at TIMESTAMP NOT NULL,",
             "    source_files JSONB NOT NULL,",
@@ -519,9 +519,9 @@ class PostgreSQLExporter(DatabaseExporter):
         """Generate INSERT statement for metadata."""
         return [
             f"INSERT INTO {self._metadata_table}",
-            "(format, version, created_at, source_files, chunk_count, relationship_count, options)",
+            "(fmt, version, created_at, source_files, chunk_count, relationship_count, options)",
             "VALUES (",
-            f"    '{metadata.format.value}',",
+            f"    '{metadata.fmt.value}',",
             f"    '{metadata.version}',",
             f"    '{metadata.created_at}',",
             f"    '{json.dumps(metadata.source_files)}'::jsonb,",

@@ -69,7 +69,7 @@ class ParallelChunker:
                 try:
                     file_path, chunks = future.result()
                     results[file_path] = chunks
-                except Exception as e:
+                except (FileNotFoundError, IndexError, KeyError) as e:
                     print(f"Error processing {path}: {e}")
                     results[path] = []
 

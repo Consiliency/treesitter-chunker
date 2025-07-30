@@ -67,7 +67,7 @@ def process_users(manager: DatabaseManager, user_ids: List[int]) -> Dict[int, Di
             user_data = manager.get_user(user_id)
             if user_data:
                 results[user_id] = user_data
-        except Exception as e:
+        except (IndexError, KeyError, TypeError) as e:
             print(f"Error processing user {user_id}: {e}")
 
     return results
@@ -86,7 +86,7 @@ def create_manager(name: str = "default") -> DatabaseManager:
         source = complex_python_code.encode()
 
         # Create context components
-        extractor, resolver, analyzer, filter = ContextFactory.create_all("python")
+        extractor, resolver, analyzer, filter_func = ContextFactory.create_all("python")
 
         # Find the update_user method
         def find_method(node, class_name, method_name):
@@ -149,7 +149,7 @@ def create_manager(name: str = "default") -> DatabaseManager:
         # Filter relevant context
         all_context = imports + type_defs + parent_context + dependencies
         relevant_context = [
-            item for item in all_context if filter.is_relevant(item, update_method)
+            item for item in all_context if filter_func.is_relevant(item, update_method)
         ]
 
         # Build context prefix
@@ -325,7 +325,7 @@ export default connect(mapStateToProps, mapDispatchToProps)(UserList);
         source = complex_javascript_code.encode()
 
         # Create context components
-        extractor, resolver, analyzer, filter = ContextFactory.create_all("javascript")
+        extractor, resolver, analyzer, filter_func = ContextFactory.create_all("javascript")
 
         # Find the updateUser method
         def find_method(node, method_name):
@@ -371,7 +371,7 @@ export default connect(mapStateToProps, mapDispatchToProps)(UserList);
         source = complex_javascript_code.encode()
 
         extractor = ContextFactory.create_context_extractor("javascript")
-        filter = ContextFactory.create_context_filter("javascript")
+        filter_func = ContextFactory.create_context_filter("javascript")
 
         # Find the UserList component
         def find_component(node, name):
@@ -391,7 +391,7 @@ export default connect(mapStateToProps, mapDispatchToProps)(UserList);
         # Extract relevant imports
         imports = extractor.extract_imports(tree.root_node, source)
         relevant_imports = [
-            imp for imp in imports if filter.score_relevance(imp, user_list) > 0.5
+            imp for imp in imports if filter_func.score_relevance(imp, user_list) > 0.5
         ]
 
         # Should include React imports

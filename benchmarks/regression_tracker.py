@@ -62,7 +62,7 @@ class PerformanceRegressionTracker:
                     data = json.load(f)
                     for key, value in data.items():
                         self.baselines[key] = PerformanceBaseline(**value)
-            except Exception as e:
+            except (json.JSONDecodeError, ValueError) as e:
                 warnings.warn(f"Failed to load baselines: {e}", stacklevel=2)
 
     def save_baselines(self):
@@ -114,7 +114,7 @@ class PerformanceRegressionTracker:
         name: str,
         current_measurements: list[float],
         threshold: float = 0.1,
-        confidence_level: float = 0.95,
+        _confidence_level: float = 0.95,
     ) -> RegressionResult | None:
         """Check if current measurements indicate a performance regression.
 
@@ -249,7 +249,7 @@ class PerformanceRegressionTracker:
                 check=True,
             )
             return result.stdout.strip()[:8]
-        except Exception:
+        except (subprocess.SubprocessError, OSError):
             return None
 
     def generate_report(self) -> str:
@@ -290,7 +290,7 @@ class PerformanceHistory:
             try:
                 with open(self.history_file) as f:
                     self.history = json.load(f)
-            except Exception as e:
+            except (json.JSONDecodeError, ValueError) as e:
                 warnings.warn(f"Failed to load history: {e}", stacklevel=2)
 
     def save_history(self):
@@ -388,7 +388,7 @@ class PerformanceHistory:
 
 
 # Convenience functions
-def check_for_regressions(test_dir: Path | None = None, threshold: float = 0.1) -> bool:
+def check_for_regressions(test_dir: Path | None = None, _threshold: float = 0.1) -> bool:
     """Check for performance regressions and return True if any found."""
     if test_dir is None:
         test_dir = Path.cwd()

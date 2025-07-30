@@ -44,7 +44,7 @@ def parse_jsonl_output(output: str) -> list[dict[str, Any]]:
                         # Try this line alone
                         data = json.loads(line)
                         results.append(data)
-                    except Exception:
+                    except (SyntaxError, ValueError, json.JSONDecodeError):
                         pass
 
     # If we still have unparsed JSON, try one more time
@@ -52,7 +52,7 @@ def parse_jsonl_output(output: str) -> list[dict[str, Any]]:
         try:
             data = json.loads(current_json)
             results.append(data)
-        except Exception:
+        except (FileNotFoundError, OSError, SyntaxError):
             pass
 
     return results

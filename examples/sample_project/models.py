@@ -19,10 +19,10 @@ class Model:
         db.execute(query)
 
     @classmethod
-    def find(cls, id):
+    def find(cls, id_):
         """Find model by ID."""
         db = get_db()
-        query = f"SELECT * FROM {cls.table_name} WHERE id = {id}"
+        query = f"SELECT * FROM {cls.table_name} WHERE id_ = {id_}"
         result = db.execute(query)
         return cls(**result[0]) if result else None
 
@@ -32,12 +32,12 @@ class User(Model):
 
     table_name = "users"
 
-    def __init__(self, id=None, username=None, email=None):
-        super().__init__(id=id, username=username, email=email)
+    def __init__(self, id_=None, username=None, email=None):
+        super().__init__(id_=id_, username=username, email=email)
 
     def get_profile(self):
         """Get user profile."""
-        return Profile.find_by_user(self.id)
+        return Profile.find_by_user(self.id_)
 
 
 class Profile(Model):
@@ -45,8 +45,8 @@ class Profile(Model):
 
     table_name = "profiles"
 
-    def __init__(self, id=None, user_id=None, bio=None):
-        super().__init__(id=id, user_id=user_id, bio=bio)
+    def __init__(self, id_=None, user_id=None, bio=None):
+        super().__init__(id_=id_, user_id=user_id, bio=bio)
 
     @classmethod
     def find_by_user(cls, user_id):

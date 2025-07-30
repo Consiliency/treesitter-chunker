@@ -18,13 +18,13 @@ from chunker.export import (
 from chunker.interfaces.export import ExportFormat, RelationshipType
 
 
-def create_dependency_graph(source_files, output_base, format="dot"):
+def create_dependency_graph(source_files, output_base, fmt="dot"):
     """Create dependency graph visualization.
 
     Args:
         source_files: List of source files to analyze
         output_base: Base path for output files (without extension)
-        format: Export format ("dot" or "graphml")
+        fmt: Export fmt ("dot" or "graphml")
     """
     # Collect all chunks
     all_chunks = []
@@ -72,10 +72,10 @@ def create_dependency_graph(source_files, output_base, format="dot"):
 
     print(f"Found {len(filtered_relationships)} dependency relationships")
 
-    # Create exporter based on format
+    # Create exporter based on fmt
     orchestrator = StructuredExportOrchestrator()
 
-    if format == "dot":
+    if fmt == "dot":
         exporter = DOTExporter()
 
         # Customize styles for different relationship types
@@ -108,11 +108,11 @@ def create_dependency_graph(source_files, output_base, format="dot"):
     orchestrator.register_exporter(export_format, exporter)
 
     # Export
-    print(f"\nExporting to {format.upper()} format: {output_path}")
+    print(f"\nExporting to {fmt.upper()} fmt: {output_path}")
     orchestrator.export(all_chunks, filtered_relationships, output_path)
 
-    # Try to render if DOT format and Graphviz is available
-    if format == "dot":
+    # Try to render if DOT fmt and Graphviz is available
+    if fmt == "dot":
         try:
             # Try to render to SVG
             svg_path = f"{output_base}.svg"
@@ -425,19 +425,19 @@ def main():
     print("\n" + "=" * 50)
     print("Generating DOT visualization...")
     dot_output = output_dir / "dependencies"
-    create_dependency_graph(source_files, dot_output, format="dot")
+    create_dependency_graph(source_files, dot_output, fmt="dot")
 
     # Generate GraphML visualization
     print("\n" + "=" * 50)
     print("Generating GraphML visualization...")
     graphml_output = output_dir / "dependencies"
-    create_dependency_graph(source_files, graphml_output, format="graphml")
+    create_dependency_graph(source_files, graphml_output, fmt="graphml")
 
     print("\n" + "=" * 50)
     print("Visualization complete!")
     print("\nOutput files:")
-    print(f"  - {dot_output}.dot (Graphviz format)")
-    print(f"  - {graphml_output}.graphml (yEd/Gephi format)")
+    print(f"  - {dot_output}.dot (Graphviz fmt)")
+    print(f"  - {graphml_output}.graphml (yEd/Gephi fmt)")
 
     # Check if images were generated
     svg_path = f"{dot_output}.svg"

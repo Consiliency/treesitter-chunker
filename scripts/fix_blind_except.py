@@ -78,7 +78,7 @@ def fix_blind_except_advanced(file_path: Path) -> bool:
             return True
         return False
 
-    except Exception as e:
+    except (OSError, FileNotFoundError, IndexError) as e:
         print(f"Error processing {file_path}: {e}")
         return False
 

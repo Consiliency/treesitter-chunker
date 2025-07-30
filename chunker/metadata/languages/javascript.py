@@ -134,7 +134,7 @@ class JavaScriptMetadataExtractor(BaseMetadataExtractor):
         """Extract import statements used within a node."""
         imports = []
 
-        def collect_imports(n: Node, depth: int):
+        def collect_imports(n: Node, _depth: int):
             if n.type in ("import_statement", "import_clause"):
                 imports.append(self._get_node_text(n, source).strip())
             # Also collect require() calls
@@ -404,7 +404,7 @@ class JavaScriptMetadataExtractor(BaseMetadataExtractor):
         """Extract symbols defined within this node."""
         defined = set()
 
-        def collect_definitions(n: Node, depth: int):
+        def collect_definitions(n: Node, _depth: int):
             # Function declarations
             if n.type in {"function_declaration", "class_declaration"}:
                 name_node = self._find_child_by_type(n, "identifier")
@@ -429,7 +429,7 @@ class JavaScriptMetadataExtractor(BaseMetadataExtractor):
     def _extract_export_symbols(self, node: Node, source: bytes, exports: set[str]):
         """Extract exported symbols."""
 
-        def collect_exports(n: Node, depth: int):
+        def collect_exports(n: Node, _depth: int):
             if n.type == "export_statement":
                 # Check what's being exported
                 for child in n.children:

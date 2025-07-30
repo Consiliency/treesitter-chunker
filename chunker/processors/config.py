@@ -42,7 +42,7 @@ class ConfigProcessor(SpecializedProcessor):
         """
         super().__init__(config)
 
-        # Compiled regex patterns for format detection
+        # Compiled regex patterns for fmt detection
         self._ini_section_pattern = re.compile(r"^\s*\[([^\]]+)\]\s*$", re.MULTILINE)
         self._yaml_key_pattern = re.compile(r"^(\s*)(\w+):\s*(.*)$", re.MULTILINE)
         self._toml_table_pattern = re.compile(r"^\s*\[+([^\]]+)\]+\s*$", re.MULTILINE)
@@ -72,14 +72,14 @@ class ConfigProcessor(SpecializedProcessor):
         if path.name == ".env" or path.name.endswith(".env"):
             return True
 
-        # If content provided, try format detection
+        # If content provided, try fmt detection
         if content:
             return self.detect_format(file_path, content) is not None
 
         return False
 
     def detect_format(self, file_path: str, content: str) -> str | None:
-        """Detect configuration file format."""
+        """Detect configuration file fmt."""
         path = Path(file_path)
         ext = path.suffix.lower()
 
@@ -105,7 +105,7 @@ class ConfigProcessor(SpecializedProcessor):
             try:
                 json.loads(content)
                 return "json"
-            except Exception:
+            except (IndexError, KeyError, ValueError):
                 pass
 
         # Try YAML (must have yaml library)
@@ -115,7 +115,7 @@ class ConfigProcessor(SpecializedProcessor):
                 # Additional check to distinguish from INI
                 if not self._ini_section_pattern.search(content):
                     return "yaml"
-            except Exception:
+            except (IndexError, KeyError):
                 pass
 
         # Try TOML (must have toml library)
@@ -123,7 +123,7 @@ class ConfigProcessor(SpecializedProcessor):
             try:
                 toml.loads(content)
                 return "toml"
-            except Exception:
+            except (FileNotFoundError, IndexError, KeyError):
                 pass
 
         # Try INI - .env files are a special case of INI without sections
@@ -136,29 +136,29 @@ class ConfigProcessor(SpecializedProcessor):
                 if stripped and not stripped.startswith(("#", ";")) and "=" in stripped:
                     key_value_count += 1
 
-            # If we have key=value pairs, it's likely INI format
+            # If we have key=value pairs, it's likely INI fmt
             if key_value_count > 0:
                 return "ini"
 
         return None
 
-    def parse_structure(self, content: str, format: str) -> dict[str, Any]:
+    def parse_structure(self, content: str, fmt: str) -> dict[str, Any]:
         """Parse configuration structure."""
-        if format == "ini":
+        if fmt == "ini":
             return self._parse_ini_structure(content)
-        if format == "toml":
+        if fmt == "toml":
             return self._parse_toml_structure(content)
-        if format == "yaml":
+        if fmt == "yaml":
             return self._parse_yaml_structure(content)
-        if format == "json":
+        if fmt == "json":
             return self._parse_json_structure(content)
-        raise ValueError(f"Unsupported format: {format}")
+        raise ValueError(f"Unsupported fmt: {fmt}")
 
     def _parse_ini_structure(self, content: str) -> dict[str, Any]:
         """Parse INI file structure."""
         lines = content.split("\n")
         structure = {
-            "format": "ini",
+            "fmt": "ini",
             "sections": {},
             "global_section": {"start": 0, "end": 0, "keys": []},
         }
@@ -222,7 +222,7 @@ class ConfigProcessor(SpecializedProcessor):
         lines = content.split("\n")
 
         structure = {
-            "format": "toml",
+            "fmt": "toml",
             "tables": {},
             "root_keys": [],
         }
@@ -266,7 +266,7 @@ class ConfigProcessor(SpecializedProcessor):
         lines = content.split("\n")
 
         structure = {
-            "format": "yaml",
+            "fmt": "yaml",
             "sections": {},
             "root_keys": [],
         }
@@ -316,7 +316,7 @@ class ConfigProcessor(SpecializedProcessor):
         data = json.loads(content)
 
         structure = {
-            "format": "json",
+            "fmt": "json",
             "type": "object" if isinstance(data, dict) else "array",
             "keys": list(data.keys()) if isinstance(data, dict) else [],
             "size": len(data),
@@ -338,17 +338,17 @@ class ConfigProcessor(SpecializedProcessor):
         file_path: str,
     ) -> list[CodeChunk]:
         """Chunk configuration content based on structure."""
-        format = structure.get("format")
+        fmt = structure.get("fmt")
 
-        if format == "ini":
+        if fmt == "ini":
             return self._chunk_ini(content, structure, file_path)
-        if format == "toml":
+        if fmt == "toml":
             return self._chunk_toml(content, structure, file_path)
-        if format == "yaml":
+        if fmt == "yaml":
             return self._chunk_yaml(content, structure, file_path)
-        if format == "json":
+        if fmt == "json":
             return self._chunk_json(content, structure, file_path)
-        raise ValueError(f"Unsupported format: {format}")
+        raise ValueError(f"Unsupported fmt: {fmt}")
 
     def _chunk_ini(
         self,
@@ -381,7 +381,7 @@ class ConfigProcessor(SpecializedProcessor):
                         metadata={
                             "section": "global",
                             "keys": global_section["keys"],
-                            "format": "ini",
+                            "fmt": "ini",
                             "name": "[global]",
                         },
                     ),
@@ -427,7 +427,7 @@ class ConfigProcessor(SpecializedProcessor):
                             byte_end=sum(len(line.encode()) + 1 for line in lines[: end + 1]),
                             metadata={
                                 "sections": all_sections,
-                                "format": "ini",
+                                "fmt": "ini",
                                 "grouped": True,
                                 "name": f"[{', '.join(all_sections)}]",
                             },
@@ -459,7 +459,7 @@ class ConfigProcessor(SpecializedProcessor):
                     metadata={
                         "section": section_name,
                         "keys": section_info["keys"],
-                        "format": "ini",
+                        "fmt": "ini",
                         "name": f"[{section_name}]",
                     },
                 ),
@@ -501,7 +501,7 @@ class ConfigProcessor(SpecializedProcessor):
                             byte_end=len(root_content.encode()),
                             metadata={
                                 "keys": structure["root_keys"],
-                                "format": "toml",
+                                "fmt": "toml",
                                 "name": "[root]",
                             },
                         ),
@@ -539,7 +539,7 @@ class ConfigProcessor(SpecializedProcessor):
                     metadata={
                         "table": table_name,
                         "is_array": table_info["is_array"],
-                        "format": "toml",
+                        "fmt": "toml",
                         "name": (
                             f"[{table_name}]"
                             if not table_info["is_array"]
@@ -592,7 +592,7 @@ class ConfigProcessor(SpecializedProcessor):
                         byte_end=len(root_content.encode()),
                         metadata={
                             "keys": structure["root_keys"],
-                            "format": "yaml",
+                            "fmt": "yaml",
                             "name": "root",
                         },
                     ),
@@ -623,7 +623,7 @@ class ConfigProcessor(SpecializedProcessor):
                         "section": section_name,
                         "indent": section_info["indent"],
                         "keys": section_info["keys"],
-                        "format": "yaml",
+                        "fmt": "yaml",
                         "name": section_name,
                     },
                 ),
@@ -658,7 +658,7 @@ class ConfigProcessor(SpecializedProcessor):
                         byte_end=len(content.encode()),
                         metadata={
                             "keys": structure["keys"],
-                            "format": "json",
+                            "fmt": "json",
                             "name": "root",
                         },
                     ),
@@ -684,7 +684,7 @@ class ConfigProcessor(SpecializedProcessor):
                                 "key": key,
                                 "value_type": type(value).__name__,
                                 "is_nested": isinstance(value, dict | list),
-                                "format": "json",
+                                "fmt": "json",
                                 "name": key,
                             },
                         ),
@@ -705,7 +705,7 @@ class ConfigProcessor(SpecializedProcessor):
                     byte_end=len(content.encode()),
                     metadata={
                         "size": len(data),
-                        "format": "json",
+                        "fmt": "json",
                         "name": "root",
                     },
                 ),
@@ -731,7 +731,7 @@ class ConfigProcessor(SpecializedProcessor):
                         metadata={
                             "start_index": i,
                             "end_index": i + len(chunk_data),
-                            "format": "json",
+                            "fmt": "json",
                             "name": f"items[{i}:{i + len(chunk_data)}]",
                         },
                     ),
@@ -779,7 +779,7 @@ class ConfigProcessor(SpecializedProcessor):
         return formats
 
     def get_format_extensions(self) -> dict[str, list[str]]:
-        """Get file extensions for each format."""
+        """Get file extensions for each fmt."""
         return {
             "ini": [".ini", ".cfg", ".conf"],
             "toml": [".toml"],

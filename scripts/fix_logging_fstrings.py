@@ -46,7 +46,7 @@ def fix_logging_fstrings(file_path):
 
         def extract_vars_from_fstring(fstring_content):
             """Extract variables from f-string content."""
-            vars = []
+            variables = []
             parts = []
             current_part = ""
             in_brace = False
@@ -59,7 +59,7 @@ def fix_logging_fstrings(file_path):
                     current_part = ""
                 elif char == "}" and in_brace:
                     in_brace = False
-                    vars.append(brace_content.strip())
+                    variables.append(brace_content.strip())
                     parts.append("%s")
                     brace_content = ""
                 elif in_brace:
@@ -70,7 +70,7 @@ def fix_logging_fstrings(file_path):
             if current_part:
                 parts.append(current_part)
 
-            return "".join(parts), vars
+            return "".join(parts), variables
 
         def replace_complex_fstring(match):
             method = match.group(1)
@@ -81,12 +81,12 @@ def fix_logging_fstrings(file_path):
             if not match.group(0).startswith(method + "(f"):
                 return match.group(0)
 
-            template, vars = extract_vars_from_fstring(fstring_content)
+            template, variables = extract_vars_from_fstring(fstring_content)
 
-            if not vars:
+            if not variables:
                 return match.group(0)
 
-            vars_str = ", ".join(vars)
+            variables_str = ", ".join(vars)
 
             if extra:
                 return f'{method}("{template}", {vars_str}{extra})'
@@ -112,7 +112,7 @@ def fix_logging_fstrings(file_path):
             return True
         return False
 
-    except Exception as e:
+    except (OSError, FileNotFoundError, IndexError) as e:
         print(f"Error processing {file_path}: {e}")
         return False
 
@@ -141,7 +141,7 @@ def main():
                     if fix_logging_fstrings(file_path):
                         print(f"Fixed: {file_path}")
                         fixed += 1
-        except Exception as e:
+        except (FileNotFoundError, OSError) as e:
             print(f"Error checking {file_path}: {e}")
 
     print(f"\nFixed {fixed}/{total} files with logging f-strings")

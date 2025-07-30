@@ -233,7 +233,7 @@ class CICDPipelineImpl(CICDPipelineContract):
         self,
         version: str,
         artifacts: list[Path],
-        changelog: str,
+        _changelog: str,
     ) -> dict[str, Any]:
         """Create a GitHub release with artifacts
 

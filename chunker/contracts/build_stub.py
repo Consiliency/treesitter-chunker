@@ -12,9 +12,9 @@ class BuildSystemStub(BuildSystemContract):
 
     def compile_grammars(
         self,
-        languages: list[str],
-        platform: str,
-        output_dir: Path,
+        _languages: list[str],
+        _platform: str,
+        _output_dir: Path,
     ) -> tuple[bool, dict[str, Any]]:
         """Stub that returns valid default values"""
         return (
@@ -51,8 +51,8 @@ class BuildSystemStub(BuildSystemContract):
 
     def verify_build(
         self,
-        artifact_path: Path,
-        platform: str,
+        _artifact_path: Path,
+        _platform: str,
     ) -> tuple[bool, dict[str, Any]]:
         """Stub that returns valid default values"""
         return (
@@ -82,6 +82,6 @@ class PlatformSupportStub(PlatformSupportContract):
             "platform_tag": "unknown",
         }
 
-    def install_build_dependencies(self, platform: str) -> bool:
+    def install_build_dependencies(self, _platform: str) -> bool:
         """Stub that returns valid default values"""
         return False

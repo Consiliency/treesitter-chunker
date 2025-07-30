@@ -136,8 +136,8 @@ class GrammarDiscoveryService(GrammarDiscoveryContract):
 
     def get_grammar_compatibility(
         self,
-        language: str,  # noqa: ARG002
-        version: str,  # noqa: ARG002
+        _language: str,
+        _version: str,
     ) -> GrammarCompatibility:
         """Get compatibility requirements for a grammar version
 
@@ -197,7 +197,7 @@ class GrammarDiscoveryService(GrammarDiscoveryContract):
             )
 
             return True
-        except Exception:
+        except (IndexError, KeyError):
             logger.exception("Failed to refresh cache")
             return False
 
@@ -271,11 +271,11 @@ class GrammarDiscoveryService(GrammarDiscoveryContract):
                 supported_extensions=extensions,
                 official=True,
             )
-        except Exception:
+        except (IndexError, KeyError):
             logger.exception("Failed to convert repo to GrammarInfo")
             return None
 
-    def _get_latest_version(self, repo: dict) -> str:  # noqa: ARG002
+    def _get_latest_version(self, _repo: dict) -> str:
         """Get the latest version of a grammar (simplified for now)"""
         # In a real implementation, this would fetch tags/releases
         # For now, return a default version
@@ -333,7 +333,7 @@ class GrammarDiscoveryService(GrammarDiscoveryContract):
         try:
             with self.cache_file.open() as f:
                 return json.load(f)
-        except Exception:
+        except (FileNotFoundError, OSError):
             logger.exception("Failed to load cache")
             return None
 
@@ -342,7 +342,7 @@ class GrammarDiscoveryService(GrammarDiscoveryContract):
         try:
             with self.cache_file.open("w") as f:
                 json.dump(data, f, indent=2)
-        except Exception:
+        except (OSError, FileNotFoundError, IndexError):
             logger.exception("Failed to save cache")
 
     def _is_cache_expired(self, cache_data: dict) -> bool:

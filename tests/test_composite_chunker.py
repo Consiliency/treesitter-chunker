@@ -87,7 +87,7 @@ def process_files(file_list: List[str]) -> Dict[str, Dict]:
         try:
             analyzer.load_data(file_path)
             results[file_path] = analyzer.analyze()
-        except Exception as e:
+        except (FileNotFoundError, IndexError, KeyError) as e:
             results[file_path] = {'error': str(e)}
 
     return results
@@ -294,7 +294,7 @@ def process_files(file_list: List[str]) -> Dict[str, Dict]:
 
     def test_consensus_filter(self):
         """Test ConsensusFilter."""
-        filter = ConsensusFilter(min_strategies=2, min_score=0.5)
+        filter_func = ConsensusFilter(min_strategies=2, min_score=0.5)
 
         # Create test chunks
         chunk1 = CodeChunk(
@@ -332,8 +332,8 @@ def process_files(file_list: List[str]) -> Dict[str, Dict]:
         )
 
         # Test filtering
-        assert filter.should_include(chunk1)  # 3 strategies, high score
-        assert not filter.should_include(chunk2)  # 1 strategy, low score
+        assert filter_func.should_include(chunk1)  # 3 strategies, high score
+        assert not filter_func.should_include(chunk2)  # 1 strategy, low score
 
     def test_overlap_merger(self):
         """Test OverlapMerger."""

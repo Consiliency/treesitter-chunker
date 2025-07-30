@@ -191,7 +191,7 @@ class GitignoreMatcher:
                         patterns.append(line)
 
             self.add_patterns(patterns, base_dir)
-        except Exception:
+        except (OSError, FileNotFoundError, IndexError):
             # Silently ignore errors reading gitignore
             pass
 

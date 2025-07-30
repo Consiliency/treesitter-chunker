@@ -53,7 +53,7 @@ class OuterClass:
                             value = i * j
                             if value > 10:
                                 results.append(value)
-                        except Exception as e:
+                        except (IndexError, KeyError, TypeError) as e:
                             print(f"Error: {e}")
             else:
                 results.append(i)

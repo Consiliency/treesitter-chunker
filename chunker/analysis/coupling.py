@@ -105,7 +105,7 @@ class CouplingAnalyzer(ASTProcessor):
 
         return None
 
-    def should_process_children(self, node: Node, context: dict[str, Any]) -> bool:
+    def should_process_children(self, _node: Node, _context: dict[str, Any]) -> bool:
         """Process all children for complete analysis."""
         return True
 

@@ -237,7 +237,7 @@ class IntegrationCoordinator(ErrorPropagationMixin):
                 error=f"Test timed out after {scenario.timeout} seconds",
             )
 
-        except Exception as e:
+        except (OSError, subprocess.SubprocessError) as e:
             duration = time.time() - start_time
             error_context = self.capture_cross_module_error(
                 source_module="coordinator.runner",

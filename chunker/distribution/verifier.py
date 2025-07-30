@@ -155,7 +155,7 @@ with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
                         f"Functionality test failed: {test_func.stderr}",
                     )
 
-            except Exception as e:
+            except (IndexError, KeyError) as e:
                 details["errors"].append(f"Setup failed: {e!s}")
                 return False, details
 
@@ -164,7 +164,7 @@ with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
 
     def _verify_conda_installation(
         self,
-        platform: str,
+        _platform: str,
         details: dict,
     ) -> tuple[bool, dict]:
         """Verify conda installation"""
@@ -234,7 +234,7 @@ with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
                     check=False,
                 )
 
-            except Exception as e:
+            except (ImportError, IndexError, KeyError) as e:
                 details["errors"].append(f"Conda test failed: {e!s}")
                 # Cleanup on error
                 subprocess.run(
@@ -249,7 +249,7 @@ with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
 
     def _verify_docker_installation(
         self,
-        platform: str,
+        _platform: str,
         details: dict,
     ) -> tuple[bool, dict]:
         """Verify Docker installation"""
@@ -299,7 +299,7 @@ print("Docker functionality test passed")
             else:
                 details["tests_failed"].append("docker_functionality_test")
 
-        except Exception as e:
+        except (IndexError, KeyError) as e:
             details["errors"].append(f"Docker test failed: {e!s}")
             return False, details
 
@@ -369,7 +369,7 @@ print("Docker functionality test passed")
             else:
                 details["tests_failed"].append("homebrew_import_test")
 
-        except Exception as e:
+        except (ImportError, IndexError, KeyError) as e:
             details["errors"].append(f"Homebrew test failed: {e!s}")
             return False, details
 

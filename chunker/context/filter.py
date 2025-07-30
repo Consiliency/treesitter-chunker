@@ -205,7 +205,7 @@ class BaseContextFilter(ContextFilter):
 
         return ancestors
 
-    def _get_node_line(self, node: Node) -> int:
+    def _get_node_line(self, _node: Node) -> int:
         """Get the line number of a node.
 
         Args:
@@ -220,8 +220,8 @@ class BaseContextFilter(ContextFilter):
 
     def _chunk_references_context(
         self,
-        chunk_node: Node,
-        context_item: ContextItem,
+        _chunk_node: Node,
+        _context_item: ContextItem,
     ) -> bool:
         """Check if a chunk references symbols from a context item.
 
@@ -236,7 +236,7 @@ class BaseContextFilter(ContextFilter):
         # For now, return False
         return False
 
-    def _is_decorator_node(self, node: Node) -> bool:
+    def _is_decorator_node(self, _node: Node) -> bool:
         """Check if a node is a decorator.
 
         Args:

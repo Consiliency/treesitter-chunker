@@ -100,7 +100,7 @@ class TestConfigRuntimeChanges:
 
                     parse_result["chunks"] = chunks
 
-            except Exception as e:
+            except (OSError, FileNotFoundError, IndexError) as e:
                 parse_result["error"] = e
             finally:
                 parsing_completed.set()
@@ -219,7 +219,7 @@ class TestConfigRuntimeChanges:
                     # Simulate processing
                     time.sleep(0.001)
 
-                except Exception as e:
+                except (OSError, IndexError, KeyError) as e:
                     errors.append(f"Reader {thread_id}: {e}")
 
         def writer_thread(thread_id: int):
@@ -254,7 +254,7 @@ class TestConfigRuntimeChanges:
                     # Simulate processing
                     time.sleep(0.002)
 
-                except Exception as e:
+                except (OSError, IndexError, KeyError) as e:
                     errors.append(f"Writer {thread_id}: {e}")
 
         # Start all threads

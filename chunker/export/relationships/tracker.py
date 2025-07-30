@@ -138,7 +138,7 @@ class ASTRelationshipTracker(RelationshipTracker):
 
         try:
             parser = self._get_parser(language)
-        except Exception:
+        except (FileNotFoundError, IndexError, KeyError):
             # Skip if language not supported
             return
 

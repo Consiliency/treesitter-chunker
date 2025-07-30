@@ -37,10 +37,10 @@ app.add_typer(repo_app, name="repo", help="Repository processing commands")
 
 
 def load_config(config_path: Path | None = None) -> dict[str, Any]:
-    """Load configuration from .chunkerrc file."""
+    """Load configuration from .chunkerrc file_path."""
     config = {}
 
-    # Look for config file
+    # Look for config file_path
     if config_path:
         config_files = [config_path]
     else:
@@ -55,7 +55,7 @@ def load_config(config_path: Path | None = None) -> dict[str, Any]:
                 with open(config_file, "rb") as f:
                     config = tomllib.load(f)
                 break
-            except Exception as e:
+            except (OSError, FileNotFoundError, IndexError) as e:
                 console.print(
                     f"[yellow]Warning: Failed to load config from {config_file}: {e}[/yellow]",
                 )
@@ -85,15 +85,15 @@ def should_include_file(
     include_patterns: list[str] | None = None,
     exclude_patterns: list[str] | None = None,
 ) -> bool:
-    """Check if file should be included based on patterns."""
+    """Check if file_path should be included based on patterns."""
     file_str = str(file_path)
 
-    # If include patterns specified, file must match at least one
+    # If include patterns specified, file_path must match at least one
     if include_patterns:
         if not any(fnmatch.fnmatch(file_str, pattern) for pattern in include_patterns):
             return False
 
-    # If exclude patterns specified, file must not match any
+    # If exclude patterns specified, file_path must not match any
     if exclude_patterns:
         if any(fnmatch.fnmatch(file_str, pattern) for pattern in exclude_patterns):
             return False
@@ -108,7 +108,7 @@ def process_file(
     min_size: int | None = None,
     max_size: int | None = None,
 ) -> list[dict[str, Any]]:
-    """Process a single file and return chunks."""
+    """Process a single file_path and return chunks."""
     # Auto-detect language if not specified
     if not language:
         ext_map = {
@@ -146,7 +146,7 @@ def process_file(
 
             results.append(
                 {
-                    "file": str(file_path),
+                    "file_path": str(file_path),
                     "language": language,
                     "node_type": chunk.node_type,
                     "start_line": chunk.start_line,
@@ -165,7 +165,7 @@ def process_file(
 
 @app.command()
 def chunk(
-    file: Path = typer.Argument(..., exists=True, readable=True),
+    file_path: Path = typer.Argument(..., exists=True, readable=True),
     language: str | None = typer.Option(
         None,
         "--lang",
@@ -197,10 +197,10 @@ def chunk(
         None,
         "--config",
         "-c",
-        help="Path to config file",
+        help="Path to config file_path",
     ),
 ):
-    """Chunk a single source file."""
+    """Chunk a single source file_path."""
     # Load config
     cfg = load_config(config)
 
@@ -217,12 +217,12 @@ def chunk(
     if max_size is None and "max_chunk_size" in cfg:
         max_size = cfg["max_chunk_size"]
 
-    results = process_file(file, language, types_list, min_size, max_size)
+    results = process_file(file_path, language, types_list, min_size, max_size)
 
     if json_out:
         print(json.dumps(results, indent=2))
     else:
-        tbl = Table(title=f"Chunks in {file}")
+        tbl = Table(title=f"Chunks in {file_path}")
         tbl.add_column("#", justify="right")
         tbl.add_column("Node")
         tbl.add_column("Lines")
@@ -283,13 +283,13 @@ def batch(
         None,
         "--include",
         "-i",
-        help="Include file patterns (comma-separated)",
+        help="Include file_path patterns (comma-separated)",
     ),
     exclude: str | None = typer.Option(
         None,
         "--exclude",
         "-e",
-        help="Exclude file patterns (comma-separated)",
+        help="Exclude file_path patterns (comma-separated)",
     ),
     recursive: bool = typer.Option(
         True,
@@ -307,13 +307,13 @@ def batch(
         None,
         "--config",
         "-c",
-        help="Path to config file",
+        help="Path to config file_path",
     ),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress progress output"),
     from_stdin: bool = typer.Option(
         False,
         "--stdin",
-        help="Read file paths from stdin",
+        help="Read file_path paths from stdin",
     ),
 ):
     """Process multiple files with batch operations."""
@@ -353,7 +353,7 @@ def batch(
     files_to_process = []
 
     if from_stdin:
-        # Read file paths from stdin
+        # Read file_path paths from stdin
         for line in sys.stdin:
             path = Path(line.strip())
             if path.exists() and path.is_file():
@@ -482,7 +482,7 @@ def languages():
             tbl.add_row(lang, "✓ Available")
 
         console.print(tbl)
-    except Exception as e:
+    except (IndexError, KeyError, TypeError) as e:
         console.print(f"[red]Error listing languages: {e}[/red]")
 
 

@@ -290,7 +290,7 @@ class GrammarDownloadManager(GrammarDownloadContract):
                 abi_version=abi_version,
             )
 
-        except Exception as e:
+        except (FileNotFoundError, OSError) as e:
             return CompilationResult(
                 success=False,
                 output_path=None,
@@ -311,7 +311,7 @@ class GrammarDownloadManager(GrammarDownloadContract):
                 return 15
             # Default to latest
             return 15
-        except Exception:  # noqa: BLE001
+        except (ImportError, IndexError, KeyError):
             return 15  # Default
 
     def download_and_compile(
@@ -346,7 +346,7 @@ class GrammarDownloadManager(GrammarDownloadContract):
                 return (True, str(result.output_path))
             return (False, result.error_message or "Compilation failed")
 
-        except Exception as e:  # noqa: BLE001
+        except (OSError, FileNotFoundError, IndexError) as e:
             return (False, str(e))
 
     def get_grammar_cache_dir(self) -> Path:
@@ -377,7 +377,7 @@ class GrammarDownloadManager(GrammarDownloadContract):
     def _get_cached_grammar_path(
         self,
         language: str,
-        version: str | None = None,  # noqa: ARG002
+        _version: str | None = None,
     ) -> Path:
         """Get path to cached grammar .so file"""
         if language in self._metadata.get("grammars", {}):
@@ -447,5 +447,5 @@ class GrammarDownloadManager(GrammarDownloadContract):
                 return (True, None)
             return (False, f"Missing expected symbol: {expected_symbol}")
 
-        except Exception as e:  # noqa: BLE001
+        except (AttributeError, FileNotFoundError, OSError) as e:
             return (False, f"Failed to load grammar: {e}")

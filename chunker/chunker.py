@@ -33,7 +33,7 @@ def _walk(
         def should_chunk(node_type):
             return node_type in CHUNK_TYPES
 
-        def should_ignore(node_type):
+        def should_ignore(_node_type):
             return False
 
     else:

@@ -7,6 +7,7 @@ configuration system from Phase 2.1.
 from __future__ import annotations
 
 import logging
+import subprocess
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
@@ -203,7 +204,7 @@ class LanguagePlugin(ABC):
 
         return chunks
 
-    def get_context_for_children(self, node: Node, chunk: CodeChunk) -> str:
+    def get_context_for_children(self, _node: Node, chunk: CodeChunk) -> str:
         """
         Get context string to pass to children nodes.
         Can be overridden for language-specific context building.
@@ -245,7 +246,7 @@ class LanguagePlugin(ABC):
             _ = self.language_name
             _ = self.supported_extensions
             _ = self.default_chunk_types
-        except Exception as e:
+        except (OSError, subprocess.SubprocessError) as e:
             raise RuntimeError(
                 f"Plugin {self.__class__.__name__} failed validation: {e}",
             )

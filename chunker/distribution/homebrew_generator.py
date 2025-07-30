@@ -54,7 +54,7 @@ class HomebrewFormulaGenerator:
             with open(formula_path, "w") as f:
                 f.write(formula_content)
             return True, formula_path
-        except Exception:
+        except (FileNotFoundError, OSError):
             return False, Path()
 
     def _validate_version(self, version: str) -> bool:
@@ -100,7 +100,7 @@ class HomebrewFormulaGenerator:
                         "text",
                         info["license"],
                     )
-            except Exception:
+            except (AttributeError, IndexError, KeyError):
                 pass  # Use defaults
 
         return info
@@ -172,7 +172,7 @@ end
                 f.write(content)
 
             return True
-        except Exception:
+        except (OSError, FileNotFoundError, IndexError):
             return False
 
     def validate_formula(self, formula_path: Path) -> tuple[bool, list[str]]:

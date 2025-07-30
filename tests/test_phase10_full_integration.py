@@ -30,10 +30,10 @@ class TestPhase10FullIntegration:
     """Test all Phase 10 features working together in a realistic scenario."""
 
     def setup_method(self):
-        """Set up a multi-file project for testing."""
+        """Set up a multi-file_path project for testing."""
         self.test_dir = tempfile.mkdtemp()
 
-        # Create a Python backend file
+        # Create a Python backend file_path
         self.backend_file = Path(self.test_dir) / "api" / "server.py"
         Path(Path(self.backend_file).mkdir(parents=True).parent, exist_ok=True)
         with open(self.backend_file, "w") as f:
@@ -103,7 +103,7 @@ def status():
 ''',
             )
 
-        # Create a JavaScript frontend file
+        # Create a JavaScript frontend file_path
         self.frontend_file = Path(self.test_dir) / "frontend" / "client.js"
         Path(Path(self.frontend_file).mkdir(parents=True).parent, exist_ok=True)
         with open(self.frontend_file, "w") as f:
@@ -161,7 +161,7 @@ client.processData(testData).then(results => {
 """,
             )
 
-        # Create a SQL file
+        # Create a SQL file_path
         self.sql_file = Path(self.test_dir) / "schema.sql"
         with open(self.sql_file, "w") as f:
             f.write(
@@ -209,8 +209,8 @@ CREATE TABLE IF NOT EXISTS processing_log (
         project_analyzer.analyze_structure(self.test_dir)
         file_language_map = {}
         for root, _dirs, files in os.walk(self.test_dir):
-            for file in files:
-                file_path = Path(root) / file
+            for file_path in files:
+                file_path = Path(root) / file_path
                 lang, _ = lang_detector.detect_from_file(file_path)
                 if lang:
                     file_language_map[file_path] = lang
@@ -301,7 +301,7 @@ CREATE TABLE IF NOT EXISTS processing_log (
         for file_path, chunks in chunk_map.items():
             incremental_processor.update_chunks(file_path, chunks)
 
-        # Simulate file modification
+        # Simulate file_path modification
         with open(self.backend_file, "a") as f:
             f.write(
                 '''
@@ -393,7 +393,7 @@ def clear_cache():
 
     def test_error_handling_and_edge_cases(self):
         """Test error handling across all Phase 10 features."""
-        # Empty file handling
+        # Empty file_path handling
         empty_file = Path(self.test_dir) / "empty.py"
         with open(empty_file, "w") as f:
             f.write("")

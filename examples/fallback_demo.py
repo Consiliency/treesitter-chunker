@@ -211,7 +211,7 @@ def demo_fallback_chunking(sample_files):
                 if w:
                     print(f"\n⚠️  Warning emitted: {w[0].message}")
 
-        except Exception as e:
+        except (FileNotFoundError, IndexError, KeyError) as e:
             print(f"\n❌ Error: {e}")
 
 

@@ -49,7 +49,7 @@ class ASTVisualizer:
             highlight_nodes: Set of node types to highlight
 
         Returns:
-            String representation for graph format, None for console output
+            String representation for graph fmt, None for console output
         """
         with open(file_path, "rb") as f:
             content = f.read()
@@ -81,7 +81,7 @@ class ASTVisualizer:
                 chunks=chunks,
                 max_depth=max_depth,
             )
-        raise ValueError(f"Unknown output format: {output_format}")
+        raise ValueError(f"Unknown output fmt: {output_format}")
 
     def _print_tree(
         self,
@@ -214,7 +214,7 @@ class ASTVisualizer:
         if not HAS_GRAPHVIZ:
             raise ImportError("graphviz package required for graph output")
 
-        dot = graphviz.Digraph(comment="AST", format="svg")
+        dot = graphviz.Digraph(comment="AST", fmt="svg")
         dot.attr(rankdir="TB")
 
         self._add_graph_node(
@@ -345,7 +345,7 @@ def render_ast_graph(
     language: str,
     output_path: str | None = None,
     chunks: list[CodeChunk] | None = None,
-    format: str = "svg",
+    fmt: str = "svg",
     highlight_nodes: set[str] | None = None,
 ) -> str | None:
     """
@@ -356,7 +356,7 @@ def render_ast_graph(
         language: Programming language
         output_path: Where to save the graph (optional)
         chunks: Chunks to highlight
-        format: Output format (svg, png, pdf, etc.)
+        fmt: Output fmt (svg, png, pdf, etc.)
         highlight_nodes: Node types to highlight
 
     Returns:
@@ -372,7 +372,7 @@ def render_ast_graph(
 
     if output_path and HAS_GRAPHVIZ:
         dot = graphviz.Source(graph_source)
-        dot.format = format
+        dot.fmt = fmt
         dot.render(output_path, cleanup=True)
         return None
 

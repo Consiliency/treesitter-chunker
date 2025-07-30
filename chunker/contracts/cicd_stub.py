@@ -10,7 +10,7 @@ from .cicd_contract import CICDPipelineContract
 class CICDPipelineStub(CICDPipelineContract):
     """Stub implementation that can be instantiated and tested"""
 
-    def validate_workflow_syntax(self, workflow_path: Path) -> tuple[bool, list[str]]:
+    def validate_workflow_syntax(self, _workflow_path: Path) -> tuple[bool, list[str]]:
         """Stub that returns valid default values"""
         return (False, ["CI/CD team will implement workflow validation"])
 
@@ -34,7 +34,7 @@ class CICDPipelineStub(CICDPipelineContract):
                 }
         return result
 
-    def build_distribution(self, version: str, platforms: list[str]) -> dict[str, Any]:
+    def build_distribution(self, _version: str, _platforms: list[str]) -> dict[str, Any]:
         """Stub that returns valid default values"""
         return {
             "status": "not_implemented",
@@ -47,9 +47,9 @@ class CICDPipelineStub(CICDPipelineContract):
 
     def create_release(
         self,
-        version: str,
-        artifacts: list[Path],
-        changelog: str,
+        _version: str,
+        _artifacts: list[Path],
+        _changelog: str,
     ) -> dict[str, Any]:
         """Stub that returns valid default values"""
         return {

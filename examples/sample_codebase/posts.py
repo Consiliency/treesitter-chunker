@@ -5,8 +5,8 @@ from .users import UserManager
 class Post(BaseModel):
     """Blog post model."""
 
-    def __init__(self, id, title, content, author_id):
-        super().__init__(id)
+    def __init__(self, id_, title, content, author_id):
+        super().__init__(id_)
         self.title = title
         self.content = content
         self.author_id = author_id

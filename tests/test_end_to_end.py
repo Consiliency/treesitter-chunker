@@ -153,7 +153,7 @@ impl App {
                     chunks = chunk_file(file_path, language=language)
                     print(f"Processed {file_path.name}: {len(chunks)} chunks")
                     all_chunks.extend(chunks)
-                except Exception as e:
+                except (FileNotFoundError, IndexError, KeyError) as e:
                     print(f"Error processing {file_path}: {e}")
 
         # Verify we got chunks from all languages
@@ -530,7 +530,7 @@ class TestErrorPropagation:
         try:
             chunk_file(binary_file, language="python")
             # Might return empty or raise, both acceptable
-        except Exception as e:
+        except (OSError, FileNotFoundError, IndexError) as e:
             # Should be a specific chunker error, not generic
             assert "binary" in str(e).lower() or "decode" in str(e).lower()
 

@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import sqlite3
+import subprocess
 import threading
 import time
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
@@ -513,7 +514,7 @@ class TestCacheFileMonitoring:
             try:
                 if file_path.exists():
                     file_path.unlink()
-            except Exception as e:
+            except (OSError, FileNotFoundError, IndexError) as e:
                 errors_caught.append(e)
 
         with ThreadPoolExecutor(max_workers=2) as executor:
@@ -540,7 +541,7 @@ class TestCacheFileMonitoring:
                 result2 = sqlite_cache.get(str(file))
                 assert result1 is None
                 assert result2 is None
-        except Exception as e:
+        except (AttributeError, FileNotFoundError, KeyError) as e:
             pytest.fail(f"Cache access after deletion should not crash: {e}")
 
         # Clean up
@@ -623,7 +624,7 @@ class TestCacheFileMonitoring:
                                     cache.invalidate(str(path))
                                     cache.put(str(file), original_content["content"])
                                     return
-                            except Exception:
+                            except (OSError, FileNotFoundError, IndexError):
                                 pass
 
                 # Not a rename, just deletion
@@ -720,7 +721,7 @@ class TestCacheFileMonitoring:
                     # Small delay to allow contention
                     time.sleep(0.001)
 
-                except Exception:
+                except (OSError, subprocess.SubprocessError):
                     # Check for corruption
                     nonlocal corruption_detected
                     corruption_detected = True
@@ -1300,7 +1301,7 @@ class TestCacheFileMonitoring:
                 result = cache.get(str(test_files[0]))
             except sqlite3.DatabaseError:
                 corrupted = True
-            except Exception as e:
+            except (AttributeError, FileNotFoundError, IndexError) as e:
                 # Other errors also indicate corruption
                 if "database" in str(e).lower():
                     corrupted = True
@@ -1329,7 +1330,7 @@ class TestCacheFileMonitoring:
                     cached = recovery_cache.get(str(file))
                     assert cached is not None
 
-            except Exception as e:
+            except (OSError, AttributeError, FileNotFoundError) as e:
                 pytest.fail(f"Recovery failed: {e}")
 
         # Test 3: Partial corruption (some entries readable)
@@ -1363,7 +1364,7 @@ class TestCacheFileMonitoring:
                     readable_count += 1
                 else:
                     corrupted_entries.append(str(file))
-            except Exception:
+            except (OSError, AttributeError, FileNotFoundError):
                 corrupted_entries.append(str(file))
 
         # Most entries should still be readable
@@ -1380,7 +1381,7 @@ class TestCacheFileMonitoring:
                     # Always read from source during rebuild
                     content = file.read_text()
                     rebuild_cache.put(str(file), content)
-                except Exception as e:
+                except (OSError, AttributeError, FileNotFoundError) as e:
                     rebuild_errors.append((str(file), str(e)))
 
         assert len(rebuild_errors) == 0
@@ -1403,7 +1404,7 @@ class TestCacheFileMonitoring:
                     result = self.primary.get(key)
                     if result:
                         return result
-                except Exception:
+                except (OSError, AttributeError, KeyError):
                     pass
 
                 # Fallback to memory cache
@@ -1453,7 +1454,7 @@ class TestCacheFileMonitoring:
                         )
                     conn.execute("COMMIT")
                     return True
-                except Exception:
+                except (OSError, FileNotFoundError, IndexError):
                     conn.execute("ROLLBACK")
                     return False
                 finally:

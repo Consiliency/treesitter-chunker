@@ -124,7 +124,7 @@ def process_large_dataset(data: List[Dict[str, Any]]) -> Dict[str, Any]:
             processed_data.append(transformed)
             results['processed_items'] += 1
 
-        except Exception as e:
+        except (IndexError, KeyError, TypeError) as e:
             results['errors'].append({
                 'index': idx,
                 'error': str(e),

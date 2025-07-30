@@ -27,7 +27,7 @@ class JSONExporter:
 
         Args:
             chunks: List of code chunks to export
-            output: Output file path or file-like object
+            output: Output file_path path or file_path-like object
             compress: Whether to gzip compress the output
             indent: JSON indentation (None for compact)
         """
@@ -66,7 +66,7 @@ class JSONLExporter:
 
         Args:
             chunks: List of code chunks to export
-            output: Output file path or file-like object
+            output: Output file_path path or file_path-like object
             compress: Whether to gzip compress the output
         """
         if isinstance(output, str | Path):
@@ -80,39 +80,39 @@ class JSONLExporter:
         else:
             self._write_jsonl(chunks, output)
 
-    def _write_jsonl(self, chunks: list[CodeChunk], file: IO[str]) -> None:
-        """Write chunks as JSONL to file."""
+    def _write_jsonl(self, chunks: list[CodeChunk], file_path: IO[str]) -> None:
+        """Write chunks as JSONL to file_path."""
         formatted_data = self.formatter.format(chunks)
 
         # Handle different formatter outputs
         if isinstance(formatted_data, list):
             for item in formatted_data:
-                json.dump(item, file, separators=(",", ":"))
-                file.write("\n")
+                json.dump(item, file_path, separators=(",", ":"))
+                file_path.write("\n")
         elif isinstance(formatted_data, dict):
             # For full formatter, write metadata first, then chunks
             if "metadata" in formatted_data:
                 json.dump(
                     {"type": "metadata", "data": formatted_data["metadata"]},
-                    file,
+                    file_path,
                 )
-                file.write("\n")
+                file_path.write("\n")
 
             if "chunks" in formatted_data:
                 for chunk in formatted_data["chunks"]:
-                    json.dump({"type": "chunk", "data": chunk}, file)
-                    file.write("\n")
+                    json.dump({"type": "chunk", "data": chunk}, file_path)
+                    file_path.write("\n")
 
             if "relationships" in formatted_data:
                 json.dump(
                     {"type": "relationships", "data": formatted_data["relationships"]},
-                    file,
+                    file_path,
                 )
-                file.write("\n")
+                file_path.write("\n")
         else:
             # Single item
-            json.dump(formatted_data, file)
-            file.write("\n")
+            json.dump(formatted_data, file_path)
+            file_path.write("\n")
 
     def stream_export(
         self,
@@ -124,7 +124,7 @@ class JSONLExporter:
 
         Args:
             chunks_generator: Generator or iterator yielding CodeChunk objects
-            output: Output file path or file-like object
+            output: Output file_path path or file_path-like object
             compress: Whether to gzip compress the output
         """
         if isinstance(output, str | Path):
@@ -138,8 +138,8 @@ class JSONLExporter:
         else:
             self._stream_write_jsonl(chunks_generator, output)
 
-    def _stream_write_jsonl(self, chunks_generator, file: IO[str]) -> None:
-        """Stream write chunks as JSONL to file."""
+    def _stream_write_jsonl(self, chunks_generator, file_path: IO[str]) -> None:
+        """Stream write chunks as JSONL to file_path."""
         for chunk in chunks_generator:
             # Format single chunk
             if hasattr(self.formatter, "_chunk_to_dict"):
@@ -149,6 +149,6 @@ class JSONLExporter:
                 formatted = self.formatter.format([chunk])
                 chunk_dict = formatted[0] if isinstance(formatted, list) else formatted
 
-            json.dump(chunk_dict, file, separators=(",", ":"))
-            file.write("\n")
-            file.flush()  # Ensure immediate write for streaming
+            json.dump(chunk_dict, file_path, separators=(",", ":"))
+            file_path.write("\n")
+            file_path.flush()  # Ensure immediate write for streaming

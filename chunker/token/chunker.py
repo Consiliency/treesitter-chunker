@@ -31,7 +31,7 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
         self.token_counter = token_counter or TiktokenCounter()
         self.default_model = "gpt-4"
 
-    def can_handle(self, file_path: str, language: str) -> bool:
+    def can_handle(self, _file_path: str, _language: str) -> bool:
         """Check if this strategy can handle the given file."""
         # We can handle any file that Tree-sitter can parse
         return True

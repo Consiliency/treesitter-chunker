@@ -98,7 +98,7 @@ class FallbackManager:
         # Read file content
         try:
             content, encoding = EncodingDetector.read_with_encoding(file_path)
-        except Exception as e:
+        except (FileNotFoundError, OSError) as e:
             logger.error("Failed to read file %s: %s", file_path, e)
             raise
 

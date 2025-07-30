@@ -665,7 +665,7 @@ class TestRegistryThreadSafety:
                     configs_registered.append(f"lang_{start_id}_{i}")
                     # Small delay to increase chance of race conditions
                     time.sleep(0.001)
-            except Exception as e:
+            except (OSError, IndexError, KeyError) as e:
                 errors.append(e)
 
         def read_configs(iterations: int):
@@ -686,7 +686,7 @@ class TestRegistryThreadSafety:
                     if not isinstance(langs, list):
                         errors.append("list_languages didn't return a list")
                     time.sleep(0.001)
-            except Exception as e:
+            except (OSError, AttributeError, IndexError) as e:
                 errors.append(e)
 
         # Create threads for concurrent access
@@ -962,7 +962,7 @@ class TestCompositeConfigAdvanced:
                 except ValueError:
                     pass  # Expected
 
-            except Exception as e:
+            except (OSError, IndexError, KeyError) as e:
                 errors.append(f"Thread {thread_id}: {e}")
 
         # Run concurrent modifications

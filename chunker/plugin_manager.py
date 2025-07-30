@@ -34,7 +34,7 @@ class PluginRegistry:
         # Create temporary instance to get metadata
         try:
             temp_instance = plugin_class()
-        except Exception as e:
+        except (IndexError, KeyError, OSError) as e:
             raise RuntimeError(
                 f"Failed to instantiate plugin {plugin_class.__name__}: {e}",
             )
@@ -115,7 +115,7 @@ class PluginRegistry:
         try:
             parser = get_parser(language)
             instance.set_parser(parser)
-        except Exception as e:
+        except (IndexError, KeyError, SyntaxError) as e:
             logger.error("Failed to set parser for %s: %s", language, e)
             raise
 
@@ -179,7 +179,7 @@ class PluginManager:
                 try:
                     plugin_classes = self._load_plugin_from_file(py_file)
                     plugins.extend(plugin_classes)
-                except Exception as e:
+                except (FileNotFoundError, IndexError, KeyError) as e:
                     logger.error("Failed to load plugin from %s: %s", py_file, e)
 
         return plugins
@@ -253,7 +253,7 @@ class PluginManager:
                     logger.info("Found plugin class: %s in %s", obj.__name__, file_path)
 
             return plugins
-        except Exception as e:
+        except (FileNotFoundError, IndexError, KeyError) as e:
             logger.error("Failed to load plugin from %s: %s", file_path, e)
             return []
 
@@ -266,7 +266,7 @@ class PluginManager:
         for plugin_class in plugins:
             try:
                 self.registry.register(plugin_class)
-            except Exception as e:
+            except (FileNotFoundError, OSError) as e:
                 logger.error("Failed to register %s: %s", plugin_class.__name__, e)
 
     def load_plugins_from_directory(self, directory: Path) -> int:
@@ -279,7 +279,7 @@ class PluginManager:
             try:
                 self.registry.register(plugin_class)
                 loaded += 1
-            except Exception as e:
+            except (FileNotFoundError, OSError) as e:
                 logger.error("Failed to register %s: %s", plugin_class.__name__, e)
 
         return loaded
@@ -318,7 +318,7 @@ class PluginManager:
                     return "cpp"
 
             return "c"  # Default to C if no C++ features found
-        except Exception as e:
+        except (FileNotFoundError, IndexError, KeyError) as e:
             logger.debug("Could not detect language for %s: %s", file_path, e)
             return None  # Detection failed
 

@@ -1,4 +1,4 @@
-"""Batch processing implementation for efficient multi-file operations."""
+"""Batch processing implementation for efficient multi-file_path operations."""
 
 import heapq
 import logging
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass(order=True)
 class FileTask:
-    """Represents a file processing task with priority."""
+    """Represents a file_path processing task with priority."""
 
     priority: int
     file_path: str = field(compare=False)
@@ -61,7 +61,7 @@ class BatchProcessor(BatchProcessorInterface):
         logger.info("Initialized BatchProcessor with %s workers", max_workers)
 
     def add_file(self, file_path: str, priority: int = 0) -> None:
-        """Add a file to the batch.
+        """Add a file_path to the batch.
 
         Args:
             file_path: File to process
@@ -85,7 +85,7 @@ class BatchProcessor(BatchProcessorInterface):
             task = FileTask(-priority, file_path, time.time())
             heapq.heappush(self._queue, task)
 
-            logger.debug("Added file to batch: %s (priority: %s)", file_path, priority)
+            logger.debug("Added file_path to batch: %s (priority: %s)", file_path, priority)
 
     def process_batch(
         self,
@@ -99,7 +99,7 @@ class BatchProcessor(BatchProcessorInterface):
             parallel: Whether to process in parallel
 
         Returns:
-            Dictionary mapping file paths to chunks
+            Dictionary mapping file_path paths to chunks
         """
         # Get batch of files to process
         batch_files = self._get_batch(batch_size)
@@ -152,7 +152,7 @@ class BatchProcessor(BatchProcessorInterface):
         with self._lock:
             count = len(self._processed)
             self._processed.clear()
-            logger.info("Reset %s processed file records", count)
+            logger.info("Reset %s processed file_path records", count)
 
     def _get_batch(self, batch_size: int) -> list[str]:
         """Get a batch of files from the queue.
@@ -161,7 +161,7 @@ class BatchProcessor(BatchProcessorInterface):
             batch_size: Maximum number of files
 
         Returns:
-            List of file paths
+            List of file_path paths
         """
         with self._lock:
             batch = []
@@ -177,7 +177,7 @@ class BatchProcessor(BatchProcessorInterface):
         """Process files sequentially.
 
         Args:
-            files: List of file paths
+            files: List of file_path paths
 
         Returns:
             Results dictionary
@@ -199,7 +199,7 @@ class BatchProcessor(BatchProcessorInterface):
         """Process files in parallel.
 
         Args:
-            files: List of file paths
+            files: List of file_path paths
 
         Returns:
             Results dictionary
@@ -225,16 +225,16 @@ class BatchProcessor(BatchProcessorInterface):
                     chunks = future.result()
                     if chunks is not None:
                         results[file_path] = chunks
-                except Exception as e:
+                except (FileNotFoundError, IndexError, KeyError) as e:
                     logger.error("Error processing %s: %s", file_path, e)
 
         return results
 
     def _process_file(self, file_path: str) -> list[CodeChunk] | None:
-        """Process a single file.
+        """Process a single file_path.
 
         Args:
-            file_path: Path to file
+            file_path: Path to file_path
 
         Returns:
             List of chunks or None on error
@@ -247,14 +247,14 @@ class BatchProcessor(BatchProcessorInterface):
                 language = self._get_language_from_extension(path.suffix)
 
                 if not language:
-                    logger.warning("Unknown file type: %s", file_path)
+                    logger.warning("Unknown file_path type: %s", file_path)
                     return None
 
                 # Acquire parser from pool
                 parser = self._memory_pool.acquire_parser(language)
 
                 try:
-                    # Process file
+                    # Process file_path
                     chunks = chunk_file_original(file_path, language)
 
                     # Record metrics
@@ -269,13 +269,13 @@ class BatchProcessor(BatchProcessorInterface):
                     # Release parser back to pool
                     self._memory_pool.release_parser(parser, language)
 
-        except Exception as e:
+        except (FileNotFoundError, OSError, SyntaxError) as e:
             logger.error("Failed to process %s: %s", file_path, e)
             self._monitor.record_metric("batch.errors", 1)
             return None
 
     def _get_language_from_extension(self, extension: str) -> str | None:
-        """Map file extension to language.
+        """Map file_path extension to language.
 
         Args:
             extension: File extension (e.g., '.py')
@@ -332,16 +332,16 @@ class BatchProcessor(BatchProcessorInterface):
 
         # Filter to only files with known extensions
         valid_files = []
-        for file in files:
-            if file.is_file() and self._get_language_from_extension(file.suffix):
-                valid_files.append(file)
+        for file_path in files:
+            if file_path.is_file() and self._get_language_from_extension(file_path.suffix):
+                valid_files.append(file_path)
 
         logger.info("Found %s files to process in %s", len(valid_files), directory)
 
         # Add all files to queue
-        for file in valid_files:
-            priority = priority_fn(file) if priority_fn else 0
-            self.add_file(str(file), priority)
+        for file_path in valid_files:
+            priority = priority_fn(file_path) if priority_fn else 0
+            self.add_file(str(file_path), priority)
 
         # Process all files
         results = {}

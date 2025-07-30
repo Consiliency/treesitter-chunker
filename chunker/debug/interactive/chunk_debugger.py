@@ -110,9 +110,9 @@ class ChunkDebugger:
 
         for i in range(len(sorted_chunks) - 1):
             curr = sorted_chunks[i]
-            next = sorted_chunks[i + 1]
+            next_item = sorted_chunks[i + 1]
 
-            if curr.byte_end > next.byte_start:
+            if curr.byte_end > next_item.byte_start:
                 overlaps.append((i, i + 1))
 
         return overlaps
@@ -133,10 +133,10 @@ class ChunkDebugger:
         # Check gaps between chunks
         for i in range(len(sorted_chunks) - 1):
             curr = sorted_chunks[i]
-            next = sorted_chunks[i + 1]
+            next_item = sorted_chunks[i + 1]
 
-            if curr.byte_end < next.byte_start:
-                gaps.append((curr.byte_end, next.byte_start))
+            if curr.byte_end < next_item.byte_start:
+                gaps.append((curr.byte_end, next_item.byte_start))
 
         # Check end gap
         if sorted_chunks and sorted_chunks[-1].byte_end < total_bytes:
@@ -166,7 +166,7 @@ class ChunkDebugger:
     def _trace_decisions(
         self,
         node: Node,
-        content: bytes,
+        _content: bytes,
         chunks: list[CodeChunk],
     ) -> list[dict[str, Any]]:
         """Trace chunking decisions for nodes."""

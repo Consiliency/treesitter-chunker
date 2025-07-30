@@ -894,8 +894,8 @@ class ChunkOptimizer(ChunkOptimizerInterface):
     def _ensure_semantic_coherence(
         self,
         chunks: list[CodeChunk],
-        model: str,
-        max_tokens: int,
+        _model: str,
+        _max_tokens: int,
     ) -> list[CodeChunk]:
         """Ensure chunks maintain semantic coherence for embeddings."""
         coherent_chunks = []
@@ -1060,7 +1060,7 @@ class ChunkBoundaryAnalyzer(ChunkBoundaryAnalyzerInterface):
 
         return sorted(boundaries)
 
-    def score_boundary(self, content: str, position: int, language: str) -> float:
+    def score_boundary(self, content: str, position: int, _language: str) -> float:
         """Score how good a boundary point is."""
         if position < 0 or position >= len(content):
             return 0.0

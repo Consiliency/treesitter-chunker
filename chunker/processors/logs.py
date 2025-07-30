@@ -222,7 +222,7 @@ class LogProcessor(SpecializedProcessor):
             content = f.read()
         return self.process(content, Path(file_path))
 
-    def process(self, content: str, file_path: Path | None = None) -> list[TextChunk]:
+    def process(self, content: str, _file_path: Path | None = None) -> list[TextChunk]:
         """Process log content and return chunks."""
         if not content or not content.strip():
             return []
@@ -444,9 +444,9 @@ class LogProcessor(SpecializedProcessor):
 
                         dt = dt.replace(tzinfo=timezone.utc)
                     return dt
-                except Exception:
+                except (ImportError, IndexError, KeyError):
                     pass
-        except Exception:
+        except (ImportError, IndexError, KeyError):
             pass
         return None
 

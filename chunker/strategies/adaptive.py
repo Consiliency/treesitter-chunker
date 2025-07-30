@@ -83,7 +83,7 @@ class AdaptiveChunker(ChunkingStrategy):
             "compound_statement",
         }
 
-    def can_handle(self, file_path: str, language: str) -> bool:
+    def can_handle(self, _file_path: str, _language: str) -> bool:
         """Adaptive chunking can handle any language with AST support."""
         return True
 
@@ -390,7 +390,7 @@ class AdaptiveChunker(ChunkingStrategy):
         metrics: AdaptiveMetrics,
         ideal_size: int,
         line_count: int,
-        depth: int,
+        _depth: int,
     ) -> bool:
         """Determine if a node should become a chunk."""
         # Skip module node when preserve_boundaries is enabled
@@ -587,8 +587,8 @@ class AdaptiveChunker(ChunkingStrategy):
     def _split_large_chunk(
         self,
         chunk: CodeChunk,
-        source: bytes,
-        target_size: float,
+        _source: bytes,
+        _target_size: float,
     ) -> list[CodeChunk]:
         """Split a large chunk into smaller pieces."""
         # For now, just return the original chunk

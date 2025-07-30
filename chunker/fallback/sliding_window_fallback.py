@@ -182,7 +182,7 @@ class ProcessorRegistry:
             processor = processor_info.processor_class(processor_info.config)
             self._processor_cache[name] = processor
             return processor
-        except Exception as e:
+        except (FileNotFoundError, IndexError, KeyError) as e:
             logger.error("Failed to create processor %s: %s", name, e)
             return None
 
@@ -472,7 +472,7 @@ class SlidingWindowFallback(FallbackChunker):
                 super().__init__(config)
                 self.fallback = fallback_class()
 
-            def can_process(self, content: str, file_path: str) -> bool:
+            def can_process(self, _content: str, file_path: str) -> bool:
                 return self.fallback.can_handle(file_path, "")
 
             def process(self, content: str, file_path: str) -> list[CodeChunk]:
@@ -575,7 +575,7 @@ class SlidingWindowFallback(FallbackChunker):
                         info = obj.processor_info()
                         self.registry.register(info)
 
-            except Exception as e:
+            except (AttributeError, FileNotFoundError, IndexError) as e:
                 logger.error("Failed to load processor from %s: %s", file_path, e)
 
     def chunk_text(
@@ -620,7 +620,7 @@ class SlidingWindowFallback(FallbackChunker):
 
                     return chunks
 
-                except Exception as e:
+                except (AttributeError, FileNotFoundError, IndexError) as e:
                     logger.error(f"Processor '{proc_name}' failed: {e}")
                     continue
 
@@ -725,7 +725,7 @@ class SlidingWindowFallback(FallbackChunker):
 
         return ProcessorChain(processors)
 
-    def can_chunk(self, file_path: str) -> bool:
+    def can_chunk(self, _file_path: str) -> bool:
         """Check if this fallback can chunk the given file.
 
         This is an alias for compatibility with tests and other interfaces.
@@ -775,7 +775,7 @@ class GenericSlidingWindowProcessor(TextProcessor):
         self.min_window_size = self.config.get("min_window_size", 100)
         self.preserve_words = self.config.get("preserve_words", True)
 
-    def can_process(self, content: str, file_path: str) -> bool:
+    def can_process(self, _content: str, _file_path: str) -> bool:
         """Can process any text content."""
         return True
 

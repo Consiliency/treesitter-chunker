@@ -44,7 +44,7 @@ class DebugVisualization(DebugVisualizationContract):
         # Get chunks for highlighting
         try:
             chunks = chunk_file(file_path, language)
-        except Exception:  # noqa: BLE001
+        except (FileNotFoundError, IndexError, KeyError):
             chunks = None
 
         visualizer = ASTVisualizer(language)

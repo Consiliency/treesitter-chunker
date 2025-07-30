@@ -66,7 +66,7 @@ class JuliaConfig(LanguageConfig):
         self.add_ignore_type("number")
         self.add_ignore_type("identifier")
 
-    def _is_method_definition(self, node: Node, source: bytes) -> bool:
+    def _is_method_definition(self, node: Node, _source: bytes) -> bool:
         """Check if an assignment is a method definition with type annotations."""
         # Look for function definitions with type annotations
         for child in node.children:

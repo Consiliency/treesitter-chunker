@@ -42,7 +42,7 @@ class TestConfigProcessor:
         assert not self.processor.can_handle("readme")
 
     def test_format_detection_ini(self):
-        """Test INI format detection."""
+        """Test INI fmt detection."""
         ini_content = """
 [database]
 host = localhost
@@ -56,13 +56,13 @@ ttl = 3600
         assert self.processor.detect_format("unknown", ini_content) == "ini"
 
     def test_format_detection_json(self):
-        """Test JSON format detection."""
+        """Test JSON fmt detection."""
         json_content = '{"name": "test", "version": "1.0.0"}'
         assert self.processor.detect_format("config.json", json_content) == "json"
         assert self.processor.detect_format("unknown", json_content) == "json"
 
     def test_format_detection_yaml(self):
-        """Test YAML format detection."""
+        """Test YAML fmt detection."""
         yaml_content = """
 name: test
 version: 1.0.0
@@ -80,7 +80,7 @@ features:
             pytest.skip("yaml library not available")
 
     def test_format_detection_toml(self):
-        """Test TOML format detection."""
+        """Test TOML fmt detection."""
         toml_content = """
 [package]
 name = "test"
@@ -352,17 +352,17 @@ key2 = value2
 """
 
         # Should still detect as INI
-        format = self.processor.detect_format("bad.ini", malformed_ini)
-        assert format == "ini"
+        fmt = self.processor.detect_format("bad.ini", malformed_ini)
+        assert fmt == "ini"
 
         # Should handle parsing errors gracefully
         try:
             chunks = self.processor.process("bad.ini", malformed_ini)
             # Should produce some chunks even if not perfect
             assert len(chunks) > 0
-        except Exception as e:
+        except (FileNotFoundError, OSError, SyntaxError) as e:
             # Should be a meaningful error
-            assert "parse" in str(e).lower() or "format" in str(e).lower()
+            assert "parse" in str(e).lower() or "fmt" in str(e).lower()
 
     def test_empty_file_handling(self):
         """Test handling of empty files."""
@@ -386,10 +386,10 @@ ENABLE_CACHE=true
 DEBUG_MODE=false
 """
 
-        # .env files should be detected as INI format
+        # .env files should be detected as INI fmt
         assert self.processor.can_handle(".env")
-        format = self.processor.detect_format(".env", env_content)
-        assert format == "ini"
+        fmt = self.processor.detect_format(".env", env_content)
+        assert fmt == "ini"
 
         chunks = self.processor.process(".env", env_content)
         assert len(chunks) > 0
@@ -402,7 +402,7 @@ DEBUG_MODE=false
         # YAML and TOML depend on library availability
 
     def test_get_format_extensions(self):
-        """Test getting format extensions."""
+        """Test getting fmt extensions."""
         extensions = self.processor.get_format_extensions()
         assert ".ini" in extensions["ini"]
         assert ".cfg" in extensions["ini"]

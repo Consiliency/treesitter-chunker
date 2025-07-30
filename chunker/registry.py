@@ -173,7 +173,7 @@ class LanguageRegistry:
 
             except AttributeError as e:
                 logger.warning(f"Failed to load symbol '{symbol_name}': {e}")
-            except Exception as e:
+            except (IndexError, KeyError) as e:
                 logger.error(f"Error loading language '{lang_name}': {e}")
 
         self._discovered = True

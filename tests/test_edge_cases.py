@@ -78,7 +78,7 @@ class TestFileSystemEdgeCases:
             try:
                 chunks = chunk_file(special_file, language="python")
                 assert len(chunks) == 1
-            except Exception as e:
+            except (FileNotFoundError, OSError) as e:
                 # Some names might not be valid on all systems
                 assert "file" in str(e).lower()
 
@@ -132,7 +132,7 @@ class TestCodeContentEdgeCases:
             chunks = chunk_file(invalid_file, language="python")
             # If it succeeds, it handled the encoding issue internally
             assert isinstance(chunks, list)
-        except Exception as e:
+        except (FileNotFoundError, OSError) as e:
             # If it raises, should be encoding related
             assert "decode" in str(e).lower() or "encoding" in str(e).lower()
 
@@ -215,7 +215,7 @@ if True
             chunks = chunk_file(invalid_syntax_file, language="python")
             # May or may not extract chunks depending on parser tolerance
             assert isinstance(chunks, list)  # Should return a list even if empty
-        except Exception:
+        except (FileNotFoundError, OSError):
             # If it fails, that's also acceptable for malformed syntax
             pass
 

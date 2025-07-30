@@ -97,7 +97,7 @@ class TestParquetCLIIntegration:
         sample_code_files,
     ):
         """Test Parquet export with include/exclude filters."""
-        # Create test file structure
+        # Create test file_path structure
         src_dir = temp_workspace / "src"
         src_dir.mkdir(exist_ok=True)
         test_dir = temp_workspace / "tests"
@@ -118,7 +118,7 @@ class TestParquetCLIIntegration:
             file_path.parent.mkdir(parents=True, exist_ok=True)
             file_path.write_text(content)
 
-        # Output file
+        # Output file_path
         output_file = temp_workspace / "output" / "filtered.parquet"
         output_file.parent.mkdir(exist_ok=True)
 
@@ -144,7 +144,7 @@ class TestParquetCLIIntegration:
         # Check command succeeded
         assert result.exit_code == 0, f"Command failed: {result.error}"
 
-        # Verify Parquet file created
+        # Verify Parquet file_path created
         assert output_file.exists()
 
         # Read and verify Parquet content
@@ -158,7 +158,7 @@ class TestParquetCLIIntegration:
         assert any("utils.py" in path for path in file_paths)
         assert not any("test" in path for path in file_paths)
 
-        # Verify schema includes file metadata
+        # Verify schema includes file_path metadata
         schema = table.schema
         expected_columns = [
             "file_path",
@@ -237,7 +237,7 @@ class TestParquetCLIIntegration:
         test_file_generator,
     ):
         """Test filtering specific chunk types."""
-        # Create test file with various chunk types
+        # Create test file_path with various chunk types
         test_content = """
 # Module comment
 
@@ -425,8 +425,8 @@ class Class_{i}:
     def method(self):
         return {i}
 """
-            file = test_file_generator.create_file(f"parallel_test_{i}.py", content)
-            test_files.append(file)
+            file_path = test_file_generator.create_file(f"parallel_test_{i}.py", content)
+            test_files.append(file_path)
 
         output_file = temp_workspace / "output" / "parallel.parquet"
 
@@ -451,7 +451,7 @@ class Class_{i}:
 
         assert result.exit_code == 0, f"Command failed: {result.error}"
 
-        # Verify Parquet file integrity
+        # Verify Parquet file_path integrity
         table = pq.read_table(output_file)
         df = table.to_pandas()
 
@@ -461,11 +461,11 @@ class Class_{i}:
         assert file_count == 20  # All files should be processed
 
         # Verify no data corruption
-        # Check each file's chunks are complete
+        # Check each file_path's chunks are complete
         for i in range(20):
             file_chunks = df[df["file_path"].str.contains(f"parallel_test_{i}.py")]
 
-            # Should have functions and class from each file
+            # Should have functions and class from each file_path
             chunk_names = file_chunks["name"].tolist()
             assert f"function_{i}_1" in chunk_names
             assert f"function_{i}_2" in chunk_names
@@ -532,8 +532,8 @@ class Class_{i}:
         temp_workspace,
         performance_monitor,
     ):
-        """Test streaming large file to Parquet."""
-        # Create a large file (100MB+)
+        """Test streaming large file_path to Parquet."""
+        # Create a large file_path (100MB+)
         large_content = []
 
         # Generate ~100MB of Python code
@@ -545,7 +545,7 @@ class Class_{i}:
                 f"""
 def function_{i}(param1, param2, param3):
     '''
-    This is function {i} with a longer docstring to increase file size.
+    This is function {i} with a longer docstring to increase file_path size.
     It performs various calculations and returns results.
     Additional lines to increase size...
     '''
@@ -566,7 +566,7 @@ def function_{i}(param1, param2, param3):
                 large_content.append(
                     f"""
 class LargeClass_{i}:
-    '''A class in the large file'''
+    '''A class in the large file_path'''
 
     def __init__(self):
         self.data = list(range(1000))
@@ -576,13 +576,13 @@ class LargeClass_{i}:
 """,
                 )
 
-        # Write large file
+        # Write large file_path
         large_file = test_file_generator.create_file(
             "large_file.py",
             "\n".join(large_content),
         )
 
-        # Check file size
+        # Check file_path size
         file_size_mb = large_file.stat().st_size / (1024 * 1024)
         assert file_size_mb > 100, f"File too small: {file_size_mb:.1f}MB"
 
@@ -640,10 +640,10 @@ class LargeClass_{i}:
             peak_memory = max(memory_samples)
             avg_memory = sum(memory_samples) / len(memory_samples)
 
-            # Peak memory should be much less than file size (streaming benefit)
+            # Peak memory should be much less than file_path size (streaming benefit)
             assert (
                 peak_memory < file_size_mb * 2
-            ), f"Memory usage too high: {peak_memory:.1f}MB for {file_size_mb:.1f}MB file"
+            ), f"Memory usage too high: {peak_memory:.1f}MB for {file_size_mb:.1f}MB file_path"
 
             # Average memory should be even lower
             assert (
@@ -713,7 +713,7 @@ void print_point(struct Point p) {
 
         output_file = temp_workspace / "output" / "multi_language.parquet"
 
-        # Export all languages to single Parquet file
+        # Export all languages to single Parquet file_path
         runner = MockCLIRunner(temp_workspace)
         result = runner.invoke(
             [
@@ -762,7 +762,7 @@ void print_point(struct Point p) {
             assert not lang_df["content"].isnull().all()
 
         # Test schema backward compatibility
-        # Add a new file with different structure
+        # Add a new file_path with different structure
         cpp_content = """
 template<typename T>
 class Container {
@@ -823,8 +823,8 @@ namespace Utils {
         test_files = []
         for i in range(10):
             content = sample_code_files["example.py"] * 10  # Replicate for size
-            file = test_file_generator.create_file(f"compress_test_{i}.py", content)
-            test_files.append(file)
+            file_path = test_file_generator.create_file(f"compress_test_{i}.py", content)
+            test_files.append(file_path)
 
         compression_types = ["snappy", "gzip", "brotli", "lz4", "zstd", None]
         results = {}
@@ -862,10 +862,10 @@ namespace Utils {
 
             assert result.exit_code == 0, f"Failed with {compression}: {result.error}"
 
-            # Measure file size
+            # Measure file_path size
             file_size = output_file.stat().st_size
 
-            # Verify file is readable
+            # Verify file_path is readable
             table = pq.read_table(output_file)
             df = table.to_pandas()
 
@@ -950,7 +950,7 @@ namespace Utils {
                 content.append(
                     f"""
 def function_{i}_{j}(data):
-    '''Process data for file {i} function {j}'''
+    '''Process data for file_path {i} function {j}'''
     # Simulate some code content
     result = []
     for item in data:
@@ -1209,7 +1209,7 @@ class Class_{i}:
         assert len(df) > 0
         assert df["file_path"].nunique() == num_files
 
-        # Test progress with different file sizes
+        # Test progress with different file_path sizes
         # Create files of varying sizes
         varied_files = []
         sizes = [10, 50, 200, 500]  # Different line counts
@@ -1219,15 +1219,15 @@ class Class_{i}:
             for j in range(size):
                 content.append(f"def func_{i}_{j}(): pass")
 
-            file = test_file_generator.create_file(
+            file_path = test_file_generator.create_file(
                 f"varied_size_{i}.py",
                 "\n".join(content),
             )
-            varied_files.append(file)
+            varied_files.append(file_path)
 
         output_file2 = temp_workspace / "output" / "varied_progress.parquet"
 
-        # Progress should account for file sizes
+        # Progress should account for file_path sizes
         result = runner.invoke(
             [
                 "chunk",

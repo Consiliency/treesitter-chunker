@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 
 class GraphMLExporter(GraphExporter):
-    """Export chunks and relationships to GraphML format."""
+    """Export chunks and relationships to GraphML fmt."""
 
     def __init__(self):
         self._node_attributes: list[str] = [
@@ -73,7 +73,7 @@ class GraphMLExporter(GraphExporter):
         """Export using iterators for large datasets.
 
         Note: GraphML requires the full graph structure, so we collect
-        all data before writing. For true streaming, consider DOT format.
+        all data before writing. For true streaming, consider DOT fmt.
         """
         # Collect all chunks and relationships
         chunks = list(chunk_iterator)
@@ -94,14 +94,14 @@ class GraphMLExporter(GraphExporter):
         """Add layout hints for visualization."""
         self._layout_algorithm = layout_algorithm
 
-    def supports_format(self, format: ExportFormat) -> bool:
-        """Check if this exporter supports a format."""
-        return format == ExportFormat.GRAPHML
+    def supports_format(self, fmt: ExportFormat) -> bool:
+        """Check if this exporter supports a fmt."""
+        return fmt == ExportFormat.GRAPHML
 
     def get_schema(self) -> dict[str, Any]:
         """Get the export schema."""
         return {
-            "format": "graphml",
+            "fmt": "graphml",
             "version": "1.0",
             "node_attributes": self._node_attributes,
             "edge_attributes": self._edge_attributes,
@@ -223,7 +223,7 @@ class GraphMLExporter(GraphExporter):
 
 
 class DOTExporter(GraphExporter):
-    """Export chunks and relationships to Graphviz DOT format."""
+    """Export chunks and relationships to Graphviz DOT fmt."""
 
     def __init__(self):
         self._node_attributes: list[str] = ["node_type", "language"]
@@ -258,7 +258,7 @@ class DOTExporter(GraphExporter):
         output: Path | io.IOBase,
         metadata: ExportMetadata | None = None,
     ) -> None:
-        """Export chunks with relationships to DOT format.
+        """Export chunks with relationships to DOT fmt.
 
         Args:
             chunks: List of code chunks
@@ -300,14 +300,14 @@ class DOTExporter(GraphExporter):
         """Add layout hints for visualization."""
         self._layout_algorithm = layout_algorithm
 
-    def supports_format(self, format: ExportFormat) -> bool:
-        """Check if this exporter supports a format."""
-        return format == ExportFormat.DOT
+    def supports_format(self, fmt: ExportFormat) -> bool:
+        """Check if this exporter supports a fmt."""
+        return fmt == ExportFormat.DOT
 
     def get_schema(self) -> dict[str, Any]:
         """Get the export schema."""
         return {
-            "format": "dot",
+            "fmt": "dot",
             "version": "1.0",
             "node_attributes": self._node_attributes,
             "edge_attributes": self._edge_attributes,
@@ -330,7 +330,7 @@ class DOTExporter(GraphExporter):
         relationships: list[ChunkRelationship],
         metadata: ExportMetadata | None,
     ) -> str:
-        """Build DOT format content."""
+        """Build DOT fmt content."""
         lines = []
 
         # Header

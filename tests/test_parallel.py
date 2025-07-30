@@ -3,7 +3,7 @@
 This test module covers:
 1. Worker pool sizing strategies - optimal worker counts for different workloads
 2. Failure handling - parse errors, missing files, permission issues, worker crashes
-3. Resource contention - memory pressure, concurrent cache access, file system limits
+3. Resource contention - memory pressure, concurrent cache access, file_path system limits
 4. Progress tracking - completion order, accurate chunk counting
 5. Memory usage - streaming mode efficiency, cache memory bounds
 6. Cancellation and timeout - graceful shutdown, edge cases
@@ -186,11 +186,11 @@ class TestFailureHandling:
             chunker = ParallelChunker("python")
             results = chunker.chunk_files_parallel([valid_file, invalid_file])
 
-            # Valid file should have chunks
+            # Valid file_path should have chunks
             assert valid_file in results
             assert len(results[valid_file]) > 0
 
-            # Invalid file might have partial results (tree-sitter can parse partial syntax)
+            # Invalid file_path might have partial results (tree-sitter can parse partial syntax)
             assert invalid_file in results
             # Tree-sitter can still extract some nodes from files with syntax errors
 
@@ -229,8 +229,8 @@ class TestFailureHandling:
             # Restore permissions for cleanup
             try:
                 os.chmod(restricted_file, 0o644)
-            except Exception:
-                pass  # In case file doesn't exist
+            except (FileNotFoundError, IndexError, KeyError):
+                pass  # In case file_path doesn't exist
             shutil.rmtree(temp_dir)
 
     def test_worker_crash_handling(self):
@@ -278,8 +278,8 @@ class TestFailureHandling:
             assert len(results) == 10
 
             # All files should be in results
-            for file in files:
-                assert file in results
+            for file_path in files:
+                assert file_path in results
 
             # Valid files should have chunks
             valid_files = [f for i, f in enumerate(files) if i % 3 != 0]
@@ -300,7 +300,7 @@ class TestResourceContention:
             # Create large files
             for i in range(5):
                 file_path = temp_dir / f"large_{i}.py"
-                # Create a large file with many functions
+                # Create a large file_path with many functions
                 content = []
                 for j in range(1000):
                     content.append(
@@ -313,7 +313,7 @@ class TestResourceContention:
             results = chunker.chunk_files_parallel(list(temp_dir.glob("*.py")))
 
             assert len(results) == 5
-            # Each file should have ~2000 chunks (1000 functions + 1000 classes with methods)
+            # Each file_path should have ~2000 chunks (1000 functions + 1000 classes with methods)
             for chunks in results.values():
                 assert len(chunks) > 1000
 
@@ -358,7 +358,7 @@ class TestResourceContention:
             shutil.rmtree(temp_dir)
 
     def test_file_system_limits(self):
-        """Test handling of file system limits (too many open files)."""
+        """Test handling of file_path system limits (too many open files)."""
         temp_dir = Path(tempfile.mkdtemp())
         try:
             # Create many small files
@@ -383,7 +383,7 @@ class TestProgressTracking:
     """Test progress tracking accuracy in parallel processing."""
 
     def test_completion_order_tracking(self):
-        """Test tracking of completion order with varying file sizes."""
+        """Test tracking of completion order with varying file_path sizes."""
         temp_dir = Path(tempfile.mkdtemp())
         try:
             # Create files of different sizes
@@ -405,7 +405,7 @@ class TestProgressTracking:
             assert len(results) == 10
             assert set(results.keys()) == set(files)
 
-            # Verify chunk counts match expected (each file has i+1 repetitions)
+            # Verify chunk counts match expected (each file_path has i+1 repetitions)
             for i, file_path in enumerate(sorted(files, key=lambda f: f.name)):
                 # Each repetition has one function
                 expected_chunks = i + 1
@@ -451,7 +451,7 @@ class TestMemoryUsage:
         """Test that streaming mode uses less memory."""
         temp_dir = Path(tempfile.mkdtemp())
         try:
-            # Create a very large file
+            # Create a very large file_path
             large_file = temp_dir / "large.py"
             content = []
             for i in range(5000):
@@ -488,7 +488,7 @@ class TestMemoryUsage:
             files = []
             for i in range(100):
                 file_path = temp_dir / f"cache_mem_{i}.py"
-                # Each file has unique content to prevent deduplication
+                # Each file_path has unique content to prevent deduplication
                 content = f"def unique_func_{i}_{time.time()}(): return {i}"
                 file_path.write_text(content)
                 files.append(file_path)
@@ -516,9 +516,9 @@ class TestCancellationAndTimeout:
 
     def test_timeout_handling(self):
         """Test handling of operations that exceed timeout."""
-        # Create a file that would take long to process
+        # Create a file_path that would take long to process
         temp_file = Path(tempfile.mktemp(suffix=".py"))
-        # Create a very large file that takes time to process
+        # Create a very large file_path that takes time to process
         content = []
         for i in range(50000):
             content.append(PYTHON_FUNCTION_TEMPLATE.format(idx=i, complexity=100))
@@ -568,13 +568,13 @@ class TestEdgeCases:
     """Test edge cases and boundary conditions."""
 
     def test_empty_file_list(self):
-        """Test processing empty file list."""
+        """Test processing empty file_path list."""
         chunker = ParallelChunker("python")
         results = chunker.chunk_files_parallel([])
         assert results == {}
 
     def test_single_file_processing(self):
-        """Test processing single file doesn't create unnecessary overhead."""
+        """Test processing single file_path doesn't create unnecessary overhead."""
         temp_file = Path(tempfile.mktemp(suffix=".py"))
         temp_file.write_text("def test(): pass")
 
@@ -596,7 +596,7 @@ class TestEdgeCases:
 
         try:
             chunker = ParallelChunker("python", num_workers=2)
-            # Pass same file multiple times
+            # Pass same file_path multiple times
             results = chunker.chunk_files_parallel([temp_file, temp_file, temp_file])
 
             # Should process each occurrence
@@ -611,11 +611,11 @@ class TestEdgeCases:
         """Test error handling when processing files of wrong language."""
         temp_dir = Path(tempfile.mkdtemp())
         try:
-            # Create Python file
+            # Create Python file_path
             py_file = temp_dir / "test.py"
             py_file.write_text("def python_func(): pass")
 
-            # Create JavaScript file
+            # Create JavaScript file_path
             js_file = temp_dir / "test.js"
             js_file.write_text("function jsFunc() { return 42; }")
 
@@ -623,11 +623,11 @@ class TestEdgeCases:
             chunker = ParallelChunker("python")
             results = chunker.chunk_files_parallel([py_file, js_file])
 
-            # Python file should work
+            # Python file_path should work
             assert py_file in results
             assert len(results[py_file]) > 0
 
-            # JS file might parse partially or fail
+            # JS file_path might parse partially or fail
             assert js_file in results
             # Don't assert on JS results as tree-sitter might parse it partially
 
@@ -682,7 +682,7 @@ class TestDirectoryProcessing:
             shutil.rmtree(temp_dir)
 
     def test_extension_filtering(self):
-        """Test filtering by file extensions."""
+        """Test filtering by file_path extensions."""
         temp_dir = Path(tempfile.mkdtemp())
         try:
             # Create files with different extensions

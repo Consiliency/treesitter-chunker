@@ -107,7 +107,7 @@ class TestLRUCache:
                     cache.put(f"lang{thread_id}_{i}", parser)
                     retrieved = cache.get(f"lang{thread_id}_{i}")
                     assert retrieved is parser
-            except Exception as e:
+            except (OSError, AttributeError, IndexError) as e:
                 errors.append(e)
 
         threads = [threading.Thread(target=worker, args=(i,)) for i in range(5)]
@@ -271,7 +271,7 @@ class TestParserFactory:
                     parsers.append((thread_id, parser))
                     factory.return_parser(lang, parser)
                     time.sleep(0.001)
-            except Exception as e:
+            except (OSError, IndexError, KeyError) as e:
                 errors.append(e)
 
         threads = []

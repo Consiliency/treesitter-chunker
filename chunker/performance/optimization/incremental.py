@@ -124,8 +124,8 @@ class IncrementalParser(IncrementalParserInterface):
     def update_chunks(
         self,
         old_chunks: list[CodeChunk],
-        old_tree: Tree,
-        new_tree: Tree,
+        _old_tree: Tree,
+        _new_tree: Tree,
         changed_ranges: list[tuple[int, int, int, int]],
     ) -> list[CodeChunk]:
         """Update chunks based on incremental changes.
@@ -186,7 +186,7 @@ class IncrementalParser(IncrementalParserInterface):
 
         return updated_chunks
 
-    def _get_parser_for_tree(self, tree: Tree) -> Parser:
+    def _get_parser_for_tree(self, _tree: Tree) -> Parser:
         """Get or create a parser for the tree's language."""
         # This is a simplified version - in practice, we'd determine
         # the language from the tree metadata

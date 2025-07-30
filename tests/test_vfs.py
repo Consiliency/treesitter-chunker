@@ -361,7 +361,7 @@ def helper():
             if rs_chunks:
                 assert all(chunk.language == "rust" for chunk in rs_chunks)
             # If no chunks, that's OK - the simple function might be below threshold
-        except Exception:
+        except (FileNotFoundError, IndexError, KeyError):
             # Rust parsing might fail if language plugin not fully configured
             pass
 

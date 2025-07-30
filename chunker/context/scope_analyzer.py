@@ -213,7 +213,7 @@ class BaseScopeAnalyzer(ScopeAnalyzer):
             "class_definition": "class",
         }
 
-    def _is_scope_node(self, node: Node) -> bool:
+    def _is_scope_node(self, _node: Node) -> bool:
         """Check if a node creates a scope.
 
         Args:
@@ -225,7 +225,7 @@ class BaseScopeAnalyzer(ScopeAnalyzer):
         # Override in language-specific implementations
         return False
 
-    def _is_definition_node(self, node: Node) -> bool:
+    def _is_definition_node(self, _node: Node) -> bool:
         """Check if a node defines a symbol.
 
         Args:
@@ -237,7 +237,7 @@ class BaseScopeAnalyzer(ScopeAnalyzer):
         # Override in language-specific implementations
         return False
 
-    def _is_import_node(self, node: Node) -> bool:
+    def _is_import_node(self, _node: Node) -> bool:
         """Check if a node is an import statement.
 
         Args:
@@ -249,7 +249,7 @@ class BaseScopeAnalyzer(ScopeAnalyzer):
         # Override in language-specific implementations
         return False
 
-    def _get_defined_name(self, node: Node) -> str | None:
+    def _get_defined_name(self, _node: Node) -> str | None:
         """Get the name being defined by a definition node.
 
         Args:
@@ -261,7 +261,7 @@ class BaseScopeAnalyzer(ScopeAnalyzer):
         # Override in language-specific implementations
         return None
 
-    def _extract_imported_names(self, import_node: Node) -> set[str]:
+    def _extract_imported_names(self, _import_node: Node) -> set[str]:
         """Extract symbol names from an import node.
 
         Args:

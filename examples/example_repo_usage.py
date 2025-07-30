@@ -43,8 +43,8 @@ def process_repository_example():
     # Check for errors
     if result.errors:
         print(f"\nErrors in {len(result.errors)} files:")
-        for file, error in list(result.errors.items())[:5]:
-            print(f"  - {file}: {error}")
+        for file_path, error in list(result.errors.items())[:5]:
+            print(f"  - {file_path}: {error}")
 
 
 def process_with_iterator_example():
@@ -66,7 +66,7 @@ def process_with_iterator_example():
             # Your processing logic here
             pass
 
-        # Free memory after processing each file
+        # Free memory after processing each file_path
         if total_files % 100 == 0:
             print(f"Processed {total_files} files, {total_chunks} chunks...")
 
@@ -85,14 +85,14 @@ def git_aware_processing_example():
 
     print(f"Files changed in last 10 commits: {len(changed_files)}")
 
-    # Get file history
-    for file in changed_files[:3]:
+    # Get file_path history
+    for file_path in changed_files[:3]:
         history = git_processor.get_file_history(
-            file,
+            file_path,
             repo_path,
             limit=5,
         )
-        print(f"\nHistory for {file}:")
+        print(f"\nHistory for {file_path}:")
         for commit in history:
             print(f"  - {commit['date']}: {commit['message']} ({commit['author']})")
 
@@ -124,11 +124,11 @@ def gitignore_pattern_example():
         "docs/api.md",
     ]
 
-    for file in files_to_check:
-        if matcher.should_ignore(Path(file)):
-            print(f"IGNORE: {file}")
+    for file_path in files_to_check:
+        if matcher.should_ignore(Path(file_path)):
+            print(f"IGNORE: {file_path}")
         else:
-            print(f"PROCESS: {file}")
+            print(f"PROCESS: {file_path}")
 
     # Filter a list of files
     all_files = list(repo_path.rglob("*"))

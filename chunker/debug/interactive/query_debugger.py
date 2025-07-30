@@ -85,7 +85,7 @@ class QueryDebugger:
 
             return matches
 
-        except Exception as e:
+        except (IndexError, KeyError, SyntaxError) as e:
             self.console.print(f"[red]Query Error:[/red] {e!s}")
             self._suggest_query_fix(query_string, str(e))
             return []
@@ -101,7 +101,7 @@ class QueryDebugger:
             query = lang.query(query_string)
             self._query_cache[query_string] = query
             return query
-        except Exception as e:
+        except (IndexError, KeyError, SyntaxError) as e:
             # Provide helpful error messages
             if "Invalid syntax" in str(e):
                 raise ValueError(f"Invalid query syntax: {e}")
@@ -120,7 +120,7 @@ class QueryDebugger:
         self,
         query: Query,
         root_node: Node,
-        source_code: str,
+        _source_code: str,
     ) -> list[QueryMatch]:
         """Execute query and collect matches."""
         matches = []

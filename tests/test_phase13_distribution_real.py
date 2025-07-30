@@ -148,8 +148,8 @@ class TestDistributionIntegrationReal:
                         "chunker/__init__.py",
                         "CHANGELOG.md",
                     ]
-                    for file in expected_files:
-                        assert any(file in str(f) for f in info["updated_files"])
+                    for file_path in expected_files:
+                        assert any(file_path in str(f) for f in info["updated_files"])
 
     def test_homebrew_formula_creation(self, distributor):
         """Homebrew formula should be created with correct content"""

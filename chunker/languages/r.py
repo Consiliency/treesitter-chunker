@@ -69,7 +69,7 @@ class RConfig(LanguageConfig):
         self.add_ignore_type("number")
         self.add_ignore_type("identifier")
 
-    def _is_function_assignment(self, node: Node, source: bytes) -> bool:
+    def _is_function_assignment(self, node: Node, _source: bytes) -> bool:
         """Check if an assignment is a function assignment."""
         # Look for function keyword in the right-hand side
         return any(child.type == "function_definition" for child in node.children)
@@ -133,7 +133,7 @@ class RPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         """Extract semantic chunks specific to R."""
         chunks = []
 
-        def extract_chunks(n: Node, parent_type: str | None = None):
+        def extract_chunks(n: Node, _parent_type: str | None = None):
             if n.type in self.default_chunk_types:
                 # Special handling for assignments that contain functions
                 if n.type in {"assignment", "left_assignment"}:

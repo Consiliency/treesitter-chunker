@@ -47,7 +47,7 @@ def fix_ambiguous_vars(file_path):
             return True
         return False
 
-    except Exception as e:
+    except (OSError, FileNotFoundError, IndexError) as e:
         print(f"Error processing {file_path}: {e}")
         return False
 

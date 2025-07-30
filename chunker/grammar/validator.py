@@ -79,7 +79,7 @@ class TreeSitterGrammarValidator(GrammarValidator):
             # Note: This is a simplified check
             return True, None
 
-        except Exception as e:
+        except (IndexError, KeyError) as e:
             return False, f"Failed to load grammar: {e!s}"
 
     def validate_node_types(self, language: str, expected_types: set[str]) -> list[str]:
@@ -118,7 +118,7 @@ class TreeSitterGrammarValidator(GrammarValidator):
 
             return missing
 
-        except Exception as e:
+        except (IndexError, KeyError, SyntaxError) as e:
             logger.error("Failed to validate node types for %s: %s", language, e)
             return list(expected_types)  # Assume all are missing on error
 
@@ -154,7 +154,7 @@ class TreeSitterGrammarValidator(GrammarValidator):
 
             return True, None
 
-        except Exception as e:
+        except (IndexError, KeyError, SyntaxError) as e:
             return False, f"Parse failed: {e!s}"
 
     def validate_grammar_features(self, language: str) -> dict[str, bool]:
@@ -182,26 +182,26 @@ class TreeSitterGrammarValidator(GrammarValidator):
                 try:
                     tree = parser.parse(unicode_code.encode("utf-8"))
                     features["unicode"] = not self._has_errors(tree.root_node)
-                except Exception:
+                except (IndexError, KeyError, SyntaxError):
                     features["unicode"] = False
 
             # Test incremental parsing
             try:
                 parser.parse(test_code.encode(), tree)
                 features["incremental"] = True
-            except Exception:
+            except (IndexError, KeyError, SyntaxError):
                 features["incremental"] = False
 
             # Test timeout
             try:
                 parser.set_timeout_micros(1000)  # 1ms timeout
                 features["timeout"] = True
-            except Exception:
+            except (IndexError, KeyError, SyntaxError):
                 features["timeout"] = False
 
             return features
 
-        except Exception as e:
+        except (IndexError, KeyError, SyntaxError) as e:
             logger.error("Failed to validate features for %s: %s", language, e)
             return {"error": str(e)}
 

@@ -108,7 +108,7 @@ def main():
     except ValueError as e:
         print(f"Error: {e}")
         sys.exit(1)
-    except Exception as e:
+    except (OSError, ImportError, ModuleNotFoundError) as e:
         print(f"Unexpected error: {e}")
         import traceback
 

@@ -22,7 +22,7 @@ def process(
         help="Glob pattern for files to include",
     ),
     exclude: list[str] | None = typer.Option(None, help="Patterns to exclude"),
-    output: Path | None = typer.Option(None, help="Output file for results (JSON)"),
+    output: Path | None = typer.Option(None, help="Output file_path for results (JSON)"),
     max_workers: int = typer.Option(4, help="Maximum parallel workers"),
     no_progress: bool = typer.Option(False, help="Disable progress bar"),
     traversal: str = typer.Option(
@@ -75,7 +75,7 @@ def process(
             if len(result.errors) > 5:
                 console.print(f"  ... and {len(result.errors) - 5} more")
 
-        # Save to file if requested
+        # Save to file_path if requested
         if output:
             output_data = {
                 "repo_path": result.repo_path,
@@ -111,7 +111,7 @@ def process(
 
             console.print(f"\n[green]Results saved to: {output}[/green]")
 
-    except Exception as e:
+    except (OSError, FileNotFoundError, IndexError) as e:
         console.print(f"[red]Error: {e}[/red]")
         raise typer.Exit(1)
 
@@ -127,7 +127,7 @@ def estimate(
     try:
         console.print(f"[cyan]Analyzing repository: {repo_path}[/cyan]")
 
-        # Get file list
+        # Get file_path list
         files = processor.get_processable_files(repo_path)
 
         # Estimate time
@@ -138,10 +138,10 @@ def estimate(
         console.print(f"  • Processable files: {len(files)}")
         console.print(f"  • Estimated time: {estimated_time:.1f} seconds")
 
-        # Show file breakdown by language
+        # Show file_path breakdown by language
         lang_counts = {}
-        for file in files:
-            ext = file.suffix.lower()
+        for file_path in files:
+            ext = file_path.suffix.lower()
             lang = processor._language_extensions.get(ext, "unknown")
             lang_counts[lang] = lang_counts.get(lang, 0) + 1
 
@@ -150,7 +150,7 @@ def estimate(
             for lang, count in sorted(lang_counts.items()):
                 console.print(f"  • {lang}: {count} files")
 
-    except Exception as e:
+    except (AttributeError, FileNotFoundError, IndexError) as e:
         console.print(f"[red]Error: {e}[/red]")
         raise typer.Exit(1)
 
@@ -180,12 +180,12 @@ def changed(
 
         if changed_files:
             console.print(f"\n[yellow]Changed files ({len(changed_files)}):[/yellow]")
-            for file in sorted(changed_files):
-                console.print(f"  • {file}")
+            for file_path in sorted(changed_files):
+                console.print(f"  • {file_path}")
         else:
             console.print("\n[green]No changes detected[/green]")
 
-    except Exception as e:
+    except (FileNotFoundError, IndexError, KeyError) as e:
         console.print(f"[red]Error: {e}[/red]")
         raise typer.Exit(1)
 

@@ -116,7 +116,7 @@ class DataProcessor:
             with open(filepath, 'r') as f:
                 self.data = f.readlines()
             return True
-        except Exception as e:
+        except (FileNotFoundError, IOError, IndexError) as e:
             print(f"Error loading data: {e}")
             return False
 
@@ -149,7 +149,7 @@ class DataProcessor:
                 for result in self.results:
                     f.write(str(result) + '\\n')
             return True
-        except Exception as e:
+        except (FileNotFoundError, IOError, IndexError) as e:
             print(f"Error saving results: {e}")
             return False
 

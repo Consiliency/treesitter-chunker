@@ -4,8 +4,8 @@ from .base import BaseManager, BaseModel
 class User(BaseModel):
     """User model."""
 
-    def __init__(self, id, name, email):
-        super().__init__(id)
+    def __init__(self, id_, name, email):
+        super().__init__(id_)
         self.name = name
         self.email = email
 

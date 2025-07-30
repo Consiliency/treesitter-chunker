@@ -149,7 +149,7 @@ print("processed")
                     failed.append(file_path)
             except subprocess.TimeoutExpired:
                 failed.append(file_path)
-            except Exception:
+            except (FileNotFoundError, ImportError, ModuleNotFoundError):
                 failed.append(file_path)
 
         # Should process most files despite one crash
@@ -394,7 +394,7 @@ class TestStatePersistence:
                 try:
                     update_state(worker_id, item)
                     time.sleep(0.01)  # Simulate work
-                except Exception as e:
+                except (OSError, FileNotFoundError, IndexError) as e:
                     print(f"Worker {worker_id} error: {e}")
 
         # Create workers
@@ -757,7 +757,7 @@ function test() {
             try:
                 chunk_file(test_file, language=detected_language)
                 # May or may not get chunks depending on parsing
-            except Exception:
+            except (FileNotFoundError, IndexError, KeyError):
                 # Fallback might also fail
                 pass
 
@@ -883,7 +883,7 @@ class TestSystemResilience:
             try:
                 chunks = chunk_file(file_path, language="python")
                 return str(file_path), chunks, None
-            except Exception as e:
+            except (OSError, FileNotFoundError, ImportError) as e:
                 return str(file_path), [], str(e)
 
         # Use thread pool for concurrent processing
@@ -951,7 +951,7 @@ def dependent_function2():
 
                 chunk_file(file_path, language="python")
                 processing_order.append((filename, "success"))
-            except Exception as e:
+            except (FileNotFoundError, OSError, TypeError) as e:
                 failures.append((filename, str(e)))
                 processing_order.append((filename, "failed"))
 
@@ -1033,7 +1033,7 @@ def dependent_function2():
 
                     return result
 
-                except Exception:
+                except OSError:
                     self.failure_count += 1
                     self.last_failure_time = time.time()
 
@@ -1128,7 +1128,7 @@ def test_comprehensive_recovery_scenario(tmp_path):
                     "chunks": len(chunks),
                 },
             )
-        except Exception as e:
+        except (FileNotFoundError, IndexError, KeyError) as e:
             # Try recovery strategies
             recovered = False
 
@@ -1143,7 +1143,7 @@ def test_comprehensive_recovery_scenario(tmp_path):
                     },
                 )
                 recovered = True
-            except Exception:
+            except (FileNotFoundError, IndexError, KeyError):
                 pass
 
             if not recovered:

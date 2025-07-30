@@ -12,7 +12,7 @@ class DistributionStub(DistributionContract):
 
     def publish_to_pypi(
         self,
-        package_dir: Path,
+        _package_dir: Path,
         repository: str = "pypi",
         dry_run: bool = False,
     ) -> tuple[bool, dict[str, Any]]:
@@ -32,7 +32,7 @@ class DistributionStub(DistributionContract):
     def build_docker_image(
         self,
         tag: str,
-        platforms: list[str] | None = None,
+        _platforms: list[str] | None = None,
     ) -> tuple[bool, str]:
         """Stub that returns valid default values"""
         return (False, f"not-implemented-{tag}")
@@ -74,7 +74,7 @@ class ReleaseManagementStub(ReleaseManagementContract):
     def prepare_release(
         self,
         version: str,
-        changelog: str,
+        _changelog: str,
     ) -> tuple[bool, dict[str, Any]]:
         """Stub that returns valid default values"""
         return (
@@ -89,6 +89,6 @@ class ReleaseManagementStub(ReleaseManagementContract):
             },
         )
 
-    def create_release_artifacts(self, version: str, output_dir: Path) -> list[Path]:
+    def create_release_artifacts(self, _version: str, _output_dir: Path) -> list[Path]:
         """Stub that returns valid default values"""
         return []

@@ -91,7 +91,7 @@ class ChunkComparison(ChunkComparisonContract):
                         for c in chunks
                     ],
                 }
-            except Exception as e:  # noqa: BLE001
+            except (IndexError, KeyError, TypeError) as e:
                 results[strategy] = {"error": str(e), "chunk_count": 0}
                 all_chunks[strategy] = []  # Empty list for failed strategies
 
@@ -193,7 +193,7 @@ class ChunkComparison(ChunkComparisonContract):
         chunker = TreeSitterTokenAwareChunker(token_counter=counter, max_tokens=1000)
         return chunker.chunk_file(file_path, language)
 
-    def _chunk_fallback(self, file_path: str, language: str):  # noqa: ARG002
+    def _chunk_fallback(self, file_path: str, _language: str):
         """Use fallback chunking for unsupported files"""
         manager = FallbackManager()
         return manager.chunk_file(file_path)

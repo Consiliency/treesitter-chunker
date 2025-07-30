@@ -163,7 +163,7 @@ def process_data(items):
 
             results.append(processed)
 
-        except Exception as e:
+        except (AttributeError, KeyError, TypeError) as e:
             errors.append({
                 'index': i,
                 'error': str(e)

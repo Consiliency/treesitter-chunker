@@ -63,7 +63,7 @@ class ExportMetadata:
     """Metadata for an export operation.
 
     Attributes:
-        format: Export format used
+        fmt: Export fmt used
         version: Format version
         created_at: When export was created
         source_files: List of source files included
@@ -72,7 +72,7 @@ class ExportMetadata:
         options: Export options used
     """
 
-    format: ExportFormat
+    fmt: ExportFormat
     version: str
     created_at: str
     source_files: list[str]
@@ -117,14 +117,14 @@ class StructuredExporter(ABC):
         """
 
     @abstractmethod
-    def supports_format(self, format: ExportFormat) -> bool:
-        """Check if this exporter supports a format.
+    def supports_format(self, fmt: ExportFormat) -> bool:
+        """Check if this exporter supports a fmt.
 
         Args:
-            format: Export format to check
+            fmt: Export fmt to check
 
         Returns:
-            True if format is supported
+            True if fmt is supported
         """
 
     @abstractmethod

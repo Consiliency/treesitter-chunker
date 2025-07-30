@@ -414,7 +414,7 @@ class CorruptedPlugin(LanguagePlugin:  # Missing closing parenthesis
             try:
                 plugin = manager.get_plugin("thread_safe")
                 results.append(plugin)
-            except Exception as e:
+            except (OSError, IndexError, KeyError) as e:
                 errors.append(e)
 
         threads = []

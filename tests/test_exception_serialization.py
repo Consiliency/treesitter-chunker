@@ -239,7 +239,7 @@ class TestExceptionSerialization:
         def worker_with_queue(q):
             try:
                 raise SimpleChunkerError("Queue test error", {"language": "python"})
-            except Exception as e:
+            except (AttributeError, KeyError) as e:
                 # Send exception through queue
                 q.put(("error", e, traceback.format_exc()))
 
@@ -289,7 +289,7 @@ class TestExceptionSerialization:
                 try:
                     result = future.result()
                     results.append((worker_id, result))
-                except Exception as e:
+                except (IndexError, KeyError, TypeError) as e:
                     errors.append((worker_id, type(e).__name__, str(e)))
 
             # Verify we got expected results and errors

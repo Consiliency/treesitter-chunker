@@ -194,7 +194,7 @@ class CompositeChunker(ChunkingStrategy):
                 try:
                     chunks = strategy.chunk(ast, source, file_path, language)
                     strategy_results[name] = chunks
-                except Exception as e:
+                except (FileNotFoundError, IndexError, KeyError) as e:
                     # Log error but continue with other strategies
                     print(f"Strategy {name} failed: {e}")
                     strategy_results[name] = []
@@ -244,7 +244,7 @@ class CompositeChunker(ChunkingStrategy):
     def _fusion_union(
         self,
         strategy_results: dict[str, list[CodeChunk]],
-        source: bytes,
+        _source: bytes,
     ) -> list[CodeChunk]:
         """Union fusion: include all chunks from all strategies."""
         all_chunks = []
@@ -261,7 +261,7 @@ class CompositeChunker(ChunkingStrategy):
     def _fusion_intersection(
         self,
         strategy_results: dict[str, list[CodeChunk]],
-        source: bytes,
+        _source: bytes,
     ) -> list[CodeChunk]:
         """Intersection fusion: only chunks that appear in multiple strategies."""
         if not strategy_results:
@@ -299,7 +299,7 @@ class CompositeChunker(ChunkingStrategy):
     def _fusion_consensus(
         self,
         strategy_results: dict[str, list[CodeChunk]],
-        source: bytes,
+        _source: bytes,
     ) -> list[CodeChunk]:
         """Consensus fusion: smart combination based on agreement."""
         candidates = self._build_chunk_candidates(strategy_results)
@@ -343,7 +343,7 @@ class CompositeChunker(ChunkingStrategy):
     def _fusion_weighted(
         self,
         strategy_results: dict[str, list[CodeChunk]],
-        source: bytes,
+        _source: bytes,
     ) -> list[CodeChunk]:
         """Weighted fusion: combine based on strategy weights."""
         weighted_chunks = []
@@ -464,7 +464,7 @@ class CompositeChunker(ChunkingStrategy):
     def _merge_overlapping_chunks(
         self,
         chunks: list[CodeChunk],
-        source: bytes,
+        _source: bytes,
     ) -> list[CodeChunk]:
         """Merge chunks that overlap significantly."""
         if not chunks:
@@ -511,7 +511,7 @@ class CompositeChunker(ChunkingStrategy):
     def _ensure_chunk_quality(
         self,
         chunks: list[CodeChunk],
-        source: bytes,
+        _source: bytes,
     ) -> list[CodeChunk]:
         """Final pass to ensure chunk quality."""
         quality_chunks = []

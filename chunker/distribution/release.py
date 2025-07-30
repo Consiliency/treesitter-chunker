@@ -84,7 +84,7 @@ class ReleaseManagementImpl(ReleaseManagementContract):
                     if new_content != content:
                         filepath.write_text(new_content)
                         release_info["files_updated"].append(str(filepath))
-                except Exception as e:  # noqa: BLE001
+                except (OSError, FileNotFoundError, IndexError) as e:
                     release_info["errors"].append(
                         f"Failed to update {filename}: {e!s}",
                     )
@@ -126,7 +126,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
                 changelog_path.write_text(changelog_content)
                 release_info["files_updated"].append(str(changelog_path))
 
-        except Exception as e:
+        except (OSError, FileNotFoundError, IndexError) as e:
             release_info["errors"].append(f"Failed to update CHANGELOG: {e!s}")
 
         # Create git tag (check if git is available)

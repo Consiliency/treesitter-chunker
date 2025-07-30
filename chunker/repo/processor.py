@@ -146,7 +146,7 @@ class RepoProcessor(RepoProcessorInterface):
                                 errors[str(file_path)] = result.error
                         else:
                             skipped_files.append(str(file_path))
-                    except Exception as e:
+                    except (FileNotFoundError, IndexError, KeyError) as e:
                         errors[str(file_path)] = e
                         skipped_files.append(str(file_path))
 
@@ -167,7 +167,7 @@ class RepoProcessor(RepoProcessorInterface):
                     "total_chunks": total_chunks,
                 }
                 self.save_incremental_state(str(repo_path), state)
-            except Exception:
+            except (AttributeError, FileNotFoundError, OSError):
                 pass  # Not a git repo or other error
 
         processing_time = time.time() - start_time
@@ -241,7 +241,7 @@ class RepoProcessor(RepoProcessorInterface):
                 if ext in self._language_extensions:
                     lang = self._language_extensions[ext]
                     language_counts[lang] = language_counts.get(lang, 0) + 1
-            except Exception:
+            except (AttributeError, FileNotFoundError, IndexError):
                 pass
 
         # Rough estimates: 1MB/sec with overhead per file
@@ -380,7 +380,7 @@ class RepoProcessor(RepoProcessorInterface):
                     try:
                         content = file_path.read_text(encoding=encoding)
                         break
-                    except Exception:
+                    except (OSError, FileNotFoundError, IndexError):
                         continue
                 else:
                     return FileChunkResult(
@@ -406,7 +406,7 @@ class RepoProcessor(RepoProcessorInterface):
                 processing_time=time.time() - start_time,
             )
 
-        except Exception as e:
+        except (FileNotFoundError, IndexError, KeyError) as e:
             return FileChunkResult(
                 file_path=str(rel_path),
                 chunks=[],
@@ -503,7 +503,7 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
 
             return True
 
-        except Exception:
+        except (FileNotFoundError, IndexError, KeyError):
             # If git operations fail, fall back to processing the file
             return True
 
@@ -543,7 +543,7 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
 
             return history
 
-        except Exception as e:
+        except (FileNotFoundError, IndexError, KeyError) as e:
             raise ChunkerError(f"Error getting file history: {e}")
 
     def load_gitignore_patterns(self, repo_path: str) -> list[str]:
@@ -566,7 +566,7 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
                         line = line.strip()
                         if line and not line.startswith("#"):
                             patterns.append(line)
-            except Exception:
+            except (OSError, FileNotFoundError, IndexError):
                 pass
 
         # Also check for global gitignore
@@ -581,7 +581,7 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
                             line = line.strip()
                             if line and not line.startswith("#"):
                                 patterns.append(line)
-        except Exception:
+        except (OSError, FileNotFoundError, IndexError):
             pass
 
         return patterns
@@ -599,7 +599,7 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
         try:
             with open(state_path, "w") as f:
                 json.dump(state, f, indent=2)
-        except Exception:
+        except (OSError, FileNotFoundError, IndexError):
             # Log error but don't fail
             pass
 
@@ -619,7 +619,7 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
             try:
                 with open(state_path) as f:
                     return json.load(f)
-            except Exception:
+            except (OSError, FileNotFoundError, IndexError):
                 pass
 
         return None
@@ -665,7 +665,7 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
                             filtered_files.append(file_path)
 
                 return filtered_files
-        except Exception:
+        except (FileNotFoundError, IndexError, KeyError):
             # Not a git repo, return original list
             pass
 

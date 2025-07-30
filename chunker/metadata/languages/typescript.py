@@ -84,7 +84,7 @@ class TypeScriptMetadataExtractor(JavaScriptMetadataExtractor):
 
     # TypeScript-specific helper methods
 
-    def _is_abstract_method(self, node: Node, source: bytes) -> bool:
+    def _is_abstract_method(self, node: Node, _source: bytes) -> bool:
         """Check if method is abstract."""
         if node.parent:
             for sibling in node.parent.children:
@@ -92,7 +92,7 @@ class TypeScriptMetadataExtractor(JavaScriptMetadataExtractor):
                     return True
         return False
 
-    def _is_overload_signature(self, node: Node, source: bytes) -> bool:
+    def _is_overload_signature(self, node: Node, _source: bytes) -> bool:
         """Check if this is a function overload signature."""
         # In TypeScript, overload signatures don't have a body
         return node.type == "function_signature" or (
@@ -104,7 +104,7 @@ class TypeScriptMetadataExtractor(JavaScriptMetadataExtractor):
         """Extract type-only imports."""
         type_imports = set()
 
-        def collect_type_imports(n: Node, depth: int):
+        def collect_type_imports(n: Node, _depth: int):
             if n.type == "import_statement":
                 # Check for type imports (import type { X } from 'y')
                 text = self._get_node_text(n, source)
@@ -135,7 +135,7 @@ class TypeScriptMetadataExtractor(JavaScriptMetadataExtractor):
         """Extract referenced type names."""
         type_refs = set()
 
-        def collect_type_refs(n: Node, depth: int):
+        def collect_type_refs(n: Node, _depth: int):
             if n.type == "type_identifier":
                 type_refs.add(self._get_node_text(n, source))
             elif n.type == "generic_type":

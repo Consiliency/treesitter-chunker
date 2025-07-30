@@ -87,7 +87,7 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
         """
         identifiers = set()
 
-        def collect_identifiers(n: Node, depth: int):
+        def collect_identifiers(n: Node, _depth: int):
             if n.type == "identifier":
                 identifiers.add(self._get_node_text(n, source))
 

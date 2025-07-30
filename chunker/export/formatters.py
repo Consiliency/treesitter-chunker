@@ -18,7 +18,7 @@ class SchemaType(Enum):
 class Formatter(Protocol):
     """Protocol for chunk formatters."""
 
-    def format(self, chunks: list[CodeChunk]) -> Any:
+    def format(self, _chunks: list[CodeChunk]) -> Any:
         """Format chunks according to the schema."""
         ...
 

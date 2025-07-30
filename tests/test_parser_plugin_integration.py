@@ -65,7 +65,7 @@ class TestParserPoolManagement:
 
             lib_path = Path(__file__).parent.parent / "build" / "my-languages.so"
             self.registry = LanguageRegistry(lib_path)
-        except Exception:
+        except (FileNotFoundError, ImportError, ModuleNotFoundError):
             # Fallback to mock registry
             self.registry = Mock(spec=LanguageRegistry)
             self.registry.get_language = Mock()
@@ -136,7 +136,7 @@ class TestParserPoolManagement:
             try:
                 self.parser_factory._pools[dynamic_lang].put_nowait(parser)
                 parsers_added += 1
-            except Exception:
+            except (IndexError, KeyError, SyntaxError):
                 # Pool is full
                 pass
 
@@ -341,7 +341,7 @@ class TestThreadSafety:
                     with self.lock:
                         self.success_count += 1
 
-            except Exception as e:
+            except (OSError, IndexError, KeyError) as e:
                 with self.lock:
                     self.errors.append((worker_id, str(e)))
 

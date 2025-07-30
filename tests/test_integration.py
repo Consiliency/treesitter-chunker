@@ -143,7 +143,7 @@ trait Compute {
                     "has_error": has_error,
                     "root_type": root.type,
                 }
-            except Exception as e:
+            except (IndexError, KeyError, SyntaxError) as e:
                 results[lang] = {
                     "success": False,
                     "error": str(e),
@@ -216,7 +216,7 @@ class TestConcurrentParsing:
                 tree = parser.parse(bytes(code, "utf8"))
                 return_parser(lang, parser)
                 return lang, True, tree.root_node.type
-            except Exception as e:
+            except (OSError, SyntaxError) as e:
                 return lang, False, str(e)
 
         # Parse all languages concurrently
@@ -262,7 +262,7 @@ class TestConcurrentParsing:
 
                     # Small delay to increase contention
                     time.sleep(0.001)
-            except Exception as e:
+            except (OSError, IndexError, KeyError) as e:
                 errors.append((lang, thread_id, str(e)))
 
         # Start all threads

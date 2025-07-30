@@ -338,7 +338,7 @@ class TestPerformanceImpactOfConfigLookups:
                         )
 
                 results.put(local_results)
-            except Exception as e:
+            except (OSError, IndexError, KeyError) as e:
                 errors.put((segment_id, str(e)))
 
         # Test with different thread counts
@@ -453,7 +453,7 @@ class TestConfigHotReloadingDuringChunking:
                         )
                         return True
                     return False
-                except Exception:
+                except (AttributeError, IndexError, KeyError):
                     # Keep existing config on error
                     return False
 
@@ -519,7 +519,7 @@ class TestConfigHotReloadingDuringChunking:
             try:
                 chunks = chunker.chunk_file(test_content, duration=2.0)
                 chunking_result["chunks"] = chunks
-            except Exception as e:
+            except (OSError, FileNotFoundError, IndexError) as e:
                 chunking_result["error"] = e
             finally:
                 chunking_done.set()

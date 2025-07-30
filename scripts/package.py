@@ -267,7 +267,7 @@ def test_installation():
         else:
             print(f"✗ CLI failed: {result.stderr}")
             return False
-    except Exception as e:
+    except (FileNotFoundError, IOError, IndexError) as e:
         print(f"✗ CLI test failed: {e}")
         return False
 
@@ -290,7 +290,7 @@ def test_installation():
         else:
             print(f"✗ Chunking failed: {result.stderr}")
             return False
-    except Exception as e:
+    except (FileNotFoundError, OSError, TypeError) as e:
         print(f"✗ Functionality test failed: {e}")
         return False
 

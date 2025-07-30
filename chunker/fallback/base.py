@@ -47,7 +47,7 @@ class FallbackChunker(IFallbackChunker):
         """
         self.fallback_reason = reason
 
-    def can_handle(self, file_path: str, language: str) -> bool:
+    def can_handle(self, _file_path: str, _language: str) -> bool:
         """Check if this strategy can handle the given file.
 
         Fallback chunkers can handle any file type, but should only be used
@@ -80,7 +80,7 @@ class FallbackChunker(IFallbackChunker):
 
     def chunk(
         self,
-        ast: Any,
+        _ast: Any,
         source: bytes,
         file_path: str,
         language: str,
@@ -112,7 +112,7 @@ class FallbackChunker(IFallbackChunker):
         self,
         content: str,
         file_path: str,
-        language: str | None = None,
+        _language: str | None = None,
     ) -> list[CodeChunk]:
         """Chunk content using fallback method.
 

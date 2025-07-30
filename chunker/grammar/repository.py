@@ -318,7 +318,7 @@ class TreeSitterGrammarRepository(GrammarRepository):
 
             logger.info("Loaded %s custom grammar repositories", len(custom_repos))
 
-        except Exception as e:
+        except (ValueError, json.JSONDecodeError) as e:
             logger.error("Failed to load custom repositories: %s", e)
 
 

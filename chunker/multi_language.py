@@ -26,17 +26,17 @@ except ImportError:
     def list_languages():
         return ["python", "javascript", "typescript", "java", "go", "rust", "c", "cpp"]
 
-    def get_parser(language):
+    def get_parser(_language):
         raise ImportError("Tree-sitter parser not available")
 
-    def chunk_file(file_path, content, language):
+    def chunk_file(_file_path, _content, _language):
         raise ImportError("Chunker not available")
 
 
 class LanguageDetectorImpl(LanguageDetector):
     """Detect programming languages in files and content."""
 
-    # Language file extensions mapping
+    # Language file_path extensions mapping
     EXTENSIONS = {
         ".py": "python",
         ".js": "javascript",
@@ -176,18 +176,18 @@ class LanguageDetectorImpl(LanguageDetector):
     }
 
     def detect_from_file(self, file_path: str) -> tuple[str, float]:
-        """Detect language from file path and content."""
+        """Detect language from file_path path and content."""
         path = Path(file_path)
         confidence = 0.0
         language = None
 
-        # Check file extension
+        # Check file_path extension
         ext = path.suffix.lower()
         if ext in self.EXTENSIONS:
             language = self.EXTENSIONS[ext]
             confidence = 0.8
 
-        # Try to read file for content analysis
+        # Try to read file_path for content analysis
         try:
             with open(file_path, encoding="utf-8", errors="ignore") as f:
                 content = f.read(4096)  # Read first 4KB
@@ -216,7 +216,7 @@ class LanguageDetectorImpl(LanguageDetector):
                 language, confidence = self.detect_from_content(content)
 
         except OSError:
-            # Can't read file, rely on extension
+            # Can't read file_path, rely on extension
             pass
 
         if not language:
@@ -402,13 +402,13 @@ class ProjectAnalyzerImpl(ProjectAnalyzer):
 
             rel_path = Path(root).relative_to(project_root)
 
-            for file in files:
-                file_path = Path(root) / file
+            for file_path in files:
+                file_path = Path(root) / file_path
                 analysis["file_count"] += 1
 
                 # Check for framework indicators
-                if file in framework_files:
-                    for indicator in framework_files[file]:
+                if file_path in framework_files:
+                    for indicator in framework_files[file_path]:
                         analysis["framework_indicators"][indicator] = True
 
                 # Detect language
@@ -421,7 +421,7 @@ class ProjectAnalyzerImpl(ProjectAnalyzer):
                     try:
                         with open(file_path, encoding="utf-8", errors="ignore") as f:
                             analysis["total_lines"] += sum(1 for _ in f)
-                    except Exception:
+                    except (OSError, FileNotFoundError, IndexError):
                         pass
 
                     # Detect structure patterns
@@ -453,12 +453,12 @@ class ProjectAnalyzerImpl(ProjectAnalyzer):
                         for part in ["docs", "documentation", "README"]
                     ):
                         analysis["structure"]["has_docs"] = True
-                    if file in framework_files or file.endswith(
+                    if file_path in framework_files or file_path.endswith(
                         (".json", ".yaml", ".yml", ".toml", ".ini"),
                     ):
                         analysis["structure"]["has_config"] = True
 
-                except Exception:
+                except (OSError, FileNotFoundError, IndexError):
                     pass
 
         # Determine project type
@@ -510,7 +510,7 @@ class ProjectAnalyzerImpl(ProjectAnalyzer):
         """Find API boundaries between components."""
         api_boundaries = []
 
-        # Group chunks by file path patterns
+        # Group chunks by file_path path patterns
         backend_chunks = []
         frontend_chunks = []
         api_chunks = []
@@ -566,7 +566,7 @@ class ProjectAnalyzerImpl(ProjectAnalyzer):
                                     "endpoint": endpoint_match.group(1),
                                     "method": "detected",
                                     "language": chunk.language,
-                                    "file": chunk.file_path,
+                                    "file_path": chunk.file_path,
                                 },
                             )
 
@@ -584,7 +584,7 @@ class ProjectAnalyzerImpl(ProjectAnalyzer):
                                 "type": "graphql_schema",
                                 "chunk_id": chunk.chunk_id,
                                 "language": chunk.language,
-                                "file": chunk.file_path,
+                                "file_path": chunk.file_path,
                             },
                         )
 
@@ -595,7 +595,7 @@ class ProjectAnalyzerImpl(ProjectAnalyzer):
                     {
                         "type": "grpc_service",
                         "chunk_id": chunk.chunk_id,
-                        "file": chunk.file_path,
+                        "file_path": chunk.file_path,
                     },
                 )
 
@@ -608,7 +608,7 @@ class ProjectAnalyzerImpl(ProjectAnalyzer):
         """Suggest how to group chunks for processing."""
         groupings = defaultdict(list)
 
-        # Group by feature/component based on file paths
+        # Group by feature/component based on file_path paths
         for chunk in chunks:
             # Extract feature name from path
             path_parts = Path(chunk.file_path).parts
@@ -652,7 +652,7 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
         self.analyzer = analyzer or ProjectAnalyzerImpl(self.detector)
         try:
             self._supported_languages = set(list_languages())
-        except Exception:
+        except (TypeError, ValueError):
             # If tree-sitter library is not available, use a default set
             self._supported_languages = {
                 "python",
@@ -691,7 +691,7 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
         file_path: str,
         content: str,
     ) -> list[LanguageRegion]:
-        """Identify regions of different languages within a file."""
+        """Identify regions of different languages within a file_path."""
         regions = []
         lines = content.split("\n")
 
@@ -715,7 +715,7 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
             # Check for embedded languages in regular files
             regions.extend(self._identify_embedded_regions(content, primary_lang))
 
-        # If no regions found, treat entire file as one region
+        # If no regions found, treat entire file_path as one region
         if not regions and content.strip():
             regions.append(
                 LanguageRegion(
@@ -741,7 +741,7 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
         lines = content.split("\n")
 
         # JSX is essentially JavaScript/TypeScript with embedded HTML-like syntax
-        # For simplicity, treat the entire file as the base language
+        # For simplicity, treat the entire file_path as the base language
         regions.append(
             LanguageRegion(
                 language=base_language,
@@ -996,7 +996,7 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
                         parent_language=primary_language,
                     ),
                 )
-            except Exception:
+            except (FileNotFoundError, OSError):
                 pass
 
         return regions
@@ -1035,7 +1035,7 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
                     language=region.language,
                 )
 
-                # Adjust chunk positions to match the original file
+                # Adjust chunk positions to match the original file_path
                 for chunk in region_chunks:
                     chunk.start_line += region.start_line - 1
                     chunk.end_line += region.start_line - 1
@@ -1050,7 +1050,7 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
 
                     chunks.append(chunk)
 
-            except Exception as e:
+            except (FileNotFoundError, IndexError, KeyError) as e:
                 # Fallback: create a single chunk for the region
                 chunk = CodeChunk(
                     language=region.language,
@@ -1303,7 +1303,7 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
         """Group chunks from different languages by feature."""
         feature_groups = defaultdict(list)
 
-        # Strategy 1: Group by file path patterns
+        # Strategy 1: Group by file_path path patterns
         path_features = {}
         for chunk in chunks:
             path = Path(chunk.file_path)

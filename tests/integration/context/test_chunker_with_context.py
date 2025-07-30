@@ -69,7 +69,7 @@ def create_square(size: float) -> Polygon:
 
         # Create context extractor
         extractor = ContextFactory.create_context_extractor("python")
-        filter = ContextFactory.create_context_filter("python")
+        filter_func = ContextFactory.create_context_filter("python")
 
         # Find the perimeter method chunk
         perimeter_chunk = None
@@ -116,7 +116,7 @@ def create_square(size: float) -> Polygon:
         # Filter relevant context
         all_context = imports + type_defs + parent_context + dependencies
         relevant_context = [
-            item for item in all_context if filter.is_relevant(item, perimeter_node)
+            item for item in all_context if filter_func.is_relevant(item, perimeter_node)
         ]
 
         # Build context prefix
@@ -148,7 +148,7 @@ def create_square(size: float) -> Polygon:
         source = python_code_with_dependencies.encode()
 
         # Create context components
-        extractor, resolver, analyzer, filter = ContextFactory.create_all("python")
+        extractor, resolver, analyzer, filter_func = ContextFactory.create_all("python")
 
         # Find create_square function
         def find_function(node, name):
@@ -176,7 +176,7 @@ def create_square(size: float) -> Polygon:
         # Build context
         all_context = dependencies + type_defs
         relevant_context = [
-            item for item in all_context if filter.is_relevant(item, create_square_node)
+            item for item in all_context if filter_func.is_relevant(item, create_square_node)
         ]
 
         context_prefix = extractor.build_context_prefix(relevant_context)

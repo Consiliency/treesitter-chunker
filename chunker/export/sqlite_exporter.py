@@ -172,7 +172,7 @@ WITH RECURSIVE hierarchy AS (
 SELECT * FROM hierarchy ORDER BY root_id, depth, start_line;
 """
 
-    def get_insert_statements(self, batch_size: int = 100) -> list[str]:
+    def get_insert_statements(self, _batch_size: int = 100) -> list[str]:
         """Generate INSERT statements for SQLite.
 
         Note: For SQLite export, we'll use the connection directly instead of
@@ -185,7 +185,7 @@ SELECT * FROM hierarchy ORDER BY root_id, depth, start_line;
         self,
         output_path: Path,
         create_indices: bool = True,
-        enable_fts: bool = True,
+        _enable_fts: bool = True,
         **options,
     ) -> None:
         """Export chunks to SQLite database.

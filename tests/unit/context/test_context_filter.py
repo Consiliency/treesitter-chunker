@@ -5,17 +5,17 @@ from chunker.interfaces.context import ContextItem, ContextType
 
 
 class TestBaseContextFilter:
-    """Test the base context filter functionality."""
+    """Test the base context filter_func functionality."""
 
     def test_init(self):
         """Test initialization."""
-        filter = BaseContextFilter("python")
-        assert filter.language == "python"
-        assert filter._relevance_cache == {}
+        filter_func = BaseContextFilter("python")
+        assert filter_func.language == "python"
+        assert filter_func._relevance_cache == {}
 
     def test_is_relevant_imports_always_relevant(self):
         """Test that imports are always considered relevant."""
-        filter = BaseContextFilter("python")
+        filter_func = BaseContextFilter("python")
 
         # Create mock nodes
         mock_node = type("MockNode", (), {"start_byte": 0, "end_byte": 10})()
@@ -29,11 +29,11 @@ class TestBaseContextFilter:
             importance=90,
         )
 
-        assert filter.is_relevant(import_item, chunk_node)
+        assert filter_func.is_relevant(import_item, chunk_node)
 
     def test_is_relevant_parent_scope(self):
         """Test that parent scope is relevant if it's an ancestor."""
-        filter = BaseContextFilter("python")
+        filter_func = BaseContextFilter("python")
 
         # Create mock nodes with parent relationship
         parent_node = type(
@@ -57,7 +57,7 @@ class TestBaseContextFilter:
         )()
 
         # Mock the _is_ancestor method
-        filter._is_ancestor = lambda ancestor, node: ancestor == parent_node
+        filter_func._is_ancestor = lambda ancestor, node: ancestor == parent_node
 
         parent_item = ContextItem(
             type=ContextType.PARENT_SCOPE,
@@ -67,20 +67,20 @@ class TestBaseContextFilter:
             importance=70,
         )
 
-        assert filter.is_relevant(parent_item, chunk_node)
+        assert filter_func.is_relevant(parent_item, chunk_node)
 
     def test_score_relevance_by_type(self):
         """Test relevance scoring based on context type."""
-        filter = BaseContextFilter("python")
+        filter_func = BaseContextFilter("python")
 
         # Create mock nodes
         mock_node = type("MockNode", (), {"start_byte": 0, "end_byte": 10})()
         chunk_node = type("MockNode", (), {"start_byte": 100, "end_byte": 200})()
 
         # Mock helper methods
-        filter._calculate_ast_distance = lambda n1, n2: 2
-        filter._get_node_line = lambda node: 10
-        filter._chunk_references_context = lambda chunk, ctx: False
+        filter_func._calculate_ast_distance = lambda n1, n2: 2
+        filter_func._get_node_line = lambda node: 10
+        filter_func._chunk_references_context = lambda chunk, ctx: False
 
         # Test different context types
         import_item = ContextItem(
@@ -107,9 +107,9 @@ class TestBaseContextFilter:
             importance=40,
         )
 
-        import_score = filter.score_relevance(import_item, chunk_node)
-        type_def_score = filter.score_relevance(type_def_item, chunk_node)
-        constant_score = filter.score_relevance(constant_item, chunk_node)
+        import_score = filter_func.score_relevance(import_item, chunk_node)
+        type_def_score = filter_func.score_relevance(type_def_item, chunk_node)
+        constant_score = filter_func.score_relevance(constant_item, chunk_node)
 
         # Imports should have highest relevance
         assert import_score > type_def_score
@@ -120,7 +120,7 @@ class TestBaseContextFilter:
 
     def test_score_relevance_by_distance(self):
         """Test that closer items have higher relevance."""
-        filter = BaseContextFilter("python")
+        filter_func = BaseContextFilter("python")
 
         # Create mock nodes
         close_node = type("MockNode", (), {"start_byte": 80, "end_byte": 90})()
@@ -128,18 +128,18 @@ class TestBaseContextFilter:
         chunk_node = type("MockNode", (), {"start_byte": 100, "end_byte": 200})()
 
         # Mock helper methods
-        filter._get_node_line = lambda node: {
+        filter_func._get_node_line = lambda node: {
             id(close_node): 9,
             id(far_node): 1,
             id(chunk_node): 10,
         }.get(id(node), 0)
 
-        filter._calculate_ast_distance = lambda n1, n2: {
+        filter_func._calculate_ast_distance = lambda n1, n2: {
             (id(close_node), id(chunk_node)): 1,
             (id(far_node), id(chunk_node)): 10,
         }.get((id(n1), id(n2)), 5)
 
-        filter._chunk_references_context = lambda chunk, ctx: False
+        filter_func._chunk_references_context = lambda chunk, ctx: False
 
         close_item = ContextItem(
             type=ContextType.DEPENDENCY,
@@ -157,23 +157,23 @@ class TestBaseContextFilter:
             importance=60,
         )
 
-        close_score = filter.score_relevance(close_item, chunk_node)
-        far_score = filter.score_relevance(far_item, chunk_node)
+        close_score = filter_func.score_relevance(close_item, chunk_node)
+        far_score = filter_func.score_relevance(far_item, chunk_node)
 
         # Closer items should have higher relevance
         assert close_score > far_score
 
     def test_score_relevance_with_references(self):
         """Test that referenced context gets bonus relevance."""
-        filter = BaseContextFilter("python")
+        filter_func = BaseContextFilter("python")
 
         # Create mock nodes
         mock_node = type("MockNode", (), {"start_byte": 0, "end_byte": 10})()
         chunk_node = type("MockNode", (), {"start_byte": 100, "end_byte": 200})()
 
         # Mock helper methods
-        filter._calculate_ast_distance = lambda n1, n2: 5
-        filter._get_node_line = lambda node: 1 if node == mock_node else 10
+        filter_func._calculate_ast_distance = lambda n1, n2: 5
+        filter_func._get_node_line = lambda node: 1 if node == mock_node else 10
 
         item = ContextItem(
             type=ContextType.DEPENDENCY,
@@ -184,15 +184,15 @@ class TestBaseContextFilter:
         )
 
         # Test without reference
-        filter._chunk_references_context = lambda chunk, ctx: False
-        score_without_ref = filter.score_relevance(item, chunk_node)
+        filter_func._chunk_references_context = lambda chunk, ctx: False
+        score_without_ref = filter_func.score_relevance(item, chunk_node)
 
         # Clear cache before testing with reference
-        filter._relevance_cache.clear()
+        filter_func._relevance_cache.clear()
 
         # Test with reference
-        filter._chunk_references_context = lambda chunk, ctx: True
-        score_with_ref = filter.score_relevance(item, chunk_node)
+        filter_func._chunk_references_context = lambda chunk, ctx: True
+        score_with_ref = filter_func.score_relevance(item, chunk_node)
 
         # Referenced items should have higher score
         assert score_with_ref > score_without_ref
@@ -202,7 +202,7 @@ class TestBaseContextFilter:
 
     def test_is_ancestor(self):
         """Test the _is_ancestor helper method."""
-        filter = BaseContextFilter("python")
+        filter_func = BaseContextFilter("python")
 
         # Create node hierarchy
         root = type("MockNode", (), {"parent": None})()
@@ -210,15 +210,15 @@ class TestBaseContextFilter:
         child = type("MockNode", (), {"parent": parent})()
         unrelated = type("MockNode", (), {"parent": None})()
 
-        assert filter._is_ancestor(root, child)
-        assert filter._is_ancestor(parent, child)
-        assert not filter._is_ancestor(child, child)  # Not its own ancestor
-        assert not filter._is_ancestor(unrelated, child)
-        assert not filter._is_ancestor(child, parent)  # Wrong direction
+        assert filter_func._is_ancestor(root, child)
+        assert filter_func._is_ancestor(parent, child)
+        assert not filter_func._is_ancestor(child, child)  # Not its own ancestor
+        assert not filter_func._is_ancestor(unrelated, child)
+        assert not filter_func._is_ancestor(child, parent)  # Wrong direction
 
     def test_calculate_ast_distance(self):
         """Test calculating distance between nodes."""
-        filter = BaseContextFilter("python")
+        filter_func = BaseContextFilter("python")
 
         # Create node hierarchy
         root = type("MockNode", (), {"parent": None})()
@@ -228,20 +228,20 @@ class TestBaseContextFilter:
         right_child = type("MockNode", (), {"parent": right_parent})()
 
         # Distance between siblings
-        distance = filter._calculate_ast_distance(left_parent, right_parent)
+        distance = filter_func._calculate_ast_distance(left_parent, right_parent)
         assert distance == 2  # Up to root and down
 
         # Distance between cousins
-        distance = filter._calculate_ast_distance(left_child, right_child)
+        distance = filter_func._calculate_ast_distance(left_child, right_child)
         assert distance == 4  # Up 2, down 2
 
         # Distance to self
-        distance = filter._calculate_ast_distance(left_child, left_child)
+        distance = filter_func._calculate_ast_distance(left_child, left_child)
         assert distance == 0
 
         # Unrelated nodes
         unrelated = type("MockNode", (), {"parent": None})()
-        distance = filter._calculate_ast_distance(left_child, unrelated)
+        distance = filter_func._calculate_ast_distance(left_child, unrelated)
         assert distance == -1
 
 
@@ -250,14 +250,14 @@ class TestPythonContextFilter:
 
     def test_is_decorator_node(self):
         """Test identifying decorator nodes in Python."""
-        filter = ContextFactory.create_context_filter("python")
+        filter_func = ContextFactory.create_context_filter("python")
 
         # Create mock nodes
         decorator_node = type("MockNode", (), {"type": "decorator"})()
         other_node = type("MockNode", (), {"type": "function_definition"})()
 
-        assert filter._is_decorator_node(decorator_node)
-        assert not filter._is_decorator_node(other_node)
+        assert filter_func._is_decorator_node(decorator_node)
+        assert not filter_func._is_decorator_node(other_node)
 
 
 class TestJavaScriptContextFilter:
@@ -265,11 +265,11 @@ class TestJavaScriptContextFilter:
 
     def test_is_decorator_node(self):
         """Test identifying decorator nodes in JavaScript."""
-        filter = ContextFactory.create_context_filter("javascript")
+        filter_func = ContextFactory.create_context_filter("javascript")
 
         # Create mock nodes
         decorator_node = type("MockNode", (), {"type": "decorator"})()
         other_node = type("MockNode", (), {"type": "function_declaration"})()
 
-        assert filter._is_decorator_node(decorator_node)
-        assert not filter._is_decorator_node(other_node)
+        assert filter_func._is_decorator_node(decorator_node)
+        assert not filter_func._is_decorator_node(other_node)

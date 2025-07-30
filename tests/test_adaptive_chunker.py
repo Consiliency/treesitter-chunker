@@ -78,7 +78,7 @@ def complex_algorithm(data, options):
                     processed = handle_invalid_b(item)
             except ValidationError as e:
                 processed = {'error': str(e)}
-            except Exception as e:
+            except (AttributeError, IndexError, KeyError) as e:
                 processed = {'error': 'Unknown error'}
         else:
             processed = process_unknown_type(item)

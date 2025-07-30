@@ -467,7 +467,7 @@ class WASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
     def _extract_function_signature(
         self,
         node: Node,
-        source: bytes,
+        _source: bytes,
     ) -> tuple[int | None, int | None]:
         """Extract parameter and result counts from function."""
         param_count = 0
@@ -527,7 +527,7 @@ class WASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         # Similar to export kind
         return self._get_export_kind(node, source)
 
-    def _is_exported_function(self, node: Node, source: bytes) -> bool:
+    def _is_exported_function(self, _node: Node, _source: bytes) -> bool:
         """Check if this function is referenced by an export."""
         # This would require more complex analysis of the module
         # For now, return False

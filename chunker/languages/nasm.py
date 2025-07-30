@@ -370,9 +370,9 @@ class NASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
 
     def _get_following_instructions(
         self,
-        node: Node,
-        source: bytes,
-        count: int,
+        _node: Node,
+        _source: bytes,
+        _count: int,
     ) -> list[str]:
         """Get the next N instructions after a node."""
         instructions = []
@@ -380,7 +380,7 @@ class NASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         # In practice, you'd need to traverse the AST properly
         return instructions
 
-    def _is_procedure_prologue(self, instructions: list[str]) -> bool:
+    def _is_procedure_prologue(self, _instructions: list[str]) -> bool:
         """Check if instructions look like a procedure prologue."""
         # Common patterns: push rbp/ebp, mov rbp/ebp rsp/esp
         # Simplified check

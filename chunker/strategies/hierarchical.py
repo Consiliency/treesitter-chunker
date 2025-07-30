@@ -109,7 +109,7 @@ class HierarchicalChunker(ChunkingStrategy):
             "annotation",
         }
 
-    def can_handle(self, file_path: str, language: str) -> bool:
+    def can_handle(self, _file_path: str, language: str) -> bool:
         """Check if language is supported for hierarchical chunking."""
         return language in self.hierarchy_levels
 
@@ -196,7 +196,7 @@ class HierarchicalChunker(ChunkingStrategy):
                 return i
         return len(levels)  # Default to lowest level
 
-    def _should_include_node(self, node: Node, level: int, depth: int) -> bool:
+    def _should_include_node(self, node: Node, level: int, _depth: int) -> bool:
         """Determine if a node should be included in the hierarchy."""
         # Always include structural nodes
         if node.type in self.structural_nodes:
@@ -223,7 +223,7 @@ class HierarchicalChunker(ChunkingStrategy):
         # Include based on level and size
         return level <= 3 or line_count >= self.config["min_chunk_size"] * 2
 
-    def _analyze_node(self, node: Node, source: bytes) -> dict[str, Any]:
+    def _analyze_node(self, node: Node, _source: bytes) -> dict[str, Any]:
         """Analyze node properties for metadata."""
         # Extract basic properties
         line_count = node.end_point[0] - node.start_point[0] + 1

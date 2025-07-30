@@ -118,7 +118,7 @@ Available commands:
 
             except KeyboardInterrupt:
                 self.console.print("\n[yellow]Use 'quit' to exit[/yellow]")
-            except Exception as e:
+            except (FileNotFoundError, IndexError, KeyError) as e:
                 self.console.print(f"[red]Error: {e}[/red]")
                 if self.console.is_terminal:
                     traceback.print_exc()
@@ -216,7 +216,7 @@ Available commands:
             self.console.print(f"[green]Loaded: {file_path}[/green]")
             self.console.print(f"Size: {len(self.current_code)} bytes")
 
-        except Exception as e:
+        except (FileNotFoundError, IndexError, KeyError) as e:
             self.console.print(f"[red]Failed to load file: {e}[/red]")
 
     def _set_code(self, code: str) -> None:
@@ -375,7 +375,7 @@ Available commands:
 
             self.console.print(f"[green]Session saved to: {file_path}[/green]")
 
-        except Exception as e:
+        except (OSError, FileNotFoundError, IndexError) as e:
             self.console.print(f"[red]Failed to save: {e}[/red]")
 
     def _show_info(self) -> None:
