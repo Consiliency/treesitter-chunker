@@ -14,7 +14,7 @@ from chunker.languages.base import PluginConfig
 class TestConfigLoading:
     """Test configuration loading from different formats."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def temp_config_dir(self):
         """Create a temporary directory for config files."""
         temp_dir = Path(tempfile.mkdtemp())
@@ -167,7 +167,7 @@ class TestConfigLoading:
 class TestConfigSaving:
     """Test configuration saving to different formats."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def temp_config_dir(self):
         """Create a temporary directory for config files."""
         temp_dir = Path(tempfile.mkdtemp())
@@ -306,7 +306,7 @@ class TestConfigSaving:
 class TestPathResolution:
     """Test path resolution in configuration."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def temp_config_dir(self):
         """Create a temporary directory for config files."""
         temp_dir = Path(tempfile.mkdtemp())
@@ -382,7 +382,7 @@ class TestPathResolution:
 class TestConfigFinding:
     """Test configuration file discovery."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def temp_project_dir(self):
         """Create a temporary project directory structure."""
         temp_dir = Path(tempfile.mkdtemp())
@@ -451,7 +451,7 @@ class TestConfigFinding:
 class TestConfigValidation:
     """Test configuration validation and error handling."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def temp_config_dir(self):
         """Create a temporary directory for config files."""
         temp_dir = Path(tempfile.mkdtemp())
@@ -635,7 +635,7 @@ class TestPluginDirectories:
 class TestExampleConfig:
     """Test example configuration creation."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def temp_config_dir(self):
         """Create a temporary directory for config files."""
         temp_dir = Path(tempfile.mkdtemp())
@@ -664,7 +664,7 @@ class TestExampleConfig:
 class TestEnvironmentVariables:
     """Test environment variable expansion in configuration."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def temp_config_dir(self):
         """Create a temporary directory for config files."""
         temp_dir = Path(tempfile.mkdtemp())
@@ -698,7 +698,7 @@ class TestEnvironmentVariables:
 class TestComplexScenarios:
     """Test complex configuration scenarios."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def temp_config_dir(self):
         """Create a temporary directory for config files."""
         temp_dir = Path(tempfile.mkdtemp())

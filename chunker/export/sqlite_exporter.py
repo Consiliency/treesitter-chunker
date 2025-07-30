@@ -289,8 +289,10 @@ SELECT * FROM hierarchy ORDER BY root_id, depth, start_line;
 
                     # Extract imports
                     if "imports" in metadata:
-                        for import_name in metadata["imports"]:
-                            imports_data.append((chunk_id, import_name, None))
+                        imports_data.extend(
+                            (chunk_id, import_name, None)
+                            for import_name in metadata["imports"]
+                        )
 
             # Bulk insert chunks
             conn.executemany(

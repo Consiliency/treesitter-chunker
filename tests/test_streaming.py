@@ -185,7 +185,7 @@ class MemoryMonitor:
             time.sleep(0.1)  # Sample every 100ms
 
 
-@pytest.fixture()
+@pytest.fixture
 def large_python_file():
     """Create a large temporary Python file (>100MB)."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
@@ -211,7 +211,7 @@ def large_python_file():
     temp_path.unlink()
 
 
-@pytest.fixture()
+@pytest.fixture
 def medium_python_file():
     """Create a medium-sized temporary Python file (~10MB)."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
@@ -222,7 +222,7 @@ def medium_python_file():
     temp_path.unlink()
 
 
-@pytest.fixture()
+@pytest.fixture
 def corrupted_python_file():
     """Create a file with invalid UTF-8 sequences."""
     with tempfile.NamedTemporaryFile(mode="wb", suffix=".py", delete=False) as f:
@@ -756,7 +756,7 @@ class TestConcurrentStreaming:
 
 
 # Additional fixtures for creating test directories
-@pytest.fixture()
+@pytest.fixture
 def temp_directory_with_files():
     """Create a temporary directory with multiple Python files."""
     temp_dir = Path(tempfile.mkdtemp())

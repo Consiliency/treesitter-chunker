@@ -131,8 +131,7 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
             c_files = []
             src_dir = lang_path / "src"
             if src_dir.exists():
-                for src in src_dir.glob("*.c"):
-                    c_files.append(str(src))
+                c_files.extend(str(src) for src in src_dir.glob("*.c"))
 
             if not c_files:
                 raise BuildError(f"No C source files found in {src_dir}")

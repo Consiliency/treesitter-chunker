@@ -240,10 +240,11 @@ class JavaChunker(LanguageChunker):
 
     def _extract_interface_list(self, interfaces_node: Node) -> list[str]:
         """Extract list of interface names."""
-        interfaces = []
-        for child in interfaces_node.children:
-            if child.type in {"type_identifier", "scoped_type_identifier"}:
-                interfaces.append(child.text.decode("utf-8"))
+        interfaces = [
+            child.text.decode("utf-8")
+            for child in interfaces_node.children
+            if child.type in {"type_identifier", "scoped_type_identifier"}
+        ]
         return interfaces
 
     def _extract_parameters(self, params_node: Node) -> list[dict]:

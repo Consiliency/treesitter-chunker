@@ -154,12 +154,11 @@ class Neo4jExporter(GraphExporterBase):
             unique_labels.update(labels)
 
         statements.append("// Create constraints for unique node IDs")
-        for label in unique_labels:
-            # Neo4j 5.x syntax
-            statements.append(
-                f"CREATE CONSTRAINT {label.lower()}_unique_id IF NOT EXISTS"
-                f" FOR (n:{label}) REQUIRE n.nodeId IS UNIQUE;",
-            )
+        statements.extend(
+            f"CREATE CONSTRAINT {label.lower()}_unique_id IF NOT EXISTS"
+            f" FOR (n:{label}) REQUIRE n.nodeId IS UNIQUE;"
+            for label in unique_labels
+        )
 
         # Generate index statements
         statements.append("\n// Create indexes for better query performance")

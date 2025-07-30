@@ -17,12 +17,12 @@ from chunker.fallback.overlapping import OverlappingFallbackChunker, OverlapStra
 class TestOverlappingFallbackChunker:
     """Test suite for overlapping fallback chunker."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def chunker(self):
         """Create a chunker instance."""
         return OverlappingFallbackChunker()
 
-    @pytest.fixture()
+    @pytest.fixture
     def sample_text(self):
         """Sample text content for testing."""
         return """Line 1: Introduction
@@ -45,7 +45,7 @@ Line 17: Wraps up the content
 Line 18: With concluding remarks
 Line 19: End of document"""
 
-    @pytest.fixture()
+    @pytest.fixture
     def sample_markdown(self):
         """Sample markdown content."""
         return """# Main Title

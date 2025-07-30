@@ -13,7 +13,7 @@ from chunker.rules.engine import DefaultRuleEngine
 class TestMetadataRulesIntegration:
     """Test metadata extraction integrated with custom rules."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def sample_python_file_with_todos(self, tmp_path):
         """Create a Python file with TODO comments and various metadata."""
         file_path = tmp_path / "tasks.py"

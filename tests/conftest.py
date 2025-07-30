@@ -9,13 +9,13 @@ import pytest
 from chunker.build import BuildSystem, PlatformSupport
 
 
-@pytest.fixture()
+@pytest.fixture
 def build_system():
     """Provide real BuildSystem instance"""
     return BuildSystem()
 
 
-@pytest.fixture()
+@pytest.fixture
 def platform_support():
     """Provide real PlatformSupport instance"""
     return PlatformSupport()
