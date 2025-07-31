@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2025-07-31
+
+### Added
+- **REST API using FastAPI** for cross-language integration
+- **Enhanced CLI** with multiple output formats (JSON, JSONL, CSV, minimal)
+- **stdin support** for piping code to chunker
+- **Cross-language integration guide** with examples for Python, JavaScript, Go
+- **Internal module structure** (`_internal/`) for better API encapsulation
+- Created `chunker/core.py` to break circular dependencies
+- Added `docs/troubleshooting.md` with common issues and solutions
+- **Public VFS interface** for advanced file system operations
+- **Simplified imports**: `chunk_file`, `chunk_text`, `chunk_directory` directly from chunker
+- **chunk_text()** function for direct text chunking without file I/O
+
+### Changed
+- **Major API refactoring** for cleaner public interface
+- Moved internal modules (registry, factory) to `_internal/` directory
+- Moved `_walk()` and `chunk_file()` functions to new `chunker/core.py` module
+- Updated import statements throughout documentation to reflect new module structure
+- **ParserConfig** and **LanguageMetadata** now properly exposed in public API
+
 ### Fixed
 - Resolved circular import issues between `chunker.py` and `token/chunker.py` by creating `chunker/core.py`
 - Fixed ABI version mismatch errors by adding appropriate skip markers to tests
@@ -15,16 +36,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed JSON/JSONL parsing errors in CLI tests caused by control characters in output
 - Updated all documentation to use correct import paths after module restructuring
 - Fixed 100% test coverage - all tests now passing or properly skipped
+- Fixed all linting issues across the codebase
 
-### Changed
-- Moved `_walk()` and `chunk_file()` functions to new `chunker/core.py` module
-- Updated import statements throughout documentation to reflect new module structure
+### Breaking Changes
+- Internal modules (registry, factory) are no longer directly accessible
+- Some internal APIs moved to `_internal/` namespace
+- Users should use public functions instead of internal classes
 
-### Added
-- Created `chunker/core.py` to break circular dependencies
-- Added `docs/troubleshooting.md` with common issues and solutions
+## [Previous Releases]
 
-## [1.1.0] - 2025-07-25
+### [1.1.0] - 2025-07-25
 
 ### Added
 - **Phase 15: Production Readiness & Developer Experience**
