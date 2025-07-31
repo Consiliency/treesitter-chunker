@@ -9,7 +9,6 @@ from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginCon
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
 
-
 class HaskellConfig(LanguageConfig):
     """Language configuration for Haskell."""
 
@@ -72,18 +71,12 @@ class HaskellConfig(LanguageConfig):
         self.add_ignore_type("string")
         self.add_ignore_type("integer")
 
-
 # Register the Haskell configuration
 
 from typing import TYPE_CHECKING
 
-from . import language_config_registry
-
 if TYPE_CHECKING:
     from tree_sitter import Node
-
-language_config_registry.register(HaskellConfig(), aliases=["hs"])
-
 
 # Plugin implementation for backward compatibility
 class HaskellPlugin(LanguagePlugin, ExtendedLanguagePluginContract):

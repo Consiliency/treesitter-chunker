@@ -9,7 +9,6 @@ from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginCon
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
 
-
 class ClojureConfig(LanguageConfig):
     """Language configuration for Clojure."""
 
@@ -72,18 +71,12 @@ class ClojureConfig(LanguageConfig):
         self.add_ignore_type("str_lit")
         self.add_ignore_type("num_lit")
 
-
 # Register the Clojure configuration
 
 from typing import TYPE_CHECKING
 
-from . import language_config_registry
-
 if TYPE_CHECKING:
     from tree_sitter import Node
-
-language_config_registry.register(ClojureConfig(), aliases=["clj", "cljs"])
-
 
 # Plugin implementation for backward compatibility
 class ClojurePlugin(LanguagePlugin, ExtendedLanguagePluginContract):

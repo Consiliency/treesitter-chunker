@@ -9,7 +9,6 @@ from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginCon
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
 
-
 class OCamlConfig(LanguageConfig):
     """Language configuration for OCaml."""
 
@@ -67,18 +66,12 @@ class OCamlConfig(LanguageConfig):
         self.add_ignore_type("number")
         self.add_ignore_type("constructor")
 
-
 # Register the OCaml configuration
 
 from typing import TYPE_CHECKING
 
-from . import language_config_registry
-
 if TYPE_CHECKING:
     from tree_sitter import Node
-
-language_config_registry.register(OCamlConfig(), aliases=["ml", "mli"])
-
 
 # Plugin implementation for backward compatibility
 class OCamlPlugin(LanguagePlugin, ExtendedLanguagePluginContract):

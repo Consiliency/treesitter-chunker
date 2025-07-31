@@ -3,7 +3,6 @@ from __future__ import annotations
 from .base import LanguageConfig
 from .plugin_base import LanguagePlugin
 
-
 class CConfig(LanguageConfig):
     """Language configuration for C."""
 
@@ -26,20 +25,14 @@ class CConfig(LanguageConfig):
     def file_extensions(self) -> set[str]:
         return {".c", ".h"}
 
-
 # Register the C configuration
 
 from typing import TYPE_CHECKING
-
-from . import language_config_registry
 
 if TYPE_CHECKING:
     from tree_sitter import Node
 
     from chunker.types import CodeChunk
-
-language_config_registry.register(CConfig())
-
 
 class CPlugin(LanguagePlugin):
     """Plugin for C language chunking."""

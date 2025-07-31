@@ -11,7 +11,6 @@ from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginCon
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
 
-
 class VueConfig(LanguageConfig):
     """Language configuration for Vue Single File Components."""
 
@@ -80,18 +79,12 @@ class VueConfig(LanguageConfig):
         self.add_ignore_type("comment")
         self.add_ignore_type("text")
 
-
 # Register the Vue configuration
 
 from typing import TYPE_CHECKING
 
-from . import language_config_registry
-
 if TYPE_CHECKING:
     from tree_sitter import Node
-
-language_config_registry.register(VueConfig())
-
 
 # Plugin implementation for backward compatibility
 class VuePlugin(LanguagePlugin, ExtendedLanguagePluginContract):

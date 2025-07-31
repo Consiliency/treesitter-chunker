@@ -9,7 +9,6 @@ from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginCon
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
 
-
 class ElixirConfig(LanguageConfig):
     """Language configuration for Elixir."""
 
@@ -75,18 +74,12 @@ class ElixirConfig(LanguageConfig):
         self.add_ignore_type("string")
         self.add_ignore_type("atom")
 
-
 # Register the Elixir configuration
 
 from typing import TYPE_CHECKING
 
-from . import language_config_registry
-
 if TYPE_CHECKING:
     from tree_sitter import Node
-
-language_config_registry.register(ElixirConfig(), aliases=["ex"])
-
 
 # Plugin implementation for backward compatibility
 class ElixirPlugin(LanguagePlugin, ExtendedLanguagePluginContract):

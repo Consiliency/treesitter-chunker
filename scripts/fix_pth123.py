@@ -36,8 +36,7 @@ def fix_pth123_in_file(file_path: Path) -> bool:
 
         if args:
             return f"Path({var_name}).open({args})"
-        else:
-            return f"Path({var_name}).open()"
+        return f"Path({var_name}).open()"
 
     # Pattern 2: Path("string_literal").open() or Path('string_literal').open()
     pattern2 = re.compile(
@@ -52,8 +51,7 @@ def fix_pth123_in_file(file_path: Path) -> bool:
 
         if args:
             return f"Path({quote}{path_str}{quote}).open({args})"
-        else:
-            return f"Path({quote}{path_str}{quote}).open()"
+        return f"Path({quote}{path_str}{quote}).open()"
 
     # Pattern 3: with Path(...).open() as f:
     pattern3 = re.compile(
@@ -75,16 +73,14 @@ def fix_pth123_in_file(file_path: Path) -> bool:
                 if rest.startswith(","):
                     rest = rest[1:].strip()
                     return f"with Path({path_part}).open({rest}) as {var_name}:"
-                else:
-                    return f"with Path({path_part}).open() as {var_name}:"
+                return f"with Path({path_part}).open() as {var_name}:"
 
         # It's a variable
         parts = args.split(",", 1)
         path_var = parts[0].strip()
         if len(parts) > 1:
             return f"with Path({path_var}).open({parts[1]}) as {var_name}:"
-        else:
-            return f"with Path({path_var}).open() as {var_name}:"
+        return f"with Path({path_var}).open() as {var_name}:"
 
     # Apply replacements
     content = pattern1.sub(replace_open_var, content)

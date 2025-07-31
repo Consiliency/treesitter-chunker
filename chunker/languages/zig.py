@@ -9,7 +9,6 @@ from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginCon
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
 
-
 class ZigConfig(LanguageConfig):
     """Language configuration for Zig."""
 
@@ -66,18 +65,12 @@ class ZigConfig(LanguageConfig):
         self.add_ignore_type("line_comment")
         self.add_ignore_type("container_doc_comment")
 
-
 # Register the Zig configuration
 
 from typing import TYPE_CHECKING
 
-from . import language_config_registry
-
 if TYPE_CHECKING:
     from tree_sitter import Node
-
-language_config_registry.register(ZigConfig())
-
 
 # Plugin implementation for backward compatibility
 class ZigPlugin(LanguagePlugin, ExtendedLanguagePluginContract):

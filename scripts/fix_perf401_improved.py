@@ -153,7 +153,7 @@ class ListComprehensionTransformer(ast.NodeTransformer):
             )
 
         # Conditional append
-        elif isinstance(stmt, ast.If):
+        if isinstance(stmt, ast.If):
             elt = stmt.body[0].value.args[0]
             return ast.ListComp(
                 elt=elt,

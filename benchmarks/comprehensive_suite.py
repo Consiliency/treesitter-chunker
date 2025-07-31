@@ -694,7 +694,7 @@ def detailed_function_{i}(parameter_one, parameter_two, parameter_three=None):
     # Process parameter_two
     if isinstance(parameter_two, list):
         for index, item in enumerate(parameter_two):
-            result[f'item_{index}'] = process_item(item, intermediate_value)
+            result[f'item_{{index}}'] = item * intermediate_value
 
     # Handle optional parameter
     if parameter_three is not None:

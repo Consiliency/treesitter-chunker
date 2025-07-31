@@ -9,7 +9,6 @@ from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginCon
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
 
-
 class MATLABConfig(LanguageConfig):
     """Language configuration for MATLAB."""
 
@@ -68,18 +67,12 @@ class MATLABConfig(LanguageConfig):
         self.add_ignore_type("string")
         self.add_ignore_type("number")
 
-
 # Register the MATLAB configuration
 
 from typing import TYPE_CHECKING
 
-from . import language_config_registry
-
 if TYPE_CHECKING:
     from tree_sitter import Node
-
-language_config_registry.register(MATLABConfig(), aliases=["m", "octave"])
-
 
 # Plugin implementation for backward compatibility
 class MATLABPlugin(LanguagePlugin, ExtendedLanguagePluginContract):

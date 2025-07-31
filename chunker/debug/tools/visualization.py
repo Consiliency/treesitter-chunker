@@ -3,7 +3,6 @@ Debug visualization implementation
 """
 
 import json
-import os
 import tempfile
 import time
 import tracemalloc

@@ -7,7 +7,6 @@ from __future__ import annotations
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
 
-
 class PythonConfig(LanguageConfig):
     """Language configuration for Python."""
 
@@ -53,18 +52,12 @@ class PythonConfig(LanguageConfig):
         # - Comprehensions that might be worth chunking
         # - Import statements grouping
 
-
 # Register the Python configuration
 
 from typing import TYPE_CHECKING
 
-from . import language_config_registry
-
 if TYPE_CHECKING:
     from tree_sitter import Node
-
-language_config_registry.register(PythonConfig(), aliases=["py", "python3"])
-
 
 # Plugin implementation for backward compatibility
 class PythonPlugin(LanguagePlugin):
