@@ -78,3 +78,49 @@ jobs:
           dist/*.whl
           dist/*.tar.gz
           dist/checksums.txt
+
+  publish-to-pypi:
+    name: Publish to PyPI
+    needs: [create-release]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.prerelease == 'false')
+    
+    environment:
+      name: pypi
+      url: https://pypi.org/p/treesitter-chunker
+    
+    permissions:
+      id-token: write
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: recursive
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install uv
+        uv pip install --system build wheel twine
+        uv pip install --system git+https://github.com/tree-sitter/py-tree-sitter.git
+    
+    - name: Fetch grammars
+      run: python scripts/fetch_grammars.py
+    
+    - name: Build grammars
+      run: python scripts/build_lib.py
+    
+    - name: Build package
+      run: python -m build
+    
+    - name: Check package
+      run: twine check dist/*
+    
+    - name: Publish distribution 📦 to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
