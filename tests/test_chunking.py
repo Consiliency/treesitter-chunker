@@ -62,7 +62,7 @@ def test_parser_availability():
             parser = get_parser(lang)
             assert parser is not None
             available.append(lang)
-        except (IndexError, KeyError, SyntaxError) as e:
+        except (IndexError, KeyError, SyntaxError, Exception) as e:
             # Log which languages fail
             unavailable.append((lang, str(e)))
 

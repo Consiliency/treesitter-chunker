@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import hashlib
 import mmap
-from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from ._internal.file_utils import FileMetadata, compute_file_hash, get_file_metadata
 from .parser import get_parser
 from .types import CodeChunk
 
@@ -13,36 +12,6 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from tree_sitter import Node
-
-
-@dataclass
-class FileMetadata:
-    path: Path
-    size: int
-    hash: str
-    mtime: float
-
-
-def compute_file_hash(file_path: Path, chunk_size: int = 8192) -> str:
-    """Compute SHA256 hash of a file efficiently."""
-    hasher = hashlib.sha256()
-    with Path(file_path).open(
-        "rb",
-    ) as f:
-        while chunk := f.read(chunk_size):
-            hasher.update(chunk)
-    return hasher.hexdigest()
-
-
-def get_file_metadata(path: Path) -> FileMetadata:
-    """Get file metadata including size, hash, and modification time."""
-    stat = path.stat()
-    return FileMetadata(
-        path=path,
-        size=stat.st_size,
-        hash=compute_file_hash(path),
-        mtime=stat.st_mtime,
-    )
 
 
 class StreamingChunker:

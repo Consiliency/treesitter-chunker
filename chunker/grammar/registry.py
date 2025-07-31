@@ -11,7 +11,7 @@ import tree_sitter
 
 from chunker.contracts.registry_contract import UniversalRegistryContract
 from chunker.exceptions import LanguageNotFoundError
-from chunker.registry import LanguageRegistry
+from chunker._internal.registry import LanguageRegistry
 
 if TYPE_CHECKING:
     from chunker.contracts.discovery_contract import GrammarDiscoveryContract

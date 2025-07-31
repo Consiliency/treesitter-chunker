@@ -21,7 +21,7 @@ from chunker.types import CodeChunk
 
 
 # Test processor implementations
-class TestMarkdownProcessor(TextProcessor):
+class MockMarkdownProcessor(TextProcessor):
     """Test markdown processor."""
 
     def can_process(self, content: str, file_path: str) -> bool:
@@ -73,7 +73,7 @@ class TestMarkdownProcessor(TextProcessor):
         return chunks
 
 
-class TestLogProcessor(TextProcessor):
+class MockLogProcessor(TextProcessor):
     """Test log processor."""
 
     def can_process(self, content: str, file_path: str) -> bool:
@@ -161,7 +161,7 @@ class TestSlidingWindowIntegration:
         proc_info = ProcessorInfo(
             name="test_processor",
             processor_type=ProcessorType.CUSTOM,
-            processor_class=TestMarkdownProcessor,
+            processor_class=MockMarkdownProcessor,
             supported_file_types={FileType.MARKDOWN},
             supported_extensions={".md", ".markdown"},
             priority=100,
@@ -171,7 +171,7 @@ class TestSlidingWindowIntegration:
         # Get processor
         processor = registry.get_processor("test_processor")
         assert processor is not None
-        assert isinstance(processor, TestMarkdownProcessor)
+        assert isinstance(processor, MockMarkdownProcessor)
 
         # Find processors for file
         processors = registry.find_processors("test.md", FileType.MARKDOWN)
@@ -219,7 +219,7 @@ class TestSlidingWindowIntegration:
         # Register custom processors
         fallback.register_custom_processor(
             "test_markdown",
-            TestMarkdownProcessor,
+            MockMarkdownProcessor,
             {FileType.MARKDOWN},
             {".md"},
             priority=100,
@@ -227,7 +227,7 @@ class TestSlidingWindowIntegration:
 
         fallback.register_custom_processor(
             "test_log",
-            TestLogProcessor,
+            MockLogProcessor,
             {FileType.LOG},
             {".log"},
             priority=100,
@@ -264,7 +264,7 @@ class TestSlidingWindowIntegration:
         # Register a processor
         fallback.register_custom_processor(
             "test_proc",
-            TestMarkdownProcessor,
+            MockMarkdownProcessor,
             {FileType.MARKDOWN},
             {".md"},
             priority=100,
@@ -291,7 +291,7 @@ class TestSlidingWindowIntegration:
         # Register processors
         fallback.register_custom_processor(
             "markdown_proc",
-            TestMarkdownProcessor,
+            MockMarkdownProcessor,
             {FileType.MARKDOWN},
             {".md"},
             priority=100,
@@ -347,7 +347,7 @@ class TestSlidingWindowIntegration:
         # Register processor
         fallback.register_custom_processor(
             "test_markdown",
-            TestMarkdownProcessor,
+            MockMarkdownProcessor,
             {FileType.MARKDOWN},
             {".md"},
             priority=100,
@@ -391,7 +391,7 @@ class TestSlidingWindowIntegration:
         # Register some processors
         fallback.register_custom_processor(
             "md_proc",
-            TestMarkdownProcessor,
+            MockMarkdownProcessor,
             {FileType.MARKDOWN},
             {".md"},
             priority=100,
@@ -399,7 +399,7 @@ class TestSlidingWindowIntegration:
 
         fallback.register_custom_processor(
             "log_proc",
-            TestLogProcessor,
+            MockLogProcessor,
             {FileType.LOG},
             {".log"},
             priority=90,
@@ -453,7 +453,7 @@ class TestProcessorPerformance:
         proc_info = ProcessorInfo(
             name="cached_proc",
             processor_type=ProcessorType.CUSTOM,
-            processor_class=TestMarkdownProcessor,
+            processor_class=MockMarkdownProcessor,
             supported_file_types={FileType.MARKDOWN},
             supported_extensions={".md"},
             priority=50,
@@ -505,7 +505,7 @@ class TestIntegrationScenarios:
         # Register processors
         fallback.register_custom_processor(
             "md_processor",
-            TestMarkdownProcessor,
+            MockMarkdownProcessor,
             {FileType.MARKDOWN},
             {".md"},
             priority=100,
@@ -513,7 +513,7 @@ class TestIntegrationScenarios:
 
         fallback.register_custom_processor(
             "log_processor",
-            TestLogProcessor,
+            MockLogProcessor,
             {FileType.LOG},
             {".log"},
             priority=100,

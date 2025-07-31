@@ -616,7 +616,7 @@ def generate_quality_report(directory, language):
 Tree-sitter Chunker comes with built-in plugins for Python, JavaScript, Rust, C, and C++:
 
 ```python
-from chunker import get_plugin_manager
+from chunker.plugin_manager import get_plugin_manager
 
 # Load built-in plugins
 manager = get_plugin_manager()
@@ -635,7 +635,8 @@ chunks = chunk_file("example.py", "python")
 Configure plugins through configuration files or programmatically:
 
 ```python
-from chunker import ChunkerConfig, PluginConfig
+from chunker.chunker_config import ChunkerConfig
+from chunker.plugin_manager import PluginConfig
 
 # Load configuration from file
 config = ChunkerConfig("chunker.config.toml")
@@ -658,7 +659,7 @@ config.set_plugin_config("python", PluginConfig(
 
 ```python
 from pathlib import Path
-from chunker import get_plugin_manager
+from chunker.plugin_manager import get_plugin_manager
 
 # Load plugins from a directory
 manager = get_plugin_manager()
@@ -676,7 +677,8 @@ manager.register_plugin(SwiftPlugin)
 The AST cache provides up to 11.9x speedup for repeated file processing:
 
 ```python
-from chunker import chunk_file, ASTCache
+from chunker.core import chunk_file
+from chunker.cache import ASTCache
 
 # Caching is enabled by default
 chunks1 = chunk_file("large_file.py", "python")  # First run: parses
@@ -694,7 +696,7 @@ print(f"Cache size: {stats['size']}/{stats['max_size']}")
 Process multiple files concurrently for maximum performance:
 
 ```python
-from chunker import chunk_files_parallel, chunk_directory_parallel
+from chunker.parallel import chunk_files_parallel, chunk_directory_parallel
 
 # Process specific files
 files = ["src/main.py", "src/utils.py", "src/models.py"]
@@ -722,7 +724,7 @@ for file_path, chunks in results.items():
 For very large files, use streaming to avoid loading everything into memory:
 
 ```python
-from chunker import chunk_file_streaming
+from chunker.streaming import chunk_file_streaming
 
 # Process a huge file incrementally
 for chunk in chunk_file_streaming("massive_codebase.py", "python"):
@@ -747,8 +749,9 @@ for chunk in chunk_file_streaming("massive_codebase.py", "python"):
 Export chunks to JSON with different schema types:
 
 ```python
-from chunker import chunk_file
-from chunker.export import JSONExporter, SchemaType
+from chunker.core import chunk_file
+from chunker.export.json_export import JSONExporter
+from chunker.export.formatters import SchemaType
 
 # Get chunks
 chunks = chunk_file("example.py", "python")
@@ -770,14 +773,14 @@ exporter.export(chunks, "output.json.gz", compress=True)
 JSON Lines format is ideal for streaming and large datasets:
 
 ```python
-from chunker.export import JSONLExporter
+from chunker.export.json_export import JSONLExporter
 
 # Export to JSONL
 exporter = JSONLExporter()
 exporter.export(chunks, "output.jsonl")
 
 # Stream export for large datasets
-from chunker import chunk_file_streaming
+from chunker.streaming import chunk_file_streaming
 
 def chunk_generator():
     for chunk in chunk_file_streaming("huge_file.py", "python"):
@@ -812,7 +815,7 @@ exporter.export_partitioned(
 )
 
 # Stream export for memory efficiency
-from chunker import chunk_directory_parallel
+from chunker.parallel import chunk_directory_parallel
 
 def process_directory(directory):
     results = chunk_directory_parallel(directory, "python")
@@ -839,7 +842,7 @@ exporter.export_streaming(
 
 ```python
 # Export chunks with filtering and transformation
-from chunker import chunk_directory_parallel
+from chunker.parallel import chunk_directory_parallel
 from chunker.exporters import ParquetExporter
 
 # Process a project

@@ -4,13 +4,13 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-import git
 import pytest
 
 from chunker.exceptions import ChunkerError
 from chunker.repo.processor import GitAwareRepoProcessor, RepoProcessor
 
 
+@pytest.mark.integration
 class TestRepoProcessor:
     """Test basic repository processor."""
 
@@ -226,6 +226,7 @@ def greeting():
             processor.process_repository("/non/existent/path")
 
 
+@pytest.mark.integration
 class TestGitAwareRepoProcessor:
     """Test Git-aware repository processor."""
 

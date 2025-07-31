@@ -18,6 +18,8 @@ from rich.table import Table
 from chunker import chunk_file
 from chunker.exceptions import ChunkerError
 from chunker.parser import list_languages
+# Ensure language configs are loaded
+import chunker.languages
 
 app = typer.Typer(help="Tree‑sitter‑based code‑chunker CLI")
 console = Console()
@@ -57,10 +59,11 @@ def load_config(config_path: Path | None = None) -> dict[str, Any]:
                 ) as f:
                     config = tomllib.load(f)
                 break
-            except (OSError, FileNotFoundError, IndexError) as e:
-                console.print(
-                    f"[yellow]Warning: Failed to load config from {config_file}: {e}[/yellow]",
-                )
+            except (OSError, FileNotFoundError, IndexError, tomllib.TOMLDecodeError) as e:
+                if not os.environ.get("CHUNKER_QUIET"):
+                    console.print(
+                        f"[yellow]Warning: Failed to load config from {config_file}: {e}[/yellow]",
+                    )
 
     return config
 
@@ -133,6 +136,9 @@ def process_file(
     try:
         chunks = chunk_file(file_path, language)
         results = []
+        
+        # Debug: print chunk count
+        # print(f"DEBUG: Found {len(chunks)} chunks for {file_path}")
 
         for chunk in chunks:
             # Apply chunk type filter
@@ -167,7 +173,7 @@ def process_file(
 
 @app.command()
 def chunk(
-    file_path: Path = typer.Argument(..., exists=True, readable=True),
+    file_path: Path | None = typer.Argument(None, exists=True, readable=True),
     language: str | None = typer.Option(
         None,
         "--lang",
@@ -178,6 +184,18 @@ def chunk(
         False,
         "--json",
         help="Output JSON instead of Rich table",
+    ),
+    output_format: str = typer.Option(
+        "table",
+        "--output-format",
+        "-o",
+        help="Output format: table, json, jsonl, minimal",
+    ),
+    quiet: bool = typer.Option(
+        False,
+        "--quiet",
+        "-q",
+        help="Quiet mode - suppress all non-essential output",
     ),
     chunk_types: str | None = typer.Option(
         None,
@@ -201,29 +219,100 @@ def chunk(
         "-c",
         help="Path to config file_path",
     ),
+    stdin: bool = typer.Option(
+        False,
+        "--stdin",
+        help="Read source code from stdin instead of file",
+    ),
 ):
-    """Chunk a single source file_path."""
-    # Load config
-    cfg = load_config(config)
-
-    # Parse chunk types
-    types_list = None
-    if chunk_types:
-        types_list = [t.strip() for t in chunk_types.split(",")]
-    elif "chunk_types" in cfg:
-        types_list = cfg["chunk_types"]
-
-    # Get size limits from config if not specified
-    if min_size is None and "min_chunk_size" in cfg:
-        min_size = cfg["min_chunk_size"]
-    if max_size is None and "max_chunk_size" in cfg:
-        max_size = cfg["max_chunk_size"]
-
-    results = process_file(file_path, language, types_list, min_size, max_size)
-
-    if json_out:
-        print(json.dumps(results, indent=2))
+    """Chunk a single source file or stdin input."""
+    # Check input source
+    if stdin:
+        # Read from stdin
+        content = sys.stdin.read()
+        if not language:
+            if not quiet:
+                console.print("[red]Error: --lang is required when reading from stdin[/red]")
+            sys.exit(1)
+        
+        # Use chunk_text from the simplified API
+        from chunker import chunk_text
+        try:
+            chunks = chunk_text(content, language)
+            results = []
+            # Apply filters
+            cfg = load_config(config)
+            types_list = None
+            if chunk_types:
+                types_list = [t.strip() for t in chunk_types.split(",")]
+            elif "chunk_types" in cfg:
+                types_list = cfg["chunk_types"]
+            
+            # Get size limits from config if not specified
+            if min_size is None and "min_chunk_size" in cfg:
+                min_size = cfg["min_chunk_size"]
+            if max_size is None and "max_chunk_size" in cfg:
+                max_size = cfg["max_chunk_size"]
+                
+            for chunk in chunks:
+                chunk_size = chunk.end_line - chunk.start_line + 1
+                if types_list and chunk.node_type not in types_list:
+                    continue
+                if min_size and chunk_size < min_size:
+                    continue
+                if max_size and chunk_size > max_size:
+                    continue
+                results.append({
+                    "file_path": "<stdin>",
+                    "language": language,
+                    "node_type": chunk.node_type,
+                    "start_line": chunk.start_line,
+                    "end_line": chunk.end_line,
+                    "size": chunk_size,
+                    "parent_context": chunk.parent_context,
+                    "content": chunk.content,
+                })
+        except Exception as e:
+            if not quiet:
+                console.print(f"[red]Error processing stdin: {e}[/red]")
+            sys.exit(1)
     else:
+        # Process from file
+        if not file_path:
+            if not quiet:
+                console.print("[red]Error: Either provide a file path or use --stdin[/red]")
+            sys.exit(1)
+            
+        # Load config
+        cfg = load_config(config)
+
+        # Parse chunk types
+        types_list = None
+        if chunk_types:
+            types_list = [t.strip() for t in chunk_types.split(",")]
+        elif "chunk_types" in cfg:
+            types_list = cfg["chunk_types"]
+
+        # Get size limits from config if not specified
+        if min_size is None and "min_chunk_size" in cfg:
+            min_size = cfg["min_chunk_size"]
+        if max_size is None and "max_chunk_size" in cfg:
+            max_size = cfg["max_chunk_size"]
+
+        results = process_file(file_path, language, types_list, min_size, max_size)
+
+    # Handle output format
+    if json_out or output_format == "json":
+        print(json.dumps(results, indent=2))
+    elif output_format == "jsonl":
+        for result in results:
+            print(json.dumps(result, separators=(',', ':')))
+    elif output_format == "minimal":
+        # Minimal format for easy parsing by other tools
+        for chunk in results:
+            print(f"{chunk['file_path']}:{chunk['start_line']}-{chunk['end_line']}:{chunk['node_type']}")
+    elif not quiet:
+        # Table format (default)
         tbl = Table(title=f"Chunks in {file_path}")
         tbl.add_column("#", justify="right")
         tbl.add_column("Node")
@@ -239,6 +328,11 @@ def chunk(
                 chunk["parent_context"],
             )
         console.print(tbl)
+    
+    # Exit with appropriate code
+    if not results and not quiet:
+        console.print("[yellow]No chunks found[/yellow]")
+        sys.exit(1)
 
 
 @app.command()
@@ -264,6 +358,12 @@ def batch(
         False,
         "--jsonl",
         help="Output as JSONL (one JSON per line)",
+    ),
+    output_format: str = typer.Option(
+        "summary",
+        "--output-format",
+        "-o",
+        help="Output format: summary, json, jsonl, minimal, csv",
     ),
     chunk_types: str | None = typer.Option(
         None,
@@ -446,14 +546,25 @@ def batch(
                     all_results.extend(results)
                     progress.advance(task)
 
-    # Output results
-    if jsonl:
+    # Output results based on format
+    if jsonl or output_format == "jsonl":
         for result in all_results:
-            print(json.dumps(result))
-    elif json_out:
+            print(json.dumps(result, separators=(',', ':')))
+    elif json_out or output_format == "json":
         print(json.dumps(all_results, indent=2))
-    else:
-        # Summary table
+    elif output_format == "minimal":
+        # Minimal format for easy parsing
+        for result in all_results:
+            print(f"{result['file_path']}:{result['start_line']}-{result['end_line']}:{result['node_type']}")
+    elif output_format == "csv":
+        # CSV format with headers
+        if all_results:
+            print("file_path,language,node_type,start_line,end_line,size,parent_context")
+            for result in all_results:
+                parent = result['parent_context'] or ''
+                print(f"{result['file_path']},{result['language']},{result['node_type']},{result['start_line']},{result['end_line']},{result['size']},{parent}")
+    elif not quiet:
+        # Summary table (default)
         summary = {}
         total_chunks = len(all_results)
 

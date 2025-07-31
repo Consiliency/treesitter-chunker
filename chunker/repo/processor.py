@@ -9,7 +9,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-import git
 import pathspec
 from tqdm import tqdm
 
@@ -43,7 +42,16 @@ class RepoProcessor(RepoProcessorInterface):
         self.max_workers = max_workers
         self.show_progress = show_progress
         self.traversal_strategy = traversal_strategy
+        self._git = None
         self._language_extensions = self._build_language_extension_map()
+    
+    @property
+    def git(self):
+        """Lazy import of git module to avoid circular imports."""
+        if self._git is None:
+            import git
+            self._git = git
+        return self._git
 
     def _build_language_extension_map(self) -> dict[str, str]:
         """Build map of file extensions to language names."""
@@ -159,7 +167,7 @@ class RepoProcessor(RepoProcessorInterface):
         # Save incremental state if Git-aware
         if incremental and hasattr(self, "save_incremental_state"):
             try:
-                repo = git.Repo(repo_path)
+                repo = self.git.Repo(repo_path)
                 state = {
                     "last_commit": repo.head.commit.hexsha,
                     "processed_at": datetime.now().isoformat(),
@@ -443,7 +451,7 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
             List of changed file paths relative to repo root
         """
         try:
-            repo = git.Repo(repo_path)
+            repo = self.git.Repo(repo_path)
 
             if branch:
                 # Compare with another branch
@@ -467,9 +475,9 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
 
             return changed_files
 
-        except git.InvalidGitRepositoryError:
+        except self.git.InvalidGitRepositoryError:
             raise ChunkerError(f"Not a valid git repository: {repo_path}")
-        except git.GitCommandError as e:
+        except self.git.GitCommandError as e:
             raise ChunkerError(f"Git error: {e}")
 
     def should_process_file(self, file_path: str, repo_path: str) -> bool:
@@ -484,13 +492,13 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
             True if file should be processed
         """
         try:
-            repo = git.Repo(repo_path)
+            repo = self.git.Repo(repo_path)
 
             # Check if file is ignored by git
             try:
                 repo.git.check_ignore(file_path)
                 return False  # File is ignored
-            except git.GitCommandError:
+            except self.git.GitCommandError:
                 # File is not ignored
                 pass
 
@@ -527,7 +535,7 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
             List of commit info dicts with hash, author, date, message
         """
         try:
-            repo = git.Repo(repo_path)
+            repo = self.git.Repo(repo_path)
             rel_path = Path(file_path).relative_to(repo_path)
 
             commits = list(repo.iter_commits(paths=str(rel_path), max_count=limit))
@@ -575,7 +583,7 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
 
         # Also check for global gitignore
         try:
-            repo = git.Repo(repo_path)
+            repo = self.git.Repo(repo_path)
             excludes_file = repo.config_reader().get_value("core", "excludesfile", None)
             if excludes_file:
                 excludes_path = Path(excludes_file).expanduser()

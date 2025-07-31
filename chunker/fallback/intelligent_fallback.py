@@ -13,7 +13,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from chunker.chunker import chunk_text, chunk_text_with_token_limit
+from chunker.chunker import chunk_text_with_token_limit
+from chunker.core import chunk_text
 from chunker.interfaces.fallback import FallbackReason
 from chunker.parser import list_languages
 from chunker.token.counter import TiktokenCounter

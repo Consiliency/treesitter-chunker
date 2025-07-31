@@ -458,7 +458,8 @@ Tree-sitter Chunker now includes a plugin system for language support:
 
 ```python
 # save as use_plugins.py
-from chunker import get_plugin_manager, chunk_file
+from chunker.plugin_manager import get_plugin_manager
+from chunker.core import chunk_file
 
 # Load built-in plugins
 manager = get_plugin_manager()
@@ -479,7 +480,7 @@ Process multiple files in parallel for better performance:
 
 ```python
 # save as parallel_processing.py
-from chunker import chunk_files_parallel, chunk_directory_parallel
+from chunker.parallel import chunk_files_parallel, chunk_directory_parallel
 from pathlib import Path
 
 # Create some test files
@@ -514,8 +515,9 @@ Export chunks in different formats:
 
 ```python
 # save as export_chunks.py
-from chunker import chunk_file
-from chunker.export import JSONExporter, JSONLExporter, SchemaType
+from chunker.core import chunk_file
+from chunker.export.json_export import JSONExporter, JSONLExporter
+from chunker.export.formatters import SchemaType
 from chunker.exporters import ParquetExporter
 
 # Get chunks
@@ -753,14 +755,17 @@ You've now learned the basics of Tree-sitter Chunker! Here's what to explore nex
 
 ```python
 # Import
-from chunker import (
-    chunk_file, chunk_files_parallel, chunk_directory_parallel,
-    chunk_file_streaming, get_plugin_manager, ASTCache,
-    ChunkerConfig, CodeChunk
-)
+from chunker.core import chunk_file
+from chunker.parallel import chunk_files_parallel, chunk_directory_parallel
+from chunker.streaming import chunk_file_streaming
+from chunker.plugin_manager import get_plugin_manager
+from chunker.cache import ASTCache
+from chunker.chunker_config import ChunkerConfig
+from chunker.types import CodeChunk
 from chunker.parser import get_parser, list_languages
-from chunker.export import JSONExporter, JSONLExporter, SchemaType
-from chunker.exporters import ParquetExporter
+from chunker.export.json_export import JSONExporter, JSONLExporter
+from chunker.export.formatters import SchemaType
+from chunker.exporters.parquet import ParquetExporter
 
 # Basic chunking
 chunks = chunk_file("file.py", "python")

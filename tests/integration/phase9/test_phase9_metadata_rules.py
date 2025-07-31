@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from chunker.chunker import chunk_file
+from chunker.core import chunk_file
 from chunker.rules.builtin import ImportBlockRule
 from chunker.rules.custom import MetadataRule
 from chunker.rules.engine import DefaultRuleEngine

@@ -2,7 +2,7 @@
 
 import pytest
 
-from chunker.chunker import chunk_file
+from chunker.core import chunk_file
 from chunker.hierarchy.builder import ChunkHierarchyBuilder
 from chunker.token.counter import TiktokenCounter
 

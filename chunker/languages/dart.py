@@ -9,6 +9,7 @@ from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginCon
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
 
+
 class DartConfig(LanguageConfig):
     """Language configuration for Dart."""
 

@@ -11,7 +11,12 @@ pathspec>=0.11.0
 tqdm>=4.65.0
 
 [all]
-treesitter-chunker[dev,docs,profile,viz]
+treesitter-chunker[api,dev,docs,profile,viz]
+
+[api]
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+pydantic>=2.0.0
 
 [dev]
 pytest>=7.4.0

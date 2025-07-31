@@ -3,6 +3,7 @@ from __future__ import annotations
 from .base import LanguageConfig
 from .plugin_base import LanguagePlugin
 
+
 class JavaScriptConfig(LanguageConfig):
     """Language configuration for JavaScript."""
 
@@ -41,6 +42,9 @@ class JavaScriptConfig(LanguageConfig):
         self.add_ignore_type("template_string")
 
 # Register the JavaScript configuration
+from .base import language_config_registry
+javascript_config = JavaScriptConfig()
+language_config_registry.register(javascript_config)
 
 from typing import TYPE_CHECKING
 

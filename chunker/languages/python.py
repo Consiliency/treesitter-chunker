@@ -7,6 +7,7 @@ from __future__ import annotations
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
 
+
 class PythonConfig(LanguageConfig):
     """Language configuration for Python."""
 
@@ -53,6 +54,9 @@ class PythonConfig(LanguageConfig):
         # - Import statements grouping
 
 # Register the Python configuration
+from .base import language_config_registry
+python_config = PythonConfig()
+language_config_registry.register(python_config)
 
 from typing import TYPE_CHECKING
 

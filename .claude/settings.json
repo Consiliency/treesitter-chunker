@@ -59,11 +59,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run .claude/hooks/pre_tool_use.py"
+            "command": "cd $(git rev-parse --show-toplevel) && uv run --script .claude/hooks/pre_tool_use.py"
           },
           {
             "type": "command",
-            "command": "uv run .claude/hooks/send_event.py --source-app treesitter_chunker --event-type PreToolUse --summarize"
+            "command": "cd $(git rev-parse --show-toplevel) && uv run --script .claude/hooks/send_event.py --source-app treesitter_chunker --event-type PreToolUse --summarize"
           }
         ]
       }
@@ -74,11 +74,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run .claude/hooks/post_tool_use.py"
+            "command": "cd $(git rev-parse --show-toplevel) && uv run --script .claude/hooks/post_tool_use.py"
           },
           {
             "type": "command",
-            "command": "uv run .claude/hooks/send_event.py --source-app treesitter_chunker --event-type PostToolUse --summarize"
+            "command": "cd $(git rev-parse --show-toplevel) && uv run --script .claude/hooks/send_event.py --source-app treesitter_chunker --event-type PostToolUse --summarize"
           }
         ]
       }
@@ -89,11 +89,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run .claude/hooks/notification.py --notify "
+            "command": "cd $(git rev-parse --show-toplevel) && uv run --script .claude/hooks/notification.py --notify "
           },
           {
             "type": "command",
-            "command": "uv run .claude/hooks/send_event.py --source-app treesitter_chunker --event-type Notification --summarize"
+            "command": "cd $(git rev-parse --show-toplevel) && uv run --script .claude/hooks/send_event.py --source-app treesitter_chunker --event-type Notification --summarize"
           }
         ]
       }
@@ -104,11 +104,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run .claude/hooks/stop.py --chat"
+            "command": "cd $(git rev-parse --show-toplevel) && uv run --script .claude/hooks/stop.py --chat"
           },
           {
             "type": "command",
-            "command": "uv run .claude/hooks/send_event.py --source-app treesitter_chunker --event-type Stop --add-chat"
+            "command": "cd $(git rev-parse --show-toplevel) && uv run --script .claude/hooks/send_event.py --source-app treesitter_chunker --event-type Stop --add-chat"
           }
         ]
       }
@@ -119,11 +119,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run .claude/hooks/subagent_stop.py"
+            "command": "cd $(git rev-parse --show-toplevel) && uv run --script .claude/hooks/subagent_stop.py"
           },
           {
             "type": "command",
-            "command": "uv run .claude/hooks/send_event.py --source-app treesitter_chunker --event-type SubagentStop"
+            "command": "cd $(git rev-parse --show-toplevel) && uv run --script .claude/hooks/send_event.py --source-app treesitter_chunker --event-type SubagentStop"
           }
         ]
       }
@@ -134,7 +134,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run .claude/hooks/send_event.py --source-app treesitter_chunker --event-type PreCompact"
+            "command": "cd $(git rev-parse --show-toplevel) && uv run --script .claude/hooks/send_event.py --source-app treesitter_chunker --event-type PreCompact"
           }
         ]
       }
@@ -144,11 +144,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run .claude/hooks/user_prompt_submit.py --log-only"
+            "command": "cd $(git rev-parse --show-toplevel) && uv run --script .claude/hooks/user_prompt_submit.py --log-only"
           },
           {
             "type": "command",
-            "command": "uv run .claude/hooks/send_event.py --source-app treesitter_chunker --event-type UserPromptSubmit --summarize"
+            "command": "cd $(git rev-parse --show-toplevel) && uv run --script .claude/hooks/send_event.py --source-app treesitter_chunker --event-type UserPromptSubmit --summarize"
           }
         ]
       }

@@ -1,7 +1,7 @@
 """Demonstration of chunk hierarchy features."""
 
 from chunker import ChunkHierarchyBuilder, HierarchyNavigator
-from chunker.chunker import chunk_text
+from chunker.core import chunk_text
 
 
 def print_hierarchy(hierarchy, navigator, indent_size=2):

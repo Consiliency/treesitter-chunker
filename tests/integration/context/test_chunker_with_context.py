@@ -2,7 +2,7 @@
 
 import pytest
 
-from chunker.chunker import chunk_text
+from chunker.core import chunk_text
 from chunker.context import ContextFactory
 from chunker.parser import get_parser
 

@@ -8,7 +8,6 @@ from pathlib import Path
 import pytest
 
 from chunker.build import BuildSystem, PlatformSupport
-from chunker.contracts.build_contract import BuildSystem
 
 
 class TestBuildSystemImplementation:

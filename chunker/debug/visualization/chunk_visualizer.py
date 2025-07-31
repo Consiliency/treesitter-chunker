@@ -10,7 +10,7 @@ from rich.panel import Panel
 from rich.syntax import Syntax
 from rich.table import Table
 
-from chunker.chunker import chunk_file
+from chunker.core import chunk_file
 from chunker.types import CodeChunk
 
 

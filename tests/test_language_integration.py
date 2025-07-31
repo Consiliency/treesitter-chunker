@@ -3,7 +3,7 @@
 import importlib
 
 import chunker.languages.python
-from chunker.chunker import chunk_file
+from chunker.core import chunk_file
 from chunker.languages import LanguageConfig, language_config_registry
 
 

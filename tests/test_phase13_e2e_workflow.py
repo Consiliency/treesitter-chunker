@@ -159,7 +159,7 @@ class DataProcessor:
             debug_tools = DebugVisualization()
 
             # Get chunks and analyze
-            from chunker.chunker import chunk_file
+            from chunker.core import chunk_file
 
             chunks = chunk_file(str(complex_file), "python")
 
@@ -300,7 +300,7 @@ class DataCache:
             profile["memory_peak"]
 
             # 2. Analyze chunk structure for optimization opportunities
-            from chunker.chunker import chunk_file
+            from chunker.core import chunk_file
 
             chunks = chunk_file(str(perf_file), "python")
 

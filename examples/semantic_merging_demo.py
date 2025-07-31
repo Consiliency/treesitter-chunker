@@ -8,7 +8,7 @@ from pathlib import Path
 
 sys.path.append(Path(os.path.dirname(Path(__file__).resolve().parent)))
 
-from chunker.chunker import chunk_file
+from chunker.core import chunk_file
 from chunker.semantic import (
     MergeConfig,
     TreeSitterRelationshipAnalyzer,

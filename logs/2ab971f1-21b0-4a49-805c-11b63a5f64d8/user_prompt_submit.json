@@ -1,0 +1,44 @@
+[
+  {
+    "session_id": "2ab971f1-21b0-4a49-805c-11b63a5f64d8",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/2ab971f1-21b0-4a49-805c-11b63a5f64d8.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "continue"
+  },
+  {
+    "session_id": "2ab971f1-21b0-4a49-805c-11b63a5f64d8",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/2ab971f1-21b0-4a49-805c-11b63a5f64d8.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "Perfect. Plan a fix to the one failing test."
+  },
+  {
+    "session_id": "2ab971f1-21b0-4a49-805c-11b63a5f64d8",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/2ab971f1-21b0-4a49-805c-11b63a5f64d8.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "OK, perfect. We ran the comprehensive test suite again. If so, let's make a plan to update the README and other Markdown documentation to bring it up to date with any changes and archive any items that don't apply to the current codebase any longer in the archive directory under the appropriate subfolder."
+  },
+  {
+    "session_id": "2ab971f1-21b0-4a49-805c-11b63a5f64d8",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/2ab971f1-21b0-4a49-805c-11b63a5f64d8.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "Okay, how can we make this project easily importable as a dependency for another project in other languages?And in this language."
+  },
+  {
+    "session_id": "2ab971f1-21b0-4a49-805c-11b63a5f64d8",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/2ab971f1-21b0-4a49-805c-11b63a5f64d8.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "Can we test these new functionalities?"
+  },
+  {
+    "session_id": "2ab971f1-21b0-4a49-805c-11b63a5f64d8",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/2ab971f1-21b0-4a49-805c-11b63a5f64d8.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "How do I install FastAPI, can you do it for me?And then test the REST API?"
+  }
+]

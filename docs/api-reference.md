@@ -58,7 +58,8 @@ python scripts/build_lib.py
 ## Quick Start
 
 ```python
-from chunker import chunk_file, get_plugin_manager
+from chunker.core import chunk_file
+from chunker.plugin_manager import get_plugin_manager
 
 # Basic usage
 chunks = chunk_file("example.py", "python")
@@ -69,7 +70,7 @@ manager.load_built_in_plugins()
 chunks = chunk_file("example.py", "python")
 
 # Parallel processing
-from chunker import chunk_files_parallel
+from chunker.parallel import chunk_files_parallel
 results = chunk_files_parallel(["file1.py", "file2.py", "file3.py"], "python")
 
 # Export to Parquet
@@ -97,7 +98,7 @@ Parse a file and extract semantic code chunks. This is the main function for ext
 
 **Example:**
 ```python
-from chunker import chunk_file
+from chunker.core import chunk_file
 
 chunks = chunk_file("src/main.py", "python")
 for chunk in chunks:
@@ -312,7 +313,7 @@ Get the global plugin manager instance (singleton).
 
 **Example:**
 ```python
-from chunker import get_plugin_manager
+from chunker.plugin_manager import get_plugin_manager
 
 manager = get_plugin_manager()
 manager.load_built_in_plugins()
@@ -385,7 +386,7 @@ LRU cache for parsed ASTs providing up to 11.9x speedup for repeated file proces
 
 **Example:**
 ```python
-from chunker import ASTCache
+from chunker.cache import ASTCache
 
 cache = ASTCache(max_size=200)
 # Cache is used automatically by chunk_file when available
@@ -422,7 +423,7 @@ Process multiple files in parallel using thread pool.
 
 **Example:**
 ```python
-from chunker import chunk_files_parallel
+from chunker.parallel import chunk_files_parallel
 
 files = ["src/main.py", "src/utils.py", "src/models.py"]
 results = chunk_files_parallel(files, "python", max_workers=4)
@@ -474,7 +475,7 @@ Stream chunks from a file without loading the entire file into memory. Ideal for
 
 **Example:**
 ```python
-from chunker import chunk_file_streaming
+from chunker.streaming import chunk_file_streaming
 
 # Process a very large file
 for chunk in chunk_file_streaming("huge_codebase.py", "python"):
@@ -628,7 +629,8 @@ class LibraryNotFoundError(LibraryError):
 ### Error Handling Examples
 
 ```python
-from chunker import chunk_file, list_languages
+from chunker.core import chunk_file
+from chunker.parser import list_languages
 from chunker.exceptions import LanguageNotFoundError, LibraryNotFoundError
 
 try:
@@ -665,7 +667,8 @@ The library is designed to be thread-safe for concurrent processing:
 ```python
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from chunker import chunk_file, chunk_files_parallel
+from chunker.core import chunk_file
+from chunker.parallel import chunk_files_parallel
 
 # Safe concurrent processing using high-level API
 files = ["file1.py", "file2.py", "file3.py"]
@@ -705,7 +708,7 @@ with ThreadPoolExecutor(max_workers=4) as executor:
 
 4. **Configure Cache Size**: Adjust cache size based on available memory
    ```python
-   from chunker import ASTCache
+   from chunker.cache import ASTCache
    cache = ASTCache(max_size=500)  # Cache up to 500 ASTs
    ```
 

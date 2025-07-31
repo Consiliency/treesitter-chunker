@@ -28,7 +28,7 @@ A high-performance semantic code chunker that leverages [Tree-sitter](https://tr
 ## 📦 Installation
 
 ### Prerequisites
-- Python 3.8+
+- Python 3.8+ (for Python usage)
 - C compiler (for building Tree-sitter grammars)
 - `uv` package manager (recommended) or pip
 
@@ -37,7 +37,13 @@ A high-performance semantic code chunker that leverages [Tree-sitter](https://tr
 #### From PyPI (when published)
 ```bash
 pip install treesitter-chunker
+
+# With REST API support
+pip install "treesitter-chunker[api]"
 ```
+
+#### For Other Languages
+See [Cross-Language Usage Guide](docs/cross-language-usage.md) for using from JavaScript, Go, Ruby, etc.
 
 #### Using Docker
 ```bash
@@ -81,29 +87,48 @@ python scripts/fetch_grammars.py
 python scripts/build_lib.py
 
 # Verify installation
-python -c "from chunker import list_languages; print(list_languages())"
+python -c "from chunker.parser import list_languages; print(list_languages())"
 # Output: ['c', 'cpp', 'javascript', 'python', 'rust']
 ```
 
 ## 🚀 Quick Start
 
-### Basic Usage
+### Python Usage
 
 ```python
-from chunker import chunk_file
+from chunker import chunk_file, chunk_text, chunk_directory
 
 # Extract chunks from a Python file
 chunks = chunk_file("example.py", "python")
+
+# Or chunk text directly
+chunks = chunk_text(code_string, "javascript")
 
 for chunk in chunks:
     print(f"{chunk.node_type} at lines {chunk.start_line}-{chunk.end_line}")
     print(f"  Context: {chunk.parent_context or 'module level'}")
 ```
 
+### Cross-Language Usage
+
+```bash
+# CLI with JSON output (callable from any language)
+treesitter-chunker chunk file.py --lang python --json
+
+# REST API
+curl -X POST http://localhost:8000/chunk/text \
+  -H "Content-Type: application/json" \
+  -d '{"content": "def hello(): pass", "language": "python"}'
+```
+
+See [Cross-Language Usage Guide](docs/cross-language-usage.md) for JavaScript, Go, and other language examples.
+
+> **Note**: By default, chunks smaller than 3 lines are filtered out. Adjust `min_chunk_size` in configuration if needed.
+
 ### Zero-Configuration Usage (New!)
 
 ```python
-from chunker import ZeroConfigAPI
+from chunker.auto import ZeroConfigAPI
 
 # Create API instance - no setup required!
 api = ZeroConfigAPI()
@@ -112,7 +137,7 @@ api = ZeroConfigAPI()
 result = api.auto_chunk_file("example.rs")
 
 for chunk in result.chunks:
-    print(f"{chunk['type']} at lines {chunk['start_line']}-{chunk['end_line']}")
+    print(f"{chunk.node_type} at lines {chunk.start_line}-{chunk.end_line}")
 
 # Preload languages for offline use
 api.preload_languages(["python", "rust", "go", "typescript"])
@@ -121,7 +146,8 @@ api.preload_languages(["python", "rust", "go", "typescript"])
 ### Using Plugins
 
 ```python
-from chunker import chunk_file, get_plugin_manager
+from chunker.core import chunk_file
+from chunker.plugin_manager import get_plugin_manager
 
 # Load built-in language plugins
 manager = get_plugin_manager()
@@ -134,7 +160,7 @@ chunks = chunk_file("example.py", "python")
 ### Parallel Processing
 
 ```python
-from chunker import chunk_files_parallel, chunk_directory_parallel
+from chunker.parallel import chunk_files_parallel, chunk_directory_parallel
 
 # Process multiple files in parallel
 results = chunk_files_parallel(
@@ -155,9 +181,10 @@ results = chunk_directory_parallel(
 ### Export Formats
 
 ```python
-from chunker import chunk_file
-from chunker.export import JSONExporter, JSONLExporter, SchemaType
-from chunker.exporters import ParquetExporter
+from chunker.core import chunk_file
+from chunker.export.json_export import JSONExporter, JSONLExporter
+from chunker.export.formatters import SchemaType
+from chunker.exporters.parquet import ParquetExporter
 
 chunks = chunk_file("example.py", "python")
 
@@ -181,13 +208,16 @@ parquet_exporter.export(chunks, "chunks.parquet")
 python cli/main.py chunk example.py -l python
 
 # Process directory with progress bar
-python cli/main.py chunk src/ -l python --recursive --progress
+python cli/main.py batch src/ --recursive
 
 # Export as JSON
 python cli/main.py chunk example.py -l python --json > chunks.json
 
 # With configuration file
 python cli/main.py chunk src/ --config .chunkerrc
+
+# Override exclude patterns (default excludes files with 'test' in name)
+python cli/main.py batch src/ --exclude "*.tmp,*.bak" --include "*.py"
 ```
 
 ### AST Visualization

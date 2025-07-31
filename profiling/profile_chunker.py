@@ -9,7 +9,7 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 
-from chunker.chunker import chunk_file
+from chunker.core import chunk_file
 from chunker.performance.enhanced_chunker import EnhancedChunker
 from chunker.performance.optimization.batch import BatchProcessor
 

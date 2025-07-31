@@ -7,7 +7,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-from .chunker import chunk_file
+from .core import chunk_file
 from .interfaces.multi_language import (
     CrossLanguageReference,
     EmbeddedLanguageType,

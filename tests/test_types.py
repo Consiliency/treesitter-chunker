@@ -30,6 +30,7 @@ class TestCodeChunkBasics:
             "parent_chunk_id",
             "references",
             "dependencies",
+            "metadata",
         }
         assert field_names == expected_fields
 

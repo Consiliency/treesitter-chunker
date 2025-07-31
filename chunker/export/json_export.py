@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from typing import IO
 
-from chunker.chunker import CodeChunk
+from chunker.types import CodeChunk
 
 from .formatters import SchemaType, get_formatter
 
@@ -37,7 +37,7 @@ class JSONExporter:
         if isinstance(output, str | Path):
             output_path = Path(output)
             if compress:
-                with gzip.Path(f"{output_path}.gz").open("wt", encoding="utf-8") as f:
+                with gzip.open(f"{output_path}.gz", "wt", encoding="utf-8") as f:
                     f.write(json_str)
             else:
                 output_path.write_text(json_str, encoding="utf-8")
@@ -72,7 +72,7 @@ class JSONLExporter:
         if isinstance(output, str | Path):
             output_path = Path(output)
             if compress:
-                with gzip.Path(f"{output_path}.gz").open("wt", encoding="utf-8") as f:
+                with gzip.open(f"{output_path}.gz", "wt", encoding="utf-8") as f:
                     self._write_jsonl(chunks, f)
             else:
                 with Path(output_path).open("w", encoding="utf-8") as f:
@@ -130,7 +130,7 @@ class JSONLExporter:
         if isinstance(output, str | Path):
             output_path = Path(output)
             if compress:
-                with gzip.Path(f"{output_path}.gz").open("wt", encoding="utf-8") as f:
+                with gzip.open(f"{output_path}.gz", "wt", encoding="utf-8") as f:
                     self._stream_write_jsonl(chunks_generator, f)
             else:
                 with Path(output_path).open("w", encoding="utf-8") as f:

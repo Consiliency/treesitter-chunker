@@ -3,7 +3,7 @@
 from enum import Enum
 from typing import Any, Protocol
 
-from chunker.chunker import CodeChunk
+from chunker.types import CodeChunk
 
 
 class SchemaType(Enum):

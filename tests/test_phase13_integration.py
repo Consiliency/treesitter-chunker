@@ -12,7 +12,7 @@ import pytest
 
 from chunker.build.builder import BuildSystem
 from chunker.build.platform import PlatformSupport
-from chunker.chunker import chunk_file
+from chunker.core import chunk_file
 from chunker.debug.tools.visualization import DebugVisualization
 from chunker.devenv import DevelopmentEnvironment, QualityAssurance
 from chunker.distribution import Distributor, ReleaseManager

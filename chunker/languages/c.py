@@ -3,6 +3,7 @@ from __future__ import annotations
 from .base import LanguageConfig
 from .plugin_base import LanguagePlugin
 
+
 class CConfig(LanguageConfig):
     """Language configuration for C."""
 

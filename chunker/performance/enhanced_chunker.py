@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from chunker.chunker import _walk
+from chunker.core import _walk
 from chunker.types import CodeChunk
 
 from .cache.manager import CacheManager

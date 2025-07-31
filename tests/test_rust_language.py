@@ -1,7 +1,11 @@
 """Test Rust-specific language features chunking."""
 
-from chunker.chunker import chunk_file
+import pytest
+
+from chunker.core import chunk_file
+from chunker.exceptions import ParserInitError
 from chunker.languages import LanguageConfig, language_config_registry
+from chunker.parser import get_parser
 
 
 class RustConfig(LanguageConfig):
@@ -31,6 +35,22 @@ class RustConfig(LanguageConfig):
             "foreign_mod_item",  # extern blocks
             "union_item",  # union types
         }
+
+
+def check_rust_parser_available():
+    """Check if Rust parser is available."""
+    try:
+        get_parser("rust")
+        return True
+    except ParserInitError:
+        return False
+
+
+# Skip entire test class if Rust parser is not available
+pytestmark = pytest.mark.skipif(
+    not check_rust_parser_available(),
+    reason="Rust parser not available due to ABI version mismatch"
+)
 
 
 class TestRustLanguageFeatures:

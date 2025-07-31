@@ -2,7 +2,7 @@
 
 import pytest
 
-from chunker.chunker import chunk_text
+from chunker.core import chunk_text
 from chunker.hierarchy.builder import ChunkHierarchyBuilder
 from chunker.hierarchy.navigator import HierarchyNavigator
 from chunker.types import CodeChunk

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from chunker.chunker import CodeChunk
+from chunker.types import CodeChunk
 from chunker.export import JSONExporter, SchemaType
 
 
@@ -124,9 +124,7 @@ def test_json_export_compressed(sample_chunks, tmp_path):
     compressed_path = Path(f"{output_path}.gz")
     assert compressed_path.exists()
 
-    with gzip.Path(compressed_path).open(
-        "rt",
-    ) as f:
+    with gzip.open(compressed_path, "rt") as f:
         data = json.load(f)
     assert len(data) == 2
 

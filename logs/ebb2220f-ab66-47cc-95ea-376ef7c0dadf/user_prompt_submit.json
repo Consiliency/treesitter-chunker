@@ -1,0 +1,23 @@
+[
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "continue"
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "Are we sure that everything that we moved to internal API only is not something that should be in the public API?"
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "Alright, how do we push this to the remote and also publish it to PyPy in any other registries that will allow us to easily incorporate it into other projects?"
+  }
+]

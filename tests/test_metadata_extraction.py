@@ -2,7 +2,7 @@
 
 import pytest
 
-from chunker.chunker import chunk_text
+from chunker.core import chunk_text
 from chunker.metadata import MetadataExtractorFactory
 from chunker.metadata.languages import (
     JavaScriptComplexityAnalyzer,

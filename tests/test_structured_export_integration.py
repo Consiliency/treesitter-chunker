@@ -6,7 +6,7 @@ import sqlite3
 import pyarrow.parquet as pq
 import pytest
 
-from chunker.chunker import chunk_file
+from chunker.core import chunk_file
 from chunker.export import (
     ASTRelationshipTracker,
     DOTExporter,

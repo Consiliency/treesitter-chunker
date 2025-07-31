@@ -5,7 +5,7 @@ from typing import Any
 
 import tree_sitter
 
-from chunker.chunker import _walk, chunk_file
+from chunker.core import _walk, chunk_file
 from chunker.interfaces.token import TokenAwareChunker, TokenCounter
 from chunker.types import CodeChunk
 
@@ -64,8 +64,6 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
         Returns:
             List of code chunks with token information
         """
-        # Import locally to avoid circular imports
-
         # Use the existing _walk function to get chunks
         chunks = _walk(ast, source, language)
 
@@ -89,8 +87,6 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
         Returns:
             List of chunks with token information
         """
-        # Import locally to avoid circular imports
-
         chunks = chunk_file(file_path, language)
         return self.add_token_info(chunks)
 
@@ -118,8 +114,6 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
             List of chunks with token information in metadata
         """
         # Get base chunks from Tree-sitter
-        # Import locally to avoid circular imports
-
         chunks = chunk_file(file_path, language)
 
         # Add token information

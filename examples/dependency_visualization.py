@@ -8,7 +8,7 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from chunker.chunker import chunk_file
+from chunker.core import chunk_file
 from chunker.export import (
     ASTRelationshipTracker,
     DOTExporter,

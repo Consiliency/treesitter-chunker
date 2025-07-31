@@ -7,7 +7,7 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
-from chunker.chunker import chunk_file
+from chunker.core import chunk_file
 from chunker.debug import (
     ASTVisualizer,
     ChunkDebugger,

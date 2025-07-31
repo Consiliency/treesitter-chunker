@@ -9,7 +9,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 if TYPE_CHECKING:
-    from chunker.chunker import CodeChunk
+    from chunker.types import CodeChunk
 
 
 class ParquetExporter:

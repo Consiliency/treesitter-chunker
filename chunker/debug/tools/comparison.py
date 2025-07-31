@@ -5,7 +5,7 @@ Chunk comparison implementation
 from pathlib import Path
 from typing import Any
 
-from chunker.chunker import chunk_file
+from chunker.core import chunk_file
 from chunker.contracts.debug_contract import ChunkComparisonContract
 from chunker.fallback.fallback_manager import FallbackManager
 from chunker.strategies import (

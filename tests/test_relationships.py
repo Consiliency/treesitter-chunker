@@ -3,7 +3,8 @@
 import tempfile
 from pathlib import Path
 
-from chunker.chunker import CodeChunk, chunk_file
+from chunker.core import chunk_file
+from chunker.types import CodeChunk
 
 
 def test_chunk_id_generation():

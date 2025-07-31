@@ -7,13 +7,15 @@ requires-python = ">=3.10"
 license         = { text = "MIT" }
 authors         = [{ name = "Consiliency", email = "dev@consiliency.com" }]
 maintainers     = [{ name = "Consiliency", email = "dev@consiliency.com" }]
-keywords        = ["tree-sitter", "code-analysis", "chunking", "parsing", "ast", "semantic-analysis"]
+keywords        = ["tree-sitter", "code-analysis", "chunking", "parsing", "ast", "semantic-analysis", "llm", "embeddings", "rag"]
 classifiers     = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Software Development :: Code Generators",
     "Topic :: Text Processing :: Linguistic",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
@@ -23,6 +25,7 @@ classifiers     = [
     "Operating System :: POSIX :: Linux",
     "Operating System :: MacOS :: MacOS X",
     "Operating System :: Microsoft :: Windows",
+    "Typing :: Typed",
 ]
 
 dependencies = [
@@ -62,7 +65,8 @@ dev = [
 viz = ["graphviz"]
 profile = ["memory-profiler>=0.61.0", "line-profiler>=4.1.0"]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinx-autodoc-typehints"]
-all = ["treesitter-chunker[dev,viz,docs,profile]"]
+api = ["fastapi>=0.100.0", "uvicorn[standard]>=0.23.0", "pydantic>=2.0.0"]
+all = ["treesitter-chunker[dev,viz,docs,profile,api]"]
 
 [project.urls]
 Homepage = "https://github.com/Consiliency/treesitter-chunker"

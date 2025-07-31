@@ -5,8 +5,8 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from .cache import ASTCache
-from .chunker import chunk_file
+from ._internal.cache import ASTCache
+from .core import chunk_file
 from .streaming import chunk_file_streaming
 
 if TYPE_CHECKING:

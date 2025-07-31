@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from chunker.chunker import CodeChunk
+from chunker.types import CodeChunk
 from chunker.export import JSONLExporter, SchemaType
 
 
@@ -117,9 +117,7 @@ def test_jsonl_export_compressed(sample_chunks, tmp_path):
     compressed_path = Path(f"{output_path}.gz")
     assert compressed_path.exists()
 
-    with gzip.Path(compressed_path).open(
-        "rt",
-    ) as f:
+    with gzip.open(compressed_path, "rt") as f:
         lines = f.readlines()
 
     assert len(lines) == 2
@@ -163,9 +161,7 @@ def test_jsonl_stream_export_compressed(sample_chunks, tmp_path):
     compressed_path = Path(f"{output_path}.gz")
     assert compressed_path.exists()
 
-    with gzip.Path(compressed_path).open(
-        "rt",
-    ) as f:
+    with gzip.open(compressed_path, "rt") as f:
         lines = f.readlines()
 
     assert len(lines) == 2

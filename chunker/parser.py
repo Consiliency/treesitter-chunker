@@ -12,8 +12,8 @@ from .exceptions import (
     ParserConfigError,
     ParserError,
 )
-from .factory import ParserConfig, ParserFactory
-from .registry import LanguageMetadata, LanguageRegistry
+from ._internal.factory import ParserConfig, ParserFactory
+from ._internal.registry import LanguageMetadata, LanguageRegistry
 
 if TYPE_CHECKING:
     from tree_sitter import Parser
@@ -134,6 +134,7 @@ def clear_cache() -> None:
 # Users can still do: from chunker.parser import get_parser
 # and it will work with the new implementation
 __all__ = [
+    "LanguageMetadata",
     "ParserConfig",
     "clear_cache",
     "get_language_info",

@@ -332,7 +332,7 @@ def very_large_function():
         # JavaScript file
         js_content = """
 function greet(name) {
-    console.log(`Hello, ${name}!`);
+    console.log("Hello, " + name + "!");
     return name.length;
 }
 """

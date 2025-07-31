@@ -5,7 +5,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from chunker.chunker import chunk_file
+from chunker.core import chunk_file
 from chunker.performance.optimization.batch import BatchProcessor
 from chunker.performance.optimization.memory_pool import MemoryPool
 from chunker.performance.optimization.monitor import PerformanceMonitor

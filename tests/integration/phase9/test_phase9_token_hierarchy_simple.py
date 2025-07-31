@@ -67,8 +67,7 @@ def merge_processors(p1: DataProcessor, p2: DataProcessor) -> DataProcessor:
         token_counter = TiktokenCounter()
 
         # Parse and chunk the file
-        parser = get_parser("python")
-        chunks = chunk_file(sample_python_file, parser)
+        chunks = chunk_file(sample_python_file, "python")
 
         # Add token counts to chunks
         for chunk in chunks:
@@ -95,8 +94,7 @@ def merge_processors(p1: DataProcessor, p2: DataProcessor) -> DataProcessor:
         hierarchy_builder = ChunkHierarchyBuilder()
 
         # Parse and chunk the file
-        parser = get_parser("python")
-        chunks = chunk_file(sample_python_file, parser)
+        chunks = chunk_file(sample_python_file, "python")
 
         # Add token counts and other metadata
         for i, chunk in enumerate(chunks):
@@ -108,19 +106,14 @@ def merge_processors(p1: DataProcessor, p2: DataProcessor) -> DataProcessor:
         hierarchy = hierarchy_builder.build_hierarchy(chunks)
 
         # Verify hierarchy was built
-        assert len(hierarchy) > 0, "Should have built hierarchy"
+        assert len(hierarchy.root_chunks) > 0, "Should have root chunks in hierarchy"
+        assert len(hierarchy.chunk_map) > 0, "Should have chunks in hierarchy"
 
-        # Check that nodes in hierarchy have token metadata
-        def check_node_tokens(node):
-            assert hasattr(node.chunk, "metadata")
-            assert "tokens" in node.chunk.metadata
-            assert node.chunk.metadata["tokens"] > 0
-
-            for child in node.children:
-                check_node_tokens(child)
-
-        for root in hierarchy:
-            check_node_tokens(root)
+        # Check that chunks in hierarchy have token metadata
+        for chunk_id, chunk in hierarchy.chunk_map.items():
+            assert hasattr(chunk, "metadata")
+            assert "tokens" in chunk.metadata
+            assert chunk.metadata["tokens"] > 0
 
     def test_token_aware_chunking(self, tmp_path):
         """Test token-aware chunking that respects token limits."""
@@ -179,27 +172,25 @@ def process_data(items):
         )
 
         # Parse file
-        parser = get_parser("python")
-        chunks = chunk_file(large_file, parser)
+        chunks = chunk_file(large_file, "python")
 
-        # Create token-aware chunker with small limit
-        token_chunker = TokenAwareChunker(max_tokens=100)
+        # Create token-aware chunker
+        from chunker.token.chunker import TreeSitterTokenAwareChunker
+        token_chunker = TreeSitterTokenAwareChunker()
 
-        # Process chunks with token limit
-        for chunk in chunks:
-            # Check if chunk needs splitting
-            if hasattr(token_chunker, "chunk_with_token_limit"):
-                split_results = token_chunker.chunk_with_token_limit(
-                    chunk.content,
-                    chunk.language,
-                    max_tokens=100,
-                )
+        # Process the file with token limits
+        token_limited_chunks = token_chunker.chunk_with_token_limit(
+            str(large_file),
+            "python",
+            max_tokens=100,
+        )
 
-                # Verify splits respect token limit
-                for _content, token_count in split_results:
-                    assert (
-                        token_count <= 100
-                    ), f"Token count {token_count} exceeds limit"
+        # Verify all chunks respect token limit
+        for chunk in token_limited_chunks:
+            assert hasattr(chunk, "metadata")
+            assert "token_count" in chunk.metadata
+            assert chunk.metadata["token_count"] <= 100, \
+                f"Token count {chunk.metadata['token_count']} exceeds limit"
 
     def test_hierarchy_with_parent_child_tokens(self, tmp_path):
         """Test that parent-child relationships preserve token information."""
@@ -231,8 +222,7 @@ class OuterClass:
         # Import components
 
         # Parse and process
-        parser = get_parser("python")
-        chunks = chunk_file(nested_file, parser)
+        chunks = chunk_file(nested_file, "python")
 
         # Add tokens
         token_counter = TiktokenCounter()
@@ -244,6 +234,26 @@ class OuterClass:
         hierarchy_builder = ChunkHierarchyBuilder()
         hierarchy = hierarchy_builder.build_hierarchy(chunks)
 
+        # Create a simple tree node structure for traversal
+        class TreeNode:
+            def __init__(self, chunk):
+                self.chunk = chunk
+                self.children = []
+        
+        # Build tree structure from hierarchy
+        nodes = {}
+        for chunk_id, chunk in hierarchy.chunk_map.items():
+            nodes[chunk_id] = TreeNode(chunk)
+        
+        # Connect children
+        for parent_id, child_ids in hierarchy.children_map.items():
+            parent_node = nodes[parent_id]
+            for child_id in child_ids:
+                parent_node.children.append(nodes[child_id])
+        
+        # Get root nodes
+        root_nodes = [nodes[chunk_id] for chunk_id in hierarchy.root_chunks]
+        
         # Verify parent-child token relationships
         def check_parent_child_tokens(node):
             parent_tokens = node.chunk.metadata.get("tokens", 0)
@@ -261,5 +271,5 @@ class OuterClass:
                     # Recursively check children
                     check_parent_child_tokens(child)
 
-        for root in hierarchy:
+        for root in root_nodes:
             check_parent_child_tokens(root)
