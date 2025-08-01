@@ -151,13 +151,14 @@ Jan  1 08:00:05 server sshd[1234]: Failed password for invalid user admin
         chunks = processor.process(log_content)
 
         # Find chunks with errors
-        error_periods = []
-        for chunk in chunks:
+        error_periods = [
+            chunk
+            for chunk in chunks
             if any(
                 level in chunk.metadata.get("levels", [])
                 for level in ["ERROR", "CRITICAL"]
-            ):
-                error_periods.append(chunk)
+            )
+        ]
 
         assert len(error_periods) >= 2
 

@@ -7,7 +7,6 @@ including local files, in-memory files, zip archives, and remote repositories.
 from __future__ import annotations
 
 import io
-import os
 import urllib.parse
 import urllib.request
 import zipfile
@@ -83,7 +82,7 @@ class LocalFileSystem(VirtualFileSystem):
 
     def _resolve_path(self, path: str) -> Path:
         """Resolve a virtual path to actual path."""
-        if os.path.isabs(path):
+        if Path(path).is_absolute():
             return Path(path)
         return self.root / path
 

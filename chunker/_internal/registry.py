@@ -11,7 +11,11 @@ from typing import TYPE_CHECKING, Any
 
 from tree_sitter import Language, Parser
 
-from chunker.exceptions import LanguageNotFoundError, LibraryLoadError, LibraryNotFoundError
+from chunker.exceptions import (
+    LanguageNotFoundError,
+    LibraryLoadError,
+    LibraryNotFoundError,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -55,7 +59,7 @@ class LanguageRegistry:
                 self._library = ctypes.CDLL(str(self._library_path))
                 logger.info("Loaded library from %s", self._library_path)
             except OSError as e:
-                raise LibraryLoadError(self._library_path, str(e))
+                raise LibraryLoadError(self._library_path, str(e)) from e
         return self._library
 
     def _discover_symbols(self) -> list[tuple[str, str]]:

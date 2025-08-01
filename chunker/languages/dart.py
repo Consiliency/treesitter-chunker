@@ -74,12 +74,14 @@ class DartConfig(LanguageConfig):
         self.add_ignore_type("string_literal")
         self.add_ignore_type("number_literal")
 
+
 # Register the Dart configuration
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from tree_sitter import Node
+
 
 # Plugin implementation for backward compatibility
 class DartPlugin(LanguagePlugin, ExtendedLanguagePluginContract):

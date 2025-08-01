@@ -578,8 +578,7 @@ class ConfigProcessor(SpecializedProcessor):
             for i, line in enumerate(lines):
                 if (
                     not line.strip()
-                    or (line.strip().startswith("#")
-                    and i == 0)
+                    or (line.strip().startswith("#") and i == 0)
                     or (i > 0 and root_lines)
                 ):
                     root_lines.append(i)
@@ -769,19 +768,24 @@ class ConfigProcessor(SpecializedProcessor):
         # Look for numbered sections (e.g., server1, server2)
         base_without_number = re.sub(r"\d+$", "", base_name)
         if base_without_number != base_name:
-            for other in all_sections:
-                if other != section_name and other.lower().startswith(
+            related.extend(
+                other
+                for other in all_sections
+                if other != section_name
+                and other.lower().startswith(
                     base_without_number,
-                ):
-                    related.append(other)
+                )
+            )
 
         # Look for sections with common prefixes
         parts = base_name.split("_")
         if len(parts) > 1:
             prefix = parts[0]
-            for other in all_sections:
-                if other != section_name and other.lower().startswith(prefix):
-                    related.append(other)
+            related.extend(
+                other
+                for other in all_sections
+                if other != section_name and other.lower().startswith(prefix)
+            )
 
         return related[:3]  # Limit grouping to avoid too large chunks
 

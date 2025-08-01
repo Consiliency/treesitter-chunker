@@ -43,10 +43,25 @@ def main():
 
     # Files that have the circular import
     problem_files = [
-        "clojure.py", "dart.py", "javascript.py", "scala.py", "sql.py",
-        "svelte.py", "vue.py", "zig.py", "c.py", "dockerfile.py",
-        "haskell.py", "matlab.py", "nasm.py", "ocaml.py", "python.py",
-        "wasm.py", "elixir.py", "julia.py", "r.py",
+        "clojure.py",
+        "dart.py",
+        "javascript.py",
+        "scala.py",
+        "sql.py",
+        "svelte.py",
+        "vue.py",
+        "zig.py",
+        "c.py",
+        "dockerfile.py",
+        "haskell.py",
+        "matlab.py",
+        "nasm.py",
+        "ocaml.py",
+        "python.py",
+        "wasm.py",
+        "elixir.py",
+        "julia.py",
+        "r.py",
     ]
 
     fixed_count = 0

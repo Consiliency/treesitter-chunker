@@ -43,8 +43,10 @@ class ChunkerConfig:
             self.load(config_path)
 
     @classmethod
-    def find_config(cls, start_path: Path = Path.cwd()) -> Path | None:
+    def find_config(cls, start_path: Path | None = None) -> Path | None:
         """Find configuration file starting from the given path."""
+        if start_path is None:
+            start_path = Path.cwd()
         current = start_path.resolve()
 
         while current != current.parent:

@@ -892,7 +892,7 @@ from src.module_{i} import Module{i}
 def test_module_{i}():
     module = Module{i}()
     result = module.process([1, 2, 3])
-    assert result == [{i}, {i*2}, {i*3}]
+    assert result == [{i}, {i * 2}, {i * 3}]
 """
             file_path = temp_dir / "tests" / f"test_module_{i}.py"
             file_path.write_text(content)
@@ -1081,25 +1081,25 @@ This is a test repository for benchmarking.
             if scenario_name == "language_comparison":
                 for lang, stats in scenario_data["results"].items():
                     lines.append(
-                        f"  {lang}: {stats['mean_time']*1000:.2f}ms ({stats['total_chunks']} chunks)",
+                        f"  {lang}: {stats['mean_time'] * 1000:.2f}ms ({stats['total_chunks']} chunks)",
                     )
 
             elif scenario_name == "file_size_scaling":
                 for size, stats in scenario_data["results"].items():
                     lines.append(
-                        f"  {size}: {stats['mean_time']*1000:.2f}ms ({stats['file_size_kb']:.1f}KB, {stats['time_per_kb']*1000:.2f}ms/KB)",
+                        f"  {size}: {stats['mean_time'] * 1000:.2f}ms ({stats['file_size_kb']:.1f}KB, {stats['time_per_kb'] * 1000:.2f}ms/KB)",
                     )
 
             elif scenario_name == "strategy_comparison":
                 for strategy, stats in scenario_data["results"].items():
                     lines.append(
-                        f"  {strategy}: {stats['mean_time']*1000:.2f}ms ({stats['chunks']} chunks, avg size: {stats['avg_chunk_size']:.1f} lines)",
+                        f"  {strategy}: {stats['mean_time'] * 1000:.2f}ms ({stats['chunks']} chunks, avg size: {stats['avg_chunk_size']:.1f} lines)",
                     )
 
             elif scenario_name == "concurrency_scaling":
                 for workers, stats in scenario_data["results"].items():
                     lines.append(
-                        f"  {workers}: {stats['mean_time']*1000:.2f}ms (speedup: {stats.get('speedup', 1.0):.2f}x)",
+                        f"  {workers}: {stats['mean_time'] * 1000:.2f}ms (speedup: {stats.get('speedup', 1.0):.2f}x)",
                     )
 
             else:

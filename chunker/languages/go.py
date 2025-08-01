@@ -172,7 +172,7 @@ class GoChunker(LanguageChunker):
                 merged.append(chunk)
 
         # Add method groups (optionally merge them)
-        for _receiver, methods in method_groups.items():
+        for methods in method_groups.values():
             # For now, just add them individually
             # Could merge into a single chunk representing the type's methods
             merged.extend(methods)

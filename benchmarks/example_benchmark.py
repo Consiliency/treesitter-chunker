@@ -153,7 +153,7 @@ def demo_cached_chunking():
     print(f"Chunks: {len(chunks1)}")
     print(f"Cold cache: {cold_duration:.3f}s")
     print(f"Warm cache: {warm_duration:.3f}s")
-    print(f"Speedup: {cold_duration/warm_duration:.2f}x")
+    print(f"Speedup: {cold_duration / warm_duration:.2f}x")
 
     # Show cache stats
     stats = cache.get_cache_stats()
@@ -185,7 +185,7 @@ def demo_parallel_processing():
     print(f"Files processed: {len(files)}")
     print(f"Sequential time: {seq_duration:.3f}s")
     print(f"Parallel time (4 workers): {par_duration:.3f}s")
-    print(f"Speedup: {seq_duration/par_duration:.2f}x")
+    print(f"Speedup: {seq_duration / par_duration:.2f}x")
 
     total_chunks = sum(len(chunks) for chunks in parallel_results.values())
     print(f"Total chunks extracted: {total_chunks}")

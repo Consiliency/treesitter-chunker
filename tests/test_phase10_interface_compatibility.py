@@ -35,7 +35,7 @@ from chunker.types import CodeChunk
 class TestPhase10InterfaceCompatibility:
     """Test that Phase 10 interfaces work together correctly."""
 
-    @pytest.fixture
+    @pytest.fixture()
     def sample_chunks(self, tmp_path) -> list[CodeChunk]:
         """Create sample chunks for testing."""
         test_file = tmp_path / "test.py"
@@ -213,10 +213,11 @@ async function fetchUsers() {
                 query_type=QueryType.NATURAL_LANGUAGE,
                 limit=None,
             ):
-                results = []
-                for chunk in chunks:
-                    if query.lower() in chunk.content.lower():
-                        results.append(QueryResult(chunk, 0.9, [], {}))
+                results = [
+                    QueryResult(chunk, 0.9, [], {})
+                    for chunk in chunks
+                    if query.lower() in chunk.content.lower()
+                ]
                 return results
 
             def filter(self, chunks, **kwargs):
@@ -379,11 +380,11 @@ async function fetchUsers() {
                 # Find dependencies based on function calls
                 for other in chunks:
                     if other.chunk_id != chunk.chunk_id:
-                        for name in ["calculate_sum", "calculate_average"]:
-                            if name in chunk.content and name in other.content:
-                                deps.append(
-                                    (other, ContextMetadata(0.9, "dependency", 1, 80)),
-                                )
+                        deps.extend(
+                            (other, ContextMetadata(0.9, "dependency", 1, 80))
+                            for name in ["calculate_sum", "calculate_average"]
+                            if name in chunk.content and name in other.content
+                        )
                 return deps
 
             def get_usage_context(self, chunk, chunks):
@@ -411,10 +412,11 @@ async function fetchUsers() {
                         self.chunks[i] = chunk
 
             def query(self, query, query_type=QueryType.NATURAL_LANGUAGE, limit=10):
-                results = []
-                for chunk in self.chunks:
-                    if query.lower() in chunk.content.lower():
-                        results.append(QueryResult(chunk, 0.8, [], {}))
+                results = [
+                    QueryResult(chunk, 0.8, [], {})
+                    for chunk in self.chunks
+                    if query.lower() in chunk.content.lower()
+                ]
                 return results[:limit]
 
             def get_statistics(self):

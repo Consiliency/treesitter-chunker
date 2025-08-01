@@ -60,18 +60,17 @@ class TestClass:
         return "test"
 """
     elif size == "medium":
-        functions = []
-        for i in range(50):
-            functions.append(
-                f'''
+        functions = [
+            f'''
 def function_{i}(x, y):
     """Function {i}."""
     result = x + y
     for j in range(10):
         result += j
     return result
-''',
-            )
+'''
+            for i in range(50)
+        ]
         content = "\n".join(functions)
     else:  # large
         functions = []
@@ -346,7 +345,7 @@ def generate_performance_report():
             elapsed = time.perf_counter() - start
             times.append(elapsed)
 
-            print(f"   Iteration {i+1}: {elapsed*1000:.2f}ms")
+            print(f"   Iteration {i + 1}: {elapsed * 1000:.2f}ms")
 
         # Calculate statistics
         avg_time = sum(times) / len(times)
@@ -354,9 +353,9 @@ def generate_performance_report():
         max_time = max(times)
 
         print("\n2. Performance Summary:")
-        print(f"   Average: {avg_time*1000:.2f}ms")
-        print(f"   Min: {min_time*1000:.2f}ms")
-        print(f"   Max: {max_time*1000:.2f}ms")
+        print(f"   Average: {avg_time * 1000:.2f}ms")
+        print(f"   Min: {min_time * 1000:.2f}ms")
+        print(f"   Max: {max_time * 1000:.2f}ms")
 
         # Get final statistics
         stats = chunker.get_stats()

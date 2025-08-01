@@ -63,12 +63,14 @@ class SQLConfig(LanguageConfig):
         self.add_ignore_type("string")
         self.add_ignore_type("identifier")
 
+
 # Register the SQL configuration
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from tree_sitter import Node
+
 
 # Plugin implementation for backward compatibility
 class SQLPlugin(LanguagePlugin, ExtendedLanguagePluginContract):

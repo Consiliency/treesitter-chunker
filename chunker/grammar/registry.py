@@ -9,9 +9,9 @@ from typing import TYPE_CHECKING, Any
 
 import tree_sitter
 
+from chunker._internal.registry import LanguageRegistry
 from chunker.contracts.registry_contract import UniversalRegistryContract
 from chunker.exceptions import LanguageNotFoundError
-from chunker._internal.registry import LanguageRegistry
 
 if TYPE_CHECKING:
     from chunker.contracts.discovery_contract import GrammarDiscoveryContract

@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 # Import the core functions from the new module
 from .core import chunk_text
 from .token.chunker import TreeSitterTokenAwareChunker
 from .token.counter import TiktokenCounter
-from .types import CodeChunk
+
+if TYPE_CHECKING:
+    from .types import CodeChunk
 
 
 def chunk_text_with_token_limit(

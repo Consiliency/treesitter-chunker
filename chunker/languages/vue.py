@@ -80,12 +80,14 @@ class VueConfig(LanguageConfig):
         self.add_ignore_type("comment")
         self.add_ignore_type("text")
 
+
 # Register the Vue configuration
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from tree_sitter import Node
+
 
 # Plugin implementation for backward compatibility
 class VuePlugin(LanguagePlugin, ExtendedLanguagePluginContract):

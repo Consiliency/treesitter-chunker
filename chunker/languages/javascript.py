@@ -41,8 +41,10 @@ class JavaScriptConfig(LanguageConfig):
         self.add_ignore_type("comment")
         self.add_ignore_type("template_string")
 
+
 # Register the JavaScript configuration
 from .base import language_config_registry
+
 javascript_config = JavaScriptConfig()
 language_config_registry.register(javascript_config)
 
@@ -52,6 +54,7 @@ if TYPE_CHECKING:
     from tree_sitter import Node
 
     from chunker.types import CodeChunk
+
 
 class JavaScriptPlugin(LanguagePlugin):
     """Plugin for JavaScript/TypeScript language chunking."""

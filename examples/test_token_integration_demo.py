@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Standalone demo of token integration functionality."""
 
-import os
 import sys
 import tempfile
 
 sys.path.insert(0, ".")
+
+import pathlib
 
 from chunker.token.chunker import TreeSitterTokenAwareChunker
 from chunker.token.counter import TiktokenCounter
@@ -50,7 +51,7 @@ def demo():
     print(f"Split into {len(chunks)} chunks with max 30 tokens each:")
     for i, chunk in enumerate(chunks[:3]):  # Show first 3
         tokens = counter.count_tokens(chunk)
-        print(f"  Chunk {i+1}: {tokens} tokens, {len(chunk)} chars")
+        print(f"  Chunk {i + 1}: {tokens} tokens, {len(chunk)} chars")
 
     # 4. Token-aware chunking
     print("\n\n4. Token-Aware Chunking")
@@ -126,7 +127,7 @@ class Statistics:
         )
 
     finally:
-        os.unlink(temp_file)
+        pathlib.Path(temp_file).unlink()
 
     print("\n\n=== Demo Complete ===")
 

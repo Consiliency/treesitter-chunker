@@ -166,9 +166,11 @@ class TemplateGenerator(TemplateGeneratorContract):
             "from .plugin_base import LanguagePlugin",
             "from ..contracts.language_plugin_contract import ExtendedLanguagePluginContract",
         ]
-        for imp in required_imports:
-            if imp not in content:
-                issues.append(f"Missing required import: {imp}")
+        issues.extend(
+            f"Missing required import: {imp}"
+            for imp in required_imports
+            if imp not in content
+        )
 
         # Check for required class
         class_pattern = (
@@ -190,9 +192,11 @@ class TemplateGenerator(TemplateGeneratorContract):
             "default_chunk_types",
             "get_node_name",
         ]
-        for method in required_methods:
-            if f"def {method}" not in content and f"def {method}(" not in content:
-                issues.append(f"Missing required method: {method}")
+        issues.extend(
+            f"Missing required method: {method}"
+            for method in required_methods
+            if f"def {method}" not in content and f"def {method}(" not in content
+        )
 
         return len(issues) == 0, issues
 
@@ -251,16 +255,15 @@ class TemplateGenerator(TemplateGeneratorContract):
         class_name = language_name.capitalize()
 
         # Process test cases to ensure proper formatting
-        processed_cases = []
-        for case in test_cases:
-            processed_cases.append(
-                {
-                    "name": case["name"],
-                    "code": case["code"],
-                    "expected_chunks": case.get("expected_chunks", 1),
-                    "expected_types": case.get("expected_types", []),
-                },
-            )
+        processed_cases = [
+            {
+                "name": case["name"],
+                "code": case["code"],
+                "expected_chunks": case.get("expected_chunks", 1),
+                "expected_types": case.get("expected_types", []),
+            }
+            for case in test_cases
+        ]
 
         return {
             "language_name": language_name,

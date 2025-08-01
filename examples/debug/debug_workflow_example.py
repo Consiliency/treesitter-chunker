@@ -2,7 +2,7 @@
 Example demonstrating Tree-sitter debug workflows.
 """
 
-import os
+import pathlib
 import tempfile
 
 from chunker.debug import (
@@ -55,7 +55,7 @@ class Calculator:
 
     # Clean up
 
-    os.unlink(temp_file)
+    pathlib.Path(temp_file).unlink()
 
 
 def example_query_debugging():
@@ -184,7 +184,7 @@ class DataProcessor:
 
     # Clean up
 
-    os.unlink(temp_file)
+    pathlib.Path(temp_file).unlink()
 
 
 def example_interactive_exploration():

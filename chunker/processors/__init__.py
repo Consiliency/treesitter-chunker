@@ -23,7 +23,14 @@ except ImportError:
     _has_logs = False
 
 # Build __all__ dynamically
-__all__ = ["ConfigProcessor", "ProcessorConfig", "SpecializedProcessor", "TextChunk"]
+__all__ = [
+    "ConfigProcessor",
+    "LogProcessor",
+    "MarkdownProcessor",
+    "ProcessorConfig",
+    "SpecializedProcessor",
+    "TextChunk",
+]
 if _has_markdown:
     __all__.append("MarkdownProcessor")
 if _has_logs:

@@ -78,10 +78,10 @@ def generate_large_python_code(num_functions: int = 1000) -> str:
         code_parts.append('    """\n\n')
 
         # Add class variables with large strings
-        for v in range(5):
-            code_parts.append(
-                f"    class_var_{v} = '" + "x" * 200 + "'  # Long string variable\n",
-            )
+        code_parts.extend(
+            f"    class_var_{v} = '" + "x" * 200 + "'  # Long string variable\n"
+            for v in range(5)
+        )
         code_parts.append("\n")
 
         for j in range(10):
@@ -101,8 +101,9 @@ def generate_large_python_code(num_functions: int = 1000) -> str:
 
             # Add more complex method body
             code_parts.append("        data = {\n")
-            for k in range(10):
-                code_parts.append(f"            'key_{k}': '" + "value" * 20 + "',\n")
+            code_parts.extend(
+                f"            'key_{k}': '" + "value" * 20 + "',\n" for k in range(10)
+            )
             code_parts.append("        }\n")
 
             code_parts.append(f"        result = x * {func_num} + y * {func_num % 7}\n")
@@ -185,7 +186,7 @@ class MemoryMonitor:
             time.sleep(0.1)  # Sample every 100ms
 
 
-@pytest.fixture
+@pytest.fixture()
 def large_python_file():
     """Create a large temporary Python file (>100MB)."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
@@ -211,7 +212,7 @@ def large_python_file():
     temp_path.unlink()
 
 
-@pytest.fixture
+@pytest.fixture()
 def medium_python_file():
     """Create a medium-sized temporary Python file (~10MB)."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
@@ -222,7 +223,7 @@ def medium_python_file():
     temp_path.unlink()
 
 
-@pytest.fixture
+@pytest.fixture()
 def corrupted_python_file():
     """Create a file with invalid UTF-8 sequences."""
     with tempfile.NamedTemporaryFile(mode="wb", suffix=".py", delete=False) as f:
@@ -313,16 +314,18 @@ class TestMemoryEfficiency:
         """Test that memory-mapped file access is working correctly."""
         StreamingChunker("python")
 
-        with Path(medium_python_file).open(
-            "rb",
-        ) as f:
-            with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mmap_data:
-                # Test direct access
-                assert len(mmap_data) > 0
+        with (
+            Path(medium_python_file).open(
+                "rb",
+            ) as f,
+            mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mmap_data,
+        ):
+            # Test direct access
+            assert len(mmap_data) > 0
 
-                # Test slicing
-                first_100_bytes = mmap_data[:100]
-                assert len(first_100_bytes) == 100
+            # Test slicing
+            first_100_bytes = mmap_data[:100]
+            assert len(first_100_bytes) == 100
 
     def test_progressive_memory_usage(self, medium_python_file):
         """Test that memory usage doesn't grow linearly with chunks processed."""
@@ -744,8 +747,9 @@ class TestConcurrentStreaming:
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
             futures = [executor.submit(stream_chunks) for _ in range(3)]
 
-            for future in concurrent.futures.as_completed(futures):
-                results.append(future.result())
+            results.extend(
+                future.result() for future in concurrent.futures.as_completed(futures)
+            )
 
         # All results should be identical
         assert len(results) == 3
@@ -757,7 +761,7 @@ class TestConcurrentStreaming:
 
 
 # Additional fixtures for creating test directories
-@pytest.fixture
+@pytest.fixture()
 def temp_directory_with_files():
     """Create a temporary directory with multiple Python files."""
     temp_dir = Path(tempfile.mkdtemp())

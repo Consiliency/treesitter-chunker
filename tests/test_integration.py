@@ -400,9 +400,8 @@ class TestErrorScenarios:
         """Test parsing large files."""
         # Generate a large Python file
         code_parts = ['"""Large test file."""\n']
-        for i in range(1000):
-            code_parts.append(
-                f'''
+        code_parts.extend(
+            f'''
 def function_{i}(param_{i}: int) -> int:
     """Function {i} docstring."""
     result = param_{i} * 2
@@ -416,8 +415,9 @@ class Class_{i}:
     def method_{i}(self, value: int) -> str:
         """Method {i} docstring."""
         return f"Value: {{value}}"
-''',
-            )
+'''
+            for i in range(1000)
+        )
 
         large_code = "\n".join(code_parts)
 

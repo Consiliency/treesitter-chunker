@@ -11,8 +11,8 @@ from typing import Any
 
 import graphviz
 
-from chunker.core import chunk_file
 from chunker.contracts.debug_contract import DebugVisualizationContract
+from chunker.core import chunk_file
 from chunker.debug.visualization.ast_visualizer import ASTVisualizer
 from chunker.languages import language_config_registry
 from chunker.parser import get_parser

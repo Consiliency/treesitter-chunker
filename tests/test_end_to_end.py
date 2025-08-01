@@ -77,9 +77,7 @@ async def async_hello():
         # assert parquet_file.exists()
 
         # Verify all exports contain the same data
-        jsonl_chunks = []
-        for line in lines:
-            jsonl_chunks.append(json.loads(line))
+        jsonl_chunks = [json.loads(line) for line in lines]
 
         # Compare key fields
         for i in range(len(chunks)):

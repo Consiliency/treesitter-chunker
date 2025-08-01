@@ -17,7 +17,7 @@ from chunker.processors.markdown import MarkdownProcessor
 
 def print_chunk_info(chunk, index):
     """Print information about a chunk."""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Chunk {index + 1}:")
     print(f"  Type: {chunk.node_type}")
     print(f"  Lines: {chunk.start_line}-{chunk.end_line}")
@@ -73,7 +73,7 @@ def process_file(file_path, config=None):
         print_chunk_info(chunk, i)
 
     # Summary statistics
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("Summary Statistics:")
     print(f"  Total chunks: {len(chunks)}")
     print(
@@ -117,9 +117,9 @@ def main():
     for file_name in example_files:
         file_path = Path(__file__).parent / file_name
         if file_path.exists():
-            print(f"\n{'#'*80}")
+            print(f"\n{'#' * 80}")
             print(f"# Processing {file_name} with different configurations")
-            print(f"{'#'*80}")
+            print(f"{'#' * 80}")
 
             for config_name, config in configs.items():
                 print(f"\n\nConfiguration: {config_name}")

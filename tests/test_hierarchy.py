@@ -577,7 +577,7 @@ const arrowFunc = () => {
                 parent_context="",
                 content=f"level_{i}",
                 chunk_id=f"chunk_{i}",
-                parent_chunk_id=f"chunk_{i-1}" if i > 0 else None,
+                parent_chunk_id=f"chunk_{i - 1}" if i > 0 else None,
             )
             chunks.append(chunk)
 

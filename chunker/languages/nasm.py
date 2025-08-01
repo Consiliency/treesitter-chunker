@@ -70,12 +70,14 @@ class NASMConfig(LanguageConfig):
         self.add_ignore_type("comment")
         self.add_ignore_type("line_comment")
 
+
 # Register the NASM configuration
 import contextlib
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from tree_sitter import Node
+
 
 # Plugin implementation for backward compatibility
 class NASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):

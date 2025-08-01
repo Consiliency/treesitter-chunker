@@ -28,9 +28,7 @@ def example_batch_processing():
     batch_data = [{"id": i, "data": list(range(100))} for i in range(1000)]
 
     start = time.perf_counter()
-    results = []
-    for item in batch_data:
-        results.append(sum(item["data"]))
+    results = [sum(item["data"]) for item in batch_data]
     elapsed = time.perf_counter() - start
 
     print(f"Processed {len(batch_data)} items in {elapsed:.3f}s")
@@ -79,9 +77,7 @@ def example_context_manager():
     with gc_disabled():
         print(f"GC enabled: {gc.isenabled()}")
         # Critical performance section
-        critical_data = []
-        for _i in range(1000):
-            critical_data.append(list(range(100)))
+        critical_data = [list(range(100)) for _i in range(1000)]
 
     print(f"GC enabled after context: {gc.isenabled()}")
 

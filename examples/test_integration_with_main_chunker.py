@@ -5,7 +5,6 @@ This script demonstrates how the sliding window fallback integrates
 with the existing chunker infrastructure.
 """
 
-import os
 import tempfile
 from pathlib import Path
 
@@ -87,7 +86,7 @@ class Example:
             print(f"  - {chunk.node_type}: lines {chunk.start_line}-{chunk.end_line}")
 
     finally:
-        os.unlink(temp_file)
+        Path(temp_file).unlink()
 
 
 def test_with_fallback_needed():
@@ -136,7 +135,7 @@ Regular text without demo marker.
             print(f"    Content preview: {chunk.content[:50]}...")
 
     finally:
-        os.unlink(temp_file)
+        Path(temp_file).unlink()
 
 
 def test_mixed_repository():

@@ -2,15 +2,15 @@
 
 import pytest
 
-from chunker.core import chunk_text
 from chunker.context import ContextFactory
+from chunker.core import chunk_text
 from chunker.parser import get_parser
 
 
 class TestChunkerWithContext:
     """Test integrating context extraction with chunking."""
 
-    @pytest.fixture
+    @pytest.fixture()
     def python_code_with_dependencies(self):
         """Python code with interdependencies."""
         return '''

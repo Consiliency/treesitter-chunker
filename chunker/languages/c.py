@@ -26,6 +26,7 @@ class CConfig(LanguageConfig):
     def file_extensions(self) -> set[str]:
         return {".c", ".h"}
 
+
 # Register the C configuration
 
 from typing import TYPE_CHECKING
@@ -34,6 +35,7 @@ if TYPE_CHECKING:
     from tree_sitter import Node
 
     from chunker.types import CodeChunk
+
 
 class CPlugin(LanguagePlugin):
     """Plugin for C language chunking."""

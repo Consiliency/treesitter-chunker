@@ -96,7 +96,7 @@ Line 10: This is the tenth line"""
     boundary = chunker.find_natural_overlap_boundary(test_text, 25, 10)
     print("Desired position: 25")
     print(f"Found boundary at: {boundary}")
-    print(f"Character at boundary: {test_text[boundary-1:boundary+1]!r}")
+    print(f"Character at boundary: {test_text[boundary - 1:boundary + 1]!r}")
 
     print("\n✅ All tests completed successfully!")
 

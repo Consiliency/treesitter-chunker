@@ -245,10 +245,11 @@ class MarkdownProcessor(SpecializedProcessor):
         boundaries = []
 
         # First, identify all atomic elements that cannot be split
-        atomic_regions = []
-        for element in self.elements:
-            if element.type in self.ATOMIC_ELEMENTS:
-                atomic_regions.append((element.start, element.end))
+        atomic_regions = [
+            (element.start, element.end)
+            for element in self.elements
+            if element.type in self.ATOMIC_ELEMENTS
+        ]
 
         # Merge overlapping atomic regions
         atomic_regions = self._merge_overlapping_regions(atomic_regions)

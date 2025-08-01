@@ -6,14 +6,14 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from ._internal.factory import ParserConfig, ParserFactory
+from ._internal.registry import LanguageMetadata, LanguageRegistry
 from .exceptions import (
     LanguageNotFoundError,
     LibraryNotFoundError,
     ParserConfigError,
     ParserError,
 )
-from ._internal.factory import ParserConfig, ParserFactory
-from ._internal.registry import LanguageMetadata, LanguageRegistry
 
 if TYPE_CHECKING:
     from tree_sitter import Parser
@@ -73,13 +73,13 @@ def get_parser(language: str, config: ParserConfig | None = None) -> Parser:
     except LanguageNotFoundError:
         # Re-raise with available languages
         available = _registry.list_languages()
-        raise LanguageNotFoundError(language, available)
+        raise LanguageNotFoundError(language, available) from None
     except ParserConfigError:
         # Re-raise config errors as-is
         raise
     except (IndexError, KeyError, SyntaxError) as e:
         logger.error("Failed to get parser for %s: %s", language, e)
-        raise ParserError(f"Parser initialization failed: {e}")
+        raise ParserError(f"Parser initialization failed: {e}") from e
 
 
 def list_languages() -> list[str]:

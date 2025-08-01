@@ -3,7 +3,7 @@ Tests for debug and visualization tools.
 """
 
 import json
-import os
+import pathlib
 import tempfile
 
 import pytest
@@ -44,7 +44,7 @@ class TestASTVisualizer:
             result = visualizer.visualize_file(temp_file, output_format="tree")
             assert result is None
         finally:
-            os.unlink(temp_file)
+            pathlib.Path(temp_file).unlink()
 
     def test_json_visualization(self):
         """Test JSON format visualization."""
@@ -67,7 +67,7 @@ class TestASTVisualizer:
             assert "type" in data
             assert "children" in data
         finally:
-            os.unlink(temp_file)
+            pathlib.Path(temp_file).unlink()
 
     def test_highlight_nodes(self):
         """Test node highlighting."""
@@ -87,7 +87,7 @@ class TestASTVisualizer:
             )
             assert result is not None
         finally:
-            os.unlink(temp_file)
+            pathlib.Path(temp_file).unlink()
 
 
 class TestQueryDebugger:
@@ -199,7 +199,7 @@ class TestClass:
             assert "gaps" in analysis
             assert analysis["total_chunks"] >= 3  # At least 3 chunks
         finally:
-            os.unlink(temp_file)
+            pathlib.Path(temp_file).unlink()
 
     def test_size_checking(self):
         """Test chunk size checking."""
@@ -232,7 +232,7 @@ def medium_function():
             # Should flag the tiny function
             assert len(analysis["size_issues"]) > 0
         finally:
-            os.unlink(temp_file)
+            pathlib.Path(temp_file).unlink()
 
 
 class TestVisualizationFunctions:
@@ -251,7 +251,7 @@ class TestVisualizationFunctions:
             # Should have printed something
             assert len(captured.out) > 0
         finally:
-            os.unlink(temp_file)
+            pathlib.Path(temp_file).unlink()
 
     def test_highlight_chunk_boundaries(self, capsys):
         """Test highlighting chunk boundaries."""
@@ -273,7 +273,7 @@ def func2():
             # Should have printed something
             assert len(captured.out) > 0
         finally:
-            os.unlink(temp_file)
+            pathlib.Path(temp_file).unlink()
 
     @pytest.mark.skipif(
         not pytest.importorskip("graphviz", reason="graphviz not installed"),
@@ -293,7 +293,7 @@ def func2():
             assert "digraph" in source
             assert "function_definition" in source
         finally:
-            os.unlink(temp_file)
+            pathlib.Path(temp_file).unlink()
 
 
 class TestNodeExplorer:

@@ -44,12 +44,13 @@ class RepoProcessor(RepoProcessorInterface):
         self.traversal_strategy = traversal_strategy
         self._git = None
         self._language_extensions = self._build_language_extension_map()
-    
+
     @property
     def git(self):
         """Lazy import of git module to avoid circular imports."""
         if self._git is None:
             import git
+
             self._git = git
         return self._git
 
@@ -476,9 +477,9 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
             return changed_files
 
         except self.git.InvalidGitRepositoryError:
-            raise ChunkerError(f"Not a valid git repository: {repo_path}")
+            raise ChunkerError(f"Not a valid git repository: {repo_path}") from e
         except self.git.GitCommandError as e:
-            raise ChunkerError(f"Git error: {e}")
+            raise ChunkerError(f"Git error: {e}") from e
 
     def should_process_file(self, file_path: str, repo_path: str) -> bool:
         """
@@ -540,21 +541,20 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
 
             commits = list(repo.iter_commits(paths=str(rel_path), max_count=limit))
 
-            history = []
-            for commit in commits:
-                history.append(
-                    {
-                        "hash": commit.hexsha,
-                        "author": str(commit.author),
-                        "date": commit.committed_datetime.isoformat(),
-                        "message": commit.message.strip(),
-                    },
-                )
+            history = [
+                {
+                    "hash": commit.hexsha,
+                    "author": str(commit.author),
+                    "date": commit.committed_datetime.isoformat(),
+                    "message": commit.message.strip(),
+                }
+                for commit in commits
+            ]
 
             return history
 
         except (FileNotFoundError, IndexError, KeyError) as e:
-            raise ChunkerError(f"Error getting file history: {e}")
+            raise ChunkerError(f"Error getting file history: {e}") from e
 
     def load_gitignore_patterns(self, repo_path: str) -> list[str]:
         """

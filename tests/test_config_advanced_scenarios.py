@@ -461,10 +461,11 @@ class TestConfigHotReloadingDuringChunking:
 
             def _diff_configs(self, old: dict, new: dict) -> list[str]:
                 """Find differences between configs."""
-                changes = []
-                for key in set(old.keys()) | set(new.keys()):
-                    if old.get(key) != new.get(key):
-                        changes.append(f"{key}: {old.get(key)} -> {new.get(key)}")
+                changes = [
+                    f"{key}: {old.get(key)} -> {new.get(key)}"
+                    for key in set(old.keys()) | set(new.keys())
+                    if old.get(key) != new.get(key)
+                ]
                 return changes
 
             def chunk_file(self, content: str, duration: float = 0.5) -> list[dict]:
@@ -1422,8 +1423,10 @@ class TestCircularDependencyDetectionEdgeCases:
                         visited.add(node)
                         new_path = [*path, node]
 
-                        for neighbor in self.graph.get(node, []):
-                            stack.append((neighbor, new_path))
+                        stack.extend(
+                            (neighbor, new_path)
+                            for neighbor in self.graph.get(node, [])
+                        )
 
                     return False
 
@@ -1460,7 +1463,7 @@ class TestCircularDependencyDetectionEdgeCases:
 
             # Linear chain
             for i in range(num_nodes - 1):
-                detector.add_edge(f"node_{i}", f"node_{i+1}")
+                detector.add_edge(f"node_{i}", f"node_{i + 1}")
 
             # Measure cycle detection performance
             start_time = time.time()
@@ -1471,7 +1474,7 @@ class TestCircularDependencyDetectionEdgeCases:
             assert check_time < 0.5, f"Slow cycle check: {check_time:.3f}s"
 
             # Add a cycle at the end
-            detector.add_edge(f"node_{num_nodes-1}", "node_500")
+            detector.add_edge(f"node_{num_nodes - 1}", "node_500")
 
             start_time = time.time()
             has_cycle = detector.has_cycle_from("node_0")

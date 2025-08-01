@@ -1,7 +1,5 @@
 """Tests for overlapping fallback chunker - isolated version."""
 
-import os
-
 # Import only what we need, avoiding the problematic plugin imports
 import sys
 import time
@@ -9,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, Path(os.path.dirname(Path(__file__).resolve().parent)))
+sys.path.insert(0, Path(Path(Path(__file__).resolve().parent).parent))
 
 from chunker.fallback.overlapping import OverlappingFallbackChunker, OverlapStrategy
 
@@ -17,12 +15,12 @@ from chunker.fallback.overlapping import OverlappingFallbackChunker, OverlapStra
 class TestOverlappingFallbackChunker:
     """Test suite for overlapping fallback chunker."""
 
-    @pytest.fixture
+    @pytest.fixture()
     def chunker(self):
         """Create a chunker instance."""
         return OverlappingFallbackChunker()
 
-    @pytest.fixture
+    @pytest.fixture()
     def sample_text(self):
         """Sample text content for testing."""
         return """Line 1: Introduction
@@ -45,7 +43,7 @@ Line 17: Wraps up the content
 Line 18: With concluding remarks
 Line 19: End of document"""
 
-    @pytest.fixture
+    @pytest.fixture()
     def sample_markdown(self):
         """Sample markdown content."""
         return """# Main Title

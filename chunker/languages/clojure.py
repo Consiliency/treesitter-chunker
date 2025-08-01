@@ -72,12 +72,14 @@ class ClojureConfig(LanguageConfig):
         self.add_ignore_type("str_lit")
         self.add_ignore_type("num_lit")
 
+
 # Register the Clojure configuration
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from tree_sitter import Node
+
 
 # Plugin implementation for backward compatibility
 class ClojurePlugin(LanguagePlugin, ExtendedLanguagePluginContract):

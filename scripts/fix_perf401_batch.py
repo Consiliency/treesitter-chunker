@@ -36,7 +36,7 @@ def main():
     for i in range(0, len(files_list), batch_size):
         batch = files_list[i : i + batch_size]
         print(
-            f"\nFixing batch {i//batch_size + 1}/{(len(files_list) + batch_size - 1)//batch_size}",
+            f"\nFixing batch {i // batch_size + 1}/{(len(files_list) + batch_size - 1) // batch_size}",
         )
 
         # Run ruff fix on this batch

@@ -108,7 +108,7 @@ class DataFileProcessor(TextProcessor):
                 end_line=min(i + self.rows_per_chunk, len(lines)),
                 byte_start=0,
                 byte_end=len(chunk_content),
-                parent_context=f"rows_{i}_{i+self.rows_per_chunk}",
+                parent_context=f"rows_{i}_{i + self.rows_per_chunk}",
                 content=chunk_content,
             )
             chunks.append(chunk)
@@ -139,7 +139,7 @@ def main():
         print(f"\n{filename}: {len(chunks)} chunks")
         for i, chunk in enumerate(chunks):
             processor = chunk.metadata.get("processor", "unknown")
-            print(f"  Chunk {i+1}: {chunk.node_type} (processor: {processor})")
+            print(f"  Chunk {i + 1}: {chunk.node_type} (processor: {processor})")
 
     # 2. Custom processor registration
     print("\n\n2. Custom Processor Registration")
@@ -179,7 +179,7 @@ def main():
     chunks = fallback.chunk_text(sql_content, "schema.sql")
     print(f"\nSQL file: {len(chunks)} chunks")
     for i, chunk in enumerate(chunks):
-        print(f"  Chunk {i+1}: {chunk.content.strip()[:50]}...")
+        print(f"  Chunk {i + 1}: {chunk.content.strip()[:50]}...")
 
     # 3. Configuration support
     print("\n\n3. Configuration Support")
@@ -214,7 +214,7 @@ def main():
 
     # Test CSV processing
     csv_content = "name,age,city\n" + "\n".join(
-        [f"Person{i},{20+i},City{i}" for i in range(200)],
+        [f"Person{i},{20 + i},City{i}" for i in range(200)],
     )
 
     chunks = configured_fallback.chunk_text(csv_content, "data.csv")

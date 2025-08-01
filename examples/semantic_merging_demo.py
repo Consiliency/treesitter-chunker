@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 """Enhanced demonstration of semantic merging functionality."""
 
-import os
 import sys
 import tempfile
 from pathlib import Path
 
-sys.path.append(Path(os.path.dirname(Path(__file__).resolve().parent)))
+sys.path.append(Path(Path(Path(__file__).resolve().parent).parent))
 
 from chunker.core import chunk_file
 from chunker.semantic import (
@@ -93,7 +92,7 @@ class Calculator:
 
     # Clean up
 
-    os.unlink(temp_file)
+    Path(temp_file).unlink()
 
     return chunks
 

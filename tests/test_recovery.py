@@ -380,7 +380,7 @@ class TestStatePersistence:
 
                 temp_file = (
                     state_file.parent
-                    / f"tmp_{worker_id}_{random.randint(1000,9999)}.json"
+                    / f"tmp_{worker_id}_{random.randint(1000, 9999)}.json"
                 )
                 with Path(temp_file).open(
                     "w",

@@ -1,7 +1,6 @@
 """Tests for multi-language processing functionality."""
 
 import json
-import os
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -606,7 +605,7 @@ function Component() {
             assert len(chunks) > 0
             assert chunks[0].language == "javascript"
 
-            os.unlink(f.name)
+            Path(f.name).unlink()
 
     def test_cross_language_references(self):
         """Test finding cross-language references."""

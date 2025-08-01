@@ -8,6 +8,7 @@ from pathlib import Path
 @dataclass
 class FileMetadata:
     """Metadata about a file."""
+
     path: Path
     size: int
     hash: str
@@ -17,11 +18,11 @@ class FileMetadata:
 def compute_file_hash(path: Path, chunk_size: int = 8192) -> str:
     """Compute SHA-256 hash of a file."""
     sha256_hash = hashlib.sha256()
-    
+
     with open(path, "rb") as f:
         while chunk := f.read(chunk_size):
             sha256_hash.update(chunk)
-    
+
     return sha256_hash.hexdigest()
 
 

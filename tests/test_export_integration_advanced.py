@@ -303,8 +303,7 @@ class TestClass:
 
         jsonl_data = []
         with Path(jsonl_file).open() as f:
-            for line in f:
-                jsonl_data.append(json.loads(line))
+            jsonl_data.extend(json.loads(line) for line in f)
         formats_data["jsonl"] = jsonl_data
 
         # Verify consistency across formats
@@ -460,21 +459,20 @@ class TestLargeScaleExport:
         """Test memory efficiency during large exports."""
 
         # Create many chunks
-        chunks = []
-        for i in range(1000):
-            chunks.append(
-                CodeChunk(
-                    language="python",
-                    file_path=f"/file_{i % 10}.py",
-                    node_type="function_definition",
-                    start_line=i * 5 + 1,
-                    end_line=i * 5 + 4,
-                    byte_start=i * 100,
-                    byte_end=i * 100 + 80,
-                    parent_context="",
-                    content=f"def function_{i}():\n    return {i}",
-                ),
+        chunks = [
+            CodeChunk(
+                language="python",
+                file_path=f"/file_{i % 10}.py",
+                node_type="function_definition",
+                start_line=i * 5 + 1,
+                end_line=i * 5 + 4,
+                byte_start=i * 100,
+                byte_end=i * 100 + 80,
+                parent_context="",
+                content=f"def function_{i}():\n    return {i}",
             )
+            for i in range(1000)
+        ]
 
         process = psutil.Process()
         gc.collect()
@@ -510,27 +508,22 @@ class TestLargeScaleExport:
         """Compare performance of different export formats."""
 
         # Create test chunks
-        chunks = []
-        for i in range(500):
-            chunks.append(
-                CodeChunk(
-                    language="python",
-                    file_path=f"/module_{i // 50}.py",
-                    node_type=(
-                        "function_definition" if i % 2 == 0 else "class_definition"
-                    ),
-                    start_line=i * 3 + 1,
-                    end_line=i * 3 + 3,
-                    byte_start=i * 50,
-                    byte_end=i * 50 + 45,
-                    parent_context="module",
-                    content=(
-                        f"def func_{i}(): pass"
-                        if i % 2 == 0
-                        else f"class Class_{i}: pass"
-                    ),
+        chunks = [
+            CodeChunk(
+                language="python",
+                file_path=f"/module_{i // 50}.py",
+                node_type=("function_definition" if i % 2 == 0 else "class_definition"),
+                start_line=i * 3 + 1,
+                end_line=i * 3 + 3,
+                byte_start=i * 50,
+                byte_end=i * 50 + 45,
+                parent_context="module",
+                content=(
+                    f"def func_{i}(): pass" if i % 2 == 0 else f"class Class_{i}: pass"
                 ),
             )
+            for i in range(500)
+        ]
 
         export_times = {}
 

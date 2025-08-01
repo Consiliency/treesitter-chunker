@@ -5,10 +5,10 @@ import logging
 import platform
 from pathlib import Path
 
+from chunker._internal.registry import LanguageRegistry
 from chunker.exceptions import ChunkerError
 from chunker.interfaces.grammar import GrammarValidator
 from chunker.parser import get_parser
-from chunker._internal.registry import LanguageRegistry
 
 logger = logging.getLogger(__name__)
 

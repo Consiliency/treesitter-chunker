@@ -254,7 +254,7 @@ class ChunkDebugger:
         if analysis["overlaps"]:
             self.console.print("\n[red]Overlapping chunks found:[/red]")
             for i, j in analysis["overlaps"]:
-                self.console.print(f"  • Chunks {i+1} and {j+1} overlap")
+                self.console.print(f"  • Chunks {i + 1} and {j + 1} overlap")
 
         if analysis["gaps"]:
             self.console.print("\n[yellow]Coverage gaps found:[/yellow]")

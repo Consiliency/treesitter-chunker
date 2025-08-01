@@ -411,9 +411,7 @@ class TestIntegration:
         start = time.perf_counter()
 
         # Simulate processing
-        results1 = []
-        for item in large_data:
-            results1.append(sum(item["data"]))
+        results1 = [sum(item["data"]) for item in large_data]
 
         time.perf_counter() - start
 
@@ -422,9 +420,7 @@ class TestIntegration:
         start = time.perf_counter()
 
         with optimized_gc("batch"):
-            results2 = []
-            for item in large_data:
-                results2.append(sum(item["data"]))
+            results2 = [sum(item["data"]) for item in large_data]
 
         time.perf_counter() - start
 

@@ -1014,7 +1014,7 @@ class TestAdvancedSemanticMerging:
                 byte_start=100 + i * 100,
                 byte_end=190 + i * 100,
                 parent_context="class_definition:Calculator",
-                content=f"public int calculate({', '.join(['int a' + str(j) for j in range(i+1)])}) {{\n    return sum;\n}}",
+                content=f"public int calculate({', '.join(['int a' + str(j) for j in range(i + 1)])}) {{\n    return sum;\n}}",
             )
             overloaded_chunks.append(chunk)
 

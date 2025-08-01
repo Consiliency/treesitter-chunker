@@ -184,8 +184,7 @@ def fix_file(file_path: Path) -> bool:
                     new_lines.append("\n")
 
                 # Add the moved imports
-                for imp in sorted(set(imports_to_move)):
-                    new_lines.append(imp + "\n")
+                new_lines.extend(imp + "\n" for imp in sorted(set(imports_to_move)))
 
                 # Add a blank line after imports if needed
                 if line.strip() and not line.strip().startswith(("import", "from")):

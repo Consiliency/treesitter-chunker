@@ -581,27 +581,27 @@ class ProjectAnalyzerImpl(ProjectAnalyzer):
                     r"@(Query|Mutation|Resolver)",
                 ]
 
-                for pattern in graphql_patterns:
-                    if re.search(pattern, chunk.content):
-                        api_boundaries.append(
-                            {
-                                "type": "graphql_schema",
-                                "chunk_id": chunk.chunk_id,
-                                "language": chunk.language,
-                                "file_path": chunk.file_path,
-                            },
-                        )
+                api_boundaries.extend(
+                    {
+                        "type": "graphql_schema",
+                        "chunk_id": chunk.chunk_id,
+                        "language": chunk.language,
+                        "file_path": chunk.file_path,
+                    }
+                    for pattern in graphql_patterns
+                    if re.search(pattern, chunk.content)
+                )
 
         # Find RPC/gRPC definitions
-        for chunk in chunks:
-            if chunk.language in ["proto", "protobuf"] or ".proto" in chunk.file_path:
-                api_boundaries.append(
-                    {
-                        "type": "grpc_service",
-                        "chunk_id": chunk.chunk_id,
-                        "file_path": chunk.file_path,
-                    },
-                )
+        api_boundaries.extend(
+            {
+                "type": "grpc_service",
+                "chunk_id": chunk.chunk_id,
+                "file_path": chunk.file_path,
+            }
+            for chunk in chunks
+            if chunk.language in ["proto", "protobuf"] or ".proto" in chunk.file_path
+        )
 
         return api_boundaries
 
@@ -1142,8 +1142,12 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
                 r'["\'](\s*DELETE\s+FROM\s+.*?)["\']',
             ]
             for pattern in sql_patterns:
-                for match in re.finditer(pattern, content, re.IGNORECASE | re.DOTALL):
-                    snippets.append((match.group(1), match.start(1), match.end(1)))
+                snippets.extend(
+                    (match.group(1), match.start(1), match.end(1))
+                    for match in re.finditer(
+                        pattern, content, re.IGNORECASE | re.DOTALL,
+                    )
+                )
 
         elif target_language == "graphql":
             # Extract GraphQL queries
@@ -1153,8 +1157,10 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
                 r'query\s*=\s*["\']([^"\']+)["\']',
             ]
             for pattern in patterns:
-                for match in re.finditer(pattern, content):
-                    snippets.append((match.group(1), match.start(1), match.end(1)))
+                snippets.extend(
+                    (match.group(1), match.start(1), match.end(1))
+                    for match in re.finditer(pattern, content)
+                )
 
         return snippets
 
@@ -1225,16 +1231,16 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
                     for match in re.finditer(pattern, chunk.content):
                         endpoint = match.group(1)
                         if endpoint in api_endpoints:
-                            for target_chunk in api_endpoints[endpoint]:
-                                if target_chunk.language != chunk.language:
-                                    references.append(
-                                        CrossLanguageReference(
-                                            source_chunk=chunk,
-                                            target_chunk=target_chunk,
-                                            reference_type="api_call",
-                                            confidence=0.8,
-                                        ),
-                                    )
+                            references.extend(
+                                CrossLanguageReference(
+                                    source_chunk=chunk,
+                                    target_chunk=target_chunk,
+                                    reference_type="api_call",
+                                    confidence=0.8,
+                                )
+                                for target_chunk in api_endpoints[endpoint]
+                                if target_chunk.language != chunk.language
+                            )
 
             # Find shared types/interfaces
             if chunk.node_type in [
@@ -1302,19 +1308,20 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
                     for match in re.finditer(pattern, chunk.content, re.IGNORECASE):
                         table_name = match.group(1)
                         # Look for same table in other chunks
-                        for other_chunk in chunks:
+                        references.extend(
+                            CrossLanguageReference(
+                                source_chunk=chunk,
+                                target_chunk=other_chunk,
+                                reference_type="database_reference",
+                                confidence=0.5,
+                            )
+                            for other_chunk in chunks
                             if (
                                 other_chunk != chunk
                                 and table_name in other_chunk.content
-                            ) and other_chunk.language != chunk.language:
-                                references.append(
-                                    CrossLanguageReference(
-                                        source_chunk=chunk,
-                                        target_chunk=other_chunk,
-                                        reference_type="database_reference",
-                                        confidence=0.5,
-                                    ),
-                                )
+                            )
+                            and other_chunk.language != chunk.language
+                        )
 
         return references
 

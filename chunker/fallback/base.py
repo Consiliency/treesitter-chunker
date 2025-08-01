@@ -196,7 +196,7 @@ class FallbackChunker(IFallbackChunker):
                 end_line=end_idx,
                 byte_start=byte_start,
                 byte_end=byte_end,
-                parent_context=f"lines_{start_idx+1}_{end_idx}",
+                parent_context=f"lines_{start_idx + 1}_{end_idx}",
                 content=chunk_content,
             )
             chunks.append(chunk)

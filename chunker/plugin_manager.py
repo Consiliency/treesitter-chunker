@@ -37,7 +37,7 @@ class PluginRegistry:
         except (IndexError, KeyError, OSError) as e:
             raise RuntimeError(
                 f"Failed to instantiate plugin {plugin_class.__name__}: {e}",
-            )
+            ) from e
 
         language = temp_instance.language_name
         metadata = temp_instance.plugin_metadata
@@ -55,12 +55,11 @@ class PluginRegistry:
             )
 
         # Check for extension conflicts
-        extension_conflicts = []
-        for ext in temp_instance.supported_extensions:
-            if ext in self._extension_map and self._extension_map[ext] != language:
-                extension_conflicts.append(
-                    f"{ext} (currently mapped to {self._extension_map[ext]})",
-                )
+        extension_conflicts = [
+            f"{ext} (currently mapped to {self._extension_map[ext]})"
+            for ext in temp_instance.supported_extensions
+            if ext in self._extension_map and self._extension_map[ext] != language
+        ]
 
         if extension_conflicts:
             logger.info(
@@ -119,7 +118,7 @@ class PluginRegistry:
             logger.error("Failed to set parser for %s: %s", language, e)
             raise
 
-        # Cache if using default config
+        # Cache if using default config from e
         if config is None:
             self._instances[language] = instance
 

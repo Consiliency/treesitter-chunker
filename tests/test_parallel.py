@@ -424,11 +424,12 @@ class TestProgressTracking:
 
             for i in range(20):
                 file_path = temp_dir / f"counted_{i}.py"
-                content = []
 
                 # Add exactly i+1 functions
-                for j in range(i + 1):
-                    content.append(PYTHON_FUNCTION_TEMPLATE.format(idx=j, complexity=5))
+                content = [
+                    PYTHON_FUNCTION_TEMPLATE.format(idx=j, complexity=5)
+                    for j in range(i + 1)
+                ]
 
                 file_path.write_text("\n".join(content))
                 files.append(file_path)
@@ -453,9 +454,10 @@ class TestMemoryUsage:
         try:
             # Create a very large file_path
             large_file = temp_dir / "large.py"
-            content = []
-            for i in range(5000):
-                content.append(PYTHON_FUNCTION_TEMPLATE.format(idx=i, complexity=10))
+            content = [
+                PYTHON_FUNCTION_TEMPLATE.format(idx=i, complexity=10)
+                for i in range(5000)
+            ]
             large_file.write_text("\n".join(content))
 
             # Process with streaming
@@ -718,7 +720,7 @@ class TestDirectoryProcessing:
             shutil.rmtree(temp_dir)
 
 
-@pytest.fixture
+@pytest.fixture()
 def temp_directory_with_files():
     """Create a temporary directory with multiple Python files."""
     temp_dir = Path(tempfile.mkdtemp())

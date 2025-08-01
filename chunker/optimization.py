@@ -433,8 +433,10 @@ class ChunkOptimizer(ChunkOptimizerInterface):
         # Find structural boundaries
         boundaries = []
         for pattern, boundary_type in patterns:
-            for match in re.finditer(pattern, content):
-                boundaries.append((match.start(), boundary_type))
+            boundaries.extend(
+                (match.start(), boundary_type)
+                for match in re.finditer(pattern, content)
+            )
 
         if not boundaries:
             # No structural boundaries found, fall back to minimal split
@@ -567,9 +569,11 @@ class ChunkOptimizer(ChunkOptimizerInterface):
         byte_count = 0
         for i, line in enumerate(lines):
             line_bytes = len(line.encode()) + 1  # +1 for newline
-            for boundary in boundaries:
-                if byte_count <= boundary < byte_count + line_bytes:
-                    line_boundaries.append(i)
+            line_boundaries.extend(
+                i
+                for boundary in boundaries
+                if byte_count <= boundary < byte_count + line_bytes
+            )
             byte_count += line_bytes
 
         # Remove duplicates and sort
@@ -812,8 +816,9 @@ class ChunkOptimizer(ChunkOptimizerInterface):
 
         split_points = []
         for pattern, split_type in split_patterns:
-            for match in re.finditer(pattern, content):
-                split_points.append((match.start(), split_type))
+            split_points.extend(
+                (match.start(), split_type) for match in re.finditer(pattern, content)
+            )
 
         # Sort split points
         split_points.sort(key=lambda x: x[0])

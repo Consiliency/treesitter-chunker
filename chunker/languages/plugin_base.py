@@ -249,7 +249,7 @@ class LanguagePlugin(ABC):
         except (OSError, subprocess.SubprocessError) as e:
             raise RuntimeError(
                 f"Plugin {self.__class__.__name__} failed validation: {e}",
-            )
+            ) from e
 
         logger.debug(
             f"Plugin {self.__class__.__name__} v{self.plugin_version} "

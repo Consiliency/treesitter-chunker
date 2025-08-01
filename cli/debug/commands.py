@@ -167,11 +167,11 @@ def ast(
             print(json_output)
         else:
             console.print(f"[red]Unknown fmt: {fmt}[/red]")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from e
 
     except (FileNotFoundError, IndexError, KeyError) as e:
         console.print(f"[red]Error visualizing AST: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @app.command()
@@ -220,7 +220,7 @@ def query(
         )
     except (OSError, FileNotFoundError, IndexError) as e:
         console.print(f"[red]Query error: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @app.command()
@@ -308,7 +308,7 @@ def chunks(
             )
     except (FileNotFoundError, IndexError, KeyError) as e:
         console.print(f"[red]Error analyzing chunks: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @app.command()
@@ -343,7 +343,7 @@ def explore(
         explorer.explore_code(source_code)
     except (OSError, FileNotFoundError, IndexError) as e:
         console.print(f"[red]Error starting explorer: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @app.command()
@@ -432,7 +432,7 @@ def validate(
 
     except (FileNotFoundError, IndexError, KeyError) as e:
         console.print(f"[red]Error validating file_path: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 if __name__ == "__main__":

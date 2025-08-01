@@ -391,8 +391,7 @@ class TestMemoryEdgeCases:
         # Create a function with massive content
         lines = ["def massive_function():"]
         # Add 10,000 lines to the function
-        for i in range(10000):
-            lines.append(f"    variable_{i} = {i}")
+        lines.extend(f"    variable_{i} = {i}" for i in range(10000))
         lines.append("    return sum(locals().values())")
 
         large_chunk_file.write_text("\n".join(lines))
@@ -407,9 +406,7 @@ class TestMemoryEdgeCases:
         many_chunks_file = tmp_path / "many_chunks.py"
 
         # Create 1000 tiny functions
-        lines = []
-        for i in range(1000):
-            lines.append(f"def f{i}(): pass")
+        lines = [f"def f{i}(): pass" for i in range(1000)]
 
         many_chunks_file.write_text("\n".join(lines))
 

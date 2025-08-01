@@ -118,7 +118,7 @@ def process(
 
     except (OSError, FileNotFoundError, IndexError) as e:
         console.print(f"[red]Error: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @app.command()
@@ -157,7 +157,7 @@ def estimate(
 
     except (AttributeError, FileNotFoundError, IndexError) as e:
         console.print(f"[red]Error: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @app.command()
@@ -192,7 +192,7 @@ def changed(
 
     except (FileNotFoundError, IndexError, KeyError) as e:
         console.print(f"[red]Error: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 if __name__ == "__main__":

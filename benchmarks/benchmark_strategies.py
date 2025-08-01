@@ -166,10 +166,10 @@ def complex_function(data: List[int], threshold: int = 10) -> Dict[str, Any]:
         # Print results
         print("  Performance:")
         print(
-            f"    Mean time: {perf['mean_time']*1000:.2f}ms (±{perf['std_time']*1000:.2f}ms)",
+            f"    Mean time: {perf['mean_time'] * 1000:.2f}ms (±{perf['std_time'] * 1000:.2f}ms)",
         )
         print(
-            f"    Range: {perf['min_time']*1000:.2f}ms - {perf['max_time']*1000:.2f}ms",
+            f"    Range: {perf['min_time'] * 1000:.2f}ms - {perf['max_time'] * 1000:.2f}ms",
         )
         print("  Chunks:")
         print(f"    Count: {quality['count']}")
@@ -224,7 +224,7 @@ def complex_function(data: List[int], threshold: int = 10) -> Dict[str, Any]:
 
             quality = analyze_chunk_quality(chunks)
 
-            print(f"  Time: {elapsed*1000:.2f}ms")
+            print(f"  Time: {elapsed * 1000:.2f}ms")
             print(f"  Chunks: {quality['count']} (avg {quality['avg_size']:.1f} lines)")
             print(f"  Use cases: {', '.join(profile.use_cases[:2])}")
 

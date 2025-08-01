@@ -173,6 +173,8 @@ skip_glob = ["*/grammars/*", "*/build/*"]
 target-version = "py310"
 line-length = 88
 fix = true
+unsafe-fixes = false
+preview = true
 exclude = [
     ".git",
     ".mypy_cache", 
@@ -241,12 +243,26 @@ ignore = [
     "C901",    # too complex
     "PLR0912", # too many branches
     "PLR0915", # too many statements
+    "TRY003",  # long exception messages
+    "EM101",   # raw string in exception
+    "EM102",   # f-string in exception
+    "PD011",   # pandas .values deprecation (false positives)
+    "RUF001",  # ambiguous unicode character (used in tests)
+    "RUF002",  # ambiguous unicode character (docstrings)
+    "RUF003",  # ambiguous unicode character (comments)
+    "ERA001",  # commented-out code (false positives on example comments)
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101", "PLR2004", "ARG001", "ARG002"]
-"scripts/*" = ["INP001", "T201", "T203"]
-"examples/*" = ["INP001", "T201"]
+"tests/*" = ["S101", "PLR2004", "ARG001", "ARG002", "BLE001", "S113", "B008"]
+"test_*.py" = ["S113", "BLE001", "S101", "PLR2004"]
+"scripts/*" = ["INP001", "T201", "T203", "S603", "S607", "BLE001"]
+"examples/*" = ["INP001", "T201", "S113", "BLE001"]
+"api/examples/*" = ["S113", "RUF013"]  # Examples can skip timeout for clarity
+"cli/**/*.py" = ["B008", "BLE001"]  # typer uses function calls in defaults, CLI needs broad exception handling
+"benchmarks/*" = ["INP001", "T201", "S113"]
+"profiling/*" = ["INP001"]
+"*.pyi" = ["E501"]  # Allow long lines in stub files
 
 [tool.ruff.lint.mccabe]
 max-complexity = 15

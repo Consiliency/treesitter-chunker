@@ -253,7 +253,7 @@ class NaturalLanguageQueryEngine(ChunkQueryAdvanced):
         try:
             pattern = re.compile(query, re.MULTILINE | re.DOTALL)
         except re.error as e:
-            raise ValueError(f"Invalid regex pattern: {e}")
+            raise ValueError(f"Invalid regex pattern: {e}") from e
 
         results = []
 
@@ -1145,9 +1145,11 @@ class SmartQueryOptimizer(QueryOptimizer):
             elif key == "language":
                 # Suggest languages
                 languages = {chunk.language for chunk in chunks[:50]}
-                for lang in sorted(languages):
-                    if lang.startswith(partial_value):
-                        suggestions.append(f"{key}:{lang}")
+                suggestions.extend(
+                    f"{key}:{lang}"
+                    for lang in sorted(languages)
+                    if lang.startswith(partial_value)
+                )
 
         # Limit suggestions
         return suggestions[:10]

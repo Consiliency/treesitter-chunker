@@ -7,8 +7,8 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from .chunker import chunk_text
 from ._internal.gc_tuning import get_memory_optimizer, optimized_gc
+from .chunker import chunk_text
 from .streaming import StreamingChunker
 from .vfs import (
     HTTPFileSystem,

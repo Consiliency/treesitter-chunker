@@ -345,7 +345,7 @@ class TestFallbackManager:
             # Write CSV with header and multiple rows (>50 to force multiple chunks)
             f.write("id,name,score\n")
             for i in range(60):  # More than default chunk size of 50
-                f.write(f"{i},User{i},{i*10}\n")
+                f.write(f"{i},User{i},{i * 10}\n")
             f.flush()
 
             chunks = manager.chunk_file(f.name)

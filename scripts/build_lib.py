@@ -1,5 +1,5 @@
 # scripts/build_lib.py
-#!/usr/bin/env python3
+# !/usr/bin/env python3
 """
 Compile all Tree-sitter grammars into a single shared library.
 Usage: python scripts/build_lib.py
@@ -21,8 +21,7 @@ def main():
         src_dir = gram / "src"
         if src_dir.exists():
             include_dirs.add(str(src_dir))
-            for src in src_dir.glob("*.c"):
-                c_files.append(str(src))
+            c_files.extend(str(src) for src in src_dir.glob("*.c"))
 
     if not c_files:
         print("WARNING: No C source files found. Did you fetch grammars?")

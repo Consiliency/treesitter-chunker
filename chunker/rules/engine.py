@@ -126,7 +126,7 @@ class DefaultRuleEngine(RuleEngine):
 
         # Add all chunks to the map
         for chunk in tree_sitter_chunks + custom_chunks:
-            range_map[(chunk.byte_start, chunk.byte_end)].append(chunk)
+            range_map[chunk.byte_start, chunk.byte_end].append(chunk)
 
         # Resolve conflicts based on priority
         merged_chunks = []
@@ -161,7 +161,7 @@ class DefaultRuleEngine(RuleEngine):
                     for c in chunks_at_range
                     if c.node_type.startswith(("regex_", "comment_", "file_"))
                 ],
-                key=lambda c: self._get_chunk_priority(c),
+                key=self._get_chunk_priority,
                 reverse=True,
             )
 

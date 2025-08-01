@@ -376,7 +376,7 @@ class SemanticChunker(ChunkingStrategy):
             sub_chunk = CodeChunk(
                 language=language,
                 file_path=file_path,
-                node_type=f"{parent_chunk.node_type}_part_{i+1}",
+                node_type=f"{parent_chunk.node_type}_part_{i + 1}",
                 start_line=start_node.start_point[0] + 1,
                 end_line=end_node.end_point[0] + 1,
                 byte_start=start_node.start_byte,

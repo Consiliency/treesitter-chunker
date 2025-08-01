@@ -5,7 +5,6 @@ This script shows how the fallback chunking system works for files
 that cannot be parsed by Tree-sitter.
 """
 
-import os
 import sys
 import tempfile
 import warnings
@@ -179,7 +178,7 @@ def demo_fallback_chunking(sample_files):
     warnings.filterwarnings("always", category=FallbackWarning)
 
     for file_type, file_path in sample_files.items():
-        print(f"\n--- Processing {file_type} file: {os.path.basename(file_path)} ---")
+        print(f"\n--- Processing {file_type} file: {Path(file_path).name} ---")
 
         # Get fallback info
         info = manager.get_fallback_info(file_path)
@@ -198,7 +197,7 @@ def demo_fallback_chunking(sample_files):
 
                 print(f"\nCreated {len(chunks)} chunks:")
                 for i, chunk in enumerate(chunks[:3]):  # Show first 3 chunks
-                    print(f"\n  Chunk {i+1}:")
+                    print(f"\n  Chunk {i + 1}:")
                     print(f"    Type: {chunk.node_type}")
                     print(f"    Lines: {chunk.start_line}-{chunk.end_line}")
                     print(f"    Context: {chunk.parent_context}")
@@ -233,7 +232,7 @@ def demo_specialized_chunking(sample_files):
     print(f"Created {len(severity_chunks)} severity-based chunks:")
     for i, chunk in enumerate(severity_chunks):
         lines = chunk.content.strip().split("\n")
-        print(f"  Chunk {i+1} ({chunk.parent_context}): {len(lines)} lines")
+        print(f"  Chunk {i + 1} ({chunk.parent_context}): {len(lines)} lines")
 
     # Demo markdown code block extraction
     print("\n--- Markdown Code Block Extraction ---")
@@ -273,7 +272,7 @@ def cleanup_files(sample_files):
     """Clean up temporary files."""
     for file_path in sample_files.values():
         with contextlib.suppress(builtins.BaseException):
-            os.unlink(file_path)
+            Path(file_path).unlink()
 
 
 def main():

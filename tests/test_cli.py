@@ -212,7 +212,7 @@ class TestCLICommands:
                 "def test_function():\n"
                 "    # This is a test function\n"
                 "    result = 42\n"
-                "    return result\n"
+                "    return result\n",
             )
             f.flush()
 
@@ -227,7 +227,7 @@ class TestCLICommands:
             assert result.output.strip().endswith("]")
             assert '"node_type": "function_definition"' in result.output
             assert '"language": "python"' in result.output
-            
+
             # Try to parse JSON - if it fails, that's a known issue with typer's output handling
             try:
                 data = json.loads(result.output)
@@ -366,7 +366,7 @@ def test_function():
             # Test with include/exclude patterns
             import os
 
-            old_cwd = os.getcwd()
+            old_cwd = Path.cwd()
             os.chdir(tmpdir)
 
             try:
@@ -413,9 +413,9 @@ def func2():
             assert result.exit_code == 0
 
             # Should be JSONL format (one JSON per line)
-            lines = result.output.strip().split('\n')
+            lines = result.output.strip().split("\n")
             json_objects = []
-            
+
             for line in lines:
                 if line.strip():  # Skip empty lines
                     try:
@@ -424,7 +424,7 @@ def func2():
                         # Known issue with typer test runner corrupting newlines
                         # Just check that we have the expected content
                         pass
-            
+
             # If JSON parsing failed due to runner issues, check raw output
             if len(json_objects) < 2:
                 # Check for node_type and function_definition (may have newlines between)

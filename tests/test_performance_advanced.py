@@ -73,11 +73,10 @@ class TestClass:
 
         # Compare with sequential performance
         start_time = time.time()
-        sequential_results = []
-        for _ in range(num_threads):
-            sequential_results.append(
-                chunk_repeatedly(test_file, iterations_per_thread),
-            )
+        sequential_results = [
+            chunk_repeatedly(test_file, iterations_per_thread)
+            for _ in range(num_threads)
+        ]
         sequential_time = time.time() - start_time
 
         # Verify all results are consistent
@@ -237,8 +236,7 @@ class TestMemoryOptimization:
                 f"    '''{'Large docstring ' * 100}'''",
             ]
             # Add many data lines
-            for j in range(50):
-                lines.append(f"    data_{j} = [k for k in range(20)]")
+            lines.extend(f"    data_{j} = [k for k in range(20)]" for j in range(50))
             lines.append(
                 "    return sum(sum(d) for d in locals().values() if isinstance(d, list))",
             )

@@ -120,16 +120,15 @@ def example_streaming_large_files():
     vfs = InMemoryFileSystem()
 
     # Generate large content
-    large_content = []
-    for i in range(1000):
-        large_content.append(
-            f"""
+    large_content = [
+        f"""
 def function_{i}(x, y):
     '''Function number {i}.'''
     result = x + y + {i}
     return result
-""",
-        )
+"""
+        for i in range(1000)
+    ]
 
     vfs.add_file("large_file.py", "\n".join(large_content))
 

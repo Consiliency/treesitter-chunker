@@ -158,7 +158,7 @@ class PerformanceRegressionTracker:
 
         details = []
         if is_regression:
-            details.append(f"Performance degraded by {degradation*100:.1f}%")
+            details.append(f"Performance degraded by {degradation * 100:.1f}%")
             details.append(f"Baseline: {baseline.mean:.3f}s (±{baseline.std_dev:.3f}s)")
             details.append(f"Current: {current_mean:.3f}s")
 
@@ -194,7 +194,7 @@ class PerformanceRegressionTracker:
         all_measurements = {}
 
         for i in range(iterations):
-            print(f"Running iteration {i+1}/{iterations}...")
+            print(f"Running iteration {i + 1}/{iterations}...")
             suite = run_benchmarks(test_directory, language)
 
             for result in suite.results:

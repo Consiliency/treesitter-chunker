@@ -10,12 +10,9 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from .chunker import (
-    chunk_file_with_token_limit,
-    chunk_text_with_token_limit,
-)
-from .core import chunk_file, chunk_text
+from .chunker import chunk_file_with_token_limit, chunk_text_with_token_limit
 from .contracts.auto_contract import AutoChunkResult, ZeroConfigContract
+from .core import chunk_file, chunk_text
 from .exceptions import ChunkerError
 from .fallback.sliding_window_fallback import SlidingWindowFallback
 

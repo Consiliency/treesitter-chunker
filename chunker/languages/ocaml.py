@@ -67,12 +67,14 @@ class OCamlConfig(LanguageConfig):
         self.add_ignore_type("number")
         self.add_ignore_type("constructor")
 
+
 # Register the OCaml configuration
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from tree_sitter import Node
+
 
 # Plugin implementation for backward compatibility
 class OCamlPlugin(LanguagePlugin, ExtendedLanguagePluginContract):

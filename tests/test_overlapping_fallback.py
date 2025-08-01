@@ -17,12 +17,12 @@ from chunker.interfaces.fallback import ChunkingMethod
 class TestOverlappingFallbackChunker:
     """Test overlapping fallback chunker implementation."""
 
-    @pytest.fixture
+    @pytest.fixture()
     def chunker(self):
         """Create an overlapping fallback chunker instance."""
         return OverlappingFallbackChunker()
 
-    @pytest.fixture
+    @pytest.fixture()
     def log_content(self):
         """Sample log file content."""
         return """2024-01-15 10:00:00 INFO Starting application
@@ -37,7 +37,7 @@ class TestOverlappingFallbackChunker:
 2024-01-15 10:00:09 INFO Results processed
 2024-01-15 10:00:10 INFO Application ready"""
 
-    @pytest.fixture
+    @pytest.fixture()
     def markdown_content(self):
         """Sample markdown content."""
         return """# Project Documentation
@@ -159,7 +159,7 @@ Contributions are welcome! Please read the guidelines."""
             # should be the first line of current chunk
             assert (
                 prev_lines[-1] == curr_lines[0]
-            ), f"Chunk {i-1} last line doesn't match chunk {i} first line"
+            ), f"Chunk {i - 1} last line doesn't match chunk {i} first line"
 
     def test_fixed_overlap_by_characters(self, chunker, markdown_content):
         """Test fixed overlap strategy with character-based chunking."""
@@ -196,7 +196,7 @@ Contributions are welcome! Please read the guidelines."""
             overlap_size = min(50, len(prev_chunk), len(curr_chunk))
             prev_end = prev_chunk[-overlap_size:]
             curr_start = curr_chunk[:overlap_size]
-            assert prev_end == curr_start, f"No overlap between chunks {i-1} and {i}"
+            assert prev_end == curr_start, f"No overlap between chunks {i - 1} and {i}"
 
     def test_percentage_overlap(self, chunker, log_content):
         """Test percentage-based overlap strategy."""
