@@ -1,6 +1,6 @@
 #!/usr/bin/env -S uv run --script
 # /// script
-# requires-python = ">=3.11"
+# requires = { python = ">=3.11" }
 # dependencies = [
 #     "python-dotenv",
 # ]
@@ -13,7 +13,7 @@ import sys
 from utils.constants import ensure_session_log_dir
 
 try:
-    from dotenv import load_dotenv
+    from dotenv import load_dotenv  # noqa: E402,PLC0415
 
     load_dotenv()
 except ImportError:
@@ -90,7 +90,7 @@ def main():
         # Log the user prompt
         log_user_prompt(session_id, input_data)
 
-        # Validate prompt if requested and not in log-only mode
+        # Validate prompt if requested and not in log - only mode
         if args.validate and not args.log_only:
             is_valid, reason = validate_prompt(prompt)
             if not is_valid:

@@ -1,9 +1,9 @@
-#!/usr/bin/env -S uv run --script
+#!/usr / bin / env -S uv run --script
 # /// script
-# requires-python = ">=3.8"
+# requires = { python = ">=3.8" }
 # dependencies = [
 #     "elevenlabs",
-#     "python-dotenv",
+#     "python - dotenv",
 # ]
 # ///
 
@@ -17,18 +17,18 @@ def main():
     """
     ElevenLabs Turbo v2.5 TTS Script
 
-    Uses ElevenLabs' Turbo v2.5 model for fast, high-quality text-to-speech.
-    Accepts optional text prompt as command-line argument.
+    Uses ElevenLabs' Turbo v2.5 model for fast, high - quality text - to - speech.
+    Accepts optional text prompt as command - line argument.
 
     Usage:
     - ./eleven_turbo_tts.py                    # Uses default text
     - ./eleven_turbo_tts.py "Your custom text" # Uses provided text
 
     Features:
-    - Fast generation (optimized for real-time use)
-    - High-quality voice synthesis
+    - Fast generation (optimized for real - time use)
+    - High - quality voice synthesis
     - Stable production model
-    - Cost-effective for high-volume usage
+    - Cost - effective for high - volume usage
     """
 
     # Load environment variables
@@ -43,8 +43,8 @@ def main():
         sys.exit(1)
 
     try:
-        from elevenlabs import play
-        from elevenlabs.client import ElevenLabs
+        from elevenlabs import play  # noqa: E402,PLC0415
+        from elevenlabs.client import ElevenLabs  # noqa: E402,PLC0415
 
         # Initialize client
         elevenlabs = ElevenLabs(api_key=api_key)
@@ -80,7 +80,7 @@ def main():
             print(f"❌ Error: {e}")
             # Try with a different approach using voice name
             try:
-                from elevenlabs import generate, play
+                from elevenlabs import generate, play  # noqa: E402,PLC0415
 
                 audio = generate(text=text, voice="Rachel", model="eleven_turbo_v2")
                 play(audio)
@@ -90,8 +90,8 @@ def main():
 
     except ImportError:
         print("❌ Error: elevenlabs package not installed")
-        print("This script uses UV to auto-install dependencies.")
-        print("Make sure UV is installed: https://docs.astral.sh/uv/")
+        print("This script uses UV to auto - install dependencies.")
+        print("Make sure UV is installed: https://docs.astral.sh / uv/")
         sys.exit(1)
     except Exception as e:
         print(f"❌ Unexpected error: {e}")

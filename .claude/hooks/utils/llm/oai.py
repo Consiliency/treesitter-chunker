@@ -1,9 +1,9 @@
-#!/usr/bin/env -S uv run --script
+#!/usr / bin / env -S uv run --script
 # /// script
-# requires-python = ">=3.8"
+# requires - python = ">=3.8"
 # dependencies = [
 #     "openai",
-#     "python-dotenv",
+#     "python - dotenv",
 # ]
 # ///
 
@@ -30,12 +30,12 @@ def prompt_llm(prompt_text):
         return None
 
     try:
-        from openai import OpenAI
+        from openai import OpenAI  # noqa: E402,PLC0415
 
         client = OpenAI(api_key=api_key)
 
         response = client.chat.completions.create(
-            model="gpt-4.1-nano",  # Fastest OpenAI model
+            model="gpt - 4.1 - nano",  # Fastest OpenAI model
             messages=[{"role": "user", "content": prompt_text}],
             max_tokens=100,
             temperature=0.7,
@@ -60,10 +60,10 @@ def generate_completion_message():
         name_instruction = f"Sometimes (about 30% of the time) include the engineer's name '{engineer_name}' in a natural way."
         examples = f"""Examples of the style:
 - Standard: "Work complete!", "All done!", "Task finished!", "Ready for your next move!"
-- Personalized: "{engineer_name}, all set!", "Ready for you, {engineer_name}!", "Complete, {engineer_name}!", "{engineer_name}, we're done!" """
+- Personalized: "{engineer_name}, all set!", "Ready for you, {engineer_name}!", "Complete, {engineer_name}!", "{engineer_name}, we're done!" + """
     else:
         name_instruction = ""
-        examples = """Examples of the style: "Work complete!", "All done!", "Task finished!", "Ready for your next move!" """
+        examples = """Examples of the style: "Work complete!", "All done!", "Task finished!", "Ready for your next move!" + """
 
     prompt = f"""Generate a short, friendly completion message for when an AI coding assistant finishes a task.
 
@@ -71,7 +71,7 @@ Requirements:
 - Keep it under 10 words
 - Make it positive and future focused
 - Use natural, conversational language
-- Focus on completion/readiness
+- Focus on completion / readiness
 - Do NOT include quotes, formatting, or explanations
 - Return ONLY the completion message text
 {name_instruction}

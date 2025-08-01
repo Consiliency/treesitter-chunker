@@ -1,6 +1,6 @@
-#!/usr/bin/env -S uv run --script
+#!/usr / bin / env -S uv run --script
 # /// script
-# requires-python = ">=3.8"
+# requires = { python = ">=3.8" }
 # ///
 
 import json
@@ -20,8 +20,8 @@ def is_dangerous_rm_command(command):
 
     # Pattern 1: Standard rm -rf variations
     patterns = [
-        r"\brm\s+.*-[a-z]*r[a-z]*f",  # rm -rf, rm -fr, rm -Rf, etc.
-        r"\brm\s+.*-[a-z]*f[a-z]*r",  # rm -fr variations
+        r"\brm\s+.*-[a - z]*r[a - z]*f",  # rm -rf, rm -fr, rm -Rf, etc.
+        r"\brm\s+.*-[a - z]*f[a - z]*r",  # rm -fr variations
         r"\brm\s+--recursive\s+--force",  # rm --recursive --force
         r"\brm\s+--force\s+--recursive",  # rm --force --recursive
         r"\brm\s+-r\s+.*-f",  # rm -r ... -f
@@ -46,7 +46,7 @@ def is_dangerous_rm_command(command):
         r"\.\s*$",  # Current directory at end of command
     ]
 
-    if re.search(r"\brm\s+.*-[a-z]*r", normalized):  # If rm has recursive flag
+    if re.search(r"\brm\s+.*-[a - z]*r", normalized):  # If rm has recursive flag
         for path in dangerous_paths:
             if re.search(path, normalized):
                 return True
@@ -59,7 +59,7 @@ def is_env_file_access(tool_name, tool_input):
     Check if any tool is trying to access .env files containing sensitive data.
     """
     if tool_name in ["Read", "Edit", "MultiEdit", "Write", "Bash"]:
-        # Check file paths for file-based tools
+        # Check file paths for file - based tools
         if tool_name in ["Read", "Edit", "MultiEdit", "Write"]:
             file_path = tool_input.get("file_path", "")
             if ".env" in file_path and not file_path.endswith(".env.sample"):

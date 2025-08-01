@@ -1,6 +1,6 @@
-#!/usr/bin/env -S uv run --script
+#!/usr / bin / env -S uv run --script
 # /// script
-# requires-python = ">=3.8"
+# requires - python = ">=3.8"
 # dependencies = [
 #     "openai",
 # ]
@@ -15,7 +15,7 @@ import sys
 import tempfile
 
 try:
-    from dotenv import load_dotenv
+    from dotenv import load_dotenv  # noqa: E402,PLC0415
 
     load_dotenv()
 except ImportError:
@@ -26,17 +26,17 @@ def main():
     """
     OpenAI TTS Script
 
-    Uses OpenAI's TTS model for high-quality text-to-speech.
-    Accepts optional text prompt as command-line argument.
+    Uses OpenAI's TTS model for high - quality text - to - speech.
+    Accepts optional text prompt as command - line argument.
 
     Usage:
     - ./openai_tts.py                    # Uses default text
     - ./openai_tts.py "Your custom text" # Uses provided text
 
     Features:
-    - OpenAI tts-1 model
+    - OpenAI tts - 1 model
     - Alloy voice (default)
-    - File-based playback for WSL compatibility
+    - File - based playback for WSL compatibility
     """
 
     # Get API key from environment
@@ -48,7 +48,7 @@ def main():
         sys.exit(1)
 
     try:
-        import openai
+        import openai  # noqa: E402,PLC0415
 
         # Initialize OpenAI client
         client = openai.OpenAI(api_key=api_key)
@@ -68,7 +68,7 @@ def main():
         try:
             # Generate audio
             response = client.audio.speech.create(
-                model="tts-1",
+                model="tts - 1",
                 voice="alloy",
                 input=text,
             )
@@ -102,8 +102,8 @@ def main():
 
     except ImportError:
         print("❌ Error: Required package not installed")
-        print("This script uses UV to auto-install dependencies.")
-        print("Make sure UV is installed: https://docs.astral.sh/uv/")
+        print("This script uses UV to auto - install dependencies.")
+        print("Make sure UV is installed: https://docs.astral.sh / uv/")
         sys.exit(1)
     except Exception as e:
         print(f"❌ Unexpected error: {e}")

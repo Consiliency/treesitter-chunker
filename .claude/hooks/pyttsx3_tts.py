@@ -1,6 +1,6 @@
-#!/usr/bin/env -S uv run --script
+#!/usr / bin / env -S uv run --script
 # /// script
-# requires-python = ">=3.8"
+# requires = { python = ">=3.8" }
 # dependencies = [
 #     "pyttsx3",
 # ]
@@ -14,8 +14,8 @@ def main():
     """
     pyttsx3 TTS Script
 
-    Uses pyttsx3 for offline text-to-speech synthesis.
-    Accepts optional text prompt as command-line argument.
+    Uses pyttsx3 for offline text - to - speech synthesis.
+    Accepts optional text prompt as command - line argument.
 
     Usage:
     - ./pyttsx3_tts.py                    # Uses default text
@@ -23,13 +23,13 @@ def main():
 
     Features:
     - Offline TTS (no API key required)
-    - Cross-platform compatibility
+    - Cross - platform compatibility
     - Configurable voice settings
     - Immediate audio playback
     """
 
     try:
-        import pyttsx3
+        import pyttsx3  # noqa: E402,PLC0415
 
         # Initialize TTS engine
         engine = pyttsx3.init()
@@ -66,7 +66,7 @@ def main():
 
     except ImportError:
         print("❌ Error: pyttsx3 package not installed")
-        print("This script uses UV to auto-install dependencies.")
+        print("This script uses UV to auto - install dependencies.")
         sys.exit(1)
     except Exception as e:
         print(f"❌ Error: {e}")

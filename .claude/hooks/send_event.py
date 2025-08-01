@@ -1,6 +1,6 @@
 #!/usr/bin/env -S uv run --script
 # /// script
-# requires-python = ">=3.8"
+# requires = { python = ">=3.8" }
 # dependencies = [
 #     "anthropic",
 #     "python-dotenv",
@@ -8,19 +8,19 @@
 # ///
 
 """
-Multi-Agent Observability Hook Script
+Multi - Agent Observability Hook Script
 Sends Claude Code hook events to the observability server.
 """
 
-import argparse
-import json
-import sys
-import urllib.error
-import urllib.request
-from datetime import datetime
-from pathlib import Path
+import argparse  # noqa: E402,PLC0415
+import json  # noqa: E402,PLC0415
+import sys  # noqa: E402,PLC0415
+import urllib.error  # noqa: E402,PLC0415
+import urllib.request  # noqa: E402,PLC0415
+from datetime import datetime  # noqa: E402,PLC0415
+from pathlib import Path  # noqa: E402,PLC0415
 
-from utils.summarizer import generate_event_summary
+from utils.summarizer import generate_event_summary  # noqa: E402,PLC0415
 
 
 def send_event_to_server(event_data, server_url="http://localhost:4000/events"):
@@ -29,10 +29,10 @@ def send_event_to_server(event_data, server_url="http://localhost:4000/events"):
         # Prepare the request
         req = urllib.request.Request(
             server_url,
-            data=json.dumps(event_data).encode("utf-8"),
+            data=json.dumps(event_data).encode("utf - 8"),
             headers={
-                "Content-Type": "application/json",
-                "User-Agent": "Claude-Code-Hook/1.0",
+                "Content - Type": "application / json",
+                "User - Agent": "Claude - Code - Hook / 1.0",
             },
         )
 

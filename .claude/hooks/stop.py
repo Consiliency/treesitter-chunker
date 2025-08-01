@@ -1,6 +1,6 @@
-#!/usr/bin/env -S uv run --script
+#!/usr / bin / env -S uv run --script
 # /// script
-# requires-python = ">=3.11"
+# requires = { python = ">=3.11" }
 # dependencies = [
 #     "python-dotenv",
 # ]
@@ -17,7 +17,7 @@ from pathlib import Path
 from utils.constants import ensure_session_log_dir
 
 try:
-    from dotenv import load_dotenv
+    from dotenv import load_dotenv  # noqa: E402,PLC0415
 
     load_dotenv()
 except ImportError:
@@ -72,7 +72,7 @@ def get_llm_completion_message():
     Returns:
         str: Generated or fallback completion message
     """
-    # Get current script directory and construct utils/llm path
+    # Get current script directory and construct utils / llm path
     script_dir = Path(__file__).parent
     llm_dir = script_dir / "utils" / "llm"
 
@@ -122,7 +122,7 @@ def announce_completion():
         if not tts_script:
             return  # No TTS scripts available
 
-        # Get completion message (LLM-generated or fallback)
+        # Get completion message (LLM - generated or fallback)
         completion_message = get_llm_completion_message()
 
         # Call the TTS script with the completion message
@@ -130,7 +130,7 @@ def announce_completion():
             ["uv", "run", tts_script, completion_message],
             capture_output=True,  # Suppress output
             timeout=10,
-            check=False,  # 10-second timeout
+            check=False,  # 10 - second timeout
         )
 
     except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
@@ -196,7 +196,7 @@ def main():
                                 except json.JSONDecodeError:
                                     pass  # Skip invalid lines
 
-                    # Write to logs/chat.json
+                    # Write to logs / chat.json
                     chat_file = Path(log_dir) / "chat.json"
                     with open(chat_file, "w") as f:
                         json.dump(chat_data, f, indent=2)

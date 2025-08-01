@@ -1,9 +1,9 @@
-#!/usr/bin/env -S uv run --script
+#!/usr / bin / env -S uv run --script
 # /// script
-# requires-python = ">=3.8"
+# requires - python = ">=3.8"
 # dependencies = [
 #     "anthropic",
-#     "python-dotenv",
+#     "python - dotenv",
 # ]
 # ///
 
@@ -15,13 +15,13 @@ from .llm.anth import prompt_llm
 
 def generate_event_summary(event_data: dict[str, Any]) -> str | None:
     """
-    Generate a concise one-sentence summary of a hook event for engineers.
+    Generate a concise one - sentence summary of a hook event for engineers.
 
     Args:
         event_data: The hook event data containing event_type, payload, etc.
 
     Returns:
-        str: A one-sentence summary, or None if generation fails
+        str: A one - sentence summary, or None if generation fails
     """
     event_type = event_data.get("hook_event_type", "Unknown")
     payload = event_data.get("payload", {})
@@ -31,7 +31,7 @@ def generate_event_summary(event_data: dict[str, Any]) -> str | None:
     if len(payload_str) > 1000:
         payload_str = payload_str[:1000] + "..."
 
-    prompt = f"""Generate a one-sentence summary of this Claude Code hook event payload for an engineer monitoring the system.
+    prompt = f"""Generate a one - sentence summary of this Claude Code hook event payload for an engineer monitoring the system.
 
 Event Type: {event_type}
 Payload:

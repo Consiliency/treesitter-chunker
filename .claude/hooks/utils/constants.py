@@ -1,14 +1,14 @@
-#!/usr/bin/env -S uv run --script
+#!/usr / bin / env -S uv run --script
 # /// script
-# requires-python = ">=3.8"
+# requires - python = ">=3.8"
 # ///
 
 """
 Constants for Claude Code Hooks.
 """
 
-import os
-from pathlib import Path
+import os  # noqa: E402,PLC0415
+from pathlib import Path  # noqa: E402,PLC0415
 
 # Base directory for all logs
 # Default is 'logs' in the current working directory
