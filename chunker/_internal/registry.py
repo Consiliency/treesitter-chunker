@@ -1,5 +1,4 @@
 """Language registry for dynamic discovery and management of tree-sitter languages."""
-
 from __future__ import annotations
 
 import ctypes
@@ -19,14 +18,12 @@ from chunker.exceptions import (
 
 if TYPE_CHECKING:
     from pathlib import Path
-
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class LanguageMetadata:
     """Metadata about a tree-sitter language."""
-
     name: str
     version: str = "unknown"
     node_types_count: int = 0
@@ -48,7 +45,6 @@ class LanguageRegistry:
         self._library: ctypes.CDLL | None = None
         self._languages: dict[str, tuple[Language, LanguageMetadata]] = {}
         self._discovered = False
-
         if not self._library_path.exists():
             raise LibraryNotFoundError(self._library_path)
 
@@ -69,43 +65,30 @@ class LanguageRegistry:
             List of (language_name, symbol_name) tuples
         """
         symbols = []
-
         try:
-            # Use nm to list symbols (works on Unix-like systems)
-            result = subprocess.run(
-                ["nm", "-D", str(self._library_path)],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-
+            result = subprocess.run(["nm", "-D", str(self._library_path)],
+                capture_output=True, text=True, check=False)
             if result.returncode == 0:
-                # Parse nm output for tree_sitter_* symbols
                 for line in result.stdout.splitlines():
-                    match = re.match(r".*\s+T\s+(tree_sitter_(\w+))$", line)
+                    match = re.match(r".*\\s+T\\s+(tree_sitter_(\\w+))$", line)
                     if match:
                         symbol_name = match.group(1)
                         lang_name = match.group(2)
-                        # Skip scanner functions
-                        if not any(
-                            suffix in symbol_name
-                            for suffix in ["_external_scanner", "_serialization"]
-                        ):
+                        if not any(suffix in symbol_name for suffix in [
+                            "_external_scanner", "_serialization"]):
                             symbols.append((lang_name, symbol_name))
             else:
-                # Fallback: try known language names
-                logger.warning("nm command failed, using fallback language list")
+                logger.warning(
+                    "nm command failed, using fallback language list")
                 for lang in ["python", "rust", "javascript", "c", "cpp"]:
                     symbol_name = f"tree_sitter_{lang}"
                     symbols.append((lang, symbol_name))
-
         except FileNotFoundError:
-            # nm not available (e.g., on Windows)
-            logger.warning("nm command not found, using fallback language list")
+            logger.warning("nm command not found, using fallback language list",
+                )
             for lang in ["python", "rust", "javascript", "c", "cpp"]:
                 symbol_name = f"tree_sitter_{lang}"
                 symbols.append((lang, symbol_name))
-
         return symbols
 
     def discover_languages(self) -> dict[str, LanguageMetadata]:
@@ -115,73 +98,44 @@ class LanguageRegistry:
             Dictionary mapping language name to metadata
         """
         if self._discovered:
-            return {lang_name: meta for lang_name, (_, meta) in self._languages.items()}
-
+            return {lang_name: meta for lang_name, (_, meta) in self.
+                _languages.items()}
         lib = self._load_library()
         discovered = {}
-
-        # Discover available symbols
         symbols = self._discover_symbols()
         logger.info("Discovered %s potential language symbols", len(symbols))
-
         for lang_name, symbol_name in symbols:
             try:
-                # Try to get the symbol from the library
                 func = getattr(lib, symbol_name)
                 func.restype = ctypes.c_void_p
-
-                # Create Language instance
-                # Get the pointer from the function
                 lang_ptr = func()
-                # Pass directly to Language (will show deprecation but works correctly)
                 language = Language(lang_ptr)
-
-                # Check for scanner
-                has_scanner = hasattr(lib, f"{symbol_name}_external_scanner_create")
-
-                # Try to detect language version
+                has_scanner = hasattr(lib,
+                    f"{symbol_name}_external_scanner_create")
                 try:
-                    # Attempt to create a parser to detect version compatibility
                     test_parser = Parser()
                     test_parser.language = language
                     is_compatible = True
-                    language_version = "14"  # Current supported version
+                    language_version = "14"
                 except ValueError as e:
                     is_compatible = False
-                    # Try to extract version from error
-
-                    match = re.search(r"version (\d+)", str(e))
+                    match = re.search(r"version (\\d+)", str(e))
                     language_version = match.group(1) if match else "unknown"
-
-                # Create metadata
-                metadata = LanguageMetadata(
-                    name=lang_name,
-                    symbol_name=symbol_name,
-                    has_scanner=has_scanner,
-                    version=language_version,
-                    capabilities={
-                        "external_scanner": has_scanner,
-                        "compatible": is_compatible,
-                        "language_version": language_version,
-                    },
-                )
-
-                # Store language and metadata
-                self._languages[lang_name] = (language, metadata)
+                metadata = LanguageMetadata(name=lang_name, symbol_name=symbol_name, has_scanner=has_scanner, version=language_version, capabilities={"external_scanner":
+                    has_scanner, "compatible": is_compatible,
+                    "language_version": language_version})
+                self._languages[lang_name] = language, metadata
                 discovered[lang_name] = metadata
-
-                logger.debug(
-                    f"Loaded language '{lang_name}' from symbol '{symbol_name}'",
-                )
-
+                logger.debug("Loaded language '%s' from symbol '%s'" % (
+                    lang_name, symbol_name))
             except AttributeError as e:
-                logger.warning(f"Failed to load symbol '{symbol_name}': {e}")
+                logger.warning("Failed to load symbol '%s': %s" % (
+                    symbol_name, e))
             except (IndexError, KeyError) as e:
-                logger.error(f"Error loading language '{lang_name}': {e}")
-
+                logger.error("Error loading language '%s': %s" % (lang_name, e),
+                    )
         self._discovered = True
         logger.info("Successfully loaded %s languages", len(discovered))
-
         return discovered
 
     def get_language(self, name: str) -> Language:
@@ -197,14 +151,11 @@ class LanguageRegistry:
             LanguageNotFoundError: If language is not available
             LanguageLoadError: If language fails to load
         """
-        # Ensure languages are discovered
         if not self._discovered:
             self.discover_languages()
-
         if name not in self._languages:
             available = list(self._languages.keys())
             raise LanguageNotFoundError(name, available)
-
         language, _ = self._languages[name]
         return language
 
@@ -216,7 +167,6 @@ class LanguageRegistry:
         """
         if not self._discovered:
             self.discover_languages()
-
         return sorted(self._languages.keys())
 
     def get_metadata(self, name: str) -> LanguageMetadata:
@@ -233,11 +183,9 @@ class LanguageRegistry:
         """
         if not self._discovered:
             self.discover_languages()
-
         if name not in self._languages:
             available = list(self._languages.keys())
             raise LanguageNotFoundError(name, available)
-
         _, metadata = self._languages[name]
         return metadata
 
@@ -252,7 +200,6 @@ class LanguageRegistry:
         """
         if not self._discovered:
             self.discover_languages()
-
         return name in self._languages
 
     def get_all_metadata(self) -> dict[str, LanguageMetadata]:
@@ -263,5 +210,4 @@ class LanguageRegistry:
         """
         if not self._discovered:
             self.discover_languages()
-
         return {name: meta for name, (_, meta) in self._languages.items()}

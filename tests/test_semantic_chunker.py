@@ -1,5 +1,4 @@
 """Tests for the semantic chunking strategy."""
-
 import pytest
 
 from chunker.parser import get_parser
@@ -9,21 +8,23 @@ from chunker.strategies.semantic import SemanticChunker
 class TestSemanticChunker:
     """Test suite for SemanticChunker."""
 
+    @classmethod
     @pytest.fixture
-    def semantic_chunker(self):
+    def semantic_chunker(cls):
         """Create a semantic chunker instance."""
         return SemanticChunker()
 
+    @staticmethod
     @pytest.fixture
-    def sample_python_code(self):
+    def sample_python_code():
         """Sample Python code with various semantic patterns."""
-        return '''
+        return """
 import os
 import json
 from typing import List, Dict
 
 class DataProcessor:
-    """Process data with various transformations."""
+    ""\"Process data with various transformations.""\"
 
     def __init__(self, config: Dict):
         self.config = config
@@ -31,7 +32,7 @@ class DataProcessor:
         self.errors = []
 
     def validate_input(self, data: List[Dict]) -> bool:
-        """Validate input data format."""
+        ""\"Validate input data format.""\"
         if not data:
             self.errors.append("Empty data")
             return False
@@ -48,7 +49,7 @@ class DataProcessor:
         return True
 
     def process_data(self, data: List[Dict]) -> List[Dict]:
-        """Main processing function with complex logic."""
+        ""\"Main processing function with complex logic.""\"
         if not self.validate_input(data):
             return []
 
@@ -70,7 +71,7 @@ class DataProcessor:
         return results
 
     def _transform_large(self, item: Dict) -> Dict:
-        """Transform large values."""
+        ""\"Transform large values.""\"
         return {
             'id': item['id'],
             'value': item['value'] / 10,
@@ -78,7 +79,7 @@ class DataProcessor:
         }
 
     def _transform_negative(self, item: Dict) -> Dict:
-        """Transform negative values."""
+        ""\"Transform negative values.""\"
         return {
             'id': item['id'],
             'value': abs(item['value']),
@@ -86,7 +87,7 @@ class DataProcessor:
         }
 
     def _transform_normal(self, item: Dict) -> Dict:
-        """Transform normal values."""
+        ""\"Transform normal values.""\"
         return {
             'id': item['id'],
             'value': item['value'] * 1.1,
@@ -94,7 +95,7 @@ class DataProcessor:
         }
 
 def main():
-    """Entry point for the processor."""
+    ""\"Entry point for the processor.""\"
     config = {'debug': True}
     processor = DataProcessor(config)
 
@@ -109,83 +110,56 @@ def main():
 
 if __name__ == "__main__":
     main()
-'''
+"""
 
-    def test_can_handle(self, semantic_chunker):
+    @staticmethod
+    def test_can_handle(semantic_chunker):
         """Test language support checking."""
         assert semantic_chunker.can_handle("test.py", "python")
         assert semantic_chunker.can_handle("test.js", "javascript")
         assert semantic_chunker.can_handle("test.java", "java")
         assert semantic_chunker.can_handle("test.rs", "rust")
 
-    def test_basic_chunking(self, semantic_chunker, sample_python_code):
+    @staticmethod
+    def test_basic_chunking(semantic_chunker, sample_python_code):
         """Test basic semantic chunking."""
         parser = get_parser("python")
         tree = parser.parse(sample_python_code.encode())
-
-        chunks = semantic_chunker.chunk(
-            tree.root_node,
-            sample_python_code.encode(),
-            "test.py",
-            "python",
-        )
-
-        # Should create chunks for major semantic boundaries
+        chunks = semantic_chunker.chunk(tree.root_node, sample_python_code.
+            encode(), "test.py", "python")
         assert len(chunks) > 0
-
-        # Check chunk types
         chunk_types = {chunk.node_type for chunk in chunks}
         assert "class_definition" in chunk_types or "merged_chunk" in chunk_types
-
-        # Check that methods are chunked
         method_names = []
         for chunk in chunks:
             if hasattr(chunk, "metadata") and chunk.metadata:
                 name = chunk.metadata.get("name", "")
                 if name:
                     method_names.append(name)
-
-        # Should have some method names
         assert len(method_names) > 0
 
-    def test_semantic_cohesion(self, semantic_chunker, sample_python_code):
+    @staticmethod
+    def test_semantic_cohesion(semantic_chunker, sample_python_code):
         """Test that semantically related code stays together."""
         parser = get_parser("python")
         tree = parser.parse(sample_python_code.encode())
-
-        # Configure to merge related chunks
-        semantic_chunker.configure(
-            {
-                "merge_related": True,
-                "cohesion_threshold": 0.6,
-            },
-        )
-
-        chunks = semantic_chunker.chunk(
-            tree.root_node,
-            sample_python_code.encode(),
-            "test.py",
-            "python",
-        )
-
-        # Transform methods should be grouped if they're related
-        [
-            c
-            for c in chunks
-            if any(pattern in c.content for pattern in ["_transform_", "transform"])
-        ]
-
-        # Check metadata for semantic roles
+        semantic_chunker.configure({"merge_related": True,
+            "cohesion_threshold": 0.6})
+        chunks = semantic_chunker.chunk(tree.root_node, sample_python_code.
+            encode(), "test.py", "python")
+        [c for c in chunks if any(pattern in c.content for pattern in [
+            "_transform_", "transform"])]
         for chunk in chunks:
             if hasattr(chunk, "metadata") and chunk.metadata:
                 semantic = chunk.metadata.get("semantic", {})
                 assert "role" in semantic or "patterns" in semantic
 
-    def test_complexity_splitting(self, semantic_chunker):
+    @staticmethod
+    def test_complexity_splitting(semantic_chunker):
         """Test splitting of complex chunks."""
-        complex_code = '''
+        complex_code = """
 def complex_function(data):
-    """A function with high complexity."""
+    ""\"A function with high complexity.""\"
     result = []
 
     for item in data:
@@ -217,77 +191,46 @@ def complex_function(data):
                 result.append(None)
 
     return [r for r in result if r is not None]
-'''
-
+"""
         parser = get_parser("python")
         tree = parser.parse(complex_code.encode())
-
-        # Configure to split complex functions
-        semantic_chunker.configure(
-            {
-                "split_complex": True,
-                "complexity_threshold": 10.0,
-            },
-        )
-
-        chunks = semantic_chunker.chunk(
-            tree.root_node,
-            complex_code.encode(),
-            "test.py",
-            "python",
-        )
-
-        # Should identify this as complex
+        semantic_chunker.configure({"split_complex": True,
+            "complexity_threshold": 10.0})
+        chunks = semantic_chunker.chunk(tree.root_node, complex_code.encode
+            (), "test.py", "python")
         for chunk in chunks:
             if hasattr(chunk, "metadata") and chunk.metadata:
                 complexity = chunk.metadata.get("complexity", {})
                 if "score" in complexity:
-                    # This function should have high complexity
                     assert complexity["score"] > 10.0
 
-    def test_dependency_tracking(self, semantic_chunker, sample_python_code):
+    @staticmethod
+    def test_dependency_tracking(semantic_chunker, sample_python_code):
         """Test that dependencies are properly tracked."""
         parser = get_parser("python")
         tree = parser.parse(sample_python_code.encode())
-
-        chunks = semantic_chunker.chunk(
-            tree.root_node,
-            sample_python_code.encode(),
-            "test.py",
-            "python",
-        )
-
-        # Check that dependencies are tracked
+        chunks = semantic_chunker.chunk(tree.root_node, sample_python_code.
+            encode(), "test.py", "python")
         for chunk in chunks:
             if "import" in chunk.content:
-                # Import chunks should have external dependencies
                 assert len(chunk.dependencies) > 0
-
             if "self." in chunk.content:
-                # Methods using self should have internal references
                 assert len(chunk.references) >= 0
 
-    def test_configuration(self, semantic_chunker):
+    @staticmethod
+    def test_configuration(semantic_chunker):
         """Test configuration updates."""
         semantic_chunker.config.copy()
-
-        # Update configuration
-        new_config = {
-            "min_chunk_size": 20,
-            "max_chunk_size": 300,
-            "complexity_threshold": 20.0,
-            "merge_related": False,
-        }
-
+        new_config = {"min_chunk_size": 20, "max_chunk_size": 300,
+            "complexity_threshold": 20.0, "merge_related": False}
         semantic_chunker.configure(new_config)
-
-        # Check that config was updated
         assert semantic_chunker.config["min_chunk_size"] == 20
         assert semantic_chunker.config["max_chunk_size"] == 300
         assert semantic_chunker.config["complexity_threshold"] == 20.0
         assert semantic_chunker.config["merge_related"] is False
 
-    def test_semantic_boundaries(self, semantic_chunker):
+    @staticmethod
+    def test_semantic_boundaries(semantic_chunker):
         """Test that semantic boundaries are respected."""
         code_with_boundaries = """
 # Configuration section
@@ -323,32 +266,14 @@ async def get_product(product_id):
     # Fetch product from database
     pass
 """
-
         parser = get_parser("python")
         tree = parser.parse(code_with_boundaries.encode())
-
-        chunks = semantic_chunker.chunk(
-            tree.root_node,
-            code_with_boundaries.encode(),
-            "test.py",
-            "python",
-        )
-
-        # Should respect natural boundaries
-        assert len(chunks) >= 3  # At least config, models, and functions
-
-        # Check that different sections are separated
+        chunks = semantic_chunker.chunk(tree.root_node,
+            code_with_boundaries.encode(), "test.py", "python")
+        assert len(chunks) >= 3
         chunk_contents = [chunk.content for chunk in chunks]
-
-        # Config should be separate
         [c for c in chunk_contents if "DEBUG" in c or "API_KEY" in c]
-
-        # Classes should be chunked
-        [c for c in chunk_contents if "class User" in c or "class Product" in c]
-
-        # Functions should be chunked
-        [
-            c
-            for c in chunk_contents
-            if "def calculate_discount" in c or "def apply_discount" in c
-        ]
+        [c for c in chunk_contents if "class User" in c or "class Product" in c
+            ]
+        [c for c in chunk_contents if "def calculate_discount" in c or
+            "def apply_discount" in c]

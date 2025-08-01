@@ -1,5 +1,4 @@
 """Comprehensive tests for Haskell language support."""
-
 from chunker import chunk_file
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from chunker.languages.haskell import HaskellPlugin
@@ -8,7 +7,8 @@ from chunker.languages.haskell import HaskellPlugin
 class TestHaskellBasicChunking:
     """Test basic Haskell chunking functionality."""
 
-    def test_simple_function(self, tmp_path):
+    @staticmethod
+    def test_simple_function(tmp_path):
         """Test basic function definition."""
         src = tmp_path / "main.hs"
         src.write_text(
@@ -23,17 +23,16 @@ fibonacci n
   | n <= 1    = n
   | otherwise = fibonacci (n - 1) + fibonacci (n - 2)
 """,
-        )
+            )
         chunks = chunk_file(src, "haskell")
         assert len(chunks) >= 2
-
-        # Check for function chunks
         function_chunks = [c for c in chunks if "function" in c.node_type]
         assert len(function_chunks) >= 2
         assert any("factorial" in c.content for c in function_chunks)
         assert any("fibonacci" in c.content for c in function_chunks)
 
-    def test_data_types(self, tmp_path):
+    @staticmethod
+    def test_data_types(tmp_path):
         """Test data type definitions."""
         src = tmp_path / "types.hs"
         src.write_text(
@@ -51,16 +50,15 @@ type Age = Int
 -- Newtype
 newtype Email = Email String deriving (Show)
 """,
-        )
+            )
         chunks = chunk_file(src, "haskell")
-
-        # Check for different type definitions
         chunk_types = {chunk.node_type for chunk in chunks}
         assert "data_type" in chunk_types or "data" in chunk_types
         assert "type_alias" in chunk_types or "type_synonym" in chunk_types
         assert "newtype" in chunk_types
 
-    def test_type_classes(self, tmp_path):
+    @staticmethod
+    def test_type_classes(tmp_path):
         """Test type class and instance declarations."""
         src = tmp_path / "classes.hs"
         src.write_text(
@@ -78,19 +76,16 @@ instance Printable Bool where
 instance Printable Int where
     toString = show
 """,
-        )
+            )
         chunks = chunk_file(src, "haskell")
-
-        # Check for class and instance declarations
         chunk_types = {chunk.node_type for chunk in chunks}
         assert "class_declaration" in chunk_types
         assert "instance_declaration" in chunk_types
-
-        # Verify content
         assert any("Printable" in c.content for c in chunks)
         assert any("instance Printable Bool" in c.content for c in chunks)
 
-    def test_module_structure(self, tmp_path):
+    @staticmethod
+    def test_module_structure(tmp_path):
         """Test module with exports."""
         src = tmp_path / "MyModule.hs"
         src.write_text(
@@ -113,15 +108,12 @@ fibonacci = fib 0 1
     fib a b 0 = a
     fib a b n = fib b (a + b) (n - 1)
 """,
-        )
+            )
         chunks = chunk_file(src, "haskell")
-
-        # Check for module declaration
         assert any("module_declaration" in c.node_type for c in chunks)
-        module_chunk = next(c for c in chunks if "module_declaration" in c.node_type)
+        module_chunk = next(c for c in chunks if "module_declaration" in c.
+            node_type)
         assert "MyModule" in module_chunk.content
-
-        # Check for functions
         assert any("factorial" in c.content for c in chunks)
         assert any("fibonacci" in c.content for c in chunks)
 
@@ -129,75 +121,70 @@ fibonacci = fib 0 1
 class TestHaskellContractCompliance:
     """Test ExtendedLanguagePluginContract implementation."""
 
-    def test_implements_contract(self):
+    @classmethod
+    def test_implements_contract(cls):
         """Test that HaskellPlugin implements the contract."""
         plugin = HaskellPlugin()
         assert isinstance(plugin, ExtendedLanguagePluginContract)
 
-    def test_get_semantic_chunks(self):
+    @staticmethod
+    def test_get_semantic_chunks():
         """Test get_semantic_chunks method."""
         plugin = HaskellPlugin()
 
-        # Mock node structure
         class MockNode:
+
             def __init__(self, node_type, start=0, end=1):
                 self.type = node_type
                 self.start_byte = start
                 self.end_byte = end
-                self.start_point = (0, 0)
-                self.end_point = (0, end)
+                self.start_point = 0, 0
+                self.end_point = 0, end
                 self.children = []
-
         root = MockNode("module")
         func_node = MockNode("function", 0, 50)
         root.children.append(func_node)
-
         source = b"factorial n = n * factorial (n - 1)"
         chunks = plugin.get_semantic_chunks(root, source)
-
         assert len(chunks) >= 1
         assert any(chunk["type"] == "function" for chunk in chunks)
 
-    def test_get_chunk_node_types(self):
+    @classmethod
+    def test_get_chunk_node_types(cls):
         """Test get_chunk_node_types method."""
         plugin = HaskellPlugin()
         node_types = plugin.get_chunk_node_types()
-
         assert isinstance(node_types, set)
         assert "function" in node_types
         assert "data_type" in node_types
         assert "class_declaration" in node_types
 
-    def test_should_chunk_node(self):
+    @staticmethod
+    def test_should_chunk_node():
         """Test should_chunk_node method."""
         plugin = HaskellPlugin()
 
-        # Mock node
         class MockNode:
+
             def __init__(self, node_type):
                 self.type = node_type
                 self.children = []
-
-        # Test chunk nodes
         assert plugin.should_chunk_node(MockNode("function"))
         assert plugin.should_chunk_node(MockNode("data_type"))
         assert plugin.should_chunk_node(MockNode("class_declaration"))
-
-        # Test non-chunk nodes
         assert not plugin.should_chunk_node(MockNode("identifier"))
         assert not plugin.should_chunk_node(MockNode("comment"))
 
-    def test_get_node_context(self):
+    @staticmethod
+    def test_get_node_context():
         """Test get_node_context method."""
         plugin = HaskellPlugin()
 
-        # Mock node
         class MockNode:
+
             def __init__(self, node_type):
                 self.type = node_type
                 self.children = []
-
-        # Test context extraction
         node = MockNode("function")
         context = plugin.get_node_context(node, b"factorial n = n!")
         assert context is not None
@@ -207,14 +194,16 @@ class TestHaskellContractCompliance:
 class TestHaskellEdgeCases:
     """Test edge cases in Haskell parsing."""
 
-    def test_empty_file(self, tmp_path):
+    @staticmethod
+    def test_empty_file(tmp_path):
         """Test empty Haskell file."""
         src = tmp_path / "empty.hs"
         src.write_text("")
         chunks = chunk_file(src, "haskell")
         assert len(chunks) == 0
 
-    def test_comments_only(self, tmp_path):
+    @staticmethod
+    def test_comments_only(tmp_path):
         """Test file with only comments."""
         src = tmp_path / "comments.hs"
         src.write_text(
@@ -223,12 +212,12 @@ class TestHaskellEdgeCases:
    multi-line comment -}
 -- Another comment
 """,
-        )
+            )
         chunks = chunk_file(src, "haskell")
-        # Comments should be ignored
         assert len(chunks) == 0
 
-    def test_guards_and_pattern_matching(self, tmp_path):
+    @staticmethod
+    def test_guards_and_pattern_matching(tmp_path):
         """Test functions with guards and pattern matching."""
         src = tmp_path / "patterns.hs"
         src.write_text(
@@ -252,17 +241,16 @@ describe x = case x of
     Nothing -> "No value"
     Just n  -> "Value: " ++ show n
 """,
-        )
+            )
         chunks = chunk_file(src, "haskell")
-
-        # All functions should be chunked
         function_chunks = [c for c in chunks if "function" in c.node_type]
         assert len(function_chunks) >= 3
         assert any("isEmpty" in c.content for c in function_chunks)
         assert any("grade" in c.content for c in function_chunks)
         assert any("describe" in c.content for c in function_chunks)
 
-    def test_where_clauses(self, tmp_path):
+    @staticmethod
+    def test_where_clauses(tmp_path):
         """Test functions with where clauses."""
         src = tmp_path / "where.hs"
         src.write_text(
@@ -284,14 +272,14 @@ complexCalc n = result
       where
         adjusted = x * 2
 """,
-        )
+            )
         chunks = chunk_file(src, "haskell")
-
-        # Functions with where clauses should be chunked
-        assert any("quadratic" in c.content and "where" in c.content for c in chunks)
+        assert any("quadratic" in c.content and "where" in c.content for c in
+            chunks)
         assert any("complexCalc" in c.content for c in chunks)
 
-    def test_lambda_expressions(self, tmp_path):
+    @staticmethod
+    def test_lambda_expressions(tmp_path):
         """Test lambda expressions and higher-order functions."""
         src = tmp_path / "lambdas.hs"
         src.write_text(
@@ -307,10 +295,8 @@ sumSquares xs = sum (map (\\x -> x * x) xs)
 double :: Num a => a -> a
 double = (*2)
 """,
-        )
+            )
         chunks = chunk_file(src, "haskell")
-
-        # All functions should be detected
         assert any("map'" in c.content for c in chunks)
         assert any("sumSquares" in c.content for c in chunks)
         assert any("double" in c.content for c in chunks)

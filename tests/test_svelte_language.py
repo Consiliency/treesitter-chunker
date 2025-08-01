@@ -1,5 +1,4 @@
 """Comprehensive tests for Svelte language support."""
-
 from chunker import chunk_file
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from chunker.languages.svelte import SveltePlugin
@@ -8,7 +7,8 @@ from chunker.languages.svelte import SveltePlugin
 class TestSvelteBasicChunking:
     """Test basic Svelte component chunking functionality."""
 
-    def test_simple_component(self, tmp_path):
+    @staticmethod
+    def test_simple_component(tmp_path):
         """Test basic Svelte component structure."""
         src = tmp_path / "HelloWorld.svelte"
         src.write_text(
@@ -39,23 +39,19 @@ class TestSvelteBasicChunking:
   }
 </style>
 """,
-        )
+            )
         chunks = chunk_file(src, "svelte")
         assert len(chunks) >= 2
-
-        # Check for script section
-        script_chunks = [
-            c for c in chunks if c.node_type in {"script_element", "instance_script"}
-        ]
+        script_chunks = [c for c in chunks if c.node_type in {
+            "script_element", "instance_script"}]
         assert len(script_chunks) >= 1
         assert any("count" in c.content for c in script_chunks)
-
-        # Check for style section
         style_chunks = [c for c in chunks if c.node_type == "style_element"]
         assert len(style_chunks) >= 1
         assert any("#ff3e00" in c.content for c in style_chunks)
 
-    def test_reactive_statements(self, tmp_path):
+    @staticmethod
+    def test_reactive_statements(tmp_path):
         """Test Svelte reactive statements."""
         src = tmp_path / "Reactive.svelte"
         src.write_text(
@@ -87,19 +83,15 @@ class TestSvelteBasicChunking:
   Count: {count}, Doubled: {doubled}, Quadrupled: {quadrupled}
 </button>
 """,
-        )
+            )
         chunks = chunk_file(src, "svelte")
-
-        # Check for reactive statements
-        reactive_chunks = [
-            c
-            for c in chunks
-            if c.node_type == "reactive_statement" or "$:" in c.content
-        ]
+        reactive_chunks = [c for c in chunks if c.node_type ==
+            "reactive_statement" or "$:" in c.content]
         assert len(reactive_chunks) >= 3
         assert any("doubled = count * 2" in c.content for c in chunks)
 
-    def test_control_flow_blocks(self, tmp_path):
+    @staticmethod
+    def test_control_flow_blocks(tmp_path):
         """Test Svelte control flow blocks."""
         src = tmp_path / "ControlFlow.svelte"
         src.write_text(
@@ -140,21 +132,19 @@ class TestSvelteBasicChunking:
   <p>Total items: {items.length}</p>
 {/key}
 """,
-        )
+            )
         chunks = chunk_file(src, "svelte")
-
-        # Check for control flow blocks
         if_chunks = [c for c in chunks if c.node_type == "if_block"]
         each_chunks = [c for c in chunks if c.node_type == "each_block"]
         await_chunks = [c for c in chunks if c.node_type == "await_block"]
         key_chunks = [c for c in chunks if c.node_type == "key_block"]
-
         assert len(if_chunks) >= 1
         assert len(each_chunks) >= 1
         assert len(await_chunks) >= 1
         assert len(key_chunks) >= 1
 
-    def test_module_and_instance_scripts(self, tmp_path):
+    @staticmethod
+    def test_module_and_instance_scripts(tmp_path):
         """Test module context script."""
         src = tmp_path / "ModuleScript.svelte"
         src.write_text(
@@ -183,28 +173,20 @@ class TestSvelteBasicChunking:
 <h1>{title}</h1>
 <p>Total instances: {totalInstances}</p>
 """,
-        )
+            )
         chunks = chunk_file(src, "svelte")
-
-        # Check for module and instance scripts
-        module_chunks = [
-            c
-            for c in chunks
-            if c.node_type == "module_script" or ('context="module"' in c.content)
-        ]
-        instance_chunks = [
-            c
-            for c in chunks
-            if c.node_type == "instance_script"
-            or (c.node_type == "script_element" and 'context="module"' not in c.content)
-        ]
-
+        module_chunks = [c for c in chunks if c.node_type ==
+            "module_script" or 'context="module"' in c.content]
+        instance_chunks = [c for c in chunks if c.node_type ==
+            "instance_script" or (c.node_type == "script_element" and
+            'context="module"' not in c.content)]
         assert len(module_chunks) >= 1
         assert len(instance_chunks) >= 1
         assert any("totalInstances" in c.content for c in module_chunks)
         assert any("onMount" in c.content for c in instance_chunks)
 
-    def test_stores_and_bindings(self, tmp_path):
+    @staticmethod
+    def test_stores_and_bindings(tmp_path):
         """Test Svelte stores and bindings."""
         src = tmp_path / "Stores.svelte"
         src.write_text(
@@ -238,13 +220,10 @@ class TestSvelteBasicChunking:
   }
 </style>
 """,
-        )
+            )
         chunks = chunk_file(src, "svelte")
-
-        # Check for script with stores
-        script_chunks = [
-            c for c in chunks if c.node_type in ["script_element", "instance_script"]
-        ]
+        script_chunks = [c for c in chunks if c.node_type in {
+            "script_element", "instance_script"}]
         assert any("writable" in c.content for c in script_chunks)
         assert any("derived" in c.content for c in script_chunks)
 
@@ -252,83 +231,79 @@ class TestSvelteBasicChunking:
 class TestSvelteContractCompliance:
     """Test ExtendedLanguagePluginContract implementation."""
 
-    def test_implements_contract(self):
+    @classmethod
+    def test_implements_contract(cls):
         """Test that SveltePlugin implements the contract."""
         plugin = SveltePlugin()
         assert isinstance(plugin, ExtendedLanguagePluginContract)
 
-    def test_get_semantic_chunks(self):
+    @staticmethod
+    def test_get_semantic_chunks():
         """Test get_semantic_chunks method."""
         plugin = SveltePlugin()
 
-        # Mock node structure
         class MockNode:
+
             def __init__(self, node_type, start=0, end=1):
                 self.type = node_type
                 self.start_byte = start
                 self.end_byte = end
-                self.start_point = (0, 0)
-                self.end_point = (0, end)
+                self.start_point = 0, 0
+                self.end_point = 0, end
                 self.children = []
-
         root = MockNode("document")
         script_node = MockNode("script_element", 0, 50)
         style_node = MockNode("style_element", 51, 100)
         if_node = MockNode("if_block", 101, 150)
         root.children = [script_node, style_node, if_node]
-
         source = b"<script></script><style></style>{#if true}{/if}"
         chunks = plugin.get_semantic_chunks(root, source)
-
         assert len(chunks) >= 3
         assert any(chunk["type"] == "script_element" for chunk in chunks)
         assert any(chunk["type"] == "style_element" for chunk in chunks)
         assert any(chunk["type"] == "if_block" for chunk in chunks)
 
-    def test_get_chunk_node_types(self):
+    @classmethod
+    def test_get_chunk_node_types(cls):
         """Test get_chunk_node_types method."""
         plugin = SveltePlugin()
         node_types = plugin.get_chunk_node_types()
-
         assert isinstance(node_types, set)
         assert "script_element" in node_types
         assert "style_element" in node_types
         assert "if_block" in node_types
         assert "each_block" in node_types
 
-    def test_should_chunk_node(self):
+    @staticmethod
+    def test_should_chunk_node():
         """Test should_chunk_node method."""
         plugin = SveltePlugin()
 
-        # Mock node
         class MockNode:
+
             def __init__(self, node_type):
                 self.type = node_type
                 self.children = []
-
-        # Test chunk nodes
         assert plugin.should_chunk_node(MockNode("script_element"))
         assert plugin.should_chunk_node(MockNode("style_element"))
         assert plugin.should_chunk_node(MockNode("if_block"))
         assert plugin.should_chunk_node(MockNode("each_block"))
-
-        # Test non-chunk nodes
         assert not plugin.should_chunk_node(MockNode("text"))
         assert not plugin.should_chunk_node(MockNode("comment"))
 
-    def test_get_node_context(self):
+    @staticmethod
+    def test_get_node_context():
         """Test get_node_context method."""
         plugin = SveltePlugin()
 
-        # Mock node
         class MockNode:
+
             def __init__(self, node_type):
                 self.type = node_type
                 self.children = []
-
-        # Test context extraction
         node = MockNode("script_element")
-        context = plugin.get_node_context(node, b'<script context="module"></script>')
+        context = plugin.get_node_context(node,
+            b'<script context="module"></script>')
         assert context is not None
         assert "script" in context
 
@@ -336,26 +311,24 @@ class TestSvelteContractCompliance:
 class TestSvelteEdgeCases:
     """Test edge cases in Svelte parsing."""
 
-    def test_empty_file(self, tmp_path):
+    @staticmethod
+    def test_empty_file(tmp_path):
         """Test empty Svelte file."""
         src = tmp_path / "Empty.svelte"
         src.write_text("")
         chunks = chunk_file(src, "svelte")
         assert len(chunks) == 0
 
-    def test_html_only(self, tmp_path):
+    @staticmethod
+    def test_html_only(tmp_path):
         """Test Svelte file with only HTML."""
         src = tmp_path / "HtmlOnly.svelte"
-        src.write_text(
-            """<h1>Static HTML</h1>
-<p>No scripts or styles</p>
-""",
-        )
+        src.write_text("<h1>Static HTML</h1>\n<p>No scripts or styles</p>\n")
         chunks = chunk_file(src, "svelte")
-        # HTML-only content might not produce chunks unless it has control flow
         assert len(chunks) == 0
 
-    def test_typescript_support(self, tmp_path):
+    @staticmethod
+    def test_typescript_support(tmp_path):
         """Test Svelte with TypeScript."""
         src = tmp_path / "TypeScript.svelte"
         src.write_text(
@@ -385,17 +358,15 @@ class TestSvelteEdgeCases:
 <p>User: {user.name} ({user.email})</p>
 <button on:click={increment}>Increment</button>
 """,
-        )
+            )
         chunks = chunk_file(src, "svelte")
-
-        # Check for TypeScript script
-        script_chunks = [
-            c for c in chunks if c.node_type in ["script_element", "instance_script"]
-        ]
+        script_chunks = [c for c in chunks if c.node_type in {
+            "script_element", "instance_script"}]
         assert len(script_chunks) >= 1
         assert any('lang="ts"' in c.content for c in script_chunks)
 
-    def test_slots(self, tmp_path):
+    @staticmethod
+    def test_slots(tmp_path):
         """Test Svelte component with slots."""
         src = tmp_path / "SlotComponent.svelte"
         src.write_text(
@@ -428,14 +399,14 @@ class TestSvelteEdgeCases:
   }
 </style>
 """,
-        )
+            )
         chunks = chunk_file(src, "svelte")
-
-        # Should have script and style chunks
-        assert any(c.node_type in ["script_element", "instance_script"] for c in chunks)
+        assert any(c.node_type in {"script_element", "instance_script"} for
+            c in chunks)
         assert any(c.node_type == "style_element" for c in chunks)
 
-    def test_event_handlers_and_modifiers(self, tmp_path):
+    @staticmethod
+    def test_event_handlers_and_modifiers(tmp_path):
         """Test various event handlers and modifiers."""
         src = tmp_path / "Events.svelte"
         src.write_text(
@@ -476,19 +447,16 @@ class TestSvelteEdgeCases:
   <p>{message}</p>
 {/if}
 """,
-        )
+            )
         chunks = chunk_file(src, "svelte")
-
-        # Check for script and control flow
-        script_chunks = [
-            c for c in chunks if c.node_type in ["script_element", "instance_script"]
-        ]
+        script_chunks = [c for c in chunks if c.node_type in {
+            "script_element", "instance_script"}]
         if_chunks = [c for c in chunks if c.node_type == "if_block"]
-
         assert len(script_chunks) >= 1
         assert len(if_chunks) >= 1
 
-    def test_animations_and_transitions(self, tmp_path):
+    @staticmethod
+    def test_animations_and_transitions(tmp_path):
         """Test Svelte animations and transitions."""
         src = tmp_path / "Animations.svelte"
         src.write_text(
@@ -528,17 +496,15 @@ class TestSvelteEdgeCases:
 
 <button on:click={addItem}>Add Item</button>
 """,
-        )
+            )
         chunks = chunk_file(src, "svelte")
-
-        # Check for control flow blocks
         if_chunks = [c for c in chunks if c.node_type == "if_block"]
         each_chunks = [c for c in chunks if c.node_type == "each_block"]
-
         assert len(if_chunks) >= 1
         assert len(each_chunks) >= 1
 
-    def test_component_composition(self, tmp_path):
+    @staticmethod
+    def test_component_composition(tmp_path):
         """Test component imports and usage."""
         src = tmp_path / "Parent.svelte"
         src.write_text(
@@ -578,17 +544,13 @@ class TestSvelteEdgeCases:
   }
 </style>
 """,
-        )
+            )
         chunks = chunk_file(src, "svelte")
-
-        # Check for all major sections
-        script_chunks = [
-            c for c in chunks if c.node_type in ["script_element", "instance_script"]
-        ]
+        script_chunks = [c for c in chunks if c.node_type in {
+            "script_element", "instance_script"}]
         each_chunks = [c for c in chunks if c.node_type == "each_block"]
         if_chunks = [c for c in chunks if c.node_type == "if_block"]
         style_chunks = [c for c in chunks if c.node_type == "style_element"]
-
         assert len(script_chunks) >= 1
         assert len(each_chunks) >= 1
         assert len(if_chunks) >= 1

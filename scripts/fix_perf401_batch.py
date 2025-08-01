@@ -40,7 +40,7 @@ def main():
         )
 
         # Run ruff fix on this batch
-        cmd = ["ruff", "check", "--select", "PERF401", "--fix"] + batch
+        cmd = ["ruff", "check", "--select", "PERF401", "--fix", *batch]
         result = subprocess.run(cmd, capture_output=True, text=True, check=False)
 
         if result.returncode == 0:

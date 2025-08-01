@@ -40,7 +40,7 @@ class Calculator:
 
     # Save to temp file
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
         f.write(code)
         temp_file = f.name
 
@@ -155,7 +155,7 @@ class DataProcessor:
 
     # Save to temp file
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
         f.write(code)
         temp_file = f.name
 

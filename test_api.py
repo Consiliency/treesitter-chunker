@@ -44,7 +44,7 @@ def add_numbers(a, b):
 
 class Calculator:
     """Simple calculator class."""
-    
+
     def multiply(self, x, y):
         """Multiply two numbers."""
         return x * y

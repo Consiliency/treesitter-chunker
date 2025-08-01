@@ -1,5 +1,4 @@
 """Comprehensive tests for Elixir language support."""
-
 from chunker import chunk_file
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from chunker.languages.elixir import ElixirPlugin
@@ -8,7 +7,8 @@ from chunker.languages.elixir import ElixirPlugin
 class TestElixirBasicChunking:
     """Test basic Elixir chunking functionality."""
 
-    def test_simple_functions(self, tmp_path):
+    @staticmethod
+    def test_simple_functions(tmp_path):
         """Test basic function definitions."""
         src = tmp_path / "functions.ex"
         src.write_text(
@@ -22,29 +22,27 @@ class TestElixirBasicChunking:
   defp fibonacci(1), do: 1
   defp fibonacci(n), do: fibonacci(n - 1) + fibonacci(n - 2)
 
-  @doc \"\"\"
+  @doc ""\"
   Calculates the sum of a list.
-  \"\"\"
+  ""\"
   def sum(list), do: Enum.reduce(list, 0, &+/2)
 end
 """,
-        )
+            )
         chunks = chunk_file(src, "elixir")
         assert len(chunks) >= 5
-
-        # Check for module
-        module_chunks = [c for c in chunks if c.node_type == "module_definition"]
+        module_chunks = [c for c in chunks if c.node_type ==
+            "module_definition"]
         assert len(module_chunks) >= 1
         assert any("Math" in c.content for c in module_chunks)
-
-        # Check for public and private functions
         function_chunks = [c for c in chunks if "function" in c.node_type]
         assert len(function_chunks) >= 4
         assert any("factorial" in c.content for c in function_chunks)
         assert any("fibonacci" in c.content for c in function_chunks)
         assert any("sum" in c.content for c in function_chunks)
 
-    def test_macros_and_specs(self, tmp_path):
+    @staticmethod
+    def test_macros_and_specs(tmp_path):
         """Test macro definitions and type specs."""
         src = tmp_path / "macros.ex"
         src.write_text(
@@ -69,29 +67,19 @@ end
   @callback process(binary) :: {:ok, term} | {:error, String.t}
 end
 """,
-        )
+            )
         chunks = chunk_file(src, "elixir")
-
-        # Check for macros
-        macro_chunks = [
-            c
-            for c in chunks
-            if "macro" in c.content
-            or any(kw in c.content for kw in ["defmacro", "defmacrop"])
-        ]
+        macro_chunks = [c for c in chunks if "macro" in c.content or any(kw in
+            c.content for kw in ["defmacro", "defmacrop"])]
         assert len(macro_chunks) >= 2
         assert any("unless" in c.content for c in chunks)
         assert any("debug" in c.content for c in chunks)
-
-        # Check for specs
-        spec_chunks = [
-            c
-            for c in chunks
-            if c.node_type == "spec_definition" or "@spec" in c.content
-        ]
+        spec_chunks = [c for c in chunks if c.node_type ==
+            "spec_definition" or "@spec" in c.content]
         assert len(spec_chunks) >= 1
 
-    def test_genserver_implementation(self, tmp_path):
+    @staticmethod
+    def test_genserver_implementation(tmp_path):
         """Test GenServer implementation."""
         src = tmp_path / "counter.ex"
         src.write_text(
@@ -128,25 +116,20 @@ end
   end
 end
 """,
-        )
+            )
         chunks = chunk_file(src, "elixir")
-
-        # Check for module and functions
-        assert any("Counter" in c.content and "module" in c.node_type for c in chunks)
-
-        # Check for client API functions
+        assert any("Counter" in c.content and "module" in c.node_type for c in
+            chunks)
         api_functions = ["start_link", "increment", "get_value"]
         for func_name in api_functions:
-            assert any(
-                func_name in c.content and "function" in c.node_type for c in chunks
-            )
-
-        # Check for GenServer callbacks
+            assert any(func_name in c.content and "function" in c.node_type for
+                c in chunks)
         callback_functions = ["init", "handle_call"]
         for func_name in callback_functions:
             assert any(func_name in c.content for c in chunks)
 
-    def test_pattern_matching(self, tmp_path):
+    @staticmethod
+    def test_pattern_matching(tmp_path):
         """Test pattern matching constructs."""
         src = tmp_path / "patterns.ex"
         src.write_text(
@@ -166,12 +149,10 @@ end
   def handle_user(%{name: name}), do: "Minor: #{name}"
 end
 """,
-        )
+            )
         chunks = chunk_file(src, "elixir")
-
-        # All pattern matching functions should be chunked
         function_chunks = [c for c in chunks if "function" in c.node_type]
-        assert len(function_chunks) >= 9  # Multiple clauses
+        assert len(function_chunks) >= 9
         assert any("process_message" in c.content for c in function_chunks)
         assert any("describe_list" in c.content for c in function_chunks)
         assert any("handle_user" in c.content for c in function_chunks)
@@ -180,83 +161,77 @@ end
 class TestElixirContractCompliance:
     """Test ExtendedLanguagePluginContract implementation."""
 
-    def test_implements_contract(self):
+    @classmethod
+    def test_implements_contract(cls):
         """Test that ElixirPlugin implements the contract."""
         plugin = ElixirPlugin()
         assert isinstance(plugin, ExtendedLanguagePluginContract)
 
-    def test_get_semantic_chunks(self):
+    @staticmethod
+    def test_get_semantic_chunks():
         """Test get_semantic_chunks method."""
         plugin = ElixirPlugin()
 
-        # Mock node structure
         class MockNode:
+
             def __init__(self, node_type, start=0, end=1):
                 self.type = node_type
                 self.start_byte = start
                 self.end_byte = end
-                self.start_point = (0, 0)
-                self.end_point = (0, end)
+                self.start_point = 0, 0
+                self.end_point = 0, end
                 self.children = []
-
         root = MockNode("source")
         module_node = MockNode("module_definition", 0, 100)
         func_node = MockNode("call", 10, 50)
-        # Add identifier child for function type
         id_node = MockNode("identifier", 10, 13)
         id_node.text = b"def"
         func_node.children.append(id_node)
         module_node.children.append(func_node)
         root.children.append(module_node)
-
         source = b"defmodule Test do\n  def hello, do: :world\nend"
         chunks = plugin.get_semantic_chunks(root, source)
-
         assert len(chunks) >= 1
         assert any(chunk["type"] == "module_definition" for chunk in chunks)
 
-    def test_get_chunk_node_types(self):
+    @classmethod
+    def test_get_chunk_node_types(cls):
         """Test get_chunk_node_types method."""
         plugin = ElixirPlugin()
         node_types = plugin.get_chunk_node_types()
-
         assert isinstance(node_types, set)
         assert "function_definition" in node_types
         assert "module_definition" in node_types
         assert "macro_definition" in node_types
-        assert "call" in node_types  # For function definitions
+        assert "call" in node_types
 
-    def test_should_chunk_node(self):
+    @staticmethod
+    def test_should_chunk_node():
         """Test should_chunk_node method."""
         plugin = ElixirPlugin()
 
-        # Mock node
         class MockNode:
+
             def __init__(self, node_type):
                 self.type = node_type
                 self.children = []
                 self.text = b""
-
-        # Test chunk nodes
         assert plugin.should_chunk_node(MockNode("module_definition"))
         assert plugin.should_chunk_node(MockNode("macro_definition"))
         assert plugin.should_chunk_node(MockNode("spec_definition"))
-
-        # Test non-chunk nodes
         assert not plugin.should_chunk_node(MockNode("identifier"))
         assert not plugin.should_chunk_node(MockNode("comment"))
 
-    def test_get_node_context(self):
+    @staticmethod
+    def test_get_node_context():
         """Test get_node_context method."""
         plugin = ElixirPlugin()
 
-        # Mock node
         class MockNode:
+
             def __init__(self, node_type):
                 self.type = node_type
                 self.children = []
-
-        # Test context extraction
         node = MockNode("module_definition")
         context = plugin.get_node_context(node, b"defmodule Test do")
         assert context is not None
@@ -266,14 +241,16 @@ class TestElixirContractCompliance:
 class TestElixirEdgeCases:
     """Test edge cases in Elixir parsing."""
 
-    def test_empty_file(self, tmp_path):
+    @staticmethod
+    def test_empty_file(tmp_path):
         """Test empty Elixir file."""
         src = tmp_path / "empty.ex"
         src.write_text("")
         chunks = chunk_file(src, "elixir")
         assert len(chunks) == 0
 
-    def test_comments_only(self, tmp_path):
+    @staticmethod
+    def test_comments_only(tmp_path):
         """Test file with only comments."""
         src = tmp_path / "comments.ex"
         src.write_text(
@@ -283,12 +260,12 @@ class TestElixirEdgeCases:
 # Module comment
 # More details
 """,
-        )
+            )
         chunks = chunk_file(src, "elixir")
-        # Comments should be ignored
         assert len(chunks) == 0
 
-    def test_anonymous_functions(self, tmp_path):
+    @staticmethod
+    def test_anonymous_functions(tmp_path):
         """Test anonymous functions and captures."""
         src = tmp_path / "anon.ex"
         src.write_text(
@@ -316,15 +293,15 @@ class TestElixirEdgeCases:
   end
 end
 """,
-        )
+            )
         chunks = chunk_file(src, "elixir")
-
-        # Module and functions should be chunked
-        assert any("Anon" in c.content and "module" in c.node_type for c in chunks)
+        assert any("Anon" in c.content and "module" in c.node_type for c in
+            chunks)
         assert any("map_example" in c.content for c in chunks)
         assert any("complex_anon" in c.content for c in chunks)
 
-    def test_protocols_and_implementations(self, tmp_path):
+    @staticmethod
+    def test_protocols_and_implementations(tmp_path):
         """Test protocol definitions and implementations."""
         src = tmp_path / "protocols.ex"
         src.write_text(
@@ -345,23 +322,18 @@ defimpl Stringify, for: List do
   end
 end
 """,
-        )
+            )
         chunks = chunk_file(src, "elixir")
-
-        # Check for protocol and implementations
         chunk_types = {chunk.node_type for chunk in chunks}
         assert "protocol_definition" in chunk_types
         assert "implementation_definition" in chunk_types
+        assert any("Stringify" in c.content and "protocol" in c.node_type for
+            c in chunks)
+        assert any("Integer" in c.content and "implementation" in c.
+            node_type for c in chunks)
 
-        # Verify content
-        assert any(
-            "Stringify" in c.content and "protocol" in c.node_type for c in chunks
-        )
-        assert any(
-            "Integer" in c.content and "implementation" in c.node_type for c in chunks
-        )
-
-    def test_pipe_operators(self, tmp_path):
+    @staticmethod
+    def test_pipe_operators(tmp_path):
         """Test pipe operator chains."""
         src = tmp_path / "pipes.ex"
         src.write_text(
@@ -391,22 +363,15 @@ end
   defp log_error(reason), do: IO.puts("Error: #{reason}")
 end
 """,
-        )
+            )
         chunks = chunk_file(src, "elixir")
-
-        # All functions should be chunked including private ones
-        function_names = [
-            "process_data",
-            "complex_pipeline",
-            "validate",
-            "transform",
-            "persist",
-            "log_error",
-        ]
+        function_names = ["process_data", "complex_pipeline", "validate",
+            "transform", "persist", "log_error"]
         for name in function_names:
             assert any(name in c.content for c in chunks)
 
-    def test_structs_and_behaviours(self, tmp_path):
+    @staticmethod
+    def test_structs_and_behaviours(tmp_path):
         """Test struct definitions and behaviours."""
         src = tmp_path / "structs.ex"
         src.write_text(
@@ -431,19 +396,11 @@ end
   end
 end
 """,
-        )
+            )
         chunks = chunk_file(src, "elixir")
-
-        # Check for struct definition
         assert any("defstruct" in c.content for c in chunks)
-
-        # Check for behaviour declaration
-        assert any(
-            "@behaviour" in c.content or "behaviour_definition" in c.node_type
-            for c in chunks
-        )
-
-        # Check for implemented functions
+        assert any("@behaviour" in c.content or "behaviour_definition" in c
+            .node_type for c in chunks)
         impl_functions = ["fetch", "get_and_update", "pop"]
         for func in impl_functions:
             assert any(func in c.content for c in chunks)

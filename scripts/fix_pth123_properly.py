@@ -28,17 +28,17 @@ def fix_open_calls(file_path: Path) -> bool:
                 return match.group(0)
 
             # Skip if file_arg is a file object (like sys.stdout)
-            if file_arg in [
+            if file_arg in {
                 "sys.stdout",
                 "sys.stderr",
                 "sys.stdin",
                 "self.stdout",
                 "self.stderr",
-            ]:
+            }:
                 return match.group(0)
 
             # Skip if it's subprocess PIPE
-            if file_arg in ["subprocess.PIPE", "PIPE"]:
+            if file_arg in {"subprocess.PIPE", "PIPE"}:
                 return match.group(0)
 
             # Skip if it's an attribute access like self.file

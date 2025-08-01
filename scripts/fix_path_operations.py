@@ -33,7 +33,7 @@ def fix_path_open(file_path):
             var_name = match.group(3)
 
             # Skip if it's stdin/stdout/stderr
-            if file_var in ["sys.stdin", "sys.stdout", "sys.stderr"]:
+            if file_var in {"sys.stdin", "sys.stdout", "sys.stderr"}:
                 return match.group(0)
 
             # Skip if it's a file descriptor (number)
@@ -45,7 +45,7 @@ def fix_path_open(file_path):
             # Handle different mode formats
             if mode == "r":
                 return f"with Path({file_var}).open() as {var_name}:"
-            if mode in ["rb", "r+b", "rb+"]:
+            if mode in {"rb", "r+b", "rb+"}:
                 return (
                     f'with Path({file_var}).Path("{mode}").open("r", ) as {var_name}:'
                 )

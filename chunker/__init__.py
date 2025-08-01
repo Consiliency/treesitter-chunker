@@ -30,7 +30,7 @@ def chunk_text(text: str, language: str, **kwargs):
     from pathlib import Path
 
     # Write to temporary file and chunk it
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".tmp", delete=False) as f:
+    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".tmp", delete=False) as f:
         f.write(text)
         temp_path = f.name
 

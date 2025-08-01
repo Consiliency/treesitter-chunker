@@ -1,5 +1,4 @@
 """Define the boundary for grammar download and compilation - Team: Grammar Download"""
-
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -9,7 +8,6 @@ from pathlib import Path
 @dataclass
 class DownloadProgress:
     """Progress information for downloads"""
-
     bytes_downloaded: int
     total_bytes: int
     percent_complete: float
@@ -19,7 +17,6 @@ class DownloadProgress:
 @dataclass
 class CompilationResult:
     """Result of grammar compilation"""
-
     success: bool
     output_path: Path | None
     error_message: str | None
@@ -29,13 +26,11 @@ class CompilationResult:
 class GrammarDownloadContract(ABC):
     """Abstract contract defining grammar download interface"""
 
+    @staticmethod
     @abstractmethod
-    def download_grammar(
-        self,
-        language: str,
-        version: str | None = None,
-        progress_callback: Callable[[DownloadProgress], None] | None = None,
-    ) -> Path:
+    def download_grammar(language: str, version: (str | None) = None,
+        progress_callback: (Callable[[DownloadProgress], None] | None) = None,
+        ) -> Path:
         """Download a grammar repository
 
         Args:
@@ -56,12 +51,10 @@ class GrammarDownloadContract(ABC):
             - Directory contains valid grammar sources
         """
 
+    @staticmethod
     @abstractmethod
-    def compile_grammar(
-        self,
-        grammar_path: Path,
-        output_dir: Path,
-    ) -> CompilationResult:
+    def compile_grammar(grammar_path: Path, output_dir: Path,
+        ) -> CompilationResult:
         """Compile a grammar into a shared library
 
         Args:
@@ -81,12 +74,10 @@ class GrammarDownloadContract(ABC):
             - Error message provided if failed
         """
 
+    @staticmethod
     @abstractmethod
-    def download_and_compile(
-        self,
-        language: str,
-        version: str | None = None,
-    ) -> tuple[bool, str]:
+    def download_and_compile(language: str, version: (str | None) = None,
+        ) -> tuple[bool, str]:
         """Download and compile a grammar in one step
 
         Args:
@@ -105,8 +96,9 @@ class GrammarDownloadContract(ABC):
             - Cached for future use
         """
 
+    @staticmethod
     @abstractmethod
-    def get_grammar_cache_dir(self) -> Path:
+    def get_grammar_cache_dir() -> Path:
         """Get the directory where grammars are cached
 
         Returns:
@@ -117,8 +109,9 @@ class GrammarDownloadContract(ABC):
             - Directory is writable
         """
 
+    @staticmethod
     @abstractmethod
-    def is_grammar_cached(self, language: str, version: str | None = None) -> bool:
+    def is_grammar_cached(language: str, version: (str | None) = None) -> bool:
         """Check if a grammar is already cached
 
         Args:
@@ -133,8 +126,9 @@ class GrammarDownloadContract(ABC):
             - Validates cache integrity
         """
 
+    @staticmethod
     @abstractmethod
-    def clean_cache(self, keep_recent: int = 5) -> int:
+    def clean_cache(keep_recent: int = 5) -> int:
         """Clean old cached grammars
 
         Args:
@@ -148,8 +142,9 @@ class GrammarDownloadContract(ABC):
             - Most recent grammars preserved
         """
 
+    @staticmethod
     @abstractmethod
-    def validate_grammar(self, grammar_path: Path) -> tuple[bool, str | None]:
+    def validate_grammar(grammar_path: Path) -> tuple[bool, str | None]:
         """Validate a compiled grammar
 
         Args:

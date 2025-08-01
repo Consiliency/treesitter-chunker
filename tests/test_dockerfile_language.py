@@ -1,5 +1,4 @@
 """Comprehensive tests for Dockerfile language support."""
-
 from chunker import chunk_file, get_parser
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from chunker.languages.dockerfile import DockerfilePlugin
@@ -8,7 +7,8 @@ from chunker.languages.dockerfile import DockerfilePlugin
 class TestDockerfileBasicChunking:
     """Test basic Dockerfile chunking functionality."""
 
-    def test_simple_dockerfile(self, tmp_path):
+    @staticmethod
+    def test_simple_dockerfile(tmp_path):
         """Test basic Dockerfile with common instructions."""
         src = tmp_path / "Dockerfile"
         src.write_text(
@@ -21,11 +21,9 @@ WORKDIR /app
 
 CMD ["python3", "app.py"]
 """,
-        )
+            )
         chunks = chunk_file(src, "dockerfile")
         assert len(chunks) >= 5
-
-        # Check for expected instruction types
         chunk_types = {chunk.node_type for chunk in chunks}
         assert "from_instruction" in chunk_types
         assert "run_instruction" in chunk_types
@@ -33,7 +31,8 @@ CMD ["python3", "app.py"]
         assert "workdir_instruction" in chunk_types
         assert "cmd_instruction" in chunk_types
 
-    def test_multi_line_run_instruction(self, tmp_path):
+    @staticmethod
+    def test_multi_line_run_instruction(tmp_path):
         """Test multi-line RUN instruction."""
         src = tmp_path / "Dockerfile"
         src.write_text(
@@ -45,15 +44,15 @@ RUN apk add --no-cache \\
     git \\
     && pip3 install --upgrade pip
 """,
-        )
+            )
         chunks = chunk_file(src, "dockerfile")
-
         run_chunks = [c for c in chunks if c.node_type == "run_instruction"]
         assert len(run_chunks) == 1
         assert "apk add" in run_chunks[0].content
         assert "pip3 install" in run_chunks[0].content
 
-    def test_dockerfile_with_comments(self, tmp_path):
+    @staticmethod
+    def test_dockerfile_with_comments(tmp_path):
         """Test Dockerfile with comments."""
         src = tmp_path / "Dockerfile"
         src.write_text(
@@ -76,16 +75,15 @@ EXPOSE 3000
 # Start application
 CMD ["npm", "start"]
 """,
-        )
+            )
         chunks = chunk_file(src, "dockerfile")
-
-        # Check for comments
         comment_chunks = [c for c in chunks if c.node_type == "comment"]
         assert len(comment_chunks) >= 5
         assert any("Base image" in c.content for c in comment_chunks)
         assert any("Install dependencies" in c.content for c in comment_chunks)
 
-    def test_dockerfile_with_args_and_env(self, tmp_path):
+    @staticmethod
+    def test_dockerfile_with_args_and_env(tmp_path):
         """Test Dockerfile with ARG and ENV instructions."""
         src = tmp_path / "Dockerfile"
         src.write_text(
@@ -98,19 +96,16 @@ ENV NODE_ENV=production
 
 WORKDIR ${APP_HOME}
 """,
-        )
+            )
         chunks = chunk_file(src, "dockerfile")
-
-        # Check for ARG and ENV instructions
         chunk_types = {chunk.node_type for chunk in chunks}
         assert "arg_instruction" in chunk_types
         assert "env_instruction" in chunk_types
-
-        # Verify ENV instructions are captured
         env_chunks = [c for c in chunks if c.node_type == "env_instruction"]
         assert len(env_chunks) == 2
 
-    def test_dockerfile_with_healthcheck(self, tmp_path):
+    @staticmethod
+    def test_dockerfile_with_healthcheck(tmp_path):
         """Test Dockerfile with HEALTHCHECK instruction."""
         src = tmp_path / "Dockerfile"
         src.write_text(
@@ -121,13 +116,10 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \\
 
 EXPOSE 80
 """,
-        )
+            )
         chunks = chunk_file(src, "dockerfile")
-
-        # Check for HEALTHCHECK instruction
-        healthcheck_chunks = [
-            c for c in chunks if c.node_type == "healthcheck_instruction"
-        ]
+        healthcheck_chunks = [c for c in chunks if c.node_type ==
+            "healthcheck_instruction"]
         assert len(healthcheck_chunks) == 1
         assert "curl -f http://localhost/" in healthcheck_chunks[0].content
 
@@ -135,26 +127,21 @@ EXPOSE 80
 class TestDockerfileContractCompliance:
     """Test ExtendedLanguagePluginContract compliance."""
 
-    def test_implements_contract(self):
+    @staticmethod
+    def test_implements_contract():
         """Verify DockerfilePlugin implements ExtendedLanguagePluginContract."""
         assert issubclass(DockerfilePlugin, ExtendedLanguagePluginContract)
 
-    def test_get_semantic_chunks(self, tmp_path):
+    @classmethod
+    def test_get_semantic_chunks(cls, tmp_path):
         """Test get_semantic_chunks method."""
         plugin = DockerfilePlugin()
-
-        # Create a simple Dockerfile
-        source = b"""FROM python:3.9
-RUN pip install flask
-CMD ["python", "app.py"]
-"""
-
-        # Parse the source (mock tree-sitter node)
-
+        source = (
+            b'FROM python:3.9\nRUN pip install flask\nCMD ["python", "app.py"]\n'
+            )
         parser = get_parser("dockerfile")
         plugin.set_parser(parser)
         tree = parser.parse(source)
-
         chunks = plugin.get_semantic_chunks(tree.root_node, source)
         assert len(chunks) >= 3
         assert all("type" in chunk for chunk in chunks)
@@ -162,50 +149,45 @@ CMD ["python", "app.py"]
         assert all("end_line" in chunk for chunk in chunks)
         assert all("content" in chunk for chunk in chunks)
 
-    def test_get_chunk_node_types(self):
+    @classmethod
+    def test_get_chunk_node_types(cls):
         """Test get_chunk_node_types method."""
         plugin = DockerfilePlugin()
         node_types = plugin.get_chunk_node_types()
-
         assert isinstance(node_types, set)
         assert len(node_types) > 0
         assert "from_instruction" in node_types
         assert "run_instruction" in node_types
         assert "cmd_instruction" in node_types
 
-    def test_should_chunk_node(self):
+    @staticmethod
+    def test_should_chunk_node():
         """Test should_chunk_node method."""
         plugin = DockerfilePlugin()
 
-        # Mock nodes
         class MockNode:
+
             def __init__(self, node_type):
                 self.type = node_type
-
-        # Test instruction nodes
         assert plugin.should_chunk_node(MockNode("from_instruction"))
         assert plugin.should_chunk_node(MockNode("run_instruction"))
         assert plugin.should_chunk_node(MockNode("comment"))
-
-        # Test non-chunk nodes
         assert not plugin.should_chunk_node(MockNode("source_file"))
         assert not plugin.should_chunk_node(MockNode("line_continuation"))
 
-    def test_get_node_context(self):
+    @staticmethod
+    def test_get_node_context():
         """Test get_node_context method."""
         plugin = DockerfilePlugin()
 
-        # Mock node
         class MockNode:
+
             def __init__(self, node_type):
                 self.type = node_type
                 self.children = []
-
-        # Test instruction context
         node = MockNode("run_instruction")
         context = plugin.get_node_context(node, b"RUN apt-get update")
         assert context is not None
-
         node = MockNode("cmd_instruction")
         context = plugin.get_node_context(node, b'CMD ["python", "app.py"]')
         assert context is not None
@@ -214,39 +196,39 @@ CMD ["python", "app.py"]
 class TestDockerfileEdgeCases:
     """Test edge cases in Dockerfile parsing."""
 
-    def test_empty_dockerfile(self, tmp_path):
+    @staticmethod
+    def test_empty_dockerfile(tmp_path):
         """Test empty Dockerfile."""
         src = tmp_path / "Dockerfile"
         src.write_text("")
         chunks = chunk_file(src, "dockerfile")
         assert len(chunks) == 0
 
-    def test_dockerfile_with_only_comments(self, tmp_path):
+    @staticmethod
+    def test_dockerfile_with_only_comments(tmp_path):
         """Test Dockerfile with only comments."""
         src = tmp_path / "Dockerfile"
         src.write_text(
-            """# This is a comment
-# Another comment
-# Yet another comment
-""",
-        )
+            "# This is a comment\n# Another comment\n# Yet another comment\n")
         chunks = chunk_file(src, "dockerfile")
         assert all(c.node_type == "comment" for c in chunks)
 
-    def test_dockerfile_with_escape_characters(self, tmp_path):
+    @staticmethod
+    def test_dockerfile_with_escape_characters(tmp_path):
         """Test Dockerfile with escape characters."""
         src = tmp_path / "Dockerfile"
         src.write_text(
             """FROM alpine
 
 RUN echo "Hello \\"World\\"" && \\
-    echo "Line continuation"
+    echo "Line continuation\"
 """,
-        )
+            )
         chunks = chunk_file(src, "dockerfile")
         assert len(chunks) >= 2
 
-    def test_multistage_dockerfile(self, tmp_path):
+    @staticmethod
+    def test_multistage_dockerfile(tmp_path):
         """Test multi-stage Dockerfile."""
         src = tmp_path / "Dockerfile"
         src.write_text(
@@ -263,13 +245,9 @@ WORKDIR /root/
 COPY --from=builder /app/main .
 CMD ["./main"]
 """,
-        )
+            )
         chunks = chunk_file(src, "dockerfile")
-
-        # Should have multiple FROM instructions
         from_chunks = [c for c in chunks if c.node_type == "from_instruction"]
         assert len(from_chunks) == 2
-
-        # Check for COPY --from instruction
         copy_chunks = [c for c in chunks if c.node_type == "copy_instruction"]
         assert any("--from=builder" in c.content for c in copy_chunks)

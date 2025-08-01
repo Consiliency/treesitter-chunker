@@ -1,5 +1,4 @@
 """Base metadata extraction implementation."""
-
 from abc import ABC
 
 from tree_sitter import Node
@@ -19,7 +18,8 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
         """
         self.language = language
 
-    def _get_node_text(self, node: Node, source: bytes) -> str:
+    @staticmethod
+    def _get_node_text(node: Node, source: bytes) -> str:
         """
         Extract text content from a node.
 
@@ -30,9 +30,10 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
         Returns:
             Text content of the node
         """
-        return source[node.start_byte : node.end_byte].decode("utf-8", errors="replace")
+        return source[node.start_byte:node.end_byte].decode("utf-8", errors="replace")
 
-    def _find_child_by_type(self, node: Node, node_type: str) -> Node | None:
+    @staticmethod
+    def _find_child_by_type(node: Node, node_type: str) -> (Node | None):
         """
         Find first child node of specific type.
 
@@ -48,7 +49,8 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
                 return child
         return None
 
-    def _find_all_children_by_type(self, node: Node, node_type: str) -> list[Node]:
+    @staticmethod
+    def _find_all_children_by_type(node: Node, node_type: str) -> list[Node]:
         """
         Find all child nodes of specific type.
 
@@ -90,11 +92,11 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
         def collect_identifiers(n: Node, _depth: int):
             if n.type == "identifier":
                 identifiers.add(self._get_node_text(n, source))
-
         self._walk_tree(node, collect_identifiers)
         return identifiers
 
-    def _is_comment_node(self, node: Node) -> bool:
+    @staticmethod
+    def _is_comment_node(node: Node) -> bool:
         """
         Check if node is a comment.
 
@@ -104,9 +106,10 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
         Returns:
             True if node is a comment
         """
-        return node.type in ("comment", "line_comment", "block_comment")
+        return node.type in {"comment", "line_comment", "block_comment"}
 
-    def _extract_leading_comment(self, node: Node, source: bytes) -> str | None:
+    def _extract_leading_comment(self, node: Node, source: bytes) -> (str | None
+        ):
         """
         Extract comment immediately before a node.
 
@@ -119,21 +122,15 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
         """
         if not node.parent:
             return None
-
-        # Find this node's position among siblings
         siblings = node.parent.children
         node_index = None
         for i, sibling in enumerate(siblings):
             if sibling == node:
                 node_index = i
                 break
-
         if node_index is None or node_index == 0:
             return None
-
-        # Check previous sibling
         prev_sibling = siblings[node_index - 1]
         if self._is_comment_node(prev_sibling):
             return self._get_node_text(prev_sibling, source)
-
         return None

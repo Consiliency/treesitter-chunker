@@ -151,7 +151,7 @@ class TestGrammarIntegration:
         # All should be popular languages
         names = [g.name for g in not_found]
         for name in names:
-            assert name in [
+            assert name in {
                 "python",
                 "javascript",
                 "typescript",
@@ -164,7 +164,7 @@ class TestGrammarIntegration:
                 "php",
                 "swift",
                 "kotlin",
-            ]
+            }
 
     @pytest.mark.integration
     def test_builder_integration(self):

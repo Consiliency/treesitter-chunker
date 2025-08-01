@@ -67,7 +67,7 @@ class TestClass:
         return 3
 '''
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
         f.write(test_content)
         test_file = Path(f.name)
 
@@ -81,7 +81,7 @@ class TestClass:
 
         # Make a small change
         new_content = test_content.replace("return 1", "return 100")
-        test_file.write_text(new_content)
+        test_file.write_text(new_content, encoding="utf-8")
 
         # Incremental parse
         print("\nIncremental parse after small change...")

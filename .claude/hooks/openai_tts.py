@@ -9,6 +9,7 @@
 import builtins
 import contextlib
 import os
+import pathlib
 import subprocess
 import sys
 import tempfile
@@ -92,7 +93,7 @@ def main():
 
             # Clean up temporary file
             with contextlib.suppress(builtins.BaseException):
-                os.unlink(temp_path)
+                pathlib.Path(temp_path).unlink()
 
             print("✅ Playback complete!")
 

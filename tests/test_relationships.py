@@ -37,7 +37,7 @@ def test_chunk_id_generation():
 
 def test_parent_child_relationships():
     """Test parent-child relationship tracking."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
         f.write(
             """
 class OuterClass:
@@ -84,7 +84,7 @@ class OuterClass:
 
 def test_nested_functions():
     """Test nested function relationships."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
         f.write(
             """
 def outer_function():
@@ -117,7 +117,7 @@ def outer_function():
         assert deeply.parent_chunk_id == inner.chunk_id
 
         # Check parent context
-        assert outer.parent_context == ""
+        assert not outer.parent_context
         assert inner.parent_context == "function_definition"
         assert deeply.parent_context == "function_definition"
 
@@ -127,7 +127,7 @@ def outer_function():
 
 def test_flat_structure_no_relationships():
     """Test that flat structure has no parent relationships."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
         f.write(
             """
 def function1():
@@ -150,7 +150,6 @@ class Class1:
 
         for chunk in chunks:
             assert chunk.parent_chunk_id is None
-            assert chunk.parent_context == ""
-
+            assert not chunk.parent_context
     finally:
         temp_path.unlink()

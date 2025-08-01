@@ -1,5 +1,4 @@
 """Metadata extraction interfaces for enriching chunks with additional information."""
-
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any
@@ -10,7 +9,6 @@ from tree_sitter import Node
 @dataclass
 class ComplexityMetrics:
     """Code complexity metrics."""
-
     cyclomatic: int
     cognitive: int
     nesting_depth: int
@@ -21,19 +19,19 @@ class ComplexityMetrics:
 @dataclass
 class SignatureInfo:
     """Function/method signature information."""
-
     name: str
-    parameters: list[dict[str, Any]]  # [{name, type, default}]
+    parameters: list[dict[str, Any]]
     return_type: str | None
     decorators: list[str]
-    modifiers: list[str]  # static, async, etc.
+    modifiers: list[str]
 
 
 class MetadataExtractor(ABC):
     """Extract rich metadata from AST nodes."""
 
+    @staticmethod
     @abstractmethod
-    def extract_signature(self, node: Node, source: bytes) -> SignatureInfo | None:
+    def extract_signature(node: Node, source: bytes) -> (SignatureInfo | None):
         """
         Extract function/method signature information.
 
@@ -45,8 +43,9 @@ class MetadataExtractor(ABC):
             Signature information or None
         """
 
+    @staticmethod
     @abstractmethod
-    def extract_docstring(self, node: Node, source: bytes) -> str | None:
+    def extract_docstring(node: Node, source: bytes) -> (str | None):
         """
         Extract docstring/comment from a node.
 
@@ -58,8 +57,9 @@ class MetadataExtractor(ABC):
             Docstring text or None
         """
 
+    @staticmethod
     @abstractmethod
-    def extract_imports(self, node: Node, source: bytes) -> list[str]:
+    def extract_imports(node: Node, source: bytes) -> list[str]:
         """
         Extract import statements used within a node.
 
@@ -71,8 +71,9 @@ class MetadataExtractor(ABC):
             List of import statements
         """
 
+    @staticmethod
     @abstractmethod
-    def extract_dependencies(self, node: Node, source: bytes) -> set[str]:
+    def extract_dependencies(node: Node, source: bytes) -> set[str]:
         """
         Extract symbols that this chunk depends on.
 
@@ -84,8 +85,9 @@ class MetadataExtractor(ABC):
             Set of dependency symbols
         """
 
+    @staticmethod
     @abstractmethod
-    def extract_exports(self, node: Node, source: bytes) -> set[str]:
+    def extract_exports(node: Node, source: bytes) -> set[str]:
         """
         Extract symbols that this chunk exports/defines.
 
@@ -101,8 +103,9 @@ class MetadataExtractor(ABC):
 class ComplexityAnalyzer(ABC):
     """Analyze code complexity metrics."""
 
+    @staticmethod
     @abstractmethod
-    def calculate_cyclomatic_complexity(self, node: Node) -> int:
+    def calculate_cyclomatic_complexity(node: Node) -> int:
         """
         Calculate cyclomatic complexity of a code node.
 
@@ -115,8 +118,9 @@ class ComplexityAnalyzer(ABC):
             Cyclomatic complexity score
         """
 
+    @staticmethod
     @abstractmethod
-    def calculate_cognitive_complexity(self, node: Node) -> int:
+    def calculate_cognitive_complexity(node: Node) -> int:
         """
         Calculate cognitive complexity of a code node.
 
@@ -129,8 +133,9 @@ class ComplexityAnalyzer(ABC):
             Cognitive complexity score
         """
 
+    @staticmethod
     @abstractmethod
-    def calculate_nesting_depth(self, node: Node) -> int:
+    def calculate_nesting_depth(node: Node) -> int:
         """
         Calculate maximum nesting depth.
 
@@ -141,8 +146,9 @@ class ComplexityAnalyzer(ABC):
             Maximum nesting level
         """
 
+    @staticmethod
     @abstractmethod
-    def count_logical_lines(self, node: Node, source: bytes) -> int:
+    def count_logical_lines(node: Node, source: bytes) -> int:
         """
         Count logical lines of code (excluding comments and blanks).
 
@@ -154,8 +160,9 @@ class ComplexityAnalyzer(ABC):
             Number of logical lines
         """
 
+    @staticmethod
     @abstractmethod
-    def analyze_complexity(self, node: Node, source: bytes) -> ComplexityMetrics:
+    def analyze_complexity(node: Node, source: bytes) -> ComplexityMetrics:
         """
         Perform complete complexity analysis.
 

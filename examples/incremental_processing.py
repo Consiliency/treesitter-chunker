@@ -42,7 +42,7 @@ class Calculator:
 '''
 
     # Create a temporary file
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
         f.write(initial_content)
         file_path = f.name
 
@@ -89,7 +89,7 @@ class Calculator:
 '''
 
         # Write modified content
-        with open(file_path, "w") as f:
+        with open(file_path, "w", encoding="utf-8") as f:
             f.write(modified_content)
 
         # Check if file changed

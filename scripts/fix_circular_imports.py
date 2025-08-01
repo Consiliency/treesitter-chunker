@@ -67,10 +67,9 @@ def main():
     fixed_count = 0
     for filename in problem_files:
         file_path = language_dir / filename
-        if file_path.exists():
-            if fix_circular_import(file_path):
-                fixed_count += 1
-                print(f"Fixed {file_path}")
+        if file_path.exists() and fix_circular_import(file_path):
+            fixed_count += 1
+            print(f"Fixed {file_path}")
 
     print(f"\nFixed {fixed_count} files")
 

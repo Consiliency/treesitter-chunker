@@ -3,9 +3,9 @@ import tempfile
 from pathlib import Path
 
 import pytest
+from chunker.cache import ASTCache
 
 from chunker import chunk_file, chunk_file_streaming, chunk_files_parallel
-from chunker.cache import ASTCache
 
 # Sample Python code for testing
 SAMPLE_PYTHON_CODE = '''
@@ -35,17 +35,17 @@ if __name__ == "__main__":
 '''
 
 
-@pytest.fixture()
+@pytest.fixture
 def temp_python_file():
     """Create a temporary Python file for testing."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
         f.write(SAMPLE_PYTHON_CODE)
         temp_path = Path(f.name)
     yield temp_path
     temp_path.unlink()
 
 
-@pytest.fixture()
+@pytest.fixture
 def temp_directory_with_files():
     """Create a temporary directory with multiple Python files."""
     temp_dir = Path(tempfile.mkdtemp())

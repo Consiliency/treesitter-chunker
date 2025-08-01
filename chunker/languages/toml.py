@@ -1,5 +1,4 @@
 """TOML language configuration."""
-
 from typing import Any
 
 from .base import LanguageConfig, language_config_registry
@@ -15,32 +14,21 @@ class TOMLPlugin(LanguagePlugin):
 
     @property
     def supported_node_types(self) -> set[str]:
-        return {
-            "document",
-            "table",
-            "pair",
-            "array",
-            "inline_table",
-        }
+        return {"document", "table", "pair", "array", "inline_table"}
 
-    def get_chunk_type(self, node_type: str) -> str | None:
+    def get_chunk_type(self, node_type: str) -> (str | None):
         return node_type if node_type in self.supported_node_types else None
 
-    def extract_metadata(self, node: Any, source_code: bytes) -> dict[str, Any]:
+    @staticmethod
+    def extract_metadata(node: Any, source_code: bytes) -> dict[str, Any]:
         metadata = {"node_type": node.type}
-
         if node.type == "pair":
-            # Extract key name
             key_node = node.child_by_field_name("key")
             if key_node:
-                metadata["key"] = source_code[
-                    key_node.start_byte : key_node.end_byte
-                ].decode("utf-8")
-
+                metadata["key"] = source_code[key_node.start_byte:key_node.
+                    end_byte].decode("utf-8")
         elif node.type == "table":
-            # Extract table name
             metadata["table_type"] = "standard"
-
         return metadata
 
 
@@ -54,12 +42,7 @@ class TOMLConfig(LanguageConfig):
     @property
     def chunk_types(self) -> set[str]:
         """TOML-specific chunk types."""
-        return {
-            "table",
-            "pair",
-            "array",
-            "inline_table",
-        }
+        return {"table", "pair", "array", "inline_table"}
 
     @property
     def file_extensions(self) -> set[str]:
@@ -67,27 +50,21 @@ class TOMLConfig(LanguageConfig):
 
     def __init__(self):
         super().__init__()
-
-        # Ignore certain node types
         self.add_ignore_type("string")
         self.add_ignore_type("integer")
         self.add_ignore_type("float")
         self.add_ignore_type("boolean")
         self.add_ignore_type("comment")
 
-    def is_chunk_node(self, node: Any, source: bytes) -> bool:
+    @staticmethod
+    def is_chunk_node(node: Any, source: bytes) -> bool:
         """Override to add TOML-specific logic."""
         if not super().is_chunk_node(node, source):
             return False
-
-        # Additional TOML-specific filtering
         if node.type == "pair":
-            # Only chunk top-level pairs
             parent = node.parent
-            return parent and parent.type in ("document", "table")
-
+            return parent and parent.type in {"document", "table"}
         return True
 
 
-# Register the configuration
 language_config_registry.register(TOMLConfig())

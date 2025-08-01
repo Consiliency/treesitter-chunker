@@ -1,5 +1,4 @@
 """Go language plugin."""
-
 from tree_sitter import Node
 
 from .base import ChunkRule, LanguageConfig, language_config_registry
@@ -17,55 +16,39 @@ class GoPlugin(LanguagePlugin):
     def file_extensions(self) -> list[str]:
         return [".go"]
 
-    def get_chunk_node_types(self) -> set[str]:
-        return {
-            "function_declaration",
-            "method_declaration",
-            "type_declaration",
-            "type_spec",
-            "const_declaration",
-            "var_declaration",
-        }
+    @staticmethod
+    def get_chunk_node_types() -> set[str]:
+        return {"function_declaration", "method_declaration",
+            "type_declaration", "type_spec", "const_declaration",
+            "var_declaration"}
 
-    def get_scope_node_types(self) -> set[str]:
-        return {
-            "source_file",
-            "function_declaration",
-            "method_declaration",
-            "block",
-            "if_statement",
-            "for_statement",
-            "switch_statement",
-        }
+    @staticmethod
+    def get_scope_node_types() -> set[str]:
+        return {"source_file", "function_declaration", "method_declaration",
+            "block", "if_statement", "for_statement", "switch_statement"}
 
     def should_chunk_node(self, node: Node) -> bool:
         """Determine if node should be chunked."""
         if node.type not in self.get_chunk_node_types():
             return False
-
-        # Skip anonymous functions
         if node.type == "function_declaration":
             name_node = node.child_by_field_name("name")
             if not name_node or not name_node.text:
                 return False
-
-        # For type specs, only chunk complex types
         if node.type == "type_spec":
             for child in node.children:
-                if child.type in ["struct_type", "interface_type"]:
+                if child.type in {"struct_type", "interface_type"}:
                     return True
             return False
-
         return True
 
-    def extract_display_name(self, node: Node, _source: bytes) -> str:
+    @staticmethod
+    def extract_display_name(node: Node, _source: bytes) -> str:
         """Extract display name for chunk."""
-        if node.type in ["function_declaration", "method_declaration"]:
+        if node.type in {"function_declaration", "method_declaration"}:
             name_node = node.child_by_field_name("name")
             if name_node:
                 name = name_node.text.decode("utf-8")
-
-                # For methods, include receiver type
                 if node.type == "method_declaration":
                     params = node.child_by_field_name("parameters")
                     if params and params.child_count > 0:
@@ -75,57 +58,31 @@ class GoPlugin(LanguagePlugin):
                             if type_node:
                                 receiver_type = type_node.text.decode("utf-8")
                                 return f"({receiver_type}) {name}"
-
                 return name
-
-        elif node.type in ["type_declaration", "type_spec"]:
+        elif node.type in {"type_declaration", "type_spec"}:
             name_node = node.child_by_field_name("name")
             if name_node:
                 return name_node.text.decode("utf-8")
-
         return node.text.decode("utf-8")[:50]
 
 
-# Create Go configuration class
 class GoConfig(LanguageConfig):
     """Go language configuration."""
 
     def __init__(self):
         super().__init__()
-        self._chunk_rules = [
-            ChunkRule(
-                node_types={"function_declaration", "method_declaration"},
-                include_children=True,
-                priority=1,
-                metadata={"name": "functions", "min_lines": 1, "max_lines": 500},
-            ),
-            ChunkRule(
-                node_types={"type_declaration", "type_spec"},
-                include_children=True,
-                priority=1,
-                metadata={"name": "types", "min_lines": 1, "max_lines": 300},
-            ),
-            ChunkRule(
-                node_types={"const_declaration"},
-                include_children=True,
-                priority=1,
-                metadata={"name": "constants", "min_lines": 1, "max_lines": 100},
-            ),
-            ChunkRule(
-                node_types={"var_declaration"},
-                include_children=True,
-                priority=1,
-                metadata={"name": "variables", "min_lines": 1, "max_lines": 50},
-            ),
-        ]
-
-        self._scope_node_types = {
-            "source_file",
-            "function_declaration",
-            "method_declaration",
-            "block",
-        }
-
+        self._chunk_rules = [ChunkRule(node_types={"function_declaration",
+            "method_declaration"}, include_children=True, priority=1,
+            metadata={"name": "functions", "min_lines": 1, "max_lines": 500,
+            }), ChunkRule(node_types={"type_declaration", "type_spec"},
+            include_children=True, priority=1, metadata={"name": "types",
+            "min_lines": 1, "max_lines": 300}), ChunkRule(node_types={
+            "const_declaration"}, include_children=True, priority=1,
+            metadata={"name": "constants", "min_lines": 1, "max_lines": 100,
+            }), ChunkRule(node_types={"var_declaration"}, include_children=True, priority=1, metadata={"name": "variables", "min_lines": 1,
+            "max_lines": 50})]
+        self._scope_node_types = {"source_file", "function_declaration",
+            "method_declaration", "block"}
         self._file_extensions = {".go"}
 
     @property
@@ -147,6 +104,5 @@ class GoConfig(LanguageConfig):
         return self._file_extensions
 
 
-# Register the configuration
 go_config = GoConfig()
 language_config_registry.register(go_config)

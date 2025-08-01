@@ -9,7 +9,7 @@ from pathlib import Path
 def fix_b904_in_file(file_path: Path) -> bool:
     """Fix B904 errors in a single file."""
     try:
-        content = file_path.read_text()
+        content = file_path.read_text(encoding="utf-8")
         original = content
 
         # Pattern to find except blocks with raise statements
@@ -59,7 +59,7 @@ def fix_b904_in_file(file_path: Path) -> bool:
         content = pattern2.sub(replace_raise2, content)
 
         if content != original:
-            file_path.write_text(content)
+            file_path.write_text(content, encoding="utf-8")
             return True
         return False
 

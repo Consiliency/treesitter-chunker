@@ -1,5 +1,4 @@
 """Comprehensive tests for R language support."""
-
 from chunker import chunk_file, get_parser
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from chunker.languages.r import RPlugin
@@ -8,7 +7,8 @@ from chunker.languages.r import RPlugin
 class TestRBasicChunking:
     """Test basic R chunking functionality."""
 
-    def test_simple_function(self, tmp_path):
+    @staticmethod
+    def test_simple_function(tmp_path):
         """Test basic R function definition."""
         src = tmp_path / "simple.R"
         src.write_text(
@@ -22,17 +22,16 @@ multiply_numbers = function(x, y) {
     x * y
 }
 """,
-        )
+            )
         chunks = chunk_file(src, "r")
         assert len(chunks) >= 2
-
-        # Check for function assignments
         func_chunks = [c for c in chunks if "function" in c.content]
         assert len(func_chunks) == 2
         assert any("add_numbers" in c.content for c in func_chunks)
         assert any("multiply_numbers" in c.content for c in func_chunks)
 
-    def test_control_structures(self, tmp_path):
+    @staticmethod
+    def test_control_structures(tmp_path):
         """Test R control structures."""
         src = tmp_path / "control.R"
         src.write_text(
@@ -62,17 +61,16 @@ repeat {
     if (x > 10) break
 }
 """,
-        )
+            )
         chunks = chunk_file(src, "r")
-
-        # Check for control structures
         chunk_types = {chunk.node_type for chunk in chunks}
         assert "if_statement" in chunk_types
         assert "for_statement" in chunk_types
         assert "while_statement" in chunk_types
         assert "repeat_statement" in chunk_types
 
-    def test_nested_functions(self, tmp_path):
+    @staticmethod
+    def test_nested_functions(tmp_path):
         """Test nested function definitions in R."""
         src = tmp_path / "nested.R"
         src.write_text(
@@ -91,16 +89,15 @@ repeat {
 data <- 1:10
 squared <- sapply(data, function(x) x^2)
 """,
-        )
+            )
         chunks = chunk_file(src, "r")
-
-        # Should have outer function and inner function
         func_chunks = [c for c in chunks if "function" in c.content]
         assert len(func_chunks) >= 2
         assert any("outer_function" in c.content for c in func_chunks)
         assert any("inner_function" in c.content for c in func_chunks)
 
-    def test_s3_methods(self, tmp_path):
+    @staticmethod
+    def test_s3_methods(tmp_path):
         """Test S3 method definitions."""
         src = tmp_path / "s3_methods.R"
         src.write_text(
@@ -126,16 +123,15 @@ myclass <- function(value) {
     )
 }
 """,
-        )
+            )
         chunks = chunk_file(src, "r")
-
-        # Check for S3 methods
         func_chunks = [c for c in chunks if "function" in c.content]
         assert any("print.myclass" in c.content for c in func_chunks)
         assert any("summary.myclass" in c.content for c in func_chunks)
         assert any("myclass <-" in c.content for c in func_chunks)
 
-    def test_r_with_pipes(self, tmp_path):
+    @staticmethod
+    def test_r_with_pipes(tmp_path):
         """Test R code with pipe operators."""
         src = tmp_path / "pipes.R"
         src.write_text(
@@ -161,10 +157,8 @@ clean_data <- function(data) {
         as.data.frame()
 }
 """,
-        )
+            )
         chunks = chunk_file(src, "r")
-
-        # Check for functions with pipes
         func_chunks = [c for c in chunks if "function" in c.content]
         assert len(func_chunks) == 2
         assert any("%>%" in c.content for c in func_chunks)
@@ -174,26 +168,19 @@ clean_data <- function(data) {
 class TestRContractCompliance:
     """Test ExtendedLanguagePluginContract compliance."""
 
-    def test_implements_contract(self):
+    @staticmethod
+    def test_implements_contract():
         """Verify RPlugin implements ExtendedLanguagePluginContract."""
         assert issubclass(RPlugin, ExtendedLanguagePluginContract)
 
-    def test_get_semantic_chunks(self, tmp_path):
+    @classmethod
+    def test_get_semantic_chunks(cls, tmp_path):
         """Test get_semantic_chunks method."""
         plugin = RPlugin()
-
-        # Create a simple R file
-        source = b"""square <- function(x) {
-    x^2
-}
-"""
-
-        # Parse the source (mock tree-sitter node)
-
+        source = b"square <- function(x) {\n    x^2\n}\n"
         parser = get_parser("r")
         plugin.set_parser(parser)
         tree = parser.parse(source)
-
         chunks = plugin.get_semantic_chunks(tree.root_node, source)
         assert len(chunks) >= 1
         assert all("type" in chunk for chunk in chunks)
@@ -201,65 +188,58 @@ class TestRContractCompliance:
         assert all("end_line" in chunk for chunk in chunks)
         assert all("content" in chunk for chunk in chunks)
 
-    def test_get_chunk_node_types(self):
+    @classmethod
+    def test_get_chunk_node_types(cls):
         """Test get_chunk_node_types method."""
         plugin = RPlugin()
         node_types = plugin.get_chunk_node_types()
-
         assert isinstance(node_types, set)
         assert len(node_types) > 0
         assert "function_definition" in node_types
         assert "assignment" in node_types or "left_assignment" in node_types
         assert "if_statement" in node_types
 
-    def test_should_chunk_node(self):
+    @staticmethod
+    def test_should_chunk_node():
         """Test should_chunk_node method."""
         plugin = RPlugin()
 
-        # Mock nodes
         class MockNode:
+
             def __init__(self, node_type, has_function_child=False):
                 self.type = node_type
                 self.children = []
                 if has_function_child:
                     child = MockNode("function_definition")
                     self.children.append(child)
-
-        # Test chunk nodes
         assert plugin.should_chunk_node(MockNode("function_definition"))
-        assert plugin.should_chunk_node(MockNode("assignment", has_function_child=True))
+        assert plugin.should_chunk_node(MockNode("assignment",
+            has_function_child=True))
         assert plugin.should_chunk_node(MockNode("if_statement"))
         assert plugin.should_chunk_node(MockNode("for_statement"))
         assert plugin.should_chunk_node(MockNode("comment"))
-
-        # Test non-chunk nodes
         assert not plugin.should_chunk_node(MockNode("identifier"))
         assert not plugin.should_chunk_node(MockNode("number"))
-        assert not plugin.should_chunk_node(
-            MockNode("assignment", has_function_child=False),
-        )
+        assert not plugin.should_chunk_node(MockNode("assignment",
+            has_function_child=False))
 
-    def test_get_node_context(self):
+    @staticmethod
+    def test_get_node_context():
         """Test get_node_context method."""
         plugin = RPlugin()
 
-        # Mock node
         class MockNode:
+
             def __init__(self, node_type, parent=None):
                 self.type = node_type
                 self.children = []
                 self.parent = parent
-
-        # Test function context
         node = MockNode("function_definition")
         context = plugin.get_node_context(node, b"function(x) x^2")
         assert context is not None
-
-        # Test control structure context
         node = MockNode("if_statement")
         context = plugin.get_node_context(node, b"if (x > 0) print(x)")
         assert context == "if statement"
-
         node = MockNode("for_statement")
         context = plugin.get_node_context(node, b"for (i in 1:10)")
         assert context == "for loop"
@@ -268,14 +248,16 @@ class TestRContractCompliance:
 class TestREdgeCases:
     """Test edge cases in R parsing."""
 
-    def test_empty_r_file(self, tmp_path):
+    @staticmethod
+    def test_empty_r_file(tmp_path):
         """Test empty R file."""
         src = tmp_path / "empty.R"
         src.write_text("")
         chunks = chunk_file(src, "r")
         assert len(chunks) == 0
 
-    def test_r_with_only_comments(self, tmp_path):
+    @staticmethod
+    def test_r_with_only_comments(tmp_path):
         """Test R file with only comments."""
         src = tmp_path / "comments.R"
         src.write_text(
@@ -284,11 +266,12 @@ class TestREdgeCases:
 # TODO: implement function
 # NOTE: important information
 """,
-        )
+            )
         chunks = chunk_file(src, "r")
         assert all(c.node_type == "comment" for c in chunks)
 
-    def test_r_with_complex_assignments(self, tmp_path):
+    @staticmethod
+    def test_r_with_complex_assignments(tmp_path):
         """Test R with complex assignment patterns."""
         src = tmp_path / "complex_assign.R"
         src.write_text(
@@ -310,17 +293,15 @@ process <- function(data, method = "mean", na.rm = TRUE) {
     )
 }
 """,
-        )
+            )
         chunks = chunk_file(src, "r")
-
-        # Should capture the function with default arguments
-        func_chunks = [
-            c for c in chunks if "process" in c.content and "function" in c.content
-        ]
+        func_chunks = [c for c in chunks if "process" in c.content and
+            "function" in c.content]
         assert len(func_chunks) == 1
         assert "switch" in func_chunks[0].content
 
-    def test_r_markdown_chunks(self, tmp_path):
+    @staticmethod
+    def test_r_markdown_chunks(tmp_path):
         """Test R Markdown file with code chunks."""
         src = tmp_path / "analysis.Rmd"
         src.write_text(
@@ -354,16 +335,15 @@ create_plot <- function(data, x_var, y_var) {
 }
 ```
 """,
-        )
+            )
         chunks = chunk_file(src, "r")
-
-        # Should find functions in R Markdown code chunks
         func_chunks = [c for c in chunks if "function" in c.content]
         assert len(func_chunks) >= 2
         assert any("process_data" in c.content for c in func_chunks)
         assert any("create_plot" in c.content for c in func_chunks)
 
-    def test_r_with_s4_classes(self, tmp_path):
+    @staticmethod
+    def test_r_with_s4_classes(tmp_path):
         """Test R with S4 class definitions."""
         src = tmp_path / "s4_class.R"
         src.write_text(
@@ -393,12 +373,11 @@ setMethod("birthday", "Person",
     }
 )
 """,
-        )
+            )
         chunks = chunk_file(src, "r")
-
-        # Should capture S4-related definitions
-        assert any("setClass" in c.content and "Person" in c.content for c in chunks)
-        assert any("setMethod" in c.content and "show" in c.content for c in chunks)
-        assert any(
-            "setGeneric" in c.content and "birthday" in c.content for c in chunks
-        )
+        assert any("setClass" in c.content and "Person" in c.content for c in
+            chunks)
+        assert any("setMethod" in c.content and "show" in c.content for c in
+            chunks)
+        assert any("setGeneric" in c.content and "birthday" in c.content for
+            c in chunks)

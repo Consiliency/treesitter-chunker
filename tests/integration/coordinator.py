@@ -67,7 +67,7 @@ class IntegrationCoordinator(ErrorPropagationMixin):
     def register_scenarios_from_config(self, config_file: Path) -> None:
         """Load test scenarios from a JSON configuration file."""
         with Path(config_file).open(
-            "r",
+            "r", encoding="utf-8",
         ) as f:
             config = json.load(f)
 
@@ -433,7 +433,7 @@ class IntegrationCoordinator(ErrorPropagationMixin):
                     "duration": r.duration,
                 }
                 for r in self.results
-                if r.status in ("failed", "error")
+                if r.status in {"failed", "error"}
             ],
             "resource_leaks": [
                 {
@@ -450,7 +450,7 @@ class IntegrationCoordinator(ErrorPropagationMixin):
         """Save report to file."""
         report = self.generate_report()
         with Path(filepath).open(
-            "w",
+            "w", encoding="utf-8",
         ) as f:
             json.dump(report, f, indent=2)
 

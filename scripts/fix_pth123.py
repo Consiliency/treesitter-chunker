@@ -90,7 +90,6 @@ def fix_pth123_in_file(file_path: Path) -> bool:
     # Add Path import if needed and not already present
     if content != original_content and not has_path_import and not has_pathlib_import:
         # Find the right place to add import
-        import_lines = []
         lines = content.split("\n")
         insert_pos = 0
 

@@ -91,7 +91,7 @@ class NodeExplorer:
                 args = parts[1] if len(parts) > 1 else ""
 
                 # Execute command
-                if cmd in ["q", "quit", "exit"]:
+                if cmd in {"q", "quit", "exit"}:
                     break
                 if cmd == "help":
                     self._show_help()

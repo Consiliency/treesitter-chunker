@@ -47,7 +47,7 @@ def demo_linting():
     dev_env = DevelopmentEnvironment()
 
     # Create a temporary file with linting issues
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
         f.write(
             """
 import os  # unused import
@@ -92,7 +92,7 @@ def demo_formatting():
     dev_env = DevelopmentEnvironment()
 
     # Create a poorly formatted file
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
         f.write(
             """def poorly_formatted(x,y,z):
     result=x+y+z
@@ -111,17 +111,17 @@ class BadlySpaced:
     print(f"Created test file: {format_file}")
 
     # Check if formatting is needed
-    success, files = dev_env.format_code([format_file], check_only=True)
+    success, _files = dev_env.format_code([format_file], check_only=True)
     print(f"\nFormatting check: {'passed' if success else 'needs formatting'}")
 
     if not success:
         # Apply formatting
-        success, modified = dev_env.format_code([format_file], check_only=False)
+        success, _modified = dev_env.format_code([format_file], check_only=False)
         print(f"Formatting applied: {'success' if success else 'failed'}")
 
         # Show the formatted content
         with Path(format_file).open(
-            "r",
+            "r", encoding="utf-8",
         ) as f:
             print("\nFormatted code:")
             print(f.read())
@@ -154,7 +154,7 @@ def demo_ci_config():
     print(f"- Python versions: {matrix['python-version']}")
 
     # Save to temporary file for inspection
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".yml", delete=False) as f:
         yaml.dump(config, f, default_flow_style=False)
         print(f"\nFull config saved to: {f.name}")
 

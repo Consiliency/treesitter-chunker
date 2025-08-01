@@ -1,5 +1,4 @@
 """Custom rule interfaces for extending Tree-sitter chunking."""
-
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from re import Pattern
@@ -13,7 +12,6 @@ from chunker.types import CodeChunk
 @dataclass
 class RuleMatch:
     """Represents a match from a custom rule."""
-
     rule_name: str
     start_byte: int
     end_byte: int
@@ -25,16 +23,19 @@ class RuleMatch:
 class CustomRule(ABC):
     """Define custom chunking rules to extend Tree-sitter."""
 
+    @staticmethod
     @abstractmethod
-    def get_name(self) -> str:
+    def get_name() -> str:
         """Get rule name for identification."""
 
+    @staticmethod
     @abstractmethod
-    def get_description(self) -> str:
+    def get_description() -> str:
         """Get human-readable description of what this rule does."""
 
+    @staticmethod
     @abstractmethod
-    def matches(self, node: Node, source: bytes) -> bool:
+    def matches(node: Node, source: bytes) -> bool:
         """
         Check if this rule matches the given node.
 
@@ -46,13 +47,10 @@ class CustomRule(ABC):
             True if rule matches this node
         """
 
+    @staticmethod
     @abstractmethod
-    def extract_chunk(
-        self,
-        node: Node,
-        source: bytes,
-        file_path: str,
-    ) -> CodeChunk | None:
+    def extract_chunk(node: Node, source: bytes, file_path: str) -> (CodeChunk |
+        None):
         """
         Extract a chunk based on this rule.
 
@@ -65,8 +63,9 @@ class CustomRule(ABC):
             Extracted chunk or None
         """
 
+    @staticmethod
     @abstractmethod
-    def get_priority(self) -> int:
+    def get_priority() -> int:
         """
         Get rule priority (higher numbers = higher priority).
 
@@ -78,20 +77,23 @@ class CustomRule(ABC):
 class RegexRule(CustomRule):
     """Base class for regex-based rules."""
 
+    @staticmethod
     @abstractmethod
-    def get_pattern(self) -> Pattern:
+    def get_pattern() -> Pattern:
         """Get the regex pattern for this rule."""
 
+    @staticmethod
     @abstractmethod
-    def should_cross_node_boundaries(self) -> bool:
+    def should_cross_node_boundaries() -> bool:
         """Whether this rule can match across Tree-sitter node boundaries."""
 
 
 class CommentBlockRule(CustomRule):
     """Base class for comment block extraction rules."""
 
+    @staticmethod
     @abstractmethod
-    def get_comment_markers(self) -> dict[str, list[str]]:
+    def get_comment_markers() -> dict[str, list[str]]:
         """
         Get comment markers for different styles.
 
@@ -99,16 +101,18 @@ class CommentBlockRule(CustomRule):
             Dict with 'single_line', 'block_start', 'block_end' markers
         """
 
+    @staticmethod
     @abstractmethod
-    def should_merge_adjacent_comments(self) -> bool:
+    def should_merge_adjacent_comments() -> bool:
         """Whether to merge adjacent comment lines into blocks."""
 
 
 class RuleEngine(ABC):
     """Execute custom rules with priority and conflict resolution."""
 
+    @staticmethod
     @abstractmethod
-    def add_rule(self, rule: CustomRule, priority: int | None = None) -> None:
+    def add_rule(rule: CustomRule, priority: (int | None) = None) -> None:
         """
         Add a custom rule to the engine.
 
@@ -117,8 +121,9 @@ class RuleEngine(ABC):
             priority: Override rule's default priority
         """
 
+    @staticmethod
     @abstractmethod
-    def remove_rule(self, rule_name: str) -> bool:
+    def remove_rule(rule_name: str) -> bool:
         """
         Remove a rule by name.
 
@@ -129,8 +134,10 @@ class RuleEngine(ABC):
             True if rule was removed
         """
 
+    @staticmethod
     @abstractmethod
-    def apply_rules(self, tree: Tree, source: bytes, file_path: str) -> list[CodeChunk]:
+    def apply_rules(tree: Tree, source: bytes, file_path: str) -> list[CodeChunk
+        ]:
         """
         Apply all rules to extract chunks.
 
@@ -145,8 +152,9 @@ class RuleEngine(ABC):
             List of chunks extracted by custom rules
         """
 
+    @staticmethod
     @abstractmethod
-    def apply_regex_rules(self, source: bytes, file_path: str) -> list[CodeChunk]:
+    def apply_regex_rules(source: bytes, file_path: str) -> list[CodeChunk]:
         """
         Apply only regex-based rules that work on raw text.
 
@@ -158,12 +166,10 @@ class RuleEngine(ABC):
             List of chunks from regex rules
         """
 
+    @staticmethod
     @abstractmethod
-    def merge_with_tree_sitter_chunks(
-        self,
-        custom_chunks: list[CodeChunk],
-        tree_sitter_chunks: list[CodeChunk],
-    ) -> list[CodeChunk]:
+    def merge_with_tree_sitter_chunks(custom_chunks: list[CodeChunk],
+        tree_sitter_chunks: list[CodeChunk]) -> list[CodeChunk]:
         """
         Merge custom rule chunks with Tree-sitter chunks.
 
@@ -177,8 +183,9 @@ class RuleEngine(ABC):
             Merged list of chunks
         """
 
+    @staticmethod
     @abstractmethod
-    def list_rules(self) -> list[dict[str, Any]]:
+    def list_rules() -> list[dict[str, Any]]:
         """
         List all registered rules with their info.
 

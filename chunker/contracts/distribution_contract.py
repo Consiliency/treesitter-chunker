@@ -2,7 +2,6 @@
 Contract for Distribution Component
 Defines the interface for package distribution across platforms
 """
-
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
@@ -11,13 +10,10 @@ from typing import Any
 class DistributionContract(ABC):
     """Contract for package distribution"""
 
+    @staticmethod
     @abstractmethod
-    def publish_to_pypi(
-        self,
-        package_dir: Path,
-        repository: str = "pypi",
-        dry_run: bool = False,
-    ) -> tuple[bool, dict[str, Any]]:
+    def publish_to_pypi(package_dir: Path, repository: str = "pypi", dry_run:
+        bool = False) -> tuple[bool, dict[str, Any]]:
         """
         Publish package to PyPI or TestPyPI
 
@@ -40,12 +36,10 @@ class DistributionContract(ABC):
         """
         raise NotImplementedError("Distribution team will implement")
 
+    @staticmethod
     @abstractmethod
-    def build_docker_image(
-        self,
-        tag: str,
-        platforms: list[str] | None = None,
-    ) -> tuple[bool, str]:
+    def build_docker_image(tag: str, platforms: (list[str] | None) = None,
+        ) -> tuple[bool, str]:
         """
         Build Docker image for distribution
 
@@ -66,12 +60,10 @@ class DistributionContract(ABC):
         """
         raise NotImplementedError("Distribution team will implement")
 
+    @staticmethod
     @abstractmethod
-    def create_homebrew_formula(
-        self,
-        version: str,
-        output_path: Path,
-    ) -> tuple[bool, Path]:
+    def create_homebrew_formula(version: str, output_path: Path) -> tuple[
+        bool, Path]:
         """
         Generate Homebrew formula for macOS distribution
 
@@ -92,12 +84,10 @@ class DistributionContract(ABC):
         """
         raise NotImplementedError("Distribution team will implement")
 
+    @staticmethod
     @abstractmethod
-    def verify_installation(
-        self,
-        method: str,
-        platform: str,
-    ) -> tuple[bool, dict[str, Any]]:
+    def verify_installation(method: str, platform: str) -> tuple[bool, dict[
+        str, Any]]:
         """
         Verify package installs correctly via specified method
 
@@ -122,12 +112,10 @@ class DistributionContract(ABC):
 class ReleaseManagementContract(ABC):
     """Contract for release process management"""
 
+    @staticmethod
     @abstractmethod
-    def prepare_release(
-        self,
-        version: str,
-        changelog: str,
-    ) -> tuple[bool, dict[str, Any]]:
+    def prepare_release(version: str, changelog: str) -> tuple[bool, dict[
+        str, Any]]:
         """
         Prepare a new release with version bump and changelog
 
@@ -149,8 +137,9 @@ class ReleaseManagementContract(ABC):
         """
         raise NotImplementedError("Distribution team will implement")
 
+    @staticmethod
     @abstractmethod
-    def create_release_artifacts(self, version: str, output_dir: Path) -> list[Path]:
+    def create_release_artifacts(version: str, output_dir: Path) -> list[Path]:
         """
         Create all release artifacts for distribution
 

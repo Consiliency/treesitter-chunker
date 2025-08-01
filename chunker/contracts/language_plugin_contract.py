@@ -6,8 +6,9 @@ from tree_sitter import Node
 class ExtendedLanguagePluginContract(ABC):
     """Extended contract that all new language plugins must implement"""
 
+    @staticmethod
     @abstractmethod
-    def get_semantic_chunks(self, node: Node, source: bytes) -> list[dict[str, any]]:
+    def get_semantic_chunks(node: Node, source: bytes) -> list[dict[str, any]]:
         """Extract semantic chunks specific to this language
 
         Args:
@@ -26,8 +27,9 @@ class ExtendedLanguagePluginContract(ABC):
             - Each chunk has required fields: type, start_line, end_line, content
         """
 
+    @staticmethod
     @abstractmethod
-    def get_chunk_node_types(self) -> set[str]:
+    def get_chunk_node_types() -> set[str]:
         """Get language-specific node types that form chunks
 
         Returns:
@@ -41,8 +43,9 @@ class ExtendedLanguagePluginContract(ABC):
             - Node types are valid for this language's grammar
         """
 
+    @staticmethod
     @abstractmethod
-    def should_chunk_node(self, node: Node) -> bool:
+    def should_chunk_node(node: Node) -> bool:
         """Determine if a specific node should be chunked
 
         Args:
@@ -58,8 +61,9 @@ class ExtendedLanguagePluginContract(ABC):
             - Consistent results for same node type
         """
 
+    @staticmethod
     @abstractmethod
-    def get_node_context(self, node: Node, source: bytes) -> str | None:
+    def get_node_context(node: Node, source: bytes) -> (str | None):
         """Extract meaningful context for a node
 
         Args:

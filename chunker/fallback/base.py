@@ -1,5 +1,4 @@
 """Base implementation for fallback chunking strategies."""
-
 import logging
 import os
 import warnings
@@ -29,13 +28,14 @@ class FallbackChunker(IFallbackChunker):
     and ensures warnings are properly emitted.
     """
 
-    def __init__(self, config: FallbackConfig | None = None):
+    def __init__(self, config: (FallbackConfig | None) = None):
         """Initialize fallback chunker.
 
         Args:
             config: Configuration for fallback chunking
         """
-        self.config = config or FallbackConfig(method=ChunkingMethod.LINE_BASED)
+        self.config = config or FallbackConfig(method=ChunkingMethod.LINE_BASED,
+            )
         self.fallback_reason: FallbackReason | None = None
         self.file_path: str | None = None
         self._warning_emitted = False
@@ -48,7 +48,8 @@ class FallbackChunker(IFallbackChunker):
         """
         self.fallback_reason = reason
 
-    def can_handle(self, _file_path: str, _language: str) -> bool:
+    @staticmethod
+    def can_handle(_file_path: str, _language: str) -> bool:
         """Check if this strategy can handle the given file.
 
         Fallback chunkers can handle any file type, but should only be used
@@ -69,7 +70,6 @@ class FallbackChunker(IFallbackChunker):
         Args:
             config: Configuration dictionary
         """
-        # Update config if provided
         if "method" in config:
             self.config.method = ChunkingMethod(config["method"])
         if "chunk_size" in config:
@@ -79,13 +79,8 @@ class FallbackChunker(IFallbackChunker):
         if "delimiter" in config:
             self.config.delimiter = config["delimiter"]
 
-    def chunk(
-        self,
-        _ast: Any,
-        source: bytes,
-        file_path: str,
-        language: str,
-    ) -> list[CodeChunk]:
+    def chunk(self, _ast: Any, source: bytes, file_path: str, language: str,
+        ) -> list[CodeChunk]:
         """Perform chunking - fallback version that works with text content.
 
         Since fallback chunking doesn't use AST, this method converts source
@@ -100,21 +95,14 @@ class FallbackChunker(IFallbackChunker):
         Returns:
             List of code chunks
         """
-        # Convert bytes to string
         try:
             content = source.decode("utf-8")
         except UnicodeDecodeError:
-            # Try with error replacement
             content = source.decode("utf-8", errors="replace")
-
         return self.chunk_text(content, file_path, language)
 
-    def chunk_text(
-        self,
-        content: str,
-        file_path: str,
-        _language: str | None = None,
-    ) -> list[CodeChunk]:
+    def chunk_text(self, content: str, file_path: str, _language: (str |
+        None) = None) -> list[CodeChunk]:
         """Chunk content using fallback method.
 
         This method ensures warnings are emitted before chunking.
@@ -128,38 +116,27 @@ class FallbackChunker(IFallbackChunker):
             List of chunks
         """
         self.file_path = file_path
-
-        # Emit warning if not already done
         if not self._warning_emitted:
             warning_msg = self.emit_warning()
             warnings.warn(warning_msg, FallbackWarning, stacklevel=2)
             logger.warning(warning_msg)
             self._warning_emitted = True
-
-        # Use configured method
         if self.config.method == ChunkingMethod.LINE_BASED:
-            return self.chunk_by_lines(
-                content,
-                self.config.chunk_size,
-                self.config.overlap,
-            )
+            return self.chunk_by_lines(content, self.config.chunk_size,
+                self.config.overlap)
         if self.config.method == ChunkingMethod.DELIMITER_BASED:
             if not self.config.delimiter:
-                raise ValueError("Delimiter required for delimiter-based chunking")
+                raise ValueError(
+                    "Delimiter required for delimiter-based chunking")
             return self.chunk_by_delimiter(content, self.config.delimiter)
         if self.config.method == ChunkingMethod.REGEX_BASED:
             if not self.config.pattern:
                 raise ValueError("Pattern required for regex-based chunking")
             return self.chunk_by_pattern(content, self.config.pattern)
-        # Default to line-based
         return self.chunk_by_lines(content, self.config.chunk_size)
 
-    def chunk_by_lines(
-        self,
-        content: str,
-        lines_per_chunk: int,
-        overlap_lines: int = 0,
-    ) -> list[CodeChunk]:
+    def chunk_by_lines(self, content: str, lines_per_chunk: int,
+        overlap_lines: int = 0) -> list[CodeChunk]:
         """Chunk content by line count.
 
         Args:
@@ -172,46 +149,22 @@ class FallbackChunker(IFallbackChunker):
         """
         lines = content.splitlines(keepends=True)
         chunks = []
-
         i = 0
         while i < len(lines):
-            # Calculate chunk boundaries
             start_idx = max(0, i - overlap_lines)
             end_idx = min(i + lines_per_chunk, len(lines))
-
-            # Create chunk content
             chunk_lines = lines[start_idx:end_idx]
             chunk_content = "".join(chunk_lines)
-
-            # Calculate byte positions
             byte_start = sum(len(line) for line in lines[:start_idx])
             byte_end = byte_start + len(chunk_content)
-
-            # Create chunk
-            chunk = CodeChunk(
-                language=self._detect_language(),
-                file_path=self.file_path or "",
-                node_type="fallback_lines",
-                start_line=start_idx + 1,  # 1-indexed
-                end_line=end_idx,
-                byte_start=byte_start,
-                byte_end=byte_end,
-                parent_context=f"lines_{start_idx + 1}_{end_idx}",
-                content=chunk_content,
-            )
+            chunk = CodeChunk(language=self._detect_language(), file_path=self.file_path or "", node_type="fallback_lines",
+                start_line=start_idx + 1, end_line=end_idx, byte_start=byte_start, byte_end=byte_end, parent_context=f"lines_{start_idx + 1}_{end_idx}", content=chunk_content)
             chunks.append(chunk)
-
-            # Move to next chunk (accounting for overlap)
             i += lines_per_chunk
-
         return chunks
 
-    def chunk_by_delimiter(
-        self,
-        content: str,
-        delimiter: str,
-        include_delimiter: bool = True,
-    ) -> list[CodeChunk]:
+    def chunk_by_delimiter(self, content: str, delimiter: str,
+        include_delimiter: bool = True) -> list[CodeChunk]:
         """Chunk content by delimiter.
 
         Args:
@@ -222,56 +175,31 @@ class FallbackChunker(IFallbackChunker):
         Returns:
             List of chunks
         """
-        # Split by delimiter
         parts = content.split(delimiter)
         chunks = []
-
         current_byte = 0
         current_line = 1
-
         for i, part in enumerate(parts):
-            # Add delimiter back if needed (except for last part)
             if include_delimiter and i < len(parts) - 1:
                 chunk_content = part + delimiter
             else:
                 chunk_content = part
-
             if not chunk_content.strip():
-                # Skip empty chunks
                 current_byte += len(chunk_content)
                 current_line += chunk_content.count("\n")
                 continue
-
-            # Calculate line numbers
             start_line = current_line
             end_line = start_line + chunk_content.count("\n")
-
-            # Create chunk
-            chunk = CodeChunk(
-                language=self._detect_language(),
-                file_path=self.file_path or "",
-                node_type="fallback_delimiter",
-                start_line=start_line,
-                end_line=end_line,
-                byte_start=current_byte,
-                byte_end=current_byte + len(chunk_content),
-                parent_context=f"delimiter_chunk_{i}",
-                content=chunk_content,
-            )
+            chunk = CodeChunk(language=self._detect_language(), file_path=self.file_path or "", node_type="fallback_delimiter",
+                start_line=start_line, end_line=end_line, byte_start=current_byte, byte_end=current_byte + len(chunk_content),
+                parent_context=f"delimiter_chunk_{i}", content=chunk_content)
             chunks.append(chunk)
-
-            # Update positions
             current_byte += len(chunk_content)
             current_line = end_line + 1
-
         return chunks
 
-    def chunk_by_pattern(
-        self,
-        content: str,
-        pattern: Pattern,
-        include_match: bool = True,
-    ) -> list[CodeChunk]:
+    def chunk_by_pattern(self, content: str, pattern: Pattern,
+        include_match: bool = True) -> list[CodeChunk]:
         """Chunk content by regex pattern.
 
         Args:
@@ -285,48 +213,28 @@ class FallbackChunker(IFallbackChunker):
         chunks = []
         last_end = 0
         current_line = 1
-
         for match in pattern.finditer(content):
-            # Create chunk for content before match
             if match.start() > last_end:
-                pre_content = content[last_end : match.start()]
+                pre_content = content[last_end:match.start()]
                 if pre_content.strip():
-                    chunk = self._create_chunk_from_content(
-                        pre_content,
-                        last_end,
-                        current_line,
-                        "fallback_pattern_pre",
-                    )
+                    chunk = self._create_chunk_from_content(pre_content,
+                        last_end, current_line, "fallback_pattern_pre")
                     chunks.append(chunk)
                 current_line += pre_content.count("\n")
-
-            # Create chunk for match itself if requested
             if include_match:
                 match_content = match.group()
                 if match_content.strip():
-                    chunk = self._create_chunk_from_content(
-                        match_content,
-                        match.start(),
-                        current_line,
-                        "fallback_pattern_match",
-                    )
+                    chunk = self._create_chunk_from_content(match_content,
+                        match.start(), current_line, "fallback_pattern_match")
                     chunks.append(chunk)
                 current_line += match_content.count("\n")
-
             last_end = match.end()
-
-        # Handle remaining content
         if last_end < len(content):
             remaining = content[last_end:]
             if remaining.strip():
-                chunk = self._create_chunk_from_content(
-                    remaining,
-                    last_end,
-                    current_line,
-                    "fallback_pattern_post",
-                )
+                chunk = self._create_chunk_from_content(remaining, last_end,
+                    current_line, "fallback_pattern_post")
                 chunks.append(chunk)
-
         return chunks
 
     def emit_warning(self) -> str:
@@ -336,66 +244,36 @@ class FallbackChunker(IFallbackChunker):
             Warning message to display to user
         """
         suggestion = self._get_grammar_suggestion()
-        return FALLBACK_WARNING_TEMPLATE.format(
-            file_path=self.file_path or "unknown",
-            reason=self.fallback_reason.value if self.fallback_reason else "unknown",
-            suggestion=suggestion,
-            method=self.config.method.value,
-        )
+        return FALLBACK_WARNING_TEMPLATE.format(file_path=self.file_path or
+            "unknown", reason=self.fallback_reason.value if self.
+            fallback_reason else "unknown", suggestion=suggestion, method=self.config.method.value)
 
     def _detect_language(self) -> str:
         """Detect language from file path or return 'unknown'."""
         if not self.file_path:
             return "unknown"
-
-        # Simple extension-based detection
-        ext_map = {
-            ".txt": "text",
-            ".log": "log",
-            ".md": "markdown",
-            ".csv": "csv",
-            ".json": "json",
-            ".xml": "xml",
-            ".yaml": "yaml",
-            ".yml": "yaml",
-            ".ini": "ini",
-            ".cfg": "config",
-            ".conf": "config",
-        }
-
+        ext_map = {".txt": "text", ".log": "log", ".md": "markdown", ".csv":
+            "csv", ".json": "json", ".xml": "xml", ".yaml": "yaml", ".yml":
+            "yaml", ".ini": "ini", ".cfg": "config", ".conf": "config"}
         ext = os.path.splitext(self.file_path)[1].lower()
         return ext_map.get(ext, "unknown")
 
     def _get_grammar_suggestion(self) -> str:
         """Get grammar suggestion based on file type."""
         lang = self._detect_language()
-
-        suggestions = {
-            "markdown": "https://github.com/tree-sitter-grammars/tree-sitter-markdown",
+        suggestions = {"markdown":
+            "https://github.com/tree-sitter-grammars/tree-sitter-markdown",
             "json": "https://github.com/tree-sitter/tree-sitter-json",
-            "xml": "https://github.com/tree-sitter-grammars/tree-sitter-xml",
-            "yaml": "https://github.com/tree-sitter-grammars/tree-sitter-yaml",
-        }
-
+            "xml":
+            "https://github.com/tree-sitter-grammars/tree-sitter-xml",
+            "yaml": "https://github.com/tree-sitter-grammars/tree-sitter-yaml"}
         return suggestions.get(lang, "https://github.com/tree-sitter")
 
-    def _create_chunk_from_content(
-        self,
-        content: str,
-        byte_start: int,
-        start_line: int,
-        node_type: str,
-    ) -> CodeChunk:
+    def _create_chunk_from_content(self, content: str, byte_start: int,
+        start_line: int, node_type: str) -> CodeChunk:
         """Helper to create a chunk from content."""
         line_count = content.count("\n")
-        return CodeChunk(
-            language=self._detect_language(),
-            file_path=self.file_path or "",
-            node_type=node_type,
-            start_line=start_line,
-            end_line=start_line + line_count,
-            byte_start=byte_start,
-            byte_end=byte_start + len(content),
-            parent_context=f"{node_type}_{start_line}",
-            content=content,
-        )
+        return CodeChunk(language=self._detect_language(), file_path=self.
+            file_path or "", node_type=node_type, start_line=start_line,
+            end_line=start_line + line_count, byte_start=byte_start,
+            byte_end=byte_start + len(content), parent_context=f"{node_type}_{start_line}", content=content)

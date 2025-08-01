@@ -1,5 +1,4 @@
 """Tests for Go language support."""
-
 import pytest
 
 from chunker.core import chunk_text
@@ -10,8 +9,9 @@ from chunker.parser import list_languages
 class TestGoLanguageSupport:
     """Test Go language chunking."""
 
+    @staticmethod
     @pytest.mark.skipif("go" not in list_languages(), reason="Go grammar not available")
-    def test_go_function_chunking(self):
+    def test_go_function_chunking():
         """Test chunking Go functions."""
         code = """
 package main
@@ -37,20 +37,16 @@ func main() {
 }
 """
         chunks = chunk_text(code, "go", "main.go")
-
-        # Should find 3 functions
         assert len(chunks) == 3
-
-        # Check function names
-        func_names = [
-            c.parent_context for c in chunks if c.node_type == "function_declaration"
-        ]
+        func_names = [c.parent_context for c in chunks if c.node_type ==
+            "function_declaration"]
         assert "greet" in func_names
         assert "divide" in func_names
         assert "main" in func_names
 
+    @staticmethod
     @pytest.mark.skipif("go" not in list_languages(), reason="Go grammar not available")
-    def test_go_method_chunking(self):
+    def test_go_method_chunking():
         """Test chunking Go methods."""
         code = """
 package main
@@ -79,17 +75,14 @@ func (u *User) Validate() error {
 }
 """
         chunks = chunk_text(code, "go", "user.go")
-
-        # Should find struct and methods
-        assert len(chunks) >= 4  # 1 struct + 3 methods
-
-        # Check node types
+        assert len(chunks) >= 4
         types = {c.node_type for c in chunks}
         assert "type_declaration" in types or "type_spec" in types
         assert "method_declaration" in types or "function_declaration" in types
 
+    @staticmethod
     @pytest.mark.skipif("go" not in list_languages(), reason="Go grammar not available")
-    def test_go_type_declarations(self):
+    def test_go_type_declarations():
         """Test chunking Go type declarations."""
         code = """
 package models
@@ -120,18 +113,15 @@ type DetailedProduct struct {
 }
 """
         chunks = chunk_text(code, "go", "models.go")
-
-        # Should find multiple type declarations
         type_chunks = [c for c in chunks if "type" in c.node_type]
         assert len(type_chunks) >= 4
-
-        # Check for specific types
         type_names = [c.parent_context for c in type_chunks]
         assert any("Product" in n for n in type_names)
         assert any("Repository" in n for n in type_names)
 
+    @staticmethod
     @pytest.mark.skipif("go" not in list_languages(), reason="Go grammar not available")
-    def test_go_const_var_declarations(self):
+    def test_go_const_var_declarations():
         """Test chunking Go const and var declarations."""
         code = """
 package config
@@ -159,31 +149,25 @@ var (
 )
 """
         chunks = chunk_text(code, "go", "config.go")
-
-        # Should find const and var declarations
-        const_chunks = [c for c in chunks if c.node_type == "const_declaration"]
+        const_chunks = [c for c in chunks if c.node_type == "const_declaration"
+            ]
         var_chunks = [c for c in chunks if c.node_type == "var_declaration"]
-
         assert len(const_chunks) >= 1
         assert len(var_chunks) >= 1
 
+    @staticmethod
     @pytest.mark.skipif("go" not in list_languages(), reason="Go grammar not available")
-    def test_go_language_config(self):
+    def test_go_language_config():
         """Test Go language configuration."""
         config = language_config_registry.get_config("go")
-
         assert config is not None
         assert config.name == "go"
         assert ".go" in config.file_extensions
-
-        # Check chunk rules
         rule_names = [rule.name for rule in config.chunk_rules]
         assert "functions" in rule_names
         assert "types" in rule_names
         assert "constants" in rule_names
         assert "variables" in rule_names
-
-        # Check scope node types
         assert "source_file" in config.scope_node_types
         assert "function_declaration" in config.scope_node_types
         assert "block" in config.scope_node_types

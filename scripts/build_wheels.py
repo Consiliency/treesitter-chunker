@@ -1,10 +1,8 @@
-#!/usr/bin/env python3
 """
 Cross-platform wheel building script for treesitter-chunker.
 
 This script handles building platform-specific wheels with compiled grammars.
 """
-
 import argparse
 import os
 import platform
@@ -12,8 +10,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-from build import ProjectBuilder
 from build.env import IsolatedEnvBuilder
+
+from build import ProjectBuilder
 
 try:
     pass
@@ -30,11 +29,11 @@ class WheelBuilder:
         self.output_dir = output_dir
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-    def detect_platform(self) -> str:
+    @staticmethod
+    def detect_platform() -> str:
         """Detect current platform."""
         system = platform.system().lower()
         machine = platform.machine().lower()
-
         if system == "darwin":
             if machine == "x86_64":
                 return "macosx_10_9_x86_64"
@@ -42,13 +41,13 @@ class WheelBuilder:
                 return "macosx_11_0_arm64"
             return "macosx_10_9_universal2"
         if system == "linux":
-            if machine in ("x86_64", "amd64"):
+            if machine in {"x86_64", "amd64"}:
                 return "manylinux2014_x86_64"
             if machine == "aarch64":
                 return "manylinux2014_aarch64"
             return f"linux_{machine}"
         if system == "windows":
-            if machine in ("x86_64", "amd64"):
+            if machine in {"x86_64", "amd64"}:
                 return "win_amd64"
             return "win32"
         return "any"
@@ -56,91 +55,58 @@ class WheelBuilder:
     def ensure_grammars_built(self):
         """Ensure grammars are fetched and built."""
         scripts_dir = self.project_dir / "scripts"
-
-        # Check if grammars exist
         grammars_dir = self.project_dir / "grammars"
         if not grammars_dir.exists() or not any(grammars_dir.iterdir()):
             print("Fetching grammars...")
-            subprocess.run(
-                [sys.executable, str(scripts_dir / "fetch_grammars.py")],
-                cwd=self.project_dir,
-                check=True,
-            )
-
-        # Build the shared library
+            subprocess.run([sys.executable, str(scripts_dir /
+                "fetch_grammars.py")], cwd=self.project_dir, check=True)
         print("Building tree-sitter grammars...")
-        subprocess.run(
-            [sys.executable, str(scripts_dir / "build_lib.py")],
-            cwd=self.project_dir,
-            check=True,
-        )
+        subprocess.run([sys.executable, str(scripts_dir / "build_lib.py")],
+            cwd=self.project_dir, check=True)
 
     def build_sdist(self):
         """Build source distribution."""
         print("Building source distribution...")
         builder = ProjectBuilder(str(self.project_dir))
-
         with IsolatedEnvBuilder() as env:
             builder.python_executable = env.executable
             builder.scripts_dir = env.scripts_dir
-
-            # Install build dependencies
             builder.install_build_deps()
-
-            # Build sdist
             sdist_path = builder.build("sdist", str(self.output_dir))
             print(f"Built sdist: {sdist_path}")
 
     def build_wheel(self, universal: bool = False):
         """Build platform-specific or universal wheel."""
         self.ensure_grammars_built()
-
-        print(f"Building {'universal' if universal else 'platform-specific'} wheel...")
+        print(
+            f"Building {'universal' if universal else 'platform-specific'} wheel...",
+            )
         builder = ProjectBuilder(str(self.project_dir))
-
         with IsolatedEnvBuilder() as env:
             builder.python_executable = env.executable
             builder.scripts_dir = env.scripts_dir
-
-            # Install build dependencies
             builder.install_build_deps()
-
-            # Set platform tag
             config_settings = {}
             if not universal:
                 platform_tag = self.detect_platform()
                 config_settings["--plat-name"] = platform_tag
-
-            # Build wheel
-            wheel_path = builder.build(
-                "wheel",
-                str(self.output_dir),
-                config_settings=config_settings,
-            )
+            wheel_path = builder.build("wheel", str(self.output_dir),
+                config_settings=config_settings)
             print(f"Built wheel: {wheel_path}")
-
             return wheel_path
 
     def build_universal_wheel(self):
         """Build universal wheel (pure Python with included binaries)."""
-        # First ensure grammars are built
         self.ensure_grammars_built()
-
-        # Copy platform-specific binaries
         self.project_dir / "build"
         wheel_build_dir = self.output_dir / "wheel_build"
         wheel_build_dir.mkdir(exist_ok=True)
-
-        # Build a standard wheel
         wheel_path = self.build_wheel(universal=True)
-
         return wheel_path
 
     def build_manylinux_wheels(self):
         """Build manylinux wheels using docker."""
         print("Building manylinux wheels...")
-
-        # Use cibuildwheel for manylinux builds
         env = os.environ.copy()
         env["CIBW_BUILD"] = "cp310-* cp311-* cp312-*"
         env["CIBW_SKIP"] = "*-musllinux_i686 *-win32 pp*"
@@ -148,23 +114,14 @@ class WheelBuilder:
         env["CIBW_MANYLINUX_X86_64_IMAGE"] = "manylinux2014"
         env["CIBW_MANYLINUX_AARCH64_IMAGE"] = "manylinux2014"
         env["CIBW_OUTPUT_DIR"] = str(self.output_dir)
+        subprocess.run(["cibuildwheel", "--platform", "linux"], cwd=self.
+            project_dir, env=env, check=True)
 
-        subprocess.run(
-            ["cibuildwheel", "--platform", "linux"],
-            cwd=self.project_dir,
-            env=env,
-            check=True,
-        )
-
-    def build_all(self, platforms: list[str] | None = None):
+    def build_all(self, platforms: (list[str] | None) = None):
         """Build wheels for all specified platforms."""
         if platforms is None:
             platforms = [self.detect_platform()]
-
-        # Always build source distribution
         self.build_sdist()
-
-        # Build wheels for each platform
         for plat in platforms:
             if plat == "manylinux":
                 self.build_manylinux_wheels()
@@ -174,42 +131,16 @@ class WheelBuilder:
 
 def main():
     """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description="Build wheels for treesitter-chunker",
-    )
-    parser.add_argument(
-        "--output",
-        "-o",
-        type=Path,
-        default=Path("dist"),
-        help="Output directory for wheels",
-    )
-    parser.add_argument(
-        "--platform",
-        "-p",
-        choices=["auto", "manylinux", "macos", "windows", "universal"],
-        default="auto",
-        help="Target platform",
-    )
-    parser.add_argument(
-        "--sdist-only",
-        action="store_true",
-        help="Only build source distribution",
-    )
-    parser.add_argument(
-        "--wheel-only",
-        action="store_true",
-        help="Only build wheel (no sdist)",
-    )
-
+    parser = argparse.ArgumentParser(description="Build wheels for treesitter-chunker")
+    parser.add_argument("--output", "-o", type=Path, default=Path("dist"),
+        help="Output directory for wheels")
+    parser.add_argument("--platform", "-p", choices=["auto", "manylinux",
+        "macos", "windows", "universal"], default="auto", help="Target platform")
+    parser.add_argument("--sdist-only", action="store_true", help="Only build source distribution")
+    parser.add_argument("--wheel-only", action="store_true", help="Only build wheel (no sdist)")
     args = parser.parse_args()
-
-    # Find project directory
     project_dir = Path(__file__).parent.parent.absolute()
-
-    # Create builder
     builder = WheelBuilder(project_dir, args.output)
-
     if args.sdist_only:
         builder.build_sdist()
     elif args.wheel_only:

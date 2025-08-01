@@ -1,5 +1,4 @@
 """Define the boundary for grammar discovery service - Team: Grammar Discovery"""
-
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
@@ -8,7 +7,6 @@ from datetime import datetime
 @dataclass
 class GrammarInfo:
     """Information about a tree-sitter grammar"""
-
     name: str
     url: str
     version: str
@@ -16,13 +14,12 @@ class GrammarInfo:
     stars: int
     description: str
     supported_extensions: list[str]
-    official: bool  # True if from tree-sitter org
+    official: bool
 
 
 @dataclass
 class GrammarCompatibility:
     """Compatibility information for a grammar"""
-
     min_tree_sitter_version: str
     max_tree_sitter_version: str
     abi_version: int
@@ -32,11 +29,10 @@ class GrammarCompatibility:
 class GrammarDiscoveryContract(ABC):
     """Abstract contract defining grammar discovery interface"""
 
+    @staticmethod
     @abstractmethod
-    def list_available_grammars(
-        self,
-        include_community: bool = False,
-    ) -> list[GrammarInfo]:
+    def list_available_grammars(include_community: bool = False) -> list[
+        GrammarInfo]:
         """List all available tree-sitter grammars
 
         Args:
@@ -53,8 +49,9 @@ class GrammarDiscoveryContract(ABC):
             - Each grammar has valid URL and name
         """
 
+    @staticmethod
     @abstractmethod
-    def get_grammar_info(self, language: str) -> GrammarInfo | None:
+    def get_grammar_info(language: str) -> (GrammarInfo | None):
         """Get detailed information about a specific grammar
 
         Args:
@@ -71,11 +68,10 @@ class GrammarDiscoveryContract(ABC):
             - Info includes all required fields
         """
 
+    @staticmethod
     @abstractmethod
-    def check_grammar_updates(
-        self,
-        installed_grammars: dict[str, str],
-    ) -> dict[str, tuple[str, str]]:
+    def check_grammar_updates(installed_grammars: dict[str, str]) -> dict[
+        str, tuple[str, str]]:
         """Check for updates to installed grammars
 
         Args:
@@ -92,12 +88,10 @@ class GrammarDiscoveryContract(ABC):
             - Version strings are valid semver format
         """
 
+    @staticmethod
     @abstractmethod
-    def get_grammar_compatibility(
-        self,
-        language: str,
-        version: str,
-    ) -> GrammarCompatibility:
+    def get_grammar_compatibility(language: str, version: str,
+        ) -> GrammarCompatibility:
         """Get compatibility requirements for a grammar version
 
         Args:
@@ -115,8 +109,9 @@ class GrammarDiscoveryContract(ABC):
             - ABI version is positive integer
         """
 
+    @staticmethod
     @abstractmethod
-    def search_grammars(self, query: str) -> list[GrammarInfo]:
+    def search_grammars(query: str) -> list[GrammarInfo]:
         """Search for grammars by name or description
 
         Args:
@@ -133,8 +128,9 @@ class GrammarDiscoveryContract(ABC):
             - Search is case-insensitive
         """
 
+    @staticmethod
     @abstractmethod
-    def refresh_cache(self) -> bool:
+    def refresh_cache() -> bool:
         """Refresh the grammar discovery cache
 
         Returns:

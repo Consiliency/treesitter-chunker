@@ -6,18 +6,23 @@ from .language_plugin_contract import ExtendedLanguagePluginContract
 class ExtendedLanguagePluginStub(ExtendedLanguagePluginContract):
     """Stub for language plugin testing"""
 
-    def get_semantic_chunks(self, _node: Node, _source: bytes) -> list[dict[str, any]]:
+    @staticmethod
+    def get_semantic_chunks(_node: Node, _source: bytes) -> list[dict[str, any]
+        ]:
         """Returns empty list"""
         return []
 
-    def get_chunk_node_types(self) -> set[str]:
+    @staticmethod
+    def get_chunk_node_types() -> set[str]:
         """Returns minimal set"""
         return {"function_definition"}
 
-    def should_chunk_node(self, _node: Node) -> bool:
+    @staticmethod
+    def should_chunk_node(_node: Node) -> bool:
         """Always returns False"""
         return False
 
-    def get_node_context(self, _node: Node, _source: bytes) -> str | None:
+    @staticmethod
+    def get_node_context(_node: Node, _source: bytes) -> (str | None):
         """Returns None"""
         return None

@@ -3,7 +3,6 @@
 Interfaces for caching, incremental parsing, and other
 performance optimizations.
 """
-
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
@@ -26,7 +25,6 @@ class CacheEntry:
         ttl_seconds: Time to live in seconds (None = no expiry)
         metadata: Additional metadata about the entry
     """
-
     key: str
     value: Any
     created_at: datetime
@@ -52,7 +50,6 @@ class ParseCache:
         language: Language that was parsed
         parse_time_ms: Time taken to parse in milliseconds
     """
-
     ast: Node
     source_hash: str
     language: str
@@ -62,8 +59,9 @@ class ParseCache:
 class CacheManager(ABC):
     """Manages various caches for performance."""
 
+    @staticmethod
     @abstractmethod
-    def get(self, key: str) -> Any | None:
+    def get(key: str) -> (Any | None):
         """Get a value from cache.
 
         Args:
@@ -73,8 +71,9 @@ class CacheManager(ABC):
             Cached value or None if not found/expired
         """
 
+    @staticmethod
     @abstractmethod
-    def put(self, key: str, value: Any, ttl_seconds: int | None = None) -> None:
+    def put(key: str, value: Any, ttl_seconds: (int | None) = None) -> None:
         """Put a value in cache.
 
         Args:
@@ -83,8 +82,9 @@ class CacheManager(ABC):
             ttl_seconds: Time to live (None for no expiry)
         """
 
+    @staticmethod
     @abstractmethod
-    def invalidate(self, key: str) -> bool:
+    def invalidate(key: str) -> bool:
         """Invalidate a cache entry.
 
         Args:
@@ -94,8 +94,9 @@ class CacheManager(ABC):
             True if entry was found and invalidated
         """
 
+    @staticmethod
     @abstractmethod
-    def invalidate_pattern(self, pattern: str) -> int:
+    def invalidate_pattern(pattern: str) -> int:
         """Invalidate all entries matching a pattern.
 
         Args:
@@ -105,36 +106,41 @@ class CacheManager(ABC):
             Number of entries invalidated
         """
 
+    @staticmethod
     @abstractmethod
-    def clear(self) -> None:
+    def clear() -> None:
         """Clear all cache entries."""
 
+    @staticmethod
     @abstractmethod
-    def size(self) -> int:
+    def size() -> int:
         """Get number of entries in cache.
 
         Returns:
             Number of cache entries
         """
 
+    @staticmethod
     @abstractmethod
-    def memory_usage(self) -> int:
+    def memory_usage() -> int:
         """Get approximate memory usage in bytes.
 
         Returns:
             Memory usage in bytes
         """
 
+    @staticmethod
     @abstractmethod
-    def evict_expired(self) -> int:
+    def evict_expired() -> int:
         """Remove all expired entries.
 
         Returns:
             Number of entries evicted
         """
 
+    @staticmethod
     @abstractmethod
-    def get_stats(self) -> dict[str, Any]:
+    def get_stats() -> dict[str, Any]:
         """Get cache statistics.
 
         Returns:
@@ -145,13 +151,10 @@ class CacheManager(ABC):
 class IncrementalParser(ABC):
     """Support for incremental parsing of file changes."""
 
+    @staticmethod
     @abstractmethod
-    def parse_incremental(
-        self,
-        old_tree: Node,
-        source: bytes,
-        changed_ranges: list[tuple[int, int, int, int]],
-    ) -> Node:
+    def parse_incremental(old_tree: Node, source: bytes, changed_ranges:
+        list[tuple[int, int, int, int]]) -> Node:
         """Parse incrementally based on changes.
 
         Args:
@@ -163,12 +166,10 @@ class IncrementalParser(ABC):
             New parse tree
         """
 
+    @staticmethod
     @abstractmethod
-    def detect_changes(
-        self,
-        old_source: bytes,
-        new_source: bytes,
-    ) -> list[tuple[int, int, int, int]]:
+    def detect_changes(old_source: bytes, new_source: bytes) -> list[tuple[
+        int, int, int, int]]:
         """Detect changed ranges between sources.
 
         Args:
@@ -179,14 +180,11 @@ class IncrementalParser(ABC):
             List of changed ranges
         """
 
+    @staticmethod
     @abstractmethod
-    def update_chunks(
-        self,
-        old_chunks: list[CodeChunk],
-        old_tree: Node,
-        new_tree: Node,
-        changed_ranges: list[tuple[int, int, int, int]],
-    ) -> list[CodeChunk]:
+    def update_chunks(old_chunks: list[CodeChunk], old_tree: Node, new_tree:
+        Node, changed_ranges: list[tuple[int, int, int, int]]) -> list[CodeChunk
+        ]:
         """Update chunks based on incremental changes.
 
         Args:
@@ -203,8 +201,9 @@ class IncrementalParser(ABC):
 class MemoryPool(ABC):
     """Pool for reusing expensive objects."""
 
+    @staticmethod
     @abstractmethod
-    def acquire(self, resource_type: str) -> Any:
+    def acquire(resource_type: str) -> Any:
         """Acquire a resource from the pool.
 
         Args:
@@ -214,16 +213,18 @@ class MemoryPool(ABC):
             Resource instance
         """
 
+    @staticmethod
     @abstractmethod
-    def release(self, resource: Any) -> None:
+    def release(resource: Any) -> None:
         """Return a resource to the pool.
 
         Args:
             resource: Resource to return
         """
 
+    @staticmethod
     @abstractmethod
-    def size(self, resource_type: str) -> int:
+    def size(resource_type: str) -> int:
         """Get current pool size for a resource type.
 
         Args:
@@ -233,8 +234,9 @@ class MemoryPool(ABC):
             Number of pooled resources
         """
 
+    @staticmethod
     @abstractmethod
-    def clear(self, resource_type: str | None = None) -> None:
+    def clear(resource_type: (str | None) = None) -> None:
         """Clear pooled resources.
 
         Args:
@@ -245,8 +247,9 @@ class MemoryPool(ABC):
 class PerformanceMonitor(ABC):
     """Monitor performance metrics."""
 
+    @staticmethod
     @abstractmethod
-    def start_operation(self, operation_name: str) -> str:
+    def start_operation(operation_name: str) -> str:
         """Start timing an operation.
 
         Args:
@@ -256,8 +259,9 @@ class PerformanceMonitor(ABC):
             Operation ID for tracking
         """
 
+    @staticmethod
     @abstractmethod
-    def end_operation(self, operation_id: str) -> float:
+    def end_operation(operation_id: str) -> float:
         """End timing an operation.
 
         Args:
@@ -267,8 +271,9 @@ class PerformanceMonitor(ABC):
             Duration in milliseconds
         """
 
+    @staticmethod
     @abstractmethod
-    def record_metric(self, metric_name: str, value: float) -> None:
+    def record_metric(metric_name: str, value: float) -> None:
         """Record a performance metric.
 
         Args:
@@ -276,24 +281,27 @@ class PerformanceMonitor(ABC):
             value: Metric value
         """
 
+    @staticmethod
     @abstractmethod
-    def get_metrics(self) -> dict[str, dict[str, float]]:
+    def get_metrics() -> dict[str, dict[str, float]]:
         """Get all recorded metrics.
 
         Returns:
             Dictionary of metrics with statistics
         """
 
+    @staticmethod
     @abstractmethod
-    def reset(self) -> None:
+    def reset() -> None:
         """Reset all metrics."""
 
 
 class BatchProcessor(ABC):
     """Process multiple files efficiently in batches."""
 
+    @staticmethod
     @abstractmethod
-    def add_file(self, file_path: str, priority: int = 0) -> None:
+    def add_file(file_path: str, priority: int = 0) -> None:
         """Add a file to the batch.
 
         Args:
@@ -301,12 +309,10 @@ class BatchProcessor(ABC):
             priority: Processing priority (higher = sooner)
         """
 
+    @staticmethod
     @abstractmethod
-    def process_batch(
-        self,
-        batch_size: int = 10,
-        parallel: bool = True,
-    ) -> dict[str, list[CodeChunk]]:
+    def process_batch(batch_size: int = 10, parallel: bool = True) -> dict[str,
+        list[CodeChunk]]:
         """Process a batch of files.
 
         Args:
@@ -317,8 +323,9 @@ class BatchProcessor(ABC):
             Dictionary mapping file paths to chunks
         """
 
+    @staticmethod
     @abstractmethod
-    def pending_count(self) -> int:
+    def pending_count() -> int:
         """Get number of files pending processing.
 
         Returns:

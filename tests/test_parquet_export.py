@@ -10,7 +10,7 @@ from chunker.exporters import ParquetExporter
 from chunker.types import CodeChunk
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_chunks():
     """Create sample code chunks for testing."""
     return [

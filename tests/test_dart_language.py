@@ -1,5 +1,4 @@
 """Comprehensive tests for Dart language support."""
-
 from chunker import chunk_file
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from chunker.languages.dart import DartPlugin
@@ -8,7 +7,8 @@ from chunker.languages.dart import DartPlugin
 class TestDartBasicChunking:
     """Test basic Dart chunking functionality."""
 
-    def test_simple_functions(self, tmp_path):
+    @staticmethod
+    def test_simple_functions(tmp_path):
         """Test basic function declarations."""
         src = tmp_path / "functions.dart"
         src.write_text(
@@ -34,24 +34,21 @@ Stream<int> countStream(int max) async* {
   }
 }
 """,
-        )
+            )
         chunks = chunk_file(src, "dart")
         assert len(chunks) >= 4
-
-        # Check for function declarations
-        function_chunks = [c for c in chunks if c.node_type == "function_declaration"]
+        function_chunks = [c for c in chunks if c.node_type ==
+            "function_declaration"]
         assert len(function_chunks) >= 4
         assert any("factorial" in c.content for c in function_chunks)
         assert any("printMessage" in c.content for c in function_chunks)
-        assert any(
-            "fetchData" in c.content and "async" in c.content for c in function_chunks
-        )
-        assert any(
-            "countStream" in c.content and "async*" in c.content
-            for c in function_chunks
-        )
+        assert any("fetchData" in c.content and "async" in c.content for c in
+            function_chunks)
+        assert any("countStream" in c.content and "async*" in c.content for
+            c in function_chunks)
 
-    def test_classes_and_methods(self, tmp_path):
+    @staticmethod
+    def test_classes_and_methods(tmp_path):
         """Test class and method declarations."""
         src = tmp_path / "classes.dart"
         src.write_text(
@@ -109,36 +106,31 @@ class Circle extends Shape with Colorable {
   }
 }
 """,
-        )
+            )
         chunks = chunk_file(src, "dart")
-
-        # Check for class declarations
-        class_chunks = [
-            c for c in chunks if c.node_type in {"class_declaration", "widget_class"}
-        ]
+        class_chunks = [c for c in chunks if c.node_type in {
+            "class_declaration", "widget_class"}]
         assert len(class_chunks) >= 3
         assert any("Person" in c.content for c in class_chunks)
-        assert any(
-            "Shape" in c.content and "abstract" in c.content for c in class_chunks
-        )
+        assert any("Shape" in c.content and "abstract" in c.content for c in
+            class_chunks)
         assert any("Circle" in c.content for c in class_chunks)
-
-        # Check for mixin
-        mixin_chunks = [c for c in chunks if c.node_type == "mixin_declaration"]
+        mixin_chunks = [c for c in chunks if c.node_type == "mixin_declaration"
+            ]
         assert len(mixin_chunks) >= 1
         assert any("Colorable" in c.content for c in mixin_chunks)
+        constructor_chunks = [c for c in chunks if "constructor" in c.node_type
+            ]
+        assert len(constructor_chunks) >= 3
+        getter_chunks = [c for c in chunks if c.node_type ==
+            "getter_declaration"]
+        setter_chunks = [c for c in chunks if c.node_type ==
+            "setter_declaration"]
+        assert len(getter_chunks) >= 2
+        assert len(setter_chunks) >= 1
 
-        # Check for constructors
-        constructor_chunks = [c for c in chunks if "constructor" in c.node_type]
-        assert len(constructor_chunks) >= 3  # Regular, named, and factory constructors
-
-        # Check for getters and setters
-        getter_chunks = [c for c in chunks if c.node_type == "getter_declaration"]
-        setter_chunks = [c for c in chunks if c.node_type == "setter_declaration"]
-        assert len(getter_chunks) >= 2  # age and area getters
-        assert len(setter_chunks) >= 1  # age setter
-
-    def test_flutter_widgets(self, tmp_path):
+    @staticmethod
+    def test_flutter_widgets(tmp_path):
         """Test Flutter widget classes."""
         src = tmp_path / "widgets.dart"
         src.write_text(
@@ -187,36 +179,22 @@ class _HomePageState extends State<HomePage> {
   }
 }
 """,
-        )
-        chunks = chunk_file(src, "dart")
-
-        # Check for widget classes
-        widget_chunks = [
-            c
-            for c in chunks
-            if "widget_class" in c.node_type
-            or (
-                "class" in c.node_type
-                and ("StatelessWidget" in c.content or "StatefulWidget" in c.content)
             )
-        ]
+        chunks = chunk_file(src, "dart")
+        widget_chunks = [c for c in chunks if "widget_class" in c.node_type or
+            ("class" in c.node_type and ("StatelessWidget" in c.content or
+            "StatefulWidget" in c.content))]
         assert len(widget_chunks) >= 3
-        assert any(
-            "MyApp" in c.content and "StatelessWidget" in c.content for c in chunks
-        )
-        assert any(
-            "HomePage" in c.content and "StatefulWidget" in c.content for c in chunks
-        )
-
-        # Check for build methods
-        build_methods = [
-            c
-            for c in chunks
-            if c.node_type == "method_declaration" and "build" in c.content
-        ]
+        assert any("MyApp" in c.content and "StatelessWidget" in c.content for
+            c in chunks)
+        assert any("HomePage" in c.content and "StatefulWidget" in c.
+            content for c in chunks)
+        build_methods = [c for c in chunks if c.node_type ==
+            "method_declaration" and "build" in c.content]
         assert len(build_methods) >= 2
 
-    def test_extensions_and_enums(self, tmp_path):
+    @staticmethod
+    def test_extensions_and_enums(tmp_path):
         """Test extension declarations and enums."""
         src = tmp_path / "extensions.dart"
         src.write_text(
@@ -250,17 +228,14 @@ extension IterableExtensions<T> on Iterable<T> {
   }
 }
 """,
-        )
+            )
         chunks = chunk_file(src, "dart")
-
-        # Check for enums
         enum_chunks = [c for c in chunks if c.node_type == "enum_declaration"]
         assert len(enum_chunks) >= 2
         assert any("Color" in c.content for c in enum_chunks)
         assert any("Status" in c.content for c in enum_chunks)
-
-        # Check for extensions
-        extension_chunks = [c for c in chunks if c.node_type == "extension_declaration"]
+        extension_chunks = [c for c in chunks if c.node_type ==
+            "extension_declaration"]
         assert len(extension_chunks) >= 2
         assert any("StringExtensions" in c.content for c in extension_chunks)
         assert any("IterableExtensions" in c.content for c in extension_chunks)
@@ -269,76 +244,71 @@ extension IterableExtensions<T> on Iterable<T> {
 class TestDartContractCompliance:
     """Test ExtendedLanguagePluginContract implementation."""
 
-    def test_implements_contract(self):
+    @classmethod
+    def test_implements_contract(cls):
         """Test that DartPlugin implements the contract."""
         plugin = DartPlugin()
         assert isinstance(plugin, ExtendedLanguagePluginContract)
 
-    def test_get_semantic_chunks(self):
+    @staticmethod
+    def test_get_semantic_chunks():
         """Test get_semantic_chunks method."""
         plugin = DartPlugin()
 
-        # Mock node structure
         class MockNode:
+
             def __init__(self, node_type, start=0, end=1):
                 self.type = node_type
                 self.start_byte = start
                 self.end_byte = end
-                self.start_point = (0, 0)
-                self.end_point = (0, end)
+                self.start_point = 0, 0
+                self.end_point = 0, end
                 self.children = []
-
         root = MockNode("compilation_unit")
         func_node = MockNode("function_declaration", 0, 50)
         root.children.append(func_node)
-
         source = b"void main() { print('Hello'); }"
         chunks = plugin.get_semantic_chunks(root, source)
-
         assert len(chunks) >= 1
         assert any(chunk["type"] == "function_declaration" for chunk in chunks)
 
-    def test_get_chunk_node_types(self):
+    @classmethod
+    def test_get_chunk_node_types(cls):
         """Test get_chunk_node_types method."""
         plugin = DartPlugin()
         node_types = plugin.get_chunk_node_types()
-
         assert isinstance(node_types, set)
         assert "function_declaration" in node_types
         assert "class_declaration" in node_types
         assert "method_declaration" in node_types
         assert "mixin_declaration" in node_types
 
-    def test_should_chunk_node(self):
+    @staticmethod
+    def test_should_chunk_node():
         """Test should_chunk_node method."""
         plugin = DartPlugin()
 
-        # Mock node
         class MockNode:
+
             def __init__(self, node_type):
                 self.type = node_type
-
-        # Test chunk nodes
         assert plugin.should_chunk_node(MockNode("function_declaration"))
         assert plugin.should_chunk_node(MockNode("class_declaration"))
         assert plugin.should_chunk_node(MockNode("method_declaration"))
         assert plugin.should_chunk_node(MockNode("mixin_declaration"))
-
-        # Test non-chunk nodes
         assert not plugin.should_chunk_node(MockNode("identifier"))
         assert not plugin.should_chunk_node(MockNode("comment"))
 
-    def test_get_node_context(self):
+    @staticmethod
+    def test_get_node_context():
         """Test get_node_context method."""
         plugin = DartPlugin()
 
-        # Mock node
         class MockNode:
+
             def __init__(self, node_type):
                 self.type = node_type
                 self.children = []
-
-        # Test context extraction
         node = MockNode("function_declaration")
         context = plugin.get_node_context(node, b"void main() {}")
         assert context is not None
@@ -348,14 +318,16 @@ class TestDartContractCompliance:
 class TestDartEdgeCases:
     """Test edge cases in Dart parsing."""
 
-    def test_empty_file(self, tmp_path):
+    @staticmethod
+    def test_empty_file(tmp_path):
         """Test empty Dart file."""
         src = tmp_path / "empty.dart"
         src.write_text("")
         chunks = chunk_file(src, "dart")
         assert len(chunks) == 0
 
-    def test_comments_only(self, tmp_path):
+    @staticmethod
+    def test_comments_only(tmp_path):
         """Test file with only comments."""
         src = tmp_path / "comments.dart"
         src.write_text(
@@ -365,12 +337,12 @@ class TestDartEdgeCases:
 /// Documentation comment
 /// with multiple lines
 """,
-        )
+            )
         chunks = chunk_file(src, "dart")
-        # Comments should be ignored
         assert len(chunks) == 0
 
-    def test_async_patterns(self, tmp_path):
+    @staticmethod
+    def test_async_patterns(tmp_path):
         """Test various async patterns."""
         src = tmp_path / "async.dart"
         src.write_text(
@@ -401,26 +373,20 @@ Iterable<int> syncGenerator() sync* {
 
 Future<int> computeValue() async => 42;
 """,
-        )
+            )
         chunks = chunk_file(src, "dart")
-
-        # All async functions should be chunked
         async_chunks = [c for c in chunks if "async" in c.content]
         assert len(async_chunks) >= 4
         assert any("asyncFunction" in c.content for c in async_chunks)
         assert any("asyncWithReturn" in c.content for c in async_chunks)
-        assert any(
-            "asyncGenerator" in c.content and "async*" in c.content
-            for c in async_chunks
-        )
-
-        # Sync generator
-        sync_gen_chunks = [
-            c for c in chunks if "syncGenerator" in c.content and "sync*" in c.content
-        ]
+        assert any("asyncGenerator" in c.content and "async*" in c.content for
+            c in async_chunks)
+        sync_gen_chunks = [c for c in chunks if "syncGenerator" in c.
+            content and "sync*" in c.content]
         assert len(sync_gen_chunks) >= 1
 
-    def test_null_safety(self, tmp_path):
+    @staticmethod
+    def test_null_safety(tmp_path):
         """Test null safety features."""
         src = tmp_path / "null_safety.dart"
         src.write_text(
@@ -458,22 +424,18 @@ T requireNotNull<T>(T? value, String message) {
   return value;
 }
 """,
-        )
+            )
         chunks = chunk_file(src, "dart")
-
-        # Check class with nullable fields
         [c for c in chunks if c.node_type == "class_declaration"]
-        assert any("User" in c.content and "String?" in c.content for c in chunks)
-
-        # Check functions handling nullable types
+        assert any("User" in c.content and "String?" in c.content for c in
+            chunks)
         function_chunks = [c for c in chunks if "function" in c.node_type]
         assert any("processNullable" in c.content for c in function_chunks)
-        assert any(
-            "requireNotNull" in c.content and "<T>" in c.content
-            for c in function_chunks
-        )
+        assert any("requireNotNull" in c.content and "<T>" in c.content for
+            c in function_chunks)
 
-    def test_typedef_and_generics(self, tmp_path):
+    @staticmethod
+    def test_typedef_and_generics(tmp_path):
         """Test typedef declarations and generic types."""
         src = tmp_path / "typedefs.dart"
         src.write_text(
@@ -506,22 +468,17 @@ List<R> mapList<T, R>(List<T> items, R Function(T) transform) {
   return items.map(transform).toList();
 }
 """,
-        )
+            )
         chunks = chunk_file(src, "dart")
-
-        # Check typedef declarations
-        typedef_chunks = [c for c in chunks if c.node_type == "typedef_declaration"]
+        typedef_chunks = [c for c in chunks if c.node_type ==
+            "typedef_declaration"]
         assert len(typedef_chunks) >= 3
         assert any("IntMapper" in c.content for c in typedef_chunks)
         assert any("StringProcessor" in c.content for c in typedef_chunks)
         assert any("GenericTransform" in c.content for c in typedef_chunks)
-
-        # Check generic classes
         [c for c in chunks if c.node_type == "class_declaration"]
         assert any("Container<T>" in c.content for c in chunks)
         assert any("Pair<T, U>" in c.content for c in chunks)
-
-        # Check generic functions
         [c for c in chunks if "function" in c.node_type]
         assert any("identity<T>" in c.content for c in chunks)
         assert any("mapList<T, R>" in c.content for c in chunks)

@@ -1,7 +1,3 @@
-# File: chunker/contracts/tooling_contract.py
-# Purpose: Define the boundary for developer tooling components
-# Team responsible: Developer Tooling Team
-
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
@@ -10,8 +6,9 @@ from typing import Any
 class DeveloperToolingContract(ABC):
     """Abstract contract defining developer tooling interface"""
 
+    @staticmethod
     @abstractmethod
-    def run_pre_commit_checks(self, files: list[Path]) -> tuple[bool, dict[str, Any]]:
+    def run_pre_commit_checks(files: list[Path]) -> tuple[bool, dict[str, Any]]:
         """Run all pre-commit checks on specified files
 
         Args:
@@ -34,8 +31,9 @@ class DeveloperToolingContract(ABC):
             - Results are populated for each check type
         """
 
+    @staticmethod
     @abstractmethod
-    def format_code(self, files: list[Path], fix: bool = False) -> dict[str, Any]:
+    def format_code(files: list[Path], fix: bool = False) -> dict[str, Any]:
         """Format code files according to project standards
 
         Args:
@@ -57,12 +55,10 @@ class DeveloperToolingContract(ABC):
             - If fix=True, files are modified in-place
         """
 
+    @staticmethod
     @abstractmethod
-    def run_linting(
-        self,
-        files: list[Path],
-        fix: bool = False,
-    ) -> dict[str, list[dict[str, Any]]]:
+    def run_linting(files: list[Path], fix: bool = False) -> dict[str, list[
+        dict[str, Any]]]:
         """Run linting checks on specified files
 
         Args:
@@ -86,8 +82,9 @@ class DeveloperToolingContract(ABC):
             - If fix=True, auto-fixable issues are resolved
         """
 
+    @staticmethod
     @abstractmethod
-    def run_type_checking(self, files: list[Path]) -> dict[str, list[dict[str, Any]]]:
+    def run_type_checking(files: list[Path]) -> dict[str, list[dict[str, Any]]]:
         """Run static type checking on files
 
         Args:

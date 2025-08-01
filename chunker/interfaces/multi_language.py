@@ -1,5 +1,4 @@
 """Multi-language project processing interface."""
-
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
@@ -10,19 +9,17 @@ from chunker.types import CodeChunk
 
 class EmbeddedLanguageType(Enum):
     """Types of embedded languages."""
-
-    TEMPLATE = "template"  # HTML in JS, JSX, etc.
-    QUERY = "query"  # SQL in Python/JS, GraphQL, etc.
-    SCRIPT = "script"  # JS in HTML, Python in notebooks
-    STYLE = "style"  # CSS in HTML/JS
-    DOCUMENTATION = "documentation"  # Code in Markdown
-    CONFIGURATION = "configuration"  # JSON/YAML in code
+    TEMPLATE = "template"
+    QUERY = "query"
+    SCRIPT = "script"
+    STYLE = "style"
+    DOCUMENTATION = "documentation"
+    CONFIGURATION = "configuration"
 
 
 @dataclass
 class LanguageRegion:
     """A region of code in a specific language."""
-
     language: str
     start_pos: int
     end_pos: int
@@ -35,18 +32,18 @@ class LanguageRegion:
 @dataclass
 class CrossLanguageReference:
     """A reference between code in different languages."""
-
     source_chunk: CodeChunk
     target_chunk: CodeChunk
-    reference_type: str  # 'import', 'api_call', 'shared_type', etc.
-    confidence: float  # 0-1
+    reference_type: str
+    confidence: float
 
 
 class MultiLanguageProcessor(ABC):
     """Process projects with multiple languages."""
 
+    @staticmethod
     @abstractmethod
-    def detect_project_languages(self, project_path: str) -> dict[str, float]:
+    def detect_project_languages(project_path: str) -> dict[str, float]:
         """
         Detect languages used in project with confidence scores.
 
@@ -60,12 +57,10 @@ class MultiLanguageProcessor(ABC):
             Dict mapping language names to usage percentage (0-1)
         """
 
+    @staticmethod
     @abstractmethod
-    def identify_language_regions(
-        self,
-        file_path: str,
-        content: str,
-    ) -> list[LanguageRegion]:
+    def identify_language_regions(file_path: str, content: str) -> list[
+        LanguageRegion]:
         """
         Identify regions of different languages within a file.
 
@@ -77,13 +72,10 @@ class MultiLanguageProcessor(ABC):
             List of language regions in the file
         """
 
+    @staticmethod
     @abstractmethod
-    def process_mixed_file(
-        self,
-        file_path: str,
-        primary_language: str,
-        content: str | None = None,
-    ) -> list[CodeChunk]:
+    def process_mixed_file(file_path: str, primary_language: str, content:
+        (str | None) = None) -> list[CodeChunk]:
         """
         Process files with embedded languages.
 
@@ -102,13 +94,10 @@ class MultiLanguageProcessor(ABC):
             Chunks from all languages in the file
         """
 
+    @staticmethod
     @abstractmethod
-    def extract_embedded_code(
-        self,
-        content: str,
-        host_language: str,
-        target_language: str,
-    ) -> list[tuple[str, int, int]]:
+    def extract_embedded_code(content: str, host_language: str,
+        target_language: str) -> list[tuple[str, int, int]]:
         """
         Extract embedded code snippets.
 
@@ -121,11 +110,10 @@ class MultiLanguageProcessor(ABC):
             List of (code_snippet, start_pos, end_pos) tuples
         """
 
+    @staticmethod
     @abstractmethod
-    def cross_language_references(
-        self,
-        chunks: list[CodeChunk],
-    ) -> list[CrossLanguageReference]:
+    def cross_language_references(chunks: list[CodeChunk]) -> list[
+        CrossLanguageReference]:
         """
         Find references across language boundaries.
 
@@ -141,8 +129,9 @@ class MultiLanguageProcessor(ABC):
             List of cross-language references
         """
 
+    @staticmethod
     @abstractmethod
-    def group_by_feature(self, chunks: list[CodeChunk]) -> dict[str, list[CodeChunk]]:
+    def group_by_feature(chunks: list[CodeChunk]) -> dict[str, list[CodeChunk]]:
         """
         Group chunks from different languages by feature.
 
@@ -160,8 +149,9 @@ class MultiLanguageProcessor(ABC):
 class LanguageDetector(ABC):
     """Detect programming languages in files and content."""
 
+    @staticmethod
     @abstractmethod
-    def detect_from_file(self, file_path: str) -> tuple[str, float]:
+    def detect_from_file(file_path: str) -> tuple[str, float]:
         """
         Detect language from file path and content.
 
@@ -172,12 +162,10 @@ class LanguageDetector(ABC):
             Tuple of (language, confidence)
         """
 
+    @staticmethod
     @abstractmethod
-    def detect_from_content(
-        self,
-        content: str,
-        hint: str | None = None,
-    ) -> tuple[str, float]:
+    def detect_from_content(content: str, hint: (str | None) = None) -> tuple[
+        str, float]:
         """
         Detect language from content alone.
 
@@ -189,8 +177,9 @@ class LanguageDetector(ABC):
             Tuple of (language, confidence)
         """
 
+    @staticmethod
     @abstractmethod
-    def detect_multiple(self, content: str) -> list[tuple[str, float]]:
+    def detect_multiple(content: str) -> list[tuple[str, float]]:
         """
         Detect multiple languages in content.
 
@@ -205,8 +194,9 @@ class LanguageDetector(ABC):
 class ProjectAnalyzer(ABC):
     """Analyze multi-language project structure."""
 
+    @staticmethod
     @abstractmethod
-    def analyze_structure(self, project_path: str) -> dict[str, Any]:
+    def analyze_structure(project_path: str) -> dict[str, Any]:
         """
         Analyze overall project structure.
 
@@ -223,8 +213,9 @@ class ProjectAnalyzer(ABC):
             Project analysis results
         """
 
+    @staticmethod
     @abstractmethod
-    def find_api_boundaries(self, chunks: list[CodeChunk]) -> list[dict[str, Any]]:
+    def find_api_boundaries(chunks: list[CodeChunk]) -> list[dict[str, Any]]:
         """
         Find API boundaries between components.
 
@@ -235,11 +226,10 @@ class ProjectAnalyzer(ABC):
             List of API boundary definitions
         """
 
+    @staticmethod
     @abstractmethod
-    def suggest_chunk_grouping(
-        self,
-        chunks: list[CodeChunk],
-    ) -> dict[str, list[CodeChunk]]:
+    def suggest_chunk_grouping(chunks: list[CodeChunk]) -> dict[str, list[
+        CodeChunk]]:
         """
         Suggest how to group chunks for processing.
 

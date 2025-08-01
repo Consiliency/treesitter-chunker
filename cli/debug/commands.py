@@ -167,7 +167,7 @@ def ast(
             print(json_output)
         else:
             console.print(f"[red]Unknown fmt: {fmt}[/red]")
-            raise typer.Exit(1) from e
+            raise typer.Exit(1)
 
     except (FileNotFoundError, IndexError, KeyError) as e:
         console.print(f"[red]Error visualizing AST: {e}[/red]")

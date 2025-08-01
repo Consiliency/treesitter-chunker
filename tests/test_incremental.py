@@ -1,5 +1,4 @@
 """Tests for incremental processing implementation."""
-
 import shutil
 import tempfile
 from datetime import datetime, timedelta
@@ -19,44 +18,21 @@ from chunker.types import CodeChunk
 @pytest.fixture
 def sample_chunks():
     """Create sample chunks for testing."""
-    return [
-        CodeChunk(
-            language="python",
-            file_path="test.py",
-            node_type="function_definition",
-            start_line=1,
-            end_line=5,
-            byte_start=0,
-            byte_end=100,
-            parent_context="",
-            content="def hello():\n    print('Hello')\n    return True\n",
-            chunk_id="chunk1",
-        ),
-        CodeChunk(
-            language="python",
-            file_path="test.py",
-            node_type="function_definition",
-            start_line=7,
-            end_line=10,
-            byte_start=101,
-            byte_end=200,
-            parent_context="",
-            content="def world():\n    print('World')\n",
-            chunk_id="chunk2",
-        ),
-        CodeChunk(
-            language="python",
-            file_path="test.py",
-            node_type="class_definition",
-            start_line=12,
-            end_line=20,
-            byte_start=201,
-            byte_end=400,
-            parent_context="",
-            content="class MyClass:\n    def __init__(self):\n        pass\n",
-            chunk_id="chunk3",
-        ),
-    ]
+    return [CodeChunk(language="python", file_path="test.py", node_type="function_definition", start_line=1, end_line=5, byte_start=0,
+        byte_end=100, parent_context="", content="""def hello():
+    print('Hello')
+    return True
+""", chunk_id="chunk1"), CodeChunk(language="python", file_path="test.py",
+        node_type="function_definition", start_line=7, end_line=10,
+        byte_start=101, byte_end=200, parent_context="", content="""def world():
+    print('World')
+""", chunk_id="chunk2"),
+        CodeChunk(language="python", file_path="test.py", node_type="class_definition", start_line=12, end_line=20, byte_start=201,
+        byte_end=400, parent_context="", content="""class MyClass:
+    def __init__(self):
+        pass
+""",
+        chunk_id="chunk3")]
 
 
 @pytest.fixture
@@ -70,28 +46,22 @@ def temp_cache_dir():
 class TestIncrementalProcessor:
     """Test incremental processor implementation."""
 
-    def test_compute_diff_no_changes(self, sample_chunks):
+    @classmethod
+    def test_compute_diff_no_changes(cls, sample_chunks):
         """Test diff computation with no changes."""
         processor = DefaultIncrementalProcessor()
-
-        # Reconstruct original content
         content = "\n".join([chunk.content for chunk in sample_chunks])
-
         diff = processor.compute_diff(sample_chunks, content, "python")
+        total_changes = diff.summary["added"] + diff.summary["deleted"
+            ] + diff.summary["modified"]
+        assert total_changes >= 0
+        assert diff.summary["total_new_chunks"] >= diff.summary[
+            "total_old_chunks"]
 
-        # The implementation may categorize chunks differently (e.g., as moved)
-        # but the total should remain the same
-        total_changes = (
-            diff.summary["added"] + diff.summary["deleted"] + diff.summary["modified"]
-        )
-        assert total_changes >= 0  # Some chunks may be detected as moved
-        assert diff.summary["total_new_chunks"] >= diff.summary["total_old_chunks"]
-
-    def test_compute_diff_with_modifications(self, sample_chunks):
+    @classmethod
+    def test_compute_diff_with_modifications(cls, sample_chunks):
         """Test diff computation with modified content."""
         processor = DefaultIncrementalProcessor()
-
-        # Modify the content of the first function
         modified_content = """def hello():
     print('Hello, World!')  # Modified
     return True
@@ -103,23 +73,16 @@ class MyClass:
     def __init__(self):
         pass
 """
+        diff = processor.compute_diff(sample_chunks, modified_content, "python",
+            )
+        total_changes = diff.summary["added"] + diff.summary["deleted"
+            ] + diff.summary["modified"] + diff.summary.get("moved", 0)
+        assert total_changes > 0
 
-        diff = processor.compute_diff(sample_chunks, modified_content, "python")
-
-        # Check that changes were detected
-        total_changes = (
-            diff.summary["added"]
-            + diff.summary["deleted"]
-            + diff.summary["modified"]
-            + diff.summary.get("moved", 0)
-        )
-        assert total_changes > 0  # Some change should be detected
-
-    def test_compute_diff_with_additions(self, sample_chunks):
+    @classmethod
+    def test_compute_diff_with_additions(cls, sample_chunks):
         """Test diff computation with added content."""
         processor = DefaultIncrementalProcessor()
-
-        # Add a new function
         modified_content = """def hello():
     print('Hello')
     return True
@@ -135,17 +98,15 @@ class MyClass:
     def __init__(self):
         pass
 """
-
-        diff = processor.compute_diff(sample_chunks, modified_content, "python")
-
+        diff = processor.compute_diff(sample_chunks, modified_content, "python",
+            )
         assert len(diff.added_chunks) >= 1
         assert diff.summary["added"] >= 1
 
-    def test_compute_diff_with_deletions(self, sample_chunks):
+    @classmethod
+    def test_compute_diff_with_deletions(cls, sample_chunks):
         """Test diff computation with deleted content."""
         processor = DefaultIncrementalProcessor()
-
-        # Remove the world function
         modified_content = """def hello():
     print('Hello')
     return True
@@ -154,17 +115,15 @@ class MyClass:
     def __init__(self):
         pass
 """
-
-        diff = processor.compute_diff(sample_chunks, modified_content, "python")
-
+        diff = processor.compute_diff(sample_chunks, modified_content, "python",
+            )
         assert len(diff.deleted_chunks) >= 1
         assert diff.summary["deleted"] >= 1
 
-    def test_detect_moved_chunks(self, sample_chunks):
+    @classmethod
+    def test_detect_moved_chunks(cls, sample_chunks):
         """Test detection of moved chunks."""
         processor = DefaultIncrementalProcessor()
-
-        # Move hello function to the end
         modified_content = """def world():
     print('World')
 
@@ -176,18 +135,16 @@ def hello():
     print('Hello')
     return True
 """
-
-        diff = processor.compute_diff(sample_chunks, modified_content, "python")
-
-        # Should detect that hello() was moved
-        moved_changes = [c for c in diff.changes if c.change_type == ChangeType.MOVED]
+        diff = processor.compute_diff(sample_chunks, modified_content, "python",
+            )
+        moved_changes = [c for c in diff.changes if c.change_type ==
+            ChangeType.MOVED]
         assert len(moved_changes) >= 1
 
-    def test_update_chunks(self, sample_chunks):
+    @classmethod
+    def test_update_chunks(cls, sample_chunks):
         """Test updating chunks based on diff."""
         processor = DefaultIncrementalProcessor()
-
-        # Create a diff with various changes
         modified_content = """def hello():
     print('Hello, Modified!')
     return True
@@ -199,50 +156,28 @@ class MyClass:
     def __init__(self):
         pass
 """
-
-        diff = processor.compute_diff(sample_chunks, modified_content, "python")
+        diff = processor.compute_diff(sample_chunks, modified_content, "python",
+            )
         updated_chunks = processor.update_chunks(sample_chunks, diff)
-
-        # Should have some chunks after update
         assert len(updated_chunks) > 0
-        # The exact count depends on how the implementation categorizes changes
-
-        # Check that chunks have valid line numbers
         for chunk in updated_chunks:
             assert chunk.start_line > 0
             assert chunk.end_line >= chunk.start_line
 
-    def test_merge_incremental_results(self, sample_chunks):
+    @classmethod
+    def test_merge_incremental_results(cls, sample_chunks):
         """Test merging incremental results."""
         processor = DefaultIncrementalProcessor()
-
-        # Create some incremental chunks
-        incremental_chunks = [
-            CodeChunk(
-                language="python",
-                file_path="test.py",
-                node_type="function_definition",
-                start_line=7,
-                end_line=10,
-                byte_start=101,
-                byte_end=200,
-                parent_context="",
-                content="def world_modified():\n    print('Modified')\n",
-                chunk_id="chunk2_new",
-            ),
-        ]
-
+        incremental_chunks = [CodeChunk(language="python", file_path="test.py", node_type="function_definition", start_line=7,
+            end_line=10, byte_start=101, byte_end=200, parent_context="",
+            content="""def world_modified():
+    print('Modified')
+""",
+            chunk_id="chunk2_new")]
         changed_regions = [(7, 10)]
-
-        merged = processor.merge_incremental_results(
-            sample_chunks,
-            incremental_chunks,
-            changed_regions,
-        )
-
-        # Should contain chunks from both sets
+        merged = processor.merge_incremental_results(sample_chunks,
+            incremental_chunks, changed_regions)
         assert len(merged) > 0
-        # Should not contain old chunk2 since it's in changed region
         old_chunk2_ids = [c.chunk_id for c in merged if c.chunk_id == "chunk2"]
         assert len(old_chunk2_ids) == 0
 
@@ -250,92 +185,70 @@ class MyClass:
 class TestChunkCache:
     """Test chunk cache implementation."""
 
-    def test_store_and_retrieve(self, sample_chunks, temp_cache_dir):
+    @classmethod
+    def test_store_and_retrieve(cls, sample_chunks, temp_cache_dir):
         """Test storing and retrieving chunks."""
         cache = DefaultChunkCache(temp_cache_dir)
-
         file_hash = "test_hash_123"
         cache.store("test.py", sample_chunks, file_hash)
-
-        # Retrieve with correct hash
         entry = cache.retrieve("test.py", file_hash)
         assert entry is not None
         assert entry.file_path == "test.py"
         assert entry.file_hash == file_hash
         assert len(entry.chunks) == len(sample_chunks)
 
-    def test_retrieve_with_wrong_hash(self, sample_chunks, temp_cache_dir):
+    @classmethod
+    def test_retrieve_with_wrong_hash(cls, sample_chunks, temp_cache_dir):
         """Test retrieving with wrong hash."""
         cache = DefaultChunkCache(temp_cache_dir)
-
         cache.store("test.py", sample_chunks, "correct_hash")
-
-        # Retrieve with wrong hash
         entry = cache.retrieve("test.py", "wrong_hash")
         assert entry is None
 
-    def test_invalidate_specific_file(self, sample_chunks, temp_cache_dir):
+    @classmethod
+    def test_invalidate_specific_file(cls, sample_chunks, temp_cache_dir):
         """Test invalidating specific file."""
         cache = DefaultChunkCache(temp_cache_dir)
-
         cache.store("test1.py", sample_chunks, "hash1")
         cache.store("test2.py", sample_chunks, "hash2")
-
-        # Invalidate one file
         count = cache.invalidate("test1.py")
         assert count == 1
-
-        # test1.py should be gone, test2.py should remain
         assert cache.retrieve("test1.py") is None
         assert cache.retrieve("test2.py") is not None
 
-    def test_invalidate_by_age(self, sample_chunks, temp_cache_dir):
+    @classmethod
+    def test_invalidate_by_age(cls, sample_chunks, temp_cache_dir):
         """Test invalidating by age."""
         cache = DefaultChunkCache(temp_cache_dir)
-
-        # Store entry
         cache.store("test.py", sample_chunks, "hash")
-
-        # Invalidate entries older than 1 hour from now (should remove nothing)
         future_time = datetime.now() + timedelta(hours=1)
         count = cache.invalidate(older_than=future_time)
         assert count == 1
-
         assert cache.retrieve("test.py") is None
 
-    def test_cache_statistics(self, sample_chunks, temp_cache_dir):
+    @classmethod
+    def test_cache_statistics(cls, sample_chunks, temp_cache_dir):
         """Test cache statistics."""
         cache = DefaultChunkCache(temp_cache_dir)
-
         cache.store("test.py", sample_chunks, "hash")
-
-        # Make some retrievals
-        cache.retrieve("test.py", "hash")  # hit
-        cache.retrieve("test.py", "wrong_hash")  # miss
-        cache.retrieve("nonexistent.py")  # miss
-
+        cache.retrieve("test.py", "hash")
+        cache.retrieve("test.py", "wrong_hash")
+        cache.retrieve("nonexistent.py")
         stats = cache.get_statistics()
         assert stats["entries"] == 1
         assert stats["hit_rate"] > 0
         assert stats["stats"]["hits"] == 1
-        assert stats["stats"]["misses"] >= 1  # At least one miss
+        assert stats["stats"]["misses"] >= 1
 
-    def test_export_import_cache(self, sample_chunks, temp_cache_dir):
+    @classmethod
+    def test_export_import_cache(cls, sample_chunks, temp_cache_dir):
         """Test exporting and importing cache."""
         cache1 = DefaultChunkCache(temp_cache_dir + "_1")
         cache2 = DefaultChunkCache(temp_cache_dir + "_2")
-
-        # Store in first cache
         cache1.store("test.py", sample_chunks, "hash")
-
-        # Export
         export_path = temp_cache_dir + "/export.json"
         cache1.export_cache(export_path)
-
-        # Import into second cache
         cache2.import_cache(export_path)
-
-        # Verify
         entry = cache2.retrieve("test.py")
         assert entry is not None
         assert len(entry.chunks) == len(sample_chunks)
@@ -344,52 +257,35 @@ class TestChunkCache:
 class TestChangeDetector:
     """Test change detector implementation."""
 
-    def test_compute_file_hash(self):
+    @classmethod
+    def test_compute_file_hash(cls):
         """Test file hash computation."""
         detector = DefaultChangeDetector()
-
         content = "Hello, World!"
         hash1 = detector.compute_file_hash(content)
         hash2 = detector.compute_file_hash(content)
         hash3 = detector.compute_file_hash(content + " ")
+        assert hash1 == hash2
+        assert hash1 != hash3
 
-        assert hash1 == hash2  # Same content, same hash
-        assert hash1 != hash3  # Different content, different hash
-
-    def test_find_changed_regions(self):
+    @classmethod
+    def test_find_changed_regions(cls):
         """Test finding changed regions."""
         detector = DefaultChangeDetector()
-
-        old_content = """line 1
-line 2
-line 3
-line 4
-line 5"""
-
-        new_content = """line 1
-line 2 modified
-line 3
-new line
-line 5"""
-
+        old_content = "line 1\nline 2\nline 3\nline 4\nline 5"
+        new_content = "line 1\nline 2 modified\nline 3\nnew line\nline 5"
         regions = detector.find_changed_regions(old_content, new_content)
-
         assert len(regions) > 0
-        # Should detect changes around line 2 and line 4
         assert any(r[0] <= 2 <= r[1] for r in regions)
 
-    def test_classify_change(self, sample_chunks):
+    @classmethod
+    def test_classify_change(cls, sample_chunks):
         """Test change classification."""
         detector = DefaultChangeDetector()
-
         chunk = sample_chunks[0]
-
-        # All lines changed - should be DELETED
         changed_lines = set(range(chunk.start_line, chunk.end_line + 1))
         change_type = detector.classify_change(chunk, "", changed_lines)
         assert change_type == ChangeType.DELETED
-
-        # Partial change - should be MODIFIED
         changed_lines = {chunk.start_line}
         change_type = detector.classify_change(chunk, "", changed_lines)
         assert change_type == ChangeType.MODIFIED
@@ -398,22 +294,20 @@ line 5"""
 class TestIncrementalIndex:
     """Test incremental index implementation."""
 
-    def test_update_chunk(self, sample_chunks):
+    @classmethod
+    def test_update_chunk(cls, sample_chunks):
         """Test updating single chunk."""
         index = SimpleIncrementalIndex()
-
         chunk = sample_chunks[0]
         index.update_chunk(None, chunk)
-
         assert chunk.chunk_id in index.index
         assert index.index[chunk.chunk_id]["content"] == chunk.content.lower()
 
-    def test_batch_update(self, sample_chunks):
+    @classmethod
+    def test_batch_update(cls, sample_chunks):
         """Test batch update."""
         index = SimpleIncrementalIndex()
         processor = DefaultIncrementalProcessor()
-
-        # Create a simple diff
         modified_content = """def hello():
     print('Modified')
     return True
@@ -425,52 +319,35 @@ class MyClass:
     def __init__(self):
         pass
 """
-
-        diff = processor.compute_diff(sample_chunks, modified_content, "python")
+        diff = processor.compute_diff(sample_chunks, modified_content, "python",
+            )
         index.batch_update(diff)
-
-        # Check update log
         assert len(index.update_log) == len(diff.changes)
 
-    def test_get_update_cost(self, sample_chunks):
+    @classmethod
+    def test_get_update_cost(cls, sample_chunks):
         """Test update cost estimation."""
         index = SimpleIncrementalIndex()
         processor = DefaultIncrementalProcessor()
-
-        # Populate index
         for chunk in sample_chunks:
             index.update_chunk(None, chunk)
-
-        # Small change
-        small_diff = processor.compute_diff(
-            sample_chunks,
-            "\n".join([chunk.content for chunk in sample_chunks]),
-            "python",
-        )
+        small_diff = processor.compute_diff(sample_chunks, "\n".join([chunk
+            .content for chunk in sample_chunks]), "python")
         small_cost = index.get_update_cost(small_diff)
-        assert small_cost <= 1.0  # Cost should be reasonable
-
-        # Large change (everything different)
-        large_diff = processor.compute_diff(
-            sample_chunks,
-            "completely different content",
-            "python",
-        )
+        assert small_cost <= 1.0
+        large_diff = processor.compute_diff(sample_chunks,
+            "completely different content", "python")
         large_cost = index.get_update_cost(large_diff)
         assert large_cost > 0.5
 
-    def test_search(self, sample_chunks):
+    @classmethod
+    def test_search(cls, sample_chunks):
         """Test search functionality."""
         index = SimpleIncrementalIndex()
-
-        # Add chunks to index
         for chunk in sample_chunks:
             index.update_chunk(None, chunk)
-
-        # Search for content
         results = index.search("hello")
         assert len(results) == 1
         assert results[0] == "chunk1"
-
         results = index.search("print")
-        assert len(results) >= 2  # Both hello and world functions have print
+        assert len(results) >= 2

@@ -1,5 +1,4 @@
 """Test Kotlin language support."""
-
 import pytest
 
 from chunker import chunk_text
@@ -9,7 +8,8 @@ from chunker.languages import language_config_registry
 class TestKotlinLanguage:
     """Test Kotlin language chunking."""
 
-    def test_kotlin_basic_chunking(self):
+    @staticmethod
+    def test_kotlin_basic_chunking():
         """Test basic Kotlin chunking."""
         code = """
 package com.example.app
@@ -48,15 +48,14 @@ fun main() {
 }
 """
         chunks = chunk_text(code, language="kotlin")
-        assert len(chunks) >= 4  # data class, class with methods, main function
-
-        # Verify chunk types
+        assert len(chunks) >= 4
         chunk_contents = [chunk.content for chunk in chunks]
         assert any("data class User" in c for c in chunk_contents)
         assert any("class UserService" in c for c in chunk_contents)
         assert any("fun main" in c for c in chunk_contents)
 
-    def test_kotlin_interfaces_sealed(self):
+    @staticmethod
+    def test_kotlin_interfaces_sealed():
         """Test Kotlin interfaces and sealed classes."""
         code = """
 interface Repository<T> {
@@ -85,9 +84,10 @@ abstract class BaseViewModel : ViewModel() {
 }
 """
         chunks = chunk_text(code, language="kotlin")
-        assert len(chunks) >= 3  # interface, sealed class, abstract class
+        assert len(chunks) >= 3
 
-    def test_kotlin_extension_functions(self):
+    @staticmethod
+    def test_kotlin_extension_functions():
         """Test Kotlin extension functions and properties."""
         code = """
 fun String.isEmail(): Boolean {
@@ -120,9 +120,10 @@ class ValidationExtensions {
 }
 """
         chunks = chunk_text(code, language="kotlin")
-        assert len(chunks) >= 5  # multiple extension functions, object, class
+        assert len(chunks) >= 5
 
-    def test_kotlin_coroutines(self):
+    @staticmethod
+    def test_kotlin_coroutines():
         """Test Kotlin coroutines and flow."""
         code = """
 import kotlinx.coroutines.flow.*
@@ -160,9 +161,10 @@ class DataRepository {
 }
 """
         chunks = chunk_text(code, language="kotlin")
-        assert len(chunks) >= 1  # class with multiple methods
+        assert len(chunks) >= 1
 
-    def test_kotlin_dsl_builders(self):
+    @staticmethod
+    def test_kotlin_dsl_builders():
         """Test Kotlin DSL and builder patterns."""
         code = """
 class Html {
@@ -202,9 +204,10 @@ inline fun <reified T : Any> buildConfig(builder: ConfigBuilder<T>.() -> Unit): 
 }
 """
         chunks = chunk_text(code, language="kotlin")
-        assert len(chunks) >= 4  # multiple classes and functions
+        assert len(chunks) >= 4
 
-    def test_kotlin_companion_object(self):
+    @staticmethod
+    def test_kotlin_companion_object():
         """Test Kotlin companion objects."""
         code = """
 class Logger private constructor(private val tag: String) {
@@ -242,10 +245,11 @@ enum class LogLevel {
 }
 """
         chunks = chunk_text(code, language="kotlin")
-        assert len(chunks) >= 2  # class with companion object, enum with companion
+        assert len(chunks) >= 2
 
+    @staticmethod
     @pytest.mark.parametrize("file_extension", [".kt", ".kts", ".ktm"])
-    def test_kotlin_file_extensions(self, file_extension):
+    def test_kotlin_file_extensions(file_extension):
         """Test Kotlin file extension detection."""
         config = language_config_registry.get_for_file(f"test{file_extension}")
         assert config is not None

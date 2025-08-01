@@ -83,7 +83,7 @@ class Calculator:
 
     # Write to temporary file
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
         f.write(example_code)
         temp_file = f.name
 
@@ -123,7 +123,7 @@ def demonstrate_relationship_analysis(chunks):
     # Calculate cohesion scores
     print("\nCohesion scores for method pairs:")
     methods = [
-        c for c in chunks if c.node_type in ["function_definition", "method_definition"]
+        c for c in chunks if c.node_type in {"function_definition", "method_definition"}
     ]
     for i in range(min(3, len(methods) - 1)):
         score = analyzer.calculate_cohesion_score(methods[i], methods[i + 1])
@@ -147,7 +147,7 @@ def demonstrate_semantic_merging(chunks):
 
     print(f"Original chunks: {len(chunks)}")
     for chunk in chunks:
-        if chunk.node_type in ["function_definition", "method_definition"]:
+        if chunk.node_type in {"function_definition", "method_definition"}:
             name = chunk.content.split("(")[0].split()[-1]
             lines = chunk.end_line - chunk.start_line + 1
             print(f"  - {name} ({lines} lines)")
@@ -157,11 +157,11 @@ def demonstrate_semantic_merging(chunks):
 
     print(f"\nMerged chunks: {len(merged_chunks)}")
     for chunk in merged_chunks:
-        if chunk.node_type in [
+        if chunk.node_type in {
             "function_definition",
             "method_definition",
             "merged_chunk",
-        ]:
+        }:
             # Extract names from content
             lines = chunk.content.split("\n")
             names = []
@@ -201,7 +201,7 @@ def demonstrate_configuration_impact():
 
     chunks = create_example_chunks()
     method_chunks = [
-        c for c in chunks if c.node_type in ["function_definition", "method_definition"]
+        c for c in chunks if c.node_type in {"function_definition", "method_definition"}
     ]
 
     configs = {
@@ -244,7 +244,7 @@ def main():
 
     # Filter to just method/function chunks for clearer demo
     method_chunks = [
-        c for c in chunks if c.node_type in ["function_definition", "method_definition"]
+        c for c in chunks if c.node_type in {"function_definition", "method_definition"}
     ]
 
     # Demonstrate relationship analysis

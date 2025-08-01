@@ -1,5 +1,4 @@
 """Tests for Java language support."""
-
 import pytest
 
 from chunker.core import chunk_text
@@ -10,11 +9,9 @@ from chunker.parser import list_languages
 class TestJavaLanguageSupport:
     """Test Java language chunking."""
 
-    @pytest.mark.skipif(
-        "java" not in list_languages(),
-        reason="Java grammar not available",
-    )
-    def test_java_class_chunking(self):
+    @pytest.mark.skipif("java" not in list_languages(), reason="Java grammar not available")
+    @staticmethod
+    def test_java_class_chunking():
         """Test chunking Java classes."""
         code = """
 package com.example.model;
@@ -56,30 +53,21 @@ public class User {
 }
 """
         chunks = chunk_text(code, "java", "User.java")
-
-        # Should find class, fields, constructor, and methods
         assert len(chunks) >= 7
-
-        # Check for class
-        class_chunks = [c for c in chunks if c.node_type == "class_declaration"]
+        class_chunks = [c for c in chunks if c.node_type == "class_declaration"
+            ]
         assert len(class_chunks) == 1
         assert "User" in class_chunks[0].parent_context
-
-        # Check for methods
-        method_chunks = [c for c in chunks if c.node_type == "method_declaration"]
-        assert len(method_chunks) >= 5  # getName, setName, getEmail, addRole, toString
-
-        # Check for constructor
-        constructor_chunks = [
-            c for c in chunks if c.node_type == "constructor_declaration"
-        ]
+        method_chunks = [c for c in chunks if c.node_type ==
+            "method_declaration"]
+        assert len(method_chunks) >= 5
+        constructor_chunks = [c for c in chunks if c.node_type ==
+            "constructor_declaration"]
         assert len(constructor_chunks) == 1
 
-    @pytest.mark.skipif(
-        "java" not in list_languages(),
-        reason="Java grammar not available",
-    )
-    def test_java_interface_chunking(self):
+    @pytest.mark.skipif("java" not in list_languages(), reason="Java grammar not available")
+    @staticmethod
+    def test_java_interface_chunking():
         """Test chunking Java interfaces."""
         code = """
 package com.example.repository;
@@ -104,21 +92,16 @@ public interface UserRepository {
 }
 """
         chunks = chunk_text(code, "java", "UserRepository.java")
-
-        # Should find interface and methods
-        interface_chunks = [c for c in chunks if c.node_type == "interface_declaration"]
+        interface_chunks = [c for c in chunks if c.node_type ==
+            "interface_declaration"]
         assert len(interface_chunks) == 1
         assert "UserRepository" in interface_chunks[0].parent_context
-
-        # Interface methods may be parsed differently
         method_chunks = [c for c in chunks if "method" in c.node_type]
-        assert len(method_chunks) >= 1  # At least the default method
+        assert len(method_chunks) >= 1
 
-    @pytest.mark.skipif(
-        "java" not in list_languages(),
-        reason="Java grammar not available",
-    )
-    def test_java_enum_chunking(self):
+    @pytest.mark.skipif("java" not in list_languages(), reason="Java grammar not available")
+    @staticmethod
+    def test_java_enum_chunking():
         """Test chunking Java enums."""
         code = """
 package com.example.model;
@@ -144,20 +127,14 @@ public enum UserRole {
 }
 """
         chunks = chunk_text(code, "java", "UserRole.java")
-
-        # Should find enum, field, constructor, and methods
         enum_chunks = [c for c in chunks if c.node_type == "enum_declaration"]
         assert len(enum_chunks) == 1
         assert "UserRole" in enum_chunks[0].parent_context
+        assert len(chunks) >= 4
 
-        # Check for enum methods and constructor
-        assert len(chunks) >= 4  # enum + field + constructor + methods
-
-    @pytest.mark.skipif(
-        "java" not in list_languages(),
-        reason="Java grammar not available",
-    )
-    def test_java_annotations(self):
+    @pytest.mark.skipif("java" not in list_languages(), reason="Java grammar not available")
+    @staticmethod
+    def test_java_annotations():
         """Test chunking Java code with annotations."""
         code = """
 package com.example.controller;
@@ -190,19 +167,16 @@ public class UserController {
 }
 """
         chunks = chunk_text(code, "java", "UserController.java")
-
-        # Should find class and annotated methods
-        class_chunks = [c for c in chunks if c.node_type == "class_declaration"]
+        class_chunks = [c for c in chunks if c.node_type == "class_declaration"
+            ]
         assert len(class_chunks) == 1
+        method_chunks = [c for c in chunks if c.node_type ==
+            "method_declaration"]
+        assert len(method_chunks) >= 3
 
-        method_chunks = [c for c in chunks if c.node_type == "method_declaration"]
-        assert len(method_chunks) >= 3  # getUser, createUser, handleNotFound
-
-    @pytest.mark.skipif(
-        "java" not in list_languages(),
-        reason="Java grammar not available",
-    )
-    def test_java_inner_classes(self):
+    @pytest.mark.skipif("java" not in list_languages(), reason="Java grammar not available")
+    @staticmethod
+    def test_java_inner_classes():
         """Test chunking Java inner classes."""
         code = """
 public class OuterClass {
@@ -232,36 +206,26 @@ public class OuterClass {
 }
 """
         chunks = chunk_text(code, "java", "OuterClass.java")
+        class_chunks = [c for c in chunks if c.node_type == "class_declaration"
+            ]
+        assert len(class_chunks) >= 3
 
-        # Should find outer class and nested classes
-        class_chunks = [c for c in chunks if c.node_type == "class_declaration"]
-        assert len(class_chunks) >= 3  # OuterClass, InnerClass, StaticNestedClass
-
-    @pytest.mark.skipif(
-        "java" not in list_languages(),
-        reason="Java grammar not available",
-    )
-    def test_java_language_config(self):
+    @pytest.mark.skipif("java" not in list_languages(), reason="Java grammar not available")
+    @staticmethod
+    def test_java_language_config():
         """Test Java language configuration."""
         config = language_config_registry.get_config("java")
-
         assert config is not None
         assert config.name == "java"
         assert ".java" in config.file_extensions
-
-        # Check chunk rules
         rule_names = [rule.name for rule in config.chunk_rules]
         assert "classes" in rule_names
         assert "methods" in rule_names
         assert "fields" in rule_names
-
-        # Check node types in class rule
         class_rule = next(r for r in config.chunk_rules if r.name == "classes")
         assert "class_declaration" in class_rule.node_types
         assert "interface_declaration" in class_rule.node_types
         assert "enum_declaration" in class_rule.node_types
-
-        # Check scope node types
         assert "program" in config.scope_node_types
         assert "class_declaration" in config.scope_node_types
         assert "method_declaration" in config.scope_node_types

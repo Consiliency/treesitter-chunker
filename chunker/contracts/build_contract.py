@@ -2,7 +2,6 @@
 Contract for Build System Component
 Defines the interface for cross-platform build support
 """
-
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
@@ -11,13 +10,10 @@ from typing import Any
 class BuildSystemContract(ABC):
     """Contract for cross-platform build system"""
 
+    @staticmethod
     @abstractmethod
-    def compile_grammars(
-        self,
-        languages: list[str],
-        platform: str,
-        output_dir: Path,
-    ) -> tuple[bool, dict[str, Any]]:
+    def compile_grammars(languages: list[str], platform: str, output_dir: Path,
+        ) -> tuple[bool, dict[str, Any]]:
         """
         Compile tree-sitter grammars for specified platform
 
@@ -40,13 +36,10 @@ class BuildSystemContract(ABC):
         """
         raise NotImplementedError("Build team will implement")
 
+    @staticmethod
     @abstractmethod
-    def build_wheel(
-        self,
-        platform: str,
-        python_version: str,
-        output_dir: Path,
-    ) -> tuple[bool, Path]:
+    def build_wheel(platform: str, python_version: str, output_dir: Path,
+        ) -> tuple[bool, Path]:
         """
         Build platform-specific wheel for distribution
 
@@ -68,12 +61,10 @@ class BuildSystemContract(ABC):
         """
         raise NotImplementedError("Build team will implement")
 
+    @staticmethod
     @abstractmethod
-    def create_conda_package(
-        self,
-        platform: str,
-        output_dir: Path,
-    ) -> tuple[bool, Path]:
+    def create_conda_package(platform: str, output_dir: Path) -> tuple[bool,
+        Path]:
         """
         Create conda package for distribution
 
@@ -94,12 +85,10 @@ class BuildSystemContract(ABC):
         """
         raise NotImplementedError("Build team will implement")
 
+    @staticmethod
     @abstractmethod
-    def verify_build(
-        self,
-        artifact_path: Path,
-        platform: str,
-    ) -> tuple[bool, dict[str, Any]]:
+    def verify_build(artifact_path: Path, platform: str) -> tuple[bool, dict
+        [str, Any]]:
         """
         Verify build artifact is correctly constructed
 
@@ -124,8 +113,9 @@ class BuildSystemContract(ABC):
 class PlatformSupportContract(ABC):
     """Contract for platform-specific support"""
 
+    @staticmethod
     @abstractmethod
-    def detect_platform(self) -> dict[str, str]:
+    def detect_platform() -> dict[str, str]:
         """
         Detect current platform details
 
@@ -138,8 +128,9 @@ class PlatformSupportContract(ABC):
         """
         raise NotImplementedError("Build team will implement")
 
+    @staticmethod
     @abstractmethod
-    def install_build_dependencies(self, platform: str) -> bool:
+    def install_build_dependencies(platform: str) -> bool:
         """
         Install platform-specific build dependencies
 

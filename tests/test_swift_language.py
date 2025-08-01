@@ -1,5 +1,4 @@
 """Test Swift language support."""
-
 import pytest
 
 from chunker import chunk_text
@@ -9,7 +8,8 @@ from chunker.languages import language_config_registry
 class TestSwiftLanguage:
     """Test Swift language chunking."""
 
-    def test_swift_basic_chunking(self):
+    @staticmethod
+    def test_swift_basic_chunking():
         """Test basic Swift chunking."""
         code = """
 import Foundation
@@ -52,15 +52,14 @@ func validateEmail(_ email: String) -> Bool {
 }
 """
         chunks = chunk_text(code, language="swift")
-        assert len(chunks) >= 3  # struct with methods, class with methods, function
-
-        # Verify chunk types
+        assert len(chunks) >= 3
         chunk_contents = [chunk.content for chunk in chunks]
         assert any("struct User" in c for c in chunk_contents)
         assert any("class UserManager" in c for c in chunk_contents)
         assert any("func validateEmail" in c for c in chunk_contents)
 
-    def test_swift_protocols_extensions(self):
+    @staticmethod
+    def test_swift_protocols_extensions():
         """Test Swift protocols and extensions."""
         code = """
 protocol Vehicle {
@@ -110,9 +109,10 @@ extension Array where Element: Numeric {
 }
 """
         chunks = chunk_text(code, language="swift")
-        assert len(chunks) >= 5  # protocols, struct, extensions
+        assert len(chunks) >= 5
 
-    def test_swift_enums_associated_values(self):
+    @staticmethod
+    def test_swift_enums_associated_values():
         """Test Swift enums with associated values."""
         code = """
 enum Result<Success, Failure: Error> {
@@ -157,9 +157,10 @@ enum ViewState<T> {
 }
 """
         chunks = chunk_text(code, language="swift")
-        assert len(chunks) >= 3  # multiple enums with methods
+        assert len(chunks) >= 3
 
-    def test_swift_async_await(self):
+    @staticmethod
+    def test_swift_async_await():
         """Test Swift async/await and actors."""
         code = """
 actor UserCache {
@@ -223,9 +224,10 @@ class ViewModel: ObservableObject {
 }
 """
         chunks = chunk_text(code, language="swift")
-        assert len(chunks) >= 3  # actor, class with async methods, view model
+        assert len(chunks) >= 3
 
-    def test_swift_property_wrappers(self):
+    @staticmethod
+    def test_swift_property_wrappers():
         """Test Swift property wrappers."""
         code = """
 @propertyWrapper
@@ -268,9 +270,10 @@ struct Settings {
 }
 """
         chunks = chunk_text(code, language="swift")
-        assert len(chunks) >= 3  # property wrappers and struct
+        assert len(chunks) >= 3
 
-    def test_swift_generics_constraints(self):
+    @staticmethod
+    def test_swift_generics_constraints():
         """Test Swift generics with constraints."""
         code = """
 protocol Identifiable {
@@ -322,10 +325,11 @@ struct Container<T> where T: Equatable {
 }
 """
         chunks = chunk_text(code, language="swift")
-        assert len(chunks) >= 4  # protocol, generic class, function, struct
+        assert len(chunks) >= 4
 
+    @staticmethod
     @pytest.mark.parametrize("file_extension", [".swift"])
-    def test_swift_file_extensions(self, file_extension):
+    def test_swift_file_extensions(file_extension):
         """Test Swift file extension detection."""
         config = language_config_registry.get_for_file(f"test{file_extension}")
         assert config is not None

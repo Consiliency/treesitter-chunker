@@ -105,7 +105,7 @@ def example_gc_optimization():
 
         # Process all files
         for result in chunker.chunk_directory("/", file_patterns=["*.py"]):
-            file_path, chunks = result
+            _file_path, chunks = result
             chunks_total += len(chunks)
 
         print(f"Processed 100 files, found {chunks_total} chunks")

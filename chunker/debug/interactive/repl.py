@@ -85,7 +85,7 @@ Available commands:
                 args = parts[1] if len(parts) > 1 else ""
 
                 # Execute command
-                if cmd in ["q", "quit", "exit"]:
+                if cmd in {"q", "quit", "exit"}:
                     if Confirm.ask("Exit REPL?"):
                         break
                 elif cmd == "help":
@@ -288,7 +288,7 @@ Available commands:
             # Save to temp file
 
             with tempfile.NamedTemporaryFile(
-                mode="w",
+                encoding="utf-8", mode="w",
                 suffix=f".{self.current_language}",
                 delete=False,
             ) as f:
@@ -322,7 +322,7 @@ Available commands:
         # Save to temp file
 
         with tempfile.NamedTemporaryFile(
-            mode="w",
+            encoding="utf-8", mode="w",
             suffix=f".{self.current_language}",
             delete=False,
         ) as f:
@@ -357,7 +357,7 @@ Available commands:
 
         try:
             with Path(file_path).open(
-                "w",
+                "w", encoding="utf-8",
             ) as f:
                 f.write("# Tree-sitter Debug Session\n")
                 f.write(f"# Language: {self.current_language or 'none'}\n")

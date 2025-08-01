@@ -1,5 +1,4 @@
 """Git-aware repository processing capabilities."""
-
 import hashlib
 import json
 import logging
@@ -24,7 +23,8 @@ class GitAwareProcessorImpl(GitAwareProcessor):
         self._state_dir = ".chunker"
         self._state_file = "incremental_state.json"
 
-    def _run_git_command(self, cmd: list[str], repo_path: str) -> str | None:
+    @staticmethod
+    def _run_git_command(cmd: list[str], repo_path: str) -> (str | None):
         """
         Run a git command and return output.
 
@@ -36,32 +36,25 @@ class GitAwareProcessorImpl(GitAwareProcessor):
             Command output or None if failed
         """
         try:
-            result = subprocess.run(
-                ["git", *cmd],
-                cwd=repo_path,
-                capture_output=True,
-                text=True,
-                check=True,
-            )
+            result = subprocess.run(["git", *cmd], cwd=repo_path,
+                capture_output=True, text=True, check=True)
             return result.stdout.strip()
         except subprocess.CalledProcessError as e:
-            logger.debug(f"Git command failed: {' '.join(cmd)}, error: {e}")
+            logger.debug("Git command failed: %s, error: %s", (" ".join(
+                cmd), e))
             return None
         except FileNotFoundError:
             logger.warning("Git not found in PATH")
             return None
 
-    def _is_git_repository(self, repo_path: str) -> bool:
+    @classmethod
+    def _is_git_repository(cls, repo_path: str) -> bool:
         """Check if the given path is a git repository."""
         git_dir = Path(repo_path) / ".git"
         return git_dir.exists() and git_dir.is_dir()
 
-    def get_changed_files(
-        self,
-        repo_path: str,
-        since_commit: str | None = None,
-        branch: str | None = None,
-    ) -> list[str]:
+    def get_changed_files(self, repo_path: str, since_commit: (str | None) =
+        None, branch: (str | None) = None) -> list[str]:
         """
         Get files changed since a commit or between branches.
 
@@ -76,28 +69,18 @@ class GitAwareProcessorImpl(GitAwareProcessor):
         if not self._is_git_repository(repo_path):
             logger.debug("%s is not a git repository", repo_path)
             return []
-
-        # Build git diff command
         cmd = ["diff", "--name-only"]
-
         if branch:
-            # Compare against another branch
             cmd.append(f"{branch}...HEAD")
         elif since_commit:
-            # Compare against specific commit
             cmd.append(since_commit)
         else:
-            # Get uncommitted changes + staged changes
-            staged = self._run_git_command(
-                ["diff", "--cached", "--name-only"],
-                repo_path,
-            )
-            unstaged = self._run_git_command(["diff", "--name-only"], repo_path)
-            untracked = self._run_git_command(
-                ["ls-files", "--others", "--exclude-standard"],
-                repo_path,
-            )
-
+            staged = self._run_git_command(["diff", "--cached",
+                "--name-only"], repo_path)
+            unstaged = self._run_git_command(["diff", "--name-only"], repo_path,
+                )
+            untracked = self._run_git_command(["ls-files", "--others",
+                "--exclude-standard"], repo_path)
             files = set()
             if staged:
                 files.update(staged.splitlines())
@@ -105,10 +88,7 @@ class GitAwareProcessorImpl(GitAwareProcessor):
                 files.update(unstaged.splitlines())
             if untracked:
                 files.update(untracked.splitlines())
-
             return sorted(files)
-
-        # Run the diff command
         output = self._run_git_command(cmd, repo_path)
         if output:
             return output.splitlines()
@@ -125,29 +105,20 @@ class GitAwareProcessorImpl(GitAwareProcessor):
         Returns:
             True if file should be processed
         """
-        # Get or create gitignore matcher for this repo
         if repo_path not in self._gitignore_cache:
-            self._gitignore_cache[repo_path] = load_gitignore_patterns(Path(repo_path))
-
+            self._gitignore_cache[repo_path] = load_gitignore_patterns(Path
+                (repo_path))
         matcher = self._gitignore_cache[repo_path]
-
-        # Check if file is ignored
         file_path_obj = Path(file_path)
         if file_path_obj.is_absolute():
             try:
                 file_path_obj = file_path_obj.relative_to(repo_path)
             except ValueError:
-                # File is not in repo
                 return False
-
         return not matcher.should_ignore(file_path_obj, is_dir=False)
 
-    def get_file_history(
-        self,
-        file_path: str,
-        repo_path: str,
-        limit: int = 10,
-    ) -> list[dict[str, Any]]:
+    def get_file_history(self, file_path: str, repo_path: str, limit: int = 10,
+        ) -> list[dict[str, Any]]:
         """
         Get commit history for a file.
 
@@ -161,45 +132,28 @@ class GitAwareProcessorImpl(GitAwareProcessor):
         """
         if not self._is_git_repository(repo_path):
             return []
-
-        # Make file path relative to repo
         file_path_obj = Path(file_path)
         if file_path_obj.is_absolute():
             try:
                 file_path_obj = file_path_obj.relative_to(repo_path)
             except ValueError:
                 return []
-
-        # Get commit log for file
-        cmd = [
-            "log",
-            f"--max-count={limit}",
-            "--pretty=format:%H|%an|%ae|%at|%s",
-            "--",
-            str(file_path_obj),
-        ]
-
+        cmd = ["log", f"--max-count={limit}",
+            "--pretty=format:%H|%an|%ae|%at|%s", "--", str(file_path_obj)]
         output = self._run_git_command(cmd, repo_path)
         if not output:
             return []
-
         commits = []
         for line in output.splitlines():
             parts = line.split("|", 4)
             if len(parts) == 5:
-                commits.append(
-                    {
-                        "hash": parts[0],
-                        "author": parts[1],
-                        "email": parts[2],
-                        "date": datetime.fromtimestamp(int(parts[3])).isoformat(),
-                        "message": parts[4],
-                    },
-                )
-
+                commits.append({"hash": parts[0], "author": parts[1],
+                    "email": parts[2], "date": datetime.fromtimestamp(int(
+                    parts[3])).isoformat(), "message": parts[4]})
         return commits
 
-    def load_gitignore_patterns(self, repo_path: str) -> list[str]:
+    @classmethod
+    def load_gitignore_patterns(cls, repo_path: str) -> list[str]:
         """
         Load and parse .gitignore patterns.
 
@@ -211,27 +165,24 @@ class GitAwareProcessorImpl(GitAwareProcessor):
         """
         patterns = []
         repo_path_obj = Path(repo_path)
-
-        # Find all .gitignore files
         for gitignore_path in repo_path_obj.rglob(".gitignore"):
             try:
                 with Path(gitignore_path).open(encoding="utf-8") as f:
                     for line in f:
                         line = line.strip()
                         if line and not line.startswith("#"):
-                            # Add the pattern with its directory context
-                            rel_dir = gitignore_path.parent.relative_to(repo_path_obj)
+                            rel_dir = gitignore_path.parent.relative_to(
+                                repo_path_obj)
                             if rel_dir != Path():
-                                # Prefix pattern with its directory
                                 patterns.append(f"{rel_dir}/{line}")
                             else:
                                 patterns.append(line)
             except (OSError, FileNotFoundError, IndexError) as e:
                 logger.debug("Error reading %s: %s", gitignore_path, e)
-
         return patterns
 
-    def save_incremental_state(self, repo_path: str, state: dict[str, Any]) -> None:
+    def save_incremental_state(self, repo_path: str, state: dict[str, Any],
+        ) -> None:
         """
         Save incremental processing state.
 
@@ -241,18 +192,12 @@ class GitAwareProcessorImpl(GitAwareProcessor):
         """
         state_dir = Path(repo_path) / self._state_dir
         state_dir.mkdir(exist_ok=True)
-
-        # Add metadata
         state["timestamp"] = datetime.now().isoformat()
         state["version"] = "1.0"
-
-        # Get current commit if in git repo
         if self._is_git_repository(repo_path):
             commit = self._run_git_command(["rev-parse", "HEAD"], repo_path)
             if commit:
                 state["last_commit"] = commit
-
-        # Save state
         state_file = state_dir / self._state_file
         try:
             with Path(state_file).open("w", encoding="utf-8") as f:
@@ -260,7 +205,7 @@ class GitAwareProcessorImpl(GitAwareProcessor):
         except (OSError, FileNotFoundError, IndexError) as e:
             logger.error("Failed to save incremental state: %s", e)
 
-    def load_incremental_state(self, repo_path: str) -> dict[str, Any] | None:
+    def load_incremental_state(self, repo_path: str) -> (dict[str, Any] | None):
         """
         Load incremental processing state.
 
@@ -271,25 +216,22 @@ class GitAwareProcessorImpl(GitAwareProcessor):
             Saved state or None
         """
         state_file = Path(repo_path) / self._state_dir / self._state_file
-
         if not state_file.exists():
             return None
-
         try:
             with Path(state_file).open(encoding="utf-8") as f:
                 state = json.load(f)
-
-            # Validate state version
             if state.get("version") != "1.0":
-                logger.warning("Incompatible state version: %s", state.get("version"))
+                logger.warning("Incompatible state version: %s", state.get(
+                    "version"))
                 return None
-
             return state
         except (OSError, AttributeError, FileNotFoundError) as e:
             logger.error("Failed to load incremental state: %s", e)
             return None
 
-    def get_file_hash(self, file_path: Path) -> str:
+    @classmethod
+    def get_file_hash(cls, file_path: Path) -> str:
         """
         Calculate hash of file contents for change detection.
 

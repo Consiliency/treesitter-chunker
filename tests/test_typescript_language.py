@@ -1,5 +1,4 @@
 """Test TypeScript and TSX language support."""
-
 import pytest
 
 from chunker.core import chunk_text
@@ -9,7 +8,8 @@ from chunker.languages import language_config_registry
 class TestTypeScriptLanguage:
     """Test TypeScript language chunking."""
 
-    def test_typescript_basic_chunking(self):
+    @staticmethod
+    def test_typescript_basic_chunking():
         """Test basic TypeScript chunking."""
         code = """
 interface User {
@@ -38,15 +38,14 @@ async function fetchUserData(id: number): Promise<User> {
 export { User, UserService, fetchUserData };
 """
         chunks = chunk_text(code, language="typescript")
-        assert len(chunks) >= 4  # interface, class, 2 methods, function
-
-        # Verify chunk types
+        assert len(chunks) >= 4
         chunk_types = [chunk.metadata.get("type") for chunk in chunks]
         assert "interface_declaration" in chunk_types
         assert "class_declaration" in chunk_types
         assert "function_declaration" in chunk_types
 
-    def test_tsx_component_chunking(self):
+    @staticmethod
+    def test_tsx_component_chunking():
         """Test TSX React component chunking."""
         code = """
 import React, { useState, useEffect } from 'react';
@@ -82,14 +81,14 @@ const Modal: React.FC<Props> = ({ title, onClose }) => {
 export default Modal;
 """
         chunks = chunk_text(code, language="tsx")
-        assert len(chunks) >= 2  # interface and component
-
-        # Check for JSX handling
-        component_chunk = next((c for c in chunks if "Modal" in c.content), None)
+        assert len(chunks) >= 2
+        component_chunk = next((c for c in chunks if "Modal" in c.content),
+            None)
         assert component_chunk is not None
         assert "<div" in component_chunk.content
 
-    def test_typescript_generics(self):
+    @staticmethod
+    def test_typescript_generics():
         """Test TypeScript with complex generics."""
         code = """
 type Result<T, E = Error> =
@@ -115,9 +114,10 @@ class Container<T extends Record<string, unknown>> {
 }
 """
         chunks = chunk_text(code, language="typescript")
-        assert len(chunks) >= 3  # type alias, function, class
+        assert len(chunks) >= 3
 
-    def test_typescript_decorators(self):
+    @staticmethod
+    def test_typescript_decorators():
         """Test TypeScript decorators."""
         code = """
 function log(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
@@ -150,9 +150,10 @@ function sealed(constructor: Function) {
 }
 """
         chunks = chunk_text(code, language="typescript")
-        assert len(chunks) >= 3  # decorator functions and class
+        assert len(chunks) >= 3
 
-    def test_typescript_namespace(self):
+    @staticmethod
+    def test_typescript_namespace():
         """Test TypeScript namespace chunking."""
         code = """
 namespace Validation {
@@ -177,13 +178,13 @@ namespace Validation {
 }
 """
         chunks = chunk_text(code, language="typescript")
-        assert len(chunks) >= 1  # namespace should be chunked
-
-        # Verify namespace is properly captured
-        namespace_chunk = next((c for c in chunks if "namespace" in c.content), None)
+        assert len(chunks) >= 1
+        namespace_chunk = next((c for c in chunks if "namespace" in c.
+            content), None)
         assert namespace_chunk is not None
 
-    def test_typescript_enum_chunking(self):
+    @staticmethod
+    def test_typescript_enum_chunking():
         """Test TypeScript enum chunking."""
         code = """
 enum Direction {
@@ -206,11 +207,12 @@ enum BooleanLikeHeterogeneousEnum {
 }
 """
         chunks = chunk_text(code, language="typescript")
-        assert len(chunks) >= 3  # three enums
+        assert len(chunks) >= 3
 
+    @staticmethod
     @pytest.mark.parametrize("file_extension", [".ts", ".tsx", ".d.ts"])
-    def test_typescript_file_extensions(self, file_extension):
+    def test_typescript_file_extensions(file_extension):
         """Test TypeScript file extension detection."""
         config = language_config_registry.get_for_file(f"test{file_extension}")
         assert config is not None
-        assert config.name in ["typescript", "tsx"]
+        assert config.name in {"typescript", "tsx"}

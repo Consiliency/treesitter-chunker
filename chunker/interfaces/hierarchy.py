@@ -1,5 +1,4 @@
 """Hierarchy building interfaces for chunk relationships."""
-
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
@@ -9,11 +8,10 @@ from chunker.types import CodeChunk
 @dataclass
 class ChunkHierarchy:
     """Represents a hierarchical structure of chunks."""
-
-    root_chunks: list[str]  # IDs of top-level chunks
-    parent_map: dict[str, str]  # child_id -> parent_id
-    children_map: dict[str, list[str]]  # parent_id -> [child_ids]
-    chunk_map: dict[str, CodeChunk]  # id -> chunk
+    root_chunks: list[str]
+    parent_map: dict[str, str]
+    children_map: dict[str, list[str]]
+    chunk_map: dict[str, CodeChunk]
 
     def get_depth(self, chunk_id: str) -> int:
         """Get the depth of a chunk in the hierarchy (root = 0)."""
@@ -28,8 +26,9 @@ class ChunkHierarchy:
 class ChunkHierarchyBuilder(ABC):
     """Build hierarchical structure from chunks."""
 
+    @staticmethod
     @abstractmethod
-    def build_hierarchy(self, chunks: list[CodeChunk]) -> ChunkHierarchy:
+    def build_hierarchy(chunks: list[CodeChunk]) -> ChunkHierarchy:
         """
         Build a hierarchical structure from flat chunks.
 
@@ -42,13 +41,10 @@ class ChunkHierarchyBuilder(ABC):
             Hierarchical structure
         """
 
+    @staticmethod
     @abstractmethod
-    def find_common_ancestor(
-        self,
-        chunk1: CodeChunk,
-        chunk2: CodeChunk,
-        hierarchy: ChunkHierarchy,
-    ) -> str | None:
+    def find_common_ancestor(chunk1: CodeChunk, chunk2: CodeChunk,
+        hierarchy: ChunkHierarchy) -> (str | None):
         """
         Find the common ancestor of two chunks.
 
@@ -65,8 +61,10 @@ class ChunkHierarchyBuilder(ABC):
 class HierarchyNavigator(ABC):
     """Navigate chunk hierarchies."""
 
+    @staticmethod
     @abstractmethod
-    def get_children(self, chunk_id: str, hierarchy: ChunkHierarchy) -> list[CodeChunk]:
+    def get_children(chunk_id: str, hierarchy: ChunkHierarchy) -> list[CodeChunk
+        ]:
         """
         Get direct children of a chunk.
 
@@ -78,12 +76,10 @@ class HierarchyNavigator(ABC):
             List of child chunks
         """
 
+    @staticmethod
     @abstractmethod
-    def get_descendants(
-        self,
-        chunk_id: str,
-        hierarchy: ChunkHierarchy,
-    ) -> list[CodeChunk]:
+    def get_descendants(chunk_id: str, hierarchy: ChunkHierarchy) -> list[
+        CodeChunk]:
         """
         Get all descendants of a chunk (children, grandchildren, etc.).
 
@@ -95,12 +91,10 @@ class HierarchyNavigator(ABC):
             List of descendant chunks
         """
 
+    @staticmethod
     @abstractmethod
-    def get_ancestors(
-        self,
-        chunk_id: str,
-        hierarchy: ChunkHierarchy,
-    ) -> list[CodeChunk]:
+    def get_ancestors(chunk_id: str, hierarchy: ChunkHierarchy) -> list[
+        CodeChunk]:
         """
         Get all ancestors of a chunk (parent, grandparent, etc.).
 
@@ -112,8 +106,10 @@ class HierarchyNavigator(ABC):
             List of ancestor chunks from immediate parent to root
         """
 
+    @staticmethod
     @abstractmethod
-    def get_siblings(self, chunk_id: str, hierarchy: ChunkHierarchy) -> list[CodeChunk]:
+    def get_siblings(chunk_id: str, hierarchy: ChunkHierarchy) -> list[CodeChunk
+        ]:
         """
         Get sibling chunks (same parent).
 
@@ -125,13 +121,10 @@ class HierarchyNavigator(ABC):
             List of sibling chunks
         """
 
+    @staticmethod
     @abstractmethod
-    def filter_by_depth(
-        self,
-        hierarchy: ChunkHierarchy,
-        min_depth: int = 0,
-        max_depth: int | None = None,
-    ) -> list[CodeChunk]:
+    def filter_by_depth(hierarchy: ChunkHierarchy, min_depth: int = 0,
+        max_depth: (int | None) = None) -> list[CodeChunk]:
         """
         Filter chunks by their depth in the hierarchy.
 
@@ -144,8 +137,9 @@ class HierarchyNavigator(ABC):
             List of chunks within the depth range
         """
 
+    @staticmethod
     @abstractmethod
-    def get_subtree(self, chunk_id: str, hierarchy: ChunkHierarchy) -> ChunkHierarchy:
+    def get_subtree(chunk_id: str, hierarchy: ChunkHierarchy) -> ChunkHierarchy:
         """
         Extract a subtree rooted at the given chunk.
 

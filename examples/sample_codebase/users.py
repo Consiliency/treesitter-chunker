@@ -17,16 +17,16 @@ class User(BaseModel):
 class UserManager(BaseManager):
     """Manager for User operations."""
 
-    def __init__(self):
+    @staticmethod
+    def __init__():
         super().__init__(User)
 
-    def find_by_email(self, email):
+    @classmethod
+    def find_by_email(cls, email):
         """Find user by email."""
-        # Simplified implementation
         return User(1, "Test User", email)
 
     def authenticate(self, email, password):
         """Authenticate user."""
         user = self.find_by_email(email)
-        # Simplified auth
         return user if password == "password" else None

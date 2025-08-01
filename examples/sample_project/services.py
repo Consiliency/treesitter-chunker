@@ -1,5 +1,4 @@
 """Business logic services."""
-
 from .config import Config
 from .database import get_db
 from .models import Profile, User
@@ -11,27 +10,26 @@ class UserService:
     def __init__(self):
         self.db = get_db()
 
-    def create_user(self, username, email, bio=None):
+    @classmethod
+    def create_user(cls, username, email, bio=None):
         """Create a new user with profile."""
-        # Create user
         user = User(username=username, email=email)
         user.save()
-
-        # Create profile
         if bio:
             profile = Profile(user_id=user.id, bio=bio)
             profile.save()
-
         return user
 
-    def get_user_with_profile(self, user_id):
+    @staticmethod
+    def get_user_with_profile(user_id):
         """Get user with their profile."""
         user = User.find(user_id)
         if user:
             user.profile = user.get_profile()
         return user
 
-    def update_user_email(self, user_id, new_email):
+    @staticmethod
+    def update_user_email(user_id, new_email):
         """Update user email."""
         user = User.find(user_id)
         if user:
@@ -46,15 +44,12 @@ class NotificationService:
     def __init__(self):
         self.api_key = Config.API_KEY
 
-    def send_email(self, user, subject, _message):
+    @staticmethod
+    def send_email(user, subject, _message):
         """Send email notification."""
         print(f"Sending email to {user.email}: {subject}")
-        # Simulated email sending
 
     def notify_user_created(self, user):
         """Send notification for new user."""
-        self.send_email(
-            user,
-            "Welcome!",
-            f"Welcome to our app, {user.username}!",
-        )
+        self.send_email(user, "Welcome!",
+            f"Welcome to our app, {user.username}!")

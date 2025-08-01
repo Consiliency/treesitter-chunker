@@ -1,5 +1,4 @@
 """Define the boundary for zero-configuration API - Team: Zero-Config API"""
-
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
@@ -9,7 +8,6 @@ from typing import Any
 @dataclass
 class AutoChunkResult:
     """Result of automatic chunking"""
-
     chunks: list[dict[str, Any]]
     language: str
     grammar_downloaded: bool
@@ -20,8 +18,9 @@ class AutoChunkResult:
 class ZeroConfigContract(ABC):
     """Abstract contract defining zero-configuration interface"""
 
+    @staticmethod
     @abstractmethod
-    def ensure_language(self, language: str, version: str | None = None) -> bool:
+    def ensure_language(language: str, version: (str | None) = None) -> bool:
         """Ensure a language is available for use
 
         Args:
@@ -39,13 +38,10 @@ class ZeroConfigContract(ABC):
             - Parser available for language
         """
 
+    @staticmethod
     @abstractmethod
-    def auto_chunk_file(
-        self,
-        file_path: str | Path,
-        language: str | None = None,
-        token_limit: int | None = None,
-    ) -> AutoChunkResult:
+    def auto_chunk_file(file_path: (str | Path), language: (str | None) =
+        None, token_limit: (int | None) = None) -> AutoChunkResult:
         """Automatically chunk a file with zero configuration
 
         Args:
@@ -65,8 +61,9 @@ class ZeroConfigContract(ABC):
             - Falls back to text chunking if needed
         """
 
+    @staticmethod
     @abstractmethod
-    def detect_language(self, file_path: str | Path) -> str | None:
+    def detect_language(file_path: (str | Path)) -> (str | None):
         """Detect the language of a file
 
         Args:
@@ -81,13 +78,10 @@ class ZeroConfigContract(ABC):
             - Returns None if unknown
         """
 
+    @staticmethod
     @abstractmethod
-    def chunk_text(
-        self,
-        text: str,
-        language: str,
-        token_limit: int | None = None,
-    ) -> AutoChunkResult:
+    def chunk_text(text: str, language: str, token_limit: (int | None) = None,
+        ) -> AutoChunkResult:
         """Chunk text content with automatic setup
 
         Args:
@@ -107,8 +101,9 @@ class ZeroConfigContract(ABC):
             - Text chunked appropriately
         """
 
+    @staticmethod
     @abstractmethod
-    def list_supported_extensions(self) -> dict[str, list[str]]:
+    def list_supported_extensions() -> dict[str, list[str]]:
         """List all supported file extensions
 
         Returns:
@@ -119,12 +114,10 @@ class ZeroConfigContract(ABC):
             - Extensions include dots (e.g., ".py")
         """
 
+    @staticmethod
     @abstractmethod
-    def get_chunker_for_language(
-        self,
-        language: str,
-        auto_download: bool = True,
-    ) -> Any:
+    def get_chunker_for_language(language: str, auto_download: bool = True,
+        ) -> Any:
         """Get a chunker instance for a specific language
 
         Args:
@@ -142,8 +135,9 @@ class ZeroConfigContract(ABC):
             - Grammar downloaded if auto_download=True
         """
 
+    @staticmethod
     @abstractmethod
-    def preload_languages(self, languages: list[str]) -> dict[str, bool]:
+    def preload_languages(languages: list[str]) -> dict[str, bool]:
         """Preload multiple language grammars
 
         Args:

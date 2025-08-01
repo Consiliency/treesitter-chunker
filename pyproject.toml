@@ -187,6 +187,8 @@ exclude = [
     "grammars",
     "archive",
     "worktrees",
+    "ide",
+    "node_modules",
 ]
 
 [tool.ruff.lint]
@@ -234,6 +236,7 @@ select = [
 ignore = [
     "E501",   # line too long (handled by black)
     "S101",   # use of assert (needed for tests)
+    "S404",   # subprocess module is used legitimately for build tools
     "S603",   # subprocess without shell=True
     "S607",   # start process with partial path
     "PLR0913", # too many arguments
@@ -254,15 +257,18 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101", "PLR2004", "ARG001", "ARG002", "BLE001", "S113", "B008"]
-"test_*.py" = ["S113", "BLE001", "S101", "PLR2004"]
-"scripts/*" = ["INP001", "T201", "T203", "S603", "S607", "BLE001"]
-"examples/*" = ["INP001", "T201", "S113", "BLE001"]
+"tests/*" = ["S101", "PLR2004", "ARG001", "ARG002", "BLE001", "S113", "B008", "PLC0415"]  # Tests often need conditional imports
+"test_*.py" = ["S113", "BLE001", "S101", "PLR2004", "PLC0415"]
+"scripts/*" = ["INP001", "T201", "T203", "S603", "S607", "BLE001", "PLC0415"]  # Scripts may need conditional imports
+"examples/*" = ["INP001", "T201", "S113", "BLE001", "PLC0415"]
 "api/examples/*" = ["S113", "RUF013"]  # Examples can skip timeout for clarity
 "cli/**/*.py" = ["B008", "BLE001"]  # typer uses function calls in defaults, CLI needs broad exception handling
-"benchmarks/*" = ["INP001", "T201", "S113"]
+"benchmarks/*" = ["INP001", "T201", "S113", "PLC0415"]  # Benchmarks often import optional dependencies
 "profiling/*" = ["INP001"]
 "*.pyi" = ["E501"]  # Allow long lines in stub files
+"**/__init__.py" = ["E402"]  # __init__ files often need imports after version/constants
+"chunker/languages/*.py" = ["E402"]  # Language modules may have imports after docstrings/constants
+"chunker/**/*.py" = ["PLC0415"]  # Allow conditional imports for optional dependencies
 
 [tool.ruff.lint.mccabe]
 max-complexity = 15

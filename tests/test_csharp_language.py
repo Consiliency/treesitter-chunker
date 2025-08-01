@@ -1,5 +1,4 @@
 """Test C# language support."""
-
 import pytest
 
 from chunker import chunk_text
@@ -9,7 +8,8 @@ from chunker.languages import language_config_registry
 class TestCSharpLanguage:
     """Test C# language chunking."""
 
-    def test_csharp_basic_chunking(self):
+    @staticmethod
+    def test_csharp_basic_chunking():
         """Test basic C# chunking."""
         code = """
 using System;
@@ -55,14 +55,13 @@ namespace MyApp.Models
 }
 """
         chunks = chunk_text(code, language="csharp")
-        assert len(chunks) >= 2  # class with methods and static class
-
-        # Verify chunk types
+        assert len(chunks) >= 2
         chunk_contents = [chunk.content for chunk in chunks]
         assert any("class User" in c for c in chunk_contents)
         assert any("static class UserExtensions" in c for c in chunk_contents)
 
-    def test_csharp_interfaces_generics(self):
+    @staticmethod
+    def test_csharp_interfaces_generics():
         """Test C# interfaces and generics."""
         code = """
 public interface IRepository<T> where T : class
@@ -107,9 +106,10 @@ public class UserRepository : BaseRepository<User>
 }
 """
         chunks = chunk_text(code, language="csharp")
-        assert len(chunks) >= 3  # interface, abstract class, concrete class
+        assert len(chunks) >= 3
 
-    def test_csharp_async_await(self):
+    @staticmethod
+    def test_csharp_async_await():
         """Test C# async/await patterns."""
         code = """
 public class ApiService
@@ -155,9 +155,10 @@ public class ApiService
 }
 """
         chunks = chunk_text(code, language="csharp")
-        assert len(chunks) >= 1  # class with async methods
+        assert len(chunks) >= 1
 
-    def test_csharp_linq_expressions(self):
+    @staticmethod
+    def test_csharp_linq_expressions():
         """Test C# LINQ and expression patterns."""
         code = """
 public class DataProcessor
@@ -191,9 +192,10 @@ public class DataProcessor
 }
 """
         chunks = chunk_text(code, language="csharp")
-        assert len(chunks) >= 1  # class with LINQ methods
+        assert len(chunks) >= 1
 
-    def test_csharp_modern_features(self):
+    @staticmethod
+    def test_csharp_modern_features():
         """Test modern C# features (C# 9+)."""
         code = """
 public record Person(string FirstName, string LastName)
@@ -242,9 +244,10 @@ public class Calculator
 }
 """
         chunks = chunk_text(code, language="csharp")
-        assert len(chunks) >= 4  # records and classes with methods
+        assert len(chunks) >= 4
 
-    def test_csharp_attributes_properties(self):
+    @staticmethod
+    def test_csharp_attributes_properties():
         """Test C# attributes and properties."""
         code = """
 [AttributeUsage(AttributeTargets.Property)]
@@ -298,10 +301,11 @@ public class ProductsController : ControllerBase
 }
 """
         chunks = chunk_text(code, language="csharp")
-        assert len(chunks) >= 3  # attribute class, product class, controller
+        assert len(chunks) >= 3
 
+    @staticmethod
     @pytest.mark.parametrize("file_extension", [".cs", ".csx"])
-    def test_csharp_file_extensions(self, file_extension):
+    def test_csharp_file_extensions(file_extension):
         """Test C# file extension detection."""
         config = language_config_registry.get_for_file(f"test{file_extension}")
         assert config is not None

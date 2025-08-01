@@ -1,5 +1,4 @@
 """Tests for metadata extraction functionality."""
-
 import pytest
 
 from chunker.core import chunk_text
@@ -17,45 +16,54 @@ from chunker.parser import get_parser
 class TestMetadataExtractorFactory:
     """Test the metadata extractor factory."""
 
-    def test_create_python_extractor(self):
+    @staticmethod
+    def test_create_python_extractor():
         """Test creating Python metadata extractor."""
         extractor = MetadataExtractorFactory.create_extractor("python")
         assert isinstance(extractor, PythonMetadataExtractor)
 
-    def test_create_javascript_extractor(self):
+    @staticmethod
+    def test_create_javascript_extractor():
         """Test creating JavaScript metadata extractor."""
         extractor = MetadataExtractorFactory.create_extractor("javascript")
         assert isinstance(extractor, JavaScriptMetadataExtractor)
 
-    def test_create_typescript_extractor(self):
+    @staticmethod
+    def test_create_typescript_extractor():
         """Test creating TypeScript metadata extractor."""
         extractor = MetadataExtractorFactory.create_extractor("typescript")
         assert isinstance(extractor, TypeScriptMetadataExtractor)
 
-    def test_create_unsupported_language(self):
+    @staticmethod
+    def test_create_unsupported_language():
         """Test creating extractor for unsupported language."""
         extractor = MetadataExtractorFactory.create_extractor("cobol")
         assert extractor is None
 
-    def test_create_analyzer(self):
+    @staticmethod
+    def test_create_analyzer():
         """Test creating complexity analyzer."""
         analyzer = MetadataExtractorFactory.create_analyzer("python")
         assert isinstance(analyzer, PythonComplexityAnalyzer)
 
-    def test_create_both(self):
+    @staticmethod
+    def test_create_both():
         """Test creating both extractor and analyzer."""
-        extractor, analyzer = MetadataExtractorFactory.create_both("javascript")
+        extractor, analyzer = MetadataExtractorFactory.create_both("javascript",
+            )
         assert isinstance(extractor, JavaScriptMetadataExtractor)
         assert isinstance(analyzer, JavaScriptComplexityAnalyzer)
 
-    def test_is_supported(self):
+    @staticmethod
+    def test_is_supported():
         """Test language support check."""
         assert MetadataExtractorFactory.is_supported("python")
         assert MetadataExtractorFactory.is_supported("javascript")
         assert MetadataExtractorFactory.is_supported("typescript")
         assert not MetadataExtractorFactory.is_supported("cobol")
 
-    def test_supported_languages(self):
+    @staticmethod
+    def test_supported_languages():
         """Test getting list of supported languages."""
         languages = MetadataExtractorFactory.supported_languages()
         assert "python" in languages
@@ -68,24 +76,23 @@ class TestMetadataExtractorFactory:
 class TestPythonMetadataExtraction:
     """Test Python-specific metadata extraction."""
 
+    @classmethod
     @pytest.fixture
-    def extractor(self):
+    def extractor(cls):
         return PythonMetadataExtractor()
 
+    @classmethod
     @pytest.fixture
-    def analyzer(self):
+    def analyzer(cls):
         return PythonComplexityAnalyzer()
 
-    def test_extract_simple_function_signature(self, extractor):
+    @staticmethod
+    def test_extract_simple_function_signature(extractor):
         """Test extracting signature from simple function."""
-        code = """
-def hello():
-    print("Hello, world!")
-"""
+        code = '\ndef hello():\n    print("Hello, world!")\n'
         parser = get_parser("python")
         tree = parser.parse(code.encode())
-        func_node = tree.root_node.children[0]  # function_definition
-
+        func_node = tree.root_node.children[0]
         signature = extractor.extract_signature(func_node, code.encode())
         assert signature is not None
         assert signature.name == "hello"
@@ -94,16 +101,16 @@ def hello():
         assert signature.decorators == []
         assert signature.modifiers == []
 
-    def test_extract_function_with_parameters(self, extractor):
+    @staticmethod
+    def test_extract_function_with_parameters(extractor):
         """Test extracting function with parameters."""
         code = """
 def greet(name: str, age: int = 18) -> str:
-    return f"Hello {name}, you are {age}"
+    return f"Hello {name}, you are {age}\"
 """
         parser = get_parser("python")
         tree = parser.parse(code.encode())
         func_node = tree.root_node.children[0]
-
         signature = extractor.extract_signature(func_node, code.encode())
         assert signature.name == "greet"
         assert len(signature.parameters) == 2
@@ -114,7 +121,8 @@ def greet(name: str, age: int = 18) -> str:
         assert signature.parameters[1]["default"] == "18"
         assert signature.return_type == "str"
 
-    def test_extract_decorated_function(self, extractor):
+    @staticmethod
+    def test_extract_decorated_function(extractor):
         """Test extracting decorated function."""
         code = """
 @staticmethod
@@ -124,39 +132,37 @@ def compute(x: int) -> int:
 """
         parser = get_parser("python")
         tree = parser.parse(code.encode())
-        # For decorated functions, we need to find the function within decorated_definition
         decorated_node = tree.root_node.children[0]
         func_node = None
         for child in decorated_node.children:
             if child.type == "function_definition":
                 func_node = child
                 break
-
         signature = extractor.extract_signature(func_node, code.encode())
         assert signature.name == "compute"
         assert "staticmethod" in signature.decorators
         assert "lru_cache(maxsize=128)" in signature.decorators
         assert "staticmethod" in signature.modifiers
 
-    def test_extract_async_function(self, extractor):
+    @staticmethod
+    def test_extract_async_function(extractor):
         """Test extracting async function."""
-        code = """
-async def fetch_data(url: str) -> dict:
-    return {"data": "example"}
-"""
+        code = (
+            '\nasync def fetch_data(url: str) -> dict:\n    return {"data": "example"}\n'
+            )
         parser = get_parser("python")
         tree = parser.parse(code.encode())
         func_node = tree.root_node.children[0]
-
         signature = extractor.extract_signature(func_node, code.encode())
         assert signature.name == "fetch_data"
         assert "async" in signature.modifiers
 
-    def test_extract_docstring(self, extractor):
+    @staticmethod
+    def test_extract_docstring(extractor):
         """Test extracting docstring."""
-        code = '''
+        code = """
 def calculate(x: int, y: int) -> int:
-    """Calculate the sum of two numbers.
+    ""\"Calculate the sum of two numbers.
 
     Args:
         x: First number
@@ -164,20 +170,20 @@ def calculate(x: int, y: int) -> int:
 
     Returns:
         The sum of x and y
-    """
+    ""\"
     return x + y
-'''
+"""
         parser = get_parser("python")
         tree = parser.parse(code.encode())
         func_node = tree.root_node.children[0]
-
         docstring = extractor.extract_docstring(func_node, code.encode())
         assert docstring is not None
         assert "Calculate the sum of two numbers" in docstring
         assert "Args:" in docstring
         assert "Returns:" in docstring
 
-    def test_extract_dependencies(self, extractor):
+    @staticmethod
+    def test_extract_dependencies(extractor):
         """Test extracting dependencies."""
         code = """
 def process_data(data: List[str]) -> Dict[str, int]:
@@ -190,31 +196,27 @@ def process_data(data: List[str]) -> Dict[str, int]:
         parser = get_parser("python")
         tree = parser.parse(code.encode())
         func_node = tree.root_node.children[0]
-
         dependencies = extractor.extract_dependencies(func_node, code.encode())
         assert "List" in dependencies
         assert "Dict" in dependencies
         assert "defaultdict" in dependencies
         assert "clean_text" in dependencies
-        # Should not include defined variables
         assert "result" not in dependencies
         assert "item" not in dependencies
         assert "cleaned" not in dependencies
 
-    def test_cyclomatic_complexity_simple(self, analyzer):
+    @staticmethod
+    def test_cyclomatic_complexity_simple(analyzer):
         """Test cyclomatic complexity for simple function."""
-        code = """
-def simple():
-    return 42
-"""
+        code = "\ndef simple():\n    return 42\n"
         parser = get_parser("python")
         tree = parser.parse(code.encode())
         func_node = tree.root_node.children[0]
-
         complexity = analyzer.calculate_cyclomatic_complexity(func_node)
-        assert complexity == 1  # Base complexity
+        assert complexity == 1
 
-    def test_cyclomatic_complexity_with_conditions(self, analyzer):
+    @staticmethod
+    def test_cyclomatic_complexity_with_conditions(analyzer):
         """Test cyclomatic complexity with conditions."""
         code = """
 def check_value(x):
@@ -226,17 +228,16 @@ def check_value(x):
     elif x < 0:
         return "negative"
     else:
-        return "zero"
+        return "zero\"
 """
         parser = get_parser("python")
         tree = parser.parse(code.encode())
         func_node = tree.root_node.children[0]
-
         complexity = analyzer.calculate_cyclomatic_complexity(func_node)
-        # Base (1) + if (1) + nested if (1) + elif (1) = 4
         assert complexity == 4
 
-    def test_cognitive_complexity(self, analyzer):
+    @staticmethod
+    def test_cognitive_complexity(analyzer):
         """Test cognitive complexity calculation."""
         code = """
 def complex_logic(items):
@@ -252,11 +253,11 @@ def complex_logic(items):
         parser = get_parser("python")
         tree = parser.parse(code.encode())
         func_node = tree.root_node.children[0]
-
         complexity = analyzer.calculate_cognitive_complexity(func_node)
-        assert complexity >= 6  # for(1) + if(2) + nested if(3)
+        assert complexity >= 6
 
-    def test_nesting_depth(self, analyzer):
+    @staticmethod
+    def test_nesting_depth(analyzer):
         """Test nesting depth calculation."""
         code = """
 def nested_function():
@@ -269,46 +270,47 @@ def nested_function():
         parser = get_parser("python")
         tree = parser.parse(code.encode())
         func_node = tree.root_node.children[0]
-
         depth = analyzer.calculate_nesting_depth(func_node)
-        assert depth == 4  # if -> for -> while -> if
+        assert depth == 4
 
-    def test_logical_lines_count(self, analyzer):
+    @staticmethod
+    def test_logical_lines_count(analyzer):
         """Test counting logical lines."""
-        code = '''
+        code = """
 def example():
     # This is a comment
     x = 1  # inline comment
 
-    """
+    ""\"
     This is a docstring
     spanning multiple lines
-    """
+    ""\"
 
     y = 2
     return x + y
-'''
+"""
         parser = get_parser("python")
         tree = parser.parse(code.encode())
         func_node = tree.root_node.children[0]
-
         lines = analyzer.count_logical_lines(func_node, code.encode())
-        # Should count: def line, x = 1, docstring, y = 2, return x + y
-        assert lines >= 3  # At least x = 1, y = 2, return x + y
+        assert lines >= 3
 
 
 class TestJavaScriptMetadataExtraction:
     """Test JavaScript-specific metadata extraction."""
 
+    @classmethod
     @pytest.fixture
-    def extractor(self):
+    def extractor(cls):
         return JavaScriptMetadataExtractor()
 
+    @classmethod
     @pytest.fixture
-    def analyzer(self):
+    def analyzer(cls):
         return JavaScriptComplexityAnalyzer()
 
-    def test_extract_function_declaration(self, extractor):
+    @staticmethod
+    def test_extract_function_declaration(extractor):
         """Test extracting function declaration."""
         code = """
 function greet(name, age = 18) {
@@ -318,7 +320,6 @@ function greet(name, age = 18) {
         parser = get_parser("javascript")
         tree = parser.parse(code.encode())
         func_node = tree.root_node.children[0]
-
         signature = extractor.extract_signature(func_node, code.encode())
         assert signature.name == "greet"
         assert len(signature.parameters) == 2
@@ -326,14 +327,12 @@ function greet(name, age = 18) {
         assert signature.parameters[1]["name"] == "age"
         assert signature.parameters[1]["default"] == "18"
 
-    def test_extract_arrow_function(self, extractor):
+    @staticmethod
+    def test_extract_arrow_function(extractor):
         """Test extracting arrow function."""
-        code = """
-const multiply = (a, b) => a * b;
-"""
+        code = "\nconst multiply = (a, b) => a * b;\n"
         parser = get_parser("javascript")
         tree = parser.parse(code.encode())
-        # Find arrow function by walking the tree
         arrow_func = None
 
         def find_arrow_func(node):
@@ -343,32 +342,27 @@ const multiply = (a, b) => a * b;
                 return
             for child in node.children:
                 find_arrow_func(child)
-
         find_arrow_func(tree.root_node)
-
         assert arrow_func is not None, "Arrow function not found in AST"
         signature = extractor.extract_signature(arrow_func, code.encode())
-        assert (
-            signature.name == "<anonymous>"
-        )  # Arrow functions are typically anonymous
+        assert signature.name == "<anonymous>"
         assert len(signature.parameters) == 2
 
-    def test_extract_async_function(self, extractor):
+    @staticmethod
+    def test_extract_async_function(extractor):
         """Test extracting async function."""
-        code = """
-async function fetchData(url) {
-    return await fetch(url);
-}
-"""
+        code = (
+            "\nasync function fetchData(url) {\n    return await fetch(url);\n}\n"
+            )
         parser = get_parser("javascript")
         tree = parser.parse(code.encode())
         func_node = tree.root_node.children[0]
-
         signature = extractor.extract_signature(func_node, code.encode())
         assert signature.name == "fetchData"
         assert "async" in signature.modifiers
 
-    def test_extract_generator_function(self, extractor):
+    @staticmethod
+    def test_extract_generator_function(extractor):
         """Test extracting generator function."""
         code = """
 function* fibonacci() {
@@ -382,12 +376,12 @@ function* fibonacci() {
         parser = get_parser("javascript")
         tree = parser.parse(code.encode())
         func_node = tree.root_node.children[0]
-
         signature = extractor.extract_signature(func_node, code.encode())
         assert signature.name == "fibonacci"
         assert "generator" in signature.modifiers
 
-    def test_extract_jsdoc(self, extractor):
+    @staticmethod
+    def test_extract_jsdoc(extractor):
         """Test extracting JSDoc comments."""
         code = """
 /**
@@ -402,14 +396,13 @@ function calculateArea(width, height) {
 """
         parser = get_parser("javascript")
         tree = parser.parse(code.encode())
-        # Skip the comment node to get to the function
         func_node = tree.root_node.children[1]
-
         docstring = extractor.extract_docstring(func_node, code.encode())
         assert docstring is not None
         assert "Calculates the area of a rectangle" in docstring
 
-    def test_javascript_complexity(self, analyzer):
+    @staticmethod
+    def test_javascript_complexity(analyzer):
         """Test JavaScript complexity analysis."""
         code = """
 function processItems(items) {
@@ -429,33 +422,30 @@ function processItems(items) {
         parser = get_parser("javascript")
         tree = parser.parse(code.encode())
         func_node = tree.root_node.children[0]
-
         cyclomatic = analyzer.calculate_cyclomatic_complexity(func_node)
-        assert cyclomatic >= 4  # Base + for + if + && + try/catch
-
+        assert cyclomatic >= 4
         cognitive = analyzer.calculate_cognitive_complexity(func_node)
-        assert cognitive >= 5  # Includes nesting penalties
+        assert cognitive >= 5
 
 
 class TestTypeScriptMetadataExtraction:
     """Test TypeScript-specific metadata extraction."""
 
+    @classmethod
     @pytest.fixture
-    def extractor(self):
+    def extractor(cls):
         return TypeScriptMetadataExtractor()
 
+    @staticmethod
     @pytest.mark.skip(reason="TypeScript grammar not available in test environment")
-    def test_extract_typed_function(self, extractor):
+    def test_extract_typed_function(extractor):
         """Test extracting TypeScript function with types."""
-        code = """
-function add(a: number, b: number): number {
-    return a + b;
-}
-"""
+        code = (
+            "\nfunction add(a: number, b: number): number {\n    return a + b;\n}\n"
+            )
         parser = get_parser("typescript")
         tree = parser.parse(code.encode())
         func_node = tree.root_node.children[0]
-
         signature = extractor.extract_signature(func_node, code.encode())
         assert signature.name == "add"
         assert len(signature.parameters) == 2
@@ -465,8 +455,9 @@ function add(a: number, b: number): number {
         assert signature.parameters[1]["type"] == "number"
         assert signature.return_type == "number"
 
+    @staticmethod
     @pytest.mark.skip(reason="TypeScript grammar not available in test environment")
-    def test_extract_interface_method(self, extractor):
+    def test_extract_interface_method(extractor):
         """Test extracting interface method signature."""
         code = """
 interface Calculator {
@@ -477,16 +468,11 @@ interface Calculator {
         parser = get_parser("typescript")
         tree = parser.parse(code.encode())
         interface_node = tree.root_node.children[0]
-
-        # Find method signatures within interface
-        method_nodes = [
-            child
-            for child in interface_node.children
-            if child.type == "method_signature"
-        ]
-
+        method_nodes = [child for child in interface_node.children if child
+            .type == "method_signature"]
         if method_nodes:
-            signature = extractor.extract_signature(method_nodes[0], code.encode())
+            signature = extractor.extract_signature(method_nodes[0], code.
+                encode())
             assert signature is not None
             assert "interface_method" in signature.modifiers
 
@@ -494,11 +480,12 @@ interface Calculator {
 class TestIntegrationWithChunker:
     """Test metadata extraction integration with chunker."""
 
-    def test_chunk_with_metadata_python(self):
+    @staticmethod
+    def test_chunk_with_metadata_python():
         """Test chunking Python code with metadata extraction."""
-        code = '''
+        code = """
 def factorial(n: int) -> int:
-    """Calculate factorial of n."""
+    ""\"Calculate factorial of n.""\"
     if n <= 1:
         return 1
     return n * factorial(n - 1)
@@ -506,48 +493,37 @@ def factorial(n: int) -> int:
 class Calculator:
     def add(self, a: int, b: int) -> int:
         return a + b
-'''
+"""
         chunks = chunk_text(code, "python", extract_metadata=True)
-
-        # Check factorial function
-        factorial_chunk = next(
-            c for c in chunks if c.node_type == "function_definition"
-        )
+        factorial_chunk = next(c for c in chunks if c.node_type ==
+            "function_definition")
         assert factorial_chunk.metadata is not None
         assert factorial_chunk.metadata["signature"]["name"] == "factorial"
-        assert factorial_chunk.metadata["docstring"] == "Calculate factorial of n."
-        assert factorial_chunk.metadata["complexity"]["cyclomatic"] == 2  # Base + if
-        # Check that dependencies include the recursive call
+        assert factorial_chunk.metadata["docstring"
+            ] == "Calculate factorial of n."
+        assert factorial_chunk.metadata["complexity"]["cyclomatic"] == 2
         deps = factorial_chunk.metadata.get("dependencies", [])
-        assert (
-            "factorial" in deps or len(deps) == 0
-        )  # May not detect self-reference in all cases
-
-        # Check Calculator.add method
-        add_chunk = next(
-            (c for c in chunks if c.node_type == "method_definition"),
-            None,
-        )
+        assert "factorial" in deps or len(deps) == 0
+        add_chunk = next((c for c in chunks if c.node_type ==
+            "method_definition"), None)
         if add_chunk:
             assert add_chunk.metadata is not None
             assert add_chunk.metadata["signature"]["name"] == "add"
-            assert add_chunk.metadata["signature"]["parameters"][0]["name"] == "self"
+            assert add_chunk.metadata["signature"]["parameters"][0]["name"
+                ] == "self"
         else:
-            # Method might be nested within class, check if we got any class chunks
             assert any(c.node_type == "class_definition" for c in chunks)
 
-    def test_chunk_without_metadata(self):
+    @staticmethod
+    def test_chunk_without_metadata():
         """Test chunking without metadata extraction."""
-        code = """
-def simple():
-    return 42
-"""
+        code = "\ndef simple():\n    return 42\n"
         chunks = chunk_text(code, "python", extract_metadata=False)
-
         assert len(chunks) == 1
-        assert chunks[0].metadata == {}  # Empty metadata dict
+        assert chunks[0].metadata == {}
 
-    def test_chunk_with_metadata_javascript(self):
+    @staticmethod
+    def test_chunk_with_metadata_javascript():
         """Test chunking JavaScript code with metadata."""
         code = """
 /**
@@ -566,21 +542,16 @@ const utils = {
 };
 """
         chunks = chunk_text(code, "javascript", extract_metadata=True)
-
-        # Check greet function
-        greet_chunk = next(c for c in chunks if c.node_type == "function_declaration")
+        greet_chunk = next(c for c in chunks if c.node_type ==
+            "function_declaration")
         assert greet_chunk.metadata is not None
         assert greet_chunk.metadata["signature"]["name"] == "greet"
         assert "Greet a person" in greet_chunk.metadata["docstring"]
-        # Check dependencies - console should be there unless filtered as builtin
         deps = greet_chunk.metadata.get("dependencies", [])
-        # Accept empty dependencies since console is a JS builtin that gets filtered
         assert isinstance(deps, list)
-
-        # Check async method
-        fetch_chunk = next(c for c in chunks if c.node_type == "method_definition")
+        fetch_chunk = next(c for c in chunks if c.node_type ==
+            "method_definition")
         assert "async" in fetch_chunk.metadata["signature"]["modifiers"]
-        # fetch is also a JS builtin that gets filtered
         deps = fetch_chunk.metadata.get("dependencies", [])
         assert isinstance(deps, list)
 

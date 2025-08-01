@@ -9,7 +9,7 @@ from pathlib import Path
 def fix_exception_handling(file_path: Path) -> bool:
     """Fix exception handling in a Python file."""
     try:
-        content = file_path.read_text()
+        content = file_path.read_text(encoding="utf-8")
         original_content = content
 
         # Fix B904: Add 'from e' or 'from None' to raise statements in except blocks
@@ -60,17 +60,16 @@ def fix_exception_handling(file_path: Path) -> bool:
         if "except Exception" in content:
             lines = content.split("\n")
             for i, line in enumerate(lines):
-                if re.match(r"\s*except\s+Exception\b", line):
-                    if (
-                        i > 0
-                        and "# TODO: Replace with specific exception"
-                        not in lines[i - 1]
-                    ):
-                        lines[i] = line + "  # TODO: Replace with specific exception"
+                if re.match(r"\s*except\s+Exception\b", line) and (
+                    i > 0
+                    and "# TODO: Replace with specific exception"
+                    not in lines[i - 1]
+                ):
+                    lines[i] = line + "  # TODO: Replace with specific exception"
             content = "\n".join(lines)
 
         if content != original_content:
-            file_path.write_text(content)
+            file_path.write_text(content, encoding="utf-8")
             return True
         return False
 

@@ -1,5 +1,4 @@
 """Manager for fallback chunking strategies."""
-
 import logging
 import warnings
 
@@ -25,20 +24,12 @@ class FallbackManager:
     def __init__(self):
         """Initialize fallback manager."""
         self.detector = FileTypeDetector()
-
-        # Map file types to chunker classes
-        self.chunker_map: dict[FileType, type[FallbackChunker]] = {
-            FileType.LOG: LogChunker,
-            FileType.MARKDOWN: MarkdownChunker,
-            FileType.TEXT: LineBasedChunker,
-            FileType.CSV: LineBasedChunker,
-            FileType.CONFIG: LineBasedChunker,
-            FileType.JSON: LineBasedChunker,
-            FileType.XML: LineBasedChunker,
-            FileType.YAML: LineBasedChunker,
-        }
-
-        # Cache for chunker instances
+        self.chunker_map: dict[FileType, type[FallbackChunker]] = {FileType
+            .LOG: LogChunker, FileType.MARKDOWN: MarkdownChunker, FileType.
+            TEXT: LineBasedChunker, FileType.CSV: LineBasedChunker,
+            FileType.CONFIG: LineBasedChunker, FileType.JSON:
+            LineBasedChunker, FileType.XML: LineBasedChunker, FileType.YAML:
+            LineBasedChunker}
         self._chunker_cache: dict[FileType, FallbackChunker] = {}
 
     def can_chunk(self, file_path: str) -> bool:
@@ -51,13 +42,10 @@ class FallbackManager:
             True if file can be chunked
         """
         file_type = self.detector.detect_file_type(file_path)
-        return file_type not in (FileType.BINARY, FileType.UNKNOWN)
+        return file_type not in {FileType.BINARY, FileType.UNKNOWN}
 
-    def chunk_file(
-        self,
-        file_path: str,
-        reason: FallbackReason | None = None,
-    ) -> list[CodeChunk]:
+    def chunk_file(self, file_path: str, reason: (FallbackReason | None) = None,
+        ) -> list[CodeChunk]:
         """Chunk a file using appropriate fallback strategy.
 
         Args:
@@ -70,76 +58,44 @@ class FallbackManager:
         Raises:
             ValueError: If file cannot be chunked
         """
-        # Detect file type
         file_type = self.detector.detect_file_type(file_path)
-
         if file_type == FileType.BINARY:
             raise ValueError(f"Cannot chunk binary file: {file_path}")
-
         if file_type == FileType.UNKNOWN:
-            logger.warning(
-                "Unknown file type, using line-based chunking: %s",
-                file_path,
-            )
+            logger.warning("Unknown file type, using line-based chunking: %s",
+                file_path)
             file_type = FileType.TEXT
-
-        # Get appropriate chunker
         chunker = self._get_chunker(file_type)
-
-        # Set fallback reason
         if reason is None:
             _, reason = self.detector.should_use_fallback(file_path)
         chunker.set_fallback_reason(reason)
-
-        # Emit warning that fallback is being used
         warnings.warn(
-            f"Using fallback chunking for {file_path} (type: {file_type.value}, reason: {reason})",
-            FallbackWarning,
-            stacklevel=2,
-        )
-
-        # Read file content
+            f"Using fallback chunking for {file_path} (type: {file_type.value}, reason: {reason})"
+            , FallbackWarning, stacklevel=2)
         try:
-            content, encoding = EncodingDetector.read_with_encoding(file_path)
+            content, _encoding = EncodingDetector.read_with_encoding(file_path)
         except (FileNotFoundError, OSError) as e:
             logger.error("Failed to read file %s: %s", file_path, e)
             raise
-
-        # Apply appropriate chunking strategy
         if file_type == FileType.LOG:
-            # Try time-based chunking first
-            chunks = chunker.chunk_by_timestamp(content, 300)  # 5-minute windows
+            chunks = chunker.chunk_by_timestamp(content, 300)
             if not chunks:
-                # Fall back to severity-based
                 chunks = chunker.chunk_by_severity(content)
             if not chunks:
-                # Last resort: line-based
                 chunks = chunker.chunk_by_lines(content, 100, 10)
-
         elif file_type == FileType.MARKDOWN:
-            # Try header-based chunking
             chunks = chunker.chunk_by_headers(content, max_level=3)
             if not chunks:
-                # Fall back to section-based
                 chunks = chunker.chunk_by_sections(content)
-
         elif file_type == FileType.CSV:
-            # Use CSV-specific chunking
             chunks = chunker.chunk_csv(content, include_header=True)
-
         else:
-            # Default: adaptive line-based chunking
             chunks = chunker.adaptive_chunk(content)
-
-        # Ensure file path is set in all chunks
         for chunk in chunks:
             if not chunk.file_path:
                 chunk.file_path = file_path
-
-        logger.info(
-            f"Created {len(chunks)} chunks for {file_path} using {file_type.value} strategy",
-        )
-
+        logger.info("Created %s chunks for %s using %s strategy", (len(
+            chunks), file_path, file_type.value))
         return chunks
 
     def _get_chunker(self, file_type: FileType) -> FallbackChunker:
@@ -154,7 +110,6 @@ class FallbackManager:
         if file_type not in self._chunker_cache:
             chunker_class = self.chunker_map.get(file_type, LineBasedChunker)
             self._chunker_cache[file_type] = chunker_class()
-
         return self._chunker_cache[file_type]
 
     def get_supported_extensions(self) -> list[str]:
@@ -177,12 +132,8 @@ class FallbackManager:
         file_type = self.detector.detect_file_type(file_path)
         should_fallback, reason = self.detector.should_use_fallback(file_path)
         metadata = self.detector.get_metadata(file_path)
-
-        return {
-            "file_type": file_type.value,
-            "can_chunk": self.can_chunk(file_path),
-            "should_use_fallback": should_fallback,
+        return {"file_type": file_type.value, "can_chunk": self.can_chunk(
+            file_path), "should_use_fallback": should_fallback,
             "fallback_reason": reason.value if reason else None,
             "suggested_grammar": self.detector.suggest_grammar(file_path),
-            "metadata": metadata,
-        }
+            "metadata": metadata}

@@ -7,7 +7,6 @@ This module tests the MarkdownProcessor's ability to:
 - Handle various Markdown features
 - Apply smart chunking with overlap
 """
-
 import pytest
 
 from chunker.processors import ProcessorConfig
@@ -18,40 +17,35 @@ from chunker.types import CodeChunk
 class TestMarkdownProcessor:
     """Test suite for MarkdownProcessor."""
 
+    @classmethod
     @pytest.fixture
-    def processor(self):
+    def processor(cls):
         """Create a default processor instance."""
         return MarkdownProcessor()
 
+    @classmethod
     @pytest.fixture
-    def custom_processor(self):
+    def custom_processor(cls):
         """Create a processor with custom configuration."""
-        config = ProcessorConfig(
-            max_chunk_size=500,
-            min_chunk_size=50,
-            overlap_size=50,
-            preserve_structure=True,
-        )
+        config = ProcessorConfig(max_chunk_size=500, min_chunk_size=50,
+            overlap_size=50, preserve_structure=True)
         return MarkdownProcessor(config)
 
-    def test_can_process_markdown_files(self, processor):
+    @staticmethod
+    def test_can_process_markdown_files(processor):
         """Test file type detection."""
-        # Should handle various Markdown extensions
         assert processor.can_process("README.md", "# Hello")
         assert processor.can_process("doc.markdown", "# Hello")
         assert processor.can_process("notes.mdown", "# Hello")
         assert processor.can_process("guide.mkd", "# Hello")
-
-        # Should detect Markdown content even without extension
         assert processor.can_process("README", "# Hello\n\n## World")
         assert processor.can_process("doc.txt", "```python\ncode\n```")
         assert processor.can_process("notes", "- List item\n- Another item")
-
-        # Should not process non-Markdown
         assert not processor.can_process("script.py", "def hello():\n    pass")
         assert not processor.can_process("data.json", '{"key": "value"}')
 
-    def test_extract_structure_headers(self, processor):
+    @staticmethod
+    def test_extract_structure_headers(processor):
         """Test header extraction."""
         content = """# Main Title
 
@@ -68,7 +62,6 @@ Final content.
 ###### Very Deep Section
 """
         structure = processor.extract_structure(content)
-
         assert len(structure["headers"]) == 6
         assert structure["headers"][0].level == 1
         assert structure["headers"][0].metadata["title"] == "Main Title"
@@ -76,13 +69,12 @@ Final content.
         assert structure["headers"][2].level == 3
         assert structure["headers"][4].level == 4
         assert structure["headers"][5].level == 6
-
-        # Check TOC structure
         assert len(structure["toc"]) == 6
         assert structure["toc"][0]["level"] == 1
         assert structure["toc"][0]["title"] == "Main Title"
 
-    def test_extract_structure_code_blocks(self, processor):
+    @staticmethod
+    def test_extract_structure_code_blocks(processor):
         """Test code block extraction."""
         content = """# Code Examples
 
@@ -102,13 +94,13 @@ console.log("Hello");
 Inline code `example` should not be extracted.
 """
         structure = processor.extract_structure(content)
-
         assert len(structure["code_blocks"]) == 2
         assert structure["code_blocks"][0].type == "code_block"
         assert "def hello():" in structure["code_blocks"][0].metadata["code"]
         assert "console.log" in structure["code_blocks"][1].metadata["code"]
 
-    def test_extract_structure_tables(self, processor):
+    @staticmethod
+    def test_extract_structure_tables(processor):
         """Test table extraction."""
         content = """# Data
 
@@ -124,13 +116,13 @@ Another paragraph.
 | John | 30  |
 """
         structure = processor.extract_structure(content)
-
         assert len(structure["tables"]) == 2
         assert structure["tables"][0].type == "table"
         assert "Column 1" in structure["tables"][0].content
         assert "Name" in structure["tables"][1].content
 
-    def test_extract_structure_lists(self, processor):
+    @staticmethod
+    def test_extract_structure_lists(processor):
         """Test list extraction with nesting."""
         content = """# Lists
 
@@ -146,17 +138,15 @@ Another paragraph.
    1. Nested ordered
 """
         structure = processor.extract_structure(content)
-
         lists = structure["lists"]
         assert len(lists) > 0
-
-        # Check nesting levels
         levels = [item.level for item in lists]
-        assert 1 in levels  # Top level
-        assert 2 in levels  # Nested level
-        assert 3 in levels  # Deep nested
+        assert 1 in levels
+        assert 2 in levels
+        assert 3 in levels
 
-    def test_extract_structure_front_matter(self, processor):
+    @staticmethod
+    def test_extract_structure_front_matter(processor):
         """Test front matter extraction."""
         content = """---
 title: My Document
@@ -169,12 +159,13 @@ date: 2024-01-01
 This is the document.
 """
         structure = processor.extract_structure(content)
-
         assert structure["front_matter"] is not None
         assert structure["front_matter"].type == "front_matter"
-        assert "title: My Document" in structure["front_matter"].metadata["raw"]
+        assert "title: My Document" in structure["front_matter"].metadata["raw"
+            ]
 
-    def test_find_boundaries_respects_atomic(self, processor):
+    @staticmethod
+    def test_find_boundaries_respects_atomic(processor):
         """Test that boundaries respect atomic elements."""
         content = """# Section 1
 
@@ -193,18 +184,15 @@ More content after code.
 """
         processor.extract_structure(content)
         boundaries = processor.find_boundaries(content)
-
-        # Find the code block boundary
         code_boundaries = [b for b in boundaries if b[2] == "code_block"]
         assert len(code_boundaries) == 1
-
-        # Verify code block is kept intact
         start, end, _ = code_boundaries[0]
         code_content = content[start:end]
         assert code_content.startswith("```python")
         assert code_content.strip().endswith("```")
 
-    def test_find_boundaries_header_boundaries(self, processor):
+    @staticmethod
+    def test_find_boundaries_header_boundaries(processor):
         """Test that headers create natural boundaries."""
         content = """# Header 1
 
@@ -220,12 +208,11 @@ Content under header 3.
 """
         processor.extract_structure(content)
         boundaries = processor.find_boundaries(content)
-
-        # Check for header boundaries
         header_boundaries = [b for b in boundaries if "header" in b[2]]
         assert len(header_boundaries) >= 3
 
-    def test_create_chunks_basic(self, processor):
+    @staticmethod
+    def test_create_chunks_basic(processor):
         """Test basic chunk creation."""
         content = """# Document Title
 
@@ -242,15 +229,13 @@ Here is the second paragraph with more details.
 Final section with content.
 """
         chunks = processor.process(content, "test.md")
-
         assert len(chunks) > 0
         assert all(isinstance(chunk, CodeChunk) for chunk in chunks)
-
-        # Check chunk types
         chunk_types = [chunk.node_type for chunk in chunks]
         assert any("section" in t for t in chunk_types)
 
-    def test_create_chunks_preserves_code_blocks(self, processor):
+    @classmethod
+    def test_create_chunks_preserves_code_blocks(cls, processor):
         """Test that code blocks are never split."""
         content = """# Code Example
 
@@ -275,21 +260,17 @@ def very_long_function_with_many_lines():
 
 Content after code.
 """
-        # Use small chunk size to test atomic preservation
         config = ProcessorConfig(max_chunk_size=100)
         processor = MarkdownProcessor(config)
         chunks = processor.process(content, "test.md")
-
-        # Find chunk containing code block
         code_chunks = [c for c in chunks if c.node_type == "code_block"]
         assert len(code_chunks) >= 1
-
-        # Verify code block is complete
         for chunk in code_chunks:
             assert chunk.content.strip().startswith("```")
             assert chunk.content.strip().endswith("```")
 
-    def test_create_chunks_preserves_tables(self, processor):
+    @classmethod
+    def test_create_chunks_preserves_tables(cls, processor):
         """Test that tables are never split."""
         content = """# Data
 
@@ -304,33 +285,25 @@ Here's a table:
 
 Content after table.
 """
-        # Use small chunk size
         config = ProcessorConfig(max_chunk_size=50)
         processor = MarkdownProcessor(config)
         chunks = processor.process(content, "test.md")
-
-        # Find table chunks
         table_chunks = [c for c in chunks if c.node_type == "table"]
         assert len(table_chunks) >= 1
-
-        # Verify table is complete
         for chunk in table_chunks:
-            # Skip chunks that have overlap marker
             if "[...]" in chunk.content:
                 continue
             lines = chunk.content.strip().split("\n")
-            # Filter out empty lines and overlap markers
-            non_empty_lines = [
-                line for line in lines if line.strip() and line.strip() != "[...]"
-            ]
-            # Should have header, separator, and data rows
+            non_empty_lines = [line for line in lines if line.strip() and
+                line.strip() != "[...]"]
             assert len(non_empty_lines) >= 3
-            assert "|" in non_empty_lines[0]  # Header
-            assert "|" in non_empty_lines[1]  # Separator
-            # All remaining non-empty lines should be table rows
-            assert all("|" in line for line in non_empty_lines[2:] if line.strip())
+            assert "|" in non_empty_lines[0]
+            assert "|" in non_empty_lines[1]
+            assert all("|" in line for line in non_empty_lines[2:] if line.
+                strip())
 
-    def test_apply_overlap(self, custom_processor):
+    @staticmethod
+    def test_apply_overlap(custom_processor):
         """Test overlap application between chunks."""
         content = """# Section 1
 
@@ -345,67 +318,34 @@ This is the second section that should be in a different chunk. The overlap from
 And this is the third section for testing overlap behavior.
 """
         chunks = custom_processor.process(content, "test.md")
-
         if len(chunks) > 1:
-            # Check that later chunks have overlap
             for i in range(1, len(chunks)):
                 chunk = chunks[i]
                 if "has_overlap" in chunk.metadata:
                     assert chunk.metadata["has_overlap"]
                     assert "[...]" in chunk.content
 
-    def test_validate_chunk(self):
+    @classmethod
+    def test_validate_chunk(cls):
         """Test chunk validation."""
-        # Create processor with smaller min_chunk_size
         config = ProcessorConfig(min_chunk_size=10)
         processor = MarkdownProcessor(config)
-
-        # Valid chunks
-        valid_chunk = CodeChunk(
-            content="# Header\n\nContent here.",
-            start_line=1,
-            end_line=3,
-            node_type="section_h1",
-            language="markdown",
-            file_path="test.md",
-            byte_start=0,
-            byte_end=25,
-            parent_context="",
-            metadata={"tokens": 4},
-        )
+        valid_chunk = CodeChunk(content="# Header\n\nContent here.",
+            start_line=1, end_line=3, node_type="section_h1", language="markdown", file_path="test.md", byte_start=0, byte_end=25,
+            parent_context="", metadata={"tokens": 4})
         assert processor.validate_chunk(valid_chunk)
-
-        # Invalid: too short
-        short_chunk = CodeChunk(
-            content="Hi",
-            start_line=1,
-            end_line=1,
-            node_type="paragraph",
-            language="markdown",
-            file_path="test.md",
-            byte_start=0,
-            byte_end=2,
-            parent_context="",
-            metadata={"tokens": 1},
-        )
+        short_chunk = CodeChunk(content="Hi", start_line=1, end_line=1,
+            node_type="paragraph", language="markdown", file_path="test.md",
+            byte_start=0, byte_end=2, parent_context="", metadata={"tokens": 1},
+            )
         assert not processor.validate_chunk(short_chunk)
-
-        # Invalid: incomplete code block
-        bad_code = CodeChunk(
-            content="```python\ncode here",  # Missing closing ```
-            start_line=1,
-            end_line=2,
-            node_type="code_block",
-            language="markdown",
-            file_path="test.md",
-            byte_start=0,
-            byte_end=20,
-            parent_context="",
-            metadata={"tokens": 3},
-        )
+        bad_code = CodeChunk(content="```python\ncode here", start_line=1,
+            end_line=2, node_type="code_block", language="markdown",
+            file_path="test.md", byte_start=0, byte_end=20, parent_context="", metadata={"tokens": 3})
         assert not processor.validate_chunk(bad_code)
 
-    def test_complex_markdown_document(self, processor):
+    @staticmethod
+    def test_complex_markdown_document(processor):
         """Test processing a complex Markdown document."""
         content = """---
 title: Complex Document
@@ -486,33 +426,21 @@ Here are some [inline links](https://example.com) and reference-style links [lik
 Footer content with horizontal rule above.
 """
         chunks = processor.process(content, "complex.md")
-
-        # Should create multiple chunks
         assert len(chunks) > 1
-
-        # Should preserve front matter
         assert any("front_matter" in c.node_type for c in chunks)
-
-        # Should preserve code blocks
         code_chunks = [c for c in chunks if c.node_type == "code_block"]
         assert len(code_chunks) >= 2
-
-        # Should preserve table
         table_chunks = [c for c in chunks if c.node_type == "table"]
         assert len(table_chunks) >= 1
-
-        # Check metadata
         for chunk in chunks:
             assert "segment_types" in chunk.metadata
             assert "dominant_type" in chunk.metadata
 
-    def test_malformed_markdown_handling(self):
+    @classmethod
+    def test_malformed_markdown_handling(cls):
         """Test handling of malformed Markdown."""
-        # Create processor with smaller min size for testing
         config = ProcessorConfig(min_chunk_size=10)
         processor = MarkdownProcessor(config)
-
-        # Unclosed code block
         content1 = """# Test
 
 ```python
@@ -522,34 +450,25 @@ def unclosed():
 More content without closing fence.
 """
         chunks1 = processor.process(content1, "malformed1.md")
-        assert len(chunks1) > 0  # Should still process
-
-        # Malformed table
-        content2 = """# Test
-
-| Col1 | Col2 |
-| Data without separator row |
-
-Normal content.
-"""
+        assert len(chunks1) > 0
+        content2 = (
+            "# Test\n\n| Col1 | Col2 |\n| Data without separator row |\n\nNormal content.\n"
+            )
         chunks2 = processor.process(content2, "malformed2.md")
-        assert len(chunks2) > 0  # Should handle gracefully
+        assert len(chunks2) > 0
 
-    def test_empty_document(self, processor):
+    @staticmethod
+    def test_empty_document(processor):
         """Test handling of empty or minimal documents."""
-        # Empty document
         chunks1 = processor.process("", "empty.md")
         assert len(chunks1) == 0
-
-        # Only whitespace
         chunks2 = processor.process("   \n\n   \n", "whitespace.md")
         assert len(chunks2) == 0
-
-        # Single line
         chunks3 = processor.process("Just one line.", "single.md")
         assert len(chunks3) <= 1
 
-    def test_special_markdown_features(self, processor):
+    @staticmethod
+    def test_special_markdown_features(processor):
         """Test handling of special Markdown features."""
         content = """# Special Features
 
@@ -594,9 +513,7 @@ $$
 Inline math: $x = y^2$
 """
         chunks = processor.process(content, "special.md")
-
         assert len(chunks) > 0
-        # Verify content is preserved
         full_content = "".join(c.content for c in chunks)
         assert "[x] Completed task" in full_content
         assert "[^1]" in full_content

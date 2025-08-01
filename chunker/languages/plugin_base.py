@@ -3,7 +3,6 @@
 This module provides the plugin interface that wraps around the language
 configuration system from Phase 2.1.
 """
-
 from __future__ import annotations
 
 import logging
@@ -20,14 +19,12 @@ if TYPE_CHECKING:
     from tree_sitter import Node, Parser
 
     from .base import LanguageConfig
-
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class PluginConfig:
     """Configuration for a language plugin."""
-
     enabled: bool = True
     chunk_types: set[str] | None = None
     min_chunk_size: int = 1
@@ -45,24 +42,24 @@ class LanguagePlugin(ABC):
     This wraps around the LanguageConfig system to provide backward
     compatibility with the plugin architecture.
     """
-
-    # Plugin API version - increment when breaking changes are made
     PLUGIN_API_VERSION = "1.0"
 
-    def __init__(self, config: PluginConfig | None = None):
+    def __init__(self, config: (PluginConfig | None) = None):
         self.config = config or PluginConfig()
         self._parser: Parser | None = None
         self._language_config: LanguageConfig | None = None
         self._validate_plugin()
 
+    @staticmethod
     @property
     @abstractmethod
-    def language_name(self) -> str:
+    def language_name() -> str:
         """Return the language identifier (e.g., 'python', 'rust')."""
 
+    @staticmethod
     @property
     @abstractmethod
-    def supported_extensions(self) -> set[str]:
+    def supported_extensions() -> set[str]:
         """Return set of file extensions this plugin handles (e.g., {'.py', '.pyi'})."""
 
     @property
@@ -72,9 +69,10 @@ class LanguagePlugin(ABC):
             return self.config.chunk_types
         return self.default_chunk_types
 
+    @staticmethod
     @property
     @abstractmethod
-    def default_chunk_types(self) -> set[str]:
+    def default_chunk_types() -> set[str]:
         """Return default set of node types to chunk for this language."""
 
     @property
@@ -90,26 +88,18 @@ class LanguagePlugin(ABC):
     @property
     def plugin_metadata(self) -> dict[str, Any]:
         """Return plugin metadata. Override to add custom metadata."""
-        return {
-            "name": self.__class__.__name__,
-            "language": self.language_name,
-            "version": self.plugin_version,
-            "api_version": self.minimum_api_version,
-            "extensions": list(self.supported_extensions),
-            "chunk_types": list(self.default_chunk_types),
-        }
+        return {"name": self.__class__.__name__, "language": self.
+            language_name, "version": self.plugin_version, "api_version":
+            self.minimum_api_version, "extensions": list(self.
+            supported_extensions), "chunk_types": list(self.
+            default_chunk_types)}
 
     def set_parser(self, parser: Parser) -> None:
         """Set the tree-sitter parser for this plugin."""
         self._parser = parser
 
-    def process_node(
-        self,
-        node: Node,
-        source: bytes,
-        file_path: str,
-        parent_context: str | None = None,
-    ) -> CodeChunk | None:
+    def process_node(self, node: Node, source: bytes, file_path: str,
+        parent_context: (str | None) = None) -> (CodeChunk | None):
         """
         Process a single node into a chunk.
 
@@ -124,57 +114,32 @@ class LanguagePlugin(ABC):
         """
         if node.type not in self.chunk_node_types:
             return None
-
         chunk = self.create_chunk(node, source, file_path, parent_context)
-
-        # Apply size filters
         if chunk and self.should_include_chunk(chunk):
             return chunk
-
         return None
 
-    def create_chunk(
-        self,
-        node: Node,
-        source: bytes,
-        file_path: str,
-        parent_context: str | None = None,
-    ) -> CodeChunk:
+    def create_chunk(self, node: Node, source: bytes, file_path: str,
+        parent_context: (str | None) = None) -> CodeChunk:
         """Create a CodeChunk from a node. Can be overridden for custom behavior."""
-        content = source[node.start_byte : node.end_byte].decode(
-            "utf-8",
-            errors="replace",
-        )
-
-        return CodeChunk(
-            language=self.language_name,
-            file_path=file_path,
-            node_type=node.type,
-            start_line=node.start_point[0] + 1,
-            end_line=node.end_point[0] + 1,
-            byte_start=node.start_byte,
-            byte_end=node.end_byte,
-            parent_context=parent_context or "",
-            content=content,
-        )
+        content = source[node.start_byte:node.end_byte].decode("utf-8",
+            errors="replace")
+        return CodeChunk(language=self.language_name, file_path=file_path,
+            node_type=node.type, start_line=node.start_point[0] + 1,
+            end_line=node.end_point[0] + 1, byte_start=node.start_byte,
+            byte_end=node.end_byte, parent_context=parent_context or "",
+            content=content)
 
     def should_include_chunk(self, chunk: CodeChunk) -> bool:
         """Apply filters to determine if chunk should be included."""
-        # Filter by size
         lines = chunk.end_line - chunk.start_line + 1
-
         if lines < self.config.min_chunk_size:
             return False
+        return not (self.config.max_chunk_size and lines > self.config.
+            max_chunk_size)
 
-        return not (self.config.max_chunk_size and lines > self.config.max_chunk_size)
-
-    def walk_tree(
-        self,
-        node: Node,
-        source: bytes,
-        file_path: str,
-        parent_context: str | None = None,
-    ) -> list[CodeChunk]:
+    def walk_tree(self, node: Node, source: bytes, file_path: str,
+        parent_context: (str | None) = None) -> list[CodeChunk]:
         """
         Recursively walk the tree and extract chunks.
 
@@ -188,23 +153,17 @@ class LanguagePlugin(ABC):
             List of CodeChunk objects
         """
         chunks: list[CodeChunk] = []
-
-        # Process current node
         chunk = self.process_node(node, source, file_path, parent_context)
         if chunk:
             chunks.append(chunk)
-            # Update parent context for children
             parent_context = self.get_context_for_children(node, chunk)
-
-        # Process children
         for child in node.children:
-            chunks.extend(
-                self.walk_tree(child, source, file_path, parent_context),
-            )
-
+            chunks.extend(self.walk_tree(child, source, file_path,
+                parent_context))
         return chunks
 
-    def get_context_for_children(self, _node: Node, chunk: CodeChunk) -> str:
+    @staticmethod
+    def get_context_for_children(_node: Node, chunk: CodeChunk) -> str:
         """
         Get context string to pass to children nodes.
         Can be overridden for language-specific context building.
@@ -214,19 +173,15 @@ class LanguagePlugin(ABC):
     def chunk_file(self, file_path: Path) -> list[CodeChunk]:
         """Parse a file and return chunks."""
         if not self._parser:
-            raise RuntimeError(f"Parser not set for {self.language_name} plugin")
-
+            raise RuntimeError(
+                f"Parser not set for {self.language_name} plugin")
         source = file_path.read_bytes()
         tree = self._parser.parse(source)
+        return self.walk_tree(tree.root_node, source, str(file_path))
 
-        return self.walk_tree(
-            tree.root_node,
-            source,
-            str(file_path),
-        )
-
+    @staticmethod
     @abstractmethod
-    def get_node_name(self, node: Node, source: bytes) -> str | None:
+    def get_node_name(node: Node, source: bytes) -> (str | None):
         """
         Extract a human-readable name from a node (e.g., function name).
         Used for better context building.
@@ -234,14 +189,10 @@ class LanguagePlugin(ABC):
 
     def _validate_plugin(self) -> None:
         """Validate plugin compatibility and requirements."""
-        # Check API version compatibility
         if not self._is_api_compatible():
             raise RuntimeError(
-                f"Plugin {self.__class__.__name__} requires API version "
-                f"{self.minimum_api_version} but system provides {self.PLUGIN_API_VERSION}",
-            )
-
-        # Validate required properties
+                f"Plugin {self.__class__.__name__} requires API version {self.minimum_api_version} but system provides {self.PLUGIN_API_VERSION}",
+                )
         try:
             _ = self.language_name
             _ = self.supported_extensions
@@ -249,12 +200,10 @@ class LanguagePlugin(ABC):
         except (OSError, subprocess.SubprocessError) as e:
             raise RuntimeError(
                 f"Plugin {self.__class__.__name__} failed validation: {e}",
-            ) from e
-
+                ) from e
         logger.debug(
-            f"Plugin {self.__class__.__name__} v{self.plugin_version} "
-            f"validated successfully for language '{self.language_name}'",
-        )
+            "Plugin %s v%s validated successfully for language '%s'" % (
+            self.__class__.__name__, self.plugin_version, self.language_name))
 
     def _is_api_compatible(self) -> bool:
         """Check if plugin is compatible with current API version."""
@@ -264,13 +213,8 @@ class LanguagePlugin(ABC):
             parts = version.split(".")
             major = int(parts[0])
             minor = int(parts[1]) if len(parts) > 1 else 0
-            return (major, minor)
-
+            return major, minor
         current_version = parse_version(self.PLUGIN_API_VERSION)
         required_version = parse_version(self.minimum_api_version)
-
-        # Major version must match, minor version must be >= required
-        return (
-            current_version[0] == required_version[0]
-            and current_version[1] >= required_version[1]
-        )
+        return current_version[0] == required_version[0] and current_version[1
+            ] >= required_version[1]

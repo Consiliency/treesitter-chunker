@@ -32,7 +32,7 @@ def create_sample_files():
     samples = {}
 
     # Create a log file
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".log", delete=False) as f:
+    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".log", delete=False) as f:
         f.write(
             """2024-01-15 10:30:00 INFO Application started
 2024-01-15 10:30:01 DEBUG Loading configuration from config.yaml
@@ -48,7 +48,7 @@ def create_sample_files():
         samples["log"] = f.name
 
     # Create a markdown file
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".md", delete=False) as f:
         f.write(
             """# Fallback Chunking Demo
 
@@ -101,7 +101,7 @@ Fallback chunking provides basic functionality when Tree-sitter is unavailable.
         samples["markdown"] = f.name
 
     # Create a CSV file
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".csv", delete=False) as f:
         f.write(
             """timestamp,level,message,user_id
 2024-01-15T10:30:00Z,INFO,User login,user123
@@ -116,7 +116,7 @@ Fallback chunking provides basic functionality when Tree-sitter is unavailable.
         samples["csv"] = f.name
 
     # Create a config file
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".ini", delete=False) as f:
+    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".ini", delete=False) as f:
         f.write(
             """[database]
 host = localhost
@@ -224,7 +224,7 @@ def demo_specialized_chunking(sample_files):
     log_chunker.file_path = sample_files["log"]
 
     with Path(sample_files["log"]).open(
-        "r",
+        "r", encoding="utf-8",
     ) as f:
         log_content = f.read()
 
@@ -240,7 +240,7 @@ def demo_specialized_chunking(sample_files):
     md_chunker.file_path = sample_files["markdown"]
 
     with Path(sample_files["markdown"]).open(
-        "r",
+        "r", encoding="utf-8",
     ) as f:
         md_content = f.read()
 
@@ -255,7 +255,7 @@ def demo_specialized_chunking(sample_files):
     line_chunker.file_path = sample_files["csv"]
 
     with Path(sample_files["csv"]).open(
-        "r",
+        "r", encoding="utf-8",
     ) as f:
         csv_content = f.read()
 

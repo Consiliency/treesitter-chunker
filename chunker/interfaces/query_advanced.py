@@ -1,5 +1,4 @@
 """Advanced query interface for Phase 10 - searching and filtering chunks."""
-
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
@@ -10,7 +9,6 @@ from chunker.types import CodeChunk
 
 class QueryType(Enum):
     """Types of queries supported."""
-
     NATURAL_LANGUAGE = "natural_language"
     STRUCTURED = "structured"
     REGEX = "regex"
@@ -20,24 +18,20 @@ class QueryType(Enum):
 @dataclass
 class QueryResult:
     """Result of a chunk query."""
-
     chunk: CodeChunk
-    score: float  # Relevance score 0-1
-    highlights: list[tuple[int, int]]  # Character positions to highlight
-    metadata: dict[str, Any]  # Additional query-specific metadata
+    score: float
+    highlights: list[tuple[int, int]]
+    metadata: dict[str, Any]
 
 
 class ChunkQueryAdvanced(ABC):
     """Query chunks using natural language or structured queries."""
 
+    @staticmethod
     @abstractmethod
-    def search(
-        self,
-        query: str,
-        chunks: list[CodeChunk],
-        query_type: QueryType = QueryType.NATURAL_LANGUAGE,
-        limit: int | None = None,
-    ) -> list[QueryResult]:
+    def search(query: str, chunks: list[CodeChunk], query_type: QueryType =
+        QueryType.NATURAL_LANGUAGE, limit: (int | None) = None) -> list[
+        QueryResult]:
         """
         Search chunks using various query types.
 
@@ -51,16 +45,12 @@ class ChunkQueryAdvanced(ABC):
             List of query results sorted by relevance
         """
 
+    @staticmethod
     @abstractmethod
-    def filter(
-        self,
-        chunks: list[CodeChunk],
-        node_types: list[str] | None = None,
-        languages: list[str] | None = None,
-        min_lines: int | None = None,
-        max_lines: int | None = None,
-        metadata_filters: dict[str, Any] | None = None,
-    ) -> list[CodeChunk]:
+    def filter(chunks: list[CodeChunk], node_types: (list[str] | None) = None,
+        languages: (list[str] | None) = None, min_lines: (int | None) = None,
+        max_lines: (int | None) = None, metadata_filters: (dict[str, Any] |
+        None) = None) -> list[CodeChunk]:
         """
         Filter chunks by structured criteria.
 
@@ -76,14 +66,10 @@ class ChunkQueryAdvanced(ABC):
             Filtered chunks
         """
 
+    @staticmethod
     @abstractmethod
-    def find_similar(
-        self,
-        chunk: CodeChunk,
-        chunks: list[CodeChunk],
-        threshold: float = 0.7,
-        limit: int | None = None,
-    ) -> list[QueryResult]:
+    def find_similar(chunk: CodeChunk, chunks: list[CodeChunk], threshold:
+        float = 0.7, limit: (int | None) = None) -> list[QueryResult]:
         """
         Find chunks similar to a given chunk.
 
@@ -101,8 +87,9 @@ class ChunkQueryAdvanced(ABC):
 class QueryIndexAdvanced(ABC):
     """Advanced index for fast chunk queries."""
 
+    @staticmethod
     @abstractmethod
-    def build_index(self, chunks: list[CodeChunk]) -> None:
+    def build_index(chunks: list[CodeChunk]) -> None:
         """
         Build search index from chunks.
 
@@ -113,25 +100,25 @@ class QueryIndexAdvanced(ABC):
             chunks: Chunks to index
         """
 
+    @staticmethod
     @abstractmethod
-    def add_chunk(self, chunk: CodeChunk) -> None:
+    def add_chunk(chunk: CodeChunk) -> None:
         """Add a single chunk to the index."""
 
+    @staticmethod
     @abstractmethod
-    def remove_chunk(self, chunk_id: str) -> None:
+    def remove_chunk(chunk_id: str) -> None:
         """Remove a chunk from the index."""
 
+    @staticmethod
     @abstractmethod
-    def update_chunk(self, chunk: CodeChunk) -> None:
+    def update_chunk(chunk: CodeChunk) -> None:
         """Update an existing chunk in the index."""
 
+    @staticmethod
     @abstractmethod
-    def query(
-        self,
-        query: str,
-        query_type: QueryType = QueryType.NATURAL_LANGUAGE,
-        limit: int = 10,
-    ) -> list[QueryResult]:
+    def query(query: str, query_type: QueryType = QueryType.NATURAL_LANGUAGE,
+        limit: int = 10) -> list[QueryResult]:
         """
         Query the index.
 
@@ -144,16 +131,18 @@ class QueryIndexAdvanced(ABC):
             Query results sorted by relevance
         """
 
+    @staticmethod
     @abstractmethod
-    def get_statistics(self) -> dict[str, Any]:
+    def get_statistics() -> dict[str, Any]:
         """Get index statistics (size, performance metrics, etc.)."""
 
 
 class QueryOptimizer(ABC):
     """Optimize queries for better performance."""
 
+    @staticmethod
     @abstractmethod
-    def optimize_query(self, query: str, query_type: QueryType) -> str:
+    def optimize_query(query: str, query_type: QueryType) -> str:
         """
         Optimize a query for better results.
 
@@ -167,8 +156,10 @@ class QueryOptimizer(ABC):
             Optimized query
         """
 
+    @staticmethod
     @abstractmethod
-    def suggest_queries(self, partial_query: str, chunks: list[CodeChunk]) -> list[str]:
+    def suggest_queries(partial_query: str, chunks: list[CodeChunk]) -> list[str
+        ]:
         """
         Suggest query completions based on indexed content.
 

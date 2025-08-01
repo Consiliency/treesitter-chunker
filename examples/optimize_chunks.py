@@ -24,7 +24,7 @@ def demonstrate_optimization():
 
     # 3. Optimize for different LLM models
     print("\n2. Optimizing for GPT-4 (8k context)...")
-    optimized_gpt4, metrics_gpt4 = optimizer.optimize_for_llm(
+    _optimized_gpt4, metrics_gpt4 = optimizer.optimize_for_llm(
         chunks,
         model="gpt-4",
         max_tokens=2000,  # Leave room for prompts
@@ -37,7 +37,7 @@ def demonstrate_optimization():
 
     # 4. Optimize for Claude (100k context)
     print("\n3. Optimizing for Claude (100k context)...")
-    optimized_claude, metrics_claude = optimizer.optimize_for_llm(
+    _optimized_claude, metrics_claude = optimizer.optimize_for_llm(
         chunks,
         model="claude",
         max_tokens=8000,  # Can use larger chunks
@@ -75,7 +75,7 @@ def demonstrate_optimization():
 
     # 7. Preserve structure strategy
     print("\n6. Using PRESERVE_STRUCTURE strategy...")
-    preserved, metrics_preserved = optimizer.optimize_for_llm(
+    _preserved, metrics_preserved = optimizer.optimize_for_llm(
         chunks,
         model="gpt-4",
         max_tokens=1000,
@@ -194,7 +194,7 @@ if __name__ == '__main__':
 '''
 
     with Path("examples/sample_code.py").open(
-        "w",
+        "w", encoding="utf-8",
     ) as f:
         f.write(sample_code)
     print("Created examples/sample_code.py")

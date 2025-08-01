@@ -128,12 +128,12 @@ def load_strategy_config(path: str | Path) -> StrategyConfig:
     # Determine format from extension
     if path.suffix == ".json":
         with Path(path).open(
-            "r",
+            "r", encoding="utf-8",
         ) as f:
             data = json.load(f)
-    elif path.suffix in [".yaml", ".yml"]:
+    elif path.suffix in {".yaml", ".yml"}:
         with Path(path).open(
-            "r",
+            "r", encoding="utf-8",
         ) as f:
             data = yaml.safe_load(f)
     else:
@@ -152,12 +152,12 @@ def save_strategy_config(config: StrategyConfig, path: str | Path):
     # Determine format from extension
     if path.suffix == ".json":
         with Path(path).open(
-            "w",
+            "w", encoding="utf-8",
         ) as f:
             json.dump(config.to_dict(), f, indent=2)
-    elif path.suffix in [".yaml", ".yml"]:
+    elif path.suffix in {".yaml", ".yml"}:
         with Path(path).open(
-            "w",
+            "w", encoding="utf-8",
         ) as f:
             yaml.dump(config.to_dict(), f, default_flow_style=False)
     else:

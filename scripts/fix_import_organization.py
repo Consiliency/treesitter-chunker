@@ -8,7 +8,7 @@ from pathlib import Path
 def organize_imports(file_path: Path) -> bool:
     """Organize imports in a Python file."""
     try:
-        content = file_path.read_text()
+        content = file_path.read_text(encoding="utf-8")
         lines = content.splitlines(keepends=True)
 
         # Skip files that start with shebang or encoding
@@ -193,7 +193,7 @@ def organize_imports(file_path: Path) -> bool:
         new_content = "".join(new_lines)
 
         if new_content != content:
-            file_path.write_text(new_content)
+            file_path.write_text(new_content, encoding="utf-8")
             return True
         return False
 

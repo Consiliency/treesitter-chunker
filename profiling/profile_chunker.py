@@ -48,7 +48,7 @@ def create_test_file(size: str = "medium") -> Path:
     Returns:
         Path to test file
     """
-    temp_file = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+    temp_file = tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False)
 
     if size == "small":
         content = """

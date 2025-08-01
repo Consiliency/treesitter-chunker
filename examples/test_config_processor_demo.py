@@ -45,7 +45,7 @@ def process_file(file_path: str, processor: ConfigProcessor):
         print(f"Error: File not found: {file_path}")
         return
 
-    content = path.read_text()
+    content = path.read_text(encoding="utf-8")
 
     # Detect fmt
     fmt = processor.detect_format(file_path, content)
