@@ -4820,5 +4820,22 @@
       "interrupted": false,
       "isImage": false
     }
+  },
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "git stash",
+      "description": "Stash unstaged changes"
+    },
+    "tool_response": {
+      "stdout": "Saved working directory and index state WIP on main: 6062a0f fix: resolve all G004 logging f-string linting errors",
+      "stderr": "",
+      "interrupted": false,
+      "isImage": false
+    }
   }
 ]
