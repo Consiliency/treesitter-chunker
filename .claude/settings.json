@@ -42,7 +42,8 @@
       "LS(*)",
       "TodoWrite(*)",
       "Task(*)",
-      "exit_plan_mode(*)"
+      "exit_plan_mode(*)",
+      "bash(ruff:*)"
     ],
     "deny": [
       "Bash(rm -rf /)",
@@ -105,10 +106,6 @@
           {
             "type": "command",
             "command": "cd $(git rev-parse --show-toplevel) && uv run --script .claude/hooks/stop.py --chat"
-          },
-          {
-            "type": "command",
-            "command": "cd $(git rev-parse --show-toplevel) && uv run --script .claude/hooks/send_event.py --source-app treesitter_chunker --event-type Stop --add-chat"
           }
         ]
       }
@@ -153,5 +150,6 @@
         ]
       }
     ]
-  }
+  },
+  "$schema": "https://json.schemastore.org/claude-code-settings.json"
 }
