@@ -100,28 +100,47 @@ def main():
     if args.add_chat and "transcript_path" in input_data:
         transcript_path = input_data["transcript_path"]
         if Path(transcript_path).exists():
-            # Read .jsonl file and convert to JSON array
-            chat_data = []
-            try:
-                with open(transcript_path) as f:
-                    for line in f:
-                        line = line.strip()
-                        if line:
-                            try:
-                                chat_data.append(json.loads(line))
-                            except json.JSONDecodeError:
-                                pass  # Skip invalid lines
+            # Check file size to prevent memory issues
+            file_size = Path(transcript_path).stat().st_size
+            if file_size > 10 * 1024 * 1024:  # 10MB limit
+                print(
+                    f"Transcript file too large ({file_size} bytes), skipping",
+                    file=sys.stderr,
+                )
+            else:
+                # Read .jsonl file and convert to JSON array
+                chat_data = []
+                try:
+                    with open(transcript_path) as f:
+                        line_count = 0
+                        for line in f:
+                            line_count += 1
+                            if line_count > 10000:  # Limit to 10k lines
+                                print(
+                                    f"Transcript too long ({line_count} lines), truncating",
+                                    file=sys.stderr,
+                                )
+                                break
+                            line = line.strip()
+                            if line:
+                                try:
+                                    chat_data.append(json.loads(line))
+                                except json.JSONDecodeError:
+                                    pass  # Skip invalid lines
 
-                # Add chat to event data
-                event_data["chat"] = chat_data
-            except Exception as e:
-                print(f"Failed to read transcript: {e}", file=sys.stderr)
+                    # Add chat to event data
+                    event_data["chat"] = chat_data
+                except Exception as e:
+                    print(f"Failed to read transcript: {e}", file=sys.stderr)
 
     # Generate summary if requested
     if args.summarize:
-        summary = generate_event_summary(event_data)
-        if summary:
-            event_data["summary"] = summary
+        try:
+            summary = generate_event_summary(event_data)
+            if summary:
+                event_data["summary"] = summary
+        except Exception as e:
+            print(f"Failed to generate summary: {e}", file=sys.stderr)
         # Continue even if summary generation fails
 
     # Send to server
