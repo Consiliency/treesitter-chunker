@@ -102,7 +102,16 @@
     "Stop": [
       {
         "matcher": "",
-        "hooks": []
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd $(git rev-parse --show-toplevel) && uv run --script .claude/hooks/stop.py --chat"
+          },
+          {
+            "type": "command",
+            "command": "cd $(git rev-parse --show-toplevel) && uv run --script .claude/hooks/send_event.py --source-app treesitter_chunker --event-type Stop --add-chat"
+          }
+        ]
       }
     ],
     "SubagentStop": [
