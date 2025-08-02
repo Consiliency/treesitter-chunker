@@ -102,12 +102,7 @@
     "Stop": [
       {
         "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "cd $(git rev-parse --show-toplevel) && uv run --script .claude/hooks/stop.py --chat"
-          }
-        ]
+        "hooks": []
       }
     ],
     "SubagentStop": [
