@@ -344,7 +344,7 @@ class ChunkerConfig:
                 if value is None:
                     if default is not None:
                         return default
-                    logger.warning(f"Environment variable '{var_name}' not found")
+                    logger.warning("Environment variable '%s' not found", var_name)
                     return match.group(0)  # Keep original
                 return value
 

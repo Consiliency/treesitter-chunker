@@ -42,7 +42,9 @@
       "LS(*)",
       "TodoWrite(*)",
       "Task(*)",
-      "exit_plan_mode(*)"
+      "exit_plan_mode(*)",
+      "bash(.venv/bin/ruff check:*)",
+      "bash(.venv/bin/ruff check:*)"
     ],
     "deny": [
       "Bash(rm -rf /)",

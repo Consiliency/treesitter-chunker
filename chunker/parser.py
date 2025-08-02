@@ -6,14 +6,14 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from ._internal.factory import ParserConfig, ParserFactory
+from ._internal.registry import LanguageMetadata, LanguageRegistry
 from .exceptions import (
     LanguageNotFoundError,
     LibraryNotFoundError,
     ParserConfigError,
     ParserError,
 )
-from ._internal.factory import ParserConfig, ParserFactory
-from ._internal.registry import LanguageMetadata, LanguageRegistry
 
 if TYPE_CHECKING:
     from tree_sitter import Parser
@@ -48,7 +48,9 @@ def _initialize(library_path: Path | None = None) -> None:
         # Log discovered languages
         languages = _registry.list_languages()
         logger.info(
-            f"Initialized parser with {len(languages)} languages: {', '.join(languages)}",
+            "Initialized parser with %d languages: %s",
+            len(languages),
+            ", ".join(languages),
         )
 
 

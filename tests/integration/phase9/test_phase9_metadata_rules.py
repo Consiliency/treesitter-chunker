@@ -234,7 +234,7 @@ def create_default_manager() -> TaskManager:
 
         # Find complex functions
         complex_rule = ComplexFunctionRule()
-        complex_chunks = [
+        [
             chunk
             for chunk in chunks
             if hasattr(chunk, "metadata")

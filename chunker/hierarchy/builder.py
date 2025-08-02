@@ -2,7 +2,9 @@
 
 from collections import defaultdict
 
-from chunker.interfaces.hierarchy import ChunkHierarchy
+from chunker.interfaces.hierarchy import (
+    ChunkHierarchy,
+)
 from chunker.interfaces.hierarchy import (
     ChunkHierarchyBuilder as ChunkHierarchyBuilderInterface,
 )

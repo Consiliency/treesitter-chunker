@@ -141,7 +141,9 @@ class ParserFactory:
         self._parser_count = 0
 
         logger.info(
-            f"Initialized ParserFactory with cache_size={cache_size}, pool_size={pool_size}",
+            "Initialized ParserFactory with cache_size=%d, pool_size=%d",
+            cache_size,
+            pool_size,
         )
 
     def _create_parser(self, language: str) -> Parser:
@@ -155,7 +157,9 @@ class ParserFactory:
 
             self._parser_count += 1
             logger.debug(
-                f"Created new parser for '{language}' (total: {self._parser_count})",
+                "Created new parser for '%s' (total: %d)",
+                language,
+                self._parser_count,
             )
 
             return parser
@@ -178,7 +182,7 @@ class ParserFactory:
                         f"Consider updating tree-sitter library or recompiling grammars.",
                     ) from e
             raise ParserInitError(language, str(e)) from e
-        except (IndexError, KeyError, SyntaxError) as e:
+        except (IndexError, KeyError, SyntaxError, Exception) as e:
             raise ParserInitError(language, str(e)) from e
 
     def _get_pool(self, language: str) -> ParserPool:
@@ -237,14 +241,14 @@ class ParserFactory:
         # Check cache first
         parser = self._cache.get(cache_key)
         if parser:
-            logger.debug(f"Retrieved parser for '{language}' from cache")
+            logger.debug("Retrieved parser for '%s' from cache", language)
             return parser
 
         # Check pool
         pool = self._get_pool(language)
         parser = pool.get()
         if parser:
-            logger.debug(f"Retrieved parser for '{language}' from pool")
+            logger.debug("Retrieved parser for '%s' from pool", language)
             self._cache.put(cache_key, parser)
             return parser
 
@@ -267,9 +271,9 @@ class ParserFactory:
         """
         pool = self._get_pool(language)
         if pool.put(parser):
-            logger.debug(f"Returned parser for '{language}' to pool")
+            logger.debug("Returned parser for '%s' to pool", language)
         else:
-            logger.debug(f"Pool for '{language}' is full, parser discarded")
+            logger.debug("Pool for '%s' is full, parser discarded", language)
 
     def clear_cache(self) -> None:
         """Clear the parser cache."""

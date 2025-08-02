@@ -8,9 +8,10 @@ from unittest.mock import Mock, patch
 import pytest
 from tree_sitter import Parser
 
+from chunker._internal.factory import LRUCache, ParserFactory, ParserPool
+from chunker._internal.registry import LanguageRegistry
 from chunker.exceptions import LanguageNotFoundError, ParserConfigError, ParserInitError
-from chunker.factory import LRUCache, ParserConfig, ParserFactory, ParserPool
-from chunker.registry import LanguageRegistry
+from chunker.parser import ParserConfig
 
 
 class TestParserConfig:

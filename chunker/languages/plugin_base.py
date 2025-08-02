@@ -252,8 +252,10 @@ class LanguagePlugin(ABC):
             )
 
         logger.debug(
-            f"Plugin {self.__class__.__name__} v{self.plugin_version} "
-            f"validated successfully for language '{self.language_name}'",
+            "Plugin %s v%s validated successfully for language '%s'",
+            self.__class__.__name__,
+            self.plugin_version,
+            self.language_name,
         )
 
     def _is_api_compatible(self) -> bool:

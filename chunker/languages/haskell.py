@@ -72,12 +72,14 @@ class HaskellConfig(LanguageConfig):
         self.add_ignore_type("string")
         self.add_ignore_type("integer")
 
+
 # Register the Haskell configuration
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from tree_sitter import Node
+
 
 # Plugin implementation for backward compatibility
 class HaskellPlugin(LanguagePlugin, ExtendedLanguagePluginContract):

@@ -44,12 +44,13 @@ class RepoProcessor(RepoProcessorInterface):
         self.traversal_strategy = traversal_strategy
         self._git = None
         self._language_extensions = self._build_language_extension_map()
-    
+
     @property
     def git(self):
         """Lazy import of git module to avoid circular imports."""
         if self._git is None:
             import git
+
             self._git = git
         return self._git
 

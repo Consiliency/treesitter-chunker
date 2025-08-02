@@ -14,6 +14,7 @@ from .plugin_base import LanguagePlugin
 if TYPE_CHECKING:
     from tree_sitter import Node
 
+
 class JuliaConfig(LanguageConfig):
     """Language configuration for Julia."""
 
@@ -78,7 +79,9 @@ class JuliaConfig(LanguageConfig):
                                 return True
         return False
 
+
 # Register the Julia configuration
+
 
 # Plugin implementation for backward compatibility
 class JuliaPlugin(LanguagePlugin, ExtendedLanguagePluginContract):

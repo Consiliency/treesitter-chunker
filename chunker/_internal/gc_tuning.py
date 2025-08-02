@@ -109,7 +109,9 @@ class GCTuner:
             gc.set_threshold(50000, 30, 30)
 
         logger.info(
-            f"Tuned GC for batch size {batch_size}: thresholds={gc.get_threshold()}",
+            "Tuned GC for batch size %d: thresholds=%s",
+            batch_size,
+            gc.get_threshold(),
         )
 
     def tune_for_streaming(self):
@@ -124,7 +126,8 @@ class GCTuner:
         # Increase collection frequency to keep memory usage down
         gc.set_threshold(200, 5, 5)
         logger.info(
-            f"Tuned GC for memory-intensive ops: thresholds={gc.get_threshold()}",
+            "Tuned GC for memory-intensive ops: thresholds=%s",
+            gc.get_threshold(),
         )
 
     def disable_during_critical_section(self):

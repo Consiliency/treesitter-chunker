@@ -11,7 +11,11 @@ from typing import TYPE_CHECKING, Any
 
 from tree_sitter import Language, Parser
 
-from chunker.exceptions import LanguageNotFoundError, LibraryLoadError, LibraryNotFoundError
+from chunker.exceptions import (
+    LanguageNotFoundError,
+    LibraryLoadError,
+    LibraryNotFoundError,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -167,13 +171,15 @@ class LanguageRegistry:
                 discovered[lang_name] = metadata
 
                 logger.debug(
-                    f"Loaded language '{lang_name}' from symbol '{symbol_name}'",
+                    "Loaded language '%s' from symbol '%s'",
+                    lang_name,
+                    symbol_name,
                 )
 
             except AttributeError as e:
-                logger.warning(f"Failed to load symbol '{symbol_name}': {e}")
+                logger.warning("Failed to load symbol '%s': %s", symbol_name, e)
             except (IndexError, KeyError) as e:
-                logger.error(f"Error loading language '{lang_name}': {e}")
+                logger.error("Error loading language '%s': %s", lang_name, e)
 
         self._discovered = True
         logger.info("Successfully loaded %s languages", len(discovered))

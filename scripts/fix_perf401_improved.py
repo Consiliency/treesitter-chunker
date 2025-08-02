@@ -117,21 +117,7 @@ class ListComprehensionTransformer(ast.NodeTransformer):
             return True
 
         # Check for conditional append
-        if (
-            isinstance(stmt, ast.If)
-            and len(stmt.body) == 1
-            and len(stmt.orelse) == 0
-            and isinstance(stmt.body[0], ast.Expr)
-            and isinstance(stmt.body[0].value, ast.Call)
-            and isinstance(stmt.body[0].value.func, ast.Attribute)
-            and isinstance(stmt.body[0].value.func.value, ast.Name)
-            and stmt.body[0].value.func.value.id == list_var
-            and stmt.body[0].value.func.attr == "append"
-            and len(stmt.body[0].value.args) == 1
-        ):
-            return True
-
-        return False
+        return bool(isinstance(stmt, ast.If) and len(stmt.body) == 1 and len(stmt.orelse) == 0 and isinstance(stmt.body[0], ast.Expr) and isinstance(stmt.body[0].value, ast.Call) and isinstance(stmt.body[0].value.func, ast.Attribute) and isinstance(stmt.body[0].value.func.value, ast.Name) and stmt.body[0].value.func.value.id == list_var and stmt.body[0].value.func.attr == "append" and len(stmt.body[0].value.args) == 1)
 
     def _create_list_comprehension(self, for_node, list_var):
         """Create a list comprehension from a for loop."""

@@ -11,7 +11,9 @@ from chunker.fallback.base import FallbackWarning
 from chunker.interfaces.fallback_overlap import (
     OverlappingFallbackChunker as IOverlappingFallbackChunker,
 )
-from chunker.interfaces.fallback_overlap import OverlapStrategy
+from chunker.interfaces.fallback_overlap import (
+    OverlapStrategy,
+)
 from chunker.parser import list_languages
 from chunker.types import CodeChunk
 

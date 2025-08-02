@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-from chunker import (
+from chunker.incremental import (
     DefaultChangeDetector,
     DefaultChunkCache,
     DefaultIncrementalProcessor,

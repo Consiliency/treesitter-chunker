@@ -113,8 +113,9 @@ class BatchProcessor(BatchProcessorInterface):
             return {}
 
         logger.info(
-            f"Processing batch of {len(batch_files)} files "
-            f"({'parallel' if parallel else 'sequential'})",
+            "Processing batch of %d files (%s)",
+            len(batch_files),
+            "parallel" if parallel else "sequential",
         )
 
         # Reset cancel event

@@ -6,8 +6,9 @@ from contextlib import contextmanager
 from dataclasses import asdict
 from pathlib import Path
 
-from .file_utils import get_file_metadata
 from chunker.types import CodeChunk
+
+from .file_utils import get_file_metadata
 
 
 class ASTCache:

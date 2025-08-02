@@ -14,6 +14,7 @@ from .plugin_base import LanguagePlugin
 if TYPE_CHECKING:
     from tree_sitter import Node
 
+
 class RConfig(LanguageConfig):
     """Language configuration for R."""
 
@@ -73,7 +74,9 @@ class RConfig(LanguageConfig):
         # Look for function keyword in the right-hand side
         return any(child.type == "function_definition" for child in node.children)
 
+
 # Register the R configuration
+
 
 # Plugin implementation for backward compatibility
 class RPlugin(LanguagePlugin, ExtendedLanguagePluginContract):

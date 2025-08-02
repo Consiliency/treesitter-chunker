@@ -11,8 +11,9 @@ import time
 
 import psutil
 
-from chunker import ParallelChunker, chunk_file, chunk_files_parallel
-from chunker.cache import ASTCache
+from chunker import chunk_file
+from chunker.parallel import ParallelChunker, chunk_files_parallel
+from chunker._internal.cache import ASTCache
 from chunker.export import JSONExporter, JSONLExporter, SchemaType
 from chunker.streaming import chunk_file_streaming
 

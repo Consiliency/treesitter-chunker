@@ -102,8 +102,9 @@ class PerformanceMonitor(PerformanceMonitorInterface):
             )
 
             logger.debug(
-                f"Ended operation: {timing_info.operation_name} "
-                f"(Duration: {timing_info.duration_ms:.2f}ms)",
+                "Ended operation: %s (Duration: %.2fms)",
+                timing_info.operation_name,
+                timing_info.duration_ms,
             )
 
             return timing_info.duration_ms

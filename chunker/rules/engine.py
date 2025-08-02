@@ -45,7 +45,9 @@ class DefaultRuleEngine(RuleEngine):
         self._sort_rules()
 
         logger.info(
-            f"Added rule '{rule_name}' with priority {self._priorities[rule_name]}",
+            "Added rule '%s' with priority %d",
+            rule_name,
+            self._priorities[rule_name],
         )
 
     def remove_rule(self, rule_name: str) -> bool:
@@ -179,7 +181,10 @@ class DefaultRuleEngine(RuleEngine):
         merged_chunks.sort(key=lambda c: (c.byte_start, c.byte_end))
 
         logger.info(
-            f"Merged {len(tree_sitter_chunks)} TS chunks and {len(custom_chunks)} custom chunks into {len(merged_chunks)} total chunks",
+            "Merged %d TS chunks and %d custom chunks into %d total chunks",
+            len(tree_sitter_chunks),
+            len(custom_chunks),
+            len(merged_chunks),
         )
         return merged_chunks
 

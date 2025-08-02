@@ -5,10 +5,10 @@ import logging
 import platform
 from pathlib import Path
 
+from chunker._internal.registry import LanguageRegistry
 from chunker.exceptions import ChunkerError
 from chunker.interfaces.grammar import GrammarValidator
 from chunker.parser import get_parser
-from chunker._internal.registry import LanguageRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +112,8 @@ class TreeSitterGrammarValidator(GrammarValidator):
             for node_type in critical_types:
                 if node_type in expected_types and node_type not in found_types:
                     logger.warning(
-                        f"Expected node type '{node_type}' not found in test parse",
+                        "Expected node type '%s' not found in test parse",
+                        node_type,
                     )
                     missing.append(node_type)
 

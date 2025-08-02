@@ -17,9 +17,9 @@ from chunker import (
     list_languages,
     return_parser,
 )
+from chunker._internal.registry import LanguageMetadata
 from chunker.exceptions import ParserConfigError
 from chunker.parser import _factory, _initialize, get_parser
-from chunker.registry import LanguageMetadata
 
 
 class TestParserAPI:

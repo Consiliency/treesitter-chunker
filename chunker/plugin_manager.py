@@ -49,9 +49,12 @@ class PluginRegistry:
             existing_metadata = existing_instance.plugin_metadata
 
             logger.warning(
-                f"Overriding existing plugin for language '{language}': "
-                f"{existing_metadata['name']} v{existing_metadata['version']} -> "
-                f"{metadata['name']} v{metadata['version']}",
+                "Overriding existing plugin for language '%s': %s v%s -> %s v%s",
+                language,
+                existing_metadata["name"],
+                existing_metadata["version"],
+                metadata["name"],
+                metadata["version"],
             )
 
         # Check for extension conflicts
@@ -64,9 +67,11 @@ class PluginRegistry:
 
         if extension_conflicts:
             logger.info(
-                f"Plugin {metadata['name']} for language '{language}' "
-                f"shares extensions with other languages: {', '.join(extension_conflicts)}. "
-                f"Content-based detection will be used for .h files.",
+                "Plugin %s for language '%s' shares extensions with other languages: %s. "
+                "Content-based detection will be used for .h files.",
+                metadata["name"],
+                language,
+                ", ".join(extension_conflicts),
             )
 
         self._plugins[language] = plugin_class
@@ -76,8 +81,11 @@ class PluginRegistry:
             self._extension_map[ext] = language
 
         logger.info(
-            f"Registered plugin {metadata['name']} v{metadata['version']} "
-            f"for language '{language}' with extensions: {list(temp_instance.supported_extensions)}",
+            "Registered plugin %s v%s for language '%s' with extensions: %s",
+            metadata["name"],
+            metadata["version"],
+            language,
+            list(temp_instance.supported_extensions),
         )
 
     def unregister(self, language: str) -> None:
@@ -213,7 +221,9 @@ class PluginManager:
                     ):
                         plugins.append(obj)
                         logger.info(
-                            f"Found plugin class: {obj.__name__} in {file_path}",
+                            "Found plugin class: %s in %s",
+                            obj.__name__,
+                            file_path,
                         )
 
                 return plugins
@@ -353,7 +363,9 @@ class PluginManager:
                 # Detection failed, keep the registry default (C)
                 elif language:
                     logger.info(
-                        f"Could not detect language for {file_path}, defaulting to {language}",
+                        "Could not detect language for %s, defaulting to %s",
+                        file_path,
+                        language,
                     )
 
             if not language:

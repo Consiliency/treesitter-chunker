@@ -6,8 +6,8 @@ from pathlib import Path
 import pyarrow.parquet as pq
 import pytest
 
-from chunker.types import CodeChunk
 from chunker.exporters import ParquetExporter
+from chunker.types import CodeChunk
 
 
 @pytest.fixture

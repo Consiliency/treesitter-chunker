@@ -6,12 +6,12 @@ from unittest.mock import Mock, patch
 import pytest
 from tree_sitter import Language
 
+from chunker._internal.registry import LanguageMetadata, LanguageRegistry
 from chunker.exceptions import (
     LanguageNotFoundError,
     LibraryLoadError,
     LibraryNotFoundError,
 )
-from chunker.registry import LanguageMetadata, LanguageRegistry
 
 
 class TestLanguageRegistry:

@@ -1,0 +1,37 @@
+[
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "manually fix the errors, don't create scripts. Every time you create a script, it introduces a lot of other errors. So manually do one file at a time. After each file, ensure you haven't introduced more linting errors. If you have, attempt to fix them with automatic linting tools, and then try to fix any errors that the tools did not fix."
+  },
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "Okay, let's keep hunting down the rest of the G004 errors with the same methodology of manually fixing after we run black and then checking again after the fix to make sure we haven't introduced any new errors."
+  },
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "continue"
+  },
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "continue"
+  },
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "Awesome, let's run our testing suite and then push the current progress to the remote as long as we pass the tests."
+  }
+]

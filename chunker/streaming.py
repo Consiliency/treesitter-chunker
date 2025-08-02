@@ -4,7 +4,6 @@ import mmap
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from ._internal.file_utils import FileMetadata, compute_file_hash, get_file_metadata
 from .parser import get_parser
 from .types import CodeChunk
 

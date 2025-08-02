@@ -4,8 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from chunker import chunk_file, chunk_file_streaming, chunk_files_parallel
-from chunker.cache import ASTCache
+from chunker import chunk_file, chunk_file_streaming
+from chunker.parallel import chunk_files_parallel
+from chunker._internal.cache import ASTCache
 
 # Sample Python code for testing
 SAMPLE_PYTHON_CODE = '''

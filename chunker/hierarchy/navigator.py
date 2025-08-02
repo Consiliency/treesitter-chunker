@@ -2,7 +2,9 @@
 
 from collections import deque
 
-from chunker.interfaces.hierarchy import ChunkHierarchy
+from chunker.interfaces.hierarchy import (
+    ChunkHierarchy,
+)
 from chunker.interfaces.hierarchy import (
     HierarchyNavigator as HierarchyNavigatorInterface,
 )

@@ -80,7 +80,9 @@ def fix_perf401_patterns(content: str) -> tuple[str, bool]:
         condition = match.group(7)
         expr = match.group(9)
 
-        return f"{indent}{var_name} = [{expr} for {loop_var} in {iterable} if {condition}]"
+        return (
+            f"{indent}{var_name} = [{expr} for {loop_var} in {iterable} if {condition}]"
+        )
 
     content = pattern2.sub(replace2, content)
 
@@ -184,7 +186,8 @@ def main():
 
     result = subprocess.run(
         ["ruff", "check", "--select", "PERF401", "--output-format", "json"],
-        check=False, capture_output=True,
+        check=False,
+        capture_output=True,
         text=True,
     )
 
@@ -193,6 +196,7 @@ def main():
         return
 
     import json
+
     try:
         errors = json.loads(result.stdout)
         files_to_fix = {Path(error["filename"]) for error in errors}
@@ -200,7 +204,8 @@ def main():
         # Fallback to parsing text output
         result = subprocess.run(
             ["ruff", "check", "--select", "PERF401"],
-            check=False, capture_output=True,
+            check=False,
+            capture_output=True,
             text=True,
         )
         files_to_fix = set()

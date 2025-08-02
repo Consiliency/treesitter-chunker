@@ -7,7 +7,9 @@ from typing import Literal
 from chunker.interfaces.fallback_overlap import (
     OverlappingFallbackChunker as IOverlappingFallbackChunker,
 )
-from chunker.interfaces.fallback_overlap import OverlapStrategy
+from chunker.interfaces.fallback_overlap import (
+    OverlapStrategy,
+)
 from chunker.types import CodeChunk
 
 __all__ = ["OverlapConfig", "OverlapStrategy", "OverlappingFallbackChunker"]

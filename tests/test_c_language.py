@@ -20,7 +20,7 @@ def check_c_parser_available():
 # Skip entire test class if C parser is not available
 pytestmark = pytest.mark.skipif(
     not check_c_parser_available(),
-    reason="C parser not available due to ABI version mismatch"
+    reason="C parser not available due to ABI version mismatch",
 )
 
 

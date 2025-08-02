@@ -137,7 +137,10 @@ class FallbackManager:
                 chunk.file_path = file_path
 
         logger.info(
-            f"Created {len(chunks)} chunks for {file_path} using {file_type.value} strategy",
+            "Created %d chunks for %s using %s strategy",
+            len(chunks),
+            file_path,
+            file_type.value,
         )
 
         return chunks

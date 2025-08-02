@@ -68,12 +68,14 @@ class MATLABConfig(LanguageConfig):
         self.add_ignore_type("string")
         self.add_ignore_type("number")
 
+
 # Register the MATLAB configuration
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from tree_sitter import Node
+
 
 # Plugin implementation for backward compatibility
 class MATLABPlugin(LanguagePlugin, ExtendedLanguagePluginContract):

@@ -243,7 +243,10 @@ class AdaptiveChunker(ChunkingStrategy):
 
             # If preserve_boundaries is True and this is a natural boundary,
             # don't create additional chunks for its children
-            if self.config.get("preserve_boundaries", True) and node.type in self.natural_boundaries:
+            if (
+                self.config.get("preserve_boundaries", True)
+                and node.type in self.natural_boundaries
+            ):
                 return
 
             # Process children based on remaining size budget

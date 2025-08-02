@@ -74,7 +74,7 @@ def manage_grammars(action: str, languages: list):
             # Get info from repository
             info = repo.get_grammar_info(lang)
             if not info:
-                logger.error(f"Grammar '{lang}' not found in repository")
+                logger.error("Grammar '%s' not found in repository", lang)
                 continue
 
             # Add to manager

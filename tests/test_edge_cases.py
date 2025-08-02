@@ -10,7 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from chunker import CodeChunk, chunk_file, chunk_files_parallel
+from chunker import CodeChunk, chunk_file
+from chunker.parallel import chunk_files_parallel
 from chunker.chunker_config import ChunkerConfig
 from chunker.exceptions import LanguageNotFoundError
 from chunker.export import JSONExporter, JSONLExporter, SchemaType

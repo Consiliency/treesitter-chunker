@@ -60,12 +60,14 @@ class DockerfileConfig(LanguageConfig):
             ),
         )
 
+
 # Register the Dockerfile configuration
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from tree_sitter import Node
+
 
 # Plugin implementation for backward compatibility
 class DockerfilePlugin(LanguagePlugin, ExtendedLanguagePluginContract):

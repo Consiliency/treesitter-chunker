@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from chunker.types import CodeChunk
 from chunker.export import JSONLExporter, SchemaType
+from chunker.types import CodeChunk
 
 
 @pytest.fixture

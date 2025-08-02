@@ -604,7 +604,7 @@ class SlidingWindowFallback(FallbackChunker):
         for proc_name in processor_names:
             processor = self.registry.get_processor(proc_name)
             if processor and processor.can_process(content, file_path):
-                logger.info(f"Using processor '{proc_name}' for {file_path}")
+                logger.info("Using processor '%s' for %s", proc_name, file_path)
 
                 try:
                     chunks = processor.process(content, file_path)
@@ -621,13 +621,13 @@ class SlidingWindowFallback(FallbackChunker):
                     return chunks
 
                 except (AttributeError, FileNotFoundError, IndexError) as e:
-                    logger.error(f"Processor '{proc_name}' failed: {e}")
+                    logger.error("Processor '%s' failed: %s", proc_name, e)
                     continue
 
         # Fall back to base implementation
         logger.warning(
-            f"No suitable processor found for {file_path}, "
-            "using line-based chunking",
+            "No suitable processor found for %s, using line-based chunking",
+            file_path,
         )
         return super().chunk_text(content, file_path, language)
 
@@ -719,7 +719,7 @@ class SlidingWindowFallback(FallbackChunker):
         for name in processor_names:
             processor = self.registry.get_processor(name)
             if not processor:
-                logger.error(f"Processor '{name}' not found for chain")
+                logger.error("Processor '%s' not found for chain", name)
                 return None
             processors.append(processor)
 

@@ -14,7 +14,8 @@ from pathlib import Path
 import psutil
 import pytest
 
-from chunker import CodeChunk, ParallelChunker, chunk_file, chunk_files_parallel
+from chunker import CodeChunk, chunk_file
+from chunker.parallel import ParallelChunker, chunk_files_parallel
 from chunker.chunker_config import ChunkerConfig
 from chunker.export import JSONExporter, JSONLExporter, SchemaType
 

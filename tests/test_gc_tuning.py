@@ -4,7 +4,7 @@ import gc
 import time
 from unittest.mock import Mock, patch
 
-from chunker.gc_tuning import (
+from chunker._internal.gc_tuning import (
     GCTuner,
     MemoryOptimizer,
     ObjectPool,

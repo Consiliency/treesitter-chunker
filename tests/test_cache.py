@@ -13,8 +13,8 @@ from pathlib import Path
 import pytest
 
 from chunker import chunk_file
-from chunker.cache import ASTCache
-from chunker.streaming import get_file_metadata
+from chunker._internal.cache import ASTCache
+from chunker._internal.file_utils import get_file_metadata
 from chunker.types import CodeChunk
 
 # Sample code for testing

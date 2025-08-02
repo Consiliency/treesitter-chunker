@@ -162,7 +162,9 @@ class IncrementalParser(IncrementalParserInterface):
                     break
 
         logger.info(
-            f"Incremental update: {len(affected_chunk_ids)} chunks affected out of {len(old_chunks)}",
+            "Incremental update: %d chunks affected out of %d",
+            len(affected_chunk_ids),
+            len(old_chunks),
         )
 
         # For now, we'll need to re-chunk the affected areas

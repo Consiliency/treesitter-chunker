@@ -31,8 +31,11 @@ class CacheManager(CacheManagerInterface):
         """
         self._cache = MultiLevelCache(ast_size, chunk_size, query_size, metadata_size)
         logger.info(
-            f"Initialized CacheManager with sizes - AST: {ast_size}, "
-            f"Chunk: {chunk_size}, Query: {query_size}, Metadata: {metadata_size}",
+            "Initialized CacheManager with sizes - AST: %d, Chunk: %d, Query: %d, Metadata: %d",
+            ast_size,
+            chunk_size,
+            query_size,
+            metadata_size,
         )
 
     def get(self, key: str) -> Any | None:
@@ -88,7 +91,9 @@ class CacheManager(CacheManagerInterface):
         count = self._cache.invalidate_pattern(pattern)
         if count > 0:
             logger.info(
-                f"Invalidated {count} cache entries matching pattern: {pattern}",
+                "Invalidated %d cache entries matching pattern: %s",
+                count,
+                pattern,
             )
         return count
 

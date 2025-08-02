@@ -427,7 +427,8 @@ class MarkdownProcessor(SpecializedProcessor):
                     chunks.append(chunk)
                 else:
                     logger.warning(
-                        f"Failed to create chunk for atomic element: {boundary_type}",
+                        "Failed to create chunk for atomic element: %s",
+                        boundary_type,
                     )
 
                 # Reset for next chunk

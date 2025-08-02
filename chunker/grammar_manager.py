@@ -95,7 +95,9 @@ class GrammarManager(GrammarManagerContract):
         # Check if language already exists
         if language in self._grammar_sources:
             logger.warning(
-                f"Language '{language}' already exists with URL: {self._grammar_sources[language]}",
+                "Language '%s' already exists with URL: %s",
+                language,
+                self._grammar_sources[language],
             )
             return False
 
@@ -104,7 +106,7 @@ class GrammarManager(GrammarManagerContract):
             self._grammar_sources[language] = repo_url
             self._save_config()
 
-        logger.info(f"Added grammar source for '{language}': {repo_url}")
+        logger.info("Added grammar source for '%s': %s", language, repo_url)
         return True
 
     def fetch_grammars(self, languages: list[str] | None = None) -> dict[str, bool]:
@@ -248,10 +250,14 @@ class GrammarManager(GrammarManagerContract):
         # Compile
         try:
             logger.info(
-                f"Compiling {len(c_files)} C files from {len(languages_to_compile)} languages",
+                "Compiling %d C files from %d languages",
+                len(c_files),
+                len(languages_to_compile),
             )
             logger.debug(
-                f"Compilation command: {' '.join(cmd[:10])}... ({len(cmd)} args total)",
+                "Compilation command: %s... (%d args total)",
+                " ".join(cmd[:10]),
+                len(cmd),
             )
 
             subprocess.run(cmd, capture_output=True, text=True, check=True)

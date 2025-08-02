@@ -52,7 +52,9 @@ class MemoryPool(MemoryPoolInterface):
                 resource = pool.popleft()
                 self._stats[resource_type]["acquired"] += 1
                 logger.debug(
-                    f"Acquired {resource_type} from pool (pool size: {len(pool)})",
+                    "Acquired %s from pool (pool size: %d)",
+                    resource_type,
+                    len(pool),
                 )
             else:
                 # Create new resource
@@ -87,7 +89,9 @@ class MemoryPool(MemoryPoolInterface):
                 pool.append(resource)
                 self._stats[resource_type]["released"] += 1
                 logger.debug(
-                    f"Released {resource_type} to pool (pool size: {len(pool)})",
+                    "Released %s to pool (pool size: %d)",
+                    resource_type,
+                    len(pool),
                 )
             else:
                 # Pool is full, let it be garbage collected

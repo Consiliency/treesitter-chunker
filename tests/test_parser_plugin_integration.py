@@ -29,8 +29,8 @@ import psutil
 import pytest
 import tree_sitter
 
-from chunker.factory import ParserFactory
-from chunker.registry import LanguageRegistry
+from chunker._internal.factory import ParserFactory
+from chunker._internal.registry import LanguageRegistry
 
 
 class MockDynamicParser:

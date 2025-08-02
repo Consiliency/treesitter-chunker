@@ -78,12 +78,14 @@ class WASMConfig(LanguageConfig):
         self.add_ignore_type("comment")
         self.add_ignore_type("block_comment")
 
+
 # Register the WASM configuration
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from tree_sitter import Node
+
 
 # Plugin implementation for backward compatibility
 class WASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
