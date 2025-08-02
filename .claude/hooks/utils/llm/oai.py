@@ -1,9 +1,9 @@
 #!/usr / bin / env -S uv run --script
 # /// script
-# requires - python = ">=3.8"
+# requires = { python = ">=3.8" }
 # dependencies = [
 #     "openai",
-#     "python - dotenv",
+#     "python-dotenv",
 # ]
 # ///
 
