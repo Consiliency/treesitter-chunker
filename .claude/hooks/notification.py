@@ -2,7 +2,7 @@
 # /// script
 # requires = { python = ">=3.11" }
 # dependencies = [
-#     "python - dotenv",
+#     "python-dotenv",
 # ]
 # ///
 

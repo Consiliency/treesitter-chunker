@@ -3,7 +3,7 @@
 # requires = { python = ">=3.8" }
 # dependencies = [
 #     "elevenlabs",
-#     "python - dotenv",
+#     "python-dotenv",
 # ]
 # ///
 
