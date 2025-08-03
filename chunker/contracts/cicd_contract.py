@@ -1,7 +1,3 @@
-# File: chunker/contracts/cicd_contract.py
-# Purpose: Define the boundary for CI/CD pipeline components
-# Team responsible: CI/CD Team
-
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
@@ -10,8 +6,9 @@ from typing import Any
 class CICDPipelineContract(ABC):
     """Abstract contract defining CI/CD pipeline interface"""
 
+    @staticmethod
     @abstractmethod
-    def validate_workflow_syntax(self, workflow_path: Path) -> tuple[bool, list[str]]:
+    def validate_workflow_syntax(workflow_path: Path) -> tuple[bool, list[str]]:
         """Validate GitHub Actions workflow syntax
 
         Args:
@@ -29,12 +26,10 @@ class CICDPipelineContract(ABC):
             - Any errors are clearly described
         """
 
+    @staticmethod
     @abstractmethod
-    def run_test_matrix(
-        self,
-        python_versions: list[str],
-        platforms: list[str],
-    ) -> dict[str, dict[str, Any]]:
+    def run_test_matrix(python_versions: list[str], platforms: list[str],
+        ) -> dict[str, dict[str, Any]]:
         """Execute tests across version and platform matrix
 
         Args:
@@ -63,8 +58,10 @@ class CICDPipelineContract(ABC):
             - Results captured for each combination
         """
 
+    @staticmethod
     @abstractmethod
-    def build_distribution(self, version: str, platforms: list[str]) -> dict[str, Any]:
+    def build_distribution(version: str, platforms: list[str]) -> dict[str, Any,
+        ]:
         """Build distribution packages for specified platforms
 
         Args:
@@ -87,13 +84,10 @@ class CICDPipelineContract(ABC):
             - All files have checksums
         """
 
+    @staticmethod
     @abstractmethod
-    def create_release(
-        self,
-        version: str,
-        artifacts: list[Path],
-        changelog: str,
-    ) -> dict[str, Any]:
+    def create_release(version: str, artifacts: list[Path], changelog: str,
+        ) -> dict[str, Any]:
         """Create a GitHub release with artifacts
 
         Args:

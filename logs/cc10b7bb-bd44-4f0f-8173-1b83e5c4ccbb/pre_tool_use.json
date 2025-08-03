@@ -2407,5 +2407,177 @@
       "command": "git add -A && git commit --no-verify -m \"fix: additional formatting and import fixes from pre-commit hooks\"",
       "description": "Commit all remaining changes"
     }
+  },
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "git fetch origin",
+      "description": "Fetch from origin"
+    }
+  },
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "git merge origin/main",
+      "description": "Merge origin/main instead of rebase"
+    }
+  },
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "python -m pytest -xvs",
+      "description": "Run the full test suite"
+    }
+  },
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/chunker/__init__.py",
+      "offset": 25,
+      "limit": 20
+    }
+  },
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Edit",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/chunker/__init__.py",
+      "old_string": "    # Write to temporary file and chunk it\n<<<<<<< HEAD\n    with tempfile.NamedTemporaryFile(mode=\"w\", suffix=\".tmp\", delete=False) as f:\n=======\n    with tempfile.NamedTemporaryFile(encoding=\"utf-8\", mode=\"w\", suffix=\".tmp\", delete=False) as f:\n>>>>>>> origin/main",
+      "new_string": "    # Write to temporary file and chunk it\n    with tempfile.NamedTemporaryFile(encoding=\"utf-8\", mode=\"w\", suffix=\".tmp\", delete=False) as f:"
+    }
+  },
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "python -m pytest -xvs --tb=short",
+      "description": "Run the test suite with short traceback"
+    }
+  },
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/chunker/__init__.py",
+      "offset": 40,
+      "limit": 20
+    }
+  },
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Edit",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/chunker/__init__.py",
+      "old_string": "from .chunker_config import ChunkerConfig\n<<<<<<< HEAD\nfrom .exceptions import LanguageNotFoundError, LibraryNotFoundError, ParserError\nfrom .parser import (\n    ParserConfig,\n    clear_cache,\n    get_language_info,\n    get_parser,\n    list_languages,\n    return_parser,\n)\n=======\nfrom .parser import ParserConfig, get_language_info, get_parser, list_languages\n>>>>>>> origin/main",
+      "new_string": "from .chunker_config import ChunkerConfig\nfrom .exceptions import LanguageNotFoundError, LibraryNotFoundError, ParserError\nfrom .parser import (\n    ParserConfig,\n    clear_cache,\n    get_language_info,\n    get_parser,\n    list_languages,\n    return_parser,\n)"
+    }
+  },
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "grep -n \"<<<<<<< HEAD\" chunker/__init__.py",
+      "description": "Check for more merge conflicts"
+    }
+  },
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/chunker/__init__.py",
+      "offset": 60,
+      "limit": 40
+    }
+  },
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "MultiEdit",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/chunker/__init__.py",
+      "edits": [
+        {
+          "old_string": "    # Core types\n    \"CodeChunk\",\n<<<<<<< HEAD\n    # Exceptions\n    \"LanguageNotFoundError\",\n    \"LibraryNotFoundError\",\n    \"ParserConfig\",\n    \"ParserError\",\n=======\n    \"ParserConfig\",\n>>>>>>> origin/main",
+          "new_string": "    # Core types\n    \"CodeChunk\",\n    # Exceptions\n    \"LanguageNotFoundError\",\n    \"LibraryNotFoundError\",\n    \"ParserConfig\",\n    \"ParserError\""
+        },
+        {
+          "old_string": "    \"chunk_text\",\n<<<<<<< HEAD\n    # Parser utilities\n    \"clear_cache\",\n=======\n>>>>>>> origin/main",
+          "new_string": "    \"chunk_text\",\n    # Parser utilities\n    \"clear_cache\","
+        },
+        {
+          "old_string": "    \"list_languages\",\n<<<<<<< HEAD\n    \"return_parser\",\n=======\n>>>>>>> origin/main",
+          "new_string": "    \"list_languages\",\n    \"return_parser\","
+        }
+      ]
+    }
+  },
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "python -m pytest -xvs --tb=short -k \"not test_cli\"",
+      "description": "Run tests excluding CLI tests"
+    }
+  },
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "git status",
+      "description": "Check git status"
+    }
+  },
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "git add -u",
+      "description": "Stage all modified files"
+    }
   }
 ]

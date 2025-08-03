@@ -1,5 +1,4 @@
 """YAML language configuration."""
-
 from typing import Any
 
 from .base import LanguageConfig, language_config_registry
@@ -15,32 +14,21 @@ class YAMLPlugin(LanguagePlugin):
 
     @property
     def supported_node_types(self) -> set[str]:
-        return {
-            "document",
-            "block_mapping",
-            "block_sequence",
-            "block_mapping_pair",
-            "flow_mapping",
-            "flow_sequence",
-        }
+        return {"document", "block_mapping", "block_sequence",
+            "block_mapping_pair", "flow_mapping", "flow_sequence"}
 
-    def get_chunk_type(self, node_type: str) -> str | None:
+    def get_chunk_type(self, node_type: str) -> (str | None):
         return node_type if node_type in self.supported_node_types else None
 
-    def extract_metadata(self, node: Any, source_code: bytes) -> dict[str, Any]:
+    @staticmethod
+    def extract_metadata(node: Any, source_code: bytes) -> dict[str, Any]:
         metadata = {"node_type": node.type}
-
         if node.type == "block_mapping_pair":
-            # Extract key name
             key_node = node.child_by_field_name("key")
             if key_node:
-                key_text = (
-                    source_code[key_node.start_byte : key_node.end_byte]
-                    .decode("utf-8")
-                    .strip()
-                )
+                key_text = source_code[key_node.start_byte:key_node.end_byte
+                    ].decode("utf-8").strip()
                 metadata["key"] = key_text
-
         return metadata
 
 
@@ -54,13 +42,8 @@ class YAMLConfig(LanguageConfig):
     @property
     def chunk_types(self) -> set[str]:
         """YAML-specific chunk types."""
-        return {
-            "block_mapping",
-            "block_sequence",
-            "block_mapping_pair",
-            "flow_mapping",
-            "flow_sequence",
-        }
+        return {"block_mapping", "block_sequence", "block_mapping_pair",
+            "flow_mapping", "flow_sequence"}
 
     @property
     def file_extensions(self) -> set[str]:
@@ -68,8 +51,6 @@ class YAMLConfig(LanguageConfig):
 
     def __init__(self):
         super().__init__()
-
-        # Ignore certain node types
         self.add_ignore_type("plain_scalar")
         self.add_ignore_type("double_quote_scalar")
         self.add_ignore_type("single_quote_scalar")
@@ -79,26 +60,19 @@ class YAMLConfig(LanguageConfig):
         self.add_ignore_type("anchor")
         self.add_ignore_type("alias")
 
-    def is_chunk_node(self, node: Any, source: bytes) -> bool:
+    @staticmethod
+    def is_chunk_node(node: Any, source: bytes) -> bool:
         """Override to add YAML-specific logic."""
         if not super().is_chunk_node(node, source):
             return False
-
-        # Additional YAML-specific filtering
         if node.type == "block_mapping_pair":
-            # Only chunk top-level or significant pairs
             parent = node.parent
             if parent and parent.type == "block_mapping":
-                # Check if this is a top-level mapping
                 grandparent = parent.parent
-                if grandparent and grandparent.type not in (
-                    "document",
-                    "block_mapping_pair",
-                ):
+                if grandparent and grandparent.type not in {"document",
+                    "block_mapping_pair"}:
                     return False
-
         return True
 
 
-# Register the configuration
 language_config_registry.register(YAMLConfig(), aliases=["yml"])

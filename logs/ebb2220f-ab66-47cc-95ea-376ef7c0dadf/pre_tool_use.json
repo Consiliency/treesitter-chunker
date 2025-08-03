@@ -4,9 +4,21 @@
     "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
     "cwd": "/home/jenner/code/treesitter-chunker",
     "hook_event_name": "PreToolUse",
-    "tool_name": "Read",
+    "tool_name": "Grep",
     "tool_input": {
-      "file_path": "/home/jenner/code/treesitter-chunker/pyproject.toml"
+      "pattern": "# TODO|# FIXME|# XXX|# HACK",
+      "output_mode": "count"
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Grep",
+    "tool_input": {
+      "pattern": "raise \\w+Error\\(",
+      "output_mode": "count"
     }
   },
   {
@@ -16,64 +28,8 @@
     "hook_event_name": "PreToolUse",
     "tool_name": "Read",
     "tool_input": {
-      "file_path": "/home/jenner/code/treesitter-chunker/.github/workflows/test.yml"
-    }
-  },
-  {
-    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
-    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
-    "cwd": "/home/jenner/code/treesitter-chunker",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "TodoWrite",
-    "tool_input": {
-      "todos": [
-        {
-          "content": "Analyze current git status and changes that need to be committed",
-          "status": "completed",
-          "priority": "high",
-          "id": "1"
-        },
-        {
-          "content": "Examine package configuration (pyproject.toml) for publishing setup",
-          "status": "completed",
-          "priority": "high",
-          "id": "2"
-        },
-        {
-          "content": "Review existing CI/CD workflows and automation",
-          "status": "in_progress",
-          "priority": "high",
-          "id": "3"
-        },
-        {
-          "content": "Research PyPI publishing requirements and best practices",
-          "status": "pending",
-          "priority": "medium",
-          "id": "4"
-        },
-        {
-          "content": "Investigate other Python package registries (conda-forge, etc.)",
-          "status": "pending",
-          "priority": "medium",
-          "id": "5"
-        },
-        {
-          "content": "Create comprehensive step-by-step deployment plan",
-          "status": "pending",
-          "priority": "high",
-          "id": "6"
-        }
-      ]
-    }
-  },
-  {
-    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
-    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
-    "cwd": "/home/jenner/code/treesitter-chunker",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "Glob",
-    "tool_input": {
-      "pattern": "**/.github/workflows/*.yml"
+      "file_path": "/home/jenner/code/treesitter-chunker/chunker/chunker.py",
+      "limit": 50
     }
   },
   {
@@ -83,7 +39,63 @@
     "hook_event_name": "PreToolUse",
     "tool_name": "Read",
     "tool_input": {
-      "file_path": "/home/jenner/code/treesitter-chunker/CHANGELOG.md"
+      "file_path": "/home/jenner/code/treesitter-chunker/chunker/auto.py",
+      "limit": 50
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/cli/main.py",
+      "limit": 50
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Grep",
+    "tool_input": {
+      "pattern": "import\\s+\\w+\\s*,",
+      "output_mode": "count"
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Grep",
+    "tool_input": {
+      "pattern": "from.*import.*,.*import",
+      "output_mode": "count"
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Grep",
+    "tool_input": {
+      "pattern": "def \\w+\\([^)]*=\\[|def \\w+\\([^)]*=\\{",
+      "output_mode": "count"
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Grep",
+    "tool_input": {
+      "pattern": "# type: ignore",
+      "output_mode": "count"
     }
   },
   {
@@ -93,8 +105,153 @@
     "hook_event_name": "PreToolUse",
     "tool_name": "Bash",
     "tool_input": {
-      "command": "git remote -v",
-      "description": "Check configured git remotes"
+      "command": "git log --oneline -20",
+      "description": "Show recent commit messages"
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Grep",
+    "tool_input": {
+      "pattern": "from typing import.*\\|",
+      "output_mode": "files_with_matches",
+      "head_limit": 10
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Grep",
+    "tool_input": {
+      "pattern": "Union\\[.*None\\]",
+      "output_mode": "files_with_matches",
+      "head_limit": 10
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/chunker/multi_language.py",
+      "limit": 80
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "find /home/jenner/code/treesitter-chunker -name \"*.py\" -path \"*/chunker/*\" -o -path \"*/cli/*\" -o -path \"*/tests/*\" | head -20",
+      "description": "Find Python files in main directories"
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Grep",
+    "tool_input": {
+      "pattern": "# noqa",
+      "output_mode": "count"
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "ExitPlanMode",
+    "tool_input": {
+      "plan": "# Comprehensive Linting Issues Analysis & Prioritized Fix Plan\n\n## Current State Analysis\n\nBased on my investigation, the codebase has already undergone significant linting cleanup (as evidenced by recent commits like \"fix: Summary of all linting fixes\" and \"fix: Reduce linting errors from 5200+ to 1208\"). However, there are still remaining issues that need systematic resolution.\n\n## Error Categories & Frequencies\n\n### 1. **High Frequency Issues** (Major Impact)\n- **PERF401**: `append()` in loops (~4,739 occurrences) - Performance critical\n- **Import Organization**: Mixed import styles (~2,796 occurrences) - Code quality\n- **B008**: Function calls in argument defaults (~7,144 occurrences) - Bug risk\n- **BLE001**: Blind except clauses (~197 occurrences) - Error handling\n- **RUF013**: Implicit Optional types (~462 occurrences) - Type safety\n\n### 2. **Medium Frequency Issues** (Moderate Impact)\n- **S113**: Requests without timeout (~118 occurrences) - Security\n- **B904**: Raise without from (~975 occurrences) - Error context\n- **ERA001**: Commented code (~194 occurrences) - Code cleanliness\n- **PTH**: Path operations using os.path vs pathlib - Modern practices\n\n### 3. **Low Frequency Issues** (Minor Impact)\n- Type hints with `# type: ignore` (~2,129 occurrences) - Technical debt\n- Complex function signatures - Maintainability\n\n## Files with Most Issues (Priority Targets)\n\n1. **`/home/jenner/code/treesitter-chunker/chunker/multi_language.py`** - Core functionality\n2. **`/home/jenner/code/treesitter-chunker/cli/main.py`** - CLI interface\n3. **`/home/jenner/code/treesitter-chunker/chunker/auto.py`** - Auto-detection\n4. **`/home/jenner/code/treesitter-chunker/chunker/chunker.py`** - Main chunker\n5. Language-specific modules in `/chunker/languages/`\n6. Test files (can be addressed with less strict rules)\n\n## Systematic Fix Plan\n\n### **Phase 1: Critical Security & Bug Fixes** (1-2 days)\n1. **S113 - Request Timeouts**: Add timeout parameters to all `requests` calls\n2. **BLE001 - Specific Exceptions**: Replace `except:` with specific exception types\n3. **B008 - Mutable Defaults**: Fix function arguments with mutable defaults\n4. **B904 - Exception Chaining**: Add `raise ... from ...` for proper error context\n\n### **Phase 2: Performance Optimizations** (2-3 days)\n1. **PERF401 - List Comprehensions**: Convert `append()` loops to list/dict comprehensions\n2. **PTH - Pathlib Migration**: Replace `os.path` with `pathlib.Path` operations\n3. **SIM - Code Simplification**: Apply simplification suggestions\n\n### **Phase 3: Type Safety & Modern Python** (1-2 days)\n1. **RUF013 - Optional Types**: Convert `Union[X, None]` to `X | None` or `Optional[X]`\n2. **Import Organization**: Standardize import order and grouping\n3. **UP - Python Upgrades**: Apply modern Python idioms\n\n### **Phase 4: Code Quality & Cleanup** (1 day)\n1. **ERA001 - Dead Code**: Remove commented-out code blocks\n2. **Docstring Standards**: Ensure consistent Google-style docstrings\n3. **Variable Naming**: Fix ambiguous names flagged by linters\n\n### **Phase 5: Configuration Refinement** (0.5 day)\n1. Add project-specific ignores for acceptable patterns\n2. Configure per-file-ignores for test files and scripts\n3. Set up pre-commit hooks to prevent regression\n\n## Implementation Strategy\n\n### **Quick Wins First** (High impact, low effort)\n- Fix all S113 security issues (simple timeout additions)\n- Replace bare `except:` clauses\n- Remove commented code (ERA001)\n\n### **Systematic Refactoring** (High impact, moderate effort)\n- PERF401 fixes using automated regex patterns\n- B008 mutable defaults using static analysis\n- Import organization using isort/ruff\n\n### **Type Safety Improvements** (Medium impact, moderate effort)\n- RUF013 Optional type conversions\n- Adding missing type hints\n\n### **Configuration-Based Solutions**\n- Exclude certain directories (logs/, node_modules/, grammars/)\n- Per-file ignores for test files and scripts\n- Selective rule disabling for complex legacy code\n\n## Expected Outcomes\n\n- **Security**: All request calls will have proper timeouts\n- **Performance**: Significant improvement from list comprehension usage\n- **Maintainability**: Cleaner imports, better error handling, modern Python idioms\n- **Type Safety**: Improved type hints and Optional usage\n- **CI/CD**: Pre-commit hooks will prevent regressions\n\n## Risk Mitigation\n\n- Work in small, focused commits for easy rollback\n- Run comprehensive tests after each phase\n- Use automated tools (ruff --fix) where possible\n- Manual review for complex refactoring cases\n- Maintain backup branches for major changes\n\nThis plan will systematically address the linting issues while maintaining code functionality and improving overall code quality."
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/pyproject.toml",
+      "offset": 200,
+      "limit": 100
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/.pre-commit-config.yaml"
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Grep",
+    "tool_input": {
+      "pattern": "requests\\.(get|post|put|delete|patch)\\(",
+      "path": "/home/jenner/code/treesitter-chunker",
+      "glob": "*.py",
+      "output_mode": "content",
+      "-n": true,
+      "head_limit": 5
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Grep",
+    "tool_input": {
+      "pattern": "except.*Exception.*:",
+      "path": "/home/jenner/code/treesitter-chunker",
+      "glob": "*.py",
+      "output_mode": "content",
+      "-n": true,
+      "head_limit": 5
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Grep",
+    "tool_input": {
+      "pattern": "\\.append\\(.*\\)$",
+      "path": "/home/jenner/code/treesitter-chunker/cli/main.py",
+      "output_mode": "content",
+      "-B": 2,
+      "-A": 2,
+      "-n": true,
+      "head_limit": 10
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "ExitPlanMode",
+    "tool_input": {
+      "plan": "## Plan to Fix CI/CD Linting Issues\n\nBased on my analysis, here's a systematic plan to fix the linting issues:\n\n### Phase 1: Quick Security & Bug Fixes (Day 1)\n1. **Fix S113 - Add timeouts to all requests calls**\n   - Update `api/examples/client.py` - add timeout=30 to all requests\n   - Update `test_api.py` - add timeout to test requests\n   - Create a constant DEFAULT_TIMEOUT = 30\n\n2. **Fix BLE001 & B904 - Proper exception handling**\n   - Replace blind `except Exception:` with specific exceptions\n   - Add `raise ... from e` for proper exception chaining\n   - Focus on `api/server.py` lines 178, 286\n\n3. **Fix B008 - Function call defaults**\n   - Replace `typer.Option(...)` in function signatures with None\n   - Move the typer.Option calls inside the function body\n   - Affects mainly `cli/main.py` and `cli/repo_command.py`\n\n### Phase 2: Performance Optimizations (Day 2)\n1. **Fix PERF401 - Replace append loops with comprehensions**\n   - Convert loops with append to list comprehensions\n   - Example: `files_to_process = [f for f in ... if should_include_file(...)]`\n   - Main targets: `cli/main.py`, `chunker/multi_language.py`\n\n2. **Fix import order issues**\n   - Let isort handle this automatically\n   - Run: `isort . --profile black`\n\n### Phase 3: Type Safety (Day 3)\n1. **Fix RUF013 - Implicit Optional**\n   - Change `param: str = None` to `param: Optional[str] = None`\n   - Or use Python 3.10+ syntax: `param: str | None = None`\n   - Update all function signatures\n\n2. **Remove ERA001 - Commented code**\n   - Delete all commented-out code blocks\n   - If needed for reference, move to documentation\n\n### Phase 4: Configuration Updates\n1. **Update pyproject.toml to add more specific ignores**:\n   ```toml\n   [tool.ruff.lint.per-file-ignores]\n   \"tests/*\" = [\"S101\", \"PLR2004\", \"ARG001\", \"ARG002\", \"BLE001\"]\n   \"scripts/*\" = [\"INP001\", \"T201\", \"T203\", \"S603\", \"S607\"]\n   \"examples/*\" = [\"INP001\", \"T201\", \"S113\"]  # Allow no timeout in examples\n   \"api/examples/*\" = [\"S113\"]  # Examples can skip timeout for clarity\n   \"**/test_*.py\" = [\"S113\", \"BLE001\"]  # Tests can be more lenient\n   ```\n\n2. **Add project-wide acceptable ignores**:\n   ```toml\n   ignore = [\n       \"E501\",   # line length (black handles)\n       \"S101\",   # assert in tests\n       \"PLR0913\", # too many arguments (sometimes needed)\n       \"C901\",    # complexity (address case by case)\n       \"TRY003\",  # long exception messages\n       \"EM101\",   # raw string in exception\n       \"EM102\",   # f-string in exception\n   ]\n   ```\n\n3. **Configure ruff to fix automatically**:\n   ```toml\n   [tool.ruff]\n   fix = true\n   unsafe-fixes = false\n   ```\n\n### Phase 5: Automation & Prevention\n1. **Create fix script** (`scripts/fix_linting.py`):\n   - Automate common fixes using regex\n   - Add timeout to requests calls\n   - Convert append loops to comprehensions\n\n2. **Update pre-commit hooks**:\n   - Enable auto-fixing in pre-commit\n   - Add `--fix` flag to ruff\n\n3. **CI/CD improvements**:\n   - Run linting in CI with `--diff` to show what needs fixing\n   - Create separate job for linting that doesn't block on warnings\n\n### Implementation Order:\n1. Start with configuration updates (30 min)\n2. Run automated fixes: `ruff check . --fix --unsafe-fixes` (15 min)\n3. Fix remaining security issues manually (S113, BLE001) (2 hours)\n4. Fix type issues (RUF013) with find/replace (1 hour)\n5. Fix performance issues (PERF401) systematically (3 hours)\n6. Clean up commented code (ERA001) (1 hour)\n7. Final review and testing (1 hour)\n\n### Expected Outcome:\n- Reduce linting errors from 300+ to under 50\n- All security issues resolved\n- Performance improvements from list comprehensions\n- Type safety improved\n- CI/CD will pass without --no-verify"
     }
   },
   {
@@ -106,72 +263,54 @@
     "tool_input": {
       "todos": [
         {
-          "content": "Analyze current git status and changes that need to be committed",
-          "status": "completed",
+          "content": "Update pyproject.toml with better linting configuration",
+          "status": "pending",
           "priority": "high",
-          "id": "1"
+          "id": "401"
         },
         {
-          "content": "Examine package configuration (pyproject.toml) for publishing setup",
-          "status": "completed",
+          "content": "Fix S113 - Add timeouts to all requests calls",
+          "status": "pending",
           "priority": "high",
-          "id": "2"
+          "id": "402"
         },
         {
-          "content": "Review existing CI/CD workflows and automation",
-          "status": "completed",
+          "content": "Fix BLE001 & B904 - Proper exception handling",
+          "status": "pending",
           "priority": "high",
-          "id": "3"
+          "id": "403"
         },
         {
-          "content": "Research PyPI publishing requirements and best practices",
-          "status": "in_progress",
-          "priority": "medium",
-          "id": "4"
+          "content": "Fix B008 - Function call defaults in signatures",
+          "status": "pending",
+          "priority": "high",
+          "id": "404"
         },
         {
-          "content": "Investigate other Python package registries (conda-forge, etc.)",
+          "content": "Fix PERF401 - Replace append loops with comprehensions",
           "status": "pending",
           "priority": "medium",
-          "id": "5"
+          "id": "405"
         },
         {
-          "content": "Create comprehensive step-by-step deployment plan",
+          "content": "Fix RUF013 - Implicit Optional types",
           "status": "pending",
-          "priority": "high",
-          "id": "6"
+          "priority": "medium",
+          "id": "406"
+        },
+        {
+          "content": "Remove ERA001 - Delete commented code",
+          "status": "pending",
+          "priority": "low",
+          "id": "407"
+        },
+        {
+          "content": "Run automated fixes and final testing",
+          "status": "pending",
+          "priority": "low",
+          "id": "408"
         }
       ]
-    }
-  },
-  {
-    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
-    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
-    "cwd": "/home/jenner/code/treesitter-chunker",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "WebSearch",
-    "tool_input": {
-      "query": "PyPI publishing best practices 2025 python package deployment twine build"
-    }
-  },
-  {
-    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
-    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
-    "cwd": "/home/jenner/code/treesitter-chunker",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "WebSearch",
-    "tool_input": {
-      "query": "conda-forge python package publishing submission 2025"
-    }
-  },
-  {
-    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
-    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
-    "cwd": "/home/jenner/code/treesitter-chunker",
-    "hook_event_name": "PreToolUse",
-    "tool_name": "WebSearch",
-    "tool_input": {
-      "query": "GitHub Actions automated release PyPI publishing workflow 2025"
     }
   },
   {
@@ -183,40 +322,52 @@
     "tool_input": {
       "todos": [
         {
-          "content": "Analyze current git status and changes that need to be committed",
-          "status": "completed",
-          "priority": "high",
-          "id": "1"
-        },
-        {
-          "content": "Examine package configuration (pyproject.toml) for publishing setup",
-          "status": "completed",
-          "priority": "high",
-          "id": "2"
-        },
-        {
-          "content": "Review existing CI/CD workflows and automation",
-          "status": "completed",
-          "priority": "high",
-          "id": "3"
-        },
-        {
-          "content": "Research PyPI publishing requirements and best practices",
-          "status": "completed",
-          "priority": "medium",
-          "id": "4"
-        },
-        {
-          "content": "Investigate other Python package registries (conda-forge, etc.)",
-          "status": "completed",
-          "priority": "medium",
-          "id": "5"
-        },
-        {
-          "content": "Create comprehensive step-by-step deployment plan",
+          "content": "Update pyproject.toml with better linting configuration",
           "status": "in_progress",
           "priority": "high",
-          "id": "6"
+          "id": "401"
+        },
+        {
+          "content": "Fix S113 - Add timeouts to all requests calls",
+          "status": "pending",
+          "priority": "high",
+          "id": "402"
+        },
+        {
+          "content": "Fix BLE001 & B904 - Proper exception handling",
+          "status": "pending",
+          "priority": "high",
+          "id": "403"
+        },
+        {
+          "content": "Fix B008 - Function call defaults in signatures",
+          "status": "pending",
+          "priority": "high",
+          "id": "404"
+        },
+        {
+          "content": "Fix PERF401 - Replace append loops with comprehensions",
+          "status": "pending",
+          "priority": "medium",
+          "id": "405"
+        },
+        {
+          "content": "Fix RUF013 - Implicit Optional types",
+          "status": "pending",
+          "priority": "medium",
+          "id": "406"
+        },
+        {
+          "content": "Remove ERA001 - Delete commented code",
+          "status": "pending",
+          "priority": "low",
+          "id": "407"
+        },
+        {
+          "content": "Run automated fixes and final testing",
+          "status": "pending",
+          "priority": "low",
+          "id": "408"
         }
       ]
     }
@@ -226,10 +377,11 @@
     "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
     "cwd": "/home/jenner/code/treesitter-chunker",
     "hook_event_name": "PreToolUse",
-    "tool_name": "Bash",
+    "tool_name": "Edit",
     "tool_input": {
-      "command": "python -m pytest --version",
-      "description": "Check pytest version"
+      "file_path": "/home/jenner/code/treesitter-chunker/pyproject.toml",
+      "old_string": "ignore = [\n    \"E501\",   # line too long (handled by black)\n    \"S101\",   # use of assert (needed for tests)\n    \"S603\",   # subprocess without shell=True\n    \"S607\",   # start process with partial path\n    \"PLR0913\", # too many arguments\n    \"PLR2004\", # magic value comparison\n    \"SIM108\",  # use ternary operator (sometimes less readable)\n    \"RET504\",  # unnecessary variable assignment before return\n    \"C901\",    # too complex\n    \"PLR0912\", # too many branches\n    \"PLR0915\", # too many statements\n]\n\n[tool.ruff.lint.per-file-ignores]\n\"tests/*\" = [\"S101\", \"PLR2004\", \"ARG001\", \"ARG002\"]\n\"scripts/*\" = [\"INP001\", \"T201\", \"T203\"]\n\"examples/*\" = [\"INP001\", \"T201\"]",
+      "new_string": "ignore = [\n    \"E501\",   # line too long (handled by black)\n    \"S101\",   # use of assert (needed for tests)\n    \"S603\",   # subprocess without shell=True\n    \"S607\",   # start process with partial path\n    \"PLR0913\", # too many arguments\n    \"PLR2004\", # magic value comparison\n    \"SIM108\",  # use ternary operator (sometimes less readable)\n    \"RET504\",  # unnecessary variable assignment before return\n    \"C901\",    # too complex\n    \"PLR0912\", # too many branches\n    \"PLR0915\", # too many statements\n    \"TRY003\",  # long exception messages\n    \"EM101\",   # raw string in exception\n    \"EM102\",   # f-string in exception\n    \"PD011\",   # pandas .values deprecation (false positives)\n    \"RUF001\",  # ambiguous unicode character (used in tests)\n    \"RUF002\",  # ambiguous unicode character (docstrings)\n    \"RUF003\",  # ambiguous unicode character (comments)\n]\n\n[tool.ruff.lint.per-file-ignores]\n\"tests/*\" = [\"S101\", \"PLR2004\", \"ARG001\", \"ARG002\", \"BLE001\", \"S113\", \"B008\"]\n\"test_*.py\" = [\"S113\", \"BLE001\", \"S101\", \"PLR2004\"]\n\"scripts/*\" = [\"INP001\", \"T201\", \"T203\", \"S603\", \"S607\", \"BLE001\"]\n\"examples/*\" = [\"INP001\", \"T201\", \"S113\", \"BLE001\"]\n\"api/examples/*\" = [\"S113\", \"RUF013\"]  # Examples can skip timeout for clarity\n\"benchmarks/*\" = [\"INP001\", \"T201\", \"S113\"]\n\"profiling/*\" = [\"INP001\"]\n\"*.pyi\" = [\"E501\"]  # Allow long lines in stub files"
     }
   },
   {
@@ -237,10 +389,12 @@
     "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
     "cwd": "/home/jenner/code/treesitter-chunker",
     "hook_event_name": "PreToolUse",
-    "tool_name": "Bash",
+    "tool_name": "Grep",
     "tool_input": {
-      "command": "python -m build --version",
-      "description": "Check build package version"
+      "pattern": "\\[tool\\.ruff\\]",
+      "path": "/home/jenner/code/treesitter-chunker/pyproject.toml",
+      "output_mode": "content",
+      "-A": 10
     }
   },
   {
@@ -248,10 +402,11 @@
     "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
     "cwd": "/home/jenner/code/treesitter-chunker",
     "hook_event_name": "PreToolUse",
-    "tool_name": "Bash",
+    "tool_name": "Edit",
     "tool_input": {
-      "command": "python -m twine --version",
-      "description": "Check twine version"
+      "file_path": "/home/jenner/code/treesitter-chunker/pyproject.toml",
+      "old_string": "[tool.ruff]\ntarget-version = \"py310\"\nline-length = 88\nfix = true",
+      "new_string": "[tool.ruff]\ntarget-version = \"py310\"\nline-length = 88\nfix = true\nunsafe-fixes = false\npreview = true"
     }
   },
   {
@@ -263,40 +418,317 @@
     "tool_input": {
       "todos": [
         {
-          "content": "Analyze current git status and changes that need to be committed",
+          "content": "Update pyproject.toml with better linting configuration",
           "status": "completed",
           "priority": "high",
-          "id": "1"
+          "id": "401"
         },
         {
-          "content": "Examine package configuration (pyproject.toml) for publishing setup",
-          "status": "completed",
+          "content": "Fix S113 - Add timeouts to all requests calls",
+          "status": "in_progress",
           "priority": "high",
-          "id": "2"
+          "id": "402"
         },
         {
-          "content": "Review existing CI/CD workflows and automation",
-          "status": "completed",
+          "content": "Fix BLE001 & B904 - Proper exception handling",
+          "status": "pending",
           "priority": "high",
-          "id": "3"
+          "id": "403"
         },
         {
-          "content": "Research PyPI publishing requirements and best practices",
-          "status": "completed",
+          "content": "Fix B008 - Function call defaults in signatures",
+          "status": "pending",
+          "priority": "high",
+          "id": "404"
+        },
+        {
+          "content": "Fix PERF401 - Replace append loops with comprehensions",
+          "status": "pending",
           "priority": "medium",
-          "id": "4"
+          "id": "405"
         },
         {
-          "content": "Investigate other Python package registries (conda-forge, etc.)",
-          "status": "completed",
+          "content": "Fix RUF013 - Implicit Optional types",
+          "status": "pending",
           "priority": "medium",
-          "id": "5"
+          "id": "406"
         },
         {
-          "content": "Create comprehensive step-by-step deployment plan",
+          "content": "Remove ERA001 - Delete commented code",
+          "status": "pending",
+          "priority": "low",
+          "id": "407"
+        },
+        {
+          "content": "Run automated fixes and final testing",
+          "status": "pending",
+          "priority": "low",
+          "id": "408"
+        }
+      ]
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/api/examples/client.py",
+      "limit": 30
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Edit",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/api/examples/client.py",
+      "old_string": "from typing import Any\n\nimport requests\n\n\nclass ChunkerClient:",
+      "new_string": "from typing import Any\n\nimport requests\n\n# Default timeout for all requests (in seconds)\nDEFAULT_TIMEOUT = 30\n\n\nclass ChunkerClient:"
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Edit",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/api/examples/client.py",
+      "old_string": "    def health_check(self) -> dict[str, Any]:\n        \"\"\"Check if the API is healthy.\"\"\"\n        response = requests.get(f\"{self.base_url}/health\")\n        response.raise_for_status()\n        return response.json()\n\n    def list_languages(self) -> list[str]:\n        \"\"\"Get list of supported languages.\"\"\"\n        response = requests.get(f\"{self.base_url}/languages\")\n        response.raise_for_status()\n        return response.json()",
+      "new_string": "    def health_check(self) -> dict[str, Any]:\n        \"\"\"Check if the API is healthy.\"\"\"\n        response = requests.get(f\"{self.base_url}/health\", timeout=DEFAULT_TIMEOUT)\n        response.raise_for_status()\n        return response.json()\n\n    def list_languages(self) -> list[str]:\n        \"\"\"Get list of supported languages.\"\"\"\n        response = requests.get(f\"{self.base_url}/languages\", timeout=DEFAULT_TIMEOUT)\n        response.raise_for_status()\n        return response.json()"
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Grep",
+    "tool_input": {
+      "pattern": "response = requests\\.(get|post)",
+      "path": "/home/jenner/code/treesitter-chunker/api/examples/client.py",
+      "output_mode": "content",
+      "-n": true
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/api/examples/client.py",
+      "offset": 50,
+      "limit": 30
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Edit",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/api/examples/client.py",
+      "old_string": "        response = requests.post(f\"{self.base_url}/chunk/text\", json=payload)\n        response.raise_for_status()\n        return response.json()",
+      "new_string": "        response = requests.post(\n            f\"{self.base_url}/chunk/text\", json=payload, timeout=DEFAULT_TIMEOUT\n        )\n        response.raise_for_status()\n        return response.json()"
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Edit",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/api/examples/client.py",
+      "old_string": "        response = requests.post(f\"{self.base_url}/chunk/file\", json=payload)\n        response.raise_for_status()\n        return response.json()",
+      "new_string": "        response = requests.post(\n            f\"{self.base_url}/chunk/file\", json=payload, timeout=DEFAULT_TIMEOUT\n        )\n        response.raise_for_status()\n        return response.json()"
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Grep",
+    "tool_input": {
+      "pattern": "import requests|from requests|requests\\.",
+      "output_mode": "files_with_matches"
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Grep",
+    "tool_input": {
+      "pattern": "requests\\.(get|post|put|delete|patch|head|options)",
+      "glob": "*.py",
+      "output_mode": "files_with_matches"
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/test_api.py"
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Edit",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/test_api.py",
+      "old_string": "import json\n\nimport requests\n\nBASE_URL = \"http://localhost:8000\"",
+      "new_string": "import json\n\nimport requests\n\nBASE_URL = \"http://localhost:8000\"\n\n# Default timeout for all requests (in seconds)\nDEFAULT_TIMEOUT = 30"
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "MultiEdit",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/test_api.py",
+      "edits": [
+        {
+          "old_string": "    response = requests.get(f\"{BASE_URL}/health\")",
+          "new_string": "    response = requests.get(f\"{BASE_URL}/health\", timeout=DEFAULT_TIMEOUT)"
+        },
+        {
+          "old_string": "    response = requests.get(f\"{BASE_URL}/languages\")",
+          "new_string": "    response = requests.get(f\"{BASE_URL}/languages\", timeout=DEFAULT_TIMEOUT)"
+        },
+        {
+          "old_string": "    response = requests.post(f\"{BASE_URL}/chunk/text\", json=payload)",
+          "new_string": "    response = requests.post(f\"{BASE_URL}/chunk/text\", json=payload, timeout=DEFAULT_TIMEOUT)"
+        },
+        {
+          "old_string": "    response = requests.post(f\"{BASE_URL}/chunk/file\", json=payload)",
+          "new_string": "    response = requests.post(f\"{BASE_URL}/chunk/file\", json=payload, timeout=DEFAULT_TIMEOUT)"
+        }
+      ]
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Grep",
+    "tool_input": {
+      "pattern": "requests\\.(get|post|put|delete|patch|head|options)\\([^)]*\\)",
+      "glob": "**/*.py",
+      "output_mode": "content",
+      "-n": true
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Grep",
+    "tool_input": {
+      "pattern": "urllib\\.request|urlopen|httpx\\.",
+      "glob": "**/*.py",
+      "output_mode": "files_with_matches"
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Grep",
+    "tool_input": {
+      "pattern": "urlopen\\([^,)]+\\)(?!\\s*,\\s*timeout)|urllib\\.request\\.urlopen\\([^,)]+\\)(?!\\s*,\\s*timeout)",
+      "glob": "**/*.py",
+      "output_mode": "content",
+      "-n": true
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "ruff check --select S113 .",
+      "description": "Check for S113 (requests without timeout) errors"
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "TodoWrite",
+    "tool_input": {
+      "todos": [
+        {
+          "content": "Update pyproject.toml with better linting configuration",
           "status": "completed",
           "priority": "high",
-          "id": "6"
+          "id": "401"
+        },
+        {
+          "content": "Fix S113 - Add timeouts to all requests calls",
+          "status": "completed",
+          "priority": "high",
+          "id": "402"
+        },
+        {
+          "content": "Fix BLE001 & B904 - Proper exception handling",
+          "status": "in_progress",
+          "priority": "high",
+          "id": "403"
+        },
+        {
+          "content": "Fix B008 - Function call defaults in signatures",
+          "status": "pending",
+          "priority": "high",
+          "id": "404"
+        },
+        {
+          "content": "Fix PERF401 - Replace append loops with comprehensions",
+          "status": "pending",
+          "priority": "medium",
+          "id": "405"
+        },
+        {
+          "content": "Fix RUF013 - Implicit Optional types",
+          "status": "pending",
+          "priority": "medium",
+          "id": "406"
+        },
+        {
+          "content": "Remove ERA001 - Delete commented code",
+          "status": "pending",
+          "priority": "low",
+          "id": "407"
+        },
+        {
+          "content": "Run automated fixes and final testing",
+          "status": "pending",
+          "priority": "low",
+          "id": "408"
         }
       ]
     }
@@ -308,8 +740,8 @@
     "hook_event_name": "PreToolUse",
     "tool_name": "Bash",
     "tool_input": {
-      "command": "git status --porcelain | head -20",
-      "description": "Check git status"
+      "command": "ruff check --select BLE001,B904 . 2>&1 | head -50",
+      "description": "Check for BLE001 and B904 exception handling errors"
     }
   },
   {
@@ -319,8 +751,71 @@
     "hook_event_name": "PreToolUse",
     "tool_name": "Bash",
     "tool_input": {
-      "command": "git add -A",
-      "description": "Stage all changes"
+      "command": "ruff check --select BLE001,B904 . 2>&1 | grep -E \"BLE001|B904\" | wc -l",
+      "description": "Count BLE001 and B904 errors"
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/scripts/fix_exception_handling.py",
+      "content": "#!/usr/bin/env python3\n\"\"\"Fix BLE001 and B904 exception handling issues.\"\"\"\n\nimport ast\nimport os\nimport re\nfrom pathlib import Path\n\n\ndef fix_exception_handling(file_path: Path) -> bool:\n    \"\"\"Fix exception handling in a Python file.\"\"\"\n    try:\n        content = file_path.read_text()\n        original_content = content\n        \n        # Fix B904: Add 'from e' or 'from None' to raise statements in except blocks\n        # Pattern to find except blocks with raise statements\n        pattern = re.compile(\n            r'(\\s*)except\\s+(\\w+(?:\\s*\\.\\s*\\w+)*(?:\\s*,\\s*\\w+(?:\\s*\\.\\s*\\w+)*)*)\\s+as\\s+(\\w+)\\s*:\\s*\\n'\n            r'((?:.*\\n)*?)(\\s*)raise\\s+([^;]+?)(?:\\s*#.*)?$',\n            re.MULTILINE\n        )\n        \n        def replace_raise(match):\n            indent1, exceptions, var_name, body, indent2, raise_expr = match.groups()\n            \n            # Check if the raise already has 'from'\n            if ' from ' in raise_expr:\n                return match.group(0)\n            \n            # Check if it's re-raising the same exception\n            if raise_expr.strip() == var_name:\n                return match.group(0)\n            \n            # Add 'from e' to the raise statement\n            return f'{indent1}except {exceptions} as {var_name}:\\n{body}{indent2}raise {raise_expr} from {var_name}'\n        \n        content = pattern.sub(replace_raise, content)\n        \n        # Also handle except blocks without 'as e'\n        pattern2 = re.compile(\n            r'(\\s*)except\\s+(\\w+(?:\\s*\\.\\s*\\w+)*(?:\\s*,\\s*\\w+(?:\\s*\\.\\s*\\w+)*)*)\\s*:\\s*\\n'\n            r'((?:.*\\n)*?)(\\s*)raise\\s+([^;]+?)(?:\\s*#.*)?$',\n            re.MULTILINE\n        )\n        \n        def replace_raise2(match):\n            indent1, exceptions, body, indent2, raise_expr = match.groups()\n            \n            # Check if the raise already has 'from'\n            if ' from ' in raise_expr:\n                return match.group(0)\n            \n            # Add 'from None' to the raise statement\n            return f'{indent1}except {exceptions}:\\n{body}{indent2}raise {raise_expr} from None'\n        \n        content = pattern2.sub(replace_raise2, content)\n        \n        # Fix BLE001: Replace blind Exception catches with more specific ones\n        # This is harder to do automatically, so we'll just add comments for manual review\n        if 'except Exception' in content:\n            lines = content.split('\\n')\n            for i, line in enumerate(lines):\n                if re.match(r'\\s*except\\s+Exception\\b', line):\n                    if i > 0 and '# TODO: Replace with specific exception' not in lines[i-1]:\n                        lines[i] = line + '  # TODO: Replace with specific exception'\n            content = '\\n'.join(lines)\n        \n        if content != original_content:\n            file_path.write_text(content)\n            return True\n        return False\n        \n    except Exception:\n        print(f\"Error processing {file_path}\")\n        return False\n\n\ndef main():\n    \"\"\"Fix exception handling in all Python files.\"\"\"\n    fixed_count = 0\n    \n    # Find all Python files\n    for root, _, files in os.walk('.'):\n        # Skip virtual environments and build directories\n        if any(skip in root for skip in ['.venv', 'venv', '__pycache__', 'build', 'dist', '.git']):\n            continue\n            \n        for file in files:\n            if file.endswith('.py'):\n                file_path = Path(root) / file\n                if fix_exception_handling(file_path):\n                    print(f\"Fixed: {file_path}\")\n                    fixed_count += 1\n    \n    print(f\"\\nFixed {fixed_count} files\")\n\n\nif __name__ == \"__main__\":\n    main()"
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "ruff check --select B904 --fix --unsafe-fixes .",
+      "description": "Auto-fix B904 errors with ruff"
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/api/server.py",
+      "offset": 170,
+      "limit": 200
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "MultiEdit",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/api/server.py",
+      "edits": [
+        {
+          "old_string": "    except Exception as e:\n        raise HTTPException(status_code=400, detail=str(e))",
+          "new_string": "    except Exception as e:\n        raise HTTPException(status_code=400, detail=str(e)) from e",
+          "replace_all": true
+        }
+      ]
+    }
+  },
+  {
+    "session_id": "ebb2220f-ab66-47cc-95ea-376ef7c0dadf",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/ebb2220f-ab66-47cc-95ea-376ef7c0dadf.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PreToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/chunker/_internal/registry.py",
+      "offset": 58,
+      "limit": 10
     }
   }
 ]

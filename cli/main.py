@@ -480,9 +480,11 @@ def batch(
     # Process provided paths
     elif not paths and pattern:
         # Use pattern to find files
-        for file_path in get_files_from_patterns([pattern]):
-            if should_include_file(file_path, include_patterns, exclude_patterns):
-                files_to_process.append(file_path)
+        files_to_process.extend(
+            file_path
+            for file_path in get_files_from_patterns([pattern])
+            if should_include_file(file_path, include_patterns, exclude_patterns)
+        )
     elif paths:
         # Process provided paths
         for path in paths:
@@ -495,21 +497,27 @@ def batch(
             elif path.is_dir():
                 # Process directory
                 if recursive:
-                    for file_path in path.rglob("*"):
-                        if file_path.is_file() and should_include_file(
+                    files_to_process.extend(
+                        file_path
+                        for file_path in path.rglob("*")
+                        if file_path.is_file()
+                        and should_include_file(
                             file_path,
                             include_patterns,
                             exclude_patterns,
-                        ):
-                            files_to_process.append(file_path)
+                        )
+                    )
                 else:
-                    for file_path in path.iterdir():
-                        if file_path.is_file() and should_include_file(
+                    files_to_process.extend(
+                        file_path
+                        for file_path in path.iterdir()
+                        if file_path.is_file()
+                        and should_include_file(
                             file_path,
                             include_patterns,
                             exclude_patterns,
-                        ):
-                            files_to_process.append(file_path)
+                        )
+                    )
     else:
         console.print(
             "[red]Error: No files specified. Use paths, --pattern, or --stdin[/red]",

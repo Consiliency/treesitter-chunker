@@ -1,5 +1,4 @@
 """Semantic analysis interfaces for intelligent chunk merging and relationship analysis."""
-
 from abc import ABC, abstractmethod
 
 from chunker.types import CodeChunk
@@ -8,8 +7,9 @@ from chunker.types import CodeChunk
 class SemanticMerger(ABC):
     """Merge related chunks based on semantic analysis."""
 
+    @staticmethod
     @abstractmethod
-    def should_merge(self, chunk1: CodeChunk, chunk2: CodeChunk) -> bool:
+    def should_merge(chunk1: CodeChunk, chunk2: CodeChunk) -> bool:
         """
         Determine if two chunks should be merged based on semantic relationship.
 
@@ -27,8 +27,9 @@ class SemanticMerger(ABC):
             True if chunks should be merged
         """
 
+    @staticmethod
     @abstractmethod
-    def merge_chunks(self, chunks: list[CodeChunk]) -> list[CodeChunk]:
+    def merge_chunks(chunks: list[CodeChunk]) -> list[CodeChunk]:
         """
         Merge related chunks to reduce fragmentation while preserving semantics.
 
@@ -39,8 +40,9 @@ class SemanticMerger(ABC):
             List of chunks after merging related ones
         """
 
+    @staticmethod
     @abstractmethod
-    def get_merge_reason(self, chunk1: CodeChunk, chunk2: CodeChunk) -> str | None:
+    def get_merge_reason(chunk1: CodeChunk, chunk2: CodeChunk) -> (str | None):
         """
         Get the reason why two chunks would be merged.
 
@@ -56,8 +58,9 @@ class SemanticMerger(ABC):
 class RelationshipAnalyzer(ABC):
     """Analyze relationships between code elements."""
 
+    @staticmethod
     @abstractmethod
-    def find_related_chunks(self, chunks: list[CodeChunk]) -> dict[str, list[str]]:
+    def find_related_chunks(chunks: list[CodeChunk]) -> dict[str, list[str]]:
         """
         Find relationships between chunks.
 
@@ -68,11 +71,10 @@ class RelationshipAnalyzer(ABC):
             Dict mapping chunk IDs to lists of related chunk IDs
         """
 
+    @staticmethod
     @abstractmethod
-    def find_overloaded_functions(
-        self,
-        chunks: list[CodeChunk],
-    ) -> list[list[CodeChunk]]:
+    def find_overloaded_functions(chunks: list[CodeChunk]) -> list[list[
+        CodeChunk]]:
         """
         Find groups of overloaded functions.
 
@@ -83,11 +85,10 @@ class RelationshipAnalyzer(ABC):
             List of groups, where each group contains overloaded functions
         """
 
+    @staticmethod
     @abstractmethod
-    def find_getter_setter_pairs(
-        self,
-        chunks: list[CodeChunk],
-    ) -> list[tuple[CodeChunk, CodeChunk]]:
+    def find_getter_setter_pairs(chunks: list[CodeChunk]) -> list[tuple[
+        CodeChunk, CodeChunk]]:
         """
         Find getter/setter method pairs.
 
@@ -98,11 +99,10 @@ class RelationshipAnalyzer(ABC):
             List of (getter, setter) tuples
         """
 
+    @staticmethod
     @abstractmethod
-    def find_interface_implementations(
-        self,
-        chunks: list[CodeChunk],
-    ) -> dict[str, list[str]]:
+    def find_interface_implementations(chunks: list[CodeChunk]) -> dict[str,
+        list[str]]:
         """
         Find interface/implementation relationships.
 
@@ -113,8 +113,9 @@ class RelationshipAnalyzer(ABC):
             Dict mapping interface chunk IDs to implementation chunk IDs
         """
 
+    @staticmethod
     @abstractmethod
-    def calculate_cohesion_score(self, chunk1: CodeChunk, chunk2: CodeChunk) -> float:
+    def calculate_cohesion_score(chunk1: CodeChunk, chunk2: CodeChunk) -> float:
         """
         Calculate cohesion score between two chunks (0.0 to 1.0).
 

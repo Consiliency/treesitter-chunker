@@ -1,5 +1,4 @@
 """Tree-sitter grammar manager implementation."""
-
 import json
 import logging
 import shutil
@@ -27,11 +26,8 @@ class GrammarManagementError(ChunkerError):
 class TreeSitterGrammarManager(GrammarManager):
     """Manages Tree-sitter language grammars."""
 
-    def __init__(
-        self,
-        grammars_dir: Path | None = None,
-        build_dir: Path | None = None,
-    ):
+    def __init__(self, grammars_dir: (Path | None) = None, build_dir: (Path |
+        None) = None):
         """Initialize grammar manager.
 
         Args:
@@ -42,20 +38,12 @@ class TreeSitterGrammarManager(GrammarManager):
         self.build_dir = build_dir or Path("build")
         self._grammars: dict[str, GrammarInfo] = {}
         self._config_file = self.grammars_dir / "grammars.json"
-
-        # Create directories if they don't exist
         self.grammars_dir.mkdir(parents=True, exist_ok=True)
         self.build_dir.mkdir(parents=True, exist_ok=True)
-
-        # Load existing grammar configuration
         self._load_config()
 
-    def add_grammar(
-        self,
-        name: str,
-        repository_url: str,
-        commit_hash: str | None = None,
-    ) -> GrammarInfo:
+    def add_grammar(self, name: str, repository_url: str, commit_hash: (str |
+        None) = None) -> GrammarInfo:
         """Add a new grammar to manage.
 
         Args:
@@ -66,8 +54,8 @@ class TreeSitterGrammarManager(GrammarManager):
         Returns:
             Grammar information
         """
-        # Check if already exists
         if name in self._grammars:
+<<<<<<< HEAD
             logger.warning("Grammar '%s' already exists, updating...", name)
 
         # Create grammar info
@@ -79,16 +67,23 @@ class TreeSitterGrammarManager(GrammarManager):
         )
 
         # Check if source directory exists
+=======
+            logger.warning("Grammar '%s' already exists, updating..." % name)
+        grammar = GrammarInfo(name=name, repository_url=repository_url,
+            commit_hash=commit_hash, status=GrammarStatus.NOT_FOUND)
+>>>>>>> origin/main
         grammar_path = self.grammars_dir / f"tree-sitter-{name}"
         if grammar_path.exists():
             grammar.status = GrammarStatus.NOT_BUILT
             grammar.path = grammar_path
-
-        # Store grammar info
         self._grammars[name] = grammar
         self._save_config()
+<<<<<<< HEAD
 
         logger.info("Added grammar '%s' from %s", name, repository_url)
+=======
+        logger.info("Added grammar '%s' from %s" % (name, repository_url))
+>>>>>>> origin/main
         return grammar
 
     def fetch_grammar(self, name: str) -> bool:
@@ -101,14 +96,17 @@ class TreeSitterGrammarManager(GrammarManager):
             True if successful
         """
         if name not in self._grammars:
+<<<<<<< HEAD
             logger.error("Grammar '%s' not found", name)
+=======
+            logger.error("Grammar '%s' not found" % name)
+>>>>>>> origin/main
             return False
-
         grammar = self._grammars[name]
         grammar_path = self.grammars_dir / f"tree-sitter-{name}"
-
         try:
             if grammar_path.exists():
+<<<<<<< HEAD
                 # Update existing repository
                 logger.info("Updating grammar '%s'...", name)
                 result = subprocess.run(
@@ -142,21 +140,45 @@ class TreeSitterGrammarManager(GrammarManager):
                     capture_output=True,
                     text=True,
                 )
+=======
+                logger.info("Updating grammar '%s'..." % name)
+                result = subprocess.run(["git", "pull"], check=False, cwd=grammar_path, capture_output=True, text=True)
+>>>>>>> origin/main
                 if result.returncode != 0:
                     raise GrammarManagementError(
-                        f"Git checkout failed: {result.stderr}",
-                    )
-
-            # Update grammar info
+                        f"Git pull failed: {result.stderr}")
+            else:
+                logger.info("Cloning grammar '%s'..." % name)
+                result = subprocess.run(["git", "clone", grammar.
+                    repository_url, str(grammar_path)], check=False,
+                    capture_output=True, text=True)
+                if result.returncode != 0:
+                    raise GrammarManagementError(
+                        f"Git clone failed: {result.stderr}")
+            if grammar.commit_hash:
+                logger.info("Checking out commit %s", grammar.commit_hash)
+                result = subprocess.run(["git", "checkout", grammar.
+                    commit_hash], check=False, cwd=grammar_path,
+                    capture_output=True, text=True)
+                if result.returncode != 0:
+                    raise GrammarManagementError(
+                        f"Git checkout failed: {result.stderr}")
             grammar.status = GrammarStatus.NOT_BUILT
             grammar.path = grammar_path
             self._save_config()
+<<<<<<< HEAD
 
             logger.info("Successfully fetched grammar '%s'", name)
+=======
+            logger.info("Successfully fetched grammar '%s'" % name)
+>>>>>>> origin/main
             return True
-
         except (FileNotFoundError, OSError, TypeError) as e:
+<<<<<<< HEAD
             logger.error("Failed to fetch grammar '%s': %s", name, e)
+=======
+            logger.error("Failed to fetch grammar '%s': %s" % (name, e))
+>>>>>>> origin/main
             grammar.status = GrammarStatus.ERROR
             grammar.error = str(e)
             self._save_config()
@@ -172,17 +194,24 @@ class TreeSitterGrammarManager(GrammarManager):
             True if successful
         """
         if name not in self._grammars:
+<<<<<<< HEAD
             logger.error("Grammar '%s' not found", name)
+=======
+            logger.error("Grammar '%s' not found" % name)
+>>>>>>> origin/main
             return False
-
         grammar = self._grammars[name]
         if not grammar.path or not grammar.path.exists():
+<<<<<<< HEAD
             logger.error("Grammar source for '%s' not found", name)
+=======
+            logger.error("Grammar source for '%s' not found" % name)
+>>>>>>> origin/main
             return False
-
         try:
             grammar.status = GrammarStatus.BUILDING
             self._save_config()
+<<<<<<< HEAD
 
             # Build using tree-sitter CLI or custom build script
 
@@ -197,17 +226,32 @@ class TreeSitterGrammarManager(GrammarManager):
                 grammar.error = "Build failed"
                 logger.error("Failed to build grammar '%s'", name)
 
+=======
+            logger.info("Building grammar '%s'..." % name)
+            success = build_language(name, str(grammar.path), str(self.
+                build_dir))
+            if success:
+                grammar.status = GrammarStatus.READY
+                logger.info("Successfully built grammar '%s'" % name)
+            else:
+                grammar.status = GrammarStatus.ERROR
+                grammar.error = "Build failed"
+                logger.error("Failed to build grammar '%s'" % name)
+>>>>>>> origin/main
             self._save_config()
             return success
-
         except (OSError, TypeError) as e:
+<<<<<<< HEAD
             logger.error("Failed to build grammar '%s': %s", name, e)
+=======
+            logger.error("Failed to build grammar '%s': %s" % (name, e))
+>>>>>>> origin/main
             grammar.status = GrammarStatus.ERROR
             grammar.error = str(e)
             self._save_config()
             return False
 
-    def get_grammar_info(self, name: str) -> GrammarInfo | None:
+    def get_grammar_info(self, name: str) -> (GrammarInfo | None):
         """Get information about a grammar.
 
         Args:
@@ -218,10 +262,8 @@ class TreeSitterGrammarManager(GrammarManager):
         """
         return self._grammars.get(name)
 
-    def list_grammars(
-        self,
-        status: GrammarStatus | None = None,
-    ) -> list[GrammarInfo]:
+    def list_grammars(self, status: (GrammarStatus | None) = None) -> list[
+        GrammarInfo]:
         """List all managed grammars.
 
         Args:
@@ -231,10 +273,8 @@ class TreeSitterGrammarManager(GrammarManager):
             List of grammar information
         """
         grammars = list(self._grammars.values())
-
         if status is not None:
             grammars = [g for g in grammars if g.status == status]
-
         return grammars
 
     def update_grammar(self, name: str) -> bool:
@@ -247,14 +287,14 @@ class TreeSitterGrammarManager(GrammarManager):
             True if updated
         """
         if name not in self._grammars:
+<<<<<<< HEAD
             logger.error("Grammar '%s' not found", name)
+=======
+            logger.error("Grammar '%s' not found" % name)
+>>>>>>> origin/main
             return False
-
-        # Fetch latest version
         if not self.fetch_grammar(name):
             return False
-
-        # Rebuild grammar
         return self.build_grammar(name)
 
     def remove_grammar(self, name: str) -> bool:
@@ -267,28 +307,36 @@ class TreeSitterGrammarManager(GrammarManager):
             True if removed
         """
         if name not in self._grammars:
+<<<<<<< HEAD
             logger.error("Grammar '%s' not found", name)
+=======
+            logger.error("Grammar '%s' not found" % name)
+>>>>>>> origin/main
             return False
-
         grammar = self._grammars[name]
-
-        # Remove source directory
         if grammar.path and grammar.path.exists():
             try:
                 shutil.rmtree(grammar.path)
+<<<<<<< HEAD
                 logger.info("Removed grammar source for '%s'", name)
+=======
+                logger.info("Removed grammar source for '%s'" % name)
+>>>>>>> origin/main
             except (FileNotFoundError, IndexError, KeyError) as e:
                 logger.error("Failed to remove grammar source: %s", e)
                 return False
-
-        # Remove from registry
         del self._grammars[name]
         self._save_config()
+<<<<<<< HEAD
 
         logger.info("Removed grammar '%s'", name)
+=======
+        logger.info("Removed grammar '%s'" % name)
+>>>>>>> origin/main
         return True
 
-    def get_node_types(self, language: str) -> list[NodeTypeInfo]:
+    @staticmethod
+    def get_node_types(language: str) -> list[NodeTypeInfo]:
         """Get all node types for a language.
 
         Args:
@@ -299,6 +347,7 @@ class TreeSitterGrammarManager(GrammarManager):
         """
         try:
             get_parser(language)
+<<<<<<< HEAD
             # Note: py-tree-sitter doesn't directly expose node types
             # This would require parsing the grammar file or using a test file
             logger.warning(
@@ -307,6 +356,14 @@ class TreeSitterGrammarManager(GrammarManager):
             return []
         except (FileNotFoundError, IndexError, KeyError) as e:
             logger.error("Failed to get node types for '%s': %s", language, e)
+=======
+            logger.warning(
+                "Node type extraction not yet implemented for '%s'" % language)
+            return []
+        except (FileNotFoundError, IndexError, KeyError) as e:
+            logger.error("Failed to get node types for '%s': %s" % (
+                language, e))
+>>>>>>> origin/main
             return []
 
     def validate_grammar(self, name: str) -> tuple[bool, str | None]:
@@ -320,24 +377,17 @@ class TreeSitterGrammarManager(GrammarManager):
         """
         if name not in self._grammars:
             return False, f"Grammar '{name}' not found"
-
         grammar = self._grammars[name]
         if grammar.status != GrammarStatus.READY:
-            return False, f"Grammar '{name}' is not ready (status: {grammar.status})"
-
+            return (False,
+                f"Grammar '{name}' is not ready (status: {grammar.status})")
         try:
-            # Try to create a parser
             parser = get_parser(name)
-
-            # Try to parse some simple code
             test_code = self._get_test_code(name)
             tree = parser.parse(test_code.encode())
-
             if tree.root_node is None:
                 return False, "Failed to parse test code"
-
             return True, None
-
         except (FileNotFoundError, OSError) as e:
             return False, str(e)
 
@@ -345,59 +395,41 @@ class TreeSitterGrammarManager(GrammarManager):
         """Load grammar configuration from file."""
         if not self._config_file.exists():
             return
-
         try:
-            with Path(self._config_file).open() as f:
+            with Path(self._config_file).open(encoding="utf-8") as f:
                 data = json.load(f)
-
             for name, info in data.items():
-                grammar = GrammarInfo(
-                    name=name,
-                    repository_url=info["repository_url"],
-                    commit_hash=info.get("commit_hash"),
-                    abi_version=info.get("abi_version"),
-                    status=GrammarStatus(info.get("status", "not_found")),
-                    path=Path(info["path"]) if info.get("path") else None,
-                    error=info.get("error"),
-                )
+                grammar = GrammarInfo(name=name, repository_url=info[
+                    "repository_url"], commit_hash=info.get("commit_hash"),
+                    abi_version=info.get("abi_version"), status=GrammarStatus(info.get("status", "not_found")), path=Path(info["path"]) if info.get("path") else None, error=info.get("error"))
                 self._grammars[name] = grammar
-
             logger.info("Loaded %s grammars from config", len(self._grammars))
-
         except (AttributeError, FileNotFoundError, IndexError) as e:
             logger.error("Failed to load grammar config: %s", e)
 
     def _save_config(self) -> None:
         """Save grammar configuration to file."""
         data = {}
-
         for name, grammar in self._grammars.items():
-            data[name] = {
-                "repository_url": grammar.repository_url,
-                "commit_hash": grammar.commit_hash,
-                "abi_version": grammar.abi_version,
-                "status": grammar.status.value,
-                "path": str(grammar.path) if grammar.path else None,
-                "error": grammar.error,
-            }
-
+            data[name] = {"repository_url": grammar.repository_url,
+                "commit_hash": grammar.commit_hash, "abi_version": grammar.
+                abi_version, "status": grammar.status.value, "path": str(
+                grammar.path) if grammar.path else None, "error": grammar.error,
+                }
         try:
-            with Path(self._config_file).open("w") as f:
+            with Path(self._config_file).open("w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)
             logger.debug("Saved grammar config")
         except (FileNotFoundError, OSError) as e:
             logger.error("Failed to save grammar config: %s", e)
 
-    def _get_test_code(self, language: str) -> str:
+    @staticmethod
+    def _get_test_code(language: str) -> str:
         """Get simple test code for a language."""
-        test_snippets = {
-            "python": "def hello(): pass",
-            "javascript": "function hello() {}",
-            "rust": "fn main() {}",
-            "go": "package main\nfunc main() {}",
-            "ruby": "def hello; end",
-            "java": "class Test { }",
-            "c": "int main() { return 0; }",
-            "cpp": "int main() { return 0; }",
-        }
+        test_snippets = {"python": "def hello(): pass", "javascript":
+            "function hello() {}", "rust": "fn main() {}", "go":
+            """package main
+func main() {}""", "ruby": "def hello; end",
+            "java": "class Test { }", "c": "int main() { return 0; }",
+            "cpp": "int main() { return 0; }"}
         return test_snippets.get(language, "")

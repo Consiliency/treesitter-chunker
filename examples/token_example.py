@@ -1,7 +1,7 @@
 """Example demonstrating token counting integration with Tree-sitter chunks."""
 
 import json
-import os
+import pathlib
 import tempfile
 
 from chunker.token import TiktokenCounter
@@ -39,7 +39,7 @@ def calculate_fibonacci(n):
 
     print(f"\nFound {len(chunks)} chunks in {test_file}")
     for i, chunk in enumerate(chunks[:3]):  # Show first 3 chunks
-        print(f"\nChunk {i+1}:")
+        print(f"\nChunk {i + 1}:")
         print(f"  Type: {chunk.node_type}")
         print(f"  Lines: {chunk.start_line}-{chunk.end_line}")
         print(f"  Tokens: {chunk.metadata.get('token_count', 'N/A')}")
@@ -112,7 +112,7 @@ class DataProcessor:
 
     # Write to a temporary file
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
         f.write(large_class)
         temp_file = f.name
 
@@ -129,7 +129,7 @@ class DataProcessor:
 
     for i, chunk in enumerate(limited_chunks):
         is_split = chunk.metadata.get("is_split", False)
-        print(f"\nChunk {i+1}:")
+        print(f"\nChunk {i + 1}:")
         print(f"  Type: {chunk.node_type}")
         print(f"  Tokens: {chunk.metadata['token_count']}")
         print(f"  Is split: {is_split}")
@@ -149,7 +149,7 @@ class DataProcessor:
 
     # Clean up
 
-    os.unlink(temp_file)
+    pathlib.Path(temp_file).unlink()
 
     print("\n=== Token Metadata Structure ===")
     if chunks:

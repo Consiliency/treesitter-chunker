@@ -102,7 +102,7 @@ def main():
 
         if args.save:
             with Path(args.save).open(
-                "w",
+                "w", encoding="utf-8",
             ) as f:
                 f.write(suite.to_json())
             print(f"\nResults saved to {args.save}")

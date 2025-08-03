@@ -3,7 +3,6 @@
 These are the foundation interfaces that all chunking strategies
 and processors must implement.
 """
-
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -19,8 +18,9 @@ class ChunkingStrategy(ABC):
     implement this interface to ensure compatibility.
     """
 
+    @staticmethod
     @abstractmethod
-    def can_handle(self, file_path: str, language: str) -> bool:
+    def can_handle(file_path: str, language: str) -> bool:
         """Check if this strategy can handle the given file.
 
         Args:
@@ -31,14 +31,10 @@ class ChunkingStrategy(ABC):
             True if this strategy can handle the file, False otherwise
         """
 
+    @staticmethod
     @abstractmethod
-    def chunk(
-        self,
-        ast: Node,
-        source: bytes,
-        file_path: str,
-        language: str,
-    ) -> list[CodeChunk]:
+    def chunk(ast: Node, source: bytes, file_path: str, language: str) -> list[
+        CodeChunk]:
         """Perform chunking on the AST.
 
         Args:
@@ -51,8 +47,9 @@ class ChunkingStrategy(ABC):
             List of code chunks extracted from the AST
         """
 
+    @staticmethod
     @abstractmethod
-    def configure(self, config: dict[str, Any]) -> None:
+    def configure(config: dict[str, Any]) -> None:
         """Configure the chunking strategy.
 
         Args:
@@ -67,8 +64,9 @@ class ASTProcessor(ABC):
     Used by context extractors, query engines, and visualizers.
     """
 
+    @staticmethod
     @abstractmethod
-    def process_node(self, node: Node, context: dict[str, Any]) -> Any:
+    def process_node(node: Node, context: dict[str, Any]) -> Any:
         """Process a single AST node.
 
         Args:
@@ -79,8 +77,9 @@ class ASTProcessor(ABC):
             Processing result (type depends on processor)
         """
 
+    @staticmethod
     @abstractmethod
-    def should_process_children(self, node: Node, context: dict[str, Any]) -> bool:
+    def should_process_children(node: Node, context: dict[str, Any]) -> bool:
         """Determine if children of this node should be processed.
 
         Args:
@@ -91,7 +90,8 @@ class ASTProcessor(ABC):
             True if children should be processed, False to skip
         """
 
-    def traverse(self, node: Node, context: dict[str, Any] | None = None) -> Any:
+    def traverse(self, node: Node, context: (dict[str, Any] | None) = None,
+        ) -> Any:
         """Traverse the AST starting from the given node.
 
         This is a template method that uses process_node and
@@ -107,26 +107,20 @@ class ASTProcessor(ABC):
         """
         if context is None:
             context = {}
-
         result = self.process_node(node, context)
-
         if self.should_process_children(node, context):
-            # Create child context
             child_context = {**context, "parent": node}
-
-            # Process children
             for child in node.children:
                 self.traverse(child, child_context)
-                # Subclasses can override to accumulate results
-
         return result
 
 
 class ChunkFilter(ABC):
     """Interface for filtering chunks after extraction."""
 
+    @staticmethod
     @abstractmethod
-    def should_include(self, chunk: CodeChunk) -> bool:
+    def should_include(chunk: CodeChunk) -> bool:
         """Determine if a chunk should be included.
 
         Args:
@@ -136,8 +130,9 @@ class ChunkFilter(ABC):
             True if chunk should be included, False to filter out
         """
 
+    @staticmethod
     @abstractmethod
-    def priority(self) -> int:
+    def priority() -> int:
         """Get filter priority (lower numbers run first).
 
         Returns:
@@ -148,8 +143,9 @@ class ChunkFilter(ABC):
 class ChunkMerger(ABC):
     """Interface for merging related chunks."""
 
+    @staticmethod
     @abstractmethod
-    def should_merge(self, chunk1: CodeChunk, chunk2: CodeChunk) -> bool:
+    def should_merge(chunk1: CodeChunk, chunk2: CodeChunk) -> bool:
         """Determine if two chunks should be merged.
 
         Args:
@@ -160,8 +156,9 @@ class ChunkMerger(ABC):
             True if chunks should be merged
         """
 
+    @staticmethod
     @abstractmethod
-    def merge(self, chunks: list[CodeChunk]) -> CodeChunk:
+    def merge(chunks: list[CodeChunk]) -> CodeChunk:
         """Merge multiple chunks into one.
 
         Args:

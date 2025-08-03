@@ -5,12 +5,10 @@ from pathlib import Path
 class TemplateGeneratorContract(ABC):
     """Contract for generating language plugin and test files"""
 
+    @staticmethod
     @abstractmethod
-    def generate_plugin(
-        self,
-        language_name: str,
-        config: dict[str, any],
-    ) -> tuple[bool, Path]:
+    def generate_plugin(language_name: str, config: dict[str, any]) -> tuple[
+        bool, Path]:
         """Generate a language plugin file from template
 
         Args:
@@ -29,12 +27,10 @@ class TemplateGeneratorContract(ABC):
             - File contains valid Python code following plugin pattern
         """
 
+    @staticmethod
     @abstractmethod
-    def generate_test(
-        self,
-        language_name: str,
-        test_cases: list[dict[str, str]],
-    ) -> tuple[bool, Path]:
+    def generate_test(language_name: str, test_cases: list[dict[str, str]],
+        ) -> tuple[bool, Path]:
         """Generate test file for a language plugin
 
         Args:
@@ -53,8 +49,9 @@ class TemplateGeneratorContract(ABC):
             - Contains runnable pytest test cases
         """
 
+    @staticmethod
     @abstractmethod
-    def validate_plugin(self, plugin_path: Path) -> tuple[bool, list[str]]:
+    def validate_plugin(plugin_path: Path) -> tuple[bool, list[str]]:
         """Validate a generated plugin file
 
         Args:

@@ -1,5 +1,4 @@
 """Comprehensive tests for Vue language support."""
-
 from chunker import chunk_file
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from chunker.languages.vue import VuePlugin
@@ -8,7 +7,8 @@ from chunker.languages.vue import VuePlugin
 class TestVueBasicChunking:
     """Test basic Vue SFC chunking functionality."""
 
-    def test_simple_component(self, tmp_path):
+    @staticmethod
+    def test_simple_component(tmp_path):
         """Test basic Vue component structure."""
         src = tmp_path / "HelloWorld.vue"
         src.write_text(
@@ -46,30 +46,25 @@ h1 {
 }
 </style>
 """,
-        )
+            )
         chunks = chunk_file(src, "vue")
         assert len(chunks) >= 3
-
-        # Check for template section
-        template_chunks = [c for c in chunks if c.node_type == "template_element"]
+        template_chunks = [c for c in chunks if c.node_type ==
+            "template_element"]
         assert len(template_chunks) >= 1
         assert any("{{ message }}" in c.content for c in template_chunks)
-
-        # Check for script section
         script_chunks = [c for c in chunks if c.node_type == "script_element"]
         assert len(script_chunks) >= 1
         assert any("HelloWorld" in c.content for c in script_chunks)
-
-        # Check for style section
         style_chunks = [c for c in chunks if c.node_type == "style_element"]
         assert len(style_chunks) >= 1
         assert any("scoped" in c.content for c in style_chunks)
-
-        # Check for component definition
-        component_chunks = [c for c in chunks if c.node_type == "component_definition"]
+        component_chunks = [c for c in chunks if c.node_type ==
+            "component_definition"]
         assert len(component_chunks) >= 1
 
-    def test_composition_api(self, tmp_path):
+    @staticmethod
+    def test_composition_api(tmp_path):
         """Test Vue 3 Composition API."""
         src = tmp_path / "CompositionComponent.vue"
         src.write_text(
@@ -124,18 +119,15 @@ div {
 }
 </style>
 """,
-        )
+            )
         chunks = chunk_file(src, "vue")
-
-        # Check for script setup
         script_chunks = [c for c in chunks if c.node_type == "script_element"]
         assert any("setup" in c.content for c in script_chunks)
-
-        # Check for style with preprocessor
         style_chunks = [c for c in chunks if c.node_type == "style_element"]
         assert any('lang="scss"' in c.content for c in style_chunks)
 
-    def test_vue_with_typescript(self, tmp_path):
+    @staticmethod
+    def test_vue_with_typescript(tmp_path):
         """Test Vue component with TypeScript."""
         src = tmp_path / "TypedComponent.vue"
         src.write_text(
@@ -183,18 +175,16 @@ export default defineComponent({
 }
 </style>
 """,
-        )
+            )
         chunks = chunk_file(src, "vue")
-
-        # Check for TypeScript script
         script_chunks = [c for c in chunks if c.node_type == "script_element"]
         assert any('lang="ts"' in c.content for c in script_chunks)
-
-        # Check for component definition
-        component_chunks = [c for c in chunks if c.node_type == "component_definition"]
+        component_chunks = [c for c in chunks if c.node_type ==
+            "component_definition"]
         assert any("defineComponent" in c.content for c in component_chunks)
 
-    def test_template_directives(self, tmp_path):
+    @staticmethod
+    def test_template_directives(tmp_path):
         """Test Vue template directives."""
         src = tmp_path / "DirectivesDemo.vue"
         src.write_text(
@@ -245,11 +235,10 @@ export default {
 }
 </script>
 """,
-        )
+            )
         chunks = chunk_file(src, "vue")
-
-        # Check template with directives
-        template_chunks = [c for c in chunks if c.node_type == "template_element"]
+        template_chunks = [c for c in chunks if c.node_type ==
+            "template_element"]
         assert len(template_chunks) >= 1
         template_content = template_chunks[0].content
         assert "v-if" in template_content
@@ -261,79 +250,74 @@ export default {
 class TestVueContractCompliance:
     """Test ExtendedLanguagePluginContract implementation."""
 
-    def test_implements_contract(self):
+    @classmethod
+    def test_implements_contract(cls):
         """Test that VuePlugin implements the contract."""
         plugin = VuePlugin()
         assert isinstance(plugin, ExtendedLanguagePluginContract)
 
-    def test_get_semantic_chunks(self):
+    @staticmethod
+    def test_get_semantic_chunks():
         """Test get_semantic_chunks method."""
         plugin = VuePlugin()
 
-        # Mock node structure
         class MockNode:
+
             def __init__(self, node_type, start=0, end=1):
                 self.type = node_type
                 self.start_byte = start
                 self.end_byte = end
-                self.start_point = (0, 0)
-                self.end_point = (0, end)
+                self.start_point = 0, 0
+                self.end_point = 0, end
                 self.children = []
-
         root = MockNode("document")
         template_node = MockNode("template_element", 0, 50)
         script_node = MockNode("script_element", 51, 100)
         style_node = MockNode("style_element", 101, 150)
         root.children = [template_node, script_node, style_node]
-
         source = b"<template></template><script></script><style></style>"
         chunks = plugin.get_semantic_chunks(root, source)
-
         assert len(chunks) >= 3
         assert any(chunk["type"] == "template_element" for chunk in chunks)
         assert any(chunk["type"] == "script_element" for chunk in chunks)
         assert any(chunk["type"] == "style_element" for chunk in chunks)
 
-    def test_get_chunk_node_types(self):
+    @classmethod
+    def test_get_chunk_node_types(cls):
         """Test get_chunk_node_types method."""
         plugin = VuePlugin()
         node_types = plugin.get_chunk_node_types()
-
         assert isinstance(node_types, set)
         assert "template_element" in node_types
         assert "script_element" in node_types
         assert "style_element" in node_types
 
-    def test_should_chunk_node(self):
+    @staticmethod
+    def test_should_chunk_node():
         """Test should_chunk_node method."""
         plugin = VuePlugin()
 
-        # Mock node
         class MockNode:
+
             def __init__(self, node_type):
                 self.type = node_type
                 self.children = []
-
-        # Test chunk nodes
         assert plugin.should_chunk_node(MockNode("template_element"))
         assert plugin.should_chunk_node(MockNode("script_element"))
         assert plugin.should_chunk_node(MockNode("style_element"))
-
-        # Test non-chunk nodes
         assert not plugin.should_chunk_node(MockNode("text"))
         assert not plugin.should_chunk_node(MockNode("comment"))
 
-    def test_get_node_context(self):
+    @staticmethod
+    def test_get_node_context():
         """Test get_node_context method."""
         plugin = VuePlugin()
 
-        # Mock node
         class MockNode:
+
             def __init__(self, node_type):
                 self.type = node_type
                 self.children = []
-
-        # Test context extraction
         node = MockNode("template_element")
         context = plugin.get_node_context(node, b"<template></template>")
         assert context is not None
@@ -343,27 +327,26 @@ class TestVueContractCompliance:
 class TestVueEdgeCases:
     """Test edge cases in Vue parsing."""
 
-    def test_empty_file(self, tmp_path):
+    @staticmethod
+    def test_empty_file(tmp_path):
         """Test empty Vue file."""
         src = tmp_path / "Empty.vue"
         src.write_text("")
         chunks = chunk_file(src, "vue")
         assert len(chunks) == 0
 
-    def test_template_only(self, tmp_path):
+    @staticmethod
+    def test_template_only(tmp_path):
         """Test Vue file with only template."""
         src = tmp_path / "TemplateOnly.vue"
         src.write_text(
-            """<template>
-  <div>Template only component</div>
-</template>
-""",
-        )
+            "<template>\n  <div>Template only component</div>\n</template>\n")
         chunks = chunk_file(src, "vue")
         assert len(chunks) >= 1
         assert all(c.node_type == "template_element" for c in chunks)
 
-    def test_multiple_script_blocks(self, tmp_path):
+    @staticmethod
+    def test_multiple_script_blocks(tmp_path):
         """Test Vue file with multiple script blocks."""
         src = tmp_path / "MultiScript.vue"
         src.write_text(
@@ -385,14 +368,13 @@ const count = ref(0)
   <div>{{ count }}</div>
 </template>
 """,
-        )
+            )
         chunks = chunk_file(src, "vue")
-
-        # Should have multiple script chunks
         script_chunks = [c for c in chunks if c.node_type == "script_element"]
         assert len(script_chunks) >= 2
 
-    def test_slots_and_scoped_slots(self, tmp_path):
+    @staticmethod
+    def test_slots_and_scoped_slots(tmp_path):
         """Test Vue component with slots."""
         src = tmp_path / "SlotComponent.vue"
         src.write_text(
@@ -425,15 +407,15 @@ export default {
 }
 </script>
 """,
-        )
+            )
         chunks = chunk_file(src, "vue")
-
-        # Check template content
-        template_chunks = [c for c in chunks if c.node_type == "template_element"]
+        template_chunks = [c for c in chunks if c.node_type ==
+            "template_element"]
         assert len(template_chunks) >= 1
         assert "slot" in template_chunks[0].content
 
-    def test_custom_blocks(self, tmp_path):
+    @staticmethod
+    def test_custom_blocks(tmp_path):
         """Test Vue file with custom blocks."""
         src = tmp_path / "CustomBlocks.vue"
         src.write_text(
@@ -464,14 +446,13 @@ export default {
 This component demonstrates internationalization.
 </docs>
 """,
-        )
+            )
         chunks = chunk_file(src, "vue")
-
-        # Should still parse standard blocks
         assert any(c.node_type == "template_element" for c in chunks)
         assert any(c.node_type == "script_element" for c in chunks)
 
-    def test_inline_templates(self, tmp_path):
+    @staticmethod
+    def test_inline_templates(tmp_path):
         """Test Vue component with inline template."""
         src = tmp_path / "InlineTemplate.vue"
         src.write_text(
@@ -499,14 +480,13 @@ div {
 }
 </style>
 """,
-        )
+            )
         chunks = chunk_file(src, "vue")
-
-        # Should have script and style chunks
         assert any(c.node_type == "script_element" for c in chunks)
         assert any(c.node_type == "style_element" for c in chunks)
 
-    def test_functional_components(self, tmp_path):
+    @staticmethod
+    def test_functional_components(tmp_path):
         """Test functional Vue components."""
         src = tmp_path / "FunctionalComponent.vue"
         src.write_text(
@@ -527,10 +507,9 @@ export default {
 }
 </script>
 """,
-        )
+            )
         chunks = chunk_file(src, "vue")
-
-        # Check for functional template
-        template_chunks = [c for c in chunks if c.node_type == "template_element"]
+        template_chunks = [c for c in chunks if c.node_type ==
+            "template_element"]
         assert len(template_chunks) >= 1
         assert "functional" in template_chunks[0].content

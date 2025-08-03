@@ -165,7 +165,7 @@ def test_postgres_advanced_features():
 
         # Verify CSV content
         with Path(output_dir / "test_chunks.csv").open(
-            "r",
+            "r", encoding="utf-8",
         ) as f:
             reader = csv.reader(f)
             rows = list(reader)

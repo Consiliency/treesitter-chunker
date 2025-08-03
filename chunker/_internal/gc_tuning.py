@@ -3,7 +3,6 @@
 This module provides utilities for tuning Python's garbage collector
 to optimize performance for large-scale code processing.
 """
-
 import gc
 import logging
 import os
@@ -22,11 +21,10 @@ logger = logging.getLogger(__name__)
 @dataclass
 class GCStats:
     """Statistics about garbage collection."""
-
-    collections: dict[int, int]  # generation -> count
-    collected: dict[int, int]  # generation -> objects collected
-    uncollectable: dict[int, int]  # generation -> uncollectable objects
-    elapsed_time: dict[int, float]  # generation -> total time spent
+    collections: dict[int, int]
+    collected: dict[int, int]
+    uncollectable: dict[int, int]
+    elapsed_time: dict[int, float]
     enabled: bool
     thresholds: tuple
 
@@ -41,51 +39,32 @@ class GCTuner:
         self.monitoring = False
         self._gc_was_enabled = gc.isenabled()
 
-    def _get_gc_stats(self) -> dict[int, dict[str, int]]:
+    @staticmethod
+    def _get_gc_stats() -> dict[int, dict[str, int]]:
         """Get current GC statistics."""
         stats = {}
-        for i in range(gc.get_count().__len__()):
-            stats[i] = {
-                "collections": (
-                    gc.get_stats()[i]["collections"] if i < len(gc.get_stats()) else 0
-                ),
-                "collected": (
-                    gc.get_stats()[i]["collected"] if i < len(gc.get_stats()) else 0
-                ),
-                "uncollectable": (
-                    gc.get_stats()[i]["uncollectable"] if i < len(gc.get_stats()) else 0
-                ),
-            }
+        for i in range(len(gc.get_count())):
+            stats[i] = {"collections": gc.get_stats()[i]["collections"] if
+                i < len(gc.get_stats()) else 0, "collected": gc.get_stats()
+                [i]["collected"] if i < len(gc.get_stats()) else 0,
+                "uncollectable": gc.get_stats()[i]["uncollectable"] if i <
+                len(gc.get_stats()) else 0}
         return stats
 
     def get_stats(self) -> GCStats:
         """Get comprehensive GC statistics."""
         current_stats = self._get_gc_stats()
-        stats = GCStats(
-            collections={},
-            collected={},
-            uncollectable={},
-            elapsed_time={},
-            enabled=gc.isenabled(),
-            thresholds=gc.get_threshold(),
-        )
-
-        # Calculate differences
+        stats = GCStats(collections={}, collected={}, uncollectable={},
+            elapsed_time={}, enabled=gc.isenabled(), thresholds=gc.
+            get_threshold())
         for gen in range(len(current_stats)):
             if gen in self.stats_before:
-                stats.collections[gen] = (
-                    current_stats[gen]["collections"]
-                    - self.stats_before[gen]["collections"]
-                )
-                stats.collected[gen] = (
-                    current_stats[gen]["collected"]
-                    - self.stats_before[gen]["collected"]
-                )
-                stats.uncollectable[gen] = (
-                    current_stats[gen]["uncollectable"]
-                    - self.stats_before[gen]["uncollectable"]
-                )
-
+                stats.collections[gen] = current_stats[gen]["collections"
+                    ] - self.stats_before[gen]["collections"]
+                stats.collected[gen] = current_stats[gen]["collected"
+                    ] - self.stats_before[gen]["collected"]
+                stats.uncollectable[gen] = current_stats[gen]["uncollectable"
+                    ] - self.stats_before[gen]["uncollectable"]
         return stats
 
     def tune_for_batch_processing(self, batch_size: int):
@@ -95,19 +74,16 @@ class GCTuner:
             batch_size: Number of items in batch
         """
         if batch_size < 100:
-            # Small batches - keep default settings
-            gc.set_threshold(
-                self.original_thresholds[0],
-                self.original_thresholds[1],
-                self.original_thresholds[2],
-            )
+            gc.set_threshold(self.original_thresholds[0], self.
+                original_thresholds[1], self.original_thresholds[2])
         elif batch_size < 1000:
-            # Medium batches - reduce frequency slightly
             gc.set_threshold(1000, 15, 15)
         else:
-            # Large batches - reduce GC frequency significantly
             gc.set_threshold(50000, 30, 30)
+        logger.info("Tuned GC for batch size %s: thresholds=%s",
+            batch_size, gc.get_threshold())
 
+<<<<<<< HEAD
         logger.info(
             "Tuned GC for batch size %d: thresholds=%s",
             batch_size,
@@ -115,20 +91,28 @@ class GCTuner:
         )
 
     def tune_for_streaming(self):
+=======
+    @staticmethod
+    def tune_for_streaming():
+>>>>>>> origin/main
         """Tune GC for streaming operations."""
-        # For streaming, we want more frequent gen0 collections
-        # but less frequent higher generation collections
         gc.set_threshold(400, 20, 20)
-        logger.info("Tuned GC for streaming: thresholds=%s", gc.get_threshold())
+        logger.info("Tuned GC for streaming: thresholds=%s", gc.get_threshold(),
+            )
 
-    def tune_for_memory_intensive(self):
+    @staticmethod
+    def tune_for_memory_intensive():
         """Tune GC for memory-intensive operations."""
-        # Increase collection frequency to keep memory usage down
         gc.set_threshold(200, 5, 5)
+<<<<<<< HEAD
         logger.info(
             "Tuned GC for memory-intensive ops: thresholds=%s",
             gc.get_threshold(),
         )
+=======
+        logger.info("Tuned GC for memory-intensive ops: thresholds=%s", gc
+            .get_threshold())
+>>>>>>> origin/main
 
     def disable_during_critical_section(self):
         """Disable GC during critical performance sections."""
@@ -152,20 +136,19 @@ class GCTuner:
         """
         try:
             if task_type == "batch":
-                self.tune_for_batch_processing(1000)  # Default batch size
+                self.tune_for_batch_processing(1000)
             elif task_type == "streaming":
                 self.tune_for_streaming()
             elif task_type == "memory_intensive":
                 self.tune_for_memory_intensive()
             elif task_type == "critical":
                 self.disable_during_critical_section()
-
             yield self
-
         finally:
             self.restore_gc_state()
 
-    def collect_with_stats(self, generation: int | None = None) -> dict[str, Any]:
+    @staticmethod
+    def collect_with_stats(generation: (int | None) = None) -> dict[str, Any]:
         """Perform garbage collection and return statistics.
 
         Args:
@@ -176,22 +159,15 @@ class GCTuner:
         """
         before = time.perf_counter()
         before_count = gc.get_count()
-
         if generation is None:
             collected = gc.collect()
         else:
             collected = gc.collect(generation)
-
         elapsed = time.perf_counter() - before
         after_count = gc.get_count()
-
-        return {
-            "collected": collected,
-            "elapsed_time": elapsed,
-            "before_count": before_count,
-            "after_count": after_count,
-            "generation": generation,
-        }
+        return {"collected": collected, "elapsed_time": elapsed,
+            "before_count": before_count, "after_count": after_count,
+            "generation": generation}
 
 
 class MemoryOptimizer:
@@ -203,12 +179,8 @@ class MemoryOptimizer:
         self._object_pools = {}
         self._weak_refs = {}
 
-    def create_object_pool(
-        self,
-        object_type: type,
-        factory: Callable,
-        max_size: int = 100,
-    ) -> "ObjectPool":
+    def create_object_pool(self, object_type: type, factory: Callable,
+        max_size: int = 100) -> "ObjectPool":
         """Create an object pool for frequently created/destroyed objects.
 
         Args:
@@ -223,11 +195,8 @@ class MemoryOptimizer:
         self._object_pools[object_type.__name__] = pool
         return pool
 
-    def use_weak_references(
-        self,
-        obj: Any,
-        callback: Callable | None = None,
-    ) -> weakref.ref:
+    def use_weak_references(self, obj: Any, callback: (Callable | None) = None,
+        ) -> weakref.ref:
         """Create a weak reference to an object.
 
         Args:
@@ -250,14 +219,10 @@ class MemoryOptimizer:
         """
         with self.gc_tuner.optimized_for_task("batch"):
             for i in range(0, len(items), batch_size):
-                batch = items[i : i + batch_size]
+                batch = items[i:i + batch_size]
                 yield batch
-
-                # Clear batch from memory
                 del batch
-
-                # Collect garbage every few batches
-                if (i // batch_size) % 10 == 0:
+                if i // batch_size % 10 == 0:
                     self.gc_tuner.collect_with_stats(0)
 
     def optimize_for_file_processing(self, file_count: int):
@@ -267,41 +232,31 @@ class MemoryOptimizer:
             file_count: Number of files to process
         """
         if file_count < 10:
-            # Few files - standard settings
             pass
         elif file_count < 100:
-            # Moderate number - tune for batch
             self.gc_tuner.tune_for_batch_processing(file_count)
         else:
-            # Many files - aggressive memory management
             self.gc_tuner.tune_for_memory_intensive()
-
-            # Pre-allocate pools if needed
             if "Parser" not in self._object_pools:
-                logger.info("Creating parser object pool for large-scale processing")
+                logger.info(
+                    "Creating parser object pool for large-scale processing")
 
     def get_memory_usage(self) -> dict[str, Any]:
         """Get current memory usage statistics."""
-
         process = psutil.Process(os.getpid())
         memory_info = process.memory_info()
-
-        return {
-            "rss": memory_info.rss,  # Resident Set Size
-            "vms": memory_info.vms,  # Virtual Memory Size
-            "percent": process.memory_percent(),
-            "available": psutil.virtual_memory().available,
-            "gc_stats": self.gc_tuner.get_stats(),
-            "object_pools": {
-                name: pool.get_stats() for name, pool in self._object_pools.items()
-            },
-        }
+        return {"rss": memory_info.rss, "vms": memory_info.vms, "percent":
+            process.memory_percent(), "available": psutil.virtual_memory().
+            available, "gc_stats": self.gc_tuner.get_stats(),
+            "object_pools": {name: pool.get_stats() for name, pool in self.
+            _object_pools.items()}}
 
 
 class ObjectPool:
     """Generic object pool for reducing allocation overhead."""
 
-    def __init__(self, object_type: type, factory: Callable, max_size: int = 100):
+    def __init__(self, object_type: type, factory: Callable, max_size: int = 100,
+        ):
         """Initialize object pool.
 
         Args:
@@ -325,7 +280,6 @@ class ObjectPool:
         else:
             obj = self.factory()
             self._created_count += 1
-
         self._in_use.add(id(obj))
         return obj
 
@@ -334,24 +288,18 @@ class ObjectPool:
         obj_id = id(obj)
         if obj_id in self._in_use:
             self._in_use.remove(obj_id)
-
             if len(self._pool) < self.max_size:
-                # Reset object state if it has a reset method
                 if hasattr(obj, "reset"):
                     obj.reset()
                 self._pool.append(obj)
 
     def get_stats(self) -> dict[str, Any]:
         """Get pool statistics."""
-        return {
-            "type": self.object_type.__name__,
-            "pool_size": len(self._pool),
-            "in_use": len(self._in_use),
-            "created": self._created_count,
-            "reused": self._reused_count,
-            "reuse_rate": self._reused_count
-            / max(1, self._created_count + self._reused_count),
-        }
+        return {"type": self.object_type.__name__, "pool_size": len(self.
+            _pool), "in_use": len(self._in_use), "created": self.
+            _created_count, "reused": self._reused_count, "reuse_rate":
+            self._reused_count / max(1, self._created_count + self.
+            _reused_count)}
 
     def clear(self):
         """Clear the pool."""
@@ -359,7 +307,6 @@ class ObjectPool:
         self._in_use.clear()
 
 
-# Global memory optimizer instance
 _memory_optimizer = None
 
 
@@ -371,7 +318,6 @@ def get_memory_optimizer() -> MemoryOptimizer:
     return _memory_optimizer
 
 
-# Convenience functions
 def tune_gc_for_batch(batch_size: int):
     """Tune GC for batch processing."""
     optimizer = get_memory_optimizer()

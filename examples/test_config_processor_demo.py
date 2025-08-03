@@ -14,7 +14,7 @@ from chunker.types import CodeChunk
 
 def print_chunk_info(chunk: CodeChunk):
     """Print information about a chunk."""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Chunk: {chunk.metadata.get('name', chunk.node_type)}")
     print(f"Type: {chunk.node_type}")
     print(f"Lines: {chunk.start_line}-{chunk.end_line}")
@@ -36,7 +36,7 @@ def print_chunk_info(chunk: CodeChunk):
 
 def process_file(file_path: str, processor: ConfigProcessor):
     """Process a single configuration file."""
-    print(f"\n{'#'*80}")
+    print(f"\n{'#' * 80}")
     print(f"# Processing: {file_path}")
     print("#" * 80)
 
@@ -45,7 +45,7 @@ def process_file(file_path: str, processor: ConfigProcessor):
         print(f"Error: File not found: {file_path}")
         return
 
-    content = path.read_text()
+    content = path.read_text(encoding="utf-8")
 
     # Detect fmt
     fmt = processor.detect_format(file_path, content)
@@ -138,7 +138,7 @@ port = 6379
         ]
 
         for filename, content in test_cases:
-            print(f"\n{'#'*80}")
+            print(f"\n{'#' * 80}")
             print(f"# Testing inline: {filename}")
             print("#" * 80)
 

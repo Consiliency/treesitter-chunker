@@ -1,5 +1,4 @@
 """Custom exception hierarchy for the tree-sitter chunker."""
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
@@ -11,7 +10,7 @@ if TYPE_CHECKING:
 class ChunkerError(Exception):
     """Base exception for all chunker errors."""
 
-    def __init__(self, message: str, details: dict[str, Any] | None = None):
+    def __init__(self, message: str, details: (dict[str, Any] | None) = None):
         super().__init__(message)
         self.message = message
         self.details = details or {}
@@ -36,11 +35,8 @@ class LanguageNotFoundError(LanguageError):
             message += f". Available languages: {', '.join(sorted(available))}"
         else:
             message += ". No languages available (check library compilation)"
-
-        super().__init__(
-            message,
-            {"requested": language, "available": available},
-        )
+        super().__init__(message, {"requested": language, "available":
+            available})
         self.language = language
         self.available = available
 
@@ -49,10 +45,8 @@ class LanguageLoadError(LanguageError):
     """Raised when language fails to load from library."""
 
     def __init__(self, language: str, reason: str):
-        super().__init__(
-            f"Failed to load language '{language}': {reason}",
-            {"language": language, "reason": reason},
-        )
+        super().__init__(f"Failed to load language '{language}': {reason}",
+            {"language": language, "reason": reason})
         self.language = language
         self.reason = reason
 
@@ -66,9 +60,8 @@ class ParserInitError(ParserError):
 
     def __init__(self, language: str, reason: str):
         super().__init__(
-            f"Failed to initialize parser for '{language}': {reason}",
-            {"language": language, "reason": reason},
-        )
+            f"Failed to initialize parser for '{language}': {reason}", {
+            "language": language, "reason": reason})
         self.language = language
         self.reason = reason
 
@@ -78,9 +71,8 @@ class ParserConfigError(ParserError):
 
     def __init__(self, config_name: str, value: Any, reason: str):
         super().__init__(
-            f"Invalid parser configuration '{config_name}' = {value}: {reason}",
-            {"config_name": config_name, "value": value, "reason": reason},
-        )
+            f"Invalid parser configuration '{config_name}' = {value}: {reason}"
+            , {"config_name": config_name, "value": value, "reason": reason})
         self.config_name = config_name
         self.value = value
         self.reason = reason
@@ -94,38 +86,34 @@ class LibraryNotFoundError(LibraryError):
     """Raised when .so file is missing."""
 
     def __init__(self, path: Path):
-        super().__init__(
-            f"Shared library not found at {path}",
-            {
-                "path": str(path),
-                "recovery": "Run 'python scripts/build_lib.py' to compile grammars",
-            },
-        )
+        super().__init__(f"Shared library not found at {path}", {"path":
+            str(path), "recovery":
+            "Run 'python scripts/build_lib.py' to compile grammars"})
         self.path = path
 
-    def __str__(self) -> str:
+    @staticmethod
+    def __str__() -> str:
         base = super().__str__()
-        return f"{base}. Run 'python scripts/fetch_grammars.py' then 'python scripts/build_lib.py' to build the library."
+        return (
+            f"{base}. Run 'python scripts/fetch_grammars.py' then 'python scripts/build_lib.py' to build the library."
+            )
 
 
 class LibraryLoadError(LibraryError):
     """Raised when shared library fails to load."""
 
     def __init__(self, path: Path, reason: str):
-        super().__init__(
-            f"Failed to load shared library at {path}: {reason}",
-            {
-                "path": str(path),
-                "reason": reason,
-                "recovery": "Check library dependencies with 'ldd' command",
-            },
-        )
+        super().__init__(f"Failed to load shared library at {path}: {reason}",
+            {"path": str(path), "reason": reason, "recovery":
+            "Check library dependencies with 'ldd' command"})
         self.path = path
         self.reason = reason
 
     def __str__(self) -> str:
         base = super().__str__()
-        return f"{base}. Check library dependencies with 'ldd {self.path}' or rebuild with 'python scripts/build_lib.py'."
+        return (
+            f"{base}. Check library dependencies with 'ldd {self.path}' or rebuild with 'python scripts/build_lib.py'."
+            )
 
 
 class LibrarySymbolError(LibraryError):
@@ -133,16 +121,15 @@ class LibrarySymbolError(LibraryError):
 
     def __init__(self, symbol: str, library_path: Path):
         super().__init__(
-            f"Symbol '{symbol}' not found in library {library_path}",
-            {
-                "symbol": symbol,
-                "library": str(library_path),
-                "recovery": "Rebuild library or check grammar compilation",
-            },
-        )
+            f"Symbol '{symbol}' not found in library {library_path}", {
+            "symbol": symbol, "library": str(library_path), "recovery":
+            "Rebuild library or check grammar compilation"})
         self.symbol = symbol
         self.library_path = library_path
 
-    def __str__(self) -> str:
+    @staticmethod
+    def __str__() -> str:
         base = super().__str__()
-        return f"{base}. Rebuild library with 'python scripts/build_lib.py' or verify grammar files."
+        return (
+            f"{base}. Rebuild library with 'python scripts/build_lib.py' or verify grammar files."
+            )

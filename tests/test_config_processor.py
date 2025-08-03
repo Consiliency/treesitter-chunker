@@ -2,7 +2,6 @@
 
 Tests section-based chunking for INI, TOML, YAML, and JSON files.
 """
-
 import json
 
 import pytest
@@ -20,7 +19,6 @@ class TestConfigProcessor:
 
     def test_can_handle_by_extension(self):
         """Test file handling detection by extension."""
-        # Should handle these
         assert self.processor.can_handle("config.ini")
         assert self.processor.can_handle("settings.cfg")
         assert self.processor.can_handle("app.conf")
@@ -28,8 +26,6 @@ class TestConfigProcessor:
         assert self.processor.can_handle("config.yaml")
         assert self.processor.can_handle("settings.yml")
         assert self.processor.can_handle("config.json")
-
-        # Should not handle these
         assert not self.processor.can_handle("script.py")
         assert not self.processor.can_handle("document.txt")
         assert not self.processor.can_handle("image.png")
@@ -58,23 +54,20 @@ ttl = 3600
     def test_format_detection_json(self):
         """Test JSON fmt detection."""
         json_content = '{"name": "test", "version": "1.0.0"}'
-        assert self.processor.detect_format("config.json", json_content) == "json"
+        assert self.processor.detect_format("config.json", json_content,
+            ) == "json"
         assert self.processor.detect_format("unknown", json_content) == "json"
 
     def test_format_detection_yaml(self):
         """Test YAML fmt detection."""
-        yaml_content = """
-name: test
-version: 1.0.0
-features:
-  - authentication
-  - logging
-"""
-        # Skip if yaml not available
+        yaml_content = (
+            "\nname: test\nversion: 1.0.0\nfeatures:\n  - authentication\n  - logging\n"
+            )
         try:
-
-            assert self.processor.detect_format("config.yaml", yaml_content) == "yaml"
-            assert self.processor.detect_format("unknown", yaml_content) == "yaml"
+            assert self.processor.detect_format("config.yaml", yaml_content,
+                ) == "yaml"
+            assert self.processor.detect_format("unknown", yaml_content,
+                ) == "yaml"
         except ImportError:
             pytest.skip("yaml library not available")
 
@@ -87,15 +80,13 @@ version = "1.0.0"
 
 [[dependencies]]
 name = "requests"
-version = "2.28.0"
+version = "2.28.0\"
 """
-        # Skip if toml not available
         try:
-
-            assert (
-                self.processor.detect_format("pyproject.toml", toml_content) == "toml"
-            )
-            assert self.processor.detect_format("unknown", toml_content) == "toml"
+            assert self.processor.detect_format("pyproject.toml", toml_content,
+                ) == "toml"
+            assert self.processor.detect_format("unknown", toml_content,
+                ) == "toml"
         except ImportError:
             pytest.skip("toml library not available")
 
@@ -120,13 +111,8 @@ enabled = true
 host = redis.local
 port = 6379
 """
-
         chunks = self.processor.process("config.ini", ini_content)
-
-        # Should have chunks for global section and each section
         assert len(chunks) >= 3
-
-        # Check chunk properties
         section_names = []
         for chunk in chunks:
             assert isinstance(chunk, CodeChunk)
@@ -135,17 +121,14 @@ port = 6379
             assert chunk.start_line > 0
             assert chunk.end_line >= chunk.start_line
             assert chunk.content
-
-            # Extract section names
             if "section" in chunk.metadata:
                 section_names.append(chunk.metadata["section"])
-
-        # Should have found our sections
         assert "server" in section_names
         assert "database" in section_names
         assert "cache" in section_names
 
-    def test_chunk_ini_with_grouping(self):
+    @classmethod
+    def test_chunk_ini_with_grouping(cls):
         """Test INI chunking with related section grouping."""
         ini_content = """
 [server1]
@@ -164,68 +147,41 @@ port = 8080
 host = db.example.com
 port = 5432
 """
-
-        # Enable grouping
         processor = ConfigProcessor(ProcessorConfig(group_related=True))
         chunks = processor.process("servers.ini", ini_content)
-
-        # Should group server sections
         grouped_chunk = None
         for chunk in chunks:
             if chunk.metadata.get("grouped"):
                 grouped_chunk = chunk
                 break
-
         assert grouped_chunk is not None
         assert len(grouped_chunk.metadata["sections"]) > 1
         assert all("server" in s for s in grouped_chunk.metadata["sections"])
 
     def test_chunk_json_object(self):
         """Test chunking JSON objects."""
-        json_content = json.dumps(
-            {
-                "name": "myapp",
-                "version": "1.0.0",
-                "dependencies": {
-                    "express": "^4.18.0",
-                    "mongoose": "^6.0.0",
-                },
-                "scripts": {
-                    "start": "node index.js",
-                    "test": "jest",
-                },
-            },
-            indent=2,
-        )
-
+        json_content = json.dumps({"name": "myapp", "version": "1.0.0",
+            "dependencies": {"express": "^4.18.0", "mongoose": "^6.0.0"},
+            "scripts": {"start": "node index.js", "test": "jest"}}, indent=2)
         chunks = self.processor.process("package.json", json_content)
-
-        # Check chunks
         for chunk in chunks:
             assert isinstance(chunk, CodeChunk)
             assert chunk.language == "json"
             assert chunk.file_path == "package.json"
             assert chunk.content
-
-            # Should be valid JSON
             parsed = json.loads(chunk.content)
             assert isinstance(parsed, dict | list)
 
-    def test_chunk_json_array(self):
+    @classmethod
+    def test_chunk_json_array(cls):
         """Test chunking JSON arrays."""
-        # Create large array
         data = [{"id": i, "name": f"item{i}"} for i in range(100)]
         json_content = json.dumps(data, indent=2)
-
         processor = ConfigProcessor(ProcessorConfig(chunk_size=20))
         chunks = processor.process("data.json", json_content)
-
-        # Should have multiple chunks
         assert len(chunks) > 1
-
         for chunk in chunks:
-            assert chunk.node_type in ["json_array", "json_array_chunk"]
-            # Each chunk should be valid JSON
+            assert chunk.node_type in {"json_array", "json_array_chunk"}
             parsed = json.loads(chunk.content)
             assert isinstance(parsed, list)
 
@@ -255,23 +211,17 @@ features:
   - logging
   - caching
 """
-
         try:
             import yaml
         except ImportError:
             pytest.skip("yaml library not available")
-
         chunks = self.processor.process("config.yaml", yaml_content)
-
-        # Should have chunks for root keys and sections
         assert len(chunks) >= 2
-
         section_names = []
         for chunk in chunks:
             assert chunk.language == "yaml"
             if "section" in chunk.metadata:
                 section_names.append(chunk.metadata["section"])
-
         assert "server" in section_names
         assert "database" in section_names
 
@@ -296,25 +246,18 @@ path = "src/main.rs"
 
 [[bin]]
 name = "cli"
-path = "src/cli.rs"
+path = "src/cli.rs\"
 """
-
         try:
             import toml
         except ImportError:
             pytest.skip("toml library not available")
-
         chunks = self.processor.process("Cargo.toml", toml_content)
-
-        # Should have chunks for root content and tables
         assert len(chunks) >= 3
-
-        # Check for different table types
         table_types = set()
         for chunk in chunks:
             assert chunk.language == "toml"
             table_types.add(chunk.node_type)
-
         assert "toml_root" in table_types or "toml_table" in table_types
 
     def test_preserve_comments(self):
@@ -329,10 +272,7 @@ debug = true
 host = 0.0.0.0  # Bind to all interfaces
 port = 8080     # Default port
 """
-
         chunks = self.processor.process("config.ini", ini_content)
-
-        # Comments should be preserved
         for chunk in chunks:
             if "[server]" in chunk.content:
                 assert "# Server configuration" in chunk.content
@@ -348,18 +288,12 @@ key = value
 invalid line without equals
 key2 = value2
 """
-
-        # Should still detect as INI
         fmt = self.processor.detect_format("bad.ini", malformed_ini)
         assert fmt == "ini"
-
-        # Should handle parsing errors gracefully
         try:
             chunks = self.processor.process("bad.ini", malformed_ini)
-            # Should produce some chunks even if not perfect
             assert len(chunks) > 0
         except (FileNotFoundError, OSError, SyntaxError) as e:
-            # Should be a meaningful error
             assert "parse" in str(e).lower() or "fmt" in str(e).lower()
 
     def test_empty_file_handling(self):
@@ -383,12 +317,9 @@ SECRET_KEY=verysecret
 ENABLE_CACHE=true
 DEBUG_MODE=false
 """
-
-        # .env files should be detected as INI fmt
         assert self.processor.can_handle(".env")
         fmt = self.processor.detect_format(".env", env_content)
         assert fmt == "ini"
-
         chunks = self.processor.process(".env", env_content)
         assert len(chunks) > 0
 
@@ -397,7 +328,6 @@ DEBUG_MODE=false
         formats = self.processor.get_supported_formats()
         assert "ini" in formats
         assert "json" in formats
-        # YAML and TOML depend on library availability
 
     def test_get_format_extensions(self):
         """Test getting fmt extensions."""

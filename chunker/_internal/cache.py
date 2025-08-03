@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import pickle
+import pickle  # noqa: S403 - Used only for internal trusted cache data
 import sqlite3
 from contextlib import contextmanager
 from dataclasses import asdict
@@ -104,7 +104,7 @@ class ASTCache:
                 if cached_hash == metadata.hash and cached_mtime == metadata.mtime:
                     try:
                         # Deserialize chunks
-                        chunks_dicts = pickle.loads(chunks_data)
+                        chunks_dicts = pickle.loads(chunks_data)  # noqa: S301 - Loading trusted cache data
                         return [CodeChunk(**chunk_dict) for chunk_dict in chunks_dicts]
                     except (
                         pickle.UnpicklingError,

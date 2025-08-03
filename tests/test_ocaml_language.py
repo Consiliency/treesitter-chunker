@@ -1,5 +1,4 @@
 """Comprehensive tests for OCaml language support."""
-
 from chunker import chunk_file, get_parser
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from chunker.languages.ocaml import OCamlPlugin
@@ -8,7 +7,8 @@ from chunker.languages.ocaml import OCamlPlugin
 class TestOCamlBasicChunking:
     """Test basic OCaml chunking functionality."""
 
-    def test_simple_functions(self, tmp_path):
+    @staticmethod
+    def test_simple_functions(tmp_path):
         """Test basic OCaml function definitions."""
         src = tmp_path / "simple.ml"
         src.write_text(
@@ -29,11 +29,9 @@ let rec length lst =
   | [] -> 0
   | _ :: tail -> 1 + length tail
 """,
-        )
+            )
         chunks = chunk_file(src, "ocaml")
         assert len(chunks) >= 4
-
-        # Check for different function types
         let_chunks = [c for c in chunks if "let" in c.content]
         assert len(let_chunks) >= 4
         assert any("add" in c.content for c in let_chunks)
@@ -41,7 +39,8 @@ let rec length lst =
         assert any("factorial" in c.content for c in let_chunks)
         assert any("length" in c.content for c in let_chunks)
 
-    def test_type_definitions(self, tmp_path):
+    @staticmethod
+    def test_type_definitions(tmp_path):
         """Test OCaml type definitions."""
         src = tmp_path / "types.ml"
         src.write_text(
@@ -78,21 +77,19 @@ and value =
   | VClosure of string * expr * env
 and env = (string * value) list
 """,
-        )
+            )
         chunks = chunk_file(src, "ocaml")
-
-        # Check for type definitions
-        type_chunks = [
-            c for c in chunks if c.node_type in ["type_definition", "type_binding"]
-        ]
+        type_chunks = [c for c in chunks if c.node_type in {
+            "type_definition", "type_binding"}]
         assert len(type_chunks) >= 5
-        assert any("color" in c.content and "RGB" in c.content for c in type_chunks)
-        assert any(
-            "person" in c.content and "record" in str(c.content) for c in type_chunks
-        )
+        assert any("color" in c.content and "RGB" in c.content for c in
+            type_chunks)
+        assert any("person" in c.content and "record" in str(c.content) for
+            c in type_chunks)
         assert any("'a tree" in c.content for c in type_chunks)
 
-    def test_module_definitions(self, tmp_path):
+    @staticmethod
+    def test_module_definitions(tmp_path):
         """Test OCaml module definitions."""
         src = tmp_path / "modules.ml"
         src.write_text(
@@ -137,10 +134,8 @@ module Outer = struct
   let get_value () = Inner.value
 end
 """,
-        )
+            )
         chunks = chunk_file(src, "ocaml")
-
-        # Check for module definitions
         module_chunks = [c for c in chunks if "module" in c.node_type]
         assert len(module_chunks) >= 4
         assert any("Stack" in c.content for c in module_chunks)
@@ -148,7 +143,8 @@ end
         assert any("MakeSet" in c.content for c in module_chunks)
         assert any("Outer" in c.content for c in module_chunks)
 
-    def test_exception_definitions(self, tmp_path):
+    @staticmethod
+    def test_exception_definitions(tmp_path):
         """Test OCaml exception definitions."""
         src = tmp_path / "exceptions.ml"
         src.write_text(
@@ -177,17 +173,17 @@ let try_divide x y =
     Printf.printf "Error: %s\\n" msg;
     None
 """,
-        )
+            )
         chunks = chunk_file(src, "ocaml")
-
-        # Check for exception definitions
-        exception_chunks = [c for c in chunks if c.node_type == "exception_definition"]
+        exception_chunks = [c for c in chunks if c.node_type ==
+            "exception_definition"]
         assert len(exception_chunks) >= 3
         assert any("Not_found" in c.content for c in exception_chunks)
         assert any("Invalid_argument" in c.content for c in exception_chunks)
         assert any("Parse_error" in c.content for c in exception_chunks)
 
-    def test_class_definitions(self, tmp_path):
+    @staticmethod
+    def test_class_definitions(tmp_path):
         """Test OCaml class definitions."""
         src = tmp_path / "classes.ml"
         src.write_text(
@@ -225,42 +221,33 @@ class virtual shape =
     method virtual perimeter : float
   end
 """,
-        )
+            )
         chunks = chunk_file(src, "ocaml")
-
-        # Check for class definitions
         class_chunks = [c for c in chunks if "class" in c.node_type]
         assert len(class_chunks) >= 3
-        assert any(
-            "point" in c.content and "distance" in c.content for c in class_chunks
-        )
-        assert any(
-            "colored_point" in c.content and "inherit" in c.content
-            for c in class_chunks
-        )
+        assert any("point" in c.content and "distance" in c.content for c in
+            class_chunks)
+        assert any("colored_point" in c.content and "inherit" in c.content for
+            c in class_chunks)
         assert any("virtual shape" in c.content for c in class_chunks)
 
 
 class TestOCamlContractCompliance:
     """Test ExtendedLanguagePluginContract compliance."""
 
-    def test_implements_contract(self):
+    @staticmethod
+    def test_implements_contract():
         """Verify OCamlPlugin implements ExtendedLanguagePluginContract."""
         assert issubclass(OCamlPlugin, ExtendedLanguagePluginContract)
 
-    def test_get_semantic_chunks(self, tmp_path):
+    @classmethod
+    def test_get_semantic_chunks(cls, tmp_path):
         """Test get_semantic_chunks method."""
         plugin = OCamlPlugin()
-
-        # Create a simple OCaml file
-        source = b"""let square x = x * x"""
-
-        # Parse the source (mock tree-sitter node)
-
+        source = b"let square x = x * x"
         parser = get_parser("ocaml")
         plugin.set_parser(parser)
         tree = parser.parse(source)
-
         chunks = plugin.get_semantic_chunks(tree.root_node, source)
         assert len(chunks) >= 1
         assert all("type" in chunk for chunk in chunks)
@@ -268,56 +255,50 @@ class TestOCamlContractCompliance:
         assert all("end_line" in chunk for chunk in chunks)
         assert all("content" in chunk for chunk in chunks)
 
-    def test_get_chunk_node_types(self):
+    @classmethod
+    def test_get_chunk_node_types(cls):
         """Test get_chunk_node_types method."""
         plugin = OCamlPlugin()
         node_types = plugin.get_chunk_node_types()
-
         assert isinstance(node_types, set)
         assert len(node_types) > 0
         assert "value_definition" in node_types or "let_binding" in node_types
         assert "type_definition" in node_types or "type_binding" in node_types
         assert "module_definition" in node_types or "module_binding" in node_types
 
-    def test_should_chunk_node(self):
+    @staticmethod
+    def test_should_chunk_node():
         """Test should_chunk_node method."""
         plugin = OCamlPlugin()
 
-        # Mock nodes
         class MockNode:
+
             def __init__(self, node_type):
                 self.type = node_type
-
-        # Test chunk nodes
         assert plugin.should_chunk_node(MockNode("value_definition"))
         assert plugin.should_chunk_node(MockNode("let_binding"))
         assert plugin.should_chunk_node(MockNode("type_definition"))
         assert plugin.should_chunk_node(MockNode("module_definition"))
         assert plugin.should_chunk_node(MockNode("exception_definition"))
         assert plugin.should_chunk_node(MockNode("comment"))
-
-        # Test non-chunk nodes
         assert not plugin.should_chunk_node(MockNode("identifier"))
         assert not plugin.should_chunk_node(MockNode("number"))
         assert not plugin.should_chunk_node(MockNode("constructor"))
 
-    def test_get_node_context(self):
+    @staticmethod
+    def test_get_node_context():
         """Test get_node_context method."""
         plugin = OCamlPlugin()
 
-        # Mock node
         class MockNode:
+
             def __init__(self, node_type):
                 self.type = node_type
                 self.children = []
-
-        # Test let binding context
         node = MockNode("let_binding")
         context = plugin.get_node_context(node, b"let add x y = x + y")
         assert context is not None
         assert "let" in context
-
-        # Test type context
         node = MockNode("type_definition")
         context = plugin.get_node_context(node, b"type color = Red | Blue")
         assert context is not None
@@ -327,14 +308,16 @@ class TestOCamlContractCompliance:
 class TestOCamlEdgeCases:
     """Test edge cases in OCaml parsing."""
 
-    def test_empty_ocaml_file(self, tmp_path):
+    @staticmethod
+    def test_empty_ocaml_file(tmp_path):
         """Test empty OCaml file."""
         src = tmp_path / "empty.ml"
         src.write_text("")
         chunks = chunk_file(src, "ocaml")
         assert len(chunks) == 0
 
-    def test_ocaml_with_only_comments(self, tmp_path):
+    @staticmethod
+    def test_ocaml_with_only_comments(tmp_path):
         """Test OCaml file with only comments."""
         src = tmp_path / "comments.ml"
         src.write_text(
@@ -344,12 +327,13 @@ class TestOCamlEdgeCases:
 (** Documentation comment *)
 (*** Special comment ***)
 """,
-        )
+            )
         chunks = chunk_file(src, "ocaml")
         comment_chunks = [c for c in chunks if c.node_type == "comment"]
         assert len(comment_chunks) >= 1
 
-    def test_ocaml_with_operators(self, tmp_path):
+    @staticmethod
+    def test_ocaml_with_operators(tmp_path):
         """Test OCaml with custom operators."""
         src = tmp_path / "operators.ml"
         src.write_text(
@@ -383,15 +367,14 @@ let pipeline_example x =
   |> ( * ) 2
   |> string_of_int
 """,
-        )
+            )
         chunks = chunk_file(src, "ocaml")
-
-        # Should capture operator definitions
         let_chunks = [c for c in chunks if "let" in c.content]
         assert any("|>" in c.content for c in let_chunks)
         assert any(">>=" in c.content for c in let_chunks)
 
-    def test_ocaml_with_gadt(self, tmp_path):
+    @staticmethod
+    def test_ocaml_with_gadt(tmp_path):
         """Test OCaml with GADTs (Generalized Algebraic Data Types)."""
         src = tmp_path / "gadt.ml"
         src.write_text(
@@ -416,15 +399,14 @@ type (_, _) format =
   | Lit : string * ('a, 'b) format -> ('a, 'b) format
   | End : ('a, 'a) format
 """,
-        )
+            )
         chunks = chunk_file(src, "ocaml")
-
-        # Should capture GADT type definitions
         type_chunks = [c for c in chunks if "type" in c.node_type]
         assert any("expr" in c.content and "GADT" in c.content for c in chunks)
         assert any("format" in c.content for c in type_chunks)
 
-    def test_ocaml_interface_file(self, tmp_path):
+    @staticmethod
+    def test_ocaml_interface_file(tmp_path):
         """Test OCaml interface file (.mli)."""
         src = tmp_path / "stack.mli"
         src.write_text(
@@ -454,10 +436,9 @@ module Make (E : ELEMENT) : sig
   val pop : t -> element option
 end
 """,
-        )
+            )
         chunks = chunk_file(src, "ocaml")
-
-        # Should capture interface elements
         assert any("'a t" in c.content for c in chunks)
         assert any("ELEMENT" in c.content for c in chunks)
-        assert any("Make" in c.content and "Functor" in c.content for c in chunks)
+        assert any("Make" in c.content and "Functor" in c.content for c in
+            chunks)

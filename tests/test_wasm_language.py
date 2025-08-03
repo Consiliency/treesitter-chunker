@@ -1,5 +1,4 @@
 """Tests for WebAssembly (WASM) language plugin."""
-
 import pytest
 
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
@@ -11,17 +10,20 @@ from chunker.parser import get_parser
 class TestWASMPlugin:
     """Test suite for WebAssembly language plugin."""
 
+    @classmethod
     @pytest.fixture
-    def plugin(self):
+    def plugin(cls):
         """Create a WASM plugin instance."""
         return WASMPlugin()
 
+    @staticmethod
     @pytest.fixture
-    def parser(self):
+    def parser():
         """Get a WASM parser."""
         return get_parser("wat")
 
-    def test_plugin_properties(self, plugin):
+    @staticmethod
+    def test_plugin_properties(plugin):
         """Test basic plugin properties."""
         assert plugin.language_name == "wat"
         assert ".wat" in plugin.supported_extensions
@@ -34,12 +36,14 @@ class TestWASMPlugin:
         assert "export" in plugin.default_chunk_types
         assert "import" in plugin.default_chunk_types
 
-    def test_implements_contracts(self, plugin):
+    @staticmethod
+    def test_implements_contracts(plugin):
         """Test that plugin implements required contracts."""
         assert isinstance(plugin, LanguagePlugin)
         assert isinstance(plugin, ExtendedLanguagePluginContract)
 
-    def test_module_chunking(self, plugin, parser):
+    @staticmethod
+    def test_module_chunking(plugin, parser):
         """Test chunking of WASM modules."""
         code = """
 (module
@@ -54,19 +58,17 @@ class TestWASMPlugin:
         plugin.set_parser(parser)
         tree = parser.parse(code.encode())
         chunks = plugin.get_semantic_chunks(tree.root_node, code.encode())
-
         module_chunks = [c for c in chunks if c["type"] == "module"]
         assert len(module_chunks) == 1
-
         func_chunks = [c for c in chunks if c["type"] == "function"]
         assert len(func_chunks) >= 1
         assert any(c["name"] == "add" for c in func_chunks)
-
         export_chunks = [c for c in chunks if c["type"] == "export"]
         assert len(export_chunks) >= 1
         assert any(c["name"] == "add" for c in export_chunks)
 
-    def test_function_chunking(self, plugin, parser):
+    @staticmethod
+    def test_function_chunking(plugin, parser):
         """Test chunking of WASM functions."""
         code = """
 (module
@@ -86,21 +88,19 @@ class TestWASMPlugin:
         plugin.set_parser(parser)
         tree = parser.parse(code.encode())
         chunks = plugin.get_semantic_chunks(tree.root_node, code.encode())
-
         func_chunks = [c for c in chunks if c["type"] == "function"]
         assert len(func_chunks) >= 2
-
         func_names = [c["name"] for c in func_chunks if c.get("name")]
         assert "fibonacci" in func_names
         assert "main" in func_names
-
-        # Check function signatures
-        fib_func = next((c for c in func_chunks if c["name"] == "fibonacci"), None)
+        fib_func = next((c for c in func_chunks if c["name"] == "fibonacci"
+            ), None)
         if fib_func:
             assert fib_func.get("param_count", 0) == 1
             assert fib_func.get("result_count", 0) == 1
 
-    def test_memory_chunking(self, plugin, parser):
+    @staticmethod
+    def test_memory_chunking(plugin, parser):
         """Test chunking of WASM memory declarations."""
         code = """
 (module
@@ -112,16 +112,14 @@ class TestWASMPlugin:
         plugin.set_parser(parser)
         tree = parser.parse(code.encode())
         chunks = plugin.get_semantic_chunks(tree.root_node, code.encode())
-
         memory_chunks = [c for c in chunks if c["type"] == "memory"]
         assert len(memory_chunks) >= 2
-
-        # Check for named memories
         named_memories = [c for c in memory_chunks if c.get("name")]
         assert any(c["name"] == "mem1" for c in named_memories)
         assert any(c["name"] == "mem2" for c in named_memories)
 
-    def test_table_chunking(self, plugin, parser):
+    @staticmethod
+    def test_table_chunking(plugin, parser):
         """Test chunking of WASM table declarations."""
         code = """
 (module
@@ -133,15 +131,14 @@ class TestWASMPlugin:
         plugin.set_parser(parser)
         tree = parser.parse(code.encode())
         chunks = plugin.get_semantic_chunks(tree.root_node, code.encode())
-
         table_chunks = [c for c in chunks if c["type"] == "table"]
         assert len(table_chunks) >= 2
-
         table_names = [c["name"] for c in table_chunks if c.get("name")]
         assert "t1" in table_names
         assert "t2" in table_names
 
-    def test_global_chunking(self, plugin, parser):
+    @staticmethod
+    def test_global_chunking(plugin, parser):
         """Test chunking of WASM global declarations."""
         code = """
 (module
@@ -153,20 +150,17 @@ class TestWASMPlugin:
         plugin.set_parser(parser)
         tree = parser.parse(code.encode())
         chunks = plugin.get_semantic_chunks(tree.root_node, code.encode())
-
         global_chunks = [c for c in chunks if c["type"] == "global"]
         assert len(global_chunks) >= 3
-
         global_names = [c["name"] for c in global_chunks if c.get("name")]
         assert "g1" in global_names
         assert "g2" in global_names
         assert "pi" in global_names
-
-        # Check for mutable global
         mutable_globals = [c for c in global_chunks if c.get("mutable", False)]
         assert len(mutable_globals) >= 1
 
-    def test_import_export_chunking(self, plugin, parser):
+    @staticmethod
+    def test_import_export_chunking(plugin, parser):
         """Test chunking of imports and exports."""
         code = """
 (module
@@ -186,24 +180,19 @@ class TestWASMPlugin:
         plugin.set_parser(parser)
         tree = parser.parse(code.encode())
         chunks = plugin.get_semantic_chunks(tree.root_node, code.encode())
-
         import_chunks = [c for c in chunks if c["type"] == "import"]
         export_chunks = [c for c in chunks if c["type"] == "export"]
-
         assert len(import_chunks) >= 3
         assert len(export_chunks) >= 2
-
-        # Check import names
         import_names = [c["name"] for c in import_chunks if c.get("name")]
         assert any("env.print" in name for name in import_names)
         assert any("env.memory" in name for name in import_names)
-
-        # Check export names
         export_names = [c["name"] for c in export_chunks if c.get("name")]
         assert "add" in export_names
         assert "memory" in export_names
 
-    def test_type_definitions(self, plugin, parser):
+    @staticmethod
+    def test_type_definitions(plugin, parser):
         """Test chunking of type definitions."""
         code = """
 (module
@@ -219,23 +208,18 @@ class TestWASMPlugin:
         plugin.set_parser(parser)
         tree = parser.parse(code.encode())
         chunks = plugin.get_semantic_chunks(tree.root_node, code.encode())
-
         type_chunks = [c for c in chunks if c["type"] == "type_definition"]
         assert len(type_chunks) >= 2
-
         type_names = [c["name"] for c in type_chunks if c.get("name")]
         assert "sig1" in type_names
         assert "sig2" in type_names
 
-    def test_should_chunk_node(self, plugin, parser):
+    @staticmethod
+    def test_should_chunk_node(plugin, parser):
         """Test should_chunk_node method."""
-        code = """
-(module
-  (func $test)
-  (memory 1)
-  (global $g i32 (i32.const 0))
-)
-"""
+        code = (
+            "\n(module\n  (func $test)\n  (memory 1)\n  (global $g i32 (i32.const 0))\n)\n"
+            )
         tree = parser.parse(code.encode())
 
         def find_nodes_by_type(node, node_type):
@@ -246,24 +230,19 @@ class TestWASMPlugin:
             for child in node.children:
                 results.extend(find_nodes_by_type(child, node_type))
             return results
-
-        # Find different node types
         root = tree.root_node
         module_nodes = find_nodes_by_type(root, "module")
-        func_nodes = find_nodes_by_type(root, "func") + find_nodes_by_type(
-            root,
-            "function",
-        )
+        func_nodes = find_nodes_by_type(root, "func") + find_nodes_by_type(root
+            , "function")
         memory_nodes = find_nodes_by_type(root, "memory")
         global_nodes = find_nodes_by_type(root, "global")
-
-        # All should be chunkable
         assert all(plugin.should_chunk_node(n) for n in module_nodes)
         assert all(plugin.should_chunk_node(n) for n in func_nodes)
         assert all(plugin.should_chunk_node(n) for n in memory_nodes)
         assert all(plugin.should_chunk_node(n) for n in global_nodes)
 
-    def test_get_node_context(self, plugin, parser):
+    @staticmethod
+    def test_get_node_context(plugin, parser):
         """Test context extraction for nodes."""
         code = """
 (module $mymodule
@@ -287,25 +266,20 @@ class TestWASMPlugin:
                 if result:
                     return result
             return None
-
-        # Test module context
         module_node = find_first_node_by_type(tree.root_node, "module")
         if module_node:
             context = plugin.get_node_context(module_node, source)
             assert context is not None
             assert "module" in context
-
-        # Test function context
-        func_node = find_first_node_by_type(
-            tree.root_node,
-            "func",
-        ) or find_first_node_by_type(tree.root_node, "function")
+        func_node = find_first_node_by_type(tree.root_node, "func",
+            ) or find_first_node_by_type(tree.root_node, "function")
         if func_node:
             context = plugin.get_node_context(func_node, source)
             assert context is not None
             assert "func" in context
 
-    def test_complex_wasm_module(self, plugin, parser):
+    @staticmethod
+    def test_complex_wasm_module(plugin, parser):
         """Test with a more complex WASM module."""
         code = """
 (module
@@ -357,8 +331,6 @@ class TestWASMPlugin:
         plugin.set_parser(parser)
         tree = parser.parse(code.encode())
         chunks = plugin.get_semantic_chunks(tree.root_node, code.encode())
-
-        # Should find multiple chunk types
         module_chunks = [c for c in chunks if c["type"] == "module"]
         func_chunks = [c for c in chunks if c["type"] == "function"]
         type_chunks = [c for c in chunks if c["type"] == "type_definition"]
@@ -367,23 +339,21 @@ class TestWASMPlugin:
         memory_chunks = [c for c in chunks if c["type"] == "memory"]
         global_chunks = [c for c in chunks if c["type"] == "global"]
         data_chunks = [c for c in chunks if c["type"] == "data_segment"]
-
         assert len(module_chunks) >= 1
-        assert len(func_chunks) >= 4  # increment, add, multiply, start
-        assert len(type_chunks) >= 2  # binary_op, unary_op
-        assert len(import_chunks) >= 1  # console.log
-        assert len(export_chunks) >= 4  # memory, increment, add, multiply
+        assert len(func_chunks) >= 4
+        assert len(type_chunks) >= 2
+        assert len(import_chunks) >= 1
+        assert len(export_chunks) >= 4
         assert len(memory_chunks) >= 1
-        assert len(global_chunks) >= 1  # counter
+        assert len(global_chunks) >= 1
         assert len(data_chunks) >= 1
-
-        # Verify specific chunks
         assert any(c["name"] == "increment" for c in func_chunks)
         assert any(c["name"] == "add" for c in func_chunks)
         assert any(c["name"] == "multiply" for c in func_chunks)
         assert any(c["name"] == "counter" for c in global_chunks)
 
-    def test_function_metadata(self, plugin, parser):
+    @staticmethod
+    def test_function_metadata(plugin, parser):
         """Test function metadata extraction."""
         code = """
 (module
@@ -404,8 +374,6 @@ class TestWASMPlugin:
         plugin.set_parser(parser)
         tree = parser.parse(code.encode())
         source = code.encode()
-
-        # Process nodes to check function metadata
         chunks = []
 
         def process_tree(node):
@@ -414,13 +382,8 @@ class TestWASMPlugin:
                 chunks.append(chunk)
             for child in node.children:
                 process_tree(child)
-
         process_tree(tree.root_node)
-
-        # Check function metadata
         func_chunks = [c for c in chunks if "func" in c.node_type]
-
-        # Verify parameter and result counts
         for chunk in func_chunks:
             if chunk.metadata:
                 assert "param_count" in chunk.metadata

@@ -1,5 +1,4 @@
 """Test Rust-specific language features chunking."""
-
 import pytest
 
 from chunker.core import chunk_file
@@ -21,20 +20,9 @@ class RustConfig(LanguageConfig):
 
     @property
     def chunk_types(self) -> set[str]:
-        return {
-            "function_item",
-            "impl_item",
-            "trait_item",
-            "struct_item",
-            "enum_item",
-            "mod_item",
-            "macro_definition",
-            "const_item",
-            "static_item",
-            "type_item",
-            "foreign_mod_item",  # extern blocks
-            "union_item",  # union types
-        }
+        return {"function_item", "impl_item", "trait_item", "struct_item",
+            "enum_item", "mod_item", "macro_definition", "const_item",
+            "static_item", "type_item", "foreign_mod_item", "union_item"}
 
 
 def check_rust_parser_available():
@@ -46,11 +34,15 @@ def check_rust_parser_available():
         return False
 
 
+<<<<<<< HEAD
 # Skip entire test class if Rust parser is not available
 pytestmark = pytest.mark.skipif(
     not check_rust_parser_available(),
     reason="Rust parser not available due to ABI version mismatch",
 )
+=======
+pytestmark = pytest.mark.skipif(not check_rust_parser_available(), reason="Rust parser not available due to ABI version mismatch")
+>>>>>>> origin/main
 
 
 class TestRustLanguageFeatures:
@@ -61,12 +53,14 @@ class TestRustLanguageFeatures:
         self.rust_config = RustConfig()
         language_config_registry.register(self.rust_config)
 
-    def teardown_method(self):
+    @staticmethod
+    def teardown_method():
         """Clean up after tests."""
         if "rust" in language_config_registry._configs:
             del language_config_registry._configs["rust"]
 
-    def test_trait_implementations(self, tmp_path):
+    @staticmethod
+    def test_trait_implementations(tmp_path):
         """Test chunking of trait implementations."""
         test_file = tmp_path / "traits.rs"
         test_file.write_text(
@@ -117,33 +111,24 @@ impl Iterator for Counter {
     }
 }
 """,
-        )
-
+            )
         chunks = chunk_file(test_file, "rust")
-
-        # Filter trait and impl chunks
         trait_chunks = [c for c in chunks if c.node_type == "trait_item"]
         impl_chunks = [c for c in chunks if c.node_type == "impl_item"]
-
-        # Should find trait definitions
-        assert len(trait_chunks) >= 2  # Display and Iterator
-
-        # Should find impl blocks
-        assert len(impl_chunks) >= 4  # All the impl blocks
-
-        # Verify trait content
+        assert len(trait_chunks) >= 2
+        assert len(impl_chunks) >= 4
         trait_contents = [c.content for c in trait_chunks]
         assert any("trait Display" in c for c in trait_contents)
         assert any("trait Iterator" in c for c in trait_contents)
         assert any("type Item" in c for c in trait_contents)
-
-        # Verify impl content includes generic parameters
         impl_contents = [c.content for c in impl_chunks]
         assert any("impl Display for Point" in c for c in impl_contents)
         assert any("impl<T> Display for Vec<T>" in c for c in impl_contents)
-        assert any("impl<T, U> MyTrait for MyStruct<T, U>" in c for c in impl_contents)
+        assert any("impl<T, U> MyTrait for MyStruct<T, U>" in c for c in
+            impl_contents)
 
-    def test_macro_definitions(self, tmp_path):
+    @staticmethod
+    def test_macro_definitions(tmp_path):
         """Test chunking of macro definitions."""
         test_file = tmp_path / "macros.rs"
         test_file.write_text(
@@ -193,28 +178,20 @@ macro_rules! find_min {
     )
 }
 """,
-        )
-
+            )
         chunks = chunk_file(test_file, "rust")
-
-        # Filter macro chunks
         macro_chunks = [c for c in chunks if c.node_type == "macro_definition"]
         function_chunks = [c for c in chunks if c.node_type == "function_item"]
-
-        # Should find macro_rules! definitions
-        assert len(macro_chunks) >= 4  # All macro_rules!
-
-        # Should find proc macro function
-        assert len(function_chunks) >= 1  # derive_debug
-
-        # Verify macro content
+        assert len(macro_chunks) >= 4
+        assert len(function_chunks) >= 1
         macro_contents = [c.content for c in macro_chunks]
         assert any("macro_rules! say_hello" in c for c in macro_contents)
         assert any("macro_rules! create_function" in c for c in macro_contents)
         assert any("$func_name:ident" in c for c in macro_contents)
         assert any("$($element:expr),*" in c for c in macro_contents)
 
-    def test_unsafe_blocks(self, tmp_path):
+    @staticmethod
+    def test_unsafe_blocks(tmp_path):
         """Test handling of unsafe blocks and functions."""
         test_file = tmp_path / "unsafe_code.rs"
         test_file.write_text(
@@ -259,31 +236,26 @@ fn call_extern() {
     }
 }
 """,
-        )
-
+            )
         chunks = chunk_file(test_file, "rust")
-
-        # Check for unsafe functions and traits
         function_chunks = [c for c in chunks if c.node_type == "function_item"]
         trait_chunks = [c for c in chunks if c.node_type == "trait_item"]
         impl_chunks = [c for c in chunks if c.node_type == "impl_item"]
-
-        # Verify unsafe content is captured
-        unsafe_functions = [c for c in function_chunks if "unsafe fn" in c.content]
-        assert len(unsafe_functions) >= 1  # dangerous_operation
-
-        unsafe_traits = [c for c in trait_chunks if "unsafe trait" in c.content]
-        assert len(unsafe_traits) >= 1  # UnsafeTrait
-
+        unsafe_functions = [c for c in function_chunks if "unsafe fn" in c.
+            content]
+        assert len(unsafe_functions) >= 1
+        unsafe_traits = [c for c in trait_chunks if "unsafe trait" in c.content
+            ]
+        assert len(unsafe_traits) >= 1
         unsafe_impls = [c for c in impl_chunks if "unsafe impl" in c.content]
-        assert len(unsafe_impls) >= 1  # unsafe impl UnsafeTrait
-
-        # Verify extern blocks are handled
-        foreign_mod_chunks = [c for c in chunks if c.node_type == "foreign_mod_item"]
-        assert len(foreign_mod_chunks) >= 1  # extern "C" block
+        assert len(unsafe_impls) >= 1
+        foreign_mod_chunks = [c for c in chunks if c.node_type ==
+            "foreign_mod_item"]
+        assert len(foreign_mod_chunks) >= 1
         assert any('extern "C"' in c.content for c in foreign_mod_chunks)
 
-    def test_lifetime_annotations(self, tmp_path):
+    @staticmethod
+    def test_lifetime_annotations(tmp_path):
         """Test handling of lifetime annotations."""
         test_file = tmp_path / "lifetimes.rs"
         test_file.write_text(
@@ -330,33 +302,25 @@ trait Display<'a> {
     fn fmt(&'a self) -> String;
 }
 """,
-        )
-
+            )
         chunks = chunk_file(test_file, "rust")
-
-        # All major items should be chunked despite lifetime complexity
         function_chunks = [c for c in chunks if c.node_type == "function_item"]
         struct_chunks = [c for c in chunks if c.node_type == "struct_item"]
         impl_chunks = [c for c in chunks if c.node_type == "impl_item"]
         const_chunks = [c for c in chunks if c.node_type == "const_item"]
         trait_chunks = [c for c in chunks if c.node_type == "trait_item"]
-
-        # Verify all items are found
-        assert (
-            len(function_chunks) >= 3
-        )  # longest, level, announce_and_return_part, complex_lifetimes
-        assert len(struct_chunks) >= 1  # ImportantExcerpt
-        assert len(impl_chunks) >= 1  # impl<'a> ImportantExcerpt<'a>
-        assert len(const_chunks) >= 1  # STATIC_STR
-        assert len(trait_chunks) >= 1  # Display<'a>
-
-        # Verify lifetime syntax is preserved
+        assert len(function_chunks) >= 3
+        assert len(struct_chunks) >= 1
+        assert len(impl_chunks) >= 1
+        assert len(const_chunks) >= 1
+        assert len(trait_chunks) >= 1
         function_contents = [c.content for c in function_chunks]
         assert any("<'a>" in c and "&'a str" in c for c in function_contents)
         assert any("<'a, 'b>" in c for c in function_contents)
         assert any("'b: 'a" in c for c in function_contents)
 
-    def test_module_structure(self, tmp_path):
+    @staticmethod
+    def test_module_structure(tmp_path):
         """Test module structure (mod, pub, use statements)."""
         test_file = tmp_path / "modules.rs"
         test_file.write_text(
@@ -407,33 +371,24 @@ pub(crate) mod internal_module {
     pub(in crate::public_api) fn restricted_visibility() {}
 }
 """,
-        )
-
+            )
         chunks = chunk_file(test_file, "rust")
-
-        # Filter module chunks
         mod_chunks = [c for c in chunks if c.node_type == "mod_item"]
-
-        # Should find all module declarations
-        assert (
-            len(mod_chunks) >= 5
-        )  # utils, nested, public_api, private, internal_module
-
-        # Verify module content and visibility
+        assert len(mod_chunks) >= 5
         mod_contents = [c.content for c in mod_chunks]
         assert any("mod utils" in c for c in mod_contents)
         assert any("pub mod public_api" in c for c in mod_contents)
         assert any("pub mod nested" in c for c in mod_contents)
         assert any("mod private" in c for c in mod_contents)
         assert any("pub(crate) mod internal_module" in c for c in mod_contents)
-
-        # Check that nested items are also chunked
         all_chunks = chunks
         assert any("pub fn helper" in c.content for c in all_chunks)
         assert any("pub struct PublicStruct" in c.content for c in all_chunks)
-        assert any("pub(crate) fn internal_only" in c.content for c in all_chunks)
+        assert any("pub(crate) fn internal_only" in c.content for c in
+            all_chunks)
 
-    def test_generic_functions(self, tmp_path):
+    @staticmethod
+    def test_generic_functions(tmp_path):
         """Test generic functions with various constraints."""
         test_file = tmp_path / "generics.rs"
         test_file.write_text(
@@ -509,65 +464,43 @@ impl<T> Container for Box<T> {
     }
 }
 """,
-        )
-
+            )
         chunks = chunk_file(test_file, "rust")
-
-        # Count different types of generic items
         function_chunks = [c for c in chunks if c.node_type == "function_item"]
         struct_chunks = [c for c in chunks if c.node_type == "struct_item"]
         impl_chunks = [c for c in chunks if c.node_type == "impl_item"]
         enum_chunks = [c for c in chunks if c.node_type == "enum_item"]
         trait_chunks = [c for c in chunks if c.node_type == "trait_item"]
-
-        # Verify all generic constructs are found
-        assert len(function_chunks) >= 5  # All generic functions
-        assert len(struct_chunks) >= 1  # Point<T>
-        assert len(impl_chunks) >= 3  # Two Point impls + Container impl
-        assert len(enum_chunks) >= 1  # Option<T>
-        assert len(trait_chunks) >= 1  # Container
-
-        # Verify generic syntax is preserved
+        assert len(function_chunks) >= 5
+        assert len(struct_chunks) >= 1
+        assert len(impl_chunks) >= 3
+        assert len(enum_chunks) >= 1
+        assert len(trait_chunks) >= 1
         function_contents = [c.content for c in function_chunks]
         assert any("fn identity<T>" in c for c in function_contents)
         assert any("<T: Debug>" in c for c in function_contents)
         assert any("<T, U>" in c for c in function_contents)
-        assert any("where" in c and "T: Clone + Debug" in c for c in function_contents)
-
-        # Check impl with constraints
+        assert any("where" in c and "T: Clone + Debug" in c for c in
+            function_contents)
         impl_contents = [c.content for c in impl_chunks]
         assert any("<T: Display + PartialOrd>" in c for c in impl_contents)
 
-    def test_rust_config(self):
+    @staticmethod
+    def test_rust_config():
         """Test Rust language configuration."""
         config = language_config_registry.get("rust")
         assert config is not None
-
-        # Check language name
         assert config.language_id == "rust"
-
-        # Check supported extensions
         assert ".rs" in config.file_extensions
         assert len(config.file_extensions) == 1
-
-        # Check default chunk types
-        expected_types = {
-            "function_item",
-            "impl_item",
-            "trait_item",
-            "struct_item",
-            "enum_item",
-            "mod_item",
-            "macro_definition",
-            "const_item",
-            "static_item",
-            "type_item",
-            "foreign_mod_item",
-            "union_item",
-        }
+        expected_types = {"function_item", "impl_item", "trait_item",
+            "struct_item", "enum_item", "mod_item", "macro_definition",
+            "const_item", "static_item", "type_item", "foreign_mod_item",
+            "union_item"}
         assert config.chunk_types == expected_types
 
-    def test_visibility_modifiers(self, tmp_path):
+    @staticmethod
+    def test_visibility_modifiers(tmp_path):
         """Test that visibility modifiers are preserved in content."""
         test_file = tmp_path / "visibility.rs"
         test_file.write_text(
@@ -592,35 +525,24 @@ impl PrivateStruct {
     fn method(&self) {}
 }
 """,
-        )
-
+            )
         chunks = chunk_file(test_file, "rust")
-
-        # Check that visibility modifiers are preserved in the content
         chunk_contents = [c.content for c in chunks]
-
-        # Public items
         assert any("pub fn public_function" in c for c in chunk_contents)
         assert any("pub struct PublicStruct" in c for c in chunk_contents)
         assert any("pub enum PublicEnum" in c for c in chunk_contents)
-
-        # Crate-visible items
         assert any("pub(crate) fn crate_function" in c for c in chunk_contents)
-        assert any("pub(crate) struct CrateStruct" in c for c in chunk_contents)
+        assert any("pub(crate) struct CrateStruct" in c for c in chunk_contents
+            )
+        assert any("pub(super) fn parent_function" in c for c in chunk_contents
+            )
+        assert any("pub(in crate::module) fn specific_module_function" in c for
+            c in chunk_contents)
+        assert any("fn private_function" in c and "pub" not in c for c in
+            chunk_contents)
 
-        # Module-visible items
-        assert any("pub(super) fn parent_function" in c for c in chunk_contents)
-        assert any(
-            "pub(in crate::module) fn specific_module_function" in c
-            for c in chunk_contents
-        )
-
-        # Private items (no visibility modifier)
-        assert any(
-            "fn private_function" in c and "pub" not in c for c in chunk_contents
-        )
-
-    def test_test_function_attributes(self, tmp_path):
+    @staticmethod
+    def test_test_function_attributes(tmp_path):
         """Test that test function attributes are preserved."""
         test_file = tmp_path / "test_functions.rs"
         test_file.write_text(
@@ -661,38 +583,22 @@ fn bench_performance(b: &mut Bencher) {
     });
 }
 """,
-        )
-
+            )
         chunks = chunk_file(test_file, "rust")
-
-        # Check that all functions are found
         function_chunks = [c for c in chunks if c.node_type == "function_item"]
         mod_chunks = [c for c in chunks if c.node_type == "mod_item"]
-
-        # Should find all functions
-        assert (
-            len(function_chunks) >= 5
-        )  # regular, test_something, test_another_thing, internal_test, bench_performance
-
-        # Check that test attributes are preserved in content
+        assert len(function_chunks) >= 5
         function_contents = [c.content for c in function_chunks]
-
-        # Regular function
         assert any("fn regular_function" in c for c in function_contents)
-
-        # Test functions - attributes might be included or not depending on parser
         assert any("fn test_something" in c for c in function_contents)
         assert any("fn test_another_thing" in c for c in function_contents)
         assert any("fn internal_test" in c for c in function_contents)
-
-        # Benchmark function
         assert any("fn bench_performance" in c for c in function_contents)
-
-        # Test module
         assert len(mod_chunks) >= 1
         assert any("mod tests" in c.content for c in mod_chunks)
 
-    def test_rust_specific_constructs(self, tmp_path):
+    @staticmethod
+    def test_rust_specific_constructs(tmp_path):
         """Test other Rust-specific constructs."""
         test_file = tmp_path / "rust_constructs.rs"
         test_file.write_text(
@@ -749,41 +655,26 @@ impl<T, const N: usize> Array<T, N> {
     }
 }
 """,
-        )
-
+            )
         chunks = chunk_file(test_file, "rust")
-
-        # Check for various construct types
         type_chunks = [c for c in chunks if c.node_type == "type_item"]
         static_chunks = [c for c in chunks if c.node_type == "static_item"]
         const_chunks = [c for c in chunks if c.node_type == "const_item"]
         function_chunks = [c for c in chunks if c.node_type == "function_item"]
         struct_chunks = [c for c in chunks if c.node_type == "struct_item"]
         union_chunks = [c for c in chunks if c.node_type == "union_item"]
-
-        # Verify type aliases
-        assert len(type_chunks) >= 2  # Result<T> and Kilometers
+        assert len(type_chunks) >= 2
         assert any("type Result<T>" in c.content for c in type_chunks)
-
-        # Verify static items
-        assert len(static_chunks) >= 2  # GLOBAL and MUTABLE_STATIC
+        assert len(static_chunks) >= 2
         assert any("static mut" in c.content for c in static_chunks)
-
-        # Verify const items
-        assert len(const_chunks) >= 1  # MAX_POINTS
+        assert len(const_chunks) >= 1
         assert any("const MAX_POINTS" in c.content for c in const_chunks)
-
-        # Verify const fn
-        const_fn_chunks = [c for c in function_chunks if "const fn" in c.content]
+        const_fn_chunks = [c for c in function_chunks if "const fn" in c.
+            content]
         assert len(const_fn_chunks) >= 1
-
-        # Verify async fn
-        async_fn_chunks = [c for c in function_chunks if "async fn" in c.content]
+        async_fn_chunks = [c for c in function_chunks if "async fn" in c.
+            content]
         assert len(async_fn_chunks) >= 1
-
-        # Verify const generics
         assert any("const N: usize" in c.content for c in struct_chunks)
-
-        # Verify union
         assert len(union_chunks) >= 1
         assert any("union MyUnion" in c.content for c in union_chunks)

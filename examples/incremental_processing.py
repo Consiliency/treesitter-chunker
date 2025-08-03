@@ -1,6 +1,6 @@
 """Example of using incremental processing for efficient chunk updates."""
 
-import os
+import pathlib
 import shutil
 import tempfile
 
@@ -42,7 +42,7 @@ class Calculator:
 '''
 
     # Create a temporary file
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
         f.write(initial_content)
         file_path = f.name
 
@@ -89,7 +89,7 @@ class Calculator:
 '''
 
         # Write modified content
-        with open(file_path, "w") as f:
+        with open(file_path, "w", encoding="utf-8") as f:
             f.write(modified_content)
 
         # Check if file changed
@@ -143,7 +143,7 @@ class Calculator:
 
     finally:
         # Cleanup
-        os.unlink(file_path)
+        pathlib.Path(file_path).unlink()
 
 
 def demonstrate_cache_persistence():
@@ -188,7 +188,7 @@ def demonstrate_cache_persistence():
 
     shutil.rmtree(".cache1", ignore_errors=True)
     shutil.rmtree(".cache2", ignore_errors=True)
-    os.unlink(export_file)
+    pathlib.Path(export_file).unlink()
 
 
 if __name__ == "__main__":

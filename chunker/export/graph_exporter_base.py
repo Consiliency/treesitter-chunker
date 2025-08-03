@@ -1,5 +1,4 @@
 """Base class for graph export functionality."""
-
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
@@ -13,21 +12,13 @@ class GraphNode:
     def __init__(self, chunk: CodeChunk):
         self.id = f"{chunk.file_path}:{chunk.start_line}:{chunk.end_line}"
         self.chunk = chunk
-        # Get chunk_type from metadata if available, otherwise use node_type
-        chunk_type = (
-            chunk.metadata.get("chunk_type", chunk.node_type)
-            if chunk.metadata
-            else chunk.node_type
-        )
+        chunk_type = chunk.metadata.get("chunk_type", chunk.node_type,
+            ) if chunk.metadata else chunk.node_type
         self.label = chunk_type or "unknown"
-        self.properties: dict[str, Any] = {
-            "file_path": chunk.file_path,
-            "start_line": chunk.start_line,
-            "end_line": chunk.end_line,
-            "chunk_type": chunk_type,
-            "node_type": chunk.node_type,
-            "language": chunk.language,
-        }
+        self.properties: dict[str, Any] = {"file_path": chunk.file_path,
+            "start_line": chunk.start_line, "end_line": chunk.end_line,
+            "chunk_type": chunk_type, "node_type": chunk.node_type,
+            "language": chunk.language}
         if chunk.metadata:
             self.properties.update(chunk.metadata)
 
@@ -35,13 +26,8 @@ class GraphNode:
 class GraphEdge:
     """Represents an edge between nodes in the graph."""
 
-    def __init__(
-        self,
-        source_id: str,
-        target_id: str,
-        relationship_type: str,
-        properties: dict[str, Any] | None = None,
-    ):
+    def __init__(self, source_id: str, target_id: str, relationship_type:
+        str, properties: (dict[str, Any] | None) = None):
         self.source_id = source_id
         self.target_id = target_id
         self.relationship_type = relationship_type
@@ -61,17 +47,14 @@ class GraphExporterBase(ABC):
             node = GraphNode(chunk)
             self.nodes[node.id] = node
 
-    def add_relationship(
-        self,
-        source_chunk: CodeChunk,
-        target_chunk: CodeChunk,
-        relationship_type: str,
-        properties: dict[str, Any] | None = None,
-    ) -> None:
+    def add_relationship(self, source_chunk: CodeChunk, target_chunk:
+        CodeChunk, relationship_type: str, properties: (dict[str, Any] |
+        None) = None) -> None:
         """Add a relationship between two chunks."""
         source_node = GraphNode(source_chunk)
         target_node = GraphNode(target_chunk)
-        edge = GraphEdge(source_node.id, target_node.id, relationship_type, properties)
+        edge = GraphEdge(source_node.id, target_node.id, relationship_type,
+            properties)
         self.edges.append(edge)
 
     def extract_relationships(self, chunks: list[CodeChunk]) -> None:
@@ -85,58 +68,40 @@ class GraphExporterBase(ABC):
         Subclasses can override to add more relationship types.
         """
         chunk_map = {self._get_chunk_id(chunk): chunk for chunk in chunks}
-
         for chunk in chunks:
-            # Extract parent-child relationships
             if chunk.metadata and "parent_id" in chunk.metadata:
                 parent_id = chunk.metadata["parent_id"]
                 if parent_id in chunk_map:
-                    self.add_relationship(
-                        chunk_map[parent_id],
-                        chunk,
-                        "CONTAINS",
-                        {"relationship_source": "hierarchy"},
-                    )
-
-            # Extract import relationships
+                    self.add_relationship(chunk_map[parent_id], chunk,
+                        "CONTAINS", {"relationship_source": "hierarchy"})
             if chunk.metadata and "imports" in chunk.metadata:
                 for import_info in chunk.metadata["imports"]:
-                    # Find chunks that might be imported
                     for target_chunk in chunks:
                         if self._matches_import(import_info, target_chunk):
-                            self.add_relationship(
-                                chunk,
-                                target_chunk,
-                                "IMPORTS",
-                                {"import_name": import_info},
-                            )
-
-            # Extract call relationships
+                            self.add_relationship(chunk, target_chunk,
+                                "IMPORTS", {"import_name": import_info})
             if chunk.metadata and "calls" in chunk.metadata:
                 for call_info in chunk.metadata["calls"]:
                     for target_chunk in chunks:
                         if self._matches_call(call_info, target_chunk):
-                            self.add_relationship(
-                                chunk,
-                                target_chunk,
-                                "CALLS",
-                                {"call_name": call_info},
-                            )
+                            self.add_relationship(chunk, target_chunk,
+                                "CALLS", {"call_name": call_info})
 
-    def _get_chunk_id(self, chunk: CodeChunk) -> str:
+    @staticmethod
+    def _get_chunk_id(chunk: CodeChunk) -> str:
         """Generate a unique ID for a chunk."""
         return f"{chunk.file_path}:{chunk.start_line}:{chunk.end_line}"
 
-    def _matches_import(self, import_name: str, chunk: CodeChunk) -> bool:
+    @staticmethod
+    def _matches_import(import_name: str, chunk: CodeChunk) -> bool:
         """Check if an import name matches a chunk."""
-        # Simple implementation - can be overridden for language-specific matching
         if chunk.metadata and "name" in chunk.metadata:
             return chunk.metadata["name"] == import_name
         return False
 
-    def _matches_call(self, call_name: str, chunk: CodeChunk) -> bool:
+    @staticmethod
+    def _matches_call(call_name: str, chunk: CodeChunk) -> bool:
         """Check if a call name matches a chunk."""
-        # Simple implementation - can be overridden for language-specific matching
         if chunk.metadata and "name" in chunk.metadata:
             return chunk.metadata["name"] == call_name
         return False
@@ -154,8 +119,9 @@ class GraphExporterBase(ABC):
             clusters[file_path].append(node_id)
         return clusters
 
+    @classmethod
     @abstractmethod
-    def export(self, output_path: Path, **options) -> None:
+    def export(cls, output_path: Path, **options) -> None:
         """Export the graph to the specified format.
 
         Args:
@@ -164,8 +130,9 @@ class GraphExporterBase(ABC):
         """
         raise NotImplementedError("Subclasses must implement export()")
 
+    @classmethod
     @abstractmethod
-    def export_string(self, **options) -> str:
+    def export_string(cls, **options) -> str:
         """Export the graph as a string in the specified format.
 
         Args:

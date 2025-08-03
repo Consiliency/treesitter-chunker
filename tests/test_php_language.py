@@ -1,5 +1,4 @@
 """Test PHP language support."""
-
 import pytest
 
 from chunker import chunk_text
@@ -9,7 +8,8 @@ from chunker.languages import language_config_registry
 class TestPHPLanguage:
     """Test PHP language chunking."""
 
-    def test_php_basic_chunking(self):
+    @staticmethod
+    def test_php_basic_chunking():
         """Test basic PHP chunking."""
         code = """<?php
 namespace App\\Models;
@@ -49,15 +49,14 @@ trait HasTimestamps {
 }
 ?>"""
         chunks = chunk_text(code, language="php")
-        assert len(chunks) >= 5  # class with methods, function, trait
-
-        # Verify chunk types
+        assert len(chunks) >= 5
         chunk_contents = [chunk.content for chunk in chunks]
         assert any("class User" in c for c in chunk_contents)
         assert any("function validateEmail" in c for c in chunk_contents)
         assert any("trait HasTimestamps" in c for c in chunk_contents)
 
-    def test_php_interface_abstract(self):
+    @staticmethod
+    def test_php_interface_abstract():
         """Test PHP interfaces and abstract classes."""
         code = """<?php
 interface PaymentGateway {
@@ -83,9 +82,10 @@ abstract class BaseController {
 }
 ?>"""
         chunks = chunk_text(code, language="php")
-        assert len(chunks) >= 2  # interface and abstract class
+        assert len(chunks) >= 2
 
-    def test_php_anonymous_functions(self):
+    @staticmethod
+    def test_php_anonymous_functions():
         """Test PHP anonymous functions and closures."""
         code = """<?php
 $users = [
@@ -117,9 +117,10 @@ class EventEmitter {
 }
 ?>"""
         chunks = chunk_text(code, language="php")
-        assert len(chunks) >= 1  # class with methods
+        assert len(chunks) >= 1
 
-    def test_php_modern_syntax(self):
+    @staticmethod
+    def test_php_modern_syntax():
         """Test modern PHP syntax features."""
         code = """<?php
 declare(strict_types=1);
@@ -165,9 +166,10 @@ class UserController {
 }
 ?>"""
         chunks = chunk_text(code, language="php")
-        assert len(chunks) >= 3  # multiple classes and enum
+        assert len(chunks) >= 3
 
-    def test_php_mixed_content(self):
+    @staticmethod
+    def test_php_mixed_content():
         """Test PHP with mixed HTML content."""
         code = """<!DOCTYPE html>
 <html>
@@ -202,9 +204,10 @@ class UserController {
 </body>
 </html>"""
         chunks = chunk_text(code, language="php")
-        assert len(chunks) >= 2  # class and function
+        assert len(chunks) >= 2
 
-    def test_php_namespace_use(self):
+    @staticmethod
+    def test_php_namespace_use():
         """Test PHP namespace and use statements."""
         code = """<?php
 namespace App\\Http\\Controllers\\Api\\V1;
@@ -240,13 +243,12 @@ class PostController extends Controller
 }
 ?>"""
         chunks = chunk_text(code, language="php")
-        assert len(chunks) >= 1  # class with constructor and method
+        assert len(chunks) >= 1
 
-    @pytest.mark.parametrize(
-        "file_extension",
-        [".php", ".php3", ".php4", ".php5", ".phtml"],
-    )
-    def test_php_file_extensions(self, file_extension):
+    @pytest.mark.parametrize("file_extension", [".php", ".php3", ".php4",
+        ".php5", ".phtml"])
+    @staticmethod
+    def test_php_file_extensions(file_extension):
         """Test PHP file extension detection."""
         config = language_config_registry.get_for_file(f"test{file_extension}")
         assert config is not None

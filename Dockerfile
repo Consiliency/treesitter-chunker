@@ -2,7 +2,7 @@
 # Supports building and running the chunker in a minimal container
 
 # Stage 1: Builder
-FROM python:3.11-slim as builder
+FROM python:3.12-slim as builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
@@ -30,7 +30,7 @@ RUN python scripts/fetch_grammars.py && \
 RUN python -m build --wheel --outdir /dist
 
 # Stage 2: Runtime
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \

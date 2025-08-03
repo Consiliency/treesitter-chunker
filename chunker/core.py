@@ -189,5 +189,5 @@ def chunk_file(
     Returns:
         List of CodeChunk objects with optional metadata
     """
-    src = Path(path).read_text()
+    src = Path(path).read_text(encoding="utf-8")
     return chunk_text(src, language, str(path), extract_metadata=extract_metadata)

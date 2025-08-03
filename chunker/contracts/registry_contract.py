@@ -1,5 +1,4 @@
 """Define the boundary for enhanced grammar registry - Team: Grammar Registry"""
-
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -9,12 +8,10 @@ import tree_sitter
 class UniversalRegistryContract(ABC):
     """Abstract contract defining universal language registry interface"""
 
+    @staticmethod
     @abstractmethod
-    def get_parser(
-        self,
-        language: str,
-        auto_download: bool = True,
-    ) -> tree_sitter.Parser:
+    def get_parser(language: str, auto_download: bool = True,
+        ) -> tree_sitter.Parser:
         """Get a parser for a language, downloading if needed
 
         Args:
@@ -32,8 +29,9 @@ class UniversalRegistryContract(ABC):
             - Grammar downloaded if auto_download=True
         """
 
+    @staticmethod
     @abstractmethod
-    def list_installed_languages(self) -> list[str]:
+    def list_installed_languages() -> list[str]:
         """List all currently installed languages
 
         Returns:
@@ -44,8 +42,9 @@ class UniversalRegistryContract(ABC):
             - List is sorted alphabetically
         """
 
+    @staticmethod
     @abstractmethod
-    def list_available_languages(self) -> list[str]:
+    def list_available_languages() -> list[str]:
         """List all available languages (installed + downloadable)
 
         Returns:
@@ -56,8 +55,9 @@ class UniversalRegistryContract(ABC):
             - List is sorted alphabetically
         """
 
+    @staticmethod
     @abstractmethod
-    def is_language_installed(self, language: str) -> bool:
+    def is_language_installed(language: str) -> bool:
         """Check if a language is installed
 
         Args:
@@ -71,8 +71,9 @@ class UniversalRegistryContract(ABC):
             - Validates grammar compatibility
         """
 
+    @staticmethod
     @abstractmethod
-    def install_language(self, language: str, version: str | None = None) -> bool:
+    def install_language(language: str, version: (str | None) = None) -> bool:
         """Install a language grammar
 
         Args:
@@ -90,8 +91,9 @@ class UniversalRegistryContract(ABC):
             - Language available for parsing
         """
 
+    @staticmethod
     @abstractmethod
-    def uninstall_language(self, language: str) -> bool:
+    def uninstall_language(language: str) -> bool:
         """Uninstall a language grammar
 
         Args:
@@ -105,8 +107,9 @@ class UniversalRegistryContract(ABC):
             - Language no longer available
         """
 
+    @staticmethod
     @abstractmethod
-    def get_language_version(self, language: str) -> str | None:
+    def get_language_version(language: str) -> (str | None):
         """Get the installed version of a language
 
         Args:
@@ -120,8 +123,9 @@ class UniversalRegistryContract(ABC):
             - None if not installed
         """
 
+    @staticmethod
     @abstractmethod
-    def update_language(self, language: str) -> tuple[bool, str]:
+    def update_language(language: str) -> tuple[bool, str]:
         """Update a language to latest version
 
         Args:
@@ -138,8 +142,9 @@ class UniversalRegistryContract(ABC):
             - Old version preserved if update fails
         """
 
+    @staticmethod
     @abstractmethod
-    def get_language_metadata(self, language: str) -> dict[str, Any]:
+    def get_language_metadata(language: str) -> dict[str, Any]:
         """Get metadata about an installed language
 
         Args:

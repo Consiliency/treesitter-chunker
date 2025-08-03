@@ -4,8 +4,9 @@ from abc import ABC, abstractmethod
 class GrammarManagerContract(ABC):
     """Contract for managing tree-sitter grammar downloads and compilation"""
 
+    @staticmethod
     @abstractmethod
-    def add_grammar_source(self, language: str, repo_url: str) -> bool:
+    def add_grammar_source(language: str, repo_url: str) -> bool:
         """Add a new grammar source to be fetched
 
         Args:
@@ -23,8 +24,9 @@ class GrammarManagerContract(ABC):
             - Grammar source registered for fetching
         """
 
+    @staticmethod
     @abstractmethod
-    def fetch_grammars(self, languages: list[str] | None = None) -> dict[str, bool]:
+    def fetch_grammars(languages: (list[str] | None) = None) -> dict[str, bool]:
         """Fetch grammar repositories
 
         Args:
@@ -40,11 +42,9 @@ class GrammarManagerContract(ABC):
             - Grammar repositories cloned to grammars/ directory
         """
 
+    @staticmethod
     @abstractmethod
-    def compile_grammars(
-        self,
-        languages: list[str] | None = None,
-    ) -> dict[str, bool]:
+    def compile_grammars(languages: (list[str] | None) = None) -> dict[str, bool]:
         """Compile fetched grammars into shared library
 
         Args:
@@ -61,8 +61,9 @@ class GrammarManagerContract(ABC):
             - Compiled .so file updated with new languages
         """
 
+    @staticmethod
     @abstractmethod
-    def get_available_languages(self) -> set[str]:
+    def get_available_languages() -> set[str]:
         """Get set of languages with compiled grammars
 
         Returns:

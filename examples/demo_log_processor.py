@@ -213,7 +213,7 @@ def demo_streaming():
 
     def line_generator():
         with Path(log_file).open(
-            "r",
+            "r", encoding="utf-8",
         ) as f:
             yield from f
 

@@ -26,7 +26,7 @@ def basic_repo_processing():
         print(f"  File: {first_file.file_path}")
         for i, chunk in enumerate(first_file.chunks[:3]):
             print(
-                f"  Chunk {i+1}: {chunk.chunk_type} '{chunk.name}' (lines {chunk.start_line}-{chunk.end_line})",
+                f"  Chunk {i + 1}: {chunk.chunk_type} '{chunk.name}' (lines {chunk.start_line}-{chunk.end_line})",
             )
 
 
@@ -127,7 +127,7 @@ def parallel_processing():
     print(
         f"Multi-threaded (4 workers): {time_multi:.2f}s for {result_multi.total_chunks} chunks",
     )
-    print(f"Speedup: {time_single/time_multi:.2f}x")
+    print(f"Speedup: {time_single / time_multi:.2f}x")
 
 
 if __name__ == "__main__":

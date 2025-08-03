@@ -1,5 +1,4 @@
 """Comprehensive tests for MATLAB language support."""
-
 from chunker import chunk_file, get_parser
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from chunker.languages.matlab import MATLABPlugin
@@ -8,7 +7,8 @@ from chunker.languages.matlab import MATLABPlugin
 class TestMATLABBasicChunking:
     """Test basic MATLAB chunking functionality."""
 
-    def test_simple_function(self, tmp_path):
+    @staticmethod
+    def test_simple_function(tmp_path):
         """Test basic MATLAB function."""
         src = tmp_path / "simple.m"
         src.write_text(
@@ -17,17 +17,16 @@ class TestMATLABBasicChunking:
     result = a + b;
 end
 """,
-        )
+            )
         chunks = chunk_file(src, "matlab")
         assert len(chunks) >= 1
-
-        # Check for function definition
         func_chunks = [c for c in chunks if "function" in c.node_type]
         assert len(func_chunks) == 1
         assert "add_numbers" in func_chunks[0].content
         assert "result = a + b" in func_chunks[0].content
 
-    def test_function_with_multiple_outputs(self, tmp_path):
+    @staticmethod
+    def test_function_with_multiple_outputs(tmp_path):
         """Test function with multiple output arguments."""
         src = tmp_path / "multi_output.m"
         src.write_text(
@@ -38,15 +37,15 @@ end
     z = r * cos(phi);
 end
 """,
-        )
+            )
         chunks = chunk_file(src, "matlab")
-
         func_chunks = [c for c in chunks if "function" in c.node_type]
         assert len(func_chunks) == 1
         assert "[x, y, z]" in func_chunks[0].content
         assert "compute_coordinates" in func_chunks[0].content
 
-    def test_matlab_script(self, tmp_path):
+    @staticmethod
+    def test_matlab_script(tmp_path):
         """Test MATLAB script (not a function file)."""
         src = tmp_path / "script.m"
         src.write_text(
@@ -67,14 +66,13 @@ mean_val = mean(y);
 std_val = std(y);
 fprintf('Mean: %.2f, Std: %.2f\\n', mean_val, std_val);
 """,
-        )
+            )
         chunks = chunk_file(src, "matlab")
-
-        # Script files might be chunked as a whole or by sections
         assert len(chunks) >= 1
         assert any("Data analysis script" in c.content for c in chunks)
 
-    def test_matlab_classdef(self, tmp_path):
+    @staticmethod
+    def test_matlab_classdef(tmp_path):
         """Test MATLAB class definition."""
         src = tmp_path / "MyClass.m"
         src.write_text(
@@ -110,26 +108,22 @@ fprintf('Mean: %.2f, Std: %.2f\\n', mean_val, std_val);
     end
 end
 """,
-        )
+            )
         chunks = chunk_file(src, "matlab")
-
-        # Check for class components
         chunk_types = {chunk.node_type for chunk in chunks}
-        assert any("classdef" in t or "class_definition" in t for t in chunk_types)
+        assert any("classdef" in t or "class_definition" in t for t in
+            chunk_types)
         assert any("properties" in t for t in chunk_types)
         assert any("methods" in t for t in chunk_types)
-
-        # Check for individual methods
-        method_chunks = [
-            c for c in chunks if "method" in c.node_type or "function" in c.node_type
-        ]
-        assert any(
-            "MyClass" in c.content and "Constructor" in c.content for c in method_chunks
-        )
+        method_chunks = [c for c in chunks if "method" in c.node_type or
+            "function" in c.node_type]
+        assert any("MyClass" in c.content and "Constructor" in c.content for
+            c in method_chunks)
         assert any("display" in c.content for c in method_chunks)
         assert any("staticMethod" in c.content for c in method_chunks)
 
-    def test_nested_functions(self, tmp_path):
+    @staticmethod
+    def test_nested_functions(tmp_path):
         """Test MATLAB file with nested functions."""
         src = tmp_path / "nested.m"
         src.write_text(
@@ -154,14 +148,10 @@ function local_result = local_function(input)
     local_result = input^2;
 end
 """,
-        )
+            )
         chunks = chunk_file(src, "matlab")
-
-        # Should have outer function, nested functions, and local function
         func_chunks = [c for c in chunks if "function" in c.node_type]
         assert len(func_chunks) >= 4
-
-        # Check for specific functions
         assert any("outer_function" in c.content for c in func_chunks)
         assert any("helper1" in c.content for c in func_chunks)
         assert any("helper2" in c.content for c in func_chunks)
@@ -171,26 +161,19 @@ end
 class TestMATLABContractCompliance:
     """Test ExtendedLanguagePluginContract compliance."""
 
-    def test_implements_contract(self):
+    @staticmethod
+    def test_implements_contract():
         """Verify MATLABPlugin implements ExtendedLanguagePluginContract."""
         assert issubclass(MATLABPlugin, ExtendedLanguagePluginContract)
 
-    def test_get_semantic_chunks(self, tmp_path):
+    @classmethod
+    def test_get_semantic_chunks(cls, tmp_path):
         """Test get_semantic_chunks method."""
         plugin = MATLABPlugin()
-
-        # Create a simple MATLAB file
-        source = b"""function y = square(x)
-    y = x^2;
-end
-"""
-
-        # Parse the source (mock tree-sitter node)
-
+        source = b"function y = square(x)\n    y = x^2;\nend\n"
         parser = get_parser("matlab")
         plugin.set_parser(parser)
         tree = parser.parse(source)
-
         chunks = plugin.get_semantic_chunks(tree.root_node, source)
         assert len(chunks) >= 1
         assert all("type" in chunk for chunk in chunks)
@@ -198,56 +181,49 @@ end
         assert all("end_line" in chunk for chunk in chunks)
         assert all("content" in chunk for chunk in chunks)
 
-    def test_get_chunk_node_types(self):
+    @classmethod
+    def test_get_chunk_node_types(cls):
         """Test get_chunk_node_types method."""
         plugin = MATLABPlugin()
         node_types = plugin.get_chunk_node_types()
-
         assert isinstance(node_types, set)
         assert len(node_types) > 0
-        assert (
-            "function_definition" in node_types or "function_declaration" in node_types
-        )
-        assert any("classdef" in t or "class_definition" in t for t in node_types)
+        assert "function_definition" in node_types or "function_declaration" in node_types
+        assert any("classdef" in t or "class_definition" in t for t in
+            node_types)
         assert any("methods" in t for t in node_types)
 
-    def test_should_chunk_node(self):
+    @staticmethod
+    def test_should_chunk_node():
         """Test should_chunk_node method."""
         plugin = MATLABPlugin()
 
-        # Mock nodes
         class MockNode:
+
             def __init__(self, node_type):
                 self.type = node_type
-
-        # Test chunk nodes
         assert plugin.should_chunk_node(MockNode("function_definition"))
         assert plugin.should_chunk_node(MockNode("classdef"))
         assert plugin.should_chunk_node(MockNode("methods"))
         assert plugin.should_chunk_node(MockNode("properties"))
         assert plugin.should_chunk_node(MockNode("comment"))
-
-        # Test non-chunk nodes
         assert not plugin.should_chunk_node(MockNode("identifier"))
         assert not plugin.should_chunk_node(MockNode("number"))
 
-    def test_get_node_context(self):
+    @staticmethod
+    def test_get_node_context():
         """Test get_node_context method."""
         plugin = MATLABPlugin()
 
-        # Mock node
         class MockNode:
+
             def __init__(self, node_type):
                 self.type = node_type
                 self.children = []
-
-        # Test function context
         node = MockNode("function_definition")
         context = plugin.get_node_context(node, b"function y = test(x)")
         assert context is not None
         assert "function" in context
-
-        # Test class context
         node = MockNode("classdef")
         context = plugin.get_node_context(node, b"classdef MyClass")
         assert context is not None
@@ -257,14 +233,16 @@ end
 class TestMATLABEdgeCases:
     """Test edge cases in MATLAB parsing."""
 
-    def test_empty_matlab_file(self, tmp_path):
+    @staticmethod
+    def test_empty_matlab_file(tmp_path):
         """Test empty MATLAB file."""
         src = tmp_path / "empty.m"
         src.write_text("")
         chunks = chunk_file(src, "matlab")
         assert len(chunks) == 0
 
-    def test_matlab_with_only_comments(self, tmp_path):
+    @staticmethod
+    def test_matlab_with_only_comments(tmp_path):
         """Test MATLAB file with only comments."""
         src = tmp_path / "comments.m"
         src.write_text(
@@ -275,12 +253,13 @@ Multi-line
 block comment
 %}
 """,
-        )
+            )
         chunks = chunk_file(src, "matlab")
         comment_chunks = [c for c in chunks if "comment" in c.node_type]
         assert len(comment_chunks) >= 1
 
-    def test_matlab_with_anonymous_functions(self, tmp_path):
+    @staticmethod
+    def test_matlab_with_anonymous_functions(tmp_path):
         """Test MATLAB with anonymous functions."""
         src = tmp_path / "anonymous.m"
         src.write_text(
@@ -292,11 +271,12 @@ add = @(a, b) a + b;
 result = arrayfun(square, 1:10);
 combined = @(x, y) add(square(x), y);
 """,
-        )
+            )
         chunks = chunk_file(src, "matlab")
         assert len(chunks) >= 1
 
-    def test_matlab_with_events_enumeration(self, tmp_path):
+    @staticmethod
+    def test_matlab_with_events_enumeration(tmp_path):
         """Test MATLAB class with events and enumeration."""
         src = tmp_path / "AdvancedClass.m"
         src.write_text(
@@ -324,15 +304,14 @@ combined = @(x, y) add(square(x), y);
     end
 end
 """,
-        )
+            )
         chunks = chunk_file(src, "matlab")
-
-        # Check for events and enumeration blocks
         chunk_types = {chunk.node_type for chunk in chunks}
         assert any("events" in t for t in chunk_types)
         assert any("enumeration" in t for t in chunk_types)
 
-    def test_matlab_with_complex_inheritance(self, tmp_path):
+    @staticmethod
+    def test_matlab_with_complex_inheritance(tmp_path):
         """Test MATLAB class with complex inheritance."""
         src = tmp_path / "DerivedClass.m"
         src.write_text(
@@ -362,13 +341,10 @@ end
     end
 end
 """,
-        )
+            )
         chunks = chunk_file(src, "matlab")
-
-        # Should have class definition and various property/method blocks
-        assert any(
-            "DerivedClass" in c.content and "BaseClass" in c.content for c in chunks
-        )
+        assert any("DerivedClass" in c.content and "BaseClass" in c.content for
+            c in chunks)
         assert any("SetAccess = protected" in c.content for c in chunks)
         assert any("Constant" in c.content for c in chunks)
         assert any("Sealed" in c.content for c in chunks)

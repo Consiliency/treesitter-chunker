@@ -163,10 +163,10 @@ class TestUniversalLanguageRegistry:
     def test_is_language_installed(self):
         """Test checking if language is installed."""
         # Mock base registry
-        self.mock_base_registry.has_language.side_effect = lambda x: x in [
+        self.mock_base_registry.has_language.side_effect = lambda x: x in {
             "python",
             "rust",
-        ]
+        }
 
         # Add to metadata
         self.registry._metadata["installed"] = {

@@ -93,7 +93,7 @@ def create_exception_tuple(exceptions: list[str]) -> str:
 def fix_file(file_path: Path) -> bool:
     """Fix BLE001 errors in a file."""
     try:
-        content = file_path.read_text()
+        content = file_path.read_text(encoding="utf-8")
         lines = content.splitlines(keepends=True)
         modified = False
 
@@ -208,7 +208,7 @@ def fix_file(file_path: Path) -> bool:
 
                 new_content = "".join(content_lines)
 
-            file_path.write_text(new_content)
+            file_path.write_text(new_content, encoding="utf-8")
             return True
 
     except (OSError, ValueError) as e:

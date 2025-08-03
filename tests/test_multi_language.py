@@ -1,7 +1,6 @@
 """Tests for multi-language processing functionality."""
 
 import json
-import os
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -58,7 +57,7 @@ class TestLanguageDetector:
             for filename, expected_lang in test_cases:
                 file_path = Path(tmpdir) / filename
                 with Path(file_path).open(
-                    "w",
+                    "w", encoding="utf-8",
                 ) as f:
                     f.write("// test content")
 
@@ -82,7 +81,7 @@ class TestLanguageDetector:
             for content, expected_lang in test_cases:
                 file_path = Path(tmpdir) / "script"
                 with Path(file_path).open(
-                    "w",
+                    "w", encoding="utf-8",
                 ) as f:
                     f.write(content)
 
@@ -228,7 +227,7 @@ class TestProjectAnalyzer:
             assert analysis["languages"]["javascript"] >= 3
             assert "javascript" in analysis["framework_indicators"]
             assert analysis["structure"]["has_tests"] is True
-            assert analysis["project_type"] in ["node_application", "frontend_webapp"]
+            assert analysis["project_type"] in {"node_application", "frontend_webapp"}
 
     def test_analyze_fullstack_project(self):
         """Test analysis of a fullstack web application."""
@@ -597,7 +596,7 @@ function Component() {
 }
 """
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsx", delete=False) as f:
+        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".jsx", delete=False) as f:
             f.write(content)
             f.flush()
 
@@ -606,7 +605,7 @@ function Component() {
             assert len(chunks) > 0
             assert chunks[0].language == "javascript"
 
-            os.unlink(f.name)
+            Path(f.name).unlink()
 
     def test_cross_language_references(self):
         """Test finding cross-language references."""

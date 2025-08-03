@@ -6,12 +6,11 @@ This example shows how to use the OverlappingFallbackChunker for files
 that don't have Tree-sitter support, such as text files, markdown, logs, etc.
 """
 
-import os
 import sys
 from pathlib import Path
 
 # Add the parent directory to sys.path for direct imports
-sys.path.insert(0, Path(os.path.dirname(Path(__file__).resolve().parent)))
+sys.path.insert(0, Path(Path(Path(__file__).resolve().parent).parent))
 
 # Direct imports to avoid the full chunker module initialization
 from chunker.fallback.overlapping import OverlappingFallbackChunker, OverlapStrategy
@@ -329,7 +328,7 @@ This section has different content altogether."""
             boundary = chunker.find_natural_overlap_boundary(content, pos, 20)
             print(f"\nDesired position: {pos}")
             print(f"Natural boundary: {boundary}")
-            print(f"Character at boundary: {content[boundary-1:boundary+1]!r}")
+            print(f"Character at boundary: {content[boundary - 1:boundary + 1]!r}")
 
 
 def main():

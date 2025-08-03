@@ -2,7 +2,6 @@
 
 This module provides shared test fixtures that all integration tests can use.
 """
-
 import asyncio
 import multiprocessing
 import shutil
@@ -29,16 +28,11 @@ def temp_workspace() -> Generator[Path, None, None]:
     """
     temp_dir = tempfile.mkdtemp(prefix="chunker_test_")
     workspace = Path(temp_dir)
-
-    # Create standard subdirectories
     (workspace / "src").mkdir()
     (workspace / "tests").mkdir()
     (workspace / "cache").mkdir()
     (workspace / "output").mkdir()
-
     yield workspace
-
-    # Ensure cleanup even if test fails
     shutil.rmtree(temp_dir, ignore_errors=True)
 
 
@@ -49,8 +43,8 @@ def sample_code_files() -> dict[str, str]:
     Returns:
         Dictionary mapping filenames to code content
     """
-    return {
-        "example.py": """
+    return {"example.py":
+        """
 def calculate_sum(numbers):
     '''Calculate sum of numbers.'''
     return sum(numbers)
@@ -68,8 +62,9 @@ async def fetch_data(url):
     '''Async function to fetch data.'''
     await asyncio.sleep(0.1)
     return {"url": url, "data": "sample"}
-""",
-        "example.js": """
+"""
+        , "example.js":
+        """
 function calculateSum(numbers) {
     // Calculate sum of array
     return numbers.reduce((a, b) => a + b, 0);
@@ -92,8 +87,9 @@ async function fetchData(url) {
     await new Promise(r => setTimeout(r, 100));
     return { url, data: 'sample' };
 }
-""",
-        "example.rs": """
+"""
+        , "example.rs":
+        """
 fn calculate_sum(numbers: &[i32]) -> i32 {
     // Calculate sum of slice
     numbers.iter().sum()
@@ -120,8 +116,9 @@ async fn fetch_data(url: &str) -> Result<String, Error> {
     tokio::time::sleep(Duration::from_millis(100)).await;
     Ok(format!("Data from {}", url))
 }
-""",
-        "example.c": """
+"""
+        , "example.c":
+        """
 #include <stdio.h>
 
 int calculate_sum(int* numbers, int count) {
@@ -148,7 +145,7 @@ void process_item(DataProcessor* dp, int item) {
     dp->data[dp->size++] = item * 2;
 }
 """,
-    }
+        }
 
 
 class ErrorTrackingContext(ErrorPropagationMixin):
@@ -164,28 +161,23 @@ class ErrorTrackingContext(ErrorPropagationMixin):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_val:
-            # Capture any uncaught exceptions
-            self.capture_cross_module_error(
-                source_module="test_context",
-                target_module="test_runner",
-                error=exc_val,
-            )
-        return False  # Don't suppress exceptions
+            self.capture_cross_module_error(source_module="test_context",
+                target_module="test_runner", error=exc_val)
+        return False
 
     def register_handler(self, module: str, handler: Callable):
         """Register error handler for specific module."""
         self.error_handlers[module] = handler
 
-    def capture_and_propagate(self, source: str, target: str, error: Exception):
+    def capture_and_propagate(self, source: str, target: str, error: Exception,
+        ):
         """Capture error and trigger registered handlers."""
         with self._lock:
-            error_context = self.capture_cross_module_error(source, target, error)
+            error_context = self.capture_cross_module_error(source, target,
+                error)
             self.captured_errors.append(error_context)
-
-            # Trigger handler if registered
             if target in self.error_handlers:
                 self.error_handlers[target](error_context)
-
         return error_context
 
     def get_error_chain(self) -> list[dict[str, Any]]:
@@ -204,16 +196,12 @@ def error_tracking_context():
 def config_change_tracker():
     """Fixture for tracking configuration changes."""
     tracker = ConfigChangeObserver()
-
-    # Add some common test observers
     change_log = []
 
     def log_changes(event):
         change_log.append(event)
-
     tracker.register_observer(log_changes)
-    tracker.change_log = change_log  # Expose for testing
-
+    tracker.change_log = change_log
     return tracker
 
 
@@ -222,16 +210,13 @@ def resource_monitor():
     """Fixture for monitoring resource allocation/cleanup."""
     monitor = ResourceTracker()
 
-    # Add helper methods for testing
-    def assert_no_leaks(module: str | None = None):
+    def assert_no_leaks(module: (str | None) = None):
         if module:
             leaked = monitor.verify_cleanup(module)
             assert not leaked, f"Module {module} leaked resources: {leaked}"
         else:
-            # Check all modules
             all_active = monitor.get_all_resources(state="active")
             assert not all_active, f"Found leaked resources: {all_active}"
-
     monitor.assert_no_leaks = assert_no_leaks
     return monitor
 
@@ -241,6 +226,7 @@ def parallel_test_environment(temp_workspace):
     """Set up environment for parallel processing tests."""
 
     class ParallelTestEnv:
+
         def __init__(self, workspace: Path):
             self.workspace = workspace
             self.processes = []
@@ -281,20 +267,15 @@ def parallel_test_environment(temp_workspace):
 
         def cleanup(self):
             """Clean up all resources."""
-            # Terminate processes
             for p in self.processes:
                 if p.is_alive():
                     p.terminate()
                     p.join(timeout=5)
                     if p.is_alive():
                         p.kill()
-
-            # Join threads
             for t in self.threads:
                 if t.is_alive():
                     t.join(timeout=5)
-
-            # Close queues
             for q in self.queues.values():
                 q.close()
 
@@ -303,7 +284,6 @@ def parallel_test_environment(temp_workspace):
 
         def __exit__(self, exc_type, exc_val, exc_tb):
             self.cleanup()
-
     env = ParallelTestEnv(temp_workspace)
     yield env
     env.cleanup()
@@ -314,6 +294,7 @@ def mock_parser_factory():
     """Mock parser with controllable failures."""
 
     class MockParser:
+
         def __init__(self, language: str = "python"):
             self.language = language
             self.fail_on_parse = False
@@ -323,34 +304,27 @@ def mock_parser_factory():
 
         def parse(self, code: bytes, **kwargs):
             self.parse_count += 1
-
-            # Check for controlled failures
             if self.fail_on_parse:
                 raise RuntimeError(f"Parser failed for {self.language}")
-
-            if self.fail_on_nth_call and self.parse_count == self.fail_on_nth_call:
+            if (self.fail_on_nth_call and self.parse_count == self.
+                fail_on_nth_call):
                 raise RuntimeError(f"Parser failed on call {self.parse_count}")
-
-            # Simulate timeout
             if self.timeout:
                 time.sleep(self.timeout)
-
-            # Return mock tree
             tree = Mock()
             tree.root_node = self._create_mock_node(code)
             return tree
 
-        def _create_mock_node(self, code: bytes):
+        @classmethod
+        def _create_mock_node(cls, code: bytes):
             """Create mock syntax tree node."""
             node = Mock()
             node.type = "module"
             node.start_byte = 0
             node.end_byte = len(code)
-            node.start_point = (0, 0)
-            node.end_point = (code.count(b"\n"), 0)
+            node.start_point = 0, 0
+            node.end_point = code.count(b"\n"), 0
             node.children = []
-
-            # Add some mock functions
             if b"def " in code:
                 func_node = Mock()
                 func_node.type = "function_definition"
@@ -358,10 +332,10 @@ def mock_parser_factory():
                 func_node.end_byte = func_node.start_byte + 50
                 func_node.children = []
                 node.children.append(func_node)
-
             return node
 
     class MockParserFactory:
+
         def __init__(self):
             self.parsers = {}
 
@@ -373,7 +347,6 @@ def mock_parser_factory():
         def configure_failure(self, language: str, fail_type: str, **kwargs):
             """Configure parser to fail in specific ways."""
             parser = self.get_parser(language)
-
             if fail_type == "always":
                 parser.fail_on_parse = True
             elif fail_type == "nth_call":
@@ -384,7 +357,6 @@ def mock_parser_factory():
         def reset(self):
             """Reset all parsers."""
             self.parsers.clear()
-
     return MockParserFactory()
 
 
@@ -393,6 +365,7 @@ def test_file_generator(temp_workspace):
     """Generate test files with specific patterns."""
 
     class TestFileGenerator:
+
         def __init__(self, workspace: Path):
             self.workspace = workspace
             self.generated_files = []
@@ -404,19 +377,13 @@ def test_file_generator(temp_workspace):
                 target_dir.mkdir(parents=True, exist_ok=True)
             else:
                 target_dir = self.workspace
-
             file_path = target_dir / name
             file_path.write_text(content)
             self.generated_files.append(file_path)
             return file_path
 
-        def create_large_file(
-            self,
-            name: str,
-            size_mb: int,
-            pattern: str = "function",
-            language: str = "python",
-        ) -> Path:
+        def create_large_file(self, name: str, size_mb: int, pattern: str =
+            "function", language: str = "python") -> Path:
             """Create a large file with repeated patterns."""
             if language == "python":
                 template = f"""
@@ -435,39 +402,23 @@ function {pattern}_{{i}}(x) {{
 """
             else:
                 template = f"// {pattern} {{i}}\n"
-
-            # Calculate iterations needed
             template_size = len(template.format(i=0).encode())
-            iterations = (size_mb * 1024 * 1024) // template_size
-
+            iterations = size_mb * 1024 * 1024 // template_size
             content = ""
             for i in range(iterations):
                 content += template.format(i=i)
-
             return self.create_file(name, content)
 
-        def create_error_file(
-            self,
-            name: str,
-            error_type: str,
-            language: str = "python",
-        ) -> Path:
+        def create_error_file(self, name: str, error_type: str, language:
+            str = "python") -> Path:
             """Create file with specific error patterns."""
-            error_patterns = {
-                "syntax": {
-                    "python": "def broken(\n    pass",
-                    "javascript": "function broken() { { }",
-                },
-                "unicode": {
-                    "python": "# 🚨 def test(): return '\\x80\\x81'",
-                    "javascript": "// 🚨 function test() { return '\\x80\\x81'; }",
-                },
-                "binary": {
-                    "python": b"\x00\x01\x02def test(): pass",
-                    "javascript": b"\x00\x01\x02function test() {}",
-                },
-            }
-
+            error_patterns = {"syntax": {"python": "def broken(\n    pass",
+                "javascript": "function broken() { { }"}, "unicode": {
+                "python": "# 🚨 def test(): return '\\x80\\x81'",
+                "javascript":
+                "// 🚨 function test() { return '\\x80\\x81'; }"}, "binary":
+                {"python": b"\x00\x01\x02def test(): pass", "javascript":
+                b"\x00\x01\x02function test() {}"}}
             content = error_patterns.get(error_type, {}).get(language, "")
             if isinstance(content, bytes):
                 file_path = self.workspace / name
@@ -481,7 +432,6 @@ function {pattern}_{{i}}(x) {{
             for file_path in self.generated_files:
                 if file_path.exists():
                     file_path.unlink()
-
     generator = TestFileGenerator(temp_workspace)
     yield generator
     generator.cleanup()
@@ -492,6 +442,7 @@ def async_test_runner():
     """Runner for async test scenarios."""
 
     class AsyncTestRunner:
+
         def __init__(self):
             self.loop = None
             self.tasks = []
@@ -505,7 +456,6 @@ def async_test_runner():
             if not self.loop:
                 self.loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(self.loop)
-
             return self.loop.run_until_complete(coro)
 
         async def run_parallel(self, *coros):
@@ -523,11 +473,9 @@ def async_test_runner():
             for task in self.tasks:
                 if not task.done():
                     task.cancel()
-
             if self.loop:
-                self.loop.run_until_complete(
-                    asyncio.gather(*self.tasks, return_exceptions=True),
-                )
+                self.loop.run_until_complete(asyncio.gather(*self.tasks,
+                    return_exceptions=True))
                 self.loop.close()
 
         def __enter__(self):
@@ -535,18 +483,17 @@ def async_test_runner():
 
         def __exit__(self, exc_type, exc_val, exc_tb):
             self.cleanup()
-
     runner = AsyncTestRunner()
     yield runner
     runner.cleanup()
 
 
-# Thread-safe fixtures for concurrent testing
 @pytest.fixture
 def thread_safe_counter():
     """Thread-safe counter for tracking concurrent operations."""
 
     class ThreadSafeCounter:
+
         def __init__(self):
             self._value = 0
             self._lock = threading.Lock()
@@ -565,7 +512,6 @@ def thread_safe_counter():
         def value(self) -> int:
             with self._lock:
                 return self._value
-
     return ThreadSafeCounter()
 
 
@@ -574,6 +520,7 @@ def performance_monitor():
     """Monitor performance metrics during tests."""
 
     class PerformanceMonitor:
+
         def __init__(self):
             self.metrics = {}
             self._start_times = {}
@@ -586,12 +533,9 @@ def performance_monitor():
             """End timing and return duration."""
             if operation not in self._start_times:
                 return 0.0
-
             duration = time.time() - self._start_times[operation]
-
             if operation not in self.metrics:
                 self.metrics[operation] = []
-
             self.metrics[operation].append(duration)
             del self._start_times[operation]
             return duration
@@ -607,14 +551,7 @@ def performance_monitor():
             """Get statistics for an operation."""
             if operation not in self.metrics:
                 return {}
-
             times = self.metrics[operation]
-            return {
-                "count": len(times),
-                "total": sum(times),
-                "average": sum(times) / len(times),
-                "min": min(times),
-                "max": max(times),
-            }
-
+            return {"count": len(times), "total": sum(times), "average":
+                sum(times) / len(times), "min": min(times), "max": max(times)}
     return PerformanceMonitor()

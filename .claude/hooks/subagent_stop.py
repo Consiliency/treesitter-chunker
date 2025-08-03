@@ -1,6 +1,6 @@
-#!/usr/bin/env -S uv run --script
+#!/usr / bin / env -S uv run --script
 # /// script
-# requires-python = ">=3.11"
+# requires = { python = ">=3.11" }
 # dependencies = [
 #     "python-dotenv",
 # ]
@@ -16,7 +16,7 @@ from pathlib import Path
 from utils.constants import ensure_session_log_dir
 
 try:
-    from dotenv import load_dotenv
+    from dotenv import load_dotenv  # noqa: E402,PLC0415
 
     load_dotenv()
 except ImportError:
@@ -67,7 +67,7 @@ def announce_subagent_completion():
             ["uv", "run", tts_script, completion_message],
             capture_output=True,  # Suppress output
             timeout=10,
-            check=False,  # 10-second timeout
+            check=False,  # 10 - second timeout
         )
 
     except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
@@ -133,7 +133,7 @@ def main():
                                 except json.JSONDecodeError:
                                     pass  # Skip invalid lines
 
-                    # Write to logs/chat.json
+                    # Write to logs / chat.json
                     chat_file = Path(log_dir) / "chat.json"
                     with open(chat_file, "w") as f:
                         json.dump(chat_data, f, indent=2)

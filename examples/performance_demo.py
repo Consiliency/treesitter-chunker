@@ -24,14 +24,14 @@ def demo_basic_caching():
     start = time.perf_counter()
     chunks1 = chunker.chunk_file(test_file, "python")
     cold_time = time.perf_counter() - start
-    print(f"Cold cache: {cold_time*1000:.2f}ms, {len(chunks1)} chunks")
+    print(f"Cold cache: {cold_time * 1000:.2f}ms, {len(chunks1)} chunks")
 
     # Parse again (warm cache)
     print(f"\nParsing {test_file.name} with warm cache...")
     start = time.perf_counter()
     chunks2 = chunker.chunk_file(test_file, "python")
     warm_time = time.perf_counter() - start
-    print(f"Warm cache: {warm_time*1000:.2f}ms, {len(chunks2)} chunks")
+    print(f"Warm cache: {warm_time * 1000:.2f}ms, {len(chunks2)} chunks")
 
     # Show speedup
     speedup = cold_time / warm_time
@@ -67,7 +67,7 @@ class TestClass:
         return 3
 '''
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
         f.write(test_content)
         test_file = Path(f.name)
 
@@ -81,24 +81,24 @@ class TestClass:
 
         # Make a small change
         new_content = test_content.replace("return 1", "return 100")
-        test_file.write_text(new_content)
+        test_file.write_text(new_content, encoding="utf-8")
 
         # Incremental parse
         print("\nIncremental parse after small change...")
         start = time.perf_counter()
         chunker.chunk_file_incremental(test_file, "python")
         incr_time = time.perf_counter() - start
-        print(f"Incremental parse: {incr_time*1000:.2f}ms")
+        print(f"Incremental parse: {incr_time * 1000:.2f}ms")
 
         # Compare with full reparse
         chunker.invalidate_file(test_file)  # Clear cache
         start = time.perf_counter()
         chunker.chunk_file(test_file, "python", force_reparse=True)
         full_time = time.perf_counter() - start
-        print(f"Full reparse: {full_time*1000:.2f}ms")
+        print(f"Full reparse: {full_time * 1000:.2f}ms")
 
         if incr_time < full_time:
-            print(f"\nIncremental parsing was {full_time/incr_time:.2f}x faster!")
+            print(f"\nIncremental parsing was {full_time / incr_time:.2f}x faster!")
 
     finally:
         test_file.unlink()
@@ -141,7 +141,7 @@ def demo_batch_processing():
     total_chunks = sum(len(chunks) for chunks in results.values())
     print(f"\nProcessed {len(results)} files in {elapsed:.2f}s")
     print(f"Total chunks: {total_chunks}")
-    print(f"Files/second: {len(results)/elapsed:.1f}")
+    print(f"Files/second: {len(results) / elapsed:.1f}")
 
     # Show performance metrics
     print("\nPerformance metrics:")
@@ -168,12 +168,12 @@ def demo_memory_pooling():
     for i in range(5):
         parser = pool.acquire_parser("python")
         parsers_used.append(parser)
-        print(f"  Acquired parser {i+1}")
+        print(f"  Acquired parser {i + 1}")
 
     # Release them back
     for i, parser in enumerate(parsers_used):
         pool.release_parser(parser, "python")
-        print(f"  Released parser {i+1}")
+        print(f"  Released parser {i + 1}")
 
     # Show pool statistics
     stats = pool.get_stats()

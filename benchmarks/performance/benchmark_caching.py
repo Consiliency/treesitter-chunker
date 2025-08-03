@@ -98,7 +98,7 @@ def benchmark_cache_performance(num_files: int = 50, iterations: int = 3):
 
             elapsed = time.perf_counter() - start
             baseline_times.append(elapsed)
-            print(f"   Iteration {i+1}: {elapsed:.3f}s")
+            print(f"   Iteration {i + 1}: {elapsed:.3f}s")
 
         baseline_avg = statistics.mean(baseline_times)
         print(f"   Average: {baseline_avg:.3f}s")
@@ -125,7 +125,7 @@ def benchmark_cache_performance(num_files: int = 50, iterations: int = 3):
 
             elapsed = time.perf_counter() - start
             warm_times.append(elapsed)
-            print(f"   Iteration {i+1}: {elapsed:.3f}s")
+            print(f"   Iteration {i + 1}: {elapsed:.3f}s")
 
         warm_avg = statistics.mean(warm_times)
         print(f"   Average: {warm_avg:.3f}s")
@@ -147,7 +147,7 @@ def benchmark_cache_performance(num_files: int = 50, iterations: int = 3):
         print(f"   With cache: {warm_avg:.3f}s")
         print(f"   Speedup: {speedup:.2f}x")
         print(
-            f"   Time saved: {baseline_avg - warm_avg:.3f}s ({(1 - warm_avg/baseline_avg) * 100:.1f}%)",
+            f"   Time saved: {baseline_avg - warm_avg:.3f}s ({(1 - warm_avg / baseline_avg) * 100:.1f}%)",
         )
 
     finally:
@@ -179,7 +179,7 @@ def benchmark_cache_invalidation(num_files: int = 20):
         start = time.perf_counter()
         chunker.invalidate_file(files[0])
         elapsed = time.perf_counter() - start
-        print(f"   Time: {elapsed*1000:.3f}ms")
+        print(f"   Time: {elapsed * 1000:.3f}ms")
 
         # Test pattern invalidation
         print("\n3. Pattern invalidation (ast:*test_file_1*.py:*):")
@@ -192,14 +192,14 @@ def benchmark_cache_invalidation(num_files: int = 20):
         start = time.perf_counter()
         count = cache.invalidate_pattern("ast:*test_file_1*.py:*")
         elapsed = time.perf_counter() - start
-        print(f"   Invalidated {count} entries in {elapsed*1000:.3f}ms")
+        print(f"   Invalidated {count} entries in {elapsed * 1000:.3f}ms")
 
         # Test full cache clear
         print("\n4. Full cache clear:")
         start = time.perf_counter()
         cache.clear()
         elapsed = time.perf_counter() - start
-        print(f"   Time: {elapsed*1000:.3f}ms")
+        print(f"   Time: {elapsed * 1000:.3f}ms")
 
     finally:
         # Cleanup

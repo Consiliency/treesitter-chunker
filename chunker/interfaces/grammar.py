@@ -3,7 +3,6 @@
 Interfaces for managing Tree-sitter language grammars,
 including fetching, building, and versioning.
 """
-
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
@@ -12,7 +11,6 @@ from pathlib import Path
 
 class GrammarStatus(Enum):
     """Status of a grammar."""
-
     NOT_FOUND = "not_found"
     NOT_BUILT = "not_built"
     BUILDING = "building"
@@ -34,7 +32,6 @@ class GrammarInfo:
         path: Path to compiled grammar file
         error: Error message if status is ERROR
     """
-
     name: str
     repository_url: str
     commit_hash: str | None = None
@@ -60,7 +57,6 @@ class NodeTypeInfo:
         fields: List of field names this node type has
         supertypes: Parent types in the grammar hierarchy
     """
-
     name: str
     is_named: bool
     has_children: bool
@@ -71,13 +67,10 @@ class NodeTypeInfo:
 class GrammarManager(ABC):
     """Manages Tree-sitter language grammars."""
 
+    @staticmethod
     @abstractmethod
-    def add_grammar(
-        self,
-        name: str,
-        repository_url: str,
-        commit_hash: str | None = None,
-    ) -> GrammarInfo:
+    def add_grammar(name: str, repository_url: str, commit_hash: (str |
+        None) = None) -> GrammarInfo:
         """Add a new grammar to manage.
 
         Args:
@@ -89,8 +82,9 @@ class GrammarManager(ABC):
             Grammar information
         """
 
+    @staticmethod
     @abstractmethod
-    def fetch_grammar(self, name: str) -> bool:
+    def fetch_grammar(name: str) -> bool:
         """Fetch grammar source from repository.
 
         Args:
@@ -100,8 +94,9 @@ class GrammarManager(ABC):
             True if successful
         """
 
+    @staticmethod
     @abstractmethod
-    def build_grammar(self, name: str) -> bool:
+    def build_grammar(name: str) -> bool:
         """Build grammar from source.
 
         Args:
@@ -111,8 +106,9 @@ class GrammarManager(ABC):
             True if successful
         """
 
+    @staticmethod
     @abstractmethod
-    def get_grammar_info(self, name: str) -> GrammarInfo | None:
+    def get_grammar_info(name: str) -> (GrammarInfo | None):
         """Get information about a grammar.
 
         Args:
@@ -122,8 +118,9 @@ class GrammarManager(ABC):
             Grammar info or None if not found
         """
 
+    @staticmethod
     @abstractmethod
-    def list_grammars(self, status: GrammarStatus | None = None) -> list[GrammarInfo]:
+    def list_grammars(status: (GrammarStatus | None) = None) -> list[GrammarInfo]:
         """List all managed grammars.
 
         Args:
@@ -133,8 +130,9 @@ class GrammarManager(ABC):
             List of grammar information
         """
 
+    @staticmethod
     @abstractmethod
-    def update_grammar(self, name: str) -> bool:
+    def update_grammar(name: str) -> bool:
         """Update grammar to latest version.
 
         Args:
@@ -144,8 +142,9 @@ class GrammarManager(ABC):
             True if updated
         """
 
+    @staticmethod
     @abstractmethod
-    def remove_grammar(self, name: str) -> bool:
+    def remove_grammar(name: str) -> bool:
         """Remove a grammar.
 
         Args:
@@ -155,8 +154,9 @@ class GrammarManager(ABC):
             True if removed
         """
 
+    @staticmethod
     @abstractmethod
-    def get_node_types(self, language: str) -> list[NodeTypeInfo]:
+    def get_node_types(language: str) -> list[NodeTypeInfo]:
         """Get all node types for a language.
 
         Args:
@@ -166,8 +166,9 @@ class GrammarManager(ABC):
             List of node type information
         """
 
+    @staticmethod
     @abstractmethod
-    def validate_grammar(self, name: str) -> tuple[bool, str | None]:
+    def validate_grammar(name: str) -> tuple[bool, str | None]:
         """Validate a grammar is working correctly.
 
         Args:
@@ -181,24 +182,27 @@ class GrammarManager(ABC):
 class GrammarBuilder(ABC):
     """Builds Tree-sitter grammars from source."""
 
+    @staticmethod
     @abstractmethod
-    def set_build_directory(self, path: Path) -> None:
+    def set_build_directory(path: Path) -> None:
         """Set directory for build output.
 
         Args:
             path: Build output directory
         """
 
+    @staticmethod
     @abstractmethod
-    def set_source_directory(self, path: Path) -> None:
+    def set_source_directory(path: Path) -> None:
         """Set directory containing grammar sources.
 
         Args:
             path: Source directory
         """
 
+    @staticmethod
     @abstractmethod
-    def build(self, languages: list[str]) -> dict[str, bool]:
+    def build(languages: list[str]) -> dict[str, bool]:
         """Build specified languages.
 
         Args:
@@ -208,16 +212,18 @@ class GrammarBuilder(ABC):
             Dictionary mapping language to build success
         """
 
+    @staticmethod
     @abstractmethod
-    def clean(self, language: str | None = None) -> None:
+    def clean(language: (str | None) = None) -> None:
         """Clean build artifacts.
 
         Args:
             language: Specific language (None for all)
         """
 
+    @staticmethod
     @abstractmethod
-    def get_build_log(self, language: str) -> str | None:
+    def get_build_log(language: str) -> (str | None):
         """Get build log for a language.
 
         Args:
@@ -231,8 +237,9 @@ class GrammarBuilder(ABC):
 class GrammarRepository(ABC):
     """Repository of known grammar sources."""
 
+    @staticmethod
     @abstractmethod
-    def search(self, query: str) -> list[GrammarInfo]:
+    def search(query: str) -> list[GrammarInfo]:
         """Search for grammars.
 
         Args:
@@ -242,8 +249,9 @@ class GrammarRepository(ABC):
             List of matching grammars
         """
 
+    @staticmethod
     @abstractmethod
-    def get_popular_grammars(self, limit: int = 20) -> list[GrammarInfo]:
+    def get_popular_grammars(limit: int = 20) -> list[GrammarInfo]:
         """Get most popular grammars.
 
         Args:
@@ -253,8 +261,9 @@ class GrammarRepository(ABC):
             List of popular grammars
         """
 
+    @staticmethod
     @abstractmethod
-    def get_grammar_by_extension(self, extension: str) -> GrammarInfo | None:
+    def get_grammar_by_extension(extension: str) -> (GrammarInfo | None):
         """Find grammar for a file extension.
 
         Args:
@@ -264,8 +273,9 @@ class GrammarRepository(ABC):
             Grammar info or None
         """
 
+    @staticmethod
     @abstractmethod
-    def refresh_repository(self) -> bool:
+    def refresh_repository() -> bool:
         """Refresh repository data.
 
         Returns:
@@ -276,8 +286,9 @@ class GrammarRepository(ABC):
 class GrammarValidator(ABC):
     """Validates grammar compatibility and correctness."""
 
+    @staticmethod
     @abstractmethod
-    def check_abi_compatibility(self, grammar_path: Path) -> tuple[bool, str | None]:
+    def check_abi_compatibility(grammar_path: Path) -> tuple[bool, str | None]:
         """Check if grammar ABI is compatible.
 
         Args:
@@ -287,8 +298,10 @@ class GrammarValidator(ABC):
             Tuple of (is_compatible, error_message)
         """
 
+    @staticmethod
     @abstractmethod
-    def validate_node_types(self, language: str, expected_types: set[str]) -> list[str]:
+    def validate_node_types(language: str, expected_types: set[str]) -> list[str
+        ]:
         """Validate expected node types exist.
 
         Args:
@@ -299,8 +312,9 @@ class GrammarValidator(ABC):
             List of missing node types
         """
 
+    @staticmethod
     @abstractmethod
-    def test_parse(self, language: str, sample_code: str) -> tuple[bool, str | None]:
+    def test_parse(language: str, sample_code: str) -> tuple[bool, str | None]:
         """Test parsing with sample code.
 
         Args:

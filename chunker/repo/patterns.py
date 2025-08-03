@@ -79,7 +79,7 @@ class GitignorePattern:
             pattern = "(^|.*/)" + pattern
 
         # Add end anchor
-        pattern = pattern + "(/.*)?$"
+        pattern += "(/.*)?$"
 
         return re.compile(pattern)
 

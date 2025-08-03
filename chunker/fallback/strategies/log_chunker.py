@@ -1,5 +1,4 @@
 """Specialized chunker for log files."""
-
 import logging
 import re
 from datetime import datetime, timedelta
@@ -22,31 +21,17 @@ class LogChunker(FallbackChunker, ILogChunker):
     - Session/request IDs
     - Mixed strategies
     """
-
-    # Common log timestamp patterns
-    TIMESTAMP_PATTERNS = [
-        # ISO 8601: 2024-01-15T10:30:45.123Z
-        (
-            r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?(?:Z|[+-]\d{2}:\d{2})?)",
-            "%Y-%m-%dT%H:%M:%S",
-        ),
-        # Standard: 2024-01-15 10:30:45
-        (r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})", "%Y-%m-%d %H:%M:%S"),
-        # Syslog: Jan 15 10:30:45
-        (r"(\w{3} \d{1,2} \d{2}:\d{2}:\d{2})", "%b %d %H:%M:%S"),
-        # Apache: [15/Jan/2024:10:30:45 +0000]
-        (
-            r"\[(\d{2}/\w{3}/\d{4}:\d{2}:\d{2}:\d{2} [+-]\d{4})\]",
-            "%d/%b/%Y:%H:%M:%S %z",
-        ),
-    ]
-
-    # Log level patterns
+    TIMESTAMP_PATTERNS = [(
+        "(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?(?:Z|[+-]\\d{2}:\\d{2})?)"
+        , "%Y-%m-%dT%H:%M:%S"), (
+        "(\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2})", "%Y-%m-%d %H:%M:%S"),
+        ("(\\w{3} \\d{1,2} \\d{2}:\\d{2}:\\d{2})", "%b %d %H:%M:%S"), (
+        "\\[(\\d{2}/\\w{3}/\\d{4}:\\d{2}:\\d{2}:\\d{2} [+-]\\d{4})\\]",
+        "%d/%b/%Y:%H:%M:%S %z")]
     LEVEL_PATTERNS = [
-        r"\b(TRACE|DEBUG|INFO|WARN(?:ING)?|ERROR|FATAL|CRITICAL)\b",
-        r"\b(trace|debug|info|warn(?:ing)?|error|fatal|critical)\b",
-        r"\[\s*(TRACE|DEBUG|INFO|WARN(?:ING)?|ERROR|FATAL|CRITICAL)\s*\]",
-    ]
+        "\\b(TRACE|DEBUG|INFO|WARN(?:ING)?|ERROR|FATAL|CRITICAL)\\b",
+        "\\b(trace|debug|info|warn(?:ing)?|error|fatal|critical)\\b",
+        "\\[\\s*(TRACE|DEBUG|INFO|WARN(?:ING)?|ERROR|FATAL|CRITICAL)\\s*\\]"]
 
     def __init__(self):
         """Initialize log chunker."""
@@ -65,20 +50,11 @@ class LogChunker(FallbackChunker, ILogChunker):
         Returns:
             Dictionary with detected format info
         """
-        format_info = {
-            "has_timestamps": False,
-            "timestamp_pattern": None,
-            "timestamp_format": None,
-            "has_levels": False,
-            "level_pattern": None,
-            "multiline": False,
-        }
-
-        # Sample first few lines
+        format_info = {"has_timestamps": False, "timestamp_pattern": None,
+            "timestamp_format": None, "has_levels": False, "level_pattern":
+            None, "multiline": False}
         lines = content.splitlines()[:100]
         sample = "\n".join(lines)
-
-        # Detect timestamps
         for pattern_str, date_format in self.TIMESTAMP_PATTERNS:
             pattern = re.compile(pattern_str)
             if pattern.search(sample):
@@ -88,8 +64,6 @@ class LogChunker(FallbackChunker, ILogChunker):
                 self._timestamp_pattern = pattern
                 self._timestamp_format = date_format
                 break
-
-        # Detect log levels
         for level_pattern_str in self.LEVEL_PATTERNS:
             pattern = re.compile(level_pattern_str)
             if pattern.search(sample):
@@ -97,27 +71,18 @@ class LogChunker(FallbackChunker, ILogChunker):
                 format_info["level_pattern"] = pattern
                 self._level_pattern = pattern
                 break
-
-        # Detect multiline logs (e.g., stack traces)
-        # Look for lines that don't start with timestamp/level
         if format_info["has_timestamps"]:
             non_timestamp_lines = 0
-            for line in lines[1:]:  # Skip first line
-                if line.strip() and not format_info["timestamp_pattern"].match(line):
+            for line in lines[1:]:
+                if line.strip() and not format_info["timestamp_pattern"].match(
+                    line):
                     non_timestamp_lines += 1
-
-            if (
-                non_timestamp_lines > len(lines) * 0.2
-            ):  # More than 20% continuation lines
+            if non_timestamp_lines > len(lines) * 0.2:
                 format_info["multiline"] = True
-
         return format_info
 
-    def chunk_by_timestamp(
-        self,
-        content: str,
-        time_window_seconds: int,
-    ) -> list[CodeChunk]:
+    def chunk_by_timestamp(self, content: str, time_window_seconds: int,
+        ) -> list[CodeChunk]:
         """Chunk logs by time window.
 
         Args:
@@ -128,73 +93,45 @@ class LogChunker(FallbackChunker, ILogChunker):
             List of chunks grouped by time
         """
         format_info = self.detect_log_format(content)
-
         if not format_info["has_timestamps"]:
-            # Fall back to line-based chunking
             logger.warning(
-                "No timestamps detected, falling back to line-based chunking",
-            )
+                "No timestamps detected, falling back to line-based chunking")
             return self.chunk_by_lines(content, 100, 0)
-
         chunks = []
         current_chunk_lines = []
         current_window_start = None
         current_start_line = 1
-
         lines = content.splitlines(keepends=True)
-
         for i, line in enumerate(lines):
-            # Try to extract timestamp
             timestamp = self._extract_timestamp(line)
-
             if timestamp:
-                # Check if we need a new chunk
                 if current_window_start is None:
                     current_window_start = timestamp
                     current_start_line = i + 1
-
-                window_end = current_window_start + timedelta(
-                    seconds=time_window_seconds,
-                )
-
+                window_end = current_window_start + timedelta(seconds=time_window_seconds)
                 if timestamp > window_end:
-                    # Create chunk for current window
                     if current_chunk_lines:
-                        chunk = self._create_log_chunk(
-                            current_chunk_lines,
-                            current_start_line,
-                            i,
-                            f"time_window_{current_window_start.isoformat()}",
-                        )
+                        chunk = self._create_log_chunk(current_chunk_lines,
+                            current_start_line, i,
+                            f"time_window_{current_window_start.isoformat()}")
                         chunks.append(chunk)
-
-                    # Start new window
                     current_chunk_lines = [line]
                     current_window_start = timestamp
                     current_start_line = i + 1
                 else:
                     current_chunk_lines.append(line)
             else:
-                # Continuation line (e.g., stack trace)
                 current_chunk_lines.append(line)
-
-        # Handle remaining lines
         if current_chunk_lines:
-            chunk = self._create_log_chunk(
-                current_chunk_lines,
-                current_start_line,
-                len(lines),
+            chunk = self._create_log_chunk(current_chunk_lines,
+                current_start_line, len(lines),
                 f"time_window_{current_window_start.isoformat() if current_window_start else 'unknown'}",
-            )
+                )
             chunks.append(chunk)
-
         return chunks
 
-    def chunk_by_severity(
-        self,
-        content: str,
-        group_consecutive: bool = True,
-    ) -> list[CodeChunk]:
+    def chunk_by_severity(self, content: str, group_consecutive: bool = True,
+        ) -> list[CodeChunk]:
         """Chunk logs by severity level.
 
         Args:
@@ -205,58 +142,39 @@ class LogChunker(FallbackChunker, ILogChunker):
             List of chunks grouped by severity
         """
         format_info = self.detect_log_format(content)
-
         if not format_info["has_levels"]:
             logger.warning(
-                "No log levels detected, falling back to line-based chunking",
-            )
+                "No log levels detected, falling back to line-based chunking")
             return self.chunk_by_lines(content, 100, 0)
-
         chunks = []
         current_chunk_lines = []
         current_level = None
         current_start_line = 1
-
         lines = content.splitlines(keepends=True)
-
         for i, line in enumerate(lines):
-            # Try to extract log level
             level = self._extract_log_level(line)
-
             if level:
-                # Check if we need a new chunk
-                if not group_consecutive or (current_level and level != current_level):
-                    # Create chunk for current level
-                    if current_chunk_lines:
-                        chunk = self._create_log_chunk(
-                            current_chunk_lines,
-                            current_start_line,
-                            i,
-                            f"severity_{current_level or 'unknown'}",
-                        )
-                        chunks.append(chunk)
-                        current_chunk_lines = []
-                        current_start_line = i + 1
-
+                if (not group_consecutive or (current_level and level !=
+                    current_level)) and current_chunk_lines:
+                    chunk = self._create_log_chunk(current_chunk_lines,
+                        current_start_line, i,
+                        f"severity_{current_level or 'unknown'}")
+                    chunks.append(chunk)
+                    current_chunk_lines = []
+                    current_start_line = i + 1
                 current_level = level
                 current_chunk_lines.append(line)
             else:
-                # Continuation line
                 current_chunk_lines.append(line)
-
-        # Handle remaining lines
         if current_chunk_lines:
-            chunk = self._create_log_chunk(
-                current_chunk_lines,
-                current_start_line,
-                len(lines),
-                f"severity_{current_level or 'unknown'}",
-            )
+            chunk = self._create_log_chunk(current_chunk_lines,
+                current_start_line, len(lines),
+                f"severity_{current_level or 'unknown'}")
             chunks.append(chunk)
-
         return chunks
 
-    def chunk_by_session(self, content: str, session_pattern: str) -> list[CodeChunk]:
+    def chunk_by_session(self, content: str, session_pattern: str) -> list[
+        CodeChunk]:
         """Chunk logs by session/request ID.
 
         Args:
@@ -269,100 +187,65 @@ class LogChunker(FallbackChunker, ILogChunker):
         pattern = re.compile(session_pattern)
         chunks = []
         session_logs: dict[str, list[tuple[int, str]]] = {}
-
         lines = content.splitlines(keepends=True)
-
-        # Group lines by session ID
         for i, line in enumerate(lines):
             match = pattern.search(line)
             if match:
-                session_id = match.group(1) if match.groups() else match.group(0)
+                session_id = match.group(1) if match.groups() else match.group(
+                    0)
                 if session_id not in session_logs:
                     session_logs[session_id] = []
                 session_logs[session_id].append((i + 1, line))
             else:
-                # Lines without session ID go to 'unknown'
                 if "unknown" not in session_logs:
                     session_logs["unknown"] = []
                 session_logs["unknown"].append((i + 1, line))
-
-        # Create chunks for each session
         for session_id, session_lines in session_logs.items():
             if not session_lines:
                 continue
-
-            # Sort by line number
             session_lines.sort(key=lambda x: x[0])
-
             content_lines = [line for _, line in session_lines]
             start_line = session_lines[0][0]
             end_line = session_lines[-1][0]
-
-            chunk = self._create_log_chunk(
-                content_lines,
-                start_line,
-                end_line,
-                f"session_{session_id}",
-            )
+            chunk = self._create_log_chunk(content_lines, start_line,
+                end_line, f"session_{session_id}")
             chunks.append(chunk)
-
-        # Sort chunks by first line number
         chunks.sort(key=lambda c: c.start_line)
-
         return chunks
 
-    def _extract_timestamp(self, line: str) -> datetime | None:
+    def _extract_timestamp(self, line: str) -> (datetime | None):
         """Extract timestamp from log line."""
         if not self._timestamp_pattern or not self._timestamp_format:
             return None
-
         match = self._timestamp_pattern.search(line)
         if match:
             try:
                 timestamp_str = match.group(1)
-                # Handle partial formats (e.g., syslog without year)
                 if "%Y" not in self._timestamp_format:
-                    # Assume current year
                     timestamp_str = f"{datetime.now().year} {timestamp_str}"
                     format_str = "%Y " + self._timestamp_format
                 else:
                     format_str = self._timestamp_format
-
-                return datetime.strptime(timestamp_str.split(".")[0], format_str)
+                return datetime.strptime(timestamp_str.split(".")[0],
+                    format_str)
             except ValueError as e:
                 logger.debug("Failed to parse timestamp: %s", e)
-
         return None
 
-    def _extract_log_level(self, line: str) -> str | None:
+    def _extract_log_level(self, line: str) -> (str | None):
         """Extract log level from line."""
         if not self._level_pattern:
             return None
-
         match = self._level_pattern.search(line)
         if match:
             return match.group(1).upper()
-
         return None
 
-    def _create_log_chunk(
-        self,
-        lines: list[str],
-        start_line: int,
-        end_line: int,
-        context: str,
-    ) -> CodeChunk:
+    def _create_log_chunk(self, lines: list[str], start_line: int, end_line:
+        int, context: str) -> CodeChunk:
         """Create a log chunk from lines."""
         content = "".join(lines)
-
-        return CodeChunk(
-            language="log",
-            file_path=self.file_path or "",
-            node_type="log_chunk",
-            start_line=start_line,
-            end_line=end_line,
-            byte_start=0,  # Would need full content to calculate
-            byte_end=len(content),
-            parent_context=context,
-            content=content,
-        )
+        return CodeChunk(language="log", file_path=self.file_path or "",
+            node_type="log_chunk", start_line=start_line, end_line=end_line,
+            byte_start=0, byte_end=len(content), parent_context=context,
+            content=content)

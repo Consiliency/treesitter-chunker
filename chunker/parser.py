@@ -1,5 +1,4 @@
 """Parser module for tree-sitter chunker with dynamic language discovery."""
-
 from __future__ import annotations
 
 import logging
@@ -17,44 +16,40 @@ from .exceptions import (
 
 if TYPE_CHECKING:
     from tree_sitter import Parser
-
-# Module-level logger
 logger = logging.getLogger(__name__)
-
-# Singleton instances
 _registry: LanguageRegistry | None = None
 _factory: ParserFactory | None = None
+_DEFAULT_LIBRARY_PATH = Path(__file__,
+    ).parent.parent / "build" / "my-languages.so"
 
-# Default library path
-_DEFAULT_LIBRARY_PATH = Path(__file__).parent.parent / "build" / "my-languages.so"
 
-
-def _initialize(library_path: Path | None = None) -> None:
+def _initialize(library_path: (Path | None) = None) -> None:
     """Lazy initialization of registry and factory.
 
     Args:
         library_path: Optional path to the compiled library
     """
     global _registry, _factory
-
     if _registry is None:
         path = library_path or _DEFAULT_LIBRARY_PATH
         if not path.exists():
             raise LibraryNotFoundError(path)
-
         _registry = LanguageRegistry(path)
         _factory = ParserFactory(_registry)
-
-        # Log discovered languages
         languages = _registry.list_languages()
+<<<<<<< HEAD
         logger.info(
             "Initialized parser with %d languages: %s",
             len(languages),
             ", ".join(languages),
         )
+=======
+        logger.info("Initialized parser with %s languages: %s", (len(
+            languages), ", ".join(languages)))
+>>>>>>> origin/main
 
 
-def get_parser(language: str, config: ParserConfig | None = None) -> Parser:
+def get_parser(language: str, config: (ParserConfig | None) = None) -> Parser:
     """Get a parser for the specified language with optional configuration.
 
     Args:
@@ -69,19 +64,16 @@ def get_parser(language: str, config: ParserConfig | None = None) -> Parser:
         ParserError: If parser initialization fails
     """
     _initialize()
-
     try:
         return _factory.get_parser(language, config)
     except LanguageNotFoundError:
-        # Re-raise with available languages
         available = _registry.list_languages()
-        raise LanguageNotFoundError(language, available)
+        raise LanguageNotFoundError(language, available) from None
     except ParserConfigError:
-        # Re-raise config errors as-is
         raise
     except (IndexError, KeyError, SyntaxError) as e:
         logger.error("Failed to get parser for %s: %s", language, e)
-        raise ParserError(f"Parser initialization failed: {e}")
+        raise ParserError(f"Parser initialization failed: {e}") from e
 
 
 def list_languages() -> list[str]:
@@ -132,15 +124,5 @@ def clear_cache() -> None:
     _factory.clear_cache()
 
 
-# Maintain backward compatibility with old imports
-# Users can still do: from chunker.parser import get_parser
-# and it will work with the new implementation
-__all__ = [
-    "LanguageMetadata",
-    "ParserConfig",
-    "clear_cache",
-    "get_language_info",
-    "get_parser",
-    "list_languages",
-    "return_parser",
-]
+__all__ = ["LanguageMetadata", "ParserConfig", "clear_cache",
+    "get_language_info", "get_parser", "list_languages", "return_parser"]

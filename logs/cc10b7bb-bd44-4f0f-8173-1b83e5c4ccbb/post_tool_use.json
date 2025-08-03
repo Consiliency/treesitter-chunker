@@ -4837,5 +4837,332 @@
       "interrupted": false,
       "isImage": false
     }
+  },
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "git clean -fd && git reset --hard HEAD",
+      "description": "Clean and reset"
+    },
+    "tool_response": {
+      "stdout": "HEAD is now at 07244d7 fix: additional formatting and import fixes from pre-commit hooks",
+      "stderr": "",
+      "interrupted": false,
+      "isImage": false
+    }
+  },
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "git fetch origin",
+      "description": "Fetch from origin"
+    },
+    "tool_response": {
+      "stdout": "",
+      "stderr": "",
+      "interrupted": false,
+      "isImage": false
+    }
+  },
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/chunker/__init__.py",
+      "offset": 25,
+      "limit": 20
+    },
+    "tool_response": {
+      "type": "text",
+      "file": {
+        "filePath": "/home/jenner/code/treesitter-chunker/chunker/__init__.py",
+        "content": "\n# Simple text chunking\ndef chunk_text(text: str, language: str, **kwargs):\n    \"\"\"Chunk text content directly without file I/O.\"\"\"\n    import tempfile\n    from pathlib import Path\n\n    # Write to temporary file and chunk it\n<<<<<<< HEAD\n    with tempfile.NamedTemporaryFile(mode=\"w\", suffix=\".tmp\", delete=False) as f:\n=======\n    with tempfile.NamedTemporaryFile(encoding=\"utf-8\", mode=\"w\", suffix=\".tmp\", delete=False) as f:\n>>>>>>> origin/main\n        f.write(text)\n        temp_path = f.name\n\n    try:\n        chunks = chunk_file(temp_path, language, **kwargs)\n        return chunks\n    finally:",
+        "numLines": 20,
+        "startLine": 25,
+        "totalLines": 105
+      }
+    }
+  },
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Edit",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/chunker/__init__.py",
+      "old_string": "    # Write to temporary file and chunk it\n<<<<<<< HEAD\n    with tempfile.NamedTemporaryFile(mode=\"w\", suffix=\".tmp\", delete=False) as f:\n=======\n    with tempfile.NamedTemporaryFile(encoding=\"utf-8\", mode=\"w\", suffix=\".tmp\", delete=False) as f:\n>>>>>>> origin/main",
+      "new_string": "    # Write to temporary file and chunk it\n    with tempfile.NamedTemporaryFile(encoding=\"utf-8\", mode=\"w\", suffix=\".tmp\", delete=False) as f:"
+    },
+    "tool_response": {
+      "filePath": "/home/jenner/code/treesitter-chunker/chunker/__init__.py",
+      "oldString": "    # Write to temporary file and chunk it\n<<<<<<< HEAD\n    with tempfile.NamedTemporaryFile(mode=\"w\", suffix=\".tmp\", delete=False) as f:\n=======\n    with tempfile.NamedTemporaryFile(encoding=\"utf-8\", mode=\"w\", suffix=\".tmp\", delete=False) as f:\n>>>>>>> origin/main",
+      "newString": "    # Write to temporary file and chunk it\n    with tempfile.NamedTemporaryFile(encoding=\"utf-8\", mode=\"w\", suffix=\".tmp\", delete=False) as f:",
+      "originalFile": "\"\"\"\nTree-sitter Chunker - Semantic code chunking for LLMs and embeddings.\n\nSimple usage:\n    from chunker import chunk_file, chunk_text, chunk_directory\n\n    # Chunk a single file\n    chunks = chunk_file(\"example.py\", language=\"python\")\n\n    # Chunk raw text\n    chunks = chunk_text(code_text, language=\"javascript\")\n\n    # Chunk entire directory\n    results = chunk_directory(\"src/\", language=\"python\")\n\"\"\"\n\n__version__ = \"1.0.0\"\n\n# Core functionality - these are the main APIs users need\nfrom .core import chunk_file\nfrom .parallel import chunk_directory_parallel as chunk_directory\nfrom .streaming import chunk_file_streaming\nfrom .types import CodeChunk\n\n\n# Simple text chunking\ndef chunk_text(text: str, language: str, **kwargs):\n    \"\"\"Chunk text content directly without file I/O.\"\"\"\n    import tempfile\n    from pathlib import Path\n\n    # Write to temporary file and chunk it\n<<<<<<< HEAD\n    with tempfile.NamedTemporaryFile(mode=\"w\", suffix=\".tmp\", delete=False) as f:\n=======\n    with tempfile.NamedTemporaryFile(encoding=\"utf-8\", mode=\"w\", suffix=\".tmp\", delete=False) as f:\n>>>>>>> origin/main\n        f.write(text)\n        temp_path = f.name\n\n    try:\n        chunks = chunk_file(temp_path, language, **kwargs)\n        return chunks\n    finally:\n        Path(temp_path).unlink(missing_ok=True)\n\n\n# Export commonly used classes and functions\nfrom ._internal.cache import ASTCache\nfrom .chunker_config import ChunkerConfig\n<<<<<<< HEAD\nfrom .exceptions import LanguageNotFoundError, LibraryNotFoundError, ParserError\nfrom .parser import (\n    ParserConfig,\n    clear_cache,\n    get_language_info,\n    get_parser,\n    list_languages,\n    return_parser,\n)\n=======\nfrom .parser import ParserConfig, get_language_info, get_parser, list_languages\n>>>>>>> origin/main\nfrom .plugin_manager import get_plugin_manager\n\n# Convenient exports for common use cases\n__all__ = [\n    # Performance\n    \"ASTCache\",\n    # Configuration\n    \"ChunkerConfig\",\n    # Core types\n    \"CodeChunk\",\n<<<<<<< HEAD\n    # Exceptions\n    \"LanguageNotFoundError\",\n    \"LibraryNotFoundError\",\n    \"ParserConfig\",\n    \"ParserError\",\n=======\n    \"ParserConfig\",\n>>>>>>> origin/main\n    # Version\n    \"__version__\",\n    \"chunk_directory\",\n    # Main functions\n    \"chunk_file\",\n    \"chunk_file_streaming\",\n    \"chunk_text\",\n<<<<<<< HEAD\n    # Parser utilities\n    \"clear_cache\",\n=======\n>>>>>>> origin/main\n    \"get_language_info\",\n    \"get_parser\",\n    \"get_plugin_manager\",\n    # Language support\n    \"list_languages\",\n<<<<<<< HEAD\n    \"return_parser\",\n=======\n>>>>>>> origin/main\n]\n",
+      "structuredPatch": [
+        {
+          "oldStart": 30,
+          "oldLines": 11,
+          "newStart": 30,
+          "newLines": 7,
+          "lines": [
+            "     from pathlib import Path",
+            " ",
+            "     # Write to temporary file and chunk it",
+            "-<<<<<<< HEAD",
+            "-    with tempfile.NamedTemporaryFile(mode=\"w\", suffix=\".tmp\", delete=False) as f:",
+            "-=======",
+            "     with tempfile.NamedTemporaryFile(encoding=\"utf-8\", mode=\"w\", suffix=\".tmp\", delete=False) as f:",
+            "->>>>>>> origin/main",
+            "         f.write(text)",
+            "         temp_path = f.name",
+            " "
+          ]
+        }
+      ],
+      "userModified": false,
+      "replaceAll": false
+    }
+  },
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/chunker/__init__.py",
+      "offset": 40,
+      "limit": 20
+    },
+    "tool_response": {
+      "type": "text",
+      "file": {
+        "filePath": "/home/jenner/code/treesitter-chunker/chunker/__init__.py",
+        "content": "    finally:\n        Path(temp_path).unlink(missing_ok=True)\n\n\n# Export commonly used classes and functions\nfrom ._internal.cache import ASTCache\nfrom .chunker_config import ChunkerConfig\n<<<<<<< HEAD\nfrom .exceptions import LanguageNotFoundError, LibraryNotFoundError, ParserError\nfrom .parser import (\n    ParserConfig,\n    clear_cache,\n    get_language_info,\n    get_parser,\n    list_languages,\n    return_parser,\n)\n=======\nfrom .parser import ParserConfig, get_language_info, get_parser, list_languages\n>>>>>>> origin/main",
+        "numLines": 20,
+        "startLine": 40,
+        "totalLines": 101
+      }
+    }
+  },
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Edit",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/chunker/__init__.py",
+      "old_string": "from .chunker_config import ChunkerConfig\n<<<<<<< HEAD\nfrom .exceptions import LanguageNotFoundError, LibraryNotFoundError, ParserError\nfrom .parser import (\n    ParserConfig,\n    clear_cache,\n    get_language_info,\n    get_parser,\n    list_languages,\n    return_parser,\n)\n=======\nfrom .parser import ParserConfig, get_language_info, get_parser, list_languages\n>>>>>>> origin/main",
+      "new_string": "from .chunker_config import ChunkerConfig\nfrom .exceptions import LanguageNotFoundError, LibraryNotFoundError, ParserError\nfrom .parser import (\n    ParserConfig,\n    clear_cache,\n    get_language_info,\n    get_parser,\n    list_languages,\n    return_parser,\n)"
+    },
+    "tool_response": {
+      "filePath": "/home/jenner/code/treesitter-chunker/chunker/__init__.py",
+      "oldString": "from .chunker_config import ChunkerConfig\n<<<<<<< HEAD\nfrom .exceptions import LanguageNotFoundError, LibraryNotFoundError, ParserError\nfrom .parser import (\n    ParserConfig,\n    clear_cache,\n    get_language_info,\n    get_parser,\n    list_languages,\n    return_parser,\n)\n=======\nfrom .parser import ParserConfig, get_language_info, get_parser, list_languages\n>>>>>>> origin/main",
+      "newString": "from .chunker_config import ChunkerConfig\nfrom .exceptions import LanguageNotFoundError, LibraryNotFoundError, ParserError\nfrom .parser import (\n    ParserConfig,\n    clear_cache,\n    get_language_info,\n    get_parser,\n    list_languages,\n    return_parser,\n)",
+      "originalFile": "\"\"\"\nTree-sitter Chunker - Semantic code chunking for LLMs and embeddings.\n\nSimple usage:\n    from chunker import chunk_file, chunk_text, chunk_directory\n\n    # Chunk a single file\n    chunks = chunk_file(\"example.py\", language=\"python\")\n\n    # Chunk raw text\n    chunks = chunk_text(code_text, language=\"javascript\")\n\n    # Chunk entire directory\n    results = chunk_directory(\"src/\", language=\"python\")\n\"\"\"\n\n__version__ = \"1.0.0\"\n\n# Core functionality - these are the main APIs users need\nfrom .core import chunk_file\nfrom .parallel import chunk_directory_parallel as chunk_directory\nfrom .streaming import chunk_file_streaming\nfrom .types import CodeChunk\n\n\n# Simple text chunking\ndef chunk_text(text: str, language: str, **kwargs):\n    \"\"\"Chunk text content directly without file I/O.\"\"\"\n    import tempfile\n    from pathlib import Path\n\n    # Write to temporary file and chunk it\n    with tempfile.NamedTemporaryFile(encoding=\"utf-8\", mode=\"w\", suffix=\".tmp\", delete=False) as f:\n        f.write(text)\n        temp_path = f.name\n\n    try:\n        chunks = chunk_file(temp_path, language, **kwargs)\n        return chunks\n    finally:\n        Path(temp_path).unlink(missing_ok=True)\n\n\n# Export commonly used classes and functions\nfrom ._internal.cache import ASTCache\nfrom .chunker_config import ChunkerConfig\n<<<<<<< HEAD\nfrom .exceptions import LanguageNotFoundError, LibraryNotFoundError, ParserError\nfrom .parser import (\n    ParserConfig,\n    clear_cache,\n    get_language_info,\n    get_parser,\n    list_languages,\n    return_parser,\n)\n=======\nfrom .parser import ParserConfig, get_language_info, get_parser, list_languages\n>>>>>>> origin/main\nfrom .plugin_manager import get_plugin_manager\n\n# Convenient exports for common use cases\n__all__ = [\n    # Performance\n    \"ASTCache\",\n    # Configuration\n    \"ChunkerConfig\",\n    # Core types\n    \"CodeChunk\",\n<<<<<<< HEAD\n    # Exceptions\n    \"LanguageNotFoundError\",\n    \"LibraryNotFoundError\",\n    \"ParserConfig\",\n    \"ParserError\",\n=======\n    \"ParserConfig\",\n>>>>>>> origin/main\n    # Version\n    \"__version__\",\n    \"chunk_directory\",\n    # Main functions\n    \"chunk_file\",\n    \"chunk_file_streaming\",\n    \"chunk_text\",\n<<<<<<< HEAD\n    # Parser utilities\n    \"clear_cache\",\n=======\n>>>>>>> origin/main\n    \"get_language_info\",\n    \"get_parser\",\n    \"get_plugin_manager\",\n    # Language support\n    \"list_languages\",\n<<<<<<< HEAD\n    \"return_parser\",\n=======\n>>>>>>> origin/main\n]\n",
+      "structuredPatch": [
+        {
+          "oldStart": 44,
+          "oldLines": 7,
+          "newStart": 44,
+          "newLines": 6,
+          "lines": [
+            " # Export commonly used classes and functions",
+            " from ._internal.cache import ASTCache",
+            " from .chunker_config import ChunkerConfig",
+            "-<<<<<<< HEAD",
+            " from .exceptions import LanguageNotFoundError, LibraryNotFoundError, ParserError",
+            " from .parser import (",
+            "     ParserConfig,"
+          ]
+        },
+        {
+          "oldStart": 54,
+          "oldLines": 9,
+          "newStart": 53,
+          "newLines": 6,
+          "lines": [
+            "     list_languages,",
+            "     return_parser,",
+            " )",
+            "-=======",
+            "-from .parser import ParserConfig, get_language_info, get_parser, list_languages",
+            "->>>>>>> origin/main",
+            " from .plugin_manager import get_plugin_manager",
+            " ",
+            " # Convenient exports for common use cases"
+          ]
+        }
+      ],
+      "userModified": false,
+      "replaceAll": false
+    }
+  },
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "grep -n \"<<<<<<< HEAD\" chunker/__init__.py",
+      "description": "Check for more merge conflicts"
+    },
+    "tool_response": {
+      "stdout": "66:<<<<<<< HEAD\n82:<<<<<<< HEAD\n92:<<<<<<< HEAD",
+      "stderr": "",
+      "interrupted": false,
+      "isImage": false
+    }
+  },
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Read",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/chunker/__init__.py",
+      "offset": 60,
+      "limit": 40
+    },
+    "tool_response": {
+      "type": "text",
+      "file": {
+        "filePath": "/home/jenner/code/treesitter-chunker/chunker/__init__.py",
+        "content": "    # Performance\n    \"ASTCache\",\n    # Configuration\n    \"ChunkerConfig\",\n    # Core types\n    \"CodeChunk\",\n<<<<<<< HEAD\n    # Exceptions\n    \"LanguageNotFoundError\",\n    \"LibraryNotFoundError\",\n    \"ParserConfig\",\n    \"ParserError\",\n=======\n    \"ParserConfig\",\n>>>>>>> origin/main\n    # Version\n    \"__version__\",\n    \"chunk_directory\",\n    # Main functions\n    \"chunk_file\",\n    \"chunk_file_streaming\",\n    \"chunk_text\",\n<<<<<<< HEAD\n    # Parser utilities\n    \"clear_cache\",\n=======\n>>>>>>> origin/main\n    \"get_language_info\",\n    \"get_parser\",\n    \"get_plugin_manager\",\n    # Language support\n    \"list_languages\",\n<<<<<<< HEAD\n    \"return_parser\",\n=======\n>>>>>>> origin/main\n]\n",
+        "numLines": 38,
+        "startLine": 60,
+        "totalLines": 97
+      }
+    }
+  },
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "MultiEdit",
+    "tool_input": {
+      "file_path": "/home/jenner/code/treesitter-chunker/chunker/__init__.py",
+      "edits": [
+        {
+          "old_string": "    # Core types\n    \"CodeChunk\",\n<<<<<<< HEAD\n    # Exceptions\n    \"LanguageNotFoundError\",\n    \"LibraryNotFoundError\",\n    \"ParserConfig\",\n    \"ParserError\",\n=======\n    \"ParserConfig\",\n>>>>>>> origin/main",
+          "new_string": "    # Core types\n    \"CodeChunk\",\n    # Exceptions\n    \"LanguageNotFoundError\",\n    \"LibraryNotFoundError\",\n    \"ParserConfig\",\n    \"ParserError\""
+        },
+        {
+          "old_string": "    \"chunk_text\",\n<<<<<<< HEAD\n    # Parser utilities\n    \"clear_cache\",\n=======\n>>>>>>> origin/main",
+          "new_string": "    \"chunk_text\",\n    # Parser utilities\n    \"clear_cache\","
+        },
+        {
+          "old_string": "    \"list_languages\",\n<<<<<<< HEAD\n    \"return_parser\",\n=======\n>>>>>>> origin/main",
+          "new_string": "    \"list_languages\",\n    \"return_parser\","
+        }
+      ]
+    },
+    "tool_response": {
+      "filePath": "/home/jenner/code/treesitter-chunker/chunker/__init__.py",
+      "edits": [
+        {
+          "old_string": "    # Core types\n    \"CodeChunk\",\n<<<<<<< HEAD\n    # Exceptions\n    \"LanguageNotFoundError\",\n    \"LibraryNotFoundError\",\n    \"ParserConfig\",\n    \"ParserError\",\n=======\n    \"ParserConfig\",\n>>>>>>> origin/main",
+          "new_string": "    # Core types\n    \"CodeChunk\",\n    # Exceptions\n    \"LanguageNotFoundError\",\n    \"LibraryNotFoundError\",\n    \"ParserConfig\",\n    \"ParserError\"",
+          "replace_all": false
+        },
+        {
+          "old_string": "    \"chunk_text\",\n<<<<<<< HEAD\n    # Parser utilities\n    \"clear_cache\",\n=======\n>>>>>>> origin/main",
+          "new_string": "    \"chunk_text\",\n    # Parser utilities\n    \"clear_cache\",",
+          "replace_all": false
+        },
+        {
+          "old_string": "    \"list_languages\",\n<<<<<<< HEAD\n    \"return_parser\",\n=======\n>>>>>>> origin/main",
+          "new_string": "    \"list_languages\",\n    \"return_parser\",",
+          "replace_all": false
+        }
+      ],
+      "originalFileContents": "\"\"\"\nTree-sitter Chunker - Semantic code chunking for LLMs and embeddings.\n\nSimple usage:\n    from chunker import chunk_file, chunk_text, chunk_directory\n\n    # Chunk a single file\n    chunks = chunk_file(\"example.py\", language=\"python\")\n\n    # Chunk raw text\n    chunks = chunk_text(code_text, language=\"javascript\")\n\n    # Chunk entire directory\n    results = chunk_directory(\"src/\", language=\"python\")\n\"\"\"\n\n__version__ = \"1.0.0\"\n\n# Core functionality - these are the main APIs users need\nfrom .core import chunk_file\nfrom .parallel import chunk_directory_parallel as chunk_directory\nfrom .streaming import chunk_file_streaming\nfrom .types import CodeChunk\n\n\n# Simple text chunking\ndef chunk_text(text: str, language: str, **kwargs):\n    \"\"\"Chunk text content directly without file I/O.\"\"\"\n    import tempfile\n    from pathlib import Path\n\n    # Write to temporary file and chunk it\n    with tempfile.NamedTemporaryFile(encoding=\"utf-8\", mode=\"w\", suffix=\".tmp\", delete=False) as f:\n        f.write(text)\n        temp_path = f.name\n\n    try:\n        chunks = chunk_file(temp_path, language, **kwargs)\n        return chunks\n    finally:\n        Path(temp_path).unlink(missing_ok=True)\n\n\n# Export commonly used classes and functions\nfrom ._internal.cache import ASTCache\nfrom .chunker_config import ChunkerConfig\nfrom .exceptions import LanguageNotFoundError, LibraryNotFoundError, ParserError\nfrom .parser import (\n    ParserConfig,\n    clear_cache,\n    get_language_info,\n    get_parser,\n    list_languages,\n    return_parser,\n)\nfrom .plugin_manager import get_plugin_manager\n\n# Convenient exports for common use cases\n__all__ = [\n    # Performance\n    \"ASTCache\",\n    # Configuration\n    \"ChunkerConfig\",\n    # Core types\n    \"CodeChunk\",\n<<<<<<< HEAD\n    # Exceptions\n    \"LanguageNotFoundError\",\n    \"LibraryNotFoundError\",\n    \"ParserConfig\",\n    \"ParserError\",\n=======\n    \"ParserConfig\",\n>>>>>>> origin/main\n    # Version\n    \"__version__\",\n    \"chunk_directory\",\n    # Main functions\n    \"chunk_file\",\n    \"chunk_file_streaming\",\n    \"chunk_text\",\n<<<<<<< HEAD\n    # Parser utilities\n    \"clear_cache\",\n=======\n>>>>>>> origin/main\n    \"get_language_info\",\n    \"get_parser\",\n    \"get_plugin_manager\",\n    # Language support\n    \"list_languages\",\n<<<<<<< HEAD\n    \"return_parser\",\n=======\n>>>>>>> origin/main\n]\n",
+      "structuredPatch": [
+        {
+          "oldStart": 63,
+          "oldLines": 15,
+          "newStart": 63,
+          "newLines": 11,
+          "lines": [
+            "     \"ChunkerConfig\",",
+            "     # Core types",
+            "     \"CodeChunk\",",
+            "-<<<<<<< HEAD",
+            "     # Exceptions",
+            "     \"LanguageNotFoundError\",",
+            "     \"LibraryNotFoundError\",",
+            "     \"ParserConfig\",",
+            "-    \"ParserError\",",
+            "-=======",
+            "-    \"ParserConfig\",",
+            "->>>>>>> origin/main",
+            "+    \"ParserError\"",
+            "     # Version",
+            "     \"__version__\",",
+            "     \"chunk_directory\","
+          ]
+        },
+        {
+          "oldStart": 79,
+          "oldLines": 18,
+          "newStart": 75,
+          "newLines": 12,
+          "lines": [
+            "     \"chunk_file\",",
+            "     \"chunk_file_streaming\",",
+            "     \"chunk_text\",",
+            "-<<<<<<< HEAD",
+            "     # Parser utilities",
+            "     \"clear_cache\",",
+            "-=======",
+            "->>>>>>> origin/main",
+            "     \"get_language_info\",",
+            "     \"get_parser\",",
+            "     \"get_plugin_manager\",",
+            "     # Language support",
+            "     \"list_languages\",",
+            "-<<<<<<< HEAD",
+            "     \"return_parser\",",
+            "-=======",
+            "->>>>>>> origin/main",
+            " ]"
+          ]
+        }
+      ],
+      "userModified": false
+    }
+  },
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "PostToolUse",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "git status",
+      "description": "Check git status"
+    },
+    "tool_response": {
+      "stdout": "On branch main\nYour branch and 'origin/main' have diverged,\nand have 2 and 10 different commits each, respectively.\n  (use \"git pull\" if you want to integrate the remote branch with yours)\n\nYou have unmerged paths.\n  (fix conflicts and run \"git commit\")\n  (use \"git merge --abort\" to abort the merge)\n\nChanges to be committed:\n\tmodified:   .claude/hooks/elevenlabs_tts.py\n\tmodified:   .claude/hooks/notification.py\n\tmodified:   .claude/hooks/openai_tts.py\n\tmodified:   .claude/hooks/post_tool_use.py\n\tmodified:   .claude/hooks/pre_tool_use.py\n\tmodified:   .claude/hooks/pyttsx3_tts.py\n\tmodified:   .claude/hooks/send_event.py\n\tmodified:   .claude/hooks/stop.py\n\tmodified:   .claude/hooks/subagent_stop.py\n\tnew file:   .claude/hooks/test_multi_instance.py\n\tmodified:   .claude/hooks/user_prompt_submit.py\n\tmodified:   .claude/hooks/utils/constants.py\n\tmodified:   .claude/hooks/utils/llm/anth.py\n\tmodified:   .claude/hooks/utils/llm/oai.py\n\tmodified:   .claude/hooks/utils/summarizer.py\n\tmodified:   .claude/hooks/utils/tts/openai_tts.py\n\tmodified:   .claude/hooks/utils/tts/pyttsx3_tts.py\n\tnew file:   .pypirc\n\tmodified:   Dockerfile\n\tnew file:   PYPI_PUBLISHING.md\n\tmodified:   benchmarks/benchmark.py\n\tmodified:   benchmarks/benchmark_strategies.py\n\tmodified:   benchmarks/comprehensive_suite.py\n\tmodified:   benchmarks/example_benchmark.py\n\tmodified:   benchmarks/performance/benchmark_caching.py\n\tmodified:   benchmarks/performance/benchmark_incremental.py\n\tmodified:   benchmarks/regression_tracker.py\n\tmodified:   benchmarks/run_benchmarks.py\n\tmodified:   chunker/_internal/cache.py\n\tmodified:   chunker/_internal/vfs.py\n\tmodified:   chunker/analysis/complexity.py\n\tmodified:   chunker/analysis/coupling.py\n\tmodified:   chunker/analysis/semantics.py\n\tmodified:   chunker/chunker.py\n\tmodified:   chunker/cicd/pipeline.py\n\tmodified:   chunker/cicd/workflow_validator.py\n\tmodified:   chunker/config/strategy_config.py\n\tmodified:   chunker/context/extractor.py\n\tmodified:   chunker/context/filter.py\n\tmodified:   chunker/context/languages/javascript.py\n\tmodified:   chunker/context/scope_analyzer.py\n\tmodified:   chunker/context/symbol_resolver.py\n\tmodified:   chunker/contracts/auto_contract.py\n\tmodified:   chunker/contracts/auto_stub.py\n\tmodified:   chunker/contracts/build_contract.py\n\tmodified:   chunker/contracts/build_stub.py\n\tmodified:   chunker/contracts/cicd_contract.py\n\tmodified:   chunker/contracts/cicd_stub.py\n\tmodified:   chunker/contracts/debug_contract.py\n\tmodified:   chunker/contracts/debug_stub.py\n\tmodified:   chunker/contracts/devenv_contract.py\n\tmodified:   chunker/contracts/discovery_contract.py\n\tmodified:   chunker/contracts/discovery_stub.py\n\tmodified:   chunker/contracts/distribution_contract.py\n\tmodified:   chunker/contracts/distribution_stub.py\n\tmodified:   chunker/contracts/download_contract.py\n\tmodified:   chunker/contracts/download_stub.py\n\tmodified:   chunker/contracts/grammar_manager_contract.py\n\tmodified:   chunker/contracts/grammar_manager_stub.py\n\tmodified:   chunker/contracts/language_plugin_contract.py\n\tmodified:   chunker/contracts/language_plugin_stub.py\n\tmodified:   chunker/contracts/registry_contract.py\n\tmodified:   chunker/contracts/template_generator_contract.py\n\tmodified:   chunker/contracts/template_generator_stub.py\n\tmodified:   chunker/contracts/tooling_contract.py\n\tmodified:   chunker/contracts/tooling_stub.py\n\tmodified:   chunker/core.py\n\tmodified:   chunker/debug/interactive/chunk_debugger.py\n\tmodified:   chunker/debug/interactive/node_explorer.py\n\tmodified:   chunker/debug/interactive/repl.py\n\tmodified:   chunker/debug/tools/comparison.py\n\tmodified:   chunker/debug/tools/visualization.py\n\tmodified:   chunker/debug/visualization/ast_visualizer.py\n\tmodified:   chunker/devenv/environment.py\n\tmodified:   chunker/devenv/quality.py\n\tmodified:   chunker/distribution/docker_builder.py\n\tmodified:   chunker/distribution/homebrew_generator.py\n\tmodified:   chunker/distribution/manager.py\n\tmodified:   chunker/distribution/pypi_publisher.py\n\tmodified:   chunker/distribution/release.py\n\tmodified:   chunker/distribution/release_manager.py\n\tmodified:   chunker/distribution/verifier.py\n\tmodified:   chunker/exceptions.py\n\tmodified:   chunker/export/database_exporter_base.py\n\tmodified:   chunker/export/dot_exporter.py\n\tmodified:   chunker/export/formats/database.py\n\tmodified:   chunker/export/formats/graph.py\n\tmodified:   chunker/export/formats/json.py\n\tmodified:   chunker/export/formats/neo4j.py\n\tmodified:   chunker/export/formats/parquet.py\n\tmodified:   chunker/export/formatters.py\n\tmodified:   chunker/export/graph_exporter_base.py\n\tmodified:   chunker/export/graphml_exporter.py\n\tmodified:   chunker/export/graphml_yed_exporter.py\n\tmodified:   chunker/export/neo4j_exporter.py\n\tmodified:   chunker/export/postgres_exporter.py\n\tmodified:   chunker/export/relationships/tracker.py\n\tmodified:   chunker/export/sqlite_exporter.py\n\tmodified:   chunker/export/structured_exporter.py\n\tmodified:   chunker/exporters/parquet.py\n\tmodified:   chunker/fallback/base.py\n\tmodified:   chunker/fallback/detection/file_type.py\n\tmodified:   chunker/fallback/intelligent_fallback.py\n\tmodified:   chunker/fallback/overlapping.py\n\tmodified:   chunker/fallback/strategies/line_based.py\n\tmodified:   chunker/fallback/strategies/log_chunker.py\n\tmodified:   chunker/fallback_overlap/chunker.py\n\tmodified:   chunker/grammar/discovery.py\n\tmodified:   chunker/grammar/download.py\n\tmodified:   chunker/grammar/repository.py\n\tmodified:   chunker/hierarchy/builder.py\n\tmodified:   chunker/hierarchy/navigator.py\n\tmodified:   chunker/incremental.py\n\tmodified:   chunker/interfaces/base.py\n\tmodified:   chunker/interfaces/context.py\n\tmodified:   chunker/interfaces/debug.py\n\tmodified:   chunker/interfaces/export.py\n\tmodified:   chunker/interfaces/fallback.py\n\tmodified:   chunker/interfaces/fallback_overlap.py\n\tmodified:   chunker/interfaces/grammar.py\n\tmodified:   chunker/interfaces/hierarchy.py\n\tmodified:   chunker/interfaces/incremental.py\n\tmodified:   chunker/interfaces/metadata.py\n\tmodified:   chunker/interfaces/multi_language.py\n\tmodified:   chunker/interfaces/optimization.py\n\tmodified:   chunker/interfaces/performance.py\n\tmodified:   chunker/interfaces/query.py\n\tmodified:   chunker/interfaces/query_advanced.py\n\tmodified:   chunker/interfaces/repo.py\n\tmodified:   chunker/interfaces/rules.py\n\tmodified:   chunker/interfaces/semantic.py\n\tmodified:   chunker/interfaces/smart_context.py\n\tmodified:   chunker/interfaces/stubs.py\n\tmodified:   chunker/interfaces/token.py\n\tmodified:   chunker/languages/base.py\n\tmodified:   chunker/languages/cpp.py\n\tmodified:   chunker/languages/go_plugin.py\n\tmodified:   chunker/languages/java.py\n\tmodified:   chunker/languages/java_plugin.py\n\tmodified:   chunker/languages/ruby.py\n\tmodified:   chunker/languages/ruby_plugin.py\n\tmodified:   chunker/languages/rust.py\n\tmodified:   chunker/languages/toml.py\n\tmodified:   chunker/languages/xml.py\n\tmodified:   chunker/languages/yaml.py\n\tmodified:   chunker/metadata/extractor.py\n\tmodified:   chunker/metadata/languages/javascript.py\n\tmodified:   chunker/metadata/languages/python.py\n\tmodified:   chunker/metadata/languages/typescript.py\n\tmodified:   chunker/metadata/metrics.py\n\tmodified:   chunker/multi_language.py\n\tmodified:   chunker/optimization.py\n\tmodified:   chunker/performance/cache/multi_level.py\n\tmodified:   chunker/processors/__init__.py\n\tmodified:   chunker/processors/base.py\n\tmodified:   chunker/processors/logs.py\n\tmodified:   chunker/query_advanced.py\n\tmodified:   chunker/repo/chunker_adapter.py\n\tmodified:   chunker/repo/patterns.py\n\tmodified:   chunker/repo/processor.py\n\tmodified:   chunker/rules/builtin.py\n\tmodified:   chunker/rules/comment.py\n\tmodified:   chunker/rules/custom.py\n\tmodified:   chunker/rules/regex.py\n\tmodified:   chunker/semantic/analyzer.py\n\tmodified:   chunker/semantic/merger.py\n\tmodified:   chunker/smart_context.py\n\tmodified:   chunker/strategies/composite.py\n\tmodified:   chunker/strategies/hierarchical.py\n\tmodified:   chunker/strategies/semantic.py\n\tmodified:   chunker/template_generator.py\n\tmodified:   chunker/token/chunker.py\n\tmodified:   chunker/token/counter.py\n\tmodified:   chunker/tooling/developer.py\n\tmodified:   chunker/vfs_chunker.py\n\tmodified:   cli/debug/commands.py\n\tmodified:   cli/main.py\n\tmodified:   cli/repo_command.py\n\tmodified:   examples/custom_plugin_example.py\n\tmodified:   examples/debug/debug_workflow_example.py\n\tmodified:   examples/demo_log_processor.py\n\tmodified:   examples/devenv_demo.py\n\tmodified:   examples/example_sliding_window_integration.py\n\tmodified:   examples/fallback_demo.py\n\tmodified:   examples/gc_tuning_example.py\n\tmodified:   examples/incremental_processing.py\n\tmodified:   examples/markdown/demo_processor.py\n\tmodified:   examples/optimize_chunks.py\n\tmodified:   examples/overlapping_demo.py\n\tmodified:   examples/overlapping_demo_standalone.py\n\tmodified:   examples/performance_demo.py\n\tmodified:   examples/repo_processing_example.py\n\tmodified:   examples/sample_codebase/posts.py\n\tmodified:   examples/sample_codebase/users.py\n\tmodified:   examples/sample_project/models.py\n\tmodified:   examples/sample_project/services.py\n\tmodified:   examples/semantic_merging_demo.py\n\tmodified:   examples/test_config_processor_demo.py\n\tmodified:   examples/test_integration_with_main_chunker.py\n\tmodified:   examples/test_overlapping_direct.py\n\tmodified:   examples/test_postgres_advanced.py\n\tmodified:   examples/test_token_integration_demo.py\n\tmodified:   examples/token_example.py\n\tmodified:   examples/vfs_example.py\n\tnew file:   logs/3a9835e2-737d-4045-ae87-07bbe1f113cf/chat.json\n\tnew file:   logs/3a9835e2-737d-4045-ae87-07bbe1f113cf/notification.json\n\tnew file:   logs/3a9835e2-737d-4045-ae87-07bbe1f113cf/post_tool_use.json\n\tnew file:   logs/3a9835e2-737d-4045-ae87-07bbe1f113cf/pre_tool_use.json\n\tnew file:   logs/3a9835e2-737d-4045-ae87-07bbe1f113cf/stop.json\n\tnew file:   logs/3a9835e2-737d-4045-ae87-07bbe1f113cf/user_prompt_submit.json\n\tmodified:   logs/ebb2220f-ab66-47cc-95ea-376ef7c0dadf/chat.json\n\tmodified:   logs/ebb2220f-ab66-47cc-95ea-376ef7c0dadf/notification.json\n\tmodified:   logs/ebb2220f-ab66-47cc-95ea-376ef7c0dadf/post_tool_use.json\n\tmodified:   logs/ebb2220f-ab66-47cc-95ea-376ef7c0dadf/pre_tool_use.json\n\tmodified:   logs/ebb2220f-ab66-47cc-95ea-376ef7c0dadf/stop.json\n\tmodified:   logs/ebb2220f-ab66-47cc-95ea-376ef7c0dadf/subagent_stop.json\n\tmodified:   logs/ebb2220f-ab66-47cc-95ea-376ef7c0dadf/user_prompt_submit.json\n\tmodified:   profiling/profile_chunker.py\n\tmodified:   pyproject.toml\n\tmodified:   scripts/build_lib.py\n\tmodified:   scripts/build_wheels.py\n\tnew file:   scripts/fix_all_f821_errors.py\n\tnew file:   scripts/fix_b904_errors.py\n\tmodified:   scripts/fix_ble001_properly.py\n\tmodified:   scripts/fix_blind_except.py\n\tmodified:   scripts/fix_builtin_shadowing.py\n\tnew file:   scripts/fix_exception_handling.py\n\tnew file:   scripts/fix_f821_undefined_names.py\n\tnew file:   scripts/fix_g002_logging.py\n\tnew file:   scripts/fix_g004_logging.py\n\tmodified:   scripts/fix_import_organization.py\n\tmodified:   scripts/fix_import_placement.py\n\tmodified:   scripts/fix_imports_v2.py\n\tmodified:   scripts/fix_logging_fstrings.py\n\tnew file:   scripts/fix_method_decorators.py\n\tnew file:   scripts/fix_mktemp_usage.py\n\tnew file:   scripts/fix_nested_self_refs.py\n\tmodified:   scripts/fix_other_path_operations.py\n\tmodified:   scripts/fix_path_operations.py\n\tmodified:   scripts/fix_perf401_batch.py\n\tnew file:   scripts/fix_plc1901_empty_string.py\n\tnew file:   scripts/fix_plr6301_errors.py\n\tmodified:   scripts/fix_plugins.py\n\tnew file:   scripts/fix_property_staticmethod.py\n\tmodified:   scripts/fix_pth123_properly.py\n\tnew file:   scripts/fix_remaining_f821.py\n\tnew file:   scripts/fix_remaining_f821_errors.py\n\tmodified:   scripts/fix_remaining_path_open.py\n\tnew file:   scripts/fix_ruf039_multiline.py\n\tnew file:   scripts/fix_ruf039_regex.py\n\tmodified:   scripts/fix_sim102.py\n\tnew file:   scripts/fix_sim102_nested_ifs.py\n\tmodified:   scripts/fix_specific_exceptions.py\n\tmodified:   scripts/fix_unused_arguments.py\n\tnew file:   scripts/fix_xml_parsing.py\n\tmodified:   scripts/package.py\n\tmodified:   setup.py\n\tmodified:   tests/integration/context/test_chunker_with_context.py\n\tmodified:   tests/integration/context/test_full_context_extraction.py\n\tmodified:   tests/integration/coordinator.py\n\tmodified:   tests/integration/fixtures.py\n\tmodified:   tests/integration/grammar/test_grammar_integration.py\n\tmodified:   tests/integration/interfaces.py\n\tmodified:   tests/integration/phase9/base.py\n\tmodified:   tests/integration/phase9/test_token_hierarchy_standalone.py\n\tmodified:   tests/integration/test_coordinator.py\n\tmodified:   tests/integration/test_fixtures.py\n\tmodified:   tests/integration/test_interfaces.py\n\tmodified:   tests/phase13_debug_tools_integration.py\n\tmodified:   tests/test_auto.py\n\tmodified:   tests/test_build_implementation.py\n\tmodified:   tests/test_build_real_compilation.py\n\tmodified:   tests/test_build_system_integration.py\n\tmodified:   tests/test_build_system_unit.py\n\tmodified:   tests/test_cicd_pipeline.py\n\tmodified:   tests/test_cli_integration_advanced.py\n\tmodified:   tests/test_clojure_language.py\n\tmodified:   tests/test_composite_chunker.py\n\tmodified:   tests/test_composite_config_advanced.py\n\tmodified:   tests/test_config.py\n\tmodified:   tests/test_config_advanced_scenarios.py\n\tmodified:   tests/test_config_processor.py\n\tmodified:   tests/test_cpp_language.py\n\tmodified:   tests/test_cross_module_errors.py\n\tmodified:   tests/test_csharp_language.py\n\tmodified:   tests/test_custom_rules.py\n\tmodified:   tests/test_dart_language.py\n\tmodified:   tests/test_debug_contract_impl.py\n\tmodified:   tests/test_debug_tools.py\n\tmodified:   tests/test_debug_tools_integration.py\n\tmodified:   tests/test_developer_tooling.py\n\tmodified:   tests/test_devenv_integration.py\n\tmodified:   tests/test_distribution_adapter.py\n\tmodified:   tests/test_distribution_impl.py\n\tmodified:   tests/test_dockerfile_language.py\n\tmodified:   tests/test_edge_cases.py\n\tmodified:   tests/test_elixir_language.py\n\tmodified:   tests/test_end_to_end.py\n\tmodified:   tests/test_env_config.py\n\tmodified:   tests/test_exception_serialization.py\n\tmodified:   tests/test_exceptions.py\n\tmodified:   tests/test_export_integration_advanced.py\n\tmodified:   tests/test_export_json.py\n\tmodified:   tests/test_export_jsonl.py\n\tmodified:   tests/test_fallback_chunking.py\n\tmodified:   tests/test_gc_tuning.py\n\tmodified:   tests/test_go_language.py\n\tmodified:   tests/test_grammar_discovery.py\n\tmodified:   tests/test_grammar_download.py\n\tmodified:   tests/test_grammar_manager.py\n\tmodified:   tests/test_graphml_exporter.py\n\tmodified:   tests/test_haskell_language.py\n\tmodified:   tests/test_hierarchical_chunker.py\n\tmodified:   tests/test_hierarchy.py\n\tmodified:   tests/test_incremental.py\n\tmodified:   tests/test_incremental_integration.py\n\tmodified:   tests/test_incremental_unit.py\n\tmodified:   tests/test_integration.py\n\tmodified:   tests/test_intelligent_fallback.py\n\tmodified:   tests/test_java_language.py\n\tmodified:   tests/test_javascript_language.py\n\tmodified:   tests/test_julia_language.py\n\tmodified:   tests/test_kotlin_language.py\n\tmodified:   tests/test_language_config.py\n\tmodified:   tests/test_language_integration.py\n\tmodified:   tests/test_log_processor.py\n\tmodified:   tests/test_log_processor_integration.py\n\tmodified:   tests/test_markdown_processor.py\n\tmodified:   tests/test_matlab_language.py\n\tmodified:   tests/test_metadata_extraction.py\n\tmodified:   tests/test_multi_language.py\n\tmodified:   tests/test_nasm_language.py\n\tmodified:   tests/test_ocaml_language.py\n\tmodified:   tests/test_optimization.py\n\tmodified:   tests/test_overlapping_fallback.py\n\tmodified:   tests/test_overlapping_fallback_isolated.py\n\tmodified:   tests/test_parallel.py\n\tmodified:   tests/test_parallel_error_handling.py\n\tmodified:   tests/test_performance_features.py\n\tmodified:   tests/test_phase10_full_integration.py\n\tmodified:   tests/test_phase10_interface_compatibility.py\n\tmodified:   tests/test_phase11_comprehensive_integration.py\n\tmodified:   tests/test_phase12_integration.py\n\tmodified:   tests/test_phase13_build_adapter.py\n\tmodified:   tests/test_phase13_contracts.py\n\tmodified:   tests/test_phase13_distribution_real.py\n\tmodified:   tests/test_phase13_e2e_workflow.py\n\tmodified:   tests/test_phase13_integration.py\n\tmodified:   tests/test_phase13_real_integration.py\n\tmodified:   tests/test_phase14_contract_compliance.py\n\tmodified:   tests/test_phase14_integration.py\n\tmodified:   tests/test_phase15_contract_compliance.py\n\tmodified:   tests/test_phase15_integration.py\n\tmodified:   tests/test_php_language.py\n\tmodified:   tests/test_plugin_custom_directory_scanning.py\n\tmodified:   tests/test_plugin_initialization_failures.py\n\tmodified:   tests/test_python_language.py\n\tmodified:   tests/test_query_advanced.py\n\tmodified:   tests/test_r_language.py\n\tmodified:   tests/test_recovery.py\n\tmodified:   tests/test_registry.py\n\tmodified:   tests/test_relationship_tracker.py\n\tmodified:   tests/test_relationships.py\n\tmodified:   tests/test_repo_processing.py\n\tmodified:   tests/test_ruby_language.py\n\tmodified:   tests/test_scala_language.py\n\tmodified:   tests/test_semantic_chunker.py\n\tmodified:   tests/test_semantic_merging.py\n\tmodified:   tests/test_sliding_integration.py\n\tmodified:   tests/test_smart_context.py\n\tmodified:   tests/test_sql_language.py\n\tmodified:   tests/test_structured_export_integration.py\n\tmodified:   tests/test_svelte_language.py\n\tmodified:   tests/test_swift_language.py\n\tmodified:   tests/test_template_generator.py\n\tmodified:   tests/test_token_limit_chunking.py\n\tmodified:   tests/test_tooling_contract_compliance.py\n\tmodified:   tests/test_types.py\n\tmodified:   tests/test_typescript_language.py\n\tmodified:   tests/test_vfs.py\n\tmodified:   tests/test_vue_language.py\n\tmodified:   tests/test_wasm_language.py\n\tmodified:   tests/test_workflow_validator.py\n\tmodified:   tests/test_zig_language.py\n\tmodified:   tests/unit/context/test_context_extractor.py\n\tmodified:   tests/unit/context/test_context_factory.py\n\tmodified:   tests/unit/context/test_context_filter.py\n\tmodified:   tests/unit/context/test_scope_analyzer.py\n\tmodified:   tests/unit/context/test_symbol_resolver.py\n\tmodified:   tests/unit/distribution/test_docker_builder.py\n\tmodified:   tests/unit/distribution/test_homebrew_generator.py\n\tmodified:   tests/unit/distribution/test_pypi_publisher.py\n\tmodified:   tests/unit/distribution/test_release_manager.py\n\tmodified:   tests/unit/distribution/test_verifier.py\n\tmodified:   tests/unit/grammar/test_repository.py\n\tmodified:   tests/unit/test_chunk_comparison.py\n\tmodified:   tests/unit/test_debug_visualization.py\n\tmodified:   tests/unit/test_devenv.py\n\tmodified:   tests/unit/test_universal_registry.py\n\tmodified:   treesitter_chunker.egg-info/SOURCES.txt\n\nUnmerged paths:\n  (use \"git add <file>...\" to mark resolution)\n\tboth modified:   .claude/settings.json\n\tboth modified:   api/examples/client.py\n\tboth modified:   api/server.py\n\tboth modified:   chunker/__init__.py\n\tboth modified:   chunker/_internal/__init__.py\n\tboth modified:   chunker/_internal/factory.py\n\tboth modified:   chunker/_internal/gc_tuning.py\n\tboth modified:   chunker/_internal/registry.py\n\tboth modified:   chunker/auto.py\n\tboth modified:   chunker/chunker_config.py\n\tboth modified:   chunker/context/languages/python.py\n\tboth modified:   chunker/fallback/fallback_manager.py\n\tboth modified:   chunker/fallback/sliding_window_fallback.py\n\tboth modified:   chunker/grammar/builder.py\n\tboth modified:   chunker/grammar/manager.py\n\tboth modified:   chunker/grammar/validator.py\n\tboth modified:   chunker/grammar_manager.py\n\tboth modified:   chunker/languages/c.py\n\tboth modified:   chunker/languages/clojure.py\n\tboth modified:   chunker/languages/dart.py\n\tboth modified:   chunker/languages/dockerfile.py\n\tboth modified:   chunker/languages/elixir.py\n\tboth modified:   chunker/languages/go.py\n\tboth modified:   chunker/languages/haskell.py\n\tboth modified:   chunker/languages/javascript.py\n\tboth modified:   chunker/languages/julia.py\n\tboth modified:   chunker/languages/matlab.py\n\tboth modified:   chunker/languages/nasm.py\n\tboth modified:   chunker/languages/ocaml.py\n\tboth modified:   chunker/languages/plugin_base.py\n\tboth modified:   chunker/languages/python.py\n\tboth modified:   chunker/languages/r.py\n\tboth modified:   chunker/languages/scala.py\n\tboth modified:   chunker/languages/sql.py\n\tboth modified:   chunker/languages/svelte.py\n\tboth modified:   chunker/languages/vue.py\n\tboth modified:   chunker/languages/wasm.py\n\tboth modified:   chunker/languages/zig.py\n\tboth modified:   chunker/parser.py\n\tboth modified:   chunker/performance/cache/manager.py\n\tboth modified:   chunker/performance/optimization/batch.py\n\tboth modified:   chunker/performance/optimization/incremental.py\n\tboth modified:   chunker/performance/optimization/memory_pool.py\n\tboth modified:   chunker/performance/optimization/monitor.py\n\tboth modified:   chunker/plugin_manager.py\n\tboth modified:   chunker/processors/config.py\n\tboth modified:   chunker/processors/markdown.py\n\tboth modified:   chunker/repo/git_aware.py\n\tboth modified:   chunker/rules/engine.py\n\tboth modified:   chunker/strategies/adaptive.py\n\tboth modified:   examples/manage_grammars.py\n\tboth modified:   scripts/fix_perf401_improved.py\n\tboth modified:   test_api.py\n\tboth modified:   tests/integration/phase9/test_phase9_metadata_rules.py\n\tboth modified:   tests/integration/phase9/test_phase9_token_hierarchy_simple.py\n\tboth modified:   tests/test_adaptive_chunker.py\n\tboth modified:   tests/test_c_language.py\n\tboth modified:   tests/test_cache.py\n\tboth modified:   tests/test_cli.py\n\tboth modified:   tests/test_factory.py\n\tboth modified:   tests/test_parser.py\n\tboth modified:   tests/test_parser_plugin_integration.py\n\tboth modified:   tests/test_performance.py\n\tboth modified:   tests/test_performance_advanced.py\n\tboth modified:   tests/test_rust_language.py\n\tboth modified:   tests/test_streaming.py\n\nChanges not staged for commit:\n  (use \"git add <file>...\" to update what will be committed)\n  (use \"git restore <file>...\" to discard changes in working directory)\n  (commit or discard the untracked or modified content in submodules)\n\tmodified:   grammars/tree-sitter-c (modified content, untracked content)\n\tmodified:   grammars/tree-sitter-cpp (modified content, untracked content)\n\tmodified:   grammars/tree-sitter-csharp (modified content, untracked content)\n\tmodified:   grammars/tree-sitter-go (modified content, untracked content)\n\tmodified:   grammars/tree-sitter-java (modified content, untracked content)\n\tmodified:   grammars/tree-sitter-javascript (modified content, untracked content)\n\tmodified:   grammars/tree-sitter-kotlin (modified content, untracked content)\n\tmodified:   grammars/tree-sitter-php (modified content, untracked content)\n\tmodified:   grammars/tree-sitter-python (modified content, untracked content)\n\tmodified:   grammars/tree-sitter-ruby (modified content, untracked content)\n\tmodified:   grammars/tree-sitter-rust (modified content, untracked content)\n\tmodified:   grammars/tree-sitter-swift (modified content, untracked content)\n\tmodified:   grammars/tree-sitter-typescript (modified content, untracked content)\n\tmodified:   logs/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb/chat.json\n\tmodified:   logs/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb/notification.json\n\tmodified:   logs/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb/post_tool_use.json\n\tmodified:   logs/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb/pre_tool_use.json\n\tmodified:   logs/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb/stop.json\n\tmodified:   logs/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb/user_prompt_submit.json",
+      "stderr": "",
+      "interrupted": false,
+      "isImage": false
+    }
   }
 ]

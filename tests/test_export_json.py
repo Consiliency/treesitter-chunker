@@ -108,7 +108,7 @@ def test_json_export_to_file(sample_chunks, tmp_path):
 
     assert output_path.exists()
     with Path(output_path).open(
-        "r",
+        "r", encoding="utf-8",
     ) as f:
         data = json.load(f)
     assert len(data) == 2

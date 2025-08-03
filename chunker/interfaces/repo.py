@@ -1,5 +1,4 @@
 """Repository-level processing interfaces."""
-
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -12,7 +11,6 @@ from chunker.types import CodeChunk
 @dataclass
 class FileChunkResult:
     """Result of chunking a single file."""
-
     file_path: str
     chunks: list[CodeChunk]
     error: Exception | None = None
@@ -22,7 +20,6 @@ class FileChunkResult:
 @dataclass
 class RepoChunkResult:
     """Result of processing an entire repository."""
-
     repo_path: str
     file_results: list[FileChunkResult]
     total_chunks: int
@@ -36,14 +33,11 @@ class RepoChunkResult:
 class RepoProcessor(ABC):
     """Process entire repositories efficiently."""
 
+    @staticmethod
     @abstractmethod
-    def process_repository(
-        self,
-        repo_path: str,
-        incremental: bool = True,
-        file_pattern: str | None = None,
-        exclude_patterns: list[str] | None = None,
-    ) -> RepoChunkResult:
+    def process_repository(repo_path: str, incremental: bool = True,
+        file_pattern: (str | None) = None, exclude_patterns: (list[str] |
+        None) = None) -> RepoChunkResult:
         """
         Process all files in a repository.
 
@@ -57,13 +51,11 @@ class RepoProcessor(ABC):
             Repository processing result
         """
 
+    @staticmethod
     @abstractmethod
-    def process_files_iterator(
-        self,
-        repo_path: str,
-        file_pattern: str | None = None,
-        exclude_patterns: list[str] | None = None,
-    ) -> Iterator[FileChunkResult]:
+    def process_files_iterator(repo_path: str, file_pattern: (str | None) =
+        None, exclude_patterns: (list[str] | None) = None) -> Iterator[
+        FileChunkResult]:
         """
         Process repository files as an iterator for memory efficiency.
 
@@ -76,8 +68,9 @@ class RepoProcessor(ABC):
             File processing results one at a time
         """
 
+    @staticmethod
     @abstractmethod
-    def estimate_processing_time(self, repo_path: str) -> float:
+    def estimate_processing_time(repo_path: str) -> float:
         """
         Estimate time to process repository.
 
@@ -88,13 +81,10 @@ class RepoProcessor(ABC):
             Estimated seconds
         """
 
+    @staticmethod
     @abstractmethod
-    def get_processable_files(
-        self,
-        repo_path: str,
-        file_pattern: str | None = None,
-        exclude_patterns: list[str] | None = None,
-    ) -> list[Path]:
+    def get_processable_files(repo_path: str, file_pattern: (str | None) =
+        None, exclude_patterns: (list[str] | None) = None) -> list[Path]:
         """
         Get list of files that would be processed.
 
@@ -111,13 +101,10 @@ class RepoProcessor(ABC):
 class GitAwareProcessor(ABC):
     """Git-aware processing capabilities."""
 
+    @staticmethod
     @abstractmethod
-    def get_changed_files(
-        self,
-        repo_path: str,
-        since_commit: str | None = None,
-        branch: str | None = None,
-    ) -> list[str]:
+    def get_changed_files(repo_path: str, since_commit: (str | None) = None,
+        branch: (str | None) = None) -> list[str]:
         """
         Get files changed since a commit or between branches.
 
@@ -130,8 +117,9 @@ class GitAwareProcessor(ABC):
             List of changed file paths relative to repo root
         """
 
+    @staticmethod
     @abstractmethod
-    def should_process_file(self, file_path: str, repo_path: str) -> bool:
+    def should_process_file(file_path: str, repo_path: str) -> bool:
         """
         Check if file should be processed based on git status and .gitignore.
 
@@ -143,13 +131,10 @@ class GitAwareProcessor(ABC):
             True if file should be processed
         """
 
+    @staticmethod
     @abstractmethod
-    def get_file_history(
-        self,
-        file_path: str,
-        repo_path: str,
-        limit: int = 10,
-    ) -> list[dict[str, Any]]:
+    def get_file_history(file_path: str, repo_path: str, limit: int = 10) -> list[
+        dict[str, Any]]:
         """
         Get commit history for a file.
 
@@ -162,8 +147,9 @@ class GitAwareProcessor(ABC):
             List of commit info dicts with hash, author, date, message
         """
 
+    @staticmethod
     @abstractmethod
-    def load_gitignore_patterns(self, repo_path: str) -> list[str]:
+    def load_gitignore_patterns(repo_path: str) -> list[str]:
         """
         Load and parse .gitignore patterns.
 
@@ -174,8 +160,9 @@ class GitAwareProcessor(ABC):
             List of gitignore patterns
         """
 
+    @staticmethod
     @abstractmethod
-    def save_incremental_state(self, repo_path: str, state: dict[str, Any]) -> None:
+    def save_incremental_state(repo_path: str, state: dict[str, Any]) -> None:
         """
         Save incremental processing state.
 
@@ -184,8 +171,9 @@ class GitAwareProcessor(ABC):
             state: State to save (last commit, file hashes, etc.)
         """
 
+    @staticmethod
     @abstractmethod
-    def load_incremental_state(self, repo_path: str) -> dict[str, Any] | None:
+    def load_incremental_state(repo_path: str) -> (dict[str, Any] | None):
         """
         Load incremental processing state.
 

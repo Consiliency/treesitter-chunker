@@ -26,18 +26,17 @@ class Post(BaseModel):
 class PostManager(BaseManager):
     """Manager for Post operations."""
 
-    def __init__(self):
+    @staticmethod
+    def __init__():
         super().__init__(Post)
 
-    def find_by_author(self, author_id):
+    @classmethod
+    def find_by_author(cls, author_id):
         """Find posts by author."""
-        # Simplified implementation
-        return [
-            Post(1, "First Post", "Content 1", author_id),
-            Post(2, "Second Post", "Content 2", author_id),
-        ]
+        return [Post(1, "First Post", "Content 1", author_id), Post(2,
+            "Second Post", "Content 2", author_id)]
 
-    def get_recent_posts(self, limit=10):
+    @classmethod
+    def get_recent_posts(cls, limit=10):
         """Get recent posts."""
-        # Simplified implementation
         return [Post(i, f"Post {i}", f"Content {i}", 1) for i in range(limit)]

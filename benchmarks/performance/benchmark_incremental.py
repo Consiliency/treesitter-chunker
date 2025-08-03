@@ -73,7 +73,7 @@ def make_small_change(file_path: Path, content: str) -> str:
         1,  # Only replace first occurrence
     )
 
-    file_path.write_text(new_content)
+    file_path.write_text(new_content, encoding="utf-8")
     return new_content
 
 
@@ -104,7 +104,7 @@ def new_function_added(x, y, z):
     lines.insert(500, new_function)
     new_content = "\n".join(lines)
 
-    file_path.write_text(new_content)
+    file_path.write_text(new_content, encoding="utf-8")
     return new_content
 
 
@@ -143,7 +143,7 @@ class NewTestClass:
 
     new_content = new_content + "\n\n" + new_class
 
-    file_path.write_text(new_content)
+    file_path.write_text(new_content, encoding="utf-8")
     return new_content
 
 
@@ -289,7 +289,7 @@ def benchmark_change_detection():
                 new_lines[mid] = f"line {mid}: CHANGED CONTENT"
             else:  # end
                 new_lines = lines.copy()
-                new_lines[-10] = f"line {len(lines)-10}: CHANGED CONTENT"
+                new_lines[-10] = f"line {len(lines) - 10}: CHANGED CONTENT"
 
             new_content = "\n".join(new_lines).encode()
 
@@ -298,7 +298,9 @@ def benchmark_change_detection():
             changes = parser.detect_changes(old_content, new_content)
             elapsed = time.perf_counter() - start
 
-            print(f"   Change at {pos}: {elapsed*1000:.3f}ms ({len(changes)} changes)")
+            print(
+                f"   Change at {pos}: {elapsed * 1000:.3f}ms ({len(changes)} changes)",
+            )
 
 
 def benchmark_incremental_accuracy():

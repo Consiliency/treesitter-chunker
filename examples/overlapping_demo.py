@@ -322,7 +322,7 @@ This section has different content altogether."""
             boundary = chunker.find_natural_overlap_boundary(content, pos, 20)
             print(f"\nDesired position: {pos}")
             print(f"Natural boundary: {boundary}")
-            print(f"Character at boundary: {content[boundary-1:boundary+1]!r}")
+            print(f"Character at boundary: {content[boundary - 1:boundary + 1]!r}")
 
 
 def main():

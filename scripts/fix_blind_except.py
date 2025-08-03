@@ -54,7 +54,7 @@ def analyze_exception_context(lines: list[str], except_line_idx: int) -> str:
 def fix_blind_except_advanced(file_path: Path) -> bool:
     """Fix blind except clauses with context-aware replacements."""
     try:
-        content = file_path.read_text()
+        content = file_path.read_text(encoding="utf-8")
         lines = content.splitlines(keepends=True)
         lines.copy()
         modified = False
@@ -74,7 +74,7 @@ def fix_blind_except_advanced(file_path: Path) -> bool:
                     modified = True
 
         if modified:
-            file_path.write_text("".join(lines))
+            file_path.write_text("".join(lines), encoding="utf-8")
             return True
         return False
 

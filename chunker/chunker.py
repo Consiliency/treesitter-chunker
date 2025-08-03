@@ -86,7 +86,7 @@ def chunk_file_with_token_limit(
     Returns:
         List of CodeChunk objects with token counts in metadata
     """
-    src = Path(path).read_text()
+    src = Path(path).read_text(encoding="utf-8")
     return chunk_text_with_token_limit(
         src,
         language,
