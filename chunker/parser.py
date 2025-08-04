@@ -37,16 +37,13 @@ def _initialize(library_path: (Path | None) = None) -> None:
         _registry = LanguageRegistry(path)
         _factory = ParserFactory(_registry)
         languages = _registry.list_languages()
-<<<<<<< HEAD
+
+
         logger.info(
             "Initialized parser with %d languages: %s",
             len(languages),
             ", ".join(languages),
         )
-=======
-        logger.info("Initialized parser with %s languages: %s", (len(
-            languages), ", ".join(languages)))
->>>>>>> origin/main
 
 
 def get_parser(language: str, config: (ParserConfig | None) = None) -> Parser:

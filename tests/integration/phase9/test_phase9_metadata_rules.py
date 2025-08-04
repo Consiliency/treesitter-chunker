@@ -195,7 +195,8 @@ def create_default_manager() -> TaskManager:
         chunks = chunk_file(sample_python_file_with_todos, "python",
             extract_metadata=True)
         complex_rule = ComplexFunctionRule()
-<<<<<<< HEAD
+
+
         [
             chunk
             for chunk in chunks
@@ -205,10 +206,6 @@ def create_default_manager() -> TaskManager:
             )
         ]
         # Check that we can identify complexity
-=======
-        [chunk for chunk in chunks if hasattr(chunk, "metadata") and
-            complex_rule.matches_metadata(chunk.metadata)]
->>>>>>> origin/main
         for chunk in chunks:
             if chunk.node_type in {"function_definition", "method"}:
                 assert "complexity" in chunk.metadata
@@ -216,7 +213,6 @@ def create_default_manager() -> TaskManager:
                 assert "cyclomatic" in complexity
                 assert "cognitive" in complexity
                 assert "lines_of_code" in complexity
-
     @staticmethod
     def test_docstring_extraction_with_rules(sample_python_file_with_todos):
         """Test docstring extraction combined with docstring rules."""

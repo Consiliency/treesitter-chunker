@@ -243,7 +243,7 @@ class TestMemoryEfficiency:
             first_100_bytes = mmap_data[:100]
             assert len(first_100_bytes) == 100
 
-<<<<<<< HEAD
+
         with Path(medium_python_file).open(
             "rb",
         ) as f, mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mmap_data:
@@ -253,7 +253,6 @@ class TestMemoryEfficiency:
             # Test slicing
             first_100_bytes = mmap_data[:100]
             assert len(first_100_bytes) == 100
-
     def test_progressive_memory_usage(self, medium_python_file):
 =======
     @classmethod

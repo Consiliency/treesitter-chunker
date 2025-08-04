@@ -60,14 +60,11 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
         for lang in languages:
             lang_path = self._source_dir / f"tree-sitter-{lang}"
             if not lang_path.exists():
-<<<<<<< HEAD
+
+
                 logger.error(
                     "Source directory for '%s' not found at %s", lang, lang_path,
                 )
-=======
-                logger.error("Source directory for '%s' not found at %s" %
-                    (lang, lang_path))
->>>>>>> origin/main
                 results[lang] = False
                 self._build_logs[lang
                     ] = f"Source directory not found: {lang_path}"
@@ -107,11 +104,7 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
         """
         lang_path = self._source_dir / f"tree-sitter-{language}"
         if not lang_path.exists():
-<<<<<<< HEAD
             logger.error("Source directory for '%s' not found", language)
-=======
-            logger.error("Source directory for '%s' not found" % language)
->>>>>>> origin/main
             self._build_logs[language] = "Source directory not found"
             return False
         lib_path = self._build_dir / f"{language}{self._lib_extension}"

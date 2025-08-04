@@ -1,9 +1,8 @@
 """Implementation of ChunkHierarchyBuilder for building chunk hierarchies from Tree-sitter AST."""
+
 from collections import defaultdict
 
-from chunker.interfaces.hierarchy import (
-    ChunkHierarchy,
-)
+from chunker.interfaces.hierarchy import ChunkHierarchy
 from chunker.interfaces.hierarchy import (
     ChunkHierarchyBuilder as ChunkHierarchyBuilderInterface,
 )
@@ -45,13 +44,18 @@ class ChunkHierarchyBuilder(ChunkHierarchyBuilderInterface):
         children_map = dict(children_map)
         root_chunks.sort(key=lambda cid: chunk_map[cid].start_line)
         for parent_id in children_map:
-            children_map[parent_id].sort(key=lambda cid: chunk_map[cid].
-                start_line)
-        return ChunkHierarchy(root_chunks=root_chunks, parent_map=parent_map, children_map=children_map, chunk_map=chunk_map)
+            children_map[parent_id].sort(key=lambda cid: chunk_map[cid].start_line)
+        return ChunkHierarchy(
+            root_chunks=root_chunks,
+            parent_map=parent_map,
+            children_map=children_map,
+            chunk_map=chunk_map,
+        )
 
     @staticmethod
-    def find_common_ancestor(chunk1: CodeChunk, chunk2: CodeChunk,
-        hierarchy: ChunkHierarchy) -> (str | None):
+    def find_common_ancestor(
+        chunk1: CodeChunk, chunk2: CodeChunk, hierarchy: ChunkHierarchy,
+    ) -> str | None:
         """
         Find the common ancestor of two chunks.
 
@@ -127,27 +131,27 @@ class ChunkHierarchyBuilder(ChunkHierarchyBuilderInterface):
                 return False
             path.add(chunk_id)
             visited.add(chunk_id)
-            if chunk_id in hierarchy.parent_map and has_cycle(hierarchy.
-                parent_map[chunk_id], path):
+            if chunk_id in hierarchy.parent_map and has_cycle(
+                hierarchy.parent_map[chunk_id], path,
+            ):
                 return True
             path.remove(chunk_id)
             return False
+
         for chunk_id in hierarchy.chunk_map:
             if has_cycle(chunk_id, set()):
                 raise ValueError(f"Cycle detected involving chunk {chunk_id}")
         for child_id, parent_id in hierarchy.parent_map.items():
             if parent_id not in hierarchy.children_map:
-                raise ValueError(
-                    f"Parent {parent_id} has no children_map entry")
+                raise ValueError(f"Parent {parent_id} has no children_map entry")
             if child_id not in hierarchy.children_map[parent_id]:
                 raise ValueError(
                     f"Child {child_id} not in parent {parent_id}'s children list",
-                    )
+                )
         for parent_id, children in hierarchy.children_map.items():
             for child_id in children:
                 if child_id not in hierarchy.parent_map:
-                    raise ValueError(
-                        f"Child {child_id} has no parent_map entry")
+                    raise ValueError(f"Child {child_id} has no parent_map entry")
                 if hierarchy.parent_map[child_id] != parent_id:
                     raise ValueError(f"Inconsistent parent for {child_id}")
         return True

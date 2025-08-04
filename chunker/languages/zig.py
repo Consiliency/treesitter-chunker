@@ -38,22 +38,11 @@ class ZigConfig(LanguageConfig):
         self.add_ignore_type("line_comment")
         self.add_ignore_type("container_doc_comment")
 
-<<<<<<< HEAD
+
 
 # Register the Zig configuration
-=======
->>>>>>> origin/main
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from tree_sitter import Node
 
 
-<<<<<<< HEAD
-# Plugin implementation for backward compatibility
-=======
->>>>>>> origin/main
 class ZigPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
     """Plugin for Zig language chunking."""
 

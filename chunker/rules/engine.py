@@ -35,17 +35,14 @@ class DefaultRuleEngine(RuleEngine):
         else:
             self._node_rules.append(rule)
         self._sort_rules()
-<<<<<<< HEAD
+
+
 
         logger.info(
             "Added rule '%s' with priority %d",
             rule_name,
             self._priorities[rule_name],
         )
-=======
-        logger.info("Added rule '%s' with priority %s" % (rule_name, self.
-            _priorities[rule_name]))
->>>>>>> origin/main
 
     def remove_rule(self, rule_name: str) -> bool:
         """Remove a rule by name."""
@@ -117,17 +114,12 @@ class DefaultRuleEngine(RuleEngine):
             processed_ranges.add(byte_range)
         merged_chunks.sort(key=lambda c: (c.byte_start, c.byte_end))
         logger.info(
-<<<<<<< HEAD
             "Merged %d TS chunks and %d custom chunks into %d total chunks",
             len(tree_sitter_chunks),
             len(custom_chunks),
             len(merged_chunks),
         )
-=======
-            "Merged %s TS chunks and %s custom chunks into %s total chunks", (len(tree_sitter_chunks), len(custom_chunks), len(merged_chunks)))
->>>>>>> origin/main
         return merged_chunks
-
     def list_rules(self) -> list[dict[str, Any]]:
         """List all registered rules with their info."""
         rules_info = []

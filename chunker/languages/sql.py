@@ -39,22 +39,11 @@ class SQLConfig(LanguageConfig):
         self.add_ignore_type("string")
         self.add_ignore_type("identifier")
 
-<<<<<<< HEAD
+
 
 # Register the SQL configuration
-=======
->>>>>>> origin/main
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from tree_sitter import Node
 
 
-<<<<<<< HEAD
-# Plugin implementation for backward compatibility
-=======
->>>>>>> origin/main
 class SQLPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
     """Plugin for SQL language chunking."""
 

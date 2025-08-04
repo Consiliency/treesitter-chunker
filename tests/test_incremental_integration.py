@@ -1,4 +1,5 @@
 """Integration tests for incremental processing with real-world scenarios."""
+
 import shutil
 import tempfile
 import time
@@ -20,7 +21,7 @@ class TestIncrementalIntegration:
     """Integration tests for incremental processing."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def temp_project(cls):
         """Create a temporary project structure."""
         temp_dir = tempfile.mkdtemp()
@@ -44,7 +45,7 @@ def cleanup():
     ""\"Clean up resources.""\"
     print("Cleaning up")
 """,
-            )
+        )
         (src_dir / "utils.py").write_text(
             """
 def load_data():
@@ -59,7 +60,7 @@ def save_results(results):
     ""\"Save results to file.""\"
     print(f"Results: {results}")
 """,
-            )
+        )
         yield temp_dir
         shutil.rmtree(temp_dir)
 
@@ -77,32 +78,56 @@ def save_results(results):
         src_dir / "utils.py"
         with patch("chunker.incremental.chunk_text") as mock_chunk_text:
             main_content = main_file.read_text()
-            main_chunks = [{"chunk_id": "main_main", "content":
-                """def main():
+            main_chunks = [
+                {
+                    "chunk_id": "main_main",
+                    "content": """def main():
     ""\"Main entry point.""\"
     print("Starting application")
     process_data()
-    cleanup()"""
-                , "node_type": "function_definition", "start_line": 2,
-                "end_line": 6}, {"chunk_id": "main_process", "content":
-                """def process_data():
+    cleanup()""",
+                    "node_type": "function_definition",
+                    "start_line": 2,
+                    "end_line": 6,
+                },
+                {
+                    "chunk_id": "main_process",
+                    "content": """def process_data():
     ""\"Process application data.""\"
     data = load_data()
     results = analyze(data)
-    save_results(results)"""
-                , "node_type": "function_definition", "start_line": 8,
-                "end_line": 12}, {"chunk_id": "main_cleanup", "content":
-                """def cleanup():
+    save_results(results)""",
+                    "node_type": "function_definition",
+                    "start_line": 8,
+                    "end_line": 12,
+                },
+                {
+                    "chunk_id": "main_cleanup",
+                    "content": """def cleanup():
     ""\"Clean up resources.""\"
-    print("Cleaning up")"""
-                , "node_type": "function_definition", "start_line": 14,
-                "end_line": 16}]
+    print("Cleaning up")""",
+                    "node_type": "function_definition",
+                    "start_line": 14,
+                    "end_line": 16,
+                },
+            ]
             from chunker.types import CodeChunk
-            main_chunks_obj = [CodeChunk(language="python", file_path=str(
-                main_file), node_type=c["node_type"], start_line=c[
-                "start_line"], end_line=c["end_line"], byte_start=0,
-                byte_end=len(c["content"]), parent_context="", content=c[
-                "content"], chunk_id=c["chunk_id"]) for c in main_chunks]
+
+            main_chunks_obj = [
+                CodeChunk(
+                    language="python",
+                    file_path=str(main_file),
+                    node_type=c["node_type"],
+                    start_line=c["start_line"],
+                    end_line=c["end_line"],
+                    byte_start=0,
+                    byte_end=len(c["content"]),
+                    parent_context="",
+                    content=c["content"],
+                    chunk_id=c["chunk_id"],
+                )
+                for c in main_chunks
+            ]
             mock_chunk_text.return_value = main_chunks_obj
             main_hash = detector.compute_file_hash(main_content)
             cache.store(str(main_file), main_chunks_obj, main_hash)
@@ -131,33 +156,55 @@ def new_function():
     return "helper\"
 """
             main_file.write_text(modified_main)
-            modified_chunks = [main_chunks_obj[0], CodeChunk(language="python", file_path=str(main_file), node_type="function_definition", start_line=8, end_line=15,
-                byte_start=0, byte_end=200, parent_context="", content="""def process_data():
+            modified_chunks = [
+                main_chunks_obj[0],
+                CodeChunk(
+                    language="python",
+                    file_path=str(main_file),
+                    node_type="function_definition",
+                    start_line=8,
+                    end_line=15,
+                    byte_start=0,
+                    byte_end=200,
+                    parent_context="",
+                    content="""def process_data():
     ""\"Process application data with logging.""\"
     import logging
     logging.info("Processing started")
     data = load_data()
     results = analyze(data)
     save_results(results)
-    logging.info("Processing completed")"""
-                , chunk_id="main_process"), main_chunks_obj[2], CodeChunk(
-                language="python", file_path=str(main_file), node_type="function_definition", start_line=21, end_line=23,
-                byte_start=0, byte_end=50, parent_context="", content="""def new_function():
+    logging.info("Processing completed")""",
+                    chunk_id="main_process",
+                ),
+                main_chunks_obj[2],
+                CodeChunk(
+                    language="python",
+                    file_path=str(main_file),
+                    node_type="function_definition",
+                    start_line=21,
+                    end_line=23,
+                    byte_start=0,
+                    byte_end=50,
+                    parent_context="",
+                    content="""def new_function():
     ""\"A new helper function.""\"
-    return "helper\""""
-                , chunk_id="main_new")]
+    return "helper\"""",
+                    chunk_id="main_new",
+                ),
+            ]
             mock_chunk_text.return_value = modified_chunks
             new_hash = detector.compute_file_hash(modified_main)
             assert new_hash != main_hash
             cache_entry = cache.retrieve(str(main_file), main_hash)
             assert cache_entry is not None
-            diff = processor.compute_diff(cache_entry.chunks, modified_main,
-                "python")
+            diff = processor.compute_diff(cache_entry.chunks, modified_main, "python")
             assert diff.summary["modified"] == 1
             assert diff.summary["added"] == 1
             assert diff.summary["unchanged"] == 2
-            modified_changes = [c for c in diff.changes if c.change_type ==
-                ChangeType.MODIFIED]
+            modified_changes = [
+                c for c in diff.changes if c.change_type == ChangeType.MODIFIED
+            ]
             assert len(modified_changes) == 1
             assert "logging" in modified_changes[0].new_chunk.content
             updated_chunks = processor.update_chunks(cache_entry.chunks, diff)
@@ -172,24 +219,37 @@ def new_function():
         """Test detecting code moved between files."""
         processor = DefaultIncrementalProcessor()
         src_dir = Path(temp_project) / "src"
-        file1_chunk = CodeChunk(language="python", file_path=str(src_dir /
-            "file1.py"), node_type="function_definition", start_line=1,
-            end_line=5, byte_start=0, byte_end=100, parent_context="",
+        file1_chunk = CodeChunk(
+            language="python",
+            file_path=str(src_dir / "file1.py"),
+            node_type="function_definition",
+            start_line=1,
+            end_line=5,
+            byte_start=0,
+            byte_end=100,
+            parent_context="",
             content="""def shared_function():
     '''Shared logic'''
     return process_shared_data()
-"""
-            , chunk_id="file1_shared")
-        file2_chunk = CodeChunk(language="python", file_path=str(src_dir /
-            "file2.py"), node_type="function_definition", start_line=10,
-            end_line=14, byte_start=200, byte_end=300, parent_context="",
+""",
+            chunk_id="file1_shared",
+        )
+        file2_chunk = CodeChunk(
+            language="python",
+            file_path=str(src_dir / "file2.py"),
+            node_type="function_definition",
+            start_line=10,
+            end_line=14,
+            byte_start=200,
+            byte_end=300,
+            parent_context="",
             content="""def shared_function():
     '''Shared logic'''
     return process_shared_data()
-"""
-            , chunk_id="file2_shared")
-        moved_pairs = processor.detect_moved_chunks([file1_chunk], [
-            file2_chunk])
+""",
+            chunk_id="file2_shared",
+        )
+        moved_pairs = processor.detect_moved_chunks([file1_chunk], [file2_chunk])
         assert len(moved_pairs) == 1
         assert moved_pairs[0][0].file_path != moved_pairs[0][1].file_path
         assert moved_pairs[0][0].content == moved_pairs[0][1].content
@@ -201,13 +261,28 @@ def new_function():
         cache_dir2 = str(Path(temp_project) / ".cache2")
         export_file = str(Path(temp_project) / "cache_export.json")
         cache1 = DefaultChunkCache(cache_dir1)
-        test_chunks = [CodeChunk(language="python", file_path="test.py",
-            node_type="function_definition", start_line=1, end_line=3,
-            byte_start=0, byte_end=50, parent_context="", content="""def test():
+        test_chunks = [
+            CodeChunk(
+                language="python",
+                file_path="test.py",
+                node_type="function_definition",
+                start_line=1,
+                end_line=3,
+                byte_start=0,
+                byte_end=50,
+                parent_context="",
+                content="""def test():
     pass
-""", chunk_id="test_func")]
-        cache1.store("test.py", test_chunks, "hash123", metadata={"version":
-            "1.0", "author": "test"})
+""",
+                chunk_id="test_func",
+            ),
+        ]
+        cache1.store(
+            "test.py",
+            test_chunks,
+            "hash123",
+            metadata={"version": "1.0", "author": "test"},
+        )
         cache1.export_cache(export_file)
         assert Path(export_file).exists()
         cache2 = DefaultChunkCache(cache_dir2)
@@ -223,10 +298,20 @@ def new_function():
     def test_performance_metrics(cls, temp_project):
         """Test performance tracking of incremental processing."""
         cache = DefaultChunkCache(str(Path(temp_project) / ".cache"))
-        dummy_chunk = [CodeChunk(language="python", file_path="test.py",
-            node_type="function", start_line=1, end_line=2, byte_start=0,
-            byte_end=10, parent_context="", content="def f(): pass",
-            chunk_id="f")]
+        dummy_chunk = [
+            CodeChunk(
+                language="python",
+                file_path="test.py",
+                node_type="function",
+                start_line=1,
+                end_line=2,
+                byte_start=0,
+                byte_end=10,
+                parent_context="",
+                content="def f(): pass",
+                chunk_id="f",
+            ),
+        ]
         start_time = time.time()
         for i in range(10):
             cache.store(f"file{i}.py", dummy_chunk, f"hash{i}")

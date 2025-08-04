@@ -180,20 +180,13 @@ class TestCLICommands:
         """Test chunk command with JSON output."""
         with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
             f.write(
-<<<<<<< HEAD
                 "def test_function():\n"
                 "    # This is a test function\n"
                 "    result = 42\n"
                 "    return result\n",
             )
-=======
-                """def test_function():
-    # This is a test function
-    result = 42
-    return result
-""",
-                )
->>>>>>> origin/main
+
+
             f.flush()
             result = runner.invoke(app, ["chunk", str(f.name), "--lang",
                 "python", "--json"])
@@ -202,11 +195,8 @@ class TestCLICommands:
             assert result.output.strip().endswith("]")
             assert '"node_type": "function_definition"' in result.output
             assert '"language": "python"' in result.output
-<<<<<<< HEAD
 
             # Try to parse JSON - if it fails, that's a known issue with typer's output handling
-=======
->>>>>>> origin/main
             try:
                 data = json.loads(result.output)
                 assert isinstance(data, list)
@@ -215,7 +205,6 @@ class TestCLICommands:
             except json.JSONDecodeError:
                 pass
             Path(f.name).unlink()
-
     @classmethod
     def test_batch_command_directory(cls):
         """Test batch command with directory input."""
@@ -234,14 +223,9 @@ class TestCLICommands:
     y = 2
     return y
 """,
-<<<<<<< HEAD
             )
 
             result = runner.invoke(app, ["batch", str(tmppath)])
-=======
-                )
-            result = runner.invoke(app, ["batch", str(tmppath), "--quiet"])
->>>>>>> origin/main
             assert result.exit_code == 0
             assert "2 total chunks" in result.output
             assert "from 2" in result.output
@@ -265,7 +249,6 @@ class TestCLICommands:
     result = "main"
     return result
 """,
-<<<<<<< HEAD
             )
             (tmppath / "test.js").write_text(
                 """
@@ -278,12 +261,6 @@ function testFunc() {}
                 app,
                 ["batch", str(tmppath), "--include", "*.py"],
             )
-=======
-                )
-            (tmppath / "test.js").write_text("\nfunction testFunc() {}\n")
-            result = runner.invoke(app, ["batch", str(tmppath), "--include",
-                "*.py", "--quiet"])
->>>>>>> origin/main
             assert result.exit_code == 0
             assert "2 total chunks" in result.output
             assert "from 2" in result.output
@@ -321,7 +298,6 @@ def main_function():
 class MainClass:
     pass
 """,
-<<<<<<< HEAD
             )
             (tmppath / "test_main.py").write_text(
                 """
@@ -349,80 +325,14 @@ def test_function():
                         "--types",
                         "function_definition",
                     ],
-=======
->>>>>>> origin/main
-                )
-            (tmppath / "test_main.py").write_text(
-                "\ndef test_function():\n    pass\n")
-            import os
-            old_cwd = Path.cwd()
-            os.chdir(tmpdir)
-            try:
-                result = runner.invoke(app, ["batch", ".", "--include",
-                    "*.py", "--exclude", "test_*", "--types",
-                    "function_definition", "--quiet"])
-                assert result.exit_code == 0
-                assert "from 1" in result.output
-                assert "files)" in result.output
-                assert "function_definition" in result.output
-            finally:
-                os.chdir(old_cwd)
-
-    @classmethod
-    def test_batch_command_jsonl_output(cls):
-        """Test batch command with JSONL output."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmppath = Path(tmpdir)
-            (tmppath / "sample.py").write_text(
-                """def func1():
-    # First function
-    x = 1
-    return x
-
-def func2():
-    # Second function
-    y = 2
-    return y
-""",
-                )
-            result = runner.invoke(app, ["batch", str(tmppath), "--jsonl",
-                "--quiet"])
-            assert result.exit_code == 0
-<<<<<<< HEAD
-
-            # Should be JSONL format (one JSON per line)
-            lines = result.output.strip().split("\n")
-            json_objects = []
-
-=======
-            lines = result.output.strip().split("\n")
-            json_objects = []
->>>>>>> origin/main
             for line in lines:
                 if line.strip():
                     try:
                         json_objects.append(json.loads(line))
                     except json.JSONDecodeError:
                         pass
-<<<<<<< HEAD
 
             # If JSON parsing failed due to runner issues, check raw output
-=======
->>>>>>> origin/main
-            if len(json_objects) < 2:
-                assert '"node_type"' in result.output
-<<<<<<< HEAD
-                # Remove all whitespace to check for function_definition
-                cleaned_output = "".join(result.output.split())
-                assert (
-                    "function_definition" in cleaned_output
-                    or '"function_definition"' in cleaned_output
-                )
-                assert result.output.count('"node_type"') == 2  # Two functions
-=======
-                assert '"function_definition"' in result.output
-                assert result.output.count('"node_type"') == 2
->>>>>>> origin/main
             else:
                 assert len(json_objects) == 2
                 for data in json_objects:

@@ -36,22 +36,11 @@ class MATLABConfig(LanguageConfig):
         self.add_ignore_type("string")
         self.add_ignore_type("number")
 
-<<<<<<< HEAD
+
 
 # Register the MATLAB configuration
-=======
->>>>>>> origin/main
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from tree_sitter import Node
 
 
-<<<<<<< HEAD
-# Plugin implementation for backward compatibility
-=======
->>>>>>> origin/main
 class MATLABPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
     """Plugin for MATLAB language chunking."""
 

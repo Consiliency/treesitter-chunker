@@ -245,14 +245,10 @@ class ChunkerConfig:
                 if value is None:
                     if default is not None:
                         return default
-<<<<<<< HEAD
+
+
                     logger.warning("Environment variable '%s' not found", var_name)
                     return match.group(0)  # Keep original
-=======
-                    logger.warning("Environment variable '%s' not found" %
-                        var_name)
-                    return match.group(0)
->>>>>>> origin/main
                 return value
             return self.ENV_VAR_PATTERN.sub(replacer, data)
         if isinstance(data, dict):

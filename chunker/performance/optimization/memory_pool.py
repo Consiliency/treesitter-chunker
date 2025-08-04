@@ -49,16 +49,13 @@ class MemoryPool(MemoryPoolInterface):
             if pool:
                 resource = pool.popleft()
                 self._stats[resource_type]["acquired"] += 1
-<<<<<<< HEAD
+
+
                 logger.debug(
                     "Acquired %s from pool (pool size: %d)",
                     resource_type,
                     len(pool),
                 )
-=======
-                logger.debug("Acquired %s from pool (pool size: %s)",
-                    resource_type, len(pool))
->>>>>>> origin/main
             else:
                 resource = self._create_resource(resource_type)
                 self._stats[resource_type]["created"] += 1
@@ -66,7 +63,6 @@ class MemoryPool(MemoryPoolInterface):
                     resource_type)
             self._in_use[resource_type].add(resource)
             return resource
-
     def release(self, resource: Any) -> None:
         """Return a resource to the pool.
 
@@ -82,16 +78,11 @@ class MemoryPool(MemoryPoolInterface):
                 self._reset_resource(resource)
                 pool.append(resource)
                 self._stats[resource_type]["released"] += 1
-<<<<<<< HEAD
                 logger.debug(
                     "Released %s to pool (pool size: %d)",
                     resource_type,
                     len(pool),
                 )
-=======
-                logger.debug("Released %s to pool (pool size: %s)",
-                    resource_type, len(pool))
->>>>>>> origin/main
             else:
                 logger.debug("Pool full for %s, discarding resource",
                     resource_type)

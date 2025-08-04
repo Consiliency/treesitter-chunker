@@ -163,7 +163,8 @@ def dense_function():
         """Test that configuration changes affect chunking."""
         parser = get_parser("python")
         tree = parser.parse(variable_complexity_code.encode())
-<<<<<<< HEAD
+
+
 
         # Default configuration
         default_chunks = adaptive_chunker.chunk(
@@ -251,41 +252,6 @@ def dense_function():
             assert (
                 size_differs or types_differ
             ), f"Configuration changes should affect chunking behavior. All produced {default_len} chunks with similar average sizes"
-=======
-        default_chunks = adaptive_chunker.chunk(tree.root_node,
-            variable_complexity_code.encode(), "test.py", "python")
-        adaptive_chunker.configure({"adaptive_aggressiveness": 0.9,
-            "complexity_factor": 0.8, "base_chunk_size": 20,
-            "min_chunk_size": 5, "balance_sizes": False})
-        aggressive_chunks = adaptive_chunker.chunk(tree.root_node,
-            variable_complexity_code.encode(), "test.py", "python")
-        adaptive_chunker.configure({"adaptive_aggressiveness": 0.1,
-            "complexity_factor": 0.1, "base_chunk_size": 100,
-            "max_chunk_size": 300, "balance_sizes": False})
-        conservative_chunks = adaptive_chunker.chunk(tree.root_node,
-            variable_complexity_code.encode(), "test.py", "python")
-        default_len = len(default_chunks)
-        aggressive_len = len(aggressive_chunks)
-        conservative_len = len(conservative_chunks)
-        chunks_differ = (default_len != aggressive_len or default_len !=
-            conservative_len)
-        if not chunks_differ:
-            default_avg_size = sum(c.end_line - c.start_line + 1 for c in
-                default_chunks) / default_len
-            aggressive_avg_size = sum(c.end_line - c.start_line + 1 for c in
-                aggressive_chunks) / aggressive_len
-            conservative_avg_size = sum(c.end_line - c.start_line + 1 for c in
-                conservative_chunks) / conservative_len
-            default_types = [c.node_type for c in default_chunks]
-            aggressive_types = [c.node_type for c in aggressive_chunks]
-            conservative_types = [c.node_type for c in conservative_chunks]
-            types_differ = (default_types != aggressive_types or
-                default_types != conservative_types)
-            size_differs = abs(default_avg_size - aggressive_avg_size,
-                ) > default_avg_size * 0.1 or abs(default_avg_size -
-                conservative_avg_size) > default_avg_size * 0.1
-            assert size_differs or types_differ, f"Configuration changes should affect chunking behavior. All produced {default_len} chunks with similar average sizes"
->>>>>>> origin/main
 
     @staticmethod
     def test_boundary_preservation(adaptive_chunker):
@@ -339,7 +305,6 @@ def another_helper():
             assert max_size < avg_size * 6
             assert min_size > avg_size * 0.1
 
-<<<<<<< HEAD
             # Sizes should be somewhat balanced
             # (not too extreme differences)
             # Note: complex_algorithm function is very large (45 lines), which skews the average
@@ -347,7 +312,6 @@ def another_helper():
                 max_size < avg_size * 6
             )  # Allow larger variance due to complex function
             assert min_size > avg_size * 0.1  # Allow smaller chunks
-
     def test_density_adaptation(self, adaptive_chunker):
 =======
     @staticmethod
@@ -387,16 +351,11 @@ def normal(data):
                 assert hasattr(chunk, "metadata")
                 metrics = chunk.metadata.get("adaptive_metrics", {})
                 if metrics:
-<<<<<<< HEAD
                     assert (
                         metrics.get("density", 0) > 5
                     )  # Lower threshold as it's chars/line not tokens/line
                 break
 
-=======
-                    assert metrics.get("density", 0) > 5
-                break
->>>>>>> origin/main
         assert found_dense, "Should have found the dense function chunk"
 
     @staticmethod

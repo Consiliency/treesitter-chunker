@@ -343,16 +343,13 @@ class ConfigProcessor(SpecializedProcessor):
         if structure["root_keys"]:
             root_lines = []
             for i, line in enumerate(lines):
-<<<<<<< HEAD
+
+
                 if (
                     not line.strip()
                     or (line.strip().startswith("#") and i == 0)
                     or (i > 0 and root_lines)
                 ):
-=======
-                if not line.strip() or (line.strip().startswith("#",
-                    ) and i == 0) or (i > 0 and root_lines):
->>>>>>> origin/main
                     root_lines.append(i)
                     continue
                 match = self._yaml_key_pattern.match(line)

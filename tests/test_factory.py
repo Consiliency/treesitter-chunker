@@ -5,17 +5,16 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
-from chunker.factory import LRUCache, ParserConfig, ParserFactory, ParserPool
-from chunker.registry import LanguageRegistry
 from tree_sitter import Parser
 
 from chunker._internal.factory import LRUCache, ParserFactory, ParserPool
 from chunker._internal.registry import LanguageRegistry
 from chunker.exceptions import LanguageNotFoundError, ParserConfigError, ParserInitError
-<<<<<<< HEAD
+from chunker.factory import LRUCache, ParserConfig, ParserFactory, ParserPool
+from chunker.registry import LanguageRegistry
+
 from chunker.parser import ParserConfig
-=======
->>>>>>> origin/main
+
 
 
 class TestParserConfig:

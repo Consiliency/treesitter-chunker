@@ -10,15 +10,13 @@ from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
-from chunker.cache import ASTCache
 
 from chunker import chunk_file
-<<<<<<< HEAD
+from chunker.cache import ASTCache
+
 from chunker._internal.cache import ASTCache
 from chunker._internal.file_utils import get_file_metadata
-=======
-from chunker.streaming import get_file_metadata
->>>>>>> origin/main
+
 from chunker.types import CodeChunk
 
 SAMPLE_PYTHON_CODE = """

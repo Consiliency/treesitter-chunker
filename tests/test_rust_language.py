@@ -34,15 +34,11 @@ def check_rust_parser_available():
         return False
 
 
-<<<<<<< HEAD
 # Skip entire test class if Rust parser is not available
 pytestmark = pytest.mark.skipif(
     not check_rust_parser_available(),
     reason="Rust parser not available due to ABI version mismatch",
 )
-=======
-pytestmark = pytest.mark.skipif(not check_rust_parser_available(), reason="Rust parser not available due to ABI version mismatch")
->>>>>>> origin/main
 
 
 class TestRustLanguageFeatures:

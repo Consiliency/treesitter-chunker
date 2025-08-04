@@ -119,7 +119,8 @@ class IncrementalParser(IncrementalParserInterface):
                     start_byte):
                     affected_chunk_ids.add(chunk.chunk_id)
                     break
-<<<<<<< HEAD
+
+
 
         logger.info(
             "Incremental update: %d chunks affected out of %d",
@@ -134,10 +135,6 @@ class IncrementalParser(IncrementalParserInterface):
         # 3. Merge the results
 
         # This is a simplified version that marks which chunks need updating
-=======
-        logger.info("Incremental update: %s chunks affected out of %s", (
-            len(affected_chunk_ids), len(old_chunks)))
->>>>>>> origin/main
         updated_chunks = []
         for chunk in old_chunks:
             if chunk.chunk_id not in affected_chunk_ids:
@@ -147,7 +144,6 @@ class IncrementalParser(IncrementalParserInterface):
             else:
                 logger.debug("Chunk %s needs re-parsing", chunk.chunk_id)
         return updated_chunks
-
     def _get_parser_for_tree(self, _tree: Tree) -> Parser:
         """Get or create a parser for the tree's language."""
         language = "python"

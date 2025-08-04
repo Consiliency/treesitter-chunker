@@ -33,25 +33,10 @@ class PythonConfig(LanguageConfig):
         self.add_ignore_type("string")
 
 
-<<<<<<< HEAD
 
 # Register the Python configuration
-=======
->>>>>>> origin/main
-from .base import language_config_registry
-
-python_config = PythonConfig()
-language_config_registry.register(python_config)
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from tree_sitter import Node
 
 
-<<<<<<< HEAD
-# Plugin implementation for backward compatibility
-=======
->>>>>>> origin/main
 class PythonPlugin(LanguagePlugin):
     """Plugin for Python language chunking."""
 

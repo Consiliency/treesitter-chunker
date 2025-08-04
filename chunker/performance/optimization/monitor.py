@@ -82,7 +82,8 @@ class PerformanceMonitor(PerformanceMonitorInterface):
                 start_time) * 1000
             self._completed_operations.append(timing_info)
             del self._operations[operation_id]
-<<<<<<< HEAD
+
+
 
             # Record as metric
             self.record_metric(
@@ -96,14 +97,7 @@ class PerformanceMonitor(PerformanceMonitorInterface):
                 timing_info.duration_ms,
             )
 
-=======
-            self.record_metric(f"operation.{timing_info.operation_name}",
-                timing_info.duration_ms)
-            logger.debug("Ended operation: %s (Duration: %sms)",
-                timing_info.operation_name, timing_info.duration_ms)
->>>>>>> origin/main
             return timing_info.duration_ms
-
     def record_metric(self, metric_name: str, value: float) -> None:
         """Record a performance metric.
 

@@ -59,11 +59,9 @@ def manage_grammars(action: str, languages: list):
         if action == "add":
             info = repo.get_grammar_info(lang)
             if not info:
-<<<<<<< HEAD
+
+
                 logger.error("Grammar '%s' not found in repository", lang)
-=======
-                logger.error("Grammar '%s' not found in repository" % lang)
->>>>>>> origin/main
                 continue
             grammar = manager.add_grammar(lang, info.repository_url)
             print(f"Added {lang} (status: {grammar.status.value})")

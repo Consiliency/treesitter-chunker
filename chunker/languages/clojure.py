@@ -38,11 +38,8 @@ class ClojureConfig(LanguageConfig):
         self.add_ignore_type("str_lit")
         self.add_ignore_type("num_lit")
 
-<<<<<<< HEAD
 
 # Register the Clojure configuration
-=======
->>>>>>> origin/main
 
 from typing import TYPE_CHECKING
 
@@ -50,10 +47,9 @@ if TYPE_CHECKING:
     from tree_sitter import Node
 
 
-<<<<<<< HEAD
 # Plugin implementation for backward compatibility
-=======
->>>>>>> origin/main
+
+
 class ClojurePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
     """Plugin for Clojure language chunking."""
 

@@ -21,14 +21,12 @@ class CConfig(LanguageConfig):
     def file_extensions(self) -> set[str]:
         return {".c", ".h"}
 
-<<<<<<< HEAD
+
 
 # Register the C configuration
 from .base import language_config_registry
 
 language_config_registry.register(CConfig())
-=======
->>>>>>> origin/main
 
 from typing import TYPE_CHECKING
 

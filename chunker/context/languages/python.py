@@ -116,10 +116,9 @@ class PythonContextExtractor(BaseContextExtractor):
             parent.parent and parent.parent.type in {"import_statement",
             "import_from_statement"})
 
-<<<<<<< HEAD
+
         # Import aliases
         return bool(parent.type in {"aliased_import", "dotted_name"} and parent.parent and parent.parent.type in ("import_statement", "import_from_statement"))
-
     def _find_definition(
         self,
         name: str,

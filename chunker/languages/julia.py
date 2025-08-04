@@ -55,15 +55,14 @@ class JuliaConfig(LanguageConfig):
                                 return True
         return False
 
-<<<<<<< HEAD
+
 
 # Register the Julia configuration
 
 
 # Plugin implementation for backward compatibility
-=======
 
->>>>>>> origin/main
+
 class JuliaPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
     """Plugin for Julia language chunking."""
 

@@ -3,6 +3,7 @@
 This module tests the full workflow from file input to various export formats,
 ensuring all components work together correctly.
 """
+
 import json
 import os
 import subprocess
@@ -14,9 +15,9 @@ import psutil
 import pytest
 
 from chunker import CodeChunk, chunk_file
-from chunker.parallel import ParallelChunker, chunk_files_parallel
 from chunker.chunker_config import ChunkerConfig
 from chunker.export import JSONExporter, JSONLExporter, SchemaType
+from chunker.parallel import ParallelChunker, chunk_files_parallel
 
 
 class TestFullPipeline:
@@ -45,7 +46,7 @@ async def async_hello():
     await asyncio.sleep(1)
     return "Async Hello!\"
 """,
-            )
+        )
         chunks = chunk_file(test_file, language="python")
         assert len(chunks) >= 4
         json_file = tmp_path / "output.json"
@@ -80,7 +81,7 @@ class App:
     def run(self):
         pass
 """,
-            )
+        )
         (project_dir / "index.js").write_text(
             """
 function main() {
@@ -95,7 +96,7 @@ class App {
 
 const arrow = () => "arrow function";
 """,
-            )
+        )
         (project_dir / "main.rs").write_text(
             """
 fn main() {
@@ -116,7 +117,7 @@ impl App {
     }
 }
 """,
-            )
+        )
         all_chunks = []
         ext_to_lang = {".py": "python", ".js": "javascript", ".rs": "rust"}
         for file_path in sorted(project_dir.rglob("*")):
@@ -152,10 +153,9 @@ class Class_{i}:
     def method(self):
         return "method_{i}\"
 """,
-                )
+            )
         file_paths = list(tmp_path.glob("*.py"))
-        results = chunk_files_parallel(file_paths, language="python",
-            num_workers=3)
+        results = chunk_files_parallel(file_paths, language="python", num_workers=3)
         all_chunks = [item for chunks in results.values() for item in chunks]
         assert len(all_chunks) >= 10
         output_file = tmp_path / "parallel_output.jsonl"
@@ -194,7 +194,7 @@ def large_function():
     # Line 10
     pass
 """,
-            )
+        )
         chunks = chunk_file(test_file, language="python")
         assert len(chunks) == 3
         project_config = tmp_path / ".chunkerrc.toml"
@@ -215,11 +215,15 @@ class TestCLIIntegration:
         """Test basic CLI workflow with chunk and export."""
         test_file = tmp_path / "example.py"
         test_file.write_text(
-            '\ndef hello():\n    return "Hello"\n\nclass Example:\n    pass\n')
+            '\ndef hello():\n    return "Hello"\n\nclass Example:\n    pass\n',
+        )
         output_file = tmp_path / "output.json"
-        result = subprocess.run([sys.executable, "-m", "cli.main", "chunk",
-            str(test_file), "--json"], check=False, capture_output=True,
-            text=True)
+        result = subprocess.run(
+            [sys.executable, "-m", "cli.main", "chunk", str(test_file), "--json"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
         assert result.returncode == 0
         data = json.loads(result.stdout)
         assert len(data) >= 2
@@ -232,12 +236,23 @@ class TestCLIIntegration:
         test_dir = tmp_path / "src"
         test_dir.mkdir()
         for i in range(3):
-            (test_dir / f"module{i}.py").write_text(
-                f"\ndef func{i}():\n    pass\n")
+            (test_dir / f"module{i}.py").write_text(f"\ndef func{i}():\n    pass\n")
         output_file = tmp_path / "batch_output.jsonl"
-        result = subprocess.run([sys.executable, "-m", "cli.main", "batch",
-            str(test_dir), "--pattern", "*.py", "--jsonl"], check=False,
-            capture_output=True, text=True)
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "cli.main",
+                "batch",
+                str(test_dir),
+                "--pattern",
+                "*.py",
+                "--jsonl",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
         assert result.returncode == 0
         lines = result.stdout.strip().split("\n")
         assert len(lines) >= 3
@@ -256,7 +271,7 @@ chunk_types = ["function_definition", "class_definition"]
 [python]
 include_docstrings = true
 """,
-            )
+        )
         test_file = tmp_path / "test.py"
         test_file.write_text(
             """
@@ -268,10 +283,21 @@ def normal():
     x = 1
     return x
 """,
-            )
-        result = subprocess.run([sys.executable, "-m", "cli.main", "chunk",
-            str(test_file), "--config", str(config_file)], check=False,
-            capture_output=True, text=True)
+        )
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "cli.main",
+                "chunk",
+                str(test_file),
+                "--config",
+                str(config_file),
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
         assert result.returncode == 0
 
 
@@ -284,11 +310,17 @@ class TestPerformanceBaseline:
         large_file = tmp_path / "large.py"
         content_lines = []
         for i in range(100):
-            content_lines.extend([f"def function_{i}(arg1, arg2, arg3):",
-                f"    '''Docstring for function {i}.'''",
-                "    result = arg1 + arg2 * arg3",
-                "    for j in range(10):", "        result += j",
-                "    return result", ""])
+            content_lines.extend(
+                [
+                    f"def function_{i}(arg1, arg2, arg3):",
+                    f"    '''Docstring for function {i}.'''",
+                    "    result = arg1 + arg2 * arg3",
+                    "    for j in range(10):",
+                    "        result += j",
+                    "    return result",
+                    "",
+                ],
+            )
         large_file.write_text("\n".join(content_lines))
         start = time.time()
         chunks = chunk_file(large_file, language="python")
@@ -317,8 +349,9 @@ class TestPerformanceBaseline:
         process = psutil.Process(os.getpid())
         initial_memory = process.memory_info().rss / 1024 / 1024
         test_file = tmp_path / "medium.py"
-        content = "\n".join([f"def func_{i}(): return {i}" for i in range(500)],
-            )
+        content = "\n".join(
+            [f"def func_{i}(): return {i}" for i in range(500)],
+        )
         test_file.write_text(content)
         chunks = chunk_file(test_file, language="python")
         after_chunk_memory = process.memory_info().rss / 1024 / 1024
@@ -350,9 +383,19 @@ class TestErrorPropagation:
     @classmethod
     def test_export_error_handling(cls, tmp_path):
         """Test export error handling."""
-        chunks = [CodeChunk(language="python", file_path="/test.py",
-            node_type="function_definition", start_line=1, end_line=1,
-            byte_start=0, byte_end=16, parent_context="", content="def test(): pass")]
+        chunks = [
+            CodeChunk(
+                language="python",
+                file_path="/test.py",
+                node_type="function_definition",
+                start_line=1,
+                end_line=1,
+                byte_start=0,
+                byte_end=16,
+                parent_context="",
+                content="def test(): pass",
+            ),
+        ]
         if os.name != "nt":
             read_only_dir = tmp_path / "readonly"
             read_only_dir.mkdir()
@@ -373,8 +416,7 @@ class TestErrorPropagation:
         files = list(tmp_path.glob("*"))
         results = chunker.chunk_files_parallel(files)
         assert len(results) == 3
-        successes = {path: chunks for path, chunks in results.items() if chunks
-            }
+        successes = {path: chunks for path, chunks in results.items() if chunks}
         {path: chunks for path, chunks in results.items() if not chunks}
         assert len(successes) >= 1
         all_chunks = [item for chunks in successes.values() for item in chunks]

@@ -3,6 +3,7 @@
 This module tests unusual, extreme, and error-prone scenarios
 to ensure robust handling of edge cases.
 """
+
 import json
 import os
 from pathlib import Path
@@ -10,10 +11,10 @@ from pathlib import Path
 import pytest
 
 from chunker import CodeChunk, chunk_file
-from chunker.parallel import chunk_files_parallel
 from chunker.chunker_config import ChunkerConfig
 from chunker.exceptions import LanguageNotFoundError
 from chunker.export import JSONExporter, JSONLExporter, SchemaType
+from chunker.parallel import chunk_files_parallel
 
 
 class TestFileSystemEdgeCases:
@@ -47,7 +48,7 @@ class TestFileSystemEdgeCases:
 
 # More comments
 """,
-            )
+        )
         chunks = chunk_file(comment_file, language="python")
         assert chunks == []
 
@@ -64,9 +65,14 @@ class TestFileSystemEdgeCases:
     @staticmethod
     def test_special_characters_in_filename(tmp_path):
         """Test files with special characters in names."""
-        special_names = ["file with spaces.py", "file-with-dashes.py",
-            "file_with_underscores.py", "file.multiple.dots.py",
-            "fileλunicode.py", "file@special#chars$.py"]
+        special_names = [
+            "file with spaces.py",
+            "file-with-dashes.py",
+            "file_with_underscores.py",
+            "file.multiple.dots.py",
+            "fileλunicode.py",
+            "file@special#chars$.py",
+        ]
         for name in special_names:
             special_file = tmp_path / name
             special_file.write_text("def test(): pass")
@@ -87,7 +93,9 @@ class TestFileSystemEdgeCases:
         assert len(chunks) == 1
         assert chunks[0].content == "def original(): pass"
 
-    @pytest.mark.skipif(os.name == "nt", reason="Permission test not reliable on Windows")
+    @pytest.mark.skipif(
+        os.name == "nt", reason="Permission test not reliable on Windows",
+    )
     @staticmethod
     def test_permission_denied_file(tmp_path):
         """Test handling of files without read permission."""
@@ -121,7 +129,7 @@ class TestCodeContentEdgeCases:
         mixed_file = tmp_path / "mixed_endings.py"
         mixed_file.write_bytes(
             b"def unix():\n    pass\r\ndef windows():\r\n    pass\rdef mac():\r    pass",
-            )
+        )
         chunks = chunk_file(mixed_file, language="python")
         assert len(chunks) >= 3
 
@@ -138,8 +146,7 @@ class TestCodeContentEdgeCases:
         """Test files with extremely long lines."""
         long_line_file = tmp_path / "long_lines.py"
         long_string = "x" * 10000
-        content = (
-            f'def test():\n    data = "{long_string}"\n    return len(data)\n')
+        content = f'def test():\n    data = "{long_string}"\n    return len(data)\n'
         long_line_file.write_text(content)
         chunks = chunk_file(long_line_file, language="python")
         assert len(chunks) == 1
@@ -177,7 +184,7 @@ if True
     # Missing colon
     pass
 """,
-            )
+        )
         try:
             chunks = chunk_file(invalid_syntax_file, language="python")
             assert isinstance(chunks, list)
@@ -203,7 +210,7 @@ class МойКласс:
 def emoji_🚀_function():
     return "rocket\"
 """,
-            )
+        )
         chunks = chunk_file(unicode_file, language="python")
         assert len(chunks) >= 3
 
@@ -236,7 +243,7 @@ struct test_struct {
 };
 #endif
 """,
-            )
+        )
         c_chunks = chunk_file(header_file, language="c")
         assert isinstance(c_chunks, list)
         cpp_chunks = chunk_file(header_file, language="cpp")
@@ -256,7 +263,7 @@ async def decorated_async():
 
 # JavaScript: various function syntaxes
 """,
-            )
+        )
         py_chunks = chunk_file(python_file, language="python")
         assert len(py_chunks) >= 1
         js_file = tmp_path / "js_edge.js"
@@ -267,7 +274,7 @@ const asyncArrow = async () => await fetch();
 export default class { constructor() {} }
 function* generator() { yield 42; }
 """,
-            )
+        )
         js_chunks = chunk_file(js_file, language="javascript")
         assert len(js_chunks) >= 1
 
@@ -288,7 +295,7 @@ chunk_types = "not_a_list"  # Wrong type
 [python]
 invalid_option = true
 """,
-            )
+        )
         config = ChunkerConfig(str(config_file))
         assert config is not None
 
@@ -297,10 +304,8 @@ invalid_option = true
         """Test handling of circular configuration includes."""
         config1 = tmp_path / "config1.toml"
         config2 = tmp_path / "config2.toml"
-        config1.write_text(
-            f'\n[general]\ninclude = "{config2}"\nvalue1 = true\n')
-        config2.write_text(
-            f'\n[general]\ninclude = "{config1}"\nvalue2 = true\n')
+        config1.write_text(f'\n[general]\ninclude = "{config2}"\nvalue1 = true\n')
+        config2.write_text(f'\n[general]\ninclude = "{config1}"\nvalue2 = true\n')
         config = ChunkerConfig(str(config1))
         assert config is not None
 
@@ -314,7 +319,7 @@ invalid_option = true
 include = "/non/existent/config.toml"
 min_chunk_size = 5
 """,
-            )
+        )
         config = ChunkerConfig(str(config_file))
         assert config is not None
 
@@ -355,8 +360,7 @@ class TestConcurrencyEdgeCases:
         chunks = chunk_file(test_file, language="python")
         test_file.write_text("def modified(): pass")
         assert len(chunks) == 1
-        assert "original" in chunks[0].content or "modified" in chunks[0
-            ].content
+        assert "original" in chunks[0].content or "modified" in chunks[0].content
 
     @staticmethod
     def test_file_deletion_during_batch(tmp_path):
@@ -385,7 +389,7 @@ class TestExportEdgeCases:
     newlines and 	tabs""\"
     return '{"json": "content"}'
 """,
-            )
+        )
         chunks = chunk_file(test_file, language="python")
         json_file = tmp_path / "output.json"
         exporter = JSONExporter(schema_type=SchemaType.FLAT)
@@ -411,11 +415,20 @@ class TestExportEdgeCases:
     @classmethod
     def test_export_with_null_values(cls, tmp_path):
         """Test export of chunks with null/None values."""
-        chunk = CodeChunk(language="python", file_path=str(tmp_path /
-            "test.py"), node_type="function_definition", start_line=1,
-            end_line=1, byte_start=0, byte_end=10, parent_context="",
-            content="def test(): pass", parent_chunk_id=None, references=[],
-            dependencies=[])
+        chunk = CodeChunk(
+            language="python",
+            file_path=str(tmp_path / "test.py"),
+            node_type="function_definition",
+            start_line=1,
+            end_line=1,
+            byte_start=0,
+            byte_end=10,
+            parent_context="",
+            content="def test(): pass",
+            parent_chunk_id=None,
+            references=[],
+            dependencies=[],
+        )
         json_file = tmp_path / "nulls.json"
         exporter = JSONExporter(schema_type=SchemaType.FLAT)
         exporter.export([chunk], json_file)
@@ -435,8 +448,7 @@ class TestSystemIntegrationEdgeCases:
             f = tmp_path / f"file{i}.py"
             f.write_text(f"def f{i}(): pass")
             files.append(str(f))
-        results = chunk_files_parallel(files[:50], language="python",
-            num_workers=2)
+        results = chunk_files_parallel(files[:50], language="python", num_workers=2)
         assert len(results) == 50
 
     @staticmethod
@@ -445,8 +457,14 @@ class TestSystemIntegrationEdgeCases:
         test_file = tmp_path / "subdir" / "test.py"
         test_file.parent.mkdir()
         test_file.write_text("def test(): pass")
-        paths_to_test = [str(test_file), str(test_file).replace(os.sep, "/",
-            ), str(test_file).replace("/", os.sep)]
+        paths_to_test = [
+            str(test_file),
+            str(test_file).replace(
+                os.sep,
+                "/",
+            ),
+            str(test_file).replace("/", os.sep),
+        ]
         for path in paths_to_test:
             try:
                 chunks = chunk_file(path, language="python")

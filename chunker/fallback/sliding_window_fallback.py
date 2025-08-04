@@ -430,13 +430,10 @@ class SlidingWindowFallback(FallbackChunker):
         for proc_name in processor_names:
             processor = self.registry.get_processor(proc_name)
             if processor and processor.can_process(content, file_path):
-<<<<<<< HEAD
+
+
                 logger.info("Using processor '%s' for %s", proc_name, file_path)
 
-=======
-                logger.info("Using processor '%s' for %s" % (proc_name,
-                    file_path))
->>>>>>> origin/main
                 try:
                     chunks = processor.process(content, file_path)
                     for chunk in chunks:
@@ -448,20 +445,12 @@ class SlidingWindowFallback(FallbackChunker):
                             ].processor_type.value
                     return chunks
                 except (AttributeError, FileNotFoundError, IndexError) as e:
-<<<<<<< HEAD
                     logger.error("Processor '%s' failed: %s", proc_name, e)
-=======
-                    logger.error("Processor '%s' failed: %s" % (proc_name, e))
->>>>>>> origin/main
                     continue
         logger.warning(
-<<<<<<< HEAD
             "No suitable processor found for %s, using line-based chunking",
             file_path,
         )
-=======
-            "No suitable processor found for %s, using line-based chunking", file_path)
->>>>>>> origin/main
         return super().chunk_text(content, file_path, language)
 
     @staticmethod
@@ -534,11 +523,7 @@ class SlidingWindowFallback(FallbackChunker):
         for name in processor_names:
             processor = self.registry.get_processor(name)
             if not processor:
-<<<<<<< HEAD
                 logger.error("Processor '%s' not found for chain", name)
-=======
-                logger.error("Processor '%s' not found for chain" % name)
->>>>>>> origin/main
                 return None
             processors.append(processor)
         return ProcessorChain(processors)

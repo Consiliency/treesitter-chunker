@@ -1,9 +1,8 @@
 """Implementation of HierarchyNavigator for navigating chunk hierarchies."""
+
 from collections import deque
 
-from chunker.interfaces.hierarchy import (
-    ChunkHierarchy,
-)
+from chunker.interfaces.hierarchy import ChunkHierarchy
 from chunker.interfaces.hierarchy import (
     HierarchyNavigator as HierarchyNavigatorInterface,
 )
@@ -14,8 +13,7 @@ class HierarchyNavigator(HierarchyNavigatorInterface):
     """Navigate chunk hierarchies with various traversal methods."""
 
     @staticmethod
-    def get_children(chunk_id: str, hierarchy: ChunkHierarchy) -> list[CodeChunk
-        ]:
+    def get_children(chunk_id: str, hierarchy: ChunkHierarchy) -> list[CodeChunk]:
         """
         Get direct children of a chunk.
 
@@ -32,8 +30,7 @@ class HierarchyNavigator(HierarchyNavigatorInterface):
         return [hierarchy.chunk_map[child_id] for child_id in child_ids]
 
     @staticmethod
-    def get_descendants(chunk_id: str, hierarchy: ChunkHierarchy) -> list[
-        CodeChunk]:
+    def get_descendants(chunk_id: str, hierarchy: ChunkHierarchy) -> list[CodeChunk]:
         """
         Get all descendants of a chunk (children, grandchildren, etc.).
 
@@ -60,8 +57,7 @@ class HierarchyNavigator(HierarchyNavigatorInterface):
         return descendants
 
     @staticmethod
-    def get_ancestors(chunk_id: str, hierarchy: ChunkHierarchy) -> list[
-        CodeChunk]:
+    def get_ancestors(chunk_id: str, hierarchy: ChunkHierarchy) -> list[CodeChunk]:
         """
         Get all ancestors of a chunk (parent, grandparent, etc.).
 
@@ -82,8 +78,7 @@ class HierarchyNavigator(HierarchyNavigatorInterface):
         return ancestors
 
     @staticmethod
-    def get_siblings(chunk_id: str, hierarchy: ChunkHierarchy) -> list[CodeChunk
-        ]:
+    def get_siblings(chunk_id: str, hierarchy: ChunkHierarchy) -> list[CodeChunk]:
         """
         Get sibling chunks (same parent).
 
@@ -95,22 +90,27 @@ class HierarchyNavigator(HierarchyNavigatorInterface):
             List of sibling chunks (excluding the chunk itself)
         """
         if chunk_id not in hierarchy.parent_map:
-            siblings = [hierarchy.chunk_map[root_id] for root_id in
-                hierarchy.root_chunks if root_id != chunk_id and root_id in
-                hierarchy.chunk_map]
+            siblings = [
+                hierarchy.chunk_map[root_id]
+                for root_id in hierarchy.root_chunks
+                if root_id != chunk_id and root_id in hierarchy.chunk_map
+            ]
             return siblings
         parent_id = hierarchy.parent_map[chunk_id]
         if parent_id not in hierarchy.children_map:
             return []
         sibling_ids = hierarchy.children_map[parent_id]
-        siblings = [hierarchy.chunk_map[sibling_id] for sibling_id in
-            sibling_ids if sibling_id != chunk_id and sibling_id in
-            hierarchy.chunk_map]
+        siblings = [
+            hierarchy.chunk_map[sibling_id]
+            for sibling_id in sibling_ids
+            if sibling_id != chunk_id and sibling_id in hierarchy.chunk_map
+        ]
         return siblings
 
     @staticmethod
-    def filter_by_depth(hierarchy: ChunkHierarchy, min_depth: int = 0,
-        max_depth: (int | None) = None) -> list[CodeChunk]:
+    def filter_by_depth(
+        hierarchy: ChunkHierarchy, min_depth: int = 0, max_depth: int | None = None,
+    ) -> list[CodeChunk]:
         """
         Filter chunks by their depth in the hierarchy.
 
@@ -125,15 +125,17 @@ class HierarchyNavigator(HierarchyNavigatorInterface):
         filtered_chunks: list[CodeChunk] = []
         for chunk_id, chunk in hierarchy.chunk_map.items():
             depth = hierarchy.get_depth(chunk_id)
-            if depth >= min_depth and (max_depth is None or depth <= max_depth
-                ):
+            if depth >= min_depth and (max_depth is None or depth <= max_depth):
                 filtered_chunks.append(chunk)
         filtered_chunks.sort(key=lambda c: (c.file_path, c.start_line))
         return filtered_chunks
 
     @classmethod
-    def get_subtree(cls, chunk_id: str, hierarchy: ChunkHierarchy,
-        ) -> ChunkHierarchy:
+    def get_subtree(
+        cls,
+        chunk_id: str,
+        hierarchy: ChunkHierarchy,
+    ) -> ChunkHierarchy:
         """
         Extract a subtree rooted at the given chunk.
 
@@ -148,8 +150,9 @@ class HierarchyNavigator(HierarchyNavigatorInterface):
             A new ChunkHierarchy containing only the subtree
         """
         if chunk_id not in hierarchy.chunk_map:
-            return ChunkHierarchy(root_chunks=[], parent_map={},
-                children_map={}, chunk_map={})
+            return ChunkHierarchy(
+                root_chunks=[], parent_map={}, children_map={}, chunk_map={},
+            )
         subtree_chunks: set[str] = {chunk_id}
         queue = deque([chunk_id])
         while queue:
@@ -159,8 +162,7 @@ class HierarchyNavigator(HierarchyNavigatorInterface):
                     if child_id not in subtree_chunks:
                         subtree_chunks.add(child_id)
                         queue.append(child_id)
-        new_chunk_map = {cid: hierarchy.chunk_map[cid] for cid in
-            subtree_chunks}
+        new_chunk_map = {cid: hierarchy.chunk_map[cid] for cid in subtree_chunks}
         new_parent_map = {}
         new_children_map = {}
         for cid in subtree_chunks:
@@ -169,14 +171,23 @@ class HierarchyNavigator(HierarchyNavigatorInterface):
                 if parent_id in subtree_chunks:
                     new_parent_map[cid] = parent_id
             if cid in hierarchy.children_map:
-                children_in_subtree = [child_id for child_id in hierarchy.
-                    children_map[cid] if child_id in subtree_chunks]
+                children_in_subtree = [
+                    child_id
+                    for child_id in hierarchy.children_map[cid]
+                    if child_id in subtree_chunks
+                ]
                 if children_in_subtree:
                     new_children_map[cid] = children_in_subtree
-        return ChunkHierarchy(root_chunks=[chunk_id], parent_map=new_parent_map, children_map=new_children_map, chunk_map=new_chunk_map)
+        return ChunkHierarchy(
+            root_chunks=[chunk_id],
+            parent_map=new_parent_map,
+            children_map=new_children_map,
+            chunk_map=new_chunk_map,
+        )
 
-    def get_level_order_traversal(self, hierarchy: ChunkHierarchy) -> list[list
-        [CodeChunk]]:
+    def get_level_order_traversal(
+        self, hierarchy: ChunkHierarchy,
+    ) -> list[list[CodeChunk]]:
         """
         Get chunks organized by level (depth) in the hierarchy.
 
@@ -191,8 +202,11 @@ class HierarchyNavigator(HierarchyNavigatorInterface):
         levels: list[list[CodeChunk]] = []
         if not hierarchy.root_chunks:
             return levels
-        current_level = [hierarchy.chunk_map[root_id] for root_id in
-            hierarchy.root_chunks if root_id in hierarchy.chunk_map]
+        current_level = [
+            hierarchy.chunk_map[root_id]
+            for root_id in hierarchy.root_chunks
+            if root_id in hierarchy.chunk_map
+        ]
         while current_level:
             levels.append(current_level)
             next_level: list[CodeChunk] = []
@@ -202,8 +216,9 @@ class HierarchyNavigator(HierarchyNavigatorInterface):
             current_level = next_level
         return levels
 
-    def find_chunks_by_type(self, node_type: str, hierarchy: ChunkHierarchy,
-        subtree_root: (str | None) = None) -> list[CodeChunk]:
+    def find_chunks_by_type(
+        self, node_type: str, hierarchy: ChunkHierarchy, subtree_root: str | None = None,
+    ) -> list[CodeChunk]:
         """
         Find all chunks of a specific node type within the hierarchy.
 
@@ -220,7 +235,8 @@ class HierarchyNavigator(HierarchyNavigatorInterface):
             search_map = subtree.chunk_map
         else:
             search_map = hierarchy.chunk_map
-        matching_chunks = [chunk for chunk in search_map.values() if chunk.
-            node_type == node_type]
+        matching_chunks = [
+            chunk for chunk in search_map.values() if chunk.node_type == node_type
+        ]
         matching_chunks.sort(key=lambda c: (c.file_path, c.start_line))
         return matching_chunks

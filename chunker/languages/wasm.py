@@ -37,22 +37,11 @@ class WASMConfig(LanguageConfig):
         self.add_ignore_type("comment")
         self.add_ignore_type("block_comment")
 
-<<<<<<< HEAD
+
 
 # Register the WASM configuration
-=======
->>>>>>> origin/main
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from tree_sitter import Node
 
 
-<<<<<<< HEAD
-# Plugin implementation for backward compatibility
-=======
->>>>>>> origin/main
 class WASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
     """Plugin for WebAssembly Text Format language chunking."""
 

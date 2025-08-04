@@ -47,15 +47,14 @@ class RConfig(LanguageConfig):
         return any(child.type == "function_definition" for child in node.
             children)
 
-<<<<<<< HEAD
+
 
 # Register the R configuration
 
 
 # Plugin implementation for backward compatibility
-=======
 
->>>>>>> origin/main
+
 class RPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
     """Plugin for R language chunking."""
 

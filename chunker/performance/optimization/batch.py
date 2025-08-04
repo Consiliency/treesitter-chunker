@@ -90,7 +90,8 @@ class BatchProcessor(BatchProcessorInterface):
         if not batch_files:
             logger.info("No files to process")
             return {}
-<<<<<<< HEAD
+
+
 
         logger.info(
             "Processing batch of %d files (%s)",
@@ -99,15 +100,10 @@ class BatchProcessor(BatchProcessorInterface):
         )
 
         # Reset cancel event
-=======
-        logger.info("Processing batch of %s files (%s)", (len(batch_files),
-            "parallel" if parallel else "sequential"))
->>>>>>> origin/main
         self._cancel_event.clear()
         if parallel and len(batch_files) > 1:
             return self._process_parallel(batch_files)
         return self._process_sequential(batch_files)
-
     def pending_count(self) -> int:
         """Get number of files pending processing.
 

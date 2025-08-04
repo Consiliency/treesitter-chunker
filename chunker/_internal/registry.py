@@ -126,29 +126,18 @@ class LanguageRegistry:
                     "language_version": language_version})
                 self._languages[lang_name] = language, metadata
                 discovered[lang_name] = metadata
-<<<<<<< HEAD
+
+
 
                 logger.debug(
                     "Loaded language '%s' from symbol '%s'",
                     lang_name,
                     symbol_name,
                 )
-
             except AttributeError as e:
                 logger.warning("Failed to load symbol '%s': %s", symbol_name, e)
             except (IndexError, KeyError) as e:
                 logger.error("Error loading language '%s': %s", lang_name, e)
-
-=======
-                logger.debug("Loaded language '%s' from symbol '%s'" % (
-                    lang_name, symbol_name))
-            except AttributeError as e:
-                logger.warning("Failed to load symbol '%s': %s" % (
-                    symbol_name, e))
-            except (IndexError, KeyError) as e:
-                logger.error("Error loading language '%s': %s" % (lang_name, e),
-                    )
->>>>>>> origin/main
         self._discovered = True
         logger.info("Successfully loaded %s languages", len(discovered))
         return discovered

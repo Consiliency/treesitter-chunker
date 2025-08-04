@@ -1,9 +1,9 @@
 """Tests for LanguageRegistry component."""
+
 from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
-from chunker.registry import LanguageMetadata, LanguageRegistry
 from tree_sitter import Language
 
 from chunker._internal.registry import LanguageMetadata, LanguageRegistry
@@ -12,6 +12,7 @@ from chunker.exceptions import (
     LibraryLoadError,
     LibraryNotFoundError,
 )
+from chunker.registry import LanguageMetadata, LanguageRegistry
 
 
 class TestLanguageRegistry:
@@ -42,8 +43,9 @@ class TestLanguageRegistry:
         languages = registry.discover_languages()
         assert isinstance(languages, dict)
         assert len(languages) >= 5
-        assert all(lang in languages for lang in ["python", "javascript",
-            "c", "cpp", "rust"])
+        assert all(
+            lang in languages for lang in ["python", "javascript", "c", "cpp", "rust"]
+        )
         for lang_name, metadata in languages.items():
             assert isinstance(metadata, LanguageMetadata)
             assert metadata.name == lang_name

@@ -2,7 +2,6 @@
 from unittest.mock import patch
 
 import pytest
-from chunker.registry import LanguageMetadata
 from tree_sitter import Parser
 
 import chunker.parser
@@ -19,11 +18,8 @@ from chunker import (
 )
 from chunker._internal.registry import LanguageMetadata
 from chunker.exceptions import ParserConfigError
-<<<<<<< HEAD
-from chunker.parser import _factory, _initialize, get_parser
-=======
 from chunker.parser import _factory, _initialize
->>>>>>> origin/main
+
 
 
 class TestParserAPI:

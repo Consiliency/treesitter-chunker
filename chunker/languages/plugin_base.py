@@ -202,16 +202,11 @@ class LanguagePlugin(ABC):
                 f"Plugin {self.__class__.__name__} failed validation: {e}",
                 ) from e
         logger.debug(
-<<<<<<< HEAD
             "Plugin %s v%s validated successfully for language '%s'",
             self.__class__.__name__,
             self.plugin_version,
             self.language_name,
         )
-=======
-            "Plugin %s v%s validated successfully for language '%s'" % (
-            self.__class__.__name__, self.plugin_version, self.language_name))
->>>>>>> origin/main
 
     def _is_api_compatible(self) -> bool:
         """Check if plugin is compatible with current API version."""

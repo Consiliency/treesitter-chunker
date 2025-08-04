@@ -1,4 +1,5 @@
 """Tests for garbage collection tuning."""
+
 import gc
 import time
 from unittest.mock import Mock, patch
@@ -150,6 +151,7 @@ class TestMemoryOptimizer:
 
             def __init__(self):
                 self.data = {"test": "data"}
+
         obj = TestObject()
         ref = optimizer.use_weak_references(obj)
         assert ref() is obj
@@ -257,6 +259,7 @@ class TestObjectPool:
             def reset(self):
                 self.value = 0
                 self.reset_called = True
+
         pool = ObjectPool(ResettableObject, ResettableObject, max_size=5)
         obj = pool.acquire()
         obj.value = 42

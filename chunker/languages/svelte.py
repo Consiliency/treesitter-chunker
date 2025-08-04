@@ -42,22 +42,11 @@ class SvelteConfig(LanguageConfig):
         self.add_ignore_type("comment")
         self.add_ignore_type("text")
 
-<<<<<<< HEAD
+
 
 # Register the Svelte configuration
-=======
->>>>>>> origin/main
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from tree_sitter import Node
 
 
-<<<<<<< HEAD
-# Plugin implementation for backward compatibility
-=======
->>>>>>> origin/main
 class SveltePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
     """Plugin for Svelte component chunking."""
 

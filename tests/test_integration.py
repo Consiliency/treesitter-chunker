@@ -1,12 +1,11 @@
 """Integration tests for the parser module across all languages."""
+
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import pytest
-from chunker.factory import ParserFactory
-from chunker.registry import LanguageRegistry
 
 from chunker import (
     ParserConfig,
@@ -19,7 +18,9 @@ from chunker import (
 from chunker._internal.factory import ParserFactory
 from chunker._internal.registry import LanguageRegistry
 from chunker.exceptions import ParserConfigError
+from chunker.factory import ParserFactory
 from chunker.parser import _factory
+from chunker.registry import LanguageRegistry
 
 
 class TestAllLanguages:
@@ -35,8 +36,8 @@ class TestAllLanguages:
 
     def test_all_languages_parse(self):
         """Test that all languages can parse basic code."""
-        test_samples = {"python":
-            """
+        test_samples = {
+            "python": """
 def factorial(n: int) -> int:
     ""\"Calculate factorial of n.""\"
     if n <= 1:
@@ -46,9 +47,8 @@ def factorial(n: int) -> int:
 class Calculator:
     def add(self, a: int, b: int) -> int:
         return a + b
-"""
-            , "javascript":
-            """
+""",
+            "javascript": """
 function factorial(n) {
     if (n <= 1) return 1;
     return n * factorial(n - 1);
@@ -61,9 +61,8 @@ class Calculator {
 }
 
 const arrow = (x) => x * 2;
-"""
-            , "c":
-            """
+""",
+            "c": """
 #include <stdio.h>
 
 int factorial(int n) {
@@ -77,9 +76,8 @@ struct Point {
 };
 
 typedef struct Point Point;
-"""
-            , "cpp":
-            """
+""",
+            "cpp": """
 #include <iostream>
 #include <string>
 
@@ -100,9 +98,8 @@ namespace math {
         return (n <= 1) ? 1 : n * factorial(n - 1);
     }
 }
-"""
-            , "rust":
-            """
+""",
+            "rust": """
 fn factorial(n: u32) -> u32 {
     match n {
         0 | 1 => 1,
@@ -128,7 +125,7 @@ trait Compute {
     fn compute(&self) -> i32;
 }
 """,
-            }
+        }
         results = {}
         for lang, code in test_samples.items():
             try:
@@ -138,14 +135,18 @@ trait Compute {
                 assert root is not None
                 assert root.child_count > 0
                 has_error = self._has_error_node(root)
-                results[lang] = {"success": True, "node_count": self.
-                    _count_nodes(root), "has_error": has_error, "root_type":
-                    root.type}
+                results[lang] = {
+                    "success": True,
+                    "node_count": self._count_nodes(root),
+                    "has_error": has_error,
+                    "root_type": root.type,
+                }
             except (IndexError, KeyError, SyntaxError) as e:
                 results[lang] = {"success": False, "error": str(e)}
         for lang, result in results.items():
-            assert result["success"
-                ], f"{lang} failed: {result.get('error', 'Unknown error')}"
+            assert result[
+                "success"
+            ], f"{lang} failed: {result.get('error', 'Unknown error')}"
             assert not result["has_error"], f"{lang} has parsing errors"
             assert result["node_count"] > 10, f"{lang} parsed too few nodes"
 
@@ -187,10 +188,13 @@ class TestConcurrentParsing:
     @classmethod
     def test_concurrent_multi_language_parsing(cls):
         """Test parsing multiple languages concurrently."""
-        samples = {"python": "def test(): return 42", "javascript":
-            "function test() { return 42; }", "c":
-            "int test() { return 42; }", "cpp": "int test() { return 42; }",
-            "rust": "fn test() -> i32 { 42 }"}
+        samples = {
+            "python": "def test(): return 42",
+            "javascript": "function test() { return 42; }",
+            "c": "int test() { return 42; }",
+            "cpp": "int test() { return 42; }",
+            "rust": "fn test() -> i32 { 42 }",
+        }
 
         def parse_code(lang, code):
             """Parse code and return results."""
@@ -201,9 +205,12 @@ class TestConcurrentParsing:
                 return lang, True, tree.root_node.type
             except (OSError, SyntaxError) as e:
                 return lang, False, str(e)
+
         with ThreadPoolExecutor(max_workers=5) as executor:
-            futures = {executor.submit(parse_code, lang, code): lang for
-                lang, code in samples.items()}
+            futures = {
+                executor.submit(parse_code, lang, code): lang
+                for lang, code in samples.items()
+            }
             results = {}
             for future in as_completed(futures):
                 lang, success, data = future.result()
@@ -223,9 +230,7 @@ class TestConcurrentParsing:
 
         def worker(lang, thread_id):
             """Worker thread that repeatedly gets parsers and parses code."""
-            code = (
-                f"// Thread {thread_id}\nfunction test{thread_id}() {{ return {thread_id}; }}"
-                )
+            code = f"// Thread {thread_id}\nfunction test{thread_id}() {{ return {thread_id}; }}"
             try:
                 for _i in range(iterations):
                     parser = get_parser(lang)
@@ -237,6 +242,7 @@ class TestConcurrentParsing:
                     time.sleep(0.001)
             except (OSError, IndexError, KeyError) as e:
                 errors.append((lang, thread_id, str(e)))
+
         threads = []
         for lang in languages:
             for i in range(threads_per_language):
@@ -267,8 +273,11 @@ class TestParserConfiguration:
     @classmethod
     def test_invalid_configurations(cls):
         """Test that invalid configurations are rejected."""
-        invalid_configs = [ParserConfig(timeout_ms=-1), ParserConfig(
-            timeout_ms="not a number"), ParserConfig(included_ranges="not a list")]
+        invalid_configs = [
+            ParserConfig(timeout_ms=-1),
+            ParserConfig(timeout_ms="not a number"),
+            ParserConfig(included_ranges="not a list"),
+        ]
         for config in invalid_configs:
             with pytest.raises(ParserConfigError):
                 get_parser("python", config)
@@ -281,8 +290,13 @@ class TestMemoryEfficiency:
     def test_parser_reuse(cls):
         """Test that parsers are properly reused from cache/pool."""
         if _factory is None:
-            lib_path = Path(__file__,
-                ).parent.parent / "build" / "my-languages.so"
+            lib_path = (
+                Path(
+                    __file__,
+                ).parent.parent
+                / "build"
+                / "my-languages.so"
+            )
             test_registry = LanguageRegistry(lib_path)
             test_factory = ParserFactory(test_registry)
             initial_stats = test_factory.get_stats()
@@ -321,8 +335,9 @@ class TestMemoryEfficiency:
                 assert tree is not None
         final_stats = test_factory.get_stats()
         parsers_created = final_stats["total_parsers_created"] - initial_count
-        assert parsers_created == len(languages,
-            ), f"Cache not effective: created {parsers_created} parsers for {len(languages)} languages"
+        assert parsers_created == len(
+            languages,
+        ), f"Cache not effective: created {parsers_created} parsers for {len(languages)} languages"
 
 
 class TestErrorScenarios:
@@ -348,7 +363,8 @@ class Class_{i}:
         ""\"Method {i} docstring.""\"
         return f"Value: {{value}}\"
 """
-             for i in range(1000))
+            for i in range(1000)
+        )
         large_code = "\n".join(code_parts)
         parser = get_parser("python")
         start_time = time.time()
@@ -361,11 +377,13 @@ class Class_{i}:
     @staticmethod
     def test_malformed_code_handling():
         """Test handling of malformed code."""
-        malformed_samples = {"python":
-            'def incomplete_function(\n    print("unclosed', "javascript":
-            "function test() { return }", "c": "int main() { return }",
-            "cpp": "class Test { public: int get( };", "rust":
-            'fn test() -> { println!("incomplete'}
+        malformed_samples = {
+            "python": 'def incomplete_function(\n    print("unclosed',
+            "javascript": "function test() { return }",
+            "c": "int main() { return }",
+            "cpp": "class Test { public: int get( };",
+            "rust": 'fn test() -> { println!("incomplete',
+        }
         for lang, code in malformed_samples.items():
             parser = get_parser(lang)
             tree = parser.parse(bytes(code, "utf8"))

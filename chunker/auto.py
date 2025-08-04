@@ -9,14 +9,8 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-<<<<<<< HEAD
-from .chunker import (
-    chunk_file_with_token_limit,
-    chunk_text_with_token_limit,
-)
-=======
 from .chunker import chunk_file_with_token_limit, chunk_text_with_token_limit
->>>>>>> origin/main
+
 from .contracts.auto_contract import AutoChunkResult, ZeroConfigContract
 from .core import chunk_file, chunk_text
 from .exceptions import ChunkerError

@@ -42,11 +42,8 @@ class DartConfig(LanguageConfig):
         self.add_ignore_type("string_literal")
         self.add_ignore_type("number_literal")
 
-<<<<<<< HEAD
 
 # Register the Dart configuration
-=======
->>>>>>> origin/main
 
 from typing import TYPE_CHECKING
 
@@ -54,10 +51,9 @@ if TYPE_CHECKING:
     from tree_sitter import Node
 
 
-<<<<<<< HEAD
 # Plugin implementation for backward compatibility
-=======
->>>>>>> origin/main
+
+
 class DartPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
     """Plugin for Dart language chunking."""
 

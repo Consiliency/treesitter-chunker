@@ -273,15 +273,13 @@ class MarkdownProcessor(SpecializedProcessor):
                     chunks.append(chunk)
                 else:
                     logger.warning(
-<<<<<<< HEAD
                         "Failed to create chunk for atomic element: %s",
                         boundary_type,
                     )
 
                 # Reset for next chunk
-=======
-                        "Failed to create chunk for atomic element: %s", boundary_type)
->>>>>>> origin/main
+
+
                 current_chunk_segments = []
                 current_size = 0
             elif current_size + segment_size > self.config.chunk_size and current_chunk_segments:

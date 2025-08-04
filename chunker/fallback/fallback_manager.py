@@ -94,7 +94,8 @@ class FallbackManager:
         for chunk in chunks:
             if not chunk.file_path:
                 chunk.file_path = file_path
-<<<<<<< HEAD
+
+
 
         logger.info(
             "Created %d chunks for %s using %s strategy",
@@ -103,12 +104,7 @@ class FallbackManager:
             file_type.value,
         )
 
-=======
-        logger.info("Created %s chunks for %s using %s strategy", (len(
-            chunks), file_path, file_type.value))
->>>>>>> origin/main
         return chunks
-
     def _get_chunker(self, file_type: FileType) -> FallbackChunker:
         """Get or create chunker for file type.
 

@@ -40,12 +40,9 @@ class GitAwareProcessorImpl(GitAwareProcessor):
                 capture_output=True, text=True, check=True)
             return result.stdout.strip()
         except subprocess.CalledProcessError as e:
-<<<<<<< HEAD
+
+
             logger.debug("Git command failed: %s, error: %s", " ".join(cmd), e)
-=======
-            logger.debug("Git command failed: %s, error: %s", (" ".join(
-                cmd), e))
->>>>>>> origin/main
             return None
         except FileNotFoundError:
             logger.warning("Git not found in PATH")

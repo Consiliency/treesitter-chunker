@@ -43,7 +43,6 @@ class PluginRegistry:
             existing_instance = existing_class()
             existing_metadata = existing_instance.plugin_metadata
             logger.warning(
-<<<<<<< HEAD
                 "Overriding existing plugin for language '%s': %s v%s -> %s v%s",
                 language,
                 existing_metadata["name"],
@@ -68,37 +67,16 @@ class PluginRegistry:
                 language,
                 ", ".join(extension_conflicts),
             )
-
-=======
-                "Overriding existing plugin for language '%s': %s v%s -> %s v%s"
-                 % (language, existing_metadata["name"], existing_metadata[
-                "version"], metadata["name"], metadata["version"]))
-        extension_conflicts = [
-            f"{ext} (currently mapped to {self._extension_map[ext]})" for
-            ext in temp_instance.supported_extensions if ext in self.
-            _extension_map and self._extension_map[ext] != language]
-        if extension_conflicts:
-            logger.info(
-                "Plugin %s for language '%s' shares extensions with other languages: %s. Content-based detection will be used for .h files."
-                 % (metadata["name"], language, ", ".join(extension_conflicts)),
-                )
->>>>>>> origin/main
         self._plugins[language] = plugin_class
         for ext in temp_instance.supported_extensions:
             self._extension_map[ext] = language
         logger.info(
-<<<<<<< HEAD
             "Registered plugin %s v%s for language '%s' with extensions: %s",
             metadata["name"],
             metadata["version"],
             language,
             list(temp_instance.supported_extensions),
         )
-=======
-            "Registered plugin %s v%s for language '%s' with extensions: %s" %
-            (metadata["name"], metadata["version"], language, list(
-            temp_instance.supported_extensions)))
->>>>>>> origin/main
 
     def unregister(self, language: str) -> None:
         """Unregister a plugin."""
@@ -201,17 +179,12 @@ class PluginManager:
                         ) and obj is not LanguagePlugin and not inspect.isabstract(
                         obj):
                         plugins.append(obj)
-<<<<<<< HEAD
                         logger.info(
                             "Found plugin class: %s in %s",
                             obj.__name__,
                             file_path,
                         )
 
-=======
-                        logger.info("Found plugin class: %s in %s", obj.
-                            __name__, file_path)
->>>>>>> origin/main
                 return plugins
             except ImportError as e:
                 logger.error("Failed to import builtin plugin %s: %s",
@@ -305,15 +278,11 @@ class PluginManager:
                         file_path, language)
                 elif language:
                     logger.info(
-<<<<<<< HEAD
                         "Could not detect language for %s, defaulting to %s",
                         file_path,
                         language,
                     )
 
-=======
-                        "Could not detect language for %s, defaulting to %s", file_path, language)
->>>>>>> origin/main
             if not language:
                 raise ValueError(
                     f"Cannot determine language for file: {file_path}. Please specify language explicitly.",

@@ -38,22 +38,11 @@ class OCamlConfig(LanguageConfig):
         self.add_ignore_type("number")
         self.add_ignore_type("constructor")
 
-<<<<<<< HEAD
+
 
 # Register the OCaml configuration
-=======
->>>>>>> origin/main
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from tree_sitter import Node
 
 
-<<<<<<< HEAD
-# Plugin implementation for backward compatibility
-=======
->>>>>>> origin/main
 class OCamlPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
     """Plugin for OCaml language chunking."""
 

@@ -86,14 +86,11 @@ class TreeSitterGrammarValidator(GrammarValidator):
                 if (node_type in expected_types and node_type not in
                     found_types):
                     logger.warning(
-<<<<<<< HEAD
                         "Expected node type '%s' not found in test parse",
                         node_type,
                     )
-=======
-                        "Expected node type '%s' not found in test parse" %
-                        node_type)
->>>>>>> origin/main
+
+
                     missing.append(node_type)
             return missing
         except (IndexError, KeyError, SyntaxError) as e:

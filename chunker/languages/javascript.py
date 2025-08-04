@@ -29,10 +29,7 @@ class JavaScriptConfig(LanguageConfig):
         self.add_ignore_type("template_string")
 
 
-<<<<<<< HEAD
 # Register the JavaScript configuration
-=======
->>>>>>> origin/main
 from .base import language_config_registry
 
 javascript_config = JavaScriptConfig()

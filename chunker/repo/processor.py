@@ -1,4 +1,5 @@
 """Repository processor implementation with Git awareness."""
+
 import json
 import os
 import time
@@ -21,8 +22,13 @@ from .chunker_adapter import Chunker
 class RepoProcessor(RepoProcessorInterface):
     """Process entire repositories efficiently."""
 
-    def __init__(self, chunker: (Chunker | None) = None, max_workers: int = 4,
-        show_progress: bool = True, traversal_strategy: str = "depth-first"):
+    def __init__(
+        self,
+        chunker: Chunker | None = None,
+        max_workers: int = 4,
+        show_progress: bool = True,
+        traversal_strategy: str = "depth-first",
+    ):
         """
         Initialize repository processor.
 
@@ -51,16 +57,33 @@ class RepoProcessor(RepoProcessorInterface):
     @staticmethod
     def _build_language_extension_map() -> dict[str, str]:
         """Build map of file extensions to language names."""
-        extension_map = {".py": "python", ".js": "javascript", ".jsx":
-            "javascript", ".ts": "javascript", ".tsx": "javascript", ".c":
-            "c", ".h": "c", ".cpp": "cpp", ".cc": "cpp", ".cxx": "cpp",
-            ".hpp": "cpp", ".hxx": "cpp", ".rs": "rust", ".go": "go",
-            ".java": "java", ".rb": "ruby"}
+        extension_map = {
+            ".py": "python",
+            ".js": "javascript",
+            ".jsx": "javascript",
+            ".ts": "javascript",
+            ".tsx": "javascript",
+            ".c": "c",
+            ".h": "c",
+            ".cpp": "cpp",
+            ".cc": "cpp",
+            ".cxx": "cpp",
+            ".hpp": "cpp",
+            ".hxx": "cpp",
+            ".rs": "rust",
+            ".go": "go",
+            ".java": "java",
+            ".rb": "ruby",
+        }
         return extension_map
 
-    def process_repository(self, repo_path: str, incremental: bool = True,
-        file_pattern: (str | None) = None, exclude_patterns: (list[str] |
-        None) = None) -> RepoChunkResult:
+    def process_repository(
+        self,
+        repo_path: str,
+        incremental: bool = True,
+        file_pattern: str | None = None,
+        exclude_patterns: list[str] | None = None,
+    ) -> RepoChunkResult:
         """
         Process all files in a repository.
 
@@ -77,16 +100,17 @@ class RepoProcessor(RepoProcessorInterface):
         repo_path = Path(repo_path).resolve()
         if not repo_path.exists():
             raise ChunkerError(f"Repository path does not exist: {repo_path}")
-        files_to_process = self.get_processable_files(str(repo_path),
-            file_pattern, exclude_patterns)
+        files_to_process = self.get_processable_files(
+            str(repo_path), file_pattern, exclude_patterns,
+        )
         if incremental and hasattr(self, "get_changed_files"):
             state = self.load_incremental_state(str(repo_path))
             if state and "last_commit" in state:
-                changed_files = self.get_changed_files(str(repo_path),
-                    since_commit=state["last_commit"])
+                changed_files = self.get_changed_files(
+                    str(repo_path), since_commit=state["last_commit"],
+                )
                 changed_paths = {(repo_path / f) for f in changed_files}
-                files_to_process = [f for f in files_to_process if f in
-                    changed_paths]
+                files_to_process = [f for f in files_to_process if f in changed_paths]
         file_results = []
         errors = {}
         skipped_files = []
@@ -96,9 +120,12 @@ class RepoProcessor(RepoProcessorInterface):
             progress_bar = tqdm(total=len(files_to_process), desc="Processing files")
         try:
             with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                future_to_file = {executor.submit(self._process_single_file,
-                    file_path, repo_path): file_path for file_path in
-                    files_to_process}
+                future_to_file = {
+                    executor.submit(
+                        self._process_single_file, file_path, repo_path,
+                    ): file_path
+                    for file_path in files_to_process
+                }
                 for future in as_completed(future_to_file):
                     file_path = future_to_file[future]
                     try:
@@ -121,23 +148,37 @@ class RepoProcessor(RepoProcessorInterface):
         if incremental and hasattr(self, "save_incremental_state"):
             try:
                 repo = self.git.Repo(repo_path)
-                state = {"last_commit": repo.head.commit.hexsha,
+                state = {
+                    "last_commit": repo.head.commit.hexsha,
                     "processed_at": datetime.now().isoformat(),
-                    "total_files": len(file_results), "total_chunks":
-                    total_chunks}
+                    "total_files": len(file_results),
+                    "total_chunks": total_chunks,
+                }
                 self.save_incremental_state(str(repo_path), state)
             except (AttributeError, FileNotFoundError, OSError):
                 pass
         processing_time = time.time() - start_time
-        return RepoChunkResult(repo_path=str(repo_path), file_results=file_results, total_chunks=total_chunks, total_files=len(
-            files_to_process), skipped_files=skipped_files, errors=errors,
-            processing_time=processing_time, metadata={"traversal_strategy":
-            self.traversal_strategy, "max_workers": self.max_workers,
-            "incremental": incremental})
+        return RepoChunkResult(
+            repo_path=str(repo_path),
+            file_results=file_results,
+            total_chunks=total_chunks,
+            total_files=len(files_to_process),
+            skipped_files=skipped_files,
+            errors=errors,
+            processing_time=processing_time,
+            metadata={
+                "traversal_strategy": self.traversal_strategy,
+                "max_workers": self.max_workers,
+                "incremental": incremental,
+            },
+        )
 
-    def process_files_iterator(self, repo_path: str, file_pattern: (str |
-        None) = None, exclude_patterns: (list[str] | None) = None) -> Iterator[
-        FileChunkResult]:
+    def process_files_iterator(
+        self,
+        repo_path: str,
+        file_pattern: str | None = None,
+        exclude_patterns: list[str] | None = None,
+    ) -> Iterator[FileChunkResult]:
         """
         Process repository files as an iterator for memory efficiency.
 
@@ -150,8 +191,9 @@ class RepoProcessor(RepoProcessorInterface):
             File processing results one at a time
         """
         repo_path = Path(repo_path).resolve()
-        files_to_process = self.get_processable_files(str(repo_path),
-            file_pattern, exclude_patterns)
+        files_to_process = self.get_processable_files(
+            str(repo_path), file_pattern, exclude_patterns,
+        )
         for file_path in files_to_process:
             result = self._process_single_file(file_path, repo_path)
             if result:
@@ -184,8 +226,12 @@ class RepoProcessor(RepoProcessorInterface):
         file_overhead = len(files) * 0.1
         return base_time + file_overhead
 
-    def get_processable_files(self, repo_path: str, file_pattern: (str |
-        None) = None, exclude_patterns: (list[str] | None) = None) -> list[Path]:
+    def get_processable_files(
+        self,
+        repo_path: str,
+        file_pattern: str | None = None,
+        exclude_patterns: list[str] | None = None,
+    ) -> list[Path]:
         """
         Get list of files that would be processed.
 
@@ -198,16 +244,32 @@ class RepoProcessor(RepoProcessorInterface):
             List of file paths
         """
         repo_path = Path(repo_path).resolve()
-        default_excludes = ["__pycache__", "*.pyc", ".git", ".svn", ".hg",
-            "node_modules", "venv", ".venv", "env", ".env", "*.egg-info",
-            "dist", "build", ".idea", ".vscode", "*.so", "*.dylib", "*.dll",
-            "*.exe"]
+        default_excludes = [
+            "__pycache__",
+            "*.pyc",
+            ".git",
+            ".svn",
+            ".hg",
+            "node_modules",
+            "venv",
+            ".venv",
+            "env",
+            ".env",
+            "*.egg-info",
+            "dist",
+            "build",
+            ".idea",
+            ".vscode",
+            "*.so",
+            "*.dylib",
+            "*.dll",
+            "*.exe",
+        ]
         if exclude_patterns:
             all_excludes = default_excludes + exclude_patterns
         else:
             all_excludes = default_excludes
-        exclude_spec = pathspec.PathSpec.from_lines("gitwildmatch",
-            all_excludes)
+        exclude_spec = pathspec.PathSpec.from_lines("gitwildmatch", all_excludes)
         files = []
         if self.traversal_strategy == "breadth-first":
             dirs_to_process = [repo_path]
@@ -216,14 +278,15 @@ class RepoProcessor(RepoProcessorInterface):
                 try:
                     for item in current_dir.iterdir():
                         if item.is_dir():
-                            if not exclude_spec.match_file(str(item.
-                                relative_to(repo_path))):
+                            if not exclude_spec.match_file(
+                                str(item.relative_to(repo_path)),
+                            ):
                                 dirs_to_process.append(item)
                         elif item.is_file():
                             rel_path = item.relative_to(repo_path)
-                            if not exclude_spec.match_file(str(rel_path),
-                                ) and self._should_process_file(item,
-                                file_pattern):
+                            if not exclude_spec.match_file(
+                                str(rel_path),
+                            ) and self._should_process_file(item, file_pattern):
                                 files.append(item)
                 except PermissionError:
                     pass
@@ -231,27 +294,35 @@ class RepoProcessor(RepoProcessorInterface):
             for root, dirs, filenames in os.walk(repo_path):
                 root_path = Path(root)
                 rel_root = root_path.relative_to(repo_path)
-                dirs[:] = [d for d in dirs if not exclude_spec.match_file(
-                    str(rel_root / d))]
+                dirs[:] = [
+                    d for d in dirs if not exclude_spec.match_file(str(rel_root / d))
+                ]
                 for filename in filenames:
                     file_path = root_path / filename
                     rel_path = file_path.relative_to(repo_path)
-                    if not exclude_spec.match_file(str(rel_path),
-                        ) and self._should_process_file(file_path, file_pattern,
-                        ):
+                    if not exclude_spec.match_file(
+                        str(rel_path),
+                    ) and self._should_process_file(
+                        file_path,
+                        file_pattern,
+                    ):
                         files.append(file_path)
         return sorted(files)
 
-    def _should_process_file(self, file_path: Path, file_pattern: (str | None),
-        ) -> bool:
+    def _should_process_file(
+        self,
+        file_path: Path,
+        file_pattern: str | None,
+    ) -> bool:
         """Check if file should be processed based on extension and pattern."""
         if file_pattern and not file_path.match(file_pattern):
             return False
         ext = file_path.suffix.lower()
         return ext in self._language_extensions
 
-    def _process_single_file(self, file_path: Path, repo_path: Path) -> (
-        FileChunkResult | None):
+    def _process_single_file(
+        self, file_path: Path, repo_path: Path,
+    ) -> FileChunkResult | None:
         """Process a single file and return results."""
         start_time = time.time()
         rel_path = file_path.relative_to(repo_path)
@@ -270,20 +341,30 @@ class RepoProcessor(RepoProcessorInterface):
                     except (OSError, FileNotFoundError, IndexError):
                         continue
                 else:
-                    return FileChunkResult(file_path=str(rel_path), chunks=[], error=ChunkerError(
-                        f"Unable to decode file: {rel_path}"),
-                        processing_time=time.time() - start_time)
+                    return FileChunkResult(
+                        file_path=str(rel_path),
+                        chunks=[],
+                        error=ChunkerError(f"Unable to decode file: {rel_path}"),
+                        processing_time=time.time() - start_time,
+                    )
             chunks = self.chunker.chunk(content, language=language)
             for chunk in chunks:
                 if not chunk.metadata:
                     chunk.metadata = {}
                 chunk.metadata["file_path"] = str(rel_path)
                 chunk.metadata["repo_path"] = str(repo_path)
-            return FileChunkResult(file_path=str(rel_path), chunks=chunks,
-                processing_time=time.time() - start_time)
+            return FileChunkResult(
+                file_path=str(rel_path),
+                chunks=chunks,
+                processing_time=time.time() - start_time,
+            )
         except (FileNotFoundError, IndexError, KeyError) as e:
-            return FileChunkResult(file_path=str(rel_path), chunks=[],
-                error=e, processing_time=time.time() - start_time)
+            return FileChunkResult(
+                file_path=str(rel_path),
+                chunks=[],
+                error=e,
+                processing_time=time.time() - start_time,
+            )
 
 
 class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
@@ -294,8 +375,9 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
         super().__init__(*args, **kwargs)
         self._incremental_state_file = ".chunker_state.json"
 
-    def get_changed_files(self, repo_path: str, since_commit: (str | None) =
-        None, branch: (str | None) = None) -> list[str]:
+    def get_changed_files(
+        self, repo_path: str, since_commit: str | None = None, branch: str | None = None,
+    ) -> list[str]:
         """
         Get files changed since a commit or between branches.
 
@@ -324,8 +406,9 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
                     changed_files.append(path)
             return changed_files
         except self.git.InvalidGitRepositoryError:
-            raise ChunkerError(f"Not a valid git repository: {repo_path}",
-                ) from e
+            raise ChunkerError(
+                f"Not a valid git repository: {repo_path}",
+            ) from e
         except self.git.GitCommandError as e:
             raise ChunkerError(f"Git error: {e}") from e
 
@@ -357,8 +440,12 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
         except (FileNotFoundError, IndexError, KeyError):
             return True
 
-    def get_file_history(self, file_path: str, repo_path: str, limit: int = 10,
-        ) -> list[dict[str, Any]]:
+    def get_file_history(
+        self,
+        file_path: str,
+        repo_path: str,
+        limit: int = 10,
+    ) -> list[dict[str, Any]]:
         """
         Get commit history for a file.
 
@@ -374,9 +461,15 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
             repo = self.git.Repo(repo_path)
             rel_path = Path(file_path).relative_to(repo_path)
             commits = list(repo.iter_commits(paths=str(rel_path), max_count=limit))
-            history = [{"hash": commit.hexsha, "author": str(commit.author),
-                "date": commit.committed_datetime.isoformat(), "message":
-                commit.message.strip()} for commit in commits]
+            history = [
+                {
+                    "hash": commit.hexsha,
+                    "author": str(commit.author),
+                    "date": commit.committed_datetime.isoformat(),
+                    "message": commit.message.strip(),
+                }
+                for commit in commits
+            ]
             return history
         except (FileNotFoundError, IndexError, KeyError) as e:
             raise ChunkerError(f"Error getting file history: {e}") from e
@@ -404,8 +497,7 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
                 pass
         try:
             repo = self.git.Repo(repo_path)
-            excludes_file = repo.config_reader().get_value("core",
-                "excludesfile", None)
+            excludes_file = repo.config_reader().get_value("core", "excludesfile", None)
             if excludes_file:
                 excludes_path = Path(excludes_file).expanduser()
                 if excludes_path.exists():
@@ -418,8 +510,11 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
             pass
         return patterns
 
-    def save_incremental_state(self, repo_path: str, state: dict[str, Any],
-        ) -> None:
+    def save_incremental_state(
+        self,
+        repo_path: str,
+        state: dict[str, Any],
+    ) -> None:
         """
         Save incremental processing state.
 
@@ -434,7 +529,7 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
         except (OSError, FileNotFoundError, IndexError):
             pass
 
-    def load_incremental_state(self, repo_path: str) -> (dict[str, Any] | None):
+    def load_incremental_state(self, repo_path: str) -> dict[str, Any] | None:
         """
         Load incremental processing state.
 
@@ -453,8 +548,12 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
                 pass
         return None
 
-    def get_processable_files(self, repo_path: str, file_pattern: (str |
-        None) = None, exclude_patterns: (list[str] | None) = None) -> list[Path]:
+    def get_processable_files(
+        self,
+        repo_path: str,
+        file_pattern: str | None = None,
+        exclude_patterns: list[str] | None = None,
+    ) -> list[Path]:
         """
         Override to use gitignore patterns.
 
@@ -466,20 +565,20 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
         Returns:
             List of file paths
         """
-        files = super().get_processable_files(repo_path, file_pattern,
-            exclude_patterns)
+        files = super().get_processable_files(repo_path, file_pattern, exclude_patterns)
         try:
             git.Repo(repo_path)
             gitignore_patterns = self.load_gitignore_patterns(repo_path)
             if gitignore_patterns:
-                gitignore_spec = pathspec.PathSpec.from_lines("gitwildmatch",
-                    gitignore_patterns)
+                gitignore_spec = pathspec.PathSpec.from_lines(
+                    "gitwildmatch", gitignore_patterns,
+                )
                 filtered_files = []
                 for file_path in files:
                     rel_path = file_path.relative_to(repo_path)
-                    if not gitignore_spec.match_file(str(rel_path),
-                        ) and self.should_process_file(str(file_path),
-                        repo_path):
+                    if not gitignore_spec.match_file(
+                        str(rel_path),
+                    ) and self.should_process_file(str(file_path), repo_path):
                         filtered_files.append(file_path)
                 return filtered_files
         except (FileNotFoundError, IndexError, KeyError):

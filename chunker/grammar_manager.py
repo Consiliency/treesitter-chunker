@@ -79,26 +79,19 @@ class GrammarManager(GrammarManagerContract):
             } or "github.com" not in parsed.netloc:
             raise GrammarManagerError(f"Invalid GitHub URL: {repo_url}")
         if language in self._grammar_sources:
-<<<<<<< HEAD
+
+
             logger.warning(
                 "Language '%s' already exists with URL: %s",
                 language,
                 self._grammar_sources[language],
             )
-=======
-            logger.warning("Language '%s' already exists with URL: %s" % (
-                language, self._grammar_sources[language]))
->>>>>>> origin/main
             return False
         with self._lock:
             self._grammar_sources[language] = repo_url
             self._save_config()
-<<<<<<< HEAD
 
         logger.info("Added grammar source for '%s': %s", language, repo_url)
-=======
-        logger.info("Added grammar source for '%s': %s" % (language, repo_url))
->>>>>>> origin/main
         return True
 
     def fetch_grammars(self, languages: (list[str] | None) = None) -> dict[str,
@@ -208,7 +201,6 @@ class GrammarManager(GrammarManagerContract):
             cmd.extend(["-I", inc])
         cmd += ["-o", str(self._lib_path), *c_files]
         try:
-<<<<<<< HEAD
             logger.info(
                 "Compiling %d C files from %d languages",
                 len(c_files),
@@ -220,12 +212,6 @@ class GrammarManager(GrammarManagerContract):
                 len(cmd),
             )
 
-=======
-            logger.info("Compiling %s C files from %s languages", (len(
-                c_files), len(languages_to_compile)))
-            logger.debug("Compilation command: %s... (%s args total)", (
-                " ".join(cmd[:10]), len(cmd)))
->>>>>>> origin/main
             subprocess.run(cmd, capture_output=True, text=True, check=True)
             logger.info("✅ Successfully compiled to %s", self._lib_path)
             return results

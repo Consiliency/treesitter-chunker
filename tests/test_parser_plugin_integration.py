@@ -27,14 +27,11 @@ from unittest.mock import Mock, patch
 import psutil
 import pytest
 import tree_sitter
-<<<<<<< HEAD
+
 
 from chunker._internal.factory import ParserFactory
 from chunker._internal.registry import LanguageRegistry
-=======
-from chunker.factory import ParserFactory
-from chunker.registry import LanguageRegistry
->>>>>>> origin/main
+
 
 
 class MockDynamicParser:

@@ -89,16 +89,14 @@ def merge_processors(p1: DataProcessor, p2: DataProcessor) -> DataProcessor:
         assert len(hierarchy.root_chunks,
             ) > 0, "Should have root chunks in hierarchy"
         assert len(hierarchy.chunk_map) > 0, "Should have chunks in hierarchy"
-<<<<<<< HEAD
+
+
 
         # Check that chunks in hierarchy have token metadata
-=======
->>>>>>> origin/main
         for chunk in hierarchy.chunk_map.values():
             assert hasattr(chunk, "metadata")
             assert "tokens" in chunk.metadata
             assert chunk.metadata["tokens"] > 0
-
     @classmethod
     def test_token_aware_chunking(cls, tmp_path):
         """Test token-aware chunking that respects token limits."""
@@ -150,7 +148,6 @@ def process_data(items):
         'success': len(results),
         'failed': len(errors)
     }
-<<<<<<< HEAD
 ''',
         )
 
@@ -158,11 +155,6 @@ def process_data(items):
         chunk_file(large_file, "python")
 
         # Create token-aware chunker
-=======
-""",
-            )
-        chunk_file(large_file, "python")
->>>>>>> origin/main
         from chunker.token.chunker import TreeSitterTokenAwareChunker
 
         token_chunker = TreeSitterTokenAwareChunker()
@@ -171,14 +163,9 @@ def process_data(items):
         for chunk in token_limited_chunks:
             assert hasattr(chunk, "metadata")
             assert "token_count" in chunk.metadata
-<<<<<<< HEAD
             assert (
                 chunk.metadata["token_count"] <= 100
             ), f"Token count {chunk.metadata['token_count']} exceeds limit"
-=======
-            assert chunk.metadata["token_count"
-                ] <= 100, f"Token count {chunk.metadata['token_count']} exceeds limit"
->>>>>>> origin/main
 
     @staticmethod
     def test_hierarchy_with_parent_child_tokens(tmp_path):
@@ -220,7 +207,6 @@ class OuterClass:
             def __init__(self, chunk):
                 self.chunk = chunk
                 self.children = []
-<<<<<<< HEAD
 
         # Build tree structure from hierarchy
         nodes = {}
@@ -228,25 +214,15 @@ class OuterClass:
             nodes[chunk_id] = TreeNode(chunk)
 
         # Connect children
-=======
-        nodes = {}
-        for chunk_id, chunk in hierarchy.chunk_map.items():
-            nodes[chunk_id] = TreeNode(chunk)
->>>>>>> origin/main
         for parent_id, child_ids in hierarchy.children_map.items():
             parent_node = nodes[parent_id]
             for child_id in child_ids:
                 parent_node.children.append(nodes[child_id])
-<<<<<<< HEAD
 
         # Get root nodes
         root_nodes = [nodes[chunk_id] for chunk_id in hierarchy.root_chunks]
 
         # Verify parent-child token relationships
-=======
-        root_nodes = [nodes[chunk_id] for chunk_id in hierarchy.root_chunks]
-
->>>>>>> origin/main
         def check_parent_child_tokens(node):
             parent_tokens = node.chunk.metadata.get("tokens", 0)
             if node.children:

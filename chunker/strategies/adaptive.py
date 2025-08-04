@@ -132,7 +132,8 @@ class AdaptiveChunker(ChunkingStrategy):
                 parent_context, metrics)
             chunks.append(chunk)
             parent_context = f"{node.type}: {chunk.metadata.get('name', '')}"
-<<<<<<< HEAD
+
+
 
             # If preserve_boundaries is True and this is a natural boundary,
             # don't create additional chunks for its children
@@ -140,10 +141,6 @@ class AdaptiveChunker(ChunkingStrategy):
                 self.config.get("preserve_boundaries", True)
                 and node.type in self.natural_boundaries
             ):
-=======
-            if self.config.get("preserve_boundaries", True,
-                ) and node.type in self.natural_boundaries:
->>>>>>> origin/main
                 return
             remaining_size = ideal_size - line_count
             if remaining_size > self.config["min_chunk_size"]:

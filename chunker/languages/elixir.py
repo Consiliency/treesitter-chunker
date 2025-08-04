@@ -41,22 +41,11 @@ class ElixirConfig(LanguageConfig):
         self.add_ignore_type("string")
         self.add_ignore_type("atom")
 
-<<<<<<< HEAD
+
 
 # Register the Elixir configuration
-=======
->>>>>>> origin/main
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from tree_sitter import Node
 
 
-<<<<<<< HEAD
-# Plugin implementation for backward compatibility
-=======
->>>>>>> origin/main
 class ElixirPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
     """Plugin for Elixir language chunking."""
 

@@ -40,22 +40,11 @@ class HaskellConfig(LanguageConfig):
         self.add_ignore_type("string")
         self.add_ignore_type("integer")
 
-<<<<<<< HEAD
+
 
 # Register the Haskell configuration
-=======
->>>>>>> origin/main
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from tree_sitter import Node
 
 
-<<<<<<< HEAD
-# Plugin implementation for backward compatibility
-=======
->>>>>>> origin/main
 class HaskellPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
     """Plugin for Haskell language chunking."""
 
