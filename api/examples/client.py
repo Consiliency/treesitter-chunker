@@ -10,12 +10,9 @@ from typing import Any
 
 import requests
 
-<<<<<<< HEAD
-=======
 # Default timeout for all requests (in seconds)
 DEFAULT_TIMEOUT = 30
 
->>>>>>> origin/main
 
 class ChunkerClient:
     """Simple client for the Tree-sitter Chunker API."""
@@ -44,14 +41,7 @@ class ChunkerClient:
         chunk_types: list[str] | None = None,
     ) -> dict[str, Any]:
         """Chunk source code text."""
-<<<<<<< HEAD
-        payload = {
-            "content": content,
-            "language": language,
-        }
-=======
         payload = {"content": content, "language": language}
->>>>>>> origin/main
 
         if min_chunk_size is not None:
             payload["min_chunk_size"] = min_chunk_size
@@ -63,10 +53,7 @@ class ChunkerClient:
         response = requests.post(
             f"{self.base_url}/chunk/text",
             json=payload,
-<<<<<<< HEAD
-=======
             timeout=DEFAULT_TIMEOUT,
->>>>>>> origin/main
         )
         response.raise_for_status()
         return response.json()
@@ -80,13 +67,7 @@ class ChunkerClient:
         chunk_types: list[str] | None = None,
     ) -> dict[str, Any]:
         """Chunk a source code file."""
-<<<<<<< HEAD
-        payload = {
-            "file_path": file_path,
-        }
-=======
         payload = {"file_path": file_path}
->>>>>>> origin/main
 
         if language:
             payload["language"] = language
@@ -100,10 +81,7 @@ class ChunkerClient:
         response = requests.post(
             f"{self.base_url}/chunk/file",
             json=payload,
-<<<<<<< HEAD
-=======
             timeout=DEFAULT_TIMEOUT,
->>>>>>> origin/main
         )
         response.raise_for_status()
         return response.json()

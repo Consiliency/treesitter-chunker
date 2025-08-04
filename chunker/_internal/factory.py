@@ -1,4 +1,5 @@
 """Parser factory with caching and pooling for efficient parser management."""
+
 from __future__ import annotations
 
 import logging
@@ -21,20 +22,27 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ParserConfig:
     """Configuration options for parser instances."""
+
     timeout_ms: int | None = None
     included_ranges: list[Range] | None = None
     logger: logging.Logger | None = None
 
     def validate(self):
         """Validate configuration values."""
-        if self.timeout_ms is not None and (not isinstance(self.timeout_ms,
-            int) or self.timeout_ms < 0):
-            raise ParserConfigError("timeout_ms", self.timeout_ms,
-                "Must be a non-negative integer")
-        if self.included_ranges is not None and not isinstance(self.
-            included_ranges, list):
-            raise ParserConfigError("included_ranges", self.included_ranges,
-                "Must be a list of Range objects")
+        if self.timeout_ms is not None and (
+            not isinstance(self.timeout_ms, int) or self.timeout_ms < 0
+        ):
+            raise ParserConfigError(
+                "timeout_ms", self.timeout_ms, "Must be a non-negative integer"
+            )
+        if self.included_ranges is not None and not isinstance(
+            self.included_ranges, list
+        ):
+            raise ParserConfigError(
+                "included_ranges",
+                self.included_ranges,
+                "Must be a list of Range objects",
+            )
 
 
 class LRUCache:
@@ -45,7 +53,7 @@ class LRUCache:
         self.cache: OrderedDict[str, Parser] = OrderedDict()
         self.lock = threading.RLock()
 
-    def get(self, key: str) -> (Parser | None):
+    def get(self, key: str) -> Parser | None:
         """Get item from cache, updating access order."""
         with self.lock:
             if key not in self.cache:
@@ -79,7 +87,7 @@ class ParserPool:
         self.created_count = 0
         self.lock = threading.RLock()
 
-    def get(self, _timeout: (float | None) = None) -> (Parser | None):
+    def get(self, _timeout: float | None = None) -> Parser | None:
         """Get a parser from the pool."""
         try:
             return self.pool.get(block=False)
@@ -102,8 +110,9 @@ class ParserPool:
 class ParserFactory:
     """Factory for creating and managing parser instances with caching and pooling."""
 
-    def __init__(self, registry: LanguageRegistry, cache_size: int = 10,
-        pool_size: int = 5):
+    def __init__(
+        self, registry: LanguageRegistry, cache_size: int = 10, pool_size: int = 5
+    ):
         """Initialize the parser factory.
 
         Args:
@@ -118,14 +127,10 @@ class ParserFactory:
         self._lock = threading.RLock()
         self._parser_count = 0
         logger.info(
-<<<<<<< HEAD
             "Initialized ParserFactory with cache_size=%d, pool_size=%d",
             cache_size,
             pool_size,
         )
-=======
-            "Initialized ParserFactory with cache_size=%s, pool_size=%s", cache_size, pool_size)
->>>>>>> origin/main
 
     def _create_parser(self, language: str) -> Parser:
         """Create a new parser instance for the language."""
@@ -134,28 +139,23 @@ class ParserFactory:
             parser = Parser()
             parser.language = lang
             self._parser_count += 1
-<<<<<<< HEAD
             logger.debug(
                 "Created new parser for '%s' (total: %d)",
                 language,
                 self._parser_count,
             )
-
-=======
-            logger.debug("Created new parser for '%s' (total: %s)" % (
-                language, self._parser_count))
->>>>>>> origin/main
             return parser
         except ValueError as e:
             if "Incompatible Language version" in str(e):
                 match = re.search(
-                    r"version (\\d+)\\. Must be between (\\d+) and (\\d+)",
-                    str(e))
+                    r"version (\\d+)\\. Must be between (\\d+) and (\\d+)", str(e)
+                )
                 if match:
                     grammar_ver, min_ver, max_ver = match.groups()
-                    raise ParserInitError(language,
+                    raise ParserInitError(
+                        language,
                         f"Grammar compiled with language version {grammar_ver}, but tree-sitter library supports versions {min_ver}-{max_ver}. Consider updating tree-sitter library or recompiling grammars.",
-                        ) from e
+                    ) from e
             raise ParserInitError(language, str(e)) from e
         except (IndexError, KeyError, SyntaxError, Exception) as e:
             raise ParserInitError(language, str(e)) from e
@@ -177,8 +177,11 @@ class ParserFactory:
         if config.logger is not None:
             pass
 
-    def get_parser(self, language: str, config: (ParserConfig | None) = None,
-        ) -> Parser:
+    def get_parser(
+        self,
+        language: str,
+        config: ParserConfig | None = None,
+    ) -> Parser:
         """Get or create a parser for the language.
 
         Args:
@@ -205,20 +208,12 @@ class ParserFactory:
             return parser
         parser = self._cache.get(cache_key)
         if parser:
-<<<<<<< HEAD
             logger.debug("Retrieved parser for '%s' from cache", language)
-=======
-            logger.debug("Retrieved parser for '%s' from cache" % language)
->>>>>>> origin/main
             return parser
         pool = self._get_pool(language)
         parser = pool.get()
         if parser:
-<<<<<<< HEAD
             logger.debug("Retrieved parser for '%s' from pool", language)
-=======
-            logger.debug("Retrieved parser for '%s' from pool" % language)
->>>>>>> origin/main
             self._cache.put(cache_key, parser)
             return parser
         parser = self._create_parser(language)
@@ -236,15 +231,9 @@ class ParserFactory:
         """
         pool = self._get_pool(language)
         if pool.put(parser):
-<<<<<<< HEAD
             logger.debug("Returned parser for '%s' to pool", language)
         else:
             logger.debug("Pool for '%s' is full, parser discarded", language)
-=======
-            logger.debug("Returned parser for '%s' to pool" % language)
-        else:
-            logger.debug("Pool for '%s' is full, parser discarded" % language)
->>>>>>> origin/main
 
     def clear_cache(self) -> None:
         """Clear the parser cache."""
@@ -258,7 +247,12 @@ class ParserFactory:
             Dictionary with stats about parsers, cache, and pools
         """
         with self._lock:
-            pool_stats = {lang: {"size": pool.size(), "created": pool.
-                created_count} for lang, pool in self._pools.items()}
-            return {"total_parsers_created": self._parser_count,
-                "cache_size": len(self._cache.cache), "pools": pool_stats}
+            pool_stats = {
+                lang: {"size": pool.size(), "created": pool.created_count}
+                for lang, pool in self._pools.items()
+            }
+            return {
+                "total_parsers_created": self._parser_count,
+                "cache_size": len(self._cache.cache),
+                "pools": pool_stats,
+            }
