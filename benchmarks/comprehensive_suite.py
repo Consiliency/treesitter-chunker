@@ -2,6 +2,7 @@
 
 This module provides extensive benchmarking across different scenarios.
 """
+
 import gc
 import json
 import multiprocessing
@@ -35,6 +36,7 @@ from chunker.strategies import (
 @dataclass
 class BenchmarkScenario:
     """Defines a benchmark scenario."""
+
     name: str
     description: str
     setup: callable
@@ -48,7 +50,7 @@ class BenchmarkScenario:
 class ComprehensiveBenchmarkSuite:
     """Comprehensive benchmark suite for different use cases."""
 
-    def __init__(self, output_dir: (Path | None) = None):
+    def __init__(self, output_dir: Path | None = None):
         self.output_dir = output_dir or Path("benchmark_results")
         self.output_dir.mkdir(exist_ok=True)
         self.scenarios: list[BenchmarkScenario] = []
@@ -56,69 +58,128 @@ class ComprehensiveBenchmarkSuite:
 
     def _setup_scenarios(self):
         """Setup all benchmark scenarios."""
-        self.scenarios.append(BenchmarkScenario(name="language_comparison",
-            description="Compare chunking performance across languages",
-            setup=self._setup_multi_language_files, benchmark=self.
-            _benchmark_languages, metadata={"category": "language",
-            "languages": list_languages()}))
-        self.scenarios.append(BenchmarkScenario(name="file_size_scaling",
-            description="Test performance with different file sizes", setup=self._setup_size_scaling_files, benchmark=self.
-            _benchmark_size_scaling, metadata={"category": "scaling",
-            "sizes": ["small", "medium", "large", "xlarge"]}))
-        self.scenarios.append(BenchmarkScenario(name="strategy_comparison",
-            description="Compare different chunking strategies", setup=self
-            ._setup_strategy_test_files, benchmark=self.
-            _benchmark_strategies, metadata={"category": "strategy",
-            "strategies": ["semantic", "hierarchical", "adaptive",
-            "composite"]}))
-        self.scenarios.append(BenchmarkScenario(name="concurrency_scaling",
-            description="Test parallel processing with different worker counts", setup=self._setup_parallel_test_files, benchmark=self.
-            _benchmark_concurrency, metadata={"category": "concurrency",
-            "workers": [1, 2, 4, 8, 16]}))
-        self.scenarios.append(BenchmarkScenario(name="cache_effectiveness",
-            description="Measure cache hit rates and performance impact",
-            setup=self._setup_cache_test_files, benchmark=self.
-            _benchmark_cache, metadata={"category": "cache", "scenarios": [
-            "cold", "warm", "partial"]}))
-        self.scenarios.append(BenchmarkScenario(name="token_limit_chunking",
-            description="Test token-aware chunking performance", setup=self
-            ._setup_token_test_files, benchmark=self.
-            _benchmark_token_limits, metadata={"category": "tokens",
-            "limits": [1000, 2000, 4000, 8000]}))
-        self.scenarios.append(BenchmarkScenario(name="fallback_scenarios",
-            description="Test intelligent fallback performance", setup=self
-            ._setup_fallback_test_files, benchmark=self._benchmark_fallback,
-            metadata={"category": "fallback", "file_types": ["code", "text",
-            "mixed"]}))
-        self.scenarios.append(BenchmarkScenario(name="memory_profiling",
-            description="Profile memory usage patterns", setup=self.
-            _setup_memory_test_files, benchmark=self._benchmark_memory,
-            metadata={"category": "memory", "metrics": ["rss", "vms",
-            "objects"]}))
-        self.scenarios.append(BenchmarkScenario(name="real_world_repo",
-            description="Benchmark on real repository structure", setup=self._setup_repo_structure, benchmark=self.
-            _benchmark_repository, metadata={"category": "real_world",
-            "structure": "mixed_project"}))
-        self.scenarios.append(BenchmarkScenario(name="export_formats",
-            description="Compare export format performance", setup=self.
-            _setup_export_test_files, benchmark=self._benchmark_exports,
-            metadata={"category": "export", "formats": ["json", "jsonl",
-            "parquet", "csv"]}))
+        self.scenarios.append(
+            BenchmarkScenario(
+                name="language_comparison",
+                description="Compare chunking performance across languages",
+                setup=self._setup_multi_language_files,
+                benchmark=self._benchmark_languages,
+                metadata={"category": "language", "languages": list_languages()},
+            ),
+        )
+        self.scenarios.append(
+            BenchmarkScenario(
+                name="file_size_scaling",
+                description="Test performance with different file sizes",
+                setup=self._setup_size_scaling_files,
+                benchmark=self._benchmark_size_scaling,
+                metadata={
+                    "category": "scaling",
+                    "sizes": ["small", "medium", "large", "xlarge"],
+                },
+            ),
+        )
+        self.scenarios.append(
+            BenchmarkScenario(
+                name="strategy_comparison",
+                description="Compare different chunking strategies",
+                setup=self._setup_strategy_test_files,
+                benchmark=self._benchmark_strategies,
+                metadata={
+                    "category": "strategy",
+                    "strategies": ["semantic", "hierarchical", "adaptive", "composite"],
+                },
+            ),
+        )
+        self.scenarios.append(
+            BenchmarkScenario(
+                name="concurrency_scaling",
+                description="Test parallel processing with different worker counts",
+                setup=self._setup_parallel_test_files,
+                benchmark=self._benchmark_concurrency,
+                metadata={"category": "concurrency", "workers": [1, 2, 4, 8, 16]},
+            ),
+        )
+        self.scenarios.append(
+            BenchmarkScenario(
+                name="cache_effectiveness",
+                description="Measure cache hit rates and performance impact",
+                setup=self._setup_cache_test_files,
+                benchmark=self._benchmark_cache,
+                metadata={
+                    "category": "cache",
+                    "scenarios": ["cold", "warm", "partial"],
+                },
+            ),
+        )
+        self.scenarios.append(
+            BenchmarkScenario(
+                name="token_limit_chunking",
+                description="Test token-aware chunking performance",
+                setup=self._setup_token_test_files,
+                benchmark=self._benchmark_token_limits,
+                metadata={"category": "tokens", "limits": [1000, 2000, 4000, 8000]},
+            ),
+        )
+        self.scenarios.append(
+            BenchmarkScenario(
+                name="fallback_scenarios",
+                description="Test intelligent fallback performance",
+                setup=self._setup_fallback_test_files,
+                benchmark=self._benchmark_fallback,
+                metadata={
+                    "category": "fallback",
+                    "file_types": ["code", "text", "mixed"],
+                },
+            ),
+        )
+        self.scenarios.append(
+            BenchmarkScenario(
+                name="memory_profiling",
+                description="Profile memory usage patterns",
+                setup=self._setup_memory_test_files,
+                benchmark=self._benchmark_memory,
+                metadata={"category": "memory", "metrics": ["rss", "vms", "objects"]},
+            ),
+        )
+        self.scenarios.append(
+            BenchmarkScenario(
+                name="real_world_repo",
+                description="Benchmark on real repository structure",
+                setup=self._setup_repo_structure,
+                benchmark=self._benchmark_repository,
+                metadata={"category": "real_world", "structure": "mixed_project"},
+            ),
+        )
+        self.scenarios.append(
+            BenchmarkScenario(
+                name="export_formats",
+                description="Compare export format performance",
+                setup=self._setup_export_test_files,
+                benchmark=self._benchmark_exports,
+                metadata={
+                    "category": "export",
+                    "formats": ["json", "jsonl", "parquet", "csv"],
+                },
+            ),
+        )
 
     @classmethod
     def _create_test_file(cls, language: str, size: str = "medium") -> Path:
         """Create a test file for a specific language and size."""
-        templates = {"python": {"small":
-            """
+        templates = {
+            "python": {
+                "small": """
 def hello():
     return "world"
 
 class Test:
     def method(self):
         pass
-"""
-            , "medium": "\n".join([
-            f"""
+""",
+                "medium": "\n".join(
+                    [
+                        f"""
 def function_{i}(x, y):
     '''Function {i} docstring.'''
     result = x + y + {i}
@@ -133,8 +194,12 @@ class Class_{i}:
     def process(self, data):
         return [x * self.value for x in data]
 """
-             for i in range(20)]), "large": "\n".join([
-            f"""
+                        for i in range(20)
+                    ],
+                ),
+                "large": "\n".join(
+                    [
+                        f"""
 def complex_function_{i}(data, options=None):
     '''Complex function with multiple operations.'''
     if options is None:
@@ -160,8 +225,12 @@ def complex_function_{i}(data, options=None):
 
     return Processor_{i}().apply(sum(result))
 """
-             for i in range(100)])}, "javascript": {"small":
-            """
+                        for i in range(100)
+                    ],
+                ),
+            },
+            "javascript": {
+                "small": """
 function hello() {
     return "world";
 }
@@ -171,9 +240,10 @@ class Test {
         return 42;
     }
 }
-"""
-            , "medium": "\n".join([
-            f"""
+""",
+                "medium": "\n".join(
+                    [
+                        f"""
 function function_{i}(x, y) {{
     // Function {i}
     let result = x + y + {i};
@@ -193,14 +263,27 @@ class Class_{i} {{
     }}
 }}
 """
-             for i in range(20)])}}
+                        for i in range(20)
+                    ],
+                ),
+            },
+        }
         if language not in templates:
             language = "python"
         content = templates[language].get(size, templates[language]["medium"])
-        suffix = {"python": ".py", "javascript": ".js", "rust": ".rs", "c":
-            ".c", "cpp": ".cpp"}.get(language, ".txt")
-        temp_file = tempfile.NamedTemporaryFile(encoding="utf-8", mode="w",
-            suffix=suffix, delete=False)
+        suffix = {
+            "python": ".py",
+            "javascript": ".js",
+            "rust": ".rs",
+            "c": ".c",
+            "cpp": ".cpp",
+        }.get(language, ".txt")
+        temp_file = tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=suffix,
+            delete=False,
+        )
         temp_file.write(content)
         temp_file.close()
         return Path(temp_file.name)
@@ -211,8 +294,10 @@ class Class_{i} {{
         for lang in ["python", "javascript", "rust", "c", "cpp"]:
             try:
                 get_parser(lang)
-                files[lang] = [self._create_test_file(lang, size) for size in
-                    ["small", "medium", "large"]]
+                files[lang] = [
+                    self._create_test_file(lang, size)
+                    for size in ["small", "medium", "large"]
+                ]
             except (ImportError, RuntimeError):
                 pass
         return {"files": files}
@@ -230,9 +315,11 @@ class Class_{i} {{
                 elapsed = time.perf_counter() - start
                 times.append(elapsed)
                 chunks_count.append(len(chunks))
-            results[lang] = {"mean_time": statistics.mean(times),
-                "total_chunks": sum(chunks_count), "files_processed": len(
-                file_list)}
+            results[lang] = {
+                "mean_time": statistics.mean(times),
+                "total_chunks": sum(chunks_count),
+                "files_processed": len(file_list),
+            }
         return results
 
     @classmethod
@@ -241,8 +328,9 @@ class Class_{i} {{
         sizes = {"small": 10, "medium": 50, "large": 200, "xlarge": 1000}
         files = {}
         for size_name, count in sizes.items():
-            content = "\n".join([
-                f"""
+            content = "\n".join(
+                [
+                    f"""
 def function_{i}(x, y, z=None):
     '''Function {i} with size {size_name}.'''
     if z is None:
@@ -253,8 +341,15 @@ def function_{i}(x, y, z=None):
     temp2 = temp / 3
     return temp2 + {i}
 """
-                 for i in range(count)])
-            temp_file = tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False)
+                    for i in range(count)
+                ],
+            )
+            temp_file = tempfile.NamedTemporaryFile(
+                encoding="utf-8",
+                mode="w",
+                suffix=".py",
+                delete=False,
+            )
             temp_file.write(content)
             temp_file.close()
             files[size_name] = Path(temp_file.name)
@@ -272,9 +367,12 @@ def function_{i}(x, y, z=None):
                 elapsed = time.perf_counter() - start
                 times.append(elapsed)
             file_size = file_path.stat().st_size
-            results[size_name] = {"mean_time": statistics.mean(times),
-                "file_size_kb": file_size / 1024, "chunks": len(chunks),
-                "time_per_kb": statistics.mean(times) / (file_size / 1024)}
+            results[size_name] = {
+                "mean_time": statistics.mean(times),
+                "file_size_kb": file_size / 1024,
+                "chunks": len(chunks),
+                "time_per_kb": statistics.mean(times) / (file_size / 1024),
+            }
         return results
 
     @classmethod
@@ -384,8 +482,12 @@ async def process_async(items: List):
     # Async processing
     pass
 """
-        temp_file = tempfile.NamedTemporaryFile(encoding="utf-8", mode="w",
-            suffix=".py", delete=False)
+        temp_file = tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        )
         temp_file.write(complex_code)
         temp_file.close()
         return {"test_file": Path(temp_file.name)}
@@ -399,20 +501,33 @@ async def process_async(items: List):
         with Path(test_file).open("rb") as f:
             source = f.read()
         tree = parser.parse(source)
-        strategies = {"semantic": SemanticChunker(), "hierarchical":
-            HierarchicalChunker(), "adaptive": AdaptiveChunker(),
-            "composite": CompositeChunker()}
+        strategies = {
+            "semantic": SemanticChunker(),
+            "hierarchical": HierarchicalChunker(),
+            "adaptive": AdaptiveChunker(),
+            "composite": CompositeChunker(),
+        }
         for name, strategy in strategies.items():
             times = []
             for _ in range(5):
                 start = time.perf_counter()
-                chunks = strategy.chunk(tree.root_node, source, str(
-                    test_file), "python")
+                chunks = strategy.chunk(
+                    tree.root_node,
+                    source,
+                    str(test_file),
+                    "python",
+                )
                 elapsed = time.perf_counter() - start
                 times.append(elapsed)
-            results[name] = {"mean_time": statistics.mean(times), "chunks":
-                len(chunks), "avg_chunk_size": statistics.mean([(c.end_line -
-                c.start_line) for c in chunks]) if chunks else 0}
+            results[name] = {
+                "mean_time": statistics.mean(times),
+                "chunks": len(chunks),
+                "avg_chunk_size": (
+                    statistics.mean([(c.end_line - c.start_line) for c in chunks])
+                    if chunks
+                    else 0
+                ),
+            }
         return results
 
     @classmethod
@@ -443,14 +558,23 @@ class Handler_{i}:
             times = []
             for _ in range(3):
                 start = time.perf_counter()
-                chunk_results = chunk_files_parallel(files[:50], "python",
-                    num_workers=workers)
+                chunk_results = chunk_files_parallel(
+                    files[:50],
+                    "python",
+                    num_workers=workers,
+                )
                 elapsed = time.perf_counter() - start
                 times.append(elapsed)
-            results[f"{workers}_workers"] = {"mean_time": statistics.mean(
-                times), "files_processed": len(chunk_results), "speedup":
-                results.get("1_workers", {}).get("mean_time", times[0]) /
-                statistics.mean(times) if workers > 1 else 1.0}
+            results[f"{workers}_workers"] = {
+                "mean_time": statistics.mean(times),
+                "files_processed": len(chunk_results),
+                "speedup": (
+                    results.get("1_workers", {}).get("mean_time", times[0])
+                    / statistics.mean(times)
+                    if workers > 1
+                    else 1.0
+                ),
+            }
         return results
 
     def _setup_cache_test_files(self) -> dict[str, Any]:
@@ -483,18 +607,19 @@ class Handler_{i}:
             chunk_file(test_file, "python", use_cache=True)
             partial_times.append(time.perf_counter() - start)
         results["cold_cache"] = {"mean_time": statistics.mean(cold_times)}
-        results["warm_cache"] = {"mean_time": statistics.mean(warm_times),
-            "speedup": statistics.mean(cold_times) / statistics.mean(
-            warm_times)}
-        results["partial_invalidation"] = {"mean_time": statistics.mean(
-            partial_times)}
+        results["warm_cache"] = {
+            "mean_time": statistics.mean(warm_times),
+            "speedup": statistics.mean(cold_times) / statistics.mean(warm_times),
+        }
+        results["partial_invalidation"] = {"mean_time": statistics.mean(partial_times)}
         return results
 
     @classmethod
     def _setup_token_test_files(cls) -> dict[str, Any]:
         """Setup for token limit testing."""
-        large_content = "\n".join([
-            f"""
+        large_content = "\n".join(
+            [
+                f"""
 def detailed_function_{i}(parameter_one, parameter_two, parameter_three=None):
     '''
     This is a detailed docstring for function {i}.
@@ -523,9 +648,15 @@ def detailed_function_{i}(parameter_one, parameter_two, parameter_three=None):
 
     return result
 """
-             for i in range(50)])
-        temp_file = tempfile.NamedTemporaryFile(encoding="utf-8", mode="w",
-            suffix=".py", delete=False)
+                for i in range(50)
+            ],
+        )
+        temp_file = tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        )
         temp_file.write(large_content)
         temp_file.close()
         return {"test_file": Path(temp_file.name)}
@@ -539,12 +670,20 @@ def detailed_function_{i}(parameter_one, parameter_two, parameter_three=None):
             times = []
             for _ in range(5):
                 start = time.perf_counter()
-                chunks = chunk_file_with_token_limit(test_file, "python", limit,
-                    )
+                chunks = chunk_file_with_token_limit(
+                    test_file,
+                    "python",
+                    limit,
+                )
                 elapsed = time.perf_counter() - start
                 times.append(elapsed)
-            results[f"limit_{limit}"] = {"mean_time": statistics.mean(times,
-                ), "chunks": len(chunks), "avg_tokens": limit}
+            results[f"limit_{limit}"] = {
+                "mean_time": statistics.mean(
+                    times,
+                ),
+                "chunks": len(chunks),
+                "avg_tokens": limit,
+            }
         return results
 
     @classmethod
@@ -559,8 +698,12 @@ class Application:
     def run(self):
         pass
 """
-        code_file = tempfile.NamedTemporaryFile(encoding="utf-8", mode="w",
-            suffix=".py", delete=False)
+        code_file = tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        )
         code_file.write(code_content)
         code_file.close()
         files["code"] = Path(code_file.name)
@@ -571,8 +714,12 @@ It contains multiple paragraphs of text that should be chunked differently than 
 
 Each paragraph represents a logical unit of content.
 """
-        text_file = tempfile.NamedTemporaryFile(encoding="utf-8", mode="w",
-            suffix=".txt", delete=False)
+        text_file = tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".txt",
+            delete=False,
+        )
         text_file.write(text_content)
         text_file.close()
         files["text"] = Path(text_file.name)
@@ -590,8 +737,12 @@ def example():
 
 Additional text content here.
 """
-        mixed_file = tempfile.NamedTemporaryFile(encoding="utf-8", mode="w",
-            suffix=".md", delete=False)
+        mixed_file = tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".md",
+            delete=False,
+        )
         mixed_file.write(mixed_content)
         mixed_file.close()
         files["mixed"] = Path(mixed_file.name)
@@ -609,8 +760,11 @@ Additional text content here.
                 chunks, decision = chunker.chunk_with_fallback(file_path)
                 elapsed = time.perf_counter() - start
                 times.append(elapsed)
-            results[file_type] = {"mean_time": statistics.mean(times),
-                "chunks": len(chunks), "method_used": decision.method_used}
+            results[file_type] = {
+                "mean_time": statistics.mean(times),
+                "chunks": len(chunks),
+                "method_used": decision.method_used,
+            }
         return results
 
     def _setup_memory_test_files(self) -> dict[str, Any]:
@@ -636,11 +790,15 @@ Additional text content here.
             _current, peak = tracemalloc.get_traced_memory()
             tracemalloc.stop()
             final_memory = process.memory_info().rss
-            results[size_name] = {"baseline_mb": baseline_memory / 1024 /
-                1024, "final_mb": final_memory / 1024 / 1024, "peak_mb":
-                peak / 1024 / 1024, "chunks": len(chunks),
-                "memory_per_chunk": (final_memory - baseline_memory) / len(
-                chunks) if chunks else 0}
+            results[size_name] = {
+                "baseline_mb": baseline_memory / 1024 / 1024,
+                "final_mb": final_memory / 1024 / 1024,
+                "peak_mb": peak / 1024 / 1024,
+                "chunks": len(chunks),
+                "memory_per_chunk": (
+                    (final_memory - baseline_memory) / len(chunks) if chunks else 0
+                ),
+            }
         return results
 
     @classmethod
@@ -690,7 +848,7 @@ This is a test repository for benchmarking.
 - Comprehensive tests
 - Documentation
 """,
-            )
+        )
         return {"directory": temp_dir, "files": files}
 
     @staticmethod
@@ -706,13 +864,17 @@ This is a test repository for benchmarking.
         start = time.perf_counter()
         parallel_chunks = chunk_directory_parallel(directory, "python")
         parallel_time = time.perf_counter() - start
-        results["sequential"] = {"time": sequential_time, "files": len(
-            sequential_chunks), "total_chunks": sum(len(chunks) for chunks in
-            sequential_chunks.values())}
-        results["parallel"] = {"time": parallel_time, "files": len(
-            parallel_chunks), "total_chunks": sum(len(chunks) for chunks in
-            parallel_chunks.values()), "speedup": sequential_time /
-            parallel_time if parallel_time > 0 else 0}
+        results["sequential"] = {
+            "time": sequential_time,
+            "files": len(sequential_chunks),
+            "total_chunks": sum(len(chunks) for chunks in sequential_chunks.values()),
+        }
+        results["parallel"] = {
+            "time": parallel_time,
+            "files": len(parallel_chunks),
+            "total_chunks": sum(len(chunks) for chunks in parallel_chunks.values()),
+            "speedup": sequential_time / parallel_time if parallel_time > 0 else 0,
+        }
         return results
 
     def _setup_export_test_files(self) -> dict[str, Any]:
@@ -731,8 +893,13 @@ This is a test repository for benchmarking.
                 JSONLExporter,
                 ParquetExporter,
             )
-            exporters = {"json": JSONExporter(), "jsonl": JSONLExporter(),
-                "parquet": ParquetExporter(), "csv": CSVExporter()}
+
+            exporters = {
+                "json": JSONExporter(),
+                "jsonl": JSONLExporter(),
+                "parquet": ParquetExporter(),
+                "csv": CSVExporter(),
+            }
             for format_name, exporter in exporters.items():
                 output_file = self.output_dir / f"export_test.{format_name}"
                 times = []
@@ -741,11 +908,12 @@ This is a test repository for benchmarking.
                     exporter.export(chunks, output_file)
                     elapsed = time.perf_counter() - start
                     times.append(elapsed)
-                file_size = output_file.stat().st_size if output_file.exists(
-                    ) else 0
-                results[format_name] = {"mean_time": statistics.mean(times),
-                    "file_size_kb": file_size / 1024, "chunks_exported":
-                    len(chunks)}
+                file_size = output_file.stat().st_size if output_file.exists() else 0
+                results[format_name] = {
+                    "mean_time": statistics.mean(times),
+                    "file_size_kb": file_size / 1024,
+                    "chunks_exported": len(chunks),
+                }
                 if output_file.exists():
                     output_file.unlink()
         except ImportError:
@@ -782,8 +950,11 @@ This is a test repository for benchmarking.
                         for v in value.values():
                             if isinstance(v, Path) and v.exists():
                                 v.unlink()
-            results[scenario.name] = {"description": scenario.description,
-                "metadata": scenario.metadata, "results": result}
+            results[scenario.name] = {
+                "description": scenario.description,
+                "metadata": scenario.metadata,
+                "results": result,
+            }
             print(f"  Completed: {scenario.name}")
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         output_file = self.output_dir / f"benchmark_results_{timestamp}.json"
@@ -795,8 +966,12 @@ This is a test repository for benchmarking.
     @staticmethod
     def generate_report(results: dict[str, Any]) -> str:
         """Generate a human-readable report from results."""
-        lines = ["Comprehensive Benchmark Report", "=" * 50,
-            f"Generated: {time.strftime('%Y-%m-%d %H:%M:%S')}", ""]
+        lines = [
+            "Comprehensive Benchmark Report",
+            "=" * 50,
+            f"Generated: {time.strftime('%Y-%m-%d %H:%M:%S')}",
+            "",
+        ]
         for scenario_name, scenario_data in results.items():
             lines.append(f"\n{scenario_name}")
             lines.append("-" * len(scenario_name))
@@ -806,22 +981,22 @@ This is a test repository for benchmarking.
                 for lang, stats in scenario_data["results"].items():
                     lines.append(
                         f"  {lang}: {stats['mean_time'] * 1000:.2f}ms ({stats['total_chunks']} chunks)",
-                        )
+                    )
             elif scenario_name == "file_size_scaling":
                 for size, stats in scenario_data["results"].items():
                     lines.append(
                         f"  {size}: {stats['mean_time'] * 1000:.2f}ms ({stats['file_size_kb']:.1f}KB, {stats['time_per_kb'] * 1000:.2f}ms/KB)",
-                        )
+                    )
             elif scenario_name == "strategy_comparison":
                 for strategy, stats in scenario_data["results"].items():
                     lines.append(
                         f"  {strategy}: {stats['mean_time'] * 1000:.2f}ms ({stats['chunks']} chunks, avg size: {stats['avg_chunk_size']:.1f} lines)",
-                        )
+                    )
             elif scenario_name == "concurrency_scaling":
                 for workers, stats in scenario_data["results"].items():
                     lines.append(
                         f"  {workers}: {stats['mean_time'] * 1000:.2f}ms (speedup: {stats.get('speedup', 1.0):.2f}x)",
-                        )
+                    )
             else:
                 for key, value in scenario_data["results"].items():
                     if isinstance(value, dict):
@@ -847,7 +1022,8 @@ if __name__ == "__main__":
     report = suite.generate_report(results)
     print("\n" + "=" * 50)
     print(report)
-    report_file = (suite.output_dir /
-        f"benchmark_report_{time.strftime('%Y%m%d_%H%M%S')}.txt")
+    report_file = (
+        suite.output_dir / f"benchmark_report_{time.strftime('%Y%m%d_%H%M%S')}.txt"
+    )
     report_file.write_text(report)
     print(f"\nReport saved to: {report_file}")

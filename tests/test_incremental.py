@@ -1,4 +1,5 @@
 """Tests for incremental processing implementation."""
+
 import shutil
 import tempfile
 from datetime import datetime, timedelta
@@ -15,27 +16,58 @@ from chunker.interfaces.incremental import ChangeType
 from chunker.types import CodeChunk
 
 
-@pytest.fixture
+@pytest.fixture()
 def sample_chunks():
     """Create sample chunks for testing."""
-    return [CodeChunk(language="python", file_path="test.py", node_type="function_definition", start_line=1, end_line=5, byte_start=0,
-        byte_end=100, parent_context="", content="""def hello():
+    return [
+        CodeChunk(
+            language="python",
+            file_path="test.py",
+            node_type="function_definition",
+            start_line=1,
+            end_line=5,
+            byte_start=0,
+            byte_end=100,
+            parent_context="",
+            content="""def hello():
     print('Hello')
     return True
-""", chunk_id="chunk1"), CodeChunk(language="python", file_path="test.py",
-        node_type="function_definition", start_line=7, end_line=10,
-        byte_start=101, byte_end=200, parent_context="", content="""def world():
+""",
+            chunk_id="chunk1",
+        ),
+        CodeChunk(
+            language="python",
+            file_path="test.py",
+            node_type="function_definition",
+            start_line=7,
+            end_line=10,
+            byte_start=101,
+            byte_end=200,
+            parent_context="",
+            content="""def world():
     print('World')
-""", chunk_id="chunk2"),
-        CodeChunk(language="python", file_path="test.py", node_type="class_definition", start_line=12, end_line=20, byte_start=201,
-        byte_end=400, parent_context="", content="""class MyClass:
+""",
+            chunk_id="chunk2",
+        ),
+        CodeChunk(
+            language="python",
+            file_path="test.py",
+            node_type="class_definition",
+            start_line=12,
+            end_line=20,
+            byte_start=201,
+            byte_end=400,
+            parent_context="",
+            content="""class MyClass:
     def __init__(self):
         pass
 """,
-        chunk_id="chunk3")]
+            chunk_id="chunk3",
+        ),
+    ]
 
 
-@pytest.fixture
+@pytest.fixture()
 def temp_cache_dir():
     """Create temporary cache directory."""
     temp_dir = tempfile.mkdtemp()
@@ -52,11 +84,11 @@ class TestIncrementalProcessor:
         processor = DefaultIncrementalProcessor()
         content = "\n".join([chunk.content for chunk in sample_chunks])
         diff = processor.compute_diff(sample_chunks, content, "python")
-        total_changes = diff.summary["added"] + diff.summary["deleted"
-            ] + diff.summary["modified"]
+        total_changes = (
+            diff.summary["added"] + diff.summary["deleted"] + diff.summary["modified"]
+        )
         assert total_changes >= 0
-        assert diff.summary["total_new_chunks"] >= diff.summary[
-            "total_old_chunks"]
+        assert diff.summary["total_new_chunks"] >= diff.summary["total_old_chunks"]
 
     @classmethod
     def test_compute_diff_with_modifications(cls, sample_chunks):
@@ -73,10 +105,17 @@ class MyClass:
     def __init__(self):
         pass
 """
-        diff = processor.compute_diff(sample_chunks, modified_content, "python",
-            )
-        total_changes = diff.summary["added"] + diff.summary["deleted"
-            ] + diff.summary["modified"] + diff.summary.get("moved", 0)
+        diff = processor.compute_diff(
+            sample_chunks,
+            modified_content,
+            "python",
+        )
+        total_changes = (
+            diff.summary["added"]
+            + diff.summary["deleted"]
+            + diff.summary["modified"]
+            + diff.summary.get("moved", 0)
+        )
         assert total_changes > 0
 
     @classmethod
@@ -98,8 +137,11 @@ class MyClass:
     def __init__(self):
         pass
 """
-        diff = processor.compute_diff(sample_chunks, modified_content, "python",
-            )
+        diff = processor.compute_diff(
+            sample_chunks,
+            modified_content,
+            "python",
+        )
         assert len(diff.added_chunks) >= 1
         assert diff.summary["added"] >= 1
 
@@ -115,8 +157,11 @@ class MyClass:
     def __init__(self):
         pass
 """
-        diff = processor.compute_diff(sample_chunks, modified_content, "python",
-            )
+        diff = processor.compute_diff(
+            sample_chunks,
+            modified_content,
+            "python",
+        )
         assert len(diff.deleted_chunks) >= 1
         assert diff.summary["deleted"] >= 1
 
@@ -135,10 +180,12 @@ def hello():
     print('Hello')
     return True
 """
-        diff = processor.compute_diff(sample_chunks, modified_content, "python",
-            )
-        moved_changes = [c for c in diff.changes if c.change_type ==
-            ChangeType.MOVED]
+        diff = processor.compute_diff(
+            sample_chunks,
+            modified_content,
+            "python",
+        )
+        moved_changes = [c for c in diff.changes if c.change_type == ChangeType.MOVED]
         assert len(moved_changes) >= 1
 
     @classmethod
@@ -156,8 +203,11 @@ class MyClass:
     def __init__(self):
         pass
 """
-        diff = processor.compute_diff(sample_chunks, modified_content, "python",
-            )
+        diff = processor.compute_diff(
+            sample_chunks,
+            modified_content,
+            "python",
+        )
         updated_chunks = processor.update_chunks(sample_chunks, diff)
         assert len(updated_chunks) > 0
         for chunk in updated_chunks:
@@ -168,15 +218,28 @@ class MyClass:
     def test_merge_incremental_results(cls, sample_chunks):
         """Test merging incremental results."""
         processor = DefaultIncrementalProcessor()
-        incremental_chunks = [CodeChunk(language="python", file_path="test.py", node_type="function_definition", start_line=7,
-            end_line=10, byte_start=101, byte_end=200, parent_context="",
-            content="""def world_modified():
+        incremental_chunks = [
+            CodeChunk(
+                language="python",
+                file_path="test.py",
+                node_type="function_definition",
+                start_line=7,
+                end_line=10,
+                byte_start=101,
+                byte_end=200,
+                parent_context="",
+                content="""def world_modified():
     print('Modified')
 """,
-            chunk_id="chunk2_new")]
+                chunk_id="chunk2_new",
+            ),
+        ]
         changed_regions = [(7, 10)]
-        merged = processor.merge_incremental_results(sample_chunks,
-            incremental_chunks, changed_regions)
+        merged = processor.merge_incremental_results(
+            sample_chunks,
+            incremental_chunks,
+            changed_regions,
+        )
         assert len(merged) > 0
         old_chunk2_ids = [c.chunk_id for c in merged if c.chunk_id == "chunk2"]
         assert len(old_chunk2_ids) == 0
@@ -319,8 +382,11 @@ class MyClass:
     def __init__(self):
         pass
 """
-        diff = processor.compute_diff(sample_chunks, modified_content, "python",
-            )
+        diff = processor.compute_diff(
+            sample_chunks,
+            modified_content,
+            "python",
+        )
         index.batch_update(diff)
         assert len(index.update_log) == len(diff.changes)
 
@@ -331,12 +397,18 @@ class MyClass:
         processor = DefaultIncrementalProcessor()
         for chunk in sample_chunks:
             index.update_chunk(None, chunk)
-        small_diff = processor.compute_diff(sample_chunks, "\n".join([chunk
-            .content for chunk in sample_chunks]), "python")
+        small_diff = processor.compute_diff(
+            sample_chunks,
+            "\n".join([chunk.content for chunk in sample_chunks]),
+            "python",
+        )
         small_cost = index.get_update_cost(small_diff)
         assert small_cost <= 1.0
-        large_diff = processor.compute_diff(sample_chunks,
-            "completely different content", "python")
+        large_diff = processor.compute_diff(
+            sample_chunks,
+            "completely different content",
+            "python",
+        )
         large_cost = index.get_update_cost(large_diff)
         assert large_cost > 0.5
 

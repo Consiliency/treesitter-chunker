@@ -45,24 +45,11 @@ class ChunkRequest(BaseModel):
 
     content: str = Field(..., description="Source code content to chunk")
     language: str = Field(
-        ..., description="Programming language (e.g., 'python', 'javascript')",
+        ...,
+        description="Programming language (e.g., 'python', 'javascript')",
     )
     min_chunk_size: int | None = Field(None, description="Minimum chunk size in lines")
     max_chunk_size: int | None = Field(None, description="Maximum chunk size in lines")
-
-
-        ...,
-        description = "Programming language (e.g., 'python', 'javascript')",
-    )
-    min_chunk_size: int | None = Field(
-        None,
-        description="Minimum chunk size in lines",
-    )
-    max_chunk_size: int | None = Field(
-        None,
-        description="Maximum chunk size in lines",
-    )
->>>>>>> origin/main
     chunk_types: list[str] | None = Field(None, description="Filter by chunk types")
 
 
@@ -71,7 +58,8 @@ class ChunkFileRequest(BaseModel):
 
     file_path: str = Field(..., description="Path to the file to chunk")
     language: str | None = Field(
-        None, description="Programming language (auto-detect if not specified)",
+        None,
+        description="Programming language (auto-detect if not specified)",
     )
     min_chunk_size: int | None = Field(None, description="Minimum chunk size in lines")
     max_chunk_size: int | None = Field(None, description="Maximum chunk size in lines")
@@ -82,13 +70,15 @@ class ChunkResponse(BaseModel):
     """Response model for a code chunk."""
 
     node_type: str = Field(
-        ..., description="Type of code node (e.g., 'function_definition')",
+        ...,
+        description="Type of code node (e.g., 'function_definition')",
     )
     start_line: int = Field(..., description="Starting line number")
     end_line: int = Field(..., description="Ending line number")
     content: str = Field(..., description="Chunk content")
     parent_context: str | None = Field(
-        None, description="Parent context (e.g., class name)",
+        None,
+        description="Parent context (e.g., class name)",
     )
     size: int = Field(..., description="Size in lines")
 
@@ -197,7 +187,8 @@ async def chunk_file_endpoint(request: ChunkFileRequest):
     # Check if file exists
     if not file_path.exists():
         raise HTTPException(
-            status_code=404, detail=f"File not found: {request.file_path}",
+            status_code=404,
+            detail=f"File not found: {request.file_path}",
         )
 
     if not file_path.is_file():

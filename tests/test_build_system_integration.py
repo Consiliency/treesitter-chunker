@@ -1,6 +1,7 @@
 """
 Integration tests for Build System implementation
 """
+
 import tempfile
 from pathlib import Path
 
@@ -22,13 +23,19 @@ class TestBuildSystemIntegration:
         platform_info = platform_support.detect_platform()
         with tempfile.TemporaryDirectory() as tmpdir:
             output_dir = Path(tmpdir)
-            wheel_success, wheel_path = build_system.build_wheel(platform=platform_info.get("platform_tag", "unknown"),
-                python_version="cp39", output_dir=output_dir)
+            wheel_success, wheel_path = build_system.build_wheel(
+                platform=platform_info.get("platform_tag", "unknown"),
+                python_version="cp39",
+                output_dir=output_dir,
+            )
             verify_success, verify_info = build_system.verify_build(
-                artifact_path=wheel_path, platform=platform_info.get(
-                "platform_tag", "unknown"))
+                artifact_path=wheel_path,
+                platform=platform_info.get("platform_tag", "unknown"),
+            )
             install_success, _install_info = distribution.verify_installation(
-                method="pip", platform=platform_info.get("os", "unknown"))
+                method="pip",
+                platform=platform_info.get("os", "unknown"),
+            )
         assert isinstance(platform_info, dict)
         assert "os" in platform_info
         assert isinstance(wheel_success, bool)
@@ -45,9 +52,11 @@ class TestBuildSystemIntegration:
         platform_info = platform_support.detect_platform()
         with tempfile.TemporaryDirectory() as tmpdir:
             output_dir = Path(tmpdir)
-            success, build_info = build_system.compile_grammars(languages=[
-                "python", "javascript"], platform=platform_info["os"],
-                output_dir=output_dir)
+            success, build_info = build_system.compile_grammars(
+                languages=["python", "javascript"],
+                platform=platform_info["os"],
+                output_dir=output_dir,
+            )
         assert isinstance(success, bool)
         assert isinstance(build_info, dict)
         assert "platform" in build_info
@@ -77,8 +86,11 @@ class TestBuildSystemIntegration:
         platform_info = platform_support.detect_platform()
         with tempfile.TemporaryDirectory() as tmpdir:
             output_dir = Path(tmpdir)
-            success, wheel_path = build_system.build_wheel(platform=platform_info["os"], python_version=platform_info[
-                "python_tag"], output_dir=output_dir)
+            success, wheel_path = build_system.build_wheel(
+                platform=platform_info["os"],
+                python_version=platform_info["python_tag"],
+                output_dir=output_dir,
+            )
         assert isinstance(success, bool)
         assert isinstance(wheel_path, Path)
         if success:
@@ -92,7 +104,10 @@ class TestBuildSystemIntegration:
         platform_info = platform_support.detect_platform()
         with tempfile.TemporaryDirectory() as tmpdir:
             output_dir = Path(tmpdir)
-            success, package_path = build_system.create_conda_package(platform=platform_info["os"], output_dir=output_dir)
+            success, package_path = build_system.create_conda_package(
+                platform=platform_info["os"],
+                output_dir=output_dir,
+            )
         assert isinstance(success, bool)
         assert isinstance(package_path, Path)
         if not success:
@@ -116,8 +131,7 @@ class TestBuildSystemIntegration:
         """Test build dependency installation"""
         platform_support = PlatformSupportImpl()
         platform_info = platform_support.detect_platform()
-        result = platform_support.install_build_dependencies(platform_info[
-            "os"])
+        result = platform_support.install_build_dependencies(platform_info["os"])
         assert isinstance(result, bool)
 
 

@@ -1,4 +1,5 @@
 """Test Rust-specific language features chunking."""
+
 import pytest
 
 from chunker.core import chunk_file
@@ -20,9 +21,20 @@ class RustConfig(LanguageConfig):
 
     @property
     def chunk_types(self) -> set[str]:
-        return {"function_item", "impl_item", "trait_item", "struct_item",
-            "enum_item", "mod_item", "macro_definition", "const_item",
-            "static_item", "type_item", "foreign_mod_item", "union_item"}
+        return {
+            "function_item",
+            "impl_item",
+            "trait_item",
+            "struct_item",
+            "enum_item",
+            "mod_item",
+            "macro_definition",
+            "const_item",
+            "static_item",
+            "type_item",
+            "foreign_mod_item",
+            "union_item",
+        }
 
 
 def check_rust_parser_available():
@@ -107,7 +119,7 @@ impl Iterator for Counter {
     }
 }
 """,
-            )
+        )
         chunks = chunk_file(test_file, "rust")
         trait_chunks = [c for c in chunks if c.node_type == "trait_item"]
         impl_chunks = [c for c in chunks if c.node_type == "impl_item"]
@@ -120,8 +132,7 @@ impl Iterator for Counter {
         impl_contents = [c.content for c in impl_chunks]
         assert any("impl Display for Point" in c for c in impl_contents)
         assert any("impl<T> Display for Vec<T>" in c for c in impl_contents)
-        assert any("impl<T, U> MyTrait for MyStruct<T, U>" in c for c in
-            impl_contents)
+        assert any("impl<T, U> MyTrait for MyStruct<T, U>" in c for c in impl_contents)
 
     @staticmethod
     def test_macro_definitions(tmp_path):
@@ -174,7 +185,7 @@ macro_rules! find_min {
     )
 }
 """,
-            )
+        )
         chunks = chunk_file(test_file, "rust")
         macro_chunks = [c for c in chunks if c.node_type == "macro_definition"]
         function_chunks = [c for c in chunks if c.node_type == "function_item"]
@@ -232,21 +243,18 @@ fn call_extern() {
     }
 }
 """,
-            )
+        )
         chunks = chunk_file(test_file, "rust")
         function_chunks = [c for c in chunks if c.node_type == "function_item"]
         trait_chunks = [c for c in chunks if c.node_type == "trait_item"]
         impl_chunks = [c for c in chunks if c.node_type == "impl_item"]
-        unsafe_functions = [c for c in function_chunks if "unsafe fn" in c.
-            content]
+        unsafe_functions = [c for c in function_chunks if "unsafe fn" in c.content]
         assert len(unsafe_functions) >= 1
-        unsafe_traits = [c for c in trait_chunks if "unsafe trait" in c.content
-            ]
+        unsafe_traits = [c for c in trait_chunks if "unsafe trait" in c.content]
         assert len(unsafe_traits) >= 1
         unsafe_impls = [c for c in impl_chunks if "unsafe impl" in c.content]
         assert len(unsafe_impls) >= 1
-        foreign_mod_chunks = [c for c in chunks if c.node_type ==
-            "foreign_mod_item"]
+        foreign_mod_chunks = [c for c in chunks if c.node_type == "foreign_mod_item"]
         assert len(foreign_mod_chunks) >= 1
         assert any('extern "C"' in c.content for c in foreign_mod_chunks)
 
@@ -298,7 +306,7 @@ trait Display<'a> {
     fn fmt(&'a self) -> String;
 }
 """,
-            )
+        )
         chunks = chunk_file(test_file, "rust")
         function_chunks = [c for c in chunks if c.node_type == "function_item"]
         struct_chunks = [c for c in chunks if c.node_type == "struct_item"]
@@ -367,7 +375,7 @@ pub(crate) mod internal_module {
     pub(in crate::public_api) fn restricted_visibility() {}
 }
 """,
-            )
+        )
         chunks = chunk_file(test_file, "rust")
         mod_chunks = [c for c in chunks if c.node_type == "mod_item"]
         assert len(mod_chunks) >= 5
@@ -380,8 +388,7 @@ pub(crate) mod internal_module {
         all_chunks = chunks
         assert any("pub fn helper" in c.content for c in all_chunks)
         assert any("pub struct PublicStruct" in c.content for c in all_chunks)
-        assert any("pub(crate) fn internal_only" in c.content for c in
-            all_chunks)
+        assert any("pub(crate) fn internal_only" in c.content for c in all_chunks)
 
     @staticmethod
     def test_generic_functions(tmp_path):
@@ -460,7 +467,7 @@ impl<T> Container for Box<T> {
     }
 }
 """,
-            )
+        )
         chunks = chunk_file(test_file, "rust")
         function_chunks = [c for c in chunks if c.node_type == "function_item"]
         struct_chunks = [c for c in chunks if c.node_type == "struct_item"]
@@ -476,8 +483,7 @@ impl<T> Container for Box<T> {
         assert any("fn identity<T>" in c for c in function_contents)
         assert any("<T: Debug>" in c for c in function_contents)
         assert any("<T, U>" in c for c in function_contents)
-        assert any("where" in c and "T: Clone + Debug" in c for c in
-            function_contents)
+        assert any("where" in c and "T: Clone + Debug" in c for c in function_contents)
         impl_contents = [c.content for c in impl_chunks]
         assert any("<T: Display + PartialOrd>" in c for c in impl_contents)
 
@@ -489,10 +495,20 @@ impl<T> Container for Box<T> {
         assert config.language_id == "rust"
         assert ".rs" in config.file_extensions
         assert len(config.file_extensions) == 1
-        expected_types = {"function_item", "impl_item", "trait_item",
-            "struct_item", "enum_item", "mod_item", "macro_definition",
-            "const_item", "static_item", "type_item", "foreign_mod_item",
-            "union_item"}
+        expected_types = {
+            "function_item",
+            "impl_item",
+            "trait_item",
+            "struct_item",
+            "enum_item",
+            "mod_item",
+            "macro_definition",
+            "const_item",
+            "static_item",
+            "type_item",
+            "foreign_mod_item",
+            "union_item",
+        }
         assert config.chunk_types == expected_types
 
     @staticmethod
@@ -521,21 +537,22 @@ impl PrivateStruct {
     fn method(&self) {}
 }
 """,
-            )
+        )
         chunks = chunk_file(test_file, "rust")
         chunk_contents = [c.content for c in chunks]
         assert any("pub fn public_function" in c for c in chunk_contents)
         assert any("pub struct PublicStruct" in c for c in chunk_contents)
         assert any("pub enum PublicEnum" in c for c in chunk_contents)
         assert any("pub(crate) fn crate_function" in c for c in chunk_contents)
-        assert any("pub(crate) struct CrateStruct" in c for c in chunk_contents
-            )
-        assert any("pub(super) fn parent_function" in c for c in chunk_contents
-            )
-        assert any("pub(in crate::module) fn specific_module_function" in c for
-            c in chunk_contents)
-        assert any("fn private_function" in c and "pub" not in c for c in
-            chunk_contents)
+        assert any("pub(crate) struct CrateStruct" in c for c in chunk_contents)
+        assert any("pub(super) fn parent_function" in c for c in chunk_contents)
+        assert any(
+            "pub(in crate::module) fn specific_module_function" in c
+            for c in chunk_contents
+        )
+        assert any(
+            "fn private_function" in c and "pub" not in c for c in chunk_contents
+        )
 
     @staticmethod
     def test_test_function_attributes(tmp_path):
@@ -579,7 +596,7 @@ fn bench_performance(b: &mut Bencher) {
     });
 }
 """,
-            )
+        )
         chunks = chunk_file(test_file, "rust")
         function_chunks = [c for c in chunks if c.node_type == "function_item"]
         mod_chunks = [c for c in chunks if c.node_type == "mod_item"]
@@ -651,7 +668,7 @@ impl<T, const N: usize> Array<T, N> {
     }
 }
 """,
-            )
+        )
         chunks = chunk_file(test_file, "rust")
         type_chunks = [c for c in chunks if c.node_type == "type_item"]
         static_chunks = [c for c in chunks if c.node_type == "static_item"]
@@ -665,11 +682,9 @@ impl<T, const N: usize> Array<T, N> {
         assert any("static mut" in c.content for c in static_chunks)
         assert len(const_chunks) >= 1
         assert any("const MAX_POINTS" in c.content for c in const_chunks)
-        const_fn_chunks = [c for c in function_chunks if "const fn" in c.
-            content]
+        const_fn_chunks = [c for c in function_chunks if "const fn" in c.content]
         assert len(const_fn_chunks) >= 1
-        async_fn_chunks = [c for c in function_chunks if "async fn" in c.
-            content]
+        async_fn_chunks = [c for c in function_chunks if "async fn" in c.content]
         assert len(async_fn_chunks) >= 1
         assert any("const N: usize" in c.content for c in struct_chunks)
         assert len(union_chunks) >= 1

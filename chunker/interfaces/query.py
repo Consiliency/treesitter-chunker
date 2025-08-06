@@ -3,6 +3,7 @@
 Interfaces for implementing Tree-sitter's query language support,
 enabling pattern-based chunk extraction.
 """
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
@@ -23,12 +24,13 @@ class QueryMatch:
         start_byte: Start byte position of the match
         end_byte: End byte position of the match
     """
+
     pattern_index: int
     captures: dict[str, Node]
     start_byte: int
     end_byte: int
 
-    def get_capture(self, name: str) -> (Node | None):
+    def get_capture(self, name: str) -> Node | None:
         """Get a captured node by name.
 
         Args:
@@ -117,8 +119,7 @@ class QueryEngine(ABC):
 
     @staticmethod
     @abstractmethod
-    def validate_query(query_string: str, language: str) -> tuple[bool, str |
-        None]:
+    def validate_query(query_string: str, language: str) -> tuple[bool, str | None]:
         """Validate a query without executing it.
 
         Args:
@@ -172,8 +173,10 @@ class QueryBasedChunker(ChunkingStrategy):
 
     @staticmethod
     @abstractmethod
-    def merge_query_results(matches: list[QueryMatch], source: bytes) -> list[
-        CodeChunk]:
+    def merge_query_results(
+        matches: list[QueryMatch],
+        source: bytes,
+    ) -> list[CodeChunk]:
         """Convert query matches to chunks.
 
         Args:
@@ -234,25 +237,23 @@ class QueryBuilder(ABC):
         """
 
 
-EXAMPLE_QUERIES = {"python_async_functions":
-    """
+EXAMPLE_QUERIES = {
+    "python_async_functions": """
         (async_function_definition
             name: (identifier) @function_name
             parameters: (parameters) @params
             body: (block) @body) @async_function
-    """
-    , "javascript_classes":
-    """
+    """,
+    "javascript_classes": """
         (class_declaration
             name: (identifier) @class_name
             body: (class_body
                 (method_definition) @method)) @class
-    """
-    , "decorated_functions":
-    """
+    """,
+    "decorated_functions": """
         (decorated_definition
             decorator: (decorator) @decorator
             definition: (function_definition
                 name: (identifier) @function_name)) @decorated_func
     """,
-    }
+}

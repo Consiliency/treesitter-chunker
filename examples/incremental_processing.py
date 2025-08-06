@@ -42,7 +42,12 @@ class Calculator:
 '''
 
     # Create a temporary file
-    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        encoding="utf-8",
+        mode="w",
+        suffix=".py",
+        delete=False,
+    ) as f:
         f.write(initial_content)
         file_path = f.name
 

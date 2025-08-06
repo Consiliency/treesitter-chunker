@@ -20,12 +20,24 @@ def fix_logging_in_file(file_path: Path) -> list[str]:
 
     # Patterns for different logging methods
     logging_methods = [
-        "logger.debug", "logger.info", "logger.warning", "logger.error",
-        "logger.critical", "logger.exception",
-        "logging.debug", "logging.info", "logging.warning", "logging.error",
-        "logging.critical", "logging.exception",
-        "log.debug", "log.info", "log.warning", "log.error",
-        "log.critical", "log.exception",
+        "logger.debug",
+        "logger.info",
+        "logger.warning",
+        "logger.error",
+        "logger.critical",
+        "logger.exception",
+        "logging.debug",
+        "logging.info",
+        "logging.warning",
+        "logging.error",
+        "logging.critical",
+        "logging.exception",
+        "log.debug",
+        "log.info",
+        "log.warning",
+        "log.error",
+        "log.critical",
+        "log.exception",
     ]
 
     for method in logging_methods:
@@ -46,7 +58,12 @@ def fix_logging_in_file(file_path: Path) -> list[str]:
             changes.append(f"Converted {method} to lazy evaluation")
             return f"{method_call}{format_str}, {values}{closing}"
 
-        content = re.sub(pattern, replace_with_lazy, content, flags=re.MULTILINE | re.DOTALL)
+        content = re.sub(
+            pattern,
+            replace_with_lazy,
+            content,
+            flags=re.MULTILINE | re.DOTALL,
+        )
 
     if content != original:
         file_path.write_text(content, encoding="utf-8")
@@ -62,7 +79,8 @@ def main():
     # Get all files with G002 errors
     result = subprocess.run(
         ["ruff", "check", "--select", "G002", "--output-format", "json"],
-        check=False, capture_output=True,
+        check=False,
+        capture_output=True,
         text=True,
     )
 
@@ -96,7 +114,8 @@ def main():
     # Check remaining errors
     result = subprocess.run(
         ["ruff", "check", "--select", "G002", "--statistics"],
-        check=False, capture_output=True,
+        check=False,
+        capture_output=True,
         text=True,
     )
 

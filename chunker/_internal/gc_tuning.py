@@ -196,7 +196,10 @@ class MemoryOptimizer:
         self._weak_refs = {}
 
     def create_object_pool(
-        self, object_type: type, factory: Callable, max_size: int = 100
+        self,
+        object_type: type,
+        factory: Callable,
+        max_size: int = 100,
     ) -> "ObjectPool":
         """Create an object pool for frequently created/destroyed objects.
 

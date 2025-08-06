@@ -1,4 +1,5 @@
 """Fix PLR6301 errors - methods that could be static/class methods."""
+
 import ast
 import subprocess
 from pathlib import Path
@@ -22,14 +23,21 @@ class MethodAnalyzer(ast.NodeVisitor):
         """Visit function definition."""
         if self.current_class and node.args.args:
             first_arg = node.args.args[0].arg
-            if first_arg in ("self", "cls"):
+            if first_arg in {"self", "cls"}:
                 uses_self = self._uses_self(node, first_arg)
                 if not uses_self:
                     uses_class_features = self._uses_class_features(node)
-                    self.methods_to_fix.append({"class": self.current_class,
-                        "method": node.name, "line": node.lineno, "type":
-                        "classmethod" if uses_class_features else
-                        "staticmethod", "first_arg": first_arg})
+                    self.methods_to_fix.append(
+                        {
+                            "class": self.current_class,
+                            "method": node.name,
+                            "line": node.lineno,
+                            "type": (
+                                "classmethod" if uses_class_features else "staticmethod"
+                            ),
+                            "first_arg": first_arg,
+                        },
+                    )
         self.generic_visit(node)
 
     @staticmethod
@@ -45,6 +53,7 @@ class MethodAnalyzer(ast.NodeVisitor):
             def visit_Name(self, node):
                 if node.id == self.param_name:
                     self.uses_self = True
+
         checker = SelfChecker(param_name)
         checker.visit(node)
         return checker.uses_self
@@ -59,10 +68,10 @@ class MethodAnalyzer(ast.NodeVisitor):
                 self.uses_class_features = False
 
             def visit_Call(self, node):
-                if isinstance(node.func, ast.Name) and node.func.id[0].isupper(
-                    ):
+                if isinstance(node.func, ast.Name) and node.func.id[0].isupper():
                     self.uses_class_features = True
                 self.generic_visit(node)
+
         checker = ClassFeatureChecker()
         checker.visit(node)
         return checker.uses_class_features
@@ -83,11 +92,13 @@ def fix_plr6301_in_file(file_path: Path) -> bool:
         if not analyzer.methods_to_fix:
             return False
         lines = content.split("\n")
-        for fix in sorted(analyzer.methods_to_fix, key=lambda x: x["line"],
-            reverse=True):
+        for fix in sorted(
+            analyzer.methods_to_fix,
+            key=lambda x: x["line"],
+            reverse=True,
+        ):
             method_line = fix["line"] - 1
-            for i in range(max(0, method_line - 5), min(len(lines),
-                method_line + 5)):
+            for i in range(max(0, method_line - 5), min(len(lines), method_line + 5)):
                 if f"def {fix['method']}" in lines[i]:
                     method_line = i
                     break
@@ -117,9 +128,12 @@ def fix_plr6301_in_file(file_path: Path) -> bool:
 
 def main():
     """Find and fix PLR6301 errors."""
-    result = subprocess.run(["ruff", "check", "--select", "PLR6301", ".",
-        "--output-format", "json"], capture_output=True, text=True, check=False,
-        )
+    result = subprocess.run(
+        ["ruff", "check", "--select", "PLR6301", ".", "--output-format", "json"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
     if result.returncode == 0:
         print("No PLR6301 errors found!")
         return
@@ -129,8 +143,12 @@ def main():
             file_path = line.split(":")[0].strip()
             files_to_fix.add(file_path)
     if not files_to_fix:
-        result = subprocess.run(["ruff", "check", "--select", "PLR6301",
-            "."], capture_output=True, text=True, check=False)
+        result = subprocess.run(
+            ["ruff", "check", "--select", "PLR6301", "."],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
         for line in result.stdout.splitlines():
             if "PLR6301" in line and ".py:" in line:
                 file_path = line.split(":")[0].strip()

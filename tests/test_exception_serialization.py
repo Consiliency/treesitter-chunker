@@ -3,6 +3,7 @@
 This test module verifies that exceptions can be properly serialized
 and deserialized when passed between processes in multiprocessing scenarios.
 """
+
 import multiprocessing
 import pickle  # noqa: S403 - Testing exception serialization
 import traceback
@@ -16,7 +17,7 @@ import pytest
 class SimpleChunkerError(Exception):
     """Test base exception."""
 
-    def __init__(self, message: str, details: (dict | None) = None):
+    def __init__(self, message: str, details: dict | None = None):
         super().__init__(message)
         self.message = message
         self.details = details or {}
@@ -60,8 +61,7 @@ def worker_with_standard_exception():
 
 def worker_with_chunker_exception():
     """Worker that raises a chunker-specific exception."""
-    raise SimpleLanguageError("python-extended", ["python", "javascript",
-        "rust"])
+    raise SimpleLanguageError("python-extended", ["python", "javascript", "rust"])
 
 
 def worker_with_nested_exception():
@@ -70,8 +70,10 @@ def worker_with_nested_exception():
         try:
             raise ValueError("Inner exception")
         except ValueError as e:
-            raise SimpleChunkerError("Parser failed", {"language": "python"},
-                ) from e
+            raise SimpleChunkerError(
+                "Parser failed",
+                {"language": "python"},
+            ) from e
     except SimpleChunkerError as e:
         raise RuntimeError("Config error: chunk_size must be positive") from e
 
@@ -94,6 +96,7 @@ def worker_with_traceback_info():
 
     def level_1():
         level_2()
+
     level_1()
 
 
@@ -114,8 +117,7 @@ class TestExceptionSerialization:
             future = executor.submit(worker_with_standard_exception)
             with pytest.raises(ValueError) as exc_info:
                 future.result()
-            assert "Standard exception from worker process" in str(exc_info
-                .value)
+            assert "Standard exception from worker process" in str(exc_info.value)
 
     @classmethod
     def test_chunker_exception_serialization(cls):
@@ -165,8 +167,15 @@ class TestExceptionSerialization:
             future = executor.submit(worker_with_traceback_info)
             with pytest.raises(RuntimeError) as exc_info:
                 future.result()
-            tb_str = "".join(traceback.format_exception(type(exc_info.value,
-                ), exc_info.value, exc_info.tb))
+            tb_str = "".join(
+                traceback.format_exception(
+                    type(
+                        exc_info.value,
+                    ),
+                    exc_info.value,
+                    exc_info.tb,
+                ),
+            )
             assert "Error at level 3" in tb_str
             assert "x=42" in tb_str
             assert "y=test" in tb_str
@@ -175,13 +184,19 @@ class TestExceptionSerialization:
     @classmethod
     def test_exception_pickling_directly(cls):
         """Test direct pickling of various exception types."""
-        exceptions_to_test = [ValueError("Simple error"), RuntimeError(
-            "Runtime error"), SimpleChunkerError("Chunker error", {"key":
-            "value"}), SimpleLanguageError("go", ["python", "rust"]),
-            TypeError("Type error"), KeyError("missing_key")]
+        exceptions_to_test = [
+            ValueError("Simple error"),
+            RuntimeError("Runtime error"),
+            SimpleChunkerError("Chunker error", {"key": "value"}),
+            SimpleLanguageError("go", ["python", "rust"]),
+            TypeError("Type error"),
+            KeyError("missing_key"),
+        ]
         for original_exc in exceptions_to_test:
             pickled = pickle.dumps(original_exc)
-            restored_exc = pickle.loads(pickled)  # noqa: S301 - Testing exception serialization
+            restored_exc = pickle.loads(
+                pickled,
+            )
             assert isinstance(restored_exc, type(original_exc))
             assert str(restored_exc) == str(original_exc)
             if hasattr(original_exc, "language"):
@@ -198,12 +213,11 @@ class TestExceptionSerialization:
 
         def worker_with_queue(q):
             try:
-                raise SimpleChunkerError("Queue test error", {"language":
-                    "python"})
+                raise SimpleChunkerError("Queue test error", {"language": "python"})
             except (AttributeError, KeyError) as e:
                 q.put(("error", e, traceback.format_exc()))
-        process = multiprocessing.Process(target=worker_with_queue, args=(
-            queue,))
+
+        process = multiprocessing.Process(target=worker_with_queue, args=(queue,))
         process.start()
         process.join()
         result_type, exc, tb_str = queue.get()
@@ -217,10 +231,14 @@ class TestExceptionSerialization:
     def test_exception_with_large_context(cls):
         """Test serialization of exceptions with large context data."""
         large_data = "x" * (1024 * 1024)
-        original_exc = SimpleChunkerError("Error with large context", {
-            "data": large_data})
+        original_exc = SimpleChunkerError(
+            "Error with large context",
+            {"data": large_data},
+        )
         pickled = pickle.dumps(original_exc)
-        restored_exc = pickle.loads(pickled)  # noqa: S301 - Testing exception serialization
+        restored_exc = pickle.loads(
+            pickled,
+        )
         assert isinstance(restored_exc, SimpleChunkerError)
         assert len(restored_exc.details["data"]) == len(large_data)
         assert restored_exc.details["data"] == large_data

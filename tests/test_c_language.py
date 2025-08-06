@@ -1,4 +1,5 @@
 """Test C-specific language features and chunking."""
+
 import pytest
 
 from chunker.core import chunk_file
@@ -32,9 +33,13 @@ class TestCLanguageFeatures:
         plugin = CPlugin()
         assert plugin.language_name == "c"
         assert plugin.supported_extensions == {".c", ".h"}
-        assert plugin.default_chunk_types == {"function_definition",
-            "struct_specifier", "union_specifier", "enum_specifier",
-            "type_definition"}
+        assert plugin.default_chunk_types == {
+            "function_definition",
+            "struct_specifier",
+            "union_specifier",
+            "enum_specifier",
+            "type_definition",
+        }
 
     @staticmethod
     def test_basic_function_chunking(tmp_path):
@@ -54,11 +59,10 @@ static inline int square(int x) {
     return x * x;
 }
 """,
-            )
+        )
         chunks = chunk_file(test_file, "c")
         assert len(chunks) == 3
-        assert all(chunk.node_type == "function_definition" for chunk in chunks
-            )
+        assert all(chunk.node_type == "function_definition" for chunk in chunks)
         contents = [chunk.content for chunk in chunks]
         assert any("add(int a, int b)" in content for content in contents)
         assert any("print_hello()" in content for content in contents)
@@ -91,7 +95,7 @@ struct Node {
     struct Node* next;
 };
 """,
-            )
+        )
         chunks = chunk_file(test_file, "c")
         assert len(chunks) >= 3
         chunk_types = {chunk.node_type for chunk in chunks}
@@ -130,7 +134,7 @@ enum ErrorCode {
     ERROR_ACCESS_DENIED = -2
 };
 """,
-            )
+        )
         chunks = chunk_file(test_file, "c")
         enum_chunks = [c for c in chunks if c.node_type == "enum_specifier"]
         assert len(enum_chunks) >= 2
@@ -158,10 +162,9 @@ typedef enum {
     FAILURE = 1
 } Status;
 """,
-            )
+        )
         chunks = chunk_file(test_file, "c")
-        typedef_chunks = [c for c in chunks if c.node_type == "type_definition"
-            ]
+        typedef_chunks = [c for c in chunks if c.node_type == "type_definition"]
         assert len(typedef_chunks) >= 1
         all_types = {chunk.node_type for chunk in chunks}
         assert "struct_specifier" in all_types or "type_definition" in all_types
@@ -192,16 +195,16 @@ operation get_operation(char op) {
 // Array of function pointers
 void (*handlers[10])(int);
 """,
-            )
+        )
         chunks = chunk_file(test_file, "c")
-        func_chunks = [c for c in chunks if c.node_type ==
-            "function_definition"]
+        func_chunks = [c for c in chunks if c.node_type == "function_definition"]
         assert len(func_chunks) >= 2
         func_contents = [chunk.content for chunk in func_chunks]
-        assert any("apply_operation(int a, int b, operation op)" in content for
-            content in func_contents)
-        assert any("get_operation(char op)" in content for content in
-            func_contents)
+        assert any(
+            "apply_operation(int a, int b, operation op)" in content
+            for content in func_contents
+        )
+        assert any("get_operation(char op)" in content for content in func_contents)
 
     @staticmethod
     def test_preprocessor_directives(tmp_path):
@@ -244,15 +247,15 @@ int process_data(int* data, int size) {
     return 0;
 }
 """,
-            )
+        )
         chunks = chunk_file(test_file, "c")
-        func_chunks = [c for c in chunks if c.node_type ==
-            "function_definition"]
+        func_chunks = [c for c in chunks if c.node_type == "function_definition"]
         assert len(func_chunks) >= 1
-        assert any("process_data(int* data, int size)" in chunk.content for
-            chunk in func_chunks)
-        struct_chunks = [c for c in chunks if c.node_type == "struct_specifier"
-            ]
+        assert any(
+            "process_data(int* data, int size)" in chunk.content
+            for chunk in func_chunks
+        )
+        struct_chunks = [c for c in chunks if c.node_type == "struct_specifier"]
         assert len(struct_chunks) >= 1
         assert any("struct Config" in chunk.content for chunk in struct_chunks)
 
@@ -290,7 +293,7 @@ union Variant {
     } string;
 };
 """,
-            )
+        )
         chunks = chunk_file(test_file, "c")
         contents = [chunk.content for chunk in chunks]
         assert any("struct Company" in content for content in contents)
@@ -332,13 +335,11 @@ struct Flags {
     unsigned int reserved : 26;
 };
 """,
-            )
+        )
         chunks = chunk_file(test_file, "c")
-        func_chunks = [c for c in chunks if c.node_type ==
-            "function_definition"]
+        func_chunks = [c for c in chunks if c.node_type == "function_definition"]
         assert any("get_array()" in chunk.content for chunk in func_chunks)
-        struct_chunks = [c for c in chunks if c.node_type == "struct_specifier"
-            ]
+        struct_chunks = [c for c in chunks if c.node_type == "struct_specifier"]
         assert any("struct Flags" in chunk.content for chunk in struct_chunks)
 
     @staticmethod
@@ -383,15 +384,17 @@ static inline bool connection_is_active(const Connection* conn) {
 
 #endif // TEST_H
 """,
-            )
+        )
         chunks = chunk_file(header_file, "c")
         chunk_types = {chunk.node_type for chunk in chunks}
         assert "struct_specifier" in chunk_types
         assert "function_definition" in chunk_types
         contents = [chunk.content for chunk in chunks]
         assert any("struct Connection" in content for content in contents)
-        assert any("connection_is_active(const Connection* conn)" in
-            content for content in contents)
+        assert any(
+            "connection_is_active(const Connection* conn)" in content
+            for content in contents
+        )
 
     @staticmethod
     def test_context_preservation(tmp_path):
@@ -418,15 +421,14 @@ void process_outer(struct Outer* o) {
     o->inner.data.i = 30;
 }
 """,
-            )
+        )
         chunks = chunk_file(test_file, "c")
-        struct_chunks = [c for c in chunks if c.node_type == "struct_specifier"
-            ]
+        struct_chunks = [c for c in chunks if c.node_type == "struct_specifier"]
         assert any("struct Outer" in chunk.content for chunk in struct_chunks)
-        func_chunks = [c for c in chunks if c.node_type ==
-            "function_definition"]
-        assert any("process_outer(struct Outer* o)" in chunk.content for
-            chunk in func_chunks)
+        func_chunks = [c for c in chunks if c.node_type == "function_definition"]
+        assert any(
+            "process_outer(struct Outer* o)" in chunk.content for chunk in func_chunks
+        )
 
     @staticmethod
     def test_inline_assembly(tmp_path):
@@ -455,14 +457,14 @@ int get_cpu_id() {
     return cpu;
 }
 """,
-            )
+        )
         chunks = chunk_file(test_file, "c")
-        func_chunks = [c for c in chunks if c.node_type ==
-            "function_definition"]
+        func_chunks = [c for c in chunks if c.node_type == "function_definition"]
         assert len(func_chunks) == 3
         func_contents = [chunk.content for chunk in func_chunks]
-        assert any("atomic_add(int* ptr, int value)" in content for content in
-            func_contents)
+        assert any(
+            "atomic_add(int* ptr, int value)" in content for content in func_contents
+        )
         assert any("memory_barrier()" in content for content in func_contents)
         assert any("get_cpu_id()" in content for content in func_contents)
 
@@ -499,12 +501,13 @@ void process_list(struct int_list* list) {
     }
 }
 """,
-            )
+        )
         chunks = chunk_file(test_file, "c")
-        func_chunks = [c for c in chunks if c.node_type ==
-            "function_definition"]
-        assert any("process_list(struct int_list* list)" in chunk.content for
-            chunk in func_chunks)
+        func_chunks = [c for c in chunks if c.node_type == "function_definition"]
+        assert any(
+            "process_list(struct int_list* list)" in chunk.content
+            for chunk in func_chunks
+        )
 
     @staticmethod
     def test_forward_declarations(tmp_path):
@@ -541,18 +544,16 @@ void link_nodes(Node* a, Node* b) {
     if (b) b->prev = a;
 }
 """,
-            )
+        )
         chunks = chunk_file(test_file, "c")
-        struct_chunks = [c for c in chunks if c.node_type == "struct_specifier"
-            ]
+        struct_chunks = [c for c in chunks if c.node_type == "struct_specifier"]
         assert any("struct Node" in chunk.content for chunk in struct_chunks)
-        func_chunks = [c for c in chunks if c.node_type ==
-            "function_definition"]
+        func_chunks = [c for c in chunks if c.node_type == "function_definition"]
         func_contents = [chunk.content for chunk in func_chunks]
-        assert any("create_node(int value)" in content for content in
-            func_contents)
-        assert any("link_nodes(Node* a, Node* b)" in content for content in
-            func_contents)
+        assert any("create_node(int value)" in content for content in func_contents)
+        assert any(
+            "link_nodes(Node* a, Node* b)" in content for content in func_contents
+        )
 
 
 class TestCEdgeCases:
@@ -578,13 +579,14 @@ int modern_func(int a, char* b, double c) {
     return a + strlen(b) + (int)c;
 }
 """,
-            )
+        )
         chunks = chunk_file(test_file, "c")
-        func_chunks = [c for c in chunks if c.node_type ==
-            "function_definition"]
+        func_chunks = [c for c in chunks if c.node_type == "function_definition"]
         assert len(func_chunks) >= 1
-        assert any("modern_func(int a, char* b, double c)" in chunk.content for
-            chunk in func_chunks)
+        assert any(
+            "modern_func(int a, char* b, double c)" in chunk.content
+            for chunk in func_chunks
+        )
 
     @staticmethod
     def test_variadic_functions(tmp_path):
@@ -614,16 +616,16 @@ void log_message(const char* format, ...) {
     va_end(args);
 }
 """,
-            )
+        )
         chunks = chunk_file(test_file, "c")
-        func_chunks = [c for c in chunks if c.node_type ==
-            "function_definition"]
+        func_chunks = [c for c in chunks if c.node_type == "function_definition"]
         assert len(func_chunks) == 2
         func_contents = [chunk.content for chunk in func_chunks]
-        assert any("sum(int count, ...)" in content for content in
-            func_contents)
-        assert any("log_message(const char* format, ...)" in content for
-            content in func_contents)
+        assert any("sum(int count, ...)" in content for content in func_contents)
+        assert any(
+            "log_message(const char* format, ...)" in content
+            for content in func_contents
+        )
 
     @staticmethod
     def test_anonymous_structures(tmp_path):
@@ -655,12 +657,10 @@ typedef struct {
     };  // Anonymous union in anonymous struct
 } Variant;
 """,
-            )
+        )
         chunks = chunk_file(test_file, "c")
-        struct_chunks = [c for c in chunks if c.node_type == "struct_specifier"
-            ]
-        assert any("struct Message" in chunk.content for chunk in struct_chunks
-            )
+        struct_chunks = [c for c in chunks if c.node_type == "struct_specifier"]
+        assert any("struct Message" in chunk.content for chunk in struct_chunks)
 
     @staticmethod
     def test_gnu_extensions(tmp_path):
@@ -690,9 +690,7 @@ struct Point points[] = {
     [5] = { .x = 5, .y = 10 },
 };
 """,
-            )
+        )
         chunks = chunk_file(test_file, "c")
-        func_chunks = [c for c in chunks if c.node_type ==
-            "function_definition"]
-        assert any("outer_function(int x)" in chunk.content for chunk in
-            func_chunks)
+        func_chunks = [c for c in chunks if c.node_type == "function_definition"]
+        assert any("outer_function(int x)" in chunk.content for chunk in func_chunks)

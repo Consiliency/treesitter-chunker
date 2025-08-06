@@ -104,7 +104,9 @@ class ASTCache:
                 if cached_hash == metadata.hash and cached_mtime == metadata.mtime:
                     try:
                         # Deserialize chunks
-                        chunks_dicts = pickle.loads(chunks_data)  # noqa: S301 - Loading trusted cache data
+                        chunks_dicts = pickle.loads(
+                            chunks_data,
+                        )
                         return [CodeChunk(**chunk_dict) for chunk_dict in chunks_dicts]
                     except (
                         pickle.UnpicklingError,

@@ -1,4 +1,5 @@
 """Incremental processing interface for efficient chunk updates."""
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
@@ -10,6 +11,7 @@ from chunker.types import CodeChunk
 
 class ChangeType(Enum):
     """Types of changes in code."""
+
     ADDED = "added"
     MODIFIED = "modified"
     DELETED = "deleted"
@@ -20,6 +22,7 @@ class ChangeType(Enum):
 @dataclass
 class ChunkChange:
     """Represents a change to a chunk."""
+
     chunk_id: str
     change_type: ChangeType
     old_chunk: CodeChunk | None
@@ -31,6 +34,7 @@ class ChunkChange:
 @dataclass
 class ChunkDiff:
     """Diff between two sets of chunks."""
+
     changes: list[ChunkChange]
     added_chunks: list[CodeChunk]
     deleted_chunks: list[CodeChunk]
@@ -42,6 +46,7 @@ class ChunkDiff:
 @dataclass
 class CacheEntry:
     """Entry in the chunk cache."""
+
     file_path: str
     file_hash: str
     chunks: list[CodeChunk]
@@ -55,8 +60,11 @@ class IncrementalProcessor(ABC):
 
     @staticmethod
     @abstractmethod
-    def compute_diff(old_chunks: list[CodeChunk], new_content: str,
-        language: str) -> ChunkDiff:
+    def compute_diff(
+        old_chunks: list[CodeChunk],
+        new_content: str,
+        language: str,
+    ) -> ChunkDiff:
         """
         Compute difference between old chunks and new content.
 
@@ -74,8 +82,7 @@ class IncrementalProcessor(ABC):
 
     @staticmethod
     @abstractmethod
-    def update_chunks(old_chunks: list[CodeChunk], diff: ChunkDiff) -> list[
-        CodeChunk]:
+    def update_chunks(old_chunks: list[CodeChunk], diff: ChunkDiff) -> list[CodeChunk]:
         """
         Update chunks based on diff.
 
@@ -92,8 +99,10 @@ class IncrementalProcessor(ABC):
 
     @staticmethod
     @abstractmethod
-    def detect_moved_chunks(old_chunks: list[CodeChunk], new_chunks: list[
-        CodeChunk]) -> list[tuple[CodeChunk, CodeChunk]]:
+    def detect_moved_chunks(
+        old_chunks: list[CodeChunk],
+        new_chunks: list[CodeChunk],
+    ) -> list[tuple[CodeChunk, CodeChunk]]:
         """
         Detect chunks that have been moved.
 
@@ -107,9 +116,11 @@ class IncrementalProcessor(ABC):
 
     @staticmethod
     @abstractmethod
-    def merge_incremental_results(full_chunks: list[CodeChunk],
-        incremental_chunks: list[CodeChunk], changed_regions: list[tuple[
-        int, int]]) -> list[CodeChunk]:
+    def merge_incremental_results(
+        full_chunks: list[CodeChunk],
+        incremental_chunks: list[CodeChunk],
+        changed_regions: list[tuple[int, int]],
+    ) -> list[CodeChunk]:
         """
         Merge incremental processing results with full chunks.
 
@@ -128,8 +139,12 @@ class ChunkCache(ABC):
 
     @staticmethod
     @abstractmethod
-    def store(file_path: str, chunks: list[CodeChunk], file_hash: str,
-        metadata: (dict[str, Any] | None) = None) -> None:
+    def store(
+        file_path: str,
+        chunks: list[CodeChunk],
+        file_hash: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
         """
         Store chunks with file hash.
 
@@ -142,8 +157,7 @@ class ChunkCache(ABC):
 
     @staticmethod
     @abstractmethod
-    def retrieve(file_path: str, file_hash: (str | None) = None) -> (CacheEntry |
-        None):
+    def retrieve(file_path: str, file_hash: str | None = None) -> CacheEntry | None:
         """
         Retrieve cached chunks.
 
@@ -157,8 +171,10 @@ class ChunkCache(ABC):
 
     @staticmethod
     @abstractmethod
-    def invalidate(file_path: (str | None) = None, older_than: (datetime |
-        None) = None) -> int:
+    def invalidate(
+        file_path: str | None = None,
+        older_than: datetime | None = None,
+    ) -> int:
         """
         Invalidate cache entries.
 
@@ -209,8 +225,10 @@ class ChangeDetector(ABC):
 
     @staticmethod
     @abstractmethod
-    def find_changed_regions(old_content: str, new_content: str) -> list[tuple
-        [int, int]]:
+    def find_changed_regions(
+        old_content: str,
+        new_content: str,
+    ) -> list[tuple[int, int]]:
         """
         Find regions that have changed.
 
@@ -224,8 +242,11 @@ class ChangeDetector(ABC):
 
     @staticmethod
     @abstractmethod
-    def classify_change(old_chunk: CodeChunk, new_content: str,
-        changed_lines: set[int]) -> ChangeType:
+    def classify_change(
+        old_chunk: CodeChunk,
+        new_content: str,
+        changed_lines: set[int],
+    ) -> ChangeType:
         """
         Classify the type of change to a chunk.
 
@@ -244,8 +265,7 @@ class IncrementalIndex(ABC):
 
     @staticmethod
     @abstractmethod
-    def update_chunk(old_chunk: (CodeChunk | None), new_chunk: (CodeChunk |
-        None)) -> None:
+    def update_chunk(old_chunk: CodeChunk | None, new_chunk: CodeChunk | None) -> None:
         """
         Update index for a single chunk change.
 

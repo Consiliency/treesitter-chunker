@@ -1,4 +1,5 @@
 """Comprehensive tests for MATLAB language support."""
+
 from chunker import chunk_file, get_parser
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from chunker.languages.matlab import MATLABPlugin
@@ -17,7 +18,7 @@ class TestMATLABBasicChunking:
     result = a + b;
 end
 """,
-            )
+        )
         chunks = chunk_file(src, "matlab")
         assert len(chunks) >= 1
         func_chunks = [c for c in chunks if "function" in c.node_type]
@@ -37,7 +38,7 @@ end
     z = r * cos(phi);
 end
 """,
-            )
+        )
         chunks = chunk_file(src, "matlab")
         func_chunks = [c for c in chunks if "function" in c.node_type]
         assert len(func_chunks) == 1
@@ -66,7 +67,7 @@ mean_val = mean(y);
 std_val = std(y);
 fprintf('Mean: %.2f, Std: %.2f\\n', mean_val, std_val);
 """,
-            )
+        )
         chunks = chunk_file(src, "matlab")
         assert len(chunks) >= 1
         assert any("Data analysis script" in c.content for c in chunks)
@@ -108,17 +109,18 @@ fprintf('Mean: %.2f, Std: %.2f\\n', mean_val, std_val);
     end
 end
 """,
-            )
+        )
         chunks = chunk_file(src, "matlab")
         chunk_types = {chunk.node_type for chunk in chunks}
-        assert any("classdef" in t or "class_definition" in t for t in
-            chunk_types)
+        assert any("classdef" in t or "class_definition" in t for t in chunk_types)
         assert any("properties" in t for t in chunk_types)
         assert any("methods" in t for t in chunk_types)
-        method_chunks = [c for c in chunks if "method" in c.node_type or
-            "function" in c.node_type]
-        assert any("MyClass" in c.content and "Constructor" in c.content for
-            c in method_chunks)
+        method_chunks = [
+            c for c in chunks if "method" in c.node_type or "function" in c.node_type
+        ]
+        assert any(
+            "MyClass" in c.content and "Constructor" in c.content for c in method_chunks
+        )
         assert any("display" in c.content for c in method_chunks)
         assert any("staticMethod" in c.content for c in method_chunks)
 
@@ -148,7 +150,7 @@ function local_result = local_function(input)
     local_result = input^2;
 end
 """,
-            )
+        )
         chunks = chunk_file(src, "matlab")
         func_chunks = [c for c in chunks if "function" in c.node_type]
         assert len(func_chunks) >= 4
@@ -188,9 +190,10 @@ class TestMATLABContractCompliance:
         node_types = plugin.get_chunk_node_types()
         assert isinstance(node_types, set)
         assert len(node_types) > 0
-        assert "function_definition" in node_types or "function_declaration" in node_types
-        assert any("classdef" in t or "class_definition" in t for t in
-            node_types)
+        assert (
+            "function_definition" in node_types or "function_declaration" in node_types
+        )
+        assert any("classdef" in t or "class_definition" in t for t in node_types)
         assert any("methods" in t for t in node_types)
 
     @staticmethod
@@ -202,6 +205,7 @@ class TestMATLABContractCompliance:
 
             def __init__(self, node_type):
                 self.type = node_type
+
         assert plugin.should_chunk_node(MockNode("function_definition"))
         assert plugin.should_chunk_node(MockNode("classdef"))
         assert plugin.should_chunk_node(MockNode("methods"))
@@ -220,6 +224,7 @@ class TestMATLABContractCompliance:
             def __init__(self, node_type):
                 self.type = node_type
                 self.children = []
+
         node = MockNode("function_definition")
         context = plugin.get_node_context(node, b"function y = test(x)")
         assert context is not None
@@ -253,7 +258,7 @@ Multi-line
 block comment
 %}
 """,
-            )
+        )
         chunks = chunk_file(src, "matlab")
         comment_chunks = [c for c in chunks if "comment" in c.node_type]
         assert len(comment_chunks) >= 1
@@ -271,7 +276,7 @@ add = @(a, b) a + b;
 result = arrayfun(square, 1:10);
 combined = @(x, y) add(square(x), y);
 """,
-            )
+        )
         chunks = chunk_file(src, "matlab")
         assert len(chunks) >= 1
 
@@ -304,7 +309,7 @@ combined = @(x, y) add(square(x), y);
     end
 end
 """,
-            )
+        )
         chunks = chunk_file(src, "matlab")
         chunk_types = {chunk.node_type for chunk in chunks}
         assert any("events" in t for t in chunk_types)
@@ -341,10 +346,11 @@ end
     end
 end
 """,
-            )
+        )
         chunks = chunk_file(src, "matlab")
-        assert any("DerivedClass" in c.content and "BaseClass" in c.content for
-            c in chunks)
+        assert any(
+            "DerivedClass" in c.content and "BaseClass" in c.content for c in chunks
+        )
         assert any("SetAccess = protected" in c.content for c in chunks)
         assert any("Constant" in c.content for c in chunks)
         assert any("Sealed" in c.content for c in chunks)

@@ -11,7 +11,7 @@ from chunker.export import JSONLExporter, SchemaType
 from chunker.types import CodeChunk
 
 
-@pytest.fixture
+@pytest.fixture()
 def sample_chunks():
     """Create sample chunks with relationships."""
     chunks = [
@@ -98,7 +98,8 @@ def test_jsonl_export_to_file(sample_chunks, tmp_path):
 
     assert output_path.exists()
     with Path(output_path).open(
-        "r", encoding="utf-8",
+        "r",
+        encoding="utf-8",
     ) as f:
         lines = f.readlines()
 
@@ -138,7 +139,8 @@ def test_jsonl_stream_export(sample_chunks, tmp_path):
 
     assert output_path.exists()
     with Path(output_path).open(
-        "r", encoding="utf-8",
+        "r",
+        encoding="utf-8",
     ) as f:
         lines = f.readlines()
 

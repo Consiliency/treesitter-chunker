@@ -26,7 +26,7 @@ class GrammarManagerContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def fetch_grammars(languages: (list[str] | None) = None) -> dict[str, bool]:
+    def fetch_grammars(languages: list[str] | None = None) -> dict[str, bool]:
         """Fetch grammar repositories
 
         Args:
@@ -44,7 +44,7 @@ class GrammarManagerContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def compile_grammars(languages: (list[str] | None) = None) -> dict[str, bool]:
+    def compile_grammars(languages: list[str] | None = None) -> dict[str, bool]:
         """Compile fetched grammars into shared library
 
         Args:

@@ -19,10 +19,12 @@ class NestedIfSimplifier(ast.NodeTransformer):
 
         # Check if this if statement has only one statement in its body
         # and that statement is another if without an else
-        if (len(node.body) == 1 and
-            isinstance(node.body[0], ast.If) and
-            not node.body[0].orelse and
-            not node.orelse):
+        if (
+            len(node.body) == 1
+            and isinstance(node.body[0], ast.If)
+            and not node.body[0].orelse
+            and not node.orelse
+        ):
 
             inner_if = node.body[0]
 
@@ -57,6 +59,7 @@ def fix_file(file_path: Path) -> list[str]:
         # Convert AST back to code
         try:
             import astor
+
             new_code = astor.to_source(new_tree)
         except ImportError:
             # Fallback to ast.unparse (Python 3.9+)
@@ -100,9 +103,11 @@ def fix_file_with_text(file_path: Path) -> list[str]:
                 next_indent = len(next_line) - len(next_line.lstrip())
 
                 # Check if it's a nested if
-                if (next_stripped.startswith("if ") and
-                    next_stripped.endswith(":") and
-                    next_indent > indent):
+                if (
+                    next_stripped.startswith("if ")
+                    and next_stripped.endswith(":")
+                    and next_indent > indent
+                ):
 
                     # Look for the body of the inner if
                     k = j + 1
@@ -119,7 +124,9 @@ def fix_file_with_text(file_path: Path) -> list[str]:
                             line_indent = len(lines[m]) - len(lines[m].lstrip())
                             if line_indent <= indent:
                                 break
-                            if line_indent == next_indent and lines[m].strip().startswith("else"):
+                            if line_indent == next_indent and lines[
+                                m
+                            ].strip().startswith("else"):
                                 has_else = True
                                 break
                             m += 1
@@ -141,7 +148,9 @@ def fix_file_with_text(file_path: Path) -> list[str]:
                             # Adjust indentation of the body
                             while k < len(lines):
                                 if lines[k].strip():
-                                    current_indent = len(lines[k]) - len(lines[k].lstrip())
+                                    current_indent = len(lines[k]) - len(
+                                        lines[k].lstrip(),
+                                    )
                                     if current_indent <= next_indent:
                                         break
                                     # Reduce indentation
@@ -166,10 +175,22 @@ def main():
 
     # Directories to exclude
     exclude_dirs = {
-        ".venv", "venv", "build", "dist", ".git", "ide",
-        "node_modules", "grammars", "__pycache__", ".mypy_cache",
-        ".ruff_cache", ".pytest_cache", "egg-info", "archive",
-        "flask", "rust",
+        ".venv",
+        "venv",
+        "build",
+        "dist",
+        ".git",
+        "ide",
+        "node_modules",
+        "grammars",
+        "__pycache__",
+        ".mypy_cache",
+        ".ruff_cache",
+        ".pytest_cache",
+        "egg-info",
+        "archive",
+        "flask",
+        "rust",
     }
 
     python_files = []
@@ -191,14 +212,25 @@ def main():
 
     # First, run ruff to identify files with SIM102 errors
     import subprocess
+
     result = subprocess.run(
-        ["ruff", "check", str(project_root), "--select", "SIM102", "--output-format", "json"],
-        check=False, capture_output=True,
+        [
+            "ruff",
+            "check",
+            str(project_root),
+            "--select",
+            "SIM102",
+            "--output-format",
+            "json",
+        ],
+        check=False,
+        capture_output=True,
         text=True,
     )
 
     if result.stdout:
         import json
+
         try:
             errors = json.loads(result.stdout)
             files_with_errors = {Path(err["filename"]) for err in errors}

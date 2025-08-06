@@ -1,6 +1,7 @@
 """
 Unit tests for Build System implementation
 """
+
 import tempfile
 from pathlib import Path
 
@@ -51,8 +52,11 @@ class TestBuildSystem:
         builder = BuildSystem()
         with tempfile.TemporaryDirectory() as tmpdir:
             output_dir = Path(tmpdir)
-            _success, build_info = builder.compile_grammars(["python"],
-                "linux", output_dir)
+            _success, build_info = builder.compile_grammars(
+                ["python"],
+                "linux",
+                output_dir,
+            )
             assert isinstance(build_info, dict)
             assert "platform" in build_info
             assert "compiler" in build_info
@@ -76,8 +80,7 @@ class TestBuildSystem:
         builder = BuildSystem()
         with tempfile.TemporaryDirectory() as tmpdir:
             output_dir = Path(tmpdir)
-            success, wheel_path = builder.build_wheel("linux", "cp39",
-                output_dir)
+            success, wheel_path = builder.build_wheel("linux", "cp39", output_dir)
             assert isinstance(success, bool)
             assert isinstance(wheel_path, Path)
 

@@ -14,7 +14,6 @@ import json
 import subprocess
 import sys
 import threading
-import time
 from pathlib import Path
 
 
@@ -51,6 +50,7 @@ def test_multi_instance_safety():
                     "TestEvent",
                     "--add-chat",
                 ],
+                check=False,
                 input=input_json,
                 capture_output=True,
                 text=True,

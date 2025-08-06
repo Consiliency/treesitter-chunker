@@ -1,4 +1,5 @@
 """Repository-level processing interfaces."""
+
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -11,6 +12,7 @@ from chunker.types import CodeChunk
 @dataclass
 class FileChunkResult:
     """Result of chunking a single file."""
+
     file_path: str
     chunks: list[CodeChunk]
     error: Exception | None = None
@@ -20,6 +22,7 @@ class FileChunkResult:
 @dataclass
 class RepoChunkResult:
     """Result of processing an entire repository."""
+
     repo_path: str
     file_results: list[FileChunkResult]
     total_chunks: int
@@ -35,9 +38,12 @@ class RepoProcessor(ABC):
 
     @staticmethod
     @abstractmethod
-    def process_repository(repo_path: str, incremental: bool = True,
-        file_pattern: (str | None) = None, exclude_patterns: (list[str] |
-        None) = None) -> RepoChunkResult:
+    def process_repository(
+        repo_path: str,
+        incremental: bool = True,
+        file_pattern: str | None = None,
+        exclude_patterns: list[str] | None = None,
+    ) -> RepoChunkResult:
         """
         Process all files in a repository.
 
@@ -53,9 +59,11 @@ class RepoProcessor(ABC):
 
     @staticmethod
     @abstractmethod
-    def process_files_iterator(repo_path: str, file_pattern: (str | None) =
-        None, exclude_patterns: (list[str] | None) = None) -> Iterator[
-        FileChunkResult]:
+    def process_files_iterator(
+        repo_path: str,
+        file_pattern: str | None = None,
+        exclude_patterns: list[str] | None = None,
+    ) -> Iterator[FileChunkResult]:
         """
         Process repository files as an iterator for memory efficiency.
 
@@ -83,8 +91,11 @@ class RepoProcessor(ABC):
 
     @staticmethod
     @abstractmethod
-    def get_processable_files(repo_path: str, file_pattern: (str | None) =
-        None, exclude_patterns: (list[str] | None) = None) -> list[Path]:
+    def get_processable_files(
+        repo_path: str,
+        file_pattern: str | None = None,
+        exclude_patterns: list[str] | None = None,
+    ) -> list[Path]:
         """
         Get list of files that would be processed.
 
@@ -103,8 +114,11 @@ class GitAwareProcessor(ABC):
 
     @staticmethod
     @abstractmethod
-    def get_changed_files(repo_path: str, since_commit: (str | None) = None,
-        branch: (str | None) = None) -> list[str]:
+    def get_changed_files(
+        repo_path: str,
+        since_commit: str | None = None,
+        branch: str | None = None,
+    ) -> list[str]:
         """
         Get files changed since a commit or between branches.
 
@@ -133,8 +147,11 @@ class GitAwareProcessor(ABC):
 
     @staticmethod
     @abstractmethod
-    def get_file_history(file_path: str, repo_path: str, limit: int = 10) -> list[
-        dict[str, Any]]:
+    def get_file_history(
+        file_path: str,
+        repo_path: str,
+        limit: int = 10,
+    ) -> list[dict[str, Any]]:
         """
         Get commit history for a file.
 
@@ -173,7 +190,7 @@ class GitAwareProcessor(ABC):
 
     @staticmethod
     @abstractmethod
-    def load_incremental_state(repo_path: str) -> (dict[str, Any] | None):
+    def load_incremental_state(repo_path: str) -> dict[str, Any] | None:
         """
         Load incremental processing state.
 

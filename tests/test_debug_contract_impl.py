@@ -1,6 +1,7 @@
 """
 Unit tests for debug contract implementations
 """
+
 import json
 import tempfile
 from pathlib import Path
@@ -16,13 +17,13 @@ class TestDebugVisualizationImpl:
     """Test DebugVisualizationImpl contract implementation"""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def impl(cls):
         """Create implementation instance"""
         return DebugVisualizationImpl()
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def sample_file(cls):
         """Create a sample Python file"""
         content = """def hello():
@@ -32,7 +33,12 @@ class Example:
     def __init__(self):
         self.value = 42
 """
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
             f.write(content)
             f.flush()
             yield f.name
@@ -107,13 +113,13 @@ class TestChunkComparisonImpl:
     """Test ChunkComparisonImpl contract implementation"""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def impl(cls):
         """Create implementation instance"""
         return ChunkComparisonImpl()
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def sample_file(cls):
         """Create a sample Python file"""
         content = """def process_data(data):
@@ -129,7 +135,12 @@ class DataProcessor:
     def process(self):
         return process_data(self.data)
 """
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
             f.write(content)
             f.flush()
             yield f.name
@@ -138,8 +149,7 @@ class DataProcessor:
     @staticmethod
     def test_compare_strategies_basic(impl, sample_file):
         """Test basic strategy comparison"""
-        result = impl.compare_strategies(sample_file, "python", ["default",
-            "adaptive"])
+        result = impl.compare_strategies(sample_file, "python", ["default", "adaptive"])
         assert isinstance(result, dict)
         assert "strategies" in result
         assert "overlaps" in result
@@ -163,8 +173,11 @@ class DataProcessor:
     def test_compare_strategies_invalid_strategy(impl, sample_file):
         """Test handling of invalid strategy"""
         with pytest.raises(ValueError, match="Unknown strategy"):
-            impl.compare_strategies(sample_file, "python", ["invalid_strategy"],
-                )
+            impl.compare_strategies(
+                sample_file,
+                "python",
+                ["invalid_strategy"],
+            )
 
     @staticmethod
     def test_compare_strategies_file_not_found(impl):

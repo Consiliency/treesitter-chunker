@@ -2,6 +2,7 @@
 
 Converts f-strings in logging statements to % formatting with lazy evaluation.
 """
+
 import ast
 import re
 from pathlib import Path
@@ -13,8 +14,7 @@ class LoggingFStringFixer(ast.NodeTransformer):
 
     def __init__(self):
         self.changes_made = []
-        self.logging_modules = {"logger", "logging", "log", "self.logger",
-            "self.log"}
+        self.logging_modules = {"logger", "logging", "log", "self.logger", "self.log"}
 
     def visit_Call(self, node):
         """Visit function calls to find logging statements."""
@@ -27,7 +27,7 @@ class LoggingFStringFixer(ast.NodeTransformer):
                         new_args.append(new_arg)
                         self.changes_made.append(
                             f"Converted f-string to % formatting in {self._get_call_name(node)} call",
-                            )
+                        )
                     else:
                         new_args.append(arg)
                 else:
@@ -38,15 +38,30 @@ class LoggingFStringFixer(ast.NodeTransformer):
     def _is_logging_call(self, node) -> bool:
         """Check if a call is a logging statement."""
         if isinstance(node.func, ast.Attribute):
-            if (hasattr(node.func.value, "id",
-                ) and node.func.value.id in self.logging_modules) or (isinstance(node.func.value, ast.Attribute) and (isinstance
-                (node.func.value.value, ast.Name) and node.func.value.value
-                .id == "self" and node.func.value.attr in ("logger", "log"))):
-                return node.func.attr in ("debug", "info", "warning",
-                    "error", "critical", "log")
+            if (
+                hasattr(
+                    node.func.value,
+                    "id",
+                )
+                and node.func.value.id in self.logging_modules
+            ) or (
+                isinstance(node.func.value, ast.Attribute)
+                and (
+                    isinstance(node.func.value.value, ast.Name)
+                    and node.func.value.value.id == "self"
+                    and node.func.value.attr in {"logger", "log"}
+                )
+            ):
+                return node.func.attr in {
+                    "debug",
+                    "info",
+                    "warning",
+                    "error",
+                    "critical",
+                    "log",
+                }
         elif isinstance(node.func, ast.Name):
-            return node.func.id in ("debug", "info", "warning", "error",
-                "critical")
+            return node.func.id in {"debug", "info", "warning", "error", "critical"}
         return False
 
     def _get_call_name(self, node) -> str:
@@ -76,10 +91,16 @@ class LoggingFStringFixer(ast.NodeTransformer):
         if not format_args:
             return ast.Constant(value=format_string)
         if len(format_args) == 1:
-            return ast.BinOp(left=ast.Constant(value=format_string), op=ast
-                .Mod(), right=format_args[0])
-        return ast.BinOp(left=ast.Constant(value=format_string), op=ast
-            .Mod(), right=ast.Tuple(elts=format_args, ctx=ast.Load()))
+            return ast.BinOp(
+                left=ast.Constant(value=format_string),
+                op=ast.Mod(),
+                right=format_args[0],
+            )
+        return ast.BinOp(
+            left=ast.Constant(value=format_string),
+            op=ast.Mod(),
+            right=ast.Tuple(elts=format_args, ctx=ast.Load()),
+        )
 
 
 def fix_file(file_path: Path) -> list[str]:
@@ -95,6 +116,7 @@ def fix_file(file_path: Path) -> list[str]:
     if fixer.changes_made:
         try:
             import astor
+
             new_code = astor.to_source(new_tree)
         except ImportError:
             new_code = ast.unparse(new_tree)
@@ -114,8 +136,8 @@ def fix_file_with_regex(file_path: Path) -> list[str]:
     lines = content.splitlines(keepends=True)
     modified = False
     logging_pattern = re.compile(
-        '(\\s*)((?:self\\.)?(?:logger|log|logging)\\.(?:debug|info|warning|error|critical)|(?:debug|info|warning|error|critical))\\s*\\(\\s*f["\\\']',
-        )
+        "(\\s*)((?:self\\.)?(?:logger|log|logging)\\.(?:debug|info|warning|error|critical)|(?:debug|info|warning|error|critical))\\s*\\(\\s*f[\"\\']",
+    )
     for i, line in enumerate(lines):
         match = logging_pattern.search(line)
         if match:
@@ -127,17 +149,24 @@ def fix_file_with_regex(file_path: Path) -> list[str]:
                     break
                 end_pos += 1
             if end_pos < len(line):
-                fstring_content = line[start_pos + 1:end_pos]
+                fstring_content = line[start_pos + 1 : end_pos]
                 converted = convert_fstring_content(fstring_content)
                 if converted:
-                    new_line = line[:match.end() - 2] + quote_char + converted[
-                        "format"] + quote_char + (", " + ", ".join(
-                        converted["args"]) if converted["args"] else ""
-                        ) + line[end_pos + 1:]
+                    new_line = (
+                        line[: match.end() - 2]
+                        + quote_char
+                        + converted["format"]
+                        + quote_char
+                        + (
+                            ", " + ", ".join(converted["args"])
+                            if converted["args"]
+                            else ""
+                        )
+                        + line[end_pos + 1 :]
+                    )
                     lines[i] = new_line
                     modified = True
-                    changes.append(
-                        f"Converted f-string in {match.group(2)} call")
+                    changes.append(f"Converted f-string in {match.group(2)} call")
     if modified:
         file_path.write_text("".join(lines), encoding="utf-8")
     return changes
@@ -153,6 +182,7 @@ def convert_fstring_content(content: str) -> dict[str, Any]:
         expr = match.group(1)
         args.append(expr)
         return "%s"
+
     format_str = expr_pattern.sub(replacer, format_str)
     if args:
         return {"format": format_str, "args": args}
@@ -162,9 +192,21 @@ def convert_fstring_content(content: str) -> dict[str, Any]:
 def main():
     """Main function."""
     project_root = Path(__file__).parent.parent
-    exclude_dirs = {".venv", "venv", "build", "dist", ".git", "ide",
-        "node_modules", "grammars", "__pycache__", ".mypy_cache",
-        ".ruff_cache", ".pytest_cache", "egg-info"}
+    exclude_dirs = {
+        ".venv",
+        "venv",
+        "build",
+        "dist",
+        ".git",
+        "ide",
+        "node_modules",
+        "grammars",
+        "__pycache__",
+        ".mypy_cache",
+        ".ruff_cache",
+        ".pytest_cache",
+        "egg-info",
+    }
     python_files = []
     for root, dirs, files in os.walk(project_root):
         dirs[:] = [d for d in dirs if d not in exclude_dirs]
@@ -194,5 +236,6 @@ def main():
 if __name__ == "__main__":
     import os
     import sys
+
     sys.path.insert(0, Path(Path(Path(__file__).resolve()).parent).parent)
     main()

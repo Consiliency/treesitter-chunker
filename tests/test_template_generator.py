@@ -1,4 +1,5 @@
 """Tests for the template generator implementation."""
+
 import tempfile
 from pathlib import Path
 
@@ -11,14 +12,14 @@ class TestTemplateGenerator:
     """Test suite for TemplateGenerator."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def temp_dir(cls):
         """Create a temporary directory for test outputs."""
         with tempfile.TemporaryDirectory() as tmpdir:
             yield Path(tmpdir)
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def generator(cls):
         """Create a TemplateGenerator instance."""
         return TemplateGenerator()
@@ -44,8 +45,7 @@ class TestTemplateGenerator:
     @staticmethod
     def test_validate_config(generator):
         """Test config validation."""
-        config = {"node_types": ["function", "class"], "file_extensions": [
-            ".css"]}
+        config = {"node_types": ["function", "class"], "file_extensions": [".css"]}
         assert generator._validate_config(config) is True
         config = {"file_extensions": [".css"]}
         assert generator._validate_config(config) is False
@@ -55,8 +55,10 @@ class TestTemplateGenerator:
     @staticmethod
     def test_validate_test_cases(generator):
         """Test test case validation."""
-        test_cases = [{"name": "test1", "code": "function() {}"}, {"name":
-            "test2", "code": "class A {}"}]
+        test_cases = [
+            {"name": "test1", "code": "function() {}"},
+            {"name": "test2", "code": "class A {}"},
+        ]
         assert generator._validate_test_cases(test_cases) is True
         test_cases = [{"code": "test"}]
         assert generator._validate_test_cases(test_cases) is False
@@ -67,10 +69,12 @@ class TestTemplateGenerator:
     @staticmethod
     def test_prepare_plugin_variables(generator):
         """Test plugin template variable preparation."""
-        config = {"node_types": ["function", "class"], "file_extensions": [
-            "css", ".scss"], "include_decorators": True,
-            "custom_node_handling": {"function":
-            "return node.children_count > 0"}}
+        config = {
+            "node_types": ["function", "class"],
+            "file_extensions": ["css", ".scss"],
+            "include_decorators": True,
+            "custom_node_handling": {"function": "return node.children_count > 0"},
+        }
         template_vars = generator._prepare_plugin_variables("css", config)
         assert template_vars["language_name"] == "css"
         assert template_vars["class_name"] == "Css"
@@ -83,9 +87,15 @@ class TestTemplateGenerator:
     @staticmethod
     def test_prepare_test_variables(generator):
         """Test test template variable preparation."""
-        test_cases = [{"name": "test_functions", "code":
-            "function test() {}", "expected_chunks": 2, "expected_types": [
-            "function"]}, {"name": "test_classes", "code": "class A {}"}]
+        test_cases = [
+            {
+                "name": "test_functions",
+                "code": "function test() {}",
+                "expected_chunks": 2,
+                "expected_types": ["function"],
+            },
+            {"name": "test_classes", "code": "class A {}"},
+        ]
         template_vars = generator._prepare_test_variables("css", test_cases)
         assert template_vars["language_name"] == "css"
         assert template_vars["class_name"] == "Css"
@@ -150,8 +160,7 @@ class TestPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
     @classmethod
     def test_validate_plugin_missing_file(cls, generator):
         """Test validation of non-existent file."""
-        is_valid, issues = generator.validate_plugin(Path(
-            "/nonexistent/plugin.py"))
+        is_valid, issues = generator.validate_plugin(Path("/nonexistent/plugin.py"))
         assert is_valid is False
         assert len(issues) == 1
         assert "does not exist" in issues[0]
@@ -188,11 +197,15 @@ class TestPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
     def language_name(self):
         return "test\"
 """,
-            )
+        )
         is_valid, issues = generator.validate_plugin(plugin_path)
         assert is_valid is False
-        expected_missing = ["get_semantic_chunks", "get_chunk_node_types",
-            "should_chunk_node", "get_node_context"]
+        expected_missing = [
+            "get_semantic_chunks",
+            "get_chunk_node_types",
+            "should_chunk_node",
+            "get_node_context",
+        ]
         for method in expected_missing:
             assert any(method in issue for issue in issues)
 
@@ -202,19 +215,27 @@ class TestPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         custom_template_dir = temp_dir / "custom_templates"
         custom_template_dir.mkdir()
         (custom_template_dir / "language_plugin.py.j2").write_text(
-            "# Custom plugin for {{ language_name }}")
+            "# Custom plugin for {{ language_name }}",
+        )
         (custom_template_dir / "language_test.py.j2").write_text(
-            "# Custom test for {{ language_name }}")
+            "# Custom test for {{ language_name }}",
+        )
         generator = TemplateGenerator(custom_template_dir)
         assert generator.template_dir == custom_template_dir
 
     @staticmethod
     def test_template_rendering(generator):
         """Test that templates can be rendered without errors."""
-        template_vars = {"language_name": "test", "class_name": "Test",
-            "node_types": ["function", "class"], "file_extensions": [
-            ".test"], "include_imports": True, "include_decorators": False,
-            "include_nested": True, "custom_node_handling": {}}
+        template_vars = {
+            "language_name": "test",
+            "class_name": "Test",
+            "node_types": ["function", "class"],
+            "file_extensions": [".test"],
+            "include_imports": True,
+            "include_decorators": False,
+            "include_nested": True,
+            "custom_node_handling": {},
+        }
         template = generator._env.get_template("language_plugin.py.j2")
         content = template.render(**template_vars)
         assert "class TestPlugin" in content
@@ -222,11 +243,13 @@ class TestPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         assert "function" in content
 
     @staticmethod
-    def test_integration_scenario(generator, temp_dir):
+    def test_integration_scenario(generator, _temp_dir):
         """Test a full integration scenario."""
-        config = {"node_types": ["style_rule", "media_rule",
-            "keyframes_rule"], "file_extensions": [".css", ".scss"],
-            "include_decorators": False}
+        config = {
+            "node_types": ["style_rule", "media_rule", "keyframes_rule"],
+            "file_extensions": [".css", ".scss"],
+            "include_decorators": False,
+        }
         assert generator._validate_language_name("css") is True
         assert generator._validate_config(config) is True
         template_vars = generator._prepare_plugin_variables("css", config)

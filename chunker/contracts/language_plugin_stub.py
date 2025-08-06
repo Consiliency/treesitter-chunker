@@ -7,8 +7,7 @@ class ExtendedLanguagePluginStub(ExtendedLanguagePluginContract):
     """Stub for language plugin testing"""
 
     @staticmethod
-    def get_semantic_chunks(_node: Node, _source: bytes) -> list[dict[str, any]
-        ]:
+    def get_semantic_chunks(_node: Node, _source: bytes) -> list[dict[str, any]]:
         """Returns empty list"""
         return []
 
@@ -23,6 +22,6 @@ class ExtendedLanguagePluginStub(ExtendedLanguagePluginContract):
         return False
 
     @staticmethod
-    def get_node_context(_node: Node, _source: bytes) -> (str | None):
+    def get_node_context(_node: Node, _source: bytes) -> str | None:
         """Returns None"""
         return None

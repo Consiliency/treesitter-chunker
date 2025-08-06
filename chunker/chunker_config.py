@@ -5,7 +5,7 @@ import logging
 import os
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 import toml
 import yaml
@@ -22,13 +22,17 @@ class ChunkerConfig:
     - ${VAR} or ${VAR:default} syntax in config files
     - CHUNKER_* environment variables override config values
     """
+
     DEFAULT_CONFIG_FILENAME = "chunker.config"
-    SUPPORTED_FORMATS = {".toml", ".yaml", ".yml", ".json"}
+    SUPPORTED_FORMATS: ClassVar[set[str]] = {".toml", ".yaml", ".yml", ".json"}
     ENV_PREFIX = "CHUNKER_"
     ENV_VAR_PATTERN = re.compile(r"\\$\\{([^}]+)\\}")
 
-    def __init__(self, config_path: (Path | None) = None, use_env_vars: bool = True,
-        ):
+    def __init__(
+        self,
+        config_path: Path | None = None,
+        use_env_vars: bool = True,
+    ):
         self.config_path = config_path
         self.data: dict[str, Any] = {}
         self.plugin_configs: dict[str, PluginConfig] = {}
@@ -40,7 +44,7 @@ class ChunkerConfig:
             self.load(config_path)
 
     @classmethod
-    def find_config(cls, start_path: (Path | None) = None) -> (Path | None):
+    def find_config(cls, start_path: Path | None = None) -> Path | None:
         """Find configuration file starting from the given path."""
         if start_path is None:
             start_path = Path.cwd()
@@ -62,8 +66,7 @@ class ChunkerConfig:
         """Load configuration from file."""
         config_path = Path(config_path)
         if not config_path.exists():
-            raise FileNotFoundError(
-                f"Configuration file not found: {config_path}")
+            raise FileNotFoundError(f"Configuration file not found: {config_path}")
         ext = config_path.suffix.lower()
         try:
             with Path(config_path).open(encoding="utf-8") as f:
@@ -86,7 +89,7 @@ class ChunkerConfig:
             logger.error("Failed to load config from %s: %s", config_path, e)
             raise
 
-    def save(self, config_path: (Path | None) = None) -> None:
+    def save(self, config_path: Path | None = None) -> None:
         """Save configuration to file."""
         if not config_path:
             config_path = self.config_path
@@ -133,13 +136,17 @@ class ChunkerConfig:
             chunk_types = set(chunk_types)
         min_chunk_size = config_dict.get("min_chunk_size", 1)
         max_chunk_size = config_dict.get("max_chunk_size")
-        known_fields = {"enabled", "chunk_types", "min_chunk_size",
-            "max_chunk_size"}
-        custom_options = {key: value for key, value in config_dict.items() if
-            key not in known_fields}
-        return PluginConfig(enabled=enabled, chunk_types=chunk_types,
-            min_chunk_size=min_chunk_size, max_chunk_size=max_chunk_size,
-            custom_options=custom_options)
+        known_fields = {"enabled", "chunk_types", "min_chunk_size", "max_chunk_size"}
+        custom_options = {
+            key: value for key, value in config_dict.items() if key not in known_fields
+        }
+        return PluginConfig(
+            enabled=enabled,
+            chunk_types=chunk_types,
+            min_chunk_size=min_chunk_size,
+            max_chunk_size=max_chunk_size,
+            custom_options=custom_options,
+        )
 
     def _prepare_save_data(self) -> dict[str, Any]:
         """Prepare configuration data for saving."""
@@ -150,8 +157,9 @@ class ChunkerConfig:
         if self.enabled_languages:
             chunker["enabled_languages"] = sorted(self.enabled_languages)
         if self.default_plugin_config != PluginConfig():
-            chunker["default_plugin_config"] = self._plugin_config_to_dict(self
-                .default_plugin_config)
+            chunker["default_plugin_config"] = self._plugin_config_to_dict(
+                self.default_plugin_config,
+            )
         if chunker:
             data["chunker"] = chunker
         if self.plugin_configs:
@@ -212,18 +220,44 @@ class ChunkerConfig:
     @classmethod
     def create_example_config(cls, config_path: Path) -> None:
         """Create an example configuration file."""
-        example_data = {"chunker": {"plugin_dirs": ["./plugins",
-            "~/.chunker/plugins"], "enabled_languages": ["python", "rust",
-            "javascript", "c", "cpp"], "default_plugin_config": {
-            "min_chunk_size": 3, "max_chunk_size": 500}}, "languages": {
-            "python": {"enabled": True, "chunk_types": [
-            "function_definition", "class_definition",
-            "async_function_definition"], "include_docstrings": True},
-            "rust": {"enabled": True, "chunk_types": ["function_item",
-            "impl_item", "struct_item", "enum_item", "trait_item"]},
-            "javascript": {"enabled": True, "chunk_types": [
-            "function_declaration", "method_definition",
-            "class_declaration", "arrow_function"], "include_jsx": True}}}
+        example_data = {
+            "chunker": {
+                "plugin_dirs": ["./plugins", "~/.chunker/plugins"],
+                "enabled_languages": ["python", "rust", "javascript", "c", "cpp"],
+                "default_plugin_config": {"min_chunk_size": 3, "max_chunk_size": 500},
+            },
+            "languages": {
+                "python": {
+                    "enabled": True,
+                    "chunk_types": [
+                        "function_definition",
+                        "class_definition",
+                        "async_function_definition",
+                    ],
+                    "include_docstrings": True,
+                },
+                "rust": {
+                    "enabled": True,
+                    "chunk_types": [
+                        "function_item",
+                        "impl_item",
+                        "struct_item",
+                        "enum_item",
+                        "trait_item",
+                    ],
+                },
+                "javascript": {
+                    "enabled": True,
+                    "chunk_types": [
+                        "function_declaration",
+                        "method_definition",
+                        "class_declaration",
+                        "arrow_function",
+                    ],
+                    "include_jsx": True,
+                },
+            },
+        }
         config = cls()
         config.data = example_data
         config.save(config_path)
@@ -246,14 +280,13 @@ class ChunkerConfig:
                     if default is not None:
                         return default
 
-
                     logger.warning("Environment variable '%s' not found", var_name)
                     return match.group(0)  # Keep original
                 return value
+
             return self.ENV_VAR_PATTERN.sub(replacer, data)
         if isinstance(data, dict):
-            return {key: self._expand_env_vars(value) for key, value in
-                data.items()}
+            return {key: self._expand_env_vars(value) for key, value in data.items()}
         if isinstance(data, list):
             return [self._expand_env_vars(item) for item in data]
         return data
@@ -270,12 +303,14 @@ class ChunkerConfig:
         for env_var, value in os.environ.items():
             if not env_var.startswith(self.ENV_PREFIX):
                 continue
-            config_path = env_var[len(self.ENV_PREFIX):].lower()
+            config_path = env_var[len(self.ENV_PREFIX) :].lower()
             path_parts = config_path.split("_")
             if config_path == "enabled_languages":
                 self.enabled_languages = set(value.split(","))
-                logger.info("Set enabled_languages from env: %s", self.
-                    enabled_languages)
+                logger.info(
+                    "Set enabled_languages from env: %s",
+                    self.enabled_languages,
+                )
                 continue
             if config_path == "plugin_dirs":
                 self.plugin_dirs = [Path(p.strip()) for p in value.split(",")]
@@ -288,46 +323,39 @@ class ChunkerConfig:
                     if lang not in self.plugin_configs:
                         self.plugin_configs[lang] = PluginConfig()
                     if setting == "enabled":
-                        self.plugin_configs[lang].enabled = value.lower(
-                            ) == "true"
+                        self.plugin_configs[lang].enabled = value.lower() == "true"
                     elif setting == "min_chunk_size":
                         self.plugin_configs[lang].min_chunk_size = int(value)
                     elif setting == "max_chunk_size":
                         self.plugin_configs[lang].max_chunk_size = int(value)
                     elif setting == "chunk_types":
-                        self.plugin_configs[lang].chunk_types = set(value.
-                            split(","))
+                        self.plugin_configs[lang].chunk_types = set(value.split(","))
                     else:
-                        self.plugin_configs[lang].custom_options[setting
-                            ] = value
+                        self.plugin_configs[lang].custom_options[setting] = value
                     logger.info("Set %s.%s from env: %s", lang, setting, value)
-            elif len(path_parts) >= 2 and path_parts[0
-                ] == "default" and path_parts[1] == "plugin" and path_parts[2
-                ] == "config":
+            elif (
+                len(path_parts) >= 2
+                and path_parts[0] == "default"
+                and path_parts[1] == "plugin"
+                and path_parts[2] == "config"
+            ):
                 setting = "_".join(path_parts[3:])
                 if setting == "min_chunk_size":
                     self.default_plugin_config.min_chunk_size = int(value)
                 elif setting == "max_chunk_size":
                     self.default_plugin_config.max_chunk_size = int(value)
-                logger.info("Set default_plugin_config.%s from env: %s",
-                    setting, value)
+                logger.info("Set default_plugin_config.%s from env: %s", setting, value)
 
     @classmethod
     def get_env_var_info(cls) -> dict[str, str]:
         """Get information about supported environment variables."""
-        return {f"{cls.ENV_PREFIX}ENABLED_LANGUAGES":
-            "Comma-separated list of enabled languages",
-            f"{cls.ENV_PREFIX}PLUGIN_DIRS":
-            "Comma-separated list of plugin directories",
-            f"{cls.ENV_PREFIX}LANGUAGES_<LANG>_ENABLED":
-            "Enable/disable specific language (true/false)",
-            f"{cls.ENV_PREFIX}LANGUAGES_<LANG>_MIN_CHUNK_SIZE":
-            "Minimum chunk size for language",
-            f"{cls.ENV_PREFIX}LANGUAGES_<LANG>_MAX_CHUNK_SIZE":
-            "Maximum chunk size for language",
-            f"{cls.ENV_PREFIX}LANGUAGES_<LANG>_CHUNK_TYPES":
-            "Comma-separated list of chunk types",
-            f"{cls.ENV_PREFIX}DEFAULT_PLUGIN_CONFIG_MIN_CHUNK_SIZE":
-            "Default minimum chunk size",
-            f"{cls.ENV_PREFIX}DEFAULT_PLUGIN_CONFIG_MAX_CHUNK_SIZE":
-            "Default maximum chunk size"}
+        return {
+            f"{cls.ENV_PREFIX}ENABLED_LANGUAGES": "Comma-separated list of enabled languages",
+            f"{cls.ENV_PREFIX}PLUGIN_DIRS": "Comma-separated list of plugin directories",
+            f"{cls.ENV_PREFIX}LANGUAGES_<LANG>_ENABLED": "Enable/disable specific language (true/false)",
+            f"{cls.ENV_PREFIX}LANGUAGES_<LANG>_MIN_CHUNK_SIZE": "Minimum chunk size for language",
+            f"{cls.ENV_PREFIX}LANGUAGES_<LANG>_MAX_CHUNK_SIZE": "Maximum chunk size for language",
+            f"{cls.ENV_PREFIX}LANGUAGES_<LANG>_CHUNK_TYPES": "Comma-separated list of chunk types",
+            f"{cls.ENV_PREFIX}DEFAULT_PLUGIN_CONFIG_MIN_CHUNK_SIZE": "Default minimum chunk size",
+            f"{cls.ENV_PREFIX}DEFAULT_PLUGIN_CONFIG_MAX_CHUNK_SIZE": "Default maximum chunk size",
+        }

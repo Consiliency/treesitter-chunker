@@ -1,6 +1,7 @@
 """
 Unit tests for distribution implementation
 """
+
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -52,8 +53,11 @@ class TestDistributionImpl:
     def test_build_docker_image_success(cls, mock_run):
         """Test successful Docker image build"""
         dist = DistributionImpl()
-        mock_run.side_effect = [MagicMock(returncode=0), MagicMock(
-            returncode=0), MagicMock(returncode=0, stdout="abc123\n")]
+        mock_run.side_effect = [
+            MagicMock(returncode=0),
+            MagicMock(returncode=0),
+            MagicMock(returncode=0, stdout="abc123\n"),
+        ]
         success, image_id = dist.build_docker_image("test:latest")
         assert success is True
         assert image_id == "abc123"
@@ -74,22 +78,27 @@ class TestDistributionImpl:
         dist = DistributionImpl()
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir)
-            success, formula_path = dist.create_homebrew_formula("1.0.0",
-                output_path)
+            success, formula_path = dist.create_homebrew_formula("1.0.0", output_path)
             assert success is True
             assert formula_path.exists()
             assert formula_path.name == "treesitter-chunker.rb"
             content = formula_path.read_text()
             assert "class TreesitterChunker < Formula" in content
-            assert 'version "1.0.0"' in content or "treesitter-chunker-1.0.0.tar.gz" in content
+            assert (
+                'version "1.0.0"' in content
+                or "treesitter-chunker-1.0.0.tar.gz" in content
+            )
 
     @classmethod
     @patch("subprocess.run")
     def test_verify_installation_pip(cls, mock_run):
         """Test pip installation verification"""
         dist = DistributionImpl()
-        mock_run.side_effect = [MagicMock(returncode=0), MagicMock(
-            returncode=0), MagicMock(returncode=0, stdout="1.0.0")]
+        mock_run.side_effect = [
+            MagicMock(returncode=0),
+            MagicMock(returncode=0),
+            MagicMock(returncode=0, stdout="1.0.0"),
+        ]
         success, details = dist.verify_installation("pip", "linux")
         assert success is True
         assert details["installed"] is True
@@ -131,8 +140,11 @@ class TestReleaseManagementImpl:
             setup_py.write_text('version="0.1.0"')
             changelog = tmppath / "CHANGELOG.md"
             changelog.write_text("# Changelog\n\n")
-            mock_run.side_effect = [MagicMock(returncode=0), MagicMock(
-                returncode=0, stdout=""), MagicMock(returncode=0)]
+            mock_run.side_effect = [
+                MagicMock(returncode=0),
+                MagicMock(returncode=0, stdout=""),
+                MagicMock(returncode=0),
+            ]
             success, info = release.prepare_release("1.0.0", "New features")
             assert success is True
             assert info["status"] == "success"
@@ -160,14 +172,13 @@ class TestReleaseManagementImpl:
                 elif "--wheel" in args[0]:
                     wheel.write_text("wheel content")
                 return MagicMock(returncode=0, stdout="", stderr="")
+
             mock_run.side_effect = create_artifacts
             artifacts = release.create_release_artifacts("1.0.0", output_dir)
             assert len(artifacts) >= 2
-            checksum_files = [a for a in artifacts if a.name.endswith(
-                ".sha256")]
+            checksum_files = [a for a in artifacts if a.name.endswith(".sha256")]
             assert len(checksum_files) == 1
-            notes_files = [a for a in artifacts if a.name.startswith(
-                "RELEASE_NOTES")]
+            notes_files = [a for a in artifacts if a.name.startswith("RELEASE_NOTES")]
             assert len(notes_files) == 1
 
     @classmethod

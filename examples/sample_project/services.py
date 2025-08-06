@@ -1,4 +1,5 @@
 """Business logic services."""
+
 from .config import Config
 from .database import get_db
 from .models import Profile, User
@@ -51,5 +52,4 @@ class NotificationService:
 
     def notify_user_created(self, user):
         """Send notification for new user."""
-        self.send_email(user, "Welcome!",
-            f"Welcome to our app, {user.username}!")
+        self.send_email(user, "Welcome!", f"Welcome to our app, {user.username}!")

@@ -1,4 +1,5 @@
 """Tests for overlapping fallback chunker."""
+
 import logging
 import warnings
 
@@ -17,13 +18,13 @@ class TestOverlappingFallbackChunker:
     """Test overlapping fallback chunker implementation."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def chunker(cls):
         """Create an overlapping fallback chunker instance."""
         return OverlappingFallbackChunker()
 
     @staticmethod
-    @pytest.fixture
+    @pytest.fixture()
     def log_content():
         """Sample log file content."""
         return """2024-01-15 10:00:00 INFO Starting application
@@ -39,7 +40,7 @@ class TestOverlappingFallbackChunker:
 2024-01-15 10:00:10 INFO Application ready"""
 
     @staticmethod
-    @pytest.fixture
+    @pytest.fixture()
     def markdown_content():
         """Sample markdown content."""
         return """# Project Documentation
@@ -99,63 +100,102 @@ Contributions are welcome! Please read the guidelines."""
     def test_treesitter_overlap_error_go(chunker):
         """Test that overlapping fails for Go files (Tree-sitter supported)."""
         with pytest.raises(TreeSitterOverlapError) as exc_info:
-            chunker.chunk_with_overlap("package main\nfunc main() {}",
-                "test.go", chunk_size=100, overlap_size=20)
+            chunker.chunk_with_overlap(
+                "package main\nfunc main() {}",
+                "test.go",
+                chunk_size=100,
+                overlap_size=20,
+            )
         assert "go" in str(exc_info.value).lower()
 
     @staticmethod
     def test_treesitter_overlap_error_java(chunker):
         """Test that overlapping fails for Java files."""
         with pytest.raises(TreeSitterOverlapError) as exc_info:
-            chunker.chunk_with_overlap("public class Test {}", "test.java",
-                chunk_size=100, overlap_size=20)
+            chunker.chunk_with_overlap(
+                "public class Test {}",
+                "test.java",
+                chunk_size=100,
+                overlap_size=20,
+            )
         assert "java" in str(exc_info.value).lower()
 
     @staticmethod
     def test_treesitter_overlap_error_explicit_language(chunker):
         """Test that overlapping fails when language is explicitly provided."""
         with pytest.raises(TreeSitterOverlapError) as exc_info:
-            chunker.chunk_with_overlap("some content", "file.txt",
-                chunk_size=100, overlap_size=20, language="go")
+            chunker.chunk_with_overlap(
+                "some content",
+                "file.txt",
+                chunk_size=100,
+                overlap_size=20,
+                language="go",
+            )
         assert "go" in str(exc_info.value).lower()
 
     @staticmethod
     def test_fixed_overlap_by_lines(chunker, log_content):
         """Test fixed overlap strategy with line-based chunking."""
         with warnings.catch_warnings(record=True) as w:
-            chunks = chunker.chunk_with_overlap(log_content, "app.log",
-                chunk_size=3, overlap_size=1, strategy=OverlapStrategy.
-                FIXED, unit="lines")
-            fallback_warnings = [warn for warn in w if issubclass(warn.
-                category, FallbackWarning)]
+            chunks = chunker.chunk_with_overlap(
+                log_content,
+                "app.log",
+                chunk_size=3,
+                overlap_size=1,
+                strategy=OverlapStrategy.FIXED,
+                unit="lines",
+            )
+            fallback_warnings = [
+                warn for warn in w if issubclass(warn.category, FallbackWarning)
+            ]
             assert len(fallback_warnings) == 1
-            assert "overlapping fallback" in str(fallback_warnings[0].message,
+            assert (
+                "overlapping fallback"
+                in str(
+                    fallback_warnings[0].message,
                 ).lower()
+            )
         assert len(chunks) > 1
         log_content.strip().split("\n")
         for i in range(1, len(chunks)):
             prev_lines = chunks[i - 1].content.strip().split("\n")
             curr_lines = chunks[i].content.strip().split("\n")
-            assert prev_lines[-1] == curr_lines[0
-                ], f"Chunk {i - 1} last line doesn't match chunk {i} first line"
+            assert (
+                prev_lines[-1] == curr_lines[0]
+            ), f"Chunk {i - 1} last line doesn't match chunk {i} first line"
 
     @staticmethod
     def test_fixed_overlap_by_characters(chunker, markdown_content):
         """Test fixed overlap strategy with character-based chunking."""
         with warnings.catch_warnings(record=True) as w:
-            chunks = chunker.chunk_with_overlap(markdown_content,
-                "README.md", chunk_size=200, overlap_size=50, strategy=OverlapStrategy.FIXED, unit="characters")
-            fallback_warnings = [warn for warn in w if issubclass(warn.
-                category, FallbackWarning)]
+            chunks = chunker.chunk_with_overlap(
+                markdown_content,
+                "README.md",
+                chunk_size=200,
+                overlap_size=50,
+                strategy=OverlapStrategy.FIXED,
+                unit="characters",
+            )
+            fallback_warnings = [
+                warn for warn in w if issubclass(warn.category, FallbackWarning)
+            ]
             assert len(fallback_warnings) == 1
-            assert "overlapping fallback" in str(fallback_warnings[0].message,
+            assert (
+                "overlapping fallback"
+                in str(
+                    fallback_warnings[0].message,
                 ).lower()
+            )
         for i in range(1, len(chunks)):
             prev_chunk = chunks[i - 1].content
             curr_chunk = chunks[i].content
             if i < len(chunks) - 1:
-                assert len(curr_chunk,
-                    ) > 50, f"Chunk {i} is too small: {len(curr_chunk)} chars"
+                assert (
+                    len(
+                        curr_chunk,
+                    )
+                    > 50
+                ), f"Chunk {i} is too small: {len(curr_chunk)} chars"
             overlap_size = min(50, len(prev_chunk), len(curr_chunk))
             prev_end = prev_chunk[-overlap_size:]
             curr_start = curr_chunk[:overlap_size]
@@ -165,9 +205,14 @@ Contributions are welcome! Please read the guidelines."""
     def test_percentage_overlap(chunker, log_content):
         """Test percentage-based overlap strategy."""
         with warnings.catch_warnings(record=True):
-            chunks = chunker.chunk_with_overlap(log_content, "app.log",
-                chunk_size=4, overlap_size=25, strategy=OverlapStrategy.
-                PERCENTAGE, unit="lines")
+            chunks = chunker.chunk_with_overlap(
+                log_content,
+                "app.log",
+                chunk_size=4,
+                overlap_size=25,
+                strategy=OverlapStrategy.PERCENTAGE,
+                unit="lines",
+            )
         for i in range(1, len(chunks)):
             prev_lines = chunks[i - 1].content.strip().split("\n")
             curr_lines = chunks[i].content.strip().split("\n")
@@ -177,11 +222,17 @@ Contributions are welcome! Please read the guidelines."""
     def test_asymmetric_overlap(chunker, markdown_content):
         """Test asymmetric overlap with different before/after sizes."""
         with warnings.catch_warnings(record=True) as w:
-            chunks = chunker.chunk_with_asymmetric_overlap(markdown_content,
-                "README.md", chunk_size=300, overlap_before=50,
-                overlap_after=100, unit="characters")
-            fallback_warnings = [warn for warn in w if issubclass(warn.
-                category, FallbackWarning)]
+            chunks = chunker.chunk_with_asymmetric_overlap(
+                markdown_content,
+                "README.md",
+                chunk_size=300,
+                overlap_before=50,
+                overlap_after=100,
+                unit="characters",
+            )
+            fallback_warnings = [
+                warn for warn in w if issubclass(warn.category, FallbackWarning)
+            ]
             assert len(fallback_warnings) == 1
             assert "asymmetric" in str(fallback_warnings[0].message).lower()
         assert len(chunks) > 1
@@ -193,10 +244,17 @@ Contributions are welcome! Please read the guidelines."""
     def test_dynamic_overlap(chunker, markdown_content):
         """Test dynamic overlap that adjusts based on content."""
         with warnings.catch_warnings(record=True) as w:
-            chunks = chunker.chunk_with_dynamic_overlap(markdown_content,
-                "README.md", chunk_size=400, min_overlap=50, max_overlap=150, unit="characters")
-            fallback_warnings = [warn for warn in w if issubclass(warn.
-                category, FallbackWarning)]
+            chunks = chunker.chunk_with_dynamic_overlap(
+                markdown_content,
+                "README.md",
+                chunk_size=400,
+                min_overlap=50,
+                max_overlap=150,
+                unit="characters",
+            )
+            fallback_warnings = [
+                warn for warn in w if issubclass(warn.category, FallbackWarning)
+            ]
             assert len(fallback_warnings) == 1
             assert "dynamic" in str(fallback_warnings[0].message).lower()
         assert len(chunks) > 1
@@ -213,20 +271,25 @@ with more text on multiple lines.
 
 Third paragraph is shorter."""
         pos = chunker.find_natural_overlap_boundary(content, 30, 20)
-        assert content[pos - 2:pos] == "\n\n"
+        assert content[pos - 2 : pos] == "\n\n"
         content2 = (
             "This is the first sentence. This is the second sentence. And the third."
-            )
+        )
         pos = chunker.find_natural_overlap_boundary(content2, 35, 20)
-        assert content2[pos - 2:pos] == ". "
+        assert content2[pos - 2 : pos] == ". "
 
     @staticmethod
     def test_chunk_metadata(chunker, log_content):
         """Test that chunks have correct metadata."""
         with warnings.catch_warnings(record=True):
-            chunks = chunker.chunk_with_overlap(log_content, "server.log",
-                chunk_size=3, overlap_size=1, strategy=OverlapStrategy.
-                FIXED, unit="lines")
+            chunks = chunker.chunk_with_overlap(
+                log_content,
+                "server.log",
+                chunk_size=3,
+                overlap_size=1,
+                strategy=OverlapStrategy.FIXED,
+                unit="lines",
+            )
         for i, chunk in enumerate(chunks):
             assert chunk.file_path == "server.log"
             assert chunk.language == "log"
@@ -241,7 +304,12 @@ Third paragraph is shorter."""
     def test_empty_content(chunker):
         """Test handling of empty content."""
         with warnings.catch_warnings(record=True):
-            chunks = chunker.chunk_with_overlap("", "empty.txt", chunk_size=100, overlap_size=20)
+            chunks = chunker.chunk_with_overlap(
+                "",
+                "empty.txt",
+                chunk_size=100,
+                overlap_size=20,
+            )
         assert len(chunks) == 0
 
     @staticmethod
@@ -249,8 +317,13 @@ Third paragraph is shorter."""
         """Test content that fits in a single chunk."""
         content = "This is a short text."
         with warnings.catch_warnings(record=True):
-            chunks = chunker.chunk_with_overlap(content, "short.txt",
-                chunk_size=1000, overlap_size=100, unit="characters")
+            chunks = chunker.chunk_with_overlap(
+                content,
+                "short.txt",
+                chunk_size=1000,
+                overlap_size=100,
+                unit="characters",
+            )
         assert len(chunks) == 1
         assert chunks[0].content == content
 
@@ -259,9 +332,16 @@ Third paragraph is shorter."""
         """Test that warnings are properly logged."""
         caplog.set_level(logging.WARNING)
         with warnings.catch_warnings(record=True):
-            chunker.chunk_with_overlap(log_content, "app.log", chunk_size=100, overlap_size=20)
-        assert any("overlapping fallback" in record.message.lower() for
-            record in caplog.records)
+            chunker.chunk_with_overlap(
+                log_content,
+                "app.log",
+                chunk_size=100,
+                overlap_size=20,
+            )
+        assert any(
+            "overlapping fallback" in record.message.lower()
+            for record in caplog.records
+        )
         assert any("app.log" in record.message for record in caplog.records)
 
     @staticmethod
@@ -269,9 +349,14 @@ Third paragraph is shorter."""
         """Test edge cases for line-based overlap."""
         content = "Line 1\nLine 2\nLine 3\nLine 4\nLine 5"
         with warnings.catch_warnings(record=True):
-            chunks = chunker.chunk_with_overlap(content, "test.txt",
-                chunk_size=2, overlap_size=3, strategy=OverlapStrategy.
-                FIXED, unit="lines")
+            chunks = chunker.chunk_with_overlap(
+                content,
+                "test.txt",
+                chunk_size=2,
+                overlap_size=3,
+                strategy=OverlapStrategy.FIXED,
+                unit="lines",
+            )
         assert len(chunks) > 0
         for chunk in chunks:
             assert len(chunk.content) > 0
@@ -281,9 +366,14 @@ Third paragraph is shorter."""
         """Test edge cases for character-based overlap."""
         content = "abcdefghijklmnopqrstuvwxyz"
         with warnings.catch_warnings(record=True):
-            chunks = chunker.chunk_with_overlap(content, "alphabet.txt",
-                chunk_size=5, overlap_size=5, strategy=OverlapStrategy.
-                FIXED, unit="characters")
+            chunks = chunker.chunk_with_overlap(
+                content,
+                "alphabet.txt",
+                chunk_size=5,
+                overlap_size=5,
+                strategy=OverlapStrategy.FIXED,
+                unit="characters",
+            )
         assert len(chunks) > 0
 
     @staticmethod
@@ -291,8 +381,13 @@ Third paragraph is shorter."""
         """Test handling of Unicode content."""
         content = "Hello 👋 World 🌍! Testing émojis and spëcial characters™."
         with warnings.catch_warnings(record=True):
-            chunks = chunker.chunk_with_overlap(content, "unicode.txt",
-                chunk_size=20, overlap_size=5, unit="characters")
+            chunks = chunker.chunk_with_overlap(
+                content,
+                "unicode.txt",
+                chunk_size=20,
+                overlap_size=5,
+                unit="characters",
+            )
         assert len(chunks) > 0
         reconstructed = ""
         for i, chunk in enumerate(chunks):
@@ -321,8 +416,11 @@ class TestOverlappingFallbackIntegration:
     @classmethod
     def test_configuration(cls):
         """Test configuration of overlapping chunker."""
-        config = FallbackConfig(method=ChunkingMethod.LINE_BASED,
-            chunk_size=50, overlap=10)
+        config = FallbackConfig(
+            method=ChunkingMethod.LINE_BASED,
+            chunk_size=50,
+            overlap=10,
+        )
         chunker = OverlappingFallbackChunker(config=config)
         assert chunker.config.chunk_size == 50
         assert chunker.config.overlap == 10
@@ -330,21 +428,44 @@ class TestOverlappingFallbackIntegration:
         assert chunker.config.chunk_size == 100
         assert chunker.config.overlap == 20
 
-    @pytest.mark.parametrize(("extension", "should_fail"), [(".go", True),
-        (".java", True), (".rb", True), (".cs", True), (".kt", True), (
-        ".py", False), (".js", False), (".c", False), (".cpp", False), (
-        ".rs", False), (".txt", False), (".log", False), (".md", False), (
-        ".csv", False), (".json", False)])
+    @pytest.mark.parametrize(
+        ("extension", "should_fail"),
+        [
+            (".go", True),
+            (".java", True),
+            (".rb", True),
+            (".cs", True),
+            (".kt", True),
+            (".py", False),
+            (".js", False),
+            (".c", False),
+            (".cpp", False),
+            (".rs", False),
+            (".txt", False),
+            (".log", False),
+            (".md", False),
+            (".csv", False),
+            (".json", False),
+        ],
+    )
     @classmethod
     def test_file_extension_detection(cls, extension, should_fail):
         """Test Tree-sitter support detection for various file extensions."""
         chunker = OverlappingFallbackChunker()
         if should_fail:
             with pytest.raises(TreeSitterOverlapError):
-                chunker.chunk_with_overlap("content", f"test{extension}",
-                    chunk_size=100, overlap_size=20)
+                chunker.chunk_with_overlap(
+                    "content",
+                    f"test{extension}",
+                    chunk_size=100,
+                    overlap_size=20,
+                )
         else:
             with warnings.catch_warnings(record=True):
-                chunks = chunker.chunk_with_overlap("content",
-                    f"test{extension}", chunk_size=100, overlap_size=20)
+                chunks = chunker.chunk_with_overlap(
+                    "content",
+                    f"test{extension}",
+                    chunk_size=100,
+                    overlap_size=20,
+                )
             assert isinstance(chunks, list)

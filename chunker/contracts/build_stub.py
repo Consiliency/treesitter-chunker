@@ -8,38 +8,52 @@ class BuildSystemStub(BuildSystemContract):
     """Stub implementation that can be instantiated and tested"""
 
     @staticmethod
-    def compile_grammars(_languages: list[str], _platform: str, _output_dir:
-        Path) -> tuple[bool, dict[str, Any]]:
+    def compile_grammars(
+        _languages: list[str],
+        _platform: str,
+        _output_dir: Path,
+    ) -> tuple[bool, dict[str, Any]]:
         """Stub that returns valid default values"""
-        return False, {"status": "not_implemented", "team": "Build",
-            "compiled": [], "errors": [
-            "Build team will implement grammar compilation"],
-            "output_files": []}
+        return False, {
+            "status": "not_implemented",
+            "team": "Build",
+            "compiled": [],
+            "errors": ["Build team will implement grammar compilation"],
+            "output_files": [],
+        }
 
     @staticmethod
-    def build_wheel(platform: str, python_version: str, output_dir: Path,
-        ) -> tuple[bool, Path]:
+    def build_wheel(
+        platform: str,
+        python_version: str,
+        output_dir: Path,
+    ) -> tuple[bool, Path]:
         """Stub that returns valid default values"""
-        stub_wheel = (output_dir /
-            f"treesitter_chunker-0.0.0-{python_version}-{platform}.whl")
+        stub_wheel = (
+            output_dir / f"treesitter_chunker-0.0.0-{python_version}-{platform}.whl"
+        )
         return False, stub_wheel
 
     @staticmethod
-    def create_conda_package(platform: str, output_dir: Path) -> tuple[bool,
-        Path]:
+    def create_conda_package(platform: str, output_dir: Path) -> tuple[bool, Path]:
         """Stub that returns valid default values"""
-        stub_package = (output_dir /
-            f"treesitter-chunker-0.0.0-{platform}.tar.bz2")
+        stub_package = output_dir / f"treesitter-chunker-0.0.0-{platform}.tar.bz2"
         return False, stub_package
 
     @staticmethod
-    def verify_build(_artifact_path: Path, _platform: str) -> tuple[bool,
-        dict[str, Any]]:
+    def verify_build(
+        _artifact_path: Path,
+        _platform: str,
+    ) -> tuple[bool, dict[str, Any]]:
         """Stub that returns valid default values"""
-        return False, {"status": "not_implemented", "team": "Build",
-            "valid": False, "errors": [
-            "Build team will implement verification"], "components": [],
-            "platform_match": False}
+        return False, {
+            "status": "not_implemented",
+            "team": "Build",
+            "valid": False,
+            "errors": ["Build team will implement verification"],
+            "components": [],
+            "platform_match": False,
+        }
 
 
 class PlatformSupportStub(PlatformSupportContract):
@@ -48,9 +62,14 @@ class PlatformSupportStub(PlatformSupportContract):
     @staticmethod
     def detect_platform() -> dict[str, str]:
         """Stub that returns valid default values"""
-        return {"status": "not_implemented", "team": "Build", "os":
-            "unknown", "arch": "unknown", "python_version": "unknown",
-            "platform_tag": "unknown"}
+        return {
+            "status": "not_implemented",
+            "team": "Build",
+            "os": "unknown",
+            "arch": "unknown",
+            "python_version": "unknown",
+            "platform_tag": "unknown",
+        }
 
     @staticmethod
     def install_build_dependencies(_platform: str) -> bool:

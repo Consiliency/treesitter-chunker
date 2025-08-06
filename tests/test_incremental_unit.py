@@ -1,4 +1,5 @@
 """Unit tests for incremental processing without tree-sitter dependency."""
+
 import shutil
 import tempfile
 from datetime import datetime, timedelta
@@ -16,27 +17,58 @@ from chunker.interfaces.incremental import ChangeType, ChunkChange, ChunkDiff
 from chunker.types import CodeChunk
 
 
-@pytest.fixture
+@pytest.fixture()
 def sample_chunks():
     """Create sample chunks for testing."""
-    return [CodeChunk(language="python", file_path="test.py", node_type="function_definition", start_line=1, end_line=5, byte_start=0,
-        byte_end=100, parent_context="", content="""def hello():
+    return [
+        CodeChunk(
+            language="python",
+            file_path="test.py",
+            node_type="function_definition",
+            start_line=1,
+            end_line=5,
+            byte_start=0,
+            byte_end=100,
+            parent_context="",
+            content="""def hello():
     print('Hello')
     return True
-""", chunk_id="chunk1"), CodeChunk(language="python", file_path="test.py",
-        node_type="function_definition", start_line=7, end_line=10,
-        byte_start=101, byte_end=200, parent_context="", content="""def world():
+""",
+            chunk_id="chunk1",
+        ),
+        CodeChunk(
+            language="python",
+            file_path="test.py",
+            node_type="function_definition",
+            start_line=7,
+            end_line=10,
+            byte_start=101,
+            byte_end=200,
+            parent_context="",
+            content="""def world():
     print('World')
-""", chunk_id="chunk2"),
-        CodeChunk(language="python", file_path="test.py", node_type="class_definition", start_line=12, end_line=20, byte_start=201,
-        byte_end=400, parent_context="", content="""class MyClass:
+""",
+            chunk_id="chunk2",
+        ),
+        CodeChunk(
+            language="python",
+            file_path="test.py",
+            node_type="class_definition",
+            start_line=12,
+            end_line=20,
+            byte_start=201,
+            byte_end=400,
+            parent_context="",
+            content="""class MyClass:
     def __init__(self):
         pass
 """,
-        chunk_id="chunk3")]
+            chunk_id="chunk3",
+        ),
+    ]
 
 
-@pytest.fixture
+@pytest.fixture()
 def temp_cache_dir():
     """Create temporary cache directory."""
     temp_dir = tempfile.mkdtemp()
@@ -62,21 +94,31 @@ class TestIncrementalProcessor:
 
     @classmethod
     @patch("chunker.incremental.chunk_text")
-    def test_compute_diff_with_modifications(cls, mock_chunk_text,
-        sample_chunks):
+    def test_compute_diff_with_modifications(cls, mock_chunk_text, sample_chunks):
         """Test diff computation with modified content."""
-        modified_chunk = CodeChunk(language="python", file_path="test.py",
-            node_type="function_definition", start_line=1, end_line=5,
-            byte_start=0, byte_end=100, parent_context="", content="""def hello():
+        modified_chunk = CodeChunk(
+            language="python",
+            file_path="test.py",
+            node_type="function_definition",
+            start_line=1,
+            end_line=5,
+            byte_start=0,
+            byte_end=100,
+            parent_context="",
+            content="""def hello():
     print('Hello, World!')
     return True
 """,
-            chunk_id="chunk1")
+            chunk_id="chunk1",
+        )
         mock_chunk_text.return_value = [modified_chunk, *sample_chunks[1:]]
         processor = DefaultIncrementalProcessor()
         modified_content = "modified content"
-        diff = processor.compute_diff(sample_chunks, modified_content, "python",
-            )
+        diff = processor.compute_diff(
+            sample_chunks,
+            modified_content,
+            "python",
+        )
         assert len(diff.modified_chunks) == 1
         assert diff.summary["modified"] == 1
 
@@ -84,15 +126,23 @@ class TestIncrementalProcessor:
     @patch("chunker.incremental.chunk_text")
     def test_compute_diff_with_additions(cls, mock_chunk_text, sample_chunks):
         """Test diff computation with added content."""
-        new_chunk = CodeChunk(language="python", file_path="test.py",
-            node_type="function_definition", start_line=22, end_line=25,
-            byte_start=401, byte_end=500, parent_context="", content="""def new_function():
+        new_chunk = CodeChunk(
+            language="python",
+            file_path="test.py",
+            node_type="function_definition",
+            start_line=22,
+            end_line=25,
+            byte_start=401,
+            byte_end=500,
+            parent_context="",
+            content="""def new_function():
     pass
-""", chunk_id="chunk4")
+""",
+            chunk_id="chunk4",
+        )
         mock_chunk_text.return_value = [*sample_chunks, new_chunk]
         processor = DefaultIncrementalProcessor()
-        diff = processor.compute_diff(sample_chunks, "modified content",
-            "python")
+        diff = processor.compute_diff(sample_chunks, "modified content", "python")
         assert len(diff.added_chunks) == 1
         assert diff.summary["added"] == 1
 
@@ -102,8 +152,7 @@ class TestIncrementalProcessor:
         """Test diff computation with deleted content."""
         mock_chunk_text.return_value = [sample_chunks[0], sample_chunks[2]]
         processor = DefaultIncrementalProcessor()
-        diff = processor.compute_diff(sample_chunks, "modified content",
-            "python")
+        diff = processor.compute_diff(sample_chunks, "modified content", "python")
         assert len(diff.deleted_chunks) == 1
         assert diff.summary["deleted"] == 1
 
@@ -112,9 +161,20 @@ class TestIncrementalProcessor:
         """Test detection of moved chunks."""
         processor = DefaultIncrementalProcessor()
         old_chunks = [sample_chunks[0]]
-        new_chunks = [CodeChunk(language="python", file_path="test.py",
-            node_type="function_definition", start_line=10, end_line=14,
-            byte_start=200, byte_end=300, parent_context="", content=sample_chunks[0].content, chunk_id="chunk1_moved")]
+        new_chunks = [
+            CodeChunk(
+                language="python",
+                file_path="test.py",
+                node_type="function_definition",
+                start_line=10,
+                end_line=14,
+                byte_start=200,
+                byte_end=300,
+                parent_context="",
+                content=sample_chunks[0].content,
+                chunk_id="chunk1_moved",
+            ),
+        ]
         moved_pairs = processor.detect_moved_chunks(old_chunks, new_chunks)
         assert len(moved_pairs) == 1
         assert moved_pairs[0][0].content == moved_pairs[0][1].content
@@ -124,19 +184,45 @@ class TestIncrementalProcessor:
     def test_update_chunks(cls, sample_chunks):
         """Test updating chunks based on diff."""
         processor = DefaultIncrementalProcessor()
-        added_chunk = CodeChunk(language="python", file_path="test.py",
-            node_type="function_definition", start_line=25, end_line=28,
-            byte_start=500, byte_end=600, parent_context="", content="""def added():
+        added_chunk = CodeChunk(
+            language="python",
+            file_path="test.py",
+            node_type="function_definition",
+            start_line=25,
+            end_line=28,
+            byte_start=500,
+            byte_end=600,
+            parent_context="",
+            content="""def added():
     pass
-""", chunk_id="added_chunk")
-        diff = ChunkDiff(changes=[ChunkChange(chunk_id="chunk2",
-            change_type=ChangeType.DELETED, old_chunk=sample_chunks[1],
-            new_chunk=None, line_changes=[(7, 10)], confidence=1.0),
-            ChunkChange(chunk_id="added_chunk", change_type=ChangeType.
-            ADDED, old_chunk=None, new_chunk=added_chunk, line_changes=[(25,
-            28)], confidence=1.0)], added_chunks=[added_chunk],
-            deleted_chunks=[sample_chunks[1]], modified_chunks=[],
-            unchanged_chunks=[sample_chunks[0], sample_chunks[2]], summary={"added": 1, "deleted": 1, "modified": 0, "unchanged": 2})
+""",
+            chunk_id="added_chunk",
+        )
+        diff = ChunkDiff(
+            changes=[
+                ChunkChange(
+                    chunk_id="chunk2",
+                    change_type=ChangeType.DELETED,
+                    old_chunk=sample_chunks[1],
+                    new_chunk=None,
+                    line_changes=[(7, 10)],
+                    confidence=1.0,
+                ),
+                ChunkChange(
+                    chunk_id="added_chunk",
+                    change_type=ChangeType.ADDED,
+                    old_chunk=None,
+                    new_chunk=added_chunk,
+                    line_changes=[(25, 28)],
+                    confidence=1.0,
+                ),
+            ],
+            added_chunks=[added_chunk],
+            deleted_chunks=[sample_chunks[1]],
+            modified_chunks=[],
+            unchanged_chunks=[sample_chunks[0], sample_chunks[2]],
+            summary={"added": 1, "deleted": 1, "modified": 0, "unchanged": 2},
+        )
         updated_chunks = processor.update_chunks(sample_chunks, diff)
         assert len(updated_chunks) == 3
         chunk_ids = [c.chunk_id for c in updated_chunks]
@@ -149,20 +235,32 @@ class TestIncrementalProcessor:
     def test_merge_incremental_results(cls, sample_chunks):
         """Test merging incremental results."""
         processor = DefaultIncrementalProcessor()
-        incremental_chunks = [CodeChunk(language="python", file_path="test.py", node_type="function_definition", start_line=7,
-            end_line=10, byte_start=101, byte_end=200, parent_context="",
-            content="""def world_modified():
+        incremental_chunks = [
+            CodeChunk(
+                language="python",
+                file_path="test.py",
+                node_type="function_definition",
+                start_line=7,
+                end_line=10,
+                byte_start=101,
+                byte_end=200,
+                parent_context="",
+                content="""def world_modified():
     print('Modified')
 """,
-            chunk_id="chunk2_new")]
+                chunk_id="chunk2_new",
+            ),
+        ]
         changed_regions = [(7, 10)]
-        merged = processor.merge_incremental_results(sample_chunks,
-            incremental_chunks, changed_regions)
+        merged = processor.merge_incremental_results(
+            sample_chunks,
+            incremental_chunks,
+            changed_regions,
+        )
         assert len(merged) > 0
         old_chunk2_ids = [c.chunk_id for c in merged if c.chunk_id == "chunk2"]
         assert len(old_chunk2_ids) == 0
-        new_chunk_ids = [c.chunk_id for c in merged if c.chunk_id ==
-            "chunk2_new"]
+        new_chunk_ids = [c.chunk_id for c in merged if c.chunk_id == "chunk2_new"]
         assert len(new_chunk_ids) == 1
 
 
@@ -292,10 +390,23 @@ class TestIncrementalIndex:
     def test_batch_update(cls, sample_chunks):
         """Test batch update."""
         index = SimpleIncrementalIndex()
-        diff = ChunkDiff(changes=[ChunkChange(chunk_id="chunk1",
-            change_type=ChangeType.MODIFIED, old_chunk=sample_chunks[0],
-            new_chunk=sample_chunks[0], line_changes=[(1, 5)], confidence=0.9)], added_chunks=[], deleted_chunks=[], modified_chunks=[(
-            sample_chunks[0], sample_chunks[0])], unchanged_chunks=sample_chunks[1:], summary={"modified": 1})
+        diff = ChunkDiff(
+            changes=[
+                ChunkChange(
+                    chunk_id="chunk1",
+                    change_type=ChangeType.MODIFIED,
+                    old_chunk=sample_chunks[0],
+                    new_chunk=sample_chunks[0],
+                    line_changes=[(1, 5)],
+                    confidence=0.9,
+                ),
+            ],
+            added_chunks=[],
+            deleted_chunks=[],
+            modified_chunks=[(sample_chunks[0], sample_chunks[0])],
+            unchanged_chunks=sample_chunks[1:],
+            summary={"modified": 1},
+        )
         index.batch_update(diff)
         assert len(index.update_log) == len(diff.changes)
 
@@ -305,18 +416,43 @@ class TestIncrementalIndex:
         index = SimpleIncrementalIndex()
         for chunk in sample_chunks:
             index.update_chunk(None, chunk)
-        small_diff = ChunkDiff(changes=[ChunkChange(chunk_id="chunk1",
-            change_type=ChangeType.MODIFIED, old_chunk=sample_chunks[0],
-            new_chunk=sample_chunks[0], line_changes=[(1, 5)], confidence=0.9)], added_chunks=[], deleted_chunks=[], modified_chunks=[(
-            sample_chunks[0], sample_chunks[0])], unchanged_chunks=sample_chunks[1:], summary={"modified": 1, "total": 3})
+        small_diff = ChunkDiff(
+            changes=[
+                ChunkChange(
+                    chunk_id="chunk1",
+                    change_type=ChangeType.MODIFIED,
+                    old_chunk=sample_chunks[0],
+                    new_chunk=sample_chunks[0],
+                    line_changes=[(1, 5)],
+                    confidence=0.9,
+                ),
+            ],
+            added_chunks=[],
+            deleted_chunks=[],
+            modified_chunks=[(sample_chunks[0], sample_chunks[0])],
+            unchanged_chunks=sample_chunks[1:],
+            summary={"modified": 1, "total": 3},
+        )
         small_cost = index.get_update_cost(small_diff)
         assert small_cost < 0.5
-        large_diff = ChunkDiff(changes=[ChunkChange(chunk_id=chunk.chunk_id,
-            change_type=ChangeType.DELETED, old_chunk=chunk, new_chunk=None,
-            line_changes=[(chunk.start_line, chunk.end_line)], confidence=1.0) for chunk in sample_chunks], added_chunks=[],
-            deleted_chunks=sample_chunks, modified_chunks=[],
-            unchanged_chunks=[], summary={"deleted": len(sample_chunks),
-            "total": len(sample_chunks)})
+        large_diff = ChunkDiff(
+            changes=[
+                ChunkChange(
+                    chunk_id=chunk.chunk_id,
+                    change_type=ChangeType.DELETED,
+                    old_chunk=chunk,
+                    new_chunk=None,
+                    line_changes=[(chunk.start_line, chunk.end_line)],
+                    confidence=1.0,
+                )
+                for chunk in sample_chunks
+            ],
+            added_chunks=[],
+            deleted_chunks=sample_chunks,
+            modified_chunks=[],
+            unchanged_chunks=[],
+            summary={"deleted": len(sample_chunks), "total": len(sample_chunks)},
+        )
         large_cost = index.get_update_cost(large_diff)
         assert large_cost >= 0.5
 

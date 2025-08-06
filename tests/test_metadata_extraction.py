@@ -1,4 +1,5 @@
 """Tests for metadata extraction functionality."""
+
 import pytest
 
 from chunker.core import chunk_text
@@ -49,8 +50,9 @@ class TestMetadataExtractorFactory:
     @staticmethod
     def test_create_both():
         """Test creating both extractor and analyzer."""
-        extractor, analyzer = MetadataExtractorFactory.create_both("javascript",
-            )
+        extractor, analyzer = MetadataExtractorFactory.create_both(
+            "javascript",
+        )
         assert isinstance(extractor, JavaScriptMetadataExtractor)
         assert isinstance(analyzer, JavaScriptComplexityAnalyzer)
 
@@ -77,12 +79,12 @@ class TestPythonMetadataExtraction:
     """Test Python-specific metadata extraction."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def extractor(cls):
         return PythonMetadataExtractor()
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def analyzer(cls):
         return PythonComplexityAnalyzer()
 
@@ -147,9 +149,7 @@ def compute(x: int) -> int:
     @staticmethod
     def test_extract_async_function(extractor):
         """Test extracting async function."""
-        code = (
-            '\nasync def fetch_data(url: str) -> dict:\n    return {"data": "example"}\n'
-            )
+        code = '\nasync def fetch_data(url: str) -> dict:\n    return {"data": "example"}\n'
         parser = get_parser("python")
         tree = parser.parse(code.encode())
         func_node = tree.root_node.children[0]
@@ -300,12 +300,12 @@ class TestJavaScriptMetadataExtraction:
     """Test JavaScript-specific metadata extraction."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def extractor(cls):
         return JavaScriptMetadataExtractor()
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def analyzer(cls):
         return JavaScriptComplexityAnalyzer()
 
@@ -342,6 +342,7 @@ function greet(name, age = 18) {
                 return
             for child in node.children:
                 find_arrow_func(child)
+
         find_arrow_func(tree.root_node)
         assert arrow_func is not None, "Arrow function not found in AST"
         signature = extractor.extract_signature(arrow_func, code.encode())
@@ -351,9 +352,7 @@ function greet(name, age = 18) {
     @staticmethod
     def test_extract_async_function(extractor):
         """Test extracting async function."""
-        code = (
-            "\nasync function fetchData(url) {\n    return await fetch(url);\n}\n"
-            )
+        code = "\nasync function fetchData(url) {\n    return await fetch(url);\n}\n"
         parser = get_parser("javascript")
         tree = parser.parse(code.encode())
         func_node = tree.root_node.children[0]
@@ -432,7 +431,7 @@ class TestTypeScriptMetadataExtraction:
     """Test TypeScript-specific metadata extraction."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def extractor(cls):
         return TypeScriptMetadataExtractor()
 
@@ -440,9 +439,7 @@ class TestTypeScriptMetadataExtraction:
     @pytest.mark.skip(reason="TypeScript grammar not available in test environment")
     def test_extract_typed_function(extractor):
         """Test extracting TypeScript function with types."""
-        code = (
-            "\nfunction add(a: number, b: number): number {\n    return a + b;\n}\n"
-            )
+        code = "\nfunction add(a: number, b: number): number {\n    return a + b;\n}\n"
         parser = get_parser("typescript")
         tree = parser.parse(code.encode())
         func_node = tree.root_node.children[0]
@@ -468,11 +465,13 @@ interface Calculator {
         parser = get_parser("typescript")
         tree = parser.parse(code.encode())
         interface_node = tree.root_node.children[0]
-        method_nodes = [child for child in interface_node.children if child
-            .type == "method_signature"]
+        method_nodes = [
+            child
+            for child in interface_node.children
+            if child.type == "method_signature"
+        ]
         if method_nodes:
-            signature = extractor.extract_signature(method_nodes[0], code.
-                encode())
+            signature = extractor.extract_signature(method_nodes[0], code.encode())
             assert signature is not None
             assert "interface_method" in signature.modifiers
 
@@ -495,22 +494,23 @@ class Calculator:
         return a + b
 """
         chunks = chunk_text(code, "python", extract_metadata=True)
-        factorial_chunk = next(c for c in chunks if c.node_type ==
-            "function_definition")
+        factorial_chunk = next(
+            c for c in chunks if c.node_type == "function_definition"
+        )
         assert factorial_chunk.metadata is not None
         assert factorial_chunk.metadata["signature"]["name"] == "factorial"
-        assert factorial_chunk.metadata["docstring"
-            ] == "Calculate factorial of n."
+        assert factorial_chunk.metadata["docstring"] == "Calculate factorial of n."
         assert factorial_chunk.metadata["complexity"]["cyclomatic"] == 2
         deps = factorial_chunk.metadata.get("dependencies", [])
         assert "factorial" in deps or len(deps) == 0
-        add_chunk = next((c for c in chunks if c.node_type ==
-            "method_definition"), None)
+        add_chunk = next(
+            (c for c in chunks if c.node_type == "method_definition"),
+            None,
+        )
         if add_chunk:
             assert add_chunk.metadata is not None
             assert add_chunk.metadata["signature"]["name"] == "add"
-            assert add_chunk.metadata["signature"]["parameters"][0]["name"
-                ] == "self"
+            assert add_chunk.metadata["signature"]["parameters"][0]["name"] == "self"
         else:
             assert any(c.node_type == "class_definition" for c in chunks)
 
@@ -542,15 +542,13 @@ const utils = {
 };
 """
         chunks = chunk_text(code, "javascript", extract_metadata=True)
-        greet_chunk = next(c for c in chunks if c.node_type ==
-            "function_declaration")
+        greet_chunk = next(c for c in chunks if c.node_type == "function_declaration")
         assert greet_chunk.metadata is not None
         assert greet_chunk.metadata["signature"]["name"] == "greet"
         assert "Greet a person" in greet_chunk.metadata["docstring"]
         deps = greet_chunk.metadata.get("dependencies", [])
         assert isinstance(deps, list)
-        fetch_chunk = next(c for c in chunks if c.node_type ==
-            "method_definition")
+        fetch_chunk = next(c for c in chunks if c.node_type == "method_definition")
         assert "async" in fetch_chunk.metadata["signature"]["modifiers"]
         deps = fetch_chunk.metadata.get("dependencies", [])
         assert isinstance(deps, list)

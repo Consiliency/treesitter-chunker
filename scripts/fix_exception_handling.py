@@ -62,8 +62,7 @@ def fix_exception_handling(file_path: Path) -> bool:
             for i, line in enumerate(lines):
                 if re.match(r"\s*except\s+Exception\b", line) and (
                     i > 0
-                    and "# TODO: Replace with specific exception"
-                    not in lines[i - 1]
+                    and "# TODO: Replace with specific exception" not in lines[i - 1]
                 ):
                     lines[i] = line + "  # TODO: Replace with specific exception"
             content = "\n".join(lines)

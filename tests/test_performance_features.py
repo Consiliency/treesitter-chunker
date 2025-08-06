@@ -1,4 +1,5 @@
 """Tests for performance optimization features."""
+
 import tempfile
 import time
 from pathlib import Path
@@ -132,9 +133,19 @@ class TestCacheManager:
     def test_chunk_caching(cls):
         """Test chunk caching functionality."""
         manager = CacheManager()
-        chunks = [CodeChunk(language="python", file_path="test.py",
-            node_type="function_definition", start_line=1, end_line=5,
-            byte_start=0, byte_end=100, parent_context="", content="def test(): pass")]
+        chunks = [
+            CodeChunk(
+                language="python",
+                file_path="test.py",
+                node_type="function_definition",
+                start_line=1,
+                end_line=5,
+                byte_start=0,
+                byte_end=100,
+                parent_context="",
+                content="def test(): pass",
+            ),
+        ]
         manager.cache_chunks("test.py", "hash456", chunks)
         cached = manager.get_cached_chunks("test.py", "hash456")
         assert cached == chunks
@@ -173,8 +184,9 @@ class TestIncrementalParser:
         parser = IncrementalParser()
         source = b"line 1\nline 2\nline 3\n"
         changes = parser.detect_changes(source, source)
-        assert len(changes) == 0 or all(old_end == new_end for _, old_end,
-            new_end, _ in changes)
+        assert len(changes) == 0 or all(
+            old_end == new_end for _, old_end, new_end, _ in changes
+        )
 
 
 class TestMemoryPool:
@@ -294,7 +306,12 @@ class TestEnhancedChunker:
     @classmethod
     def test_caching_behavior(cls):
         """Test that caching works correctly."""
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
             f.write("def test(): pass")
             test_file = Path(f.name)
         try:
@@ -311,7 +328,12 @@ class TestEnhancedChunker:
     @classmethod
     def test_cache_invalidation(cls):
         """Test cache invalidation."""
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
             f.write("def test(): pass")
             test_file = Path(f.name)
         try:

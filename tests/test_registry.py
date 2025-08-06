@@ -12,7 +12,6 @@ from chunker.exceptions import (
     LibraryLoadError,
     LibraryNotFoundError,
 )
-from chunker.registry import LanguageMetadata, LanguageRegistry
 
 
 class TestLanguageRegistry:

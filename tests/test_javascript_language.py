@@ -1,4 +1,5 @@
 """Test JavaScript-specific language features."""
+
 from chunker.core import chunk_file
 from chunker.languages import LanguageConfig, language_config_registry
 
@@ -12,14 +13,19 @@ class JavaScriptConfig(LanguageConfig):
 
     @property
     def chunk_types(self) -> set[str]:
-        return {"function_declaration", "function_expression",
-            "arrow_function", "generator_function_declaration",
-            "class_declaration", "method_definition", "export_statement"}
+        return {
+            "function_declaration",
+            "function_expression",
+            "arrow_function",
+            "generator_function_declaration",
+            "class_declaration",
+            "method_definition",
+            "export_statement",
+        }
 
     def should_chunk_node(self, node_type: str) -> bool:
         """Override to handle variable_declarator specially."""
-        return (node_type in self.chunk_types or node_type ==
-            "variable_declarator")
+        return node_type in self.chunk_types or node_type == "variable_declarator"
 
 
 class TestJavaScriptLanguageFeatures:
@@ -68,12 +74,13 @@ const greeting = `Hello, ${name}!`;
 // Default parameters
 const withDefaults = (x = 0, y = 10) => x + y;
 """,
-            )
+        )
         chunks = chunk_file(test_file, "javascript")
         arrow_chunks = [c for c in chunks if "=>" in c.content]
         assert len(arrow_chunks) >= 4
-        var_declarator_chunks = [c for c in chunks if c.node_type ==
-            "variable_declarator"]
+        var_declarator_chunks = [
+            c for c in chunks if c.node_type == "variable_declarator"
+        ]
         assert len(var_declarator_chunks) >= 8
         arrow_content_chunks = [c for c in chunks if "=>" in c.content]
         assert len(arrow_content_chunks) >= 4
@@ -116,14 +123,12 @@ const WithProps = ({ name, age }) => (
 
 export { MyComponent, ClassComponent, WithProps };
 """,
-            )
+        )
         chunks = chunk_file(jsx_file, "javascript")
         assert len(chunks) >= 3
-        arrow_components = [c for c in chunks if "=>" in c.content and "<" in
-            c.content]
+        arrow_components = [c for c in chunks if "=>" in c.content and "<" in c.content]
         assert len(arrow_components) >= 2
-        class_chunks = [c for c in chunks if c.node_type == "class_declaration"
-            ]
+        class_chunks = [c for c in chunks if c.node_type == "class_declaration"]
         assert len(class_chunks) >= 1
         assert "ClassComponent" in class_chunks[0].content
         render_chunks = [c for c in chunks if "render()" in c.content]
@@ -172,19 +177,17 @@ const doubled = numbers.map(x => x * 2);
 const filtered = numbers.filter(x => x > 1);
 const sum = numbers.reduce((acc, x) => acc + x, 0);
 """,
-            )
+        )
         chunks = chunk_file(test_file, "javascript")
         arrow_chunks = [c for c in chunks if "=>" in c.content]
         assert len(arrow_chunks) >= 8
-        async_chunks = [c for c in chunks if "async" in c.content and "=>" in
-            c.content]
+        async_chunks = [c for c in chunks if "async" in c.content and "=>" in c.content]
         assert len(async_chunks) >= 1
         assert "asyncArrow" in async_chunks[0].content
         nested_arrows = [c for c in chunks if c.content.count("=>") >= 2]
         assert len(nested_arrows) >= 1
         assert "createMultiplier" in nested_arrows[0].content
-        map_chunks = [c for c in chunks if "map" in c.content and "=>" in c
-            .content]
+        map_chunks = [c for c in chunks if "map" in c.content and "=>" in c.content]
         assert len(map_chunks) >= 1
 
     @staticmethod
@@ -273,13 +276,11 @@ class ExtendedClass extends ModernClass {
     }
 }
 """,
-            )
+        )
         chunks = chunk_file(test_file, "javascript")
-        class_chunks = [c for c in chunks if c.node_type == "class_declaration"
-            ]
+        class_chunks = [c for c in chunks if c.node_type == "class_declaration"]
         assert len(class_chunks) >= 2
-        method_chunks = [c for c in chunks if c.node_type ==
-            "method_definition"]
+        method_chunks = [c for c in chunks if c.node_type == "method_definition"]
         assert len(method_chunks) >= 8
         async_methods = [c for c in method_chunks if "async" in c.content]
         assert len(async_methods) >= 1
@@ -358,16 +359,19 @@ exports.mixedExport = function() {
     return "mixed";
 };
 """,
-            )
+        )
         chunks = chunk_file(test_file, "javascript")
-        export_chunks = [c for c in chunks if c.node_type ==
-            "export_statement" or "export" in c.content]
+        export_chunks = [
+            c
+            for c in chunks
+            if c.node_type == "export_statement" or "export" in c.content
+        ]
         assert len(export_chunks) >= 5
-        named_func_exports = [c for c in chunks if "export function" in c.
-            content]
+        named_func_exports = [c for c in chunks if "export function" in c.content]
         assert len(named_func_exports) >= 1
-        arrow_exports = [c for c in chunks if "export const" in c.content and
-            "=>" in c.content]
+        arrow_exports = [
+            c for c in chunks if "export const" in c.content and "=>" in c.content
+        ]
         assert len(arrow_exports) >= 1
         class_exports = [c for c in chunks if "export class" in c.content]
         assert len(class_exports) >= 1
@@ -460,22 +464,27 @@ const parallelOperations = async () => {
 // Top-level await (ES2022)
 const topLevelData = await fetchData();
 """,
-            )
+        )
         chunks = chunk_file(test_file, "javascript")
         async_chunks = [c for c in chunks if "async" in c.content]
         assert len(async_chunks) >= 7
-        async_func_decl = [c for c in chunks if c.node_type ==
-            "function_declaration" and "async" in c.content]
+        async_func_decl = [
+            c
+            for c in chunks
+            if c.node_type == "function_declaration" and "async" in c.content
+        ]
         assert len(async_func_decl) >= 1
-        async_arrows = [c for c in chunks if "async" in c.content and "=>" in
-            c.content]
+        async_arrows = [c for c in chunks if "async" in c.content and "=>" in c.content]
         assert len(async_arrows) >= 3
         async_gen = [c for c in chunks if "async function*" in c.content]
         assert len(async_gen) >= 1
         promise_chunks = [c for c in chunks if "Promise" in c.content]
         assert len(promise_chunks) >= 3
-        async_methods = [c for c in chunks if c.node_type ==
-            "method_definition" and "async" in c.content]
+        async_methods = [
+            c
+            for c in chunks
+            if c.node_type == "method_definition" and "async" in c.content
+        ]
         assert len(async_methods) >= 2
 
     @staticmethod
@@ -538,13 +547,15 @@ function* fibonacci() {
     }
 }
 """,
-            )
+        )
         chunks = chunk_file(test_file, "javascript")
-        generator_chunks = [c for c in chunks if c.node_type ==
-            "generator_function_declaration"]
+        generator_chunks = [
+            c for c in chunks if c.node_type == "generator_function_declaration"
+        ]
         assert len(generator_chunks) >= 3
-        generator_methods = [c for c in chunks if c.node_type ==
-            "method_definition" and "*" in c.content]
+        generator_methods = [
+            c for c in chunks if c.node_type == "method_definition" and "*" in c.content
+        ]
         assert len(generator_methods) >= 2
         all_content = "".join(c.content for c in chunks)
         assert "yield" in all_content
@@ -630,20 +641,23 @@ function blockScopes() {
     // inner and blockConst not accessible here
 }
 """,
-            )
+        )
         chunks = chunk_file(test_file, "javascript")
-        function_chunks = [c for c in chunks if "function" in c.content or
-            "=>" in c.content]
+        function_chunks = [
+            c for c in chunks if "function" in c.content or "=>" in c.content
+        ]
         assert len(function_chunks) >= 6
         rest_param_chunks = [c for c in chunks if "...rest" in c.content]
         assert len(rest_param_chunks) >= 1
         destructure_chunks = [c for c in chunks if "({ name, age" in c.content]
         assert len(destructure_chunks) >= 1
-        generator_in_obj = [c for c in chunks if "Symbol.iterator" in c.
-            content and "function*" in c.content]
+        generator_in_obj = [
+            c
+            for c in chunks
+            if "Symbol.iterator" in c.content and "function*" in c.content
+        ]
         assert len(generator_in_obj) >= 1
-        tagged_chunks = [c for c in chunks if "strings, ...values" in c.content
-            ]
+        tagged_chunks = [c for c in chunks if "strings, ...values" in c.content]
         assert len(tagged_chunks) >= 1
 
     @staticmethod
@@ -728,21 +742,40 @@ class NestedInClass {
     }
 }
 """,
-            )
+        )
         chunks = chunk_file(test_file, "javascript")
-        all_functions = [c for c in chunks if c.node_type in {
-            "function_declaration", "function_expression", "arrow_function",
-            "method_definition"} or "function" in c.content or "=>" in c.
-            content]
+        all_functions = [
+            c
+            for c in chunks
+            if c.node_type
+            in {
+                "function_declaration",
+                "function_expression",
+                "arrow_function",
+                "method_definition",
+            }
+            or "function" in c.content
+            or "=>" in c.content
+        ]
         assert len(all_functions) >= 10
-        nested_in_factory = [c for c in chunks if c.parent_context ==
-            "function_declaration" and ("increment" in c.content or
-            "decrement" in c.content or "getCount" in c.content)]
+        nested_in_factory = [
+            c
+            for c in chunks
+            if c.parent_context == "function_declaration"
+            and (
+                "increment" in c.content
+                or "decrement" in c.content
+                or "getCount" in c.content
+            )
+        ]
         assert len(nested_in_factory) >= 3
         deeply_nested = [c for c in chunks if "deeplyNested" in c.content]
         assert len(deeply_nested) >= 1
-        iife_chunks = [c for c in chunks if "privateFunction" in c.content or
-            "publicMethod" in c.content]
+        iife_chunks = [
+            c
+            for c in chunks
+            if "privateFunction" in c.content or "publicMethod" in c.content
+        ]
         assert len(iife_chunks) >= 2
 
 
@@ -781,7 +814,7 @@ class TestClass {
     }
 }
 """,
-                )
+            )
             chunks = chunk_file(test_file, "javascript")
             assert len(chunks) >= 3
             for chunk in chunks:
@@ -826,12 +859,16 @@ class HelperClass {
 
 export { helperFunc, HelperClass };
 """,
-            )
+        )
         chunks = chunk_file(test_file, "javascript")
         exported_chunks = [c for c in chunks if "export" in c.content]
         assert len(exported_chunks) >= 4
-        func_names = ["exportedFunction", "ExportedClass", "exportedArrow",
-            "defaultFunc"]
+        func_names = [
+            "exportedFunction",
+            "ExportedClass",
+            "exportedArrow",
+            "defaultFunc",
+        ]
         for name in func_names:
             assert any(name in c.content for c in chunks)
 
@@ -863,12 +900,12 @@ const composed = compose(
     x => x + 1
 );
 """,
-            )
+        )
         chunks = chunk_file(test_file, "javascript")
-        var_chunks = [c for c in chunks if c.node_type == "variable_declarator"
-            ]
-        func_var_chunks = [c for c in var_chunks if "function" in c.content or
-            "=>" in c.content]
+        var_chunks = [c for c in chunks if c.node_type == "variable_declarator"]
+        func_var_chunks = [
+            c for c in var_chunks if "function" in c.content or "=>" in c.content
+        ]
         assert len(func_var_chunks) >= 5
         arrow_chunks = [c for c in chunks if c.node_type == "arrow_function"]
         assert len(arrow_chunks) >= 5
@@ -977,21 +1014,24 @@ class APIController {
     }
 }
 """,
-            )
+        )
         chunks = chunk_file(test_file, "javascript")
         assert len(chunks) >= 6
         react_chunks = [c for c in chunks if "TodoList" in c.content]
         assert len(react_chunks) >= 1
         assert "useState" in react_chunks[0].content
-        async_handlers = [c for c in chunks if "async" in c.content and
-            "req, res" in c.content]
+        async_handlers = [
+            c for c in chunks if "async" in c.content and "req, res" in c.content
+        ]
         assert len(async_handlers) >= 1
         reducer_chunks = [c for c in chunks if "todosReducer" in c.content]
         assert len(reducer_chunks) >= 1
         assert "switch" in reducer_chunks[0].content
-        curry_chunks = [c for c in chunks if "pipe" in c.content or ("=>" in
-            c.content and "reduce" in c.content)]
+        curry_chunks = [
+            c
+            for c in chunks
+            if "pipe" in c.content or ("=>" in c.content and "reduce" in c.content)
+        ]
         assert len(curry_chunks) >= 1
-        method_chunks = [c for c in chunks if c.node_type ==
-            "method_definition"]
+        method_chunks = [c for c in chunks if c.node_type == "method_definition"]
         assert len(method_chunks) >= 2

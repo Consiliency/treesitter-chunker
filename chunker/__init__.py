@@ -31,7 +31,10 @@ def chunk_text(text: str, language: str, **kwargs):
 
     # Write to temporary file and chunk it
     with tempfile.NamedTemporaryFile(
-        encoding="utf-8", mode="w", suffix=".tmp", delete=False,
+        encoding="utf-8",
+        mode="w",
+        suffix=".tmp",
+        delete=False,
     ) as f:
         f.write(text)
         temp_path = f.name
@@ -47,6 +50,13 @@ def chunk_text(text: str, language: str, **kwargs):
 from ._internal.cache import ASTCache
 from .chunker_config import ChunkerConfig
 from .exceptions import LanguageNotFoundError, LibraryNotFoundError, ParserError
+from .optimization import (
+    ChunkBoundaryAnalyzer,
+    ChunkOptimizer,
+    OptimizationConfig,
+    OptimizationMetrics,
+    OptimizationStrategy,
+)
 from .parser import (
     ParserConfig,
     clear_cache,
@@ -61,6 +71,9 @@ from .plugin_manager import get_plugin_manager
 __all__ = [
     # Performance
     "ASTCache",
+    # Optimization
+    "ChunkBoundaryAnalyzer",
+    "ChunkOptimizer",
     # Configuration
     "ChunkerConfig",
     # Core types
@@ -68,8 +81,11 @@ __all__ = [
     # Exceptions
     "LanguageNotFoundError",
     "LibraryNotFoundError",
+    "OptimizationConfig",
+    "OptimizationMetrics",
+    "OptimizationStrategy",
     "ParserConfig",
-    "ParserError"
+    "ParserError",
     # Version
     "__version__",
     "chunk_directory",

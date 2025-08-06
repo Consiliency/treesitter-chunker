@@ -7,6 +7,7 @@ Tests the integration of:
 - Intelligent Fallback Strategy
 - All processors working together
 """
+
 import shutil
 import tempfile
 import time
@@ -67,8 +68,7 @@ class DataProcessor:
         assert len(chunks) > 1
         for chunk in chunks:
             assert chunk.metadata["token_count"] <= 100
-            assert chunk.metadata["chunking_decision"
-                ] == "tree_sitter_with_split"
+            assert chunk.metadata["chunking_decision"] == "tree_sitter_with_split"
 
     def test_markdown_with_code_blocks(self):
         """Test markdown processing with embedded code."""
@@ -138,8 +138,7 @@ Caused by: java.net.ConnectException: Connection refused
         log_file = self.temp_path / "application.log"
         log_file.write_text(log_content)
         chunks = fallback.chunk_text(log_content, str(log_file))
-        error_chunk = next((c for c in chunks if "SQLException" in c.
-            content), None)
+        error_chunk = next((c for c in chunks if "SQLException" in c.content), None)
         assert error_chunk is not None
         assert "DatabaseConnection.java:45" in error_chunk.content
         assert "Caused by:" in error_chunk.content
@@ -204,7 +203,7 @@ class MetricsProcessor:
     def get_summary(self):
         return calculate_metrics([m['value'] for m in self.metrics])
 """,
-            )
+        )
         md_file = self.temp_path / "docs" / "metrics.md"
         md_file.write_text(
             """# Metrics Documentation
@@ -220,7 +219,7 @@ Calculate basic metrics from a list of numbers.
 ### `MetricsProcessor`
 A class for processing and storing metrics over time.
 """,
-            )
+        )
         yaml_file = self.temp_path / "config" / "metrics.yaml"
         yaml_file.write_text(
             """metrics:
@@ -235,7 +234,7 @@ reporting:
   format: json
   destination: stdout
 """,
-            )
+        )
         all_chunks = []
         decision_counts = {}
         for file_path in [py_file, md_file, yaml_file]:
@@ -243,29 +242,40 @@ reporting:
             all_chunks.extend(chunks)
             for chunk in chunks:
                 decision = chunk.metadata.get("chunking_decision", "unknown")
-                decision_counts[decision] = decision_counts.get(decision, 0,
-                    ) + 1
+                decision_counts[decision] = (
+                    decision_counts.get(
+                        decision,
+                        0,
+                    )
+                    + 1
+                )
         assert len(all_chunks) >= 3
         assert len(decision_counts) >= 2
         py_chunks = [c for c in all_chunks if c.file_path == str(py_file)]
-        assert any(c.metadata["chunking_decision"] == "tree_sitter" for c in
-            py_chunks)
+        assert any(c.metadata["chunking_decision"] == "tree_sitter" for c in py_chunks)
 
     @classmethod
     def test_token_limit_with_fallback(cls):
         """Test token limits work with fallback chunking."""
         fallback = IntelligentFallbackChunker(token_limit=100)
-        large_text = " ".join([
-            f"This is a much longer sentence number {i} with more words to increase token count."
-             for i in range(50)])
+        large_text = " ".join(
+            [
+                f"This is a much longer sentence number {i} with more words to increase token count."
+                for i in range(50)
+            ],
+        )
         chunks = fallback.chunk_text(large_text, "large.txt")
         assert chunks[0].metadata["chunking_decision"] == "sliding_window"
         if len(chunks) == 1:
             assert "token_count" in chunks[0].metadata
         else:
             for chunk in chunks:
-                assert chunk.metadata.get("chunking_decision",
-                    ) == "sliding_window"
+                assert (
+                    chunk.metadata.get(
+                        "chunking_decision",
+                    )
+                    == "sliding_window"
+                )
 
     def test_empty_file_handling(self):
         """Test handling of empty files."""
@@ -286,8 +296,7 @@ reporting:
     def test_decision_transparency(cls):
         """Test decision information availability."""
         fallback = IntelligentFallbackChunker(token_limit=500)
-        code = (
-            "\ndef process(items):\n    return [item * 2 for item in items]\n")
+        code = "\ndef process(items):\n    return [item * 2 for item in items]\n"
         info = fallback.get_decision_info("process.py", code)
         assert "decision" in info
         assert "reason" in info
@@ -308,14 +317,13 @@ reporting:
         except ImportError:
             pytest.skip("Sliding window engine not available")
         engine = DefaultSlidingWindowEngine()
-        config = WindowConfig(size=100, unit=WindowUnit.TOKENS,
-            overlap_value=10)
+        config = WindowConfig(size=100, unit=WindowUnit.TOKENS, overlap_value=10)
 
         def text_generator():
             for i in range(10):
                 yield f"This is paragraph {i}. It contains some text that will be chunked. "
-        chunks = list(engine.chunk_stream(text_generator(), config,
-            "stream.txt"))
+
+        chunks = list(engine.chunk_stream(text_generator(), config, "stream.txt"))
         assert len(chunks) > 0
         for chunk in chunks:
             assert len(chunk.content) > 0
@@ -364,12 +372,14 @@ def function_{i}(param1, param2):
     return result
 
 """,
-                    )
+                )
         start_time = time.time()
         chunks = fallback.chunk_text(large_py.read_text(), str(large_py))
         end_time = time.time()
         duration = end_time - start_time
         assert duration < 5.0
         assert len(chunks) > 1
-        assert all(c.metadata["chunking_decision"] in {"tree_sitter",
-            "tree_sitter_with_split"} for c in chunks)
+        assert all(
+            c.metadata["chunking_decision"] in {"tree_sitter", "tree_sitter_with_split"}
+            for c in chunks
+        )

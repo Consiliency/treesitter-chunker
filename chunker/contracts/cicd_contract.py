@@ -28,8 +28,10 @@ class CICDPipelineContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def run_test_matrix(python_versions: list[str], platforms: list[str],
-        ) -> dict[str, dict[str, Any]]:
+    def run_test_matrix(
+        python_versions: list[str],
+        platforms: list[str],
+    ) -> dict[str, dict[str, Any]]:
         """Execute tests across version and platform matrix
 
         Args:
@@ -60,8 +62,10 @@ class CICDPipelineContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def build_distribution(version: str, platforms: list[str]) -> dict[str, Any,
-        ]:
+    def build_distribution(version: str, platforms: list[str]) -> dict[
+        str,
+        Any,
+    ]:
         """Build distribution packages for specified platforms
 
         Args:
@@ -86,8 +90,11 @@ class CICDPipelineContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def create_release(version: str, artifacts: list[Path], changelog: str,
-        ) -> dict[str, Any]:
+    def create_release(
+        version: str,
+        artifacts: list[Path],
+        changelog: str,
+    ) -> dict[str, Any]:
         """Create a GitHub release with artifacts
 
         Args:

@@ -1,4 +1,5 @@
 """Chunker integration with Virtual File System support."""
+
 from __future__ import annotations
 
 import fnmatch
@@ -27,7 +28,7 @@ logger = logging.getLogger(__name__)
 class VFSChunker:
     """Chunker with Virtual File System support."""
 
-    def __init__(self, vfs: (VirtualFileSystem | None) = None):
+    def __init__(self, vfs: VirtualFileSystem | None = None):
         """Initialize VFS chunker.
 
         Args:
@@ -37,8 +38,12 @@ class VFSChunker:
         self._chunkers = {}
         self._memory_optimizer = get_memory_optimizer()
 
-    def chunk_file(self, path: str, language: (str | None) = None, streaming:
-        bool = False) -> (list[CodeChunk] | Iterator[CodeChunk]):
+    def chunk_file(
+        self,
+        path: str,
+        language: str | None = None,
+        streaming: bool = False,
+    ) -> list[CodeChunk] | Iterator[CodeChunk]:
         """Chunk a file from the virtual file system.
 
         Args:
@@ -63,8 +68,7 @@ class VFSChunker:
         if streaming or file_size > 10 * 1024 * 1024:
             if language not in self._chunkers:
                 self._chunkers[language] = StreamingChunker(language)
-            return self._chunk_file_streaming(path, language, self.
-                _chunkers[language])
+            return self._chunk_file_streaming(path, language, self._chunkers[language])
         return self._chunk_file_standard(path, language)
 
     def _chunk_file_standard(self, path: str, language: str) -> list[CodeChunk]:
@@ -73,8 +77,12 @@ class VFSChunker:
         with optimized_gc("batch"):
             return chunk_text(content, file_path=path, language=language)
 
-    def _chunk_file_streaming(self, path: str, _language: str, chunker:
-        StreamingChunker) -> Iterator[CodeChunk]:
+    def _chunk_file_streaming(
+        self,
+        path: str,
+        _language: str,
+        chunker: StreamingChunker,
+    ) -> Iterator[CodeChunk]:
         """Streaming chunking for large files."""
         with optimized_gc("streaming"), self.vfs.Path(path).open("rb") as f:
             chunk_size = 1024 * 1024
@@ -86,19 +94,29 @@ class VFSChunker:
                 content_buffer += chunk
                 if len(content_buffer) > chunk_size * 2:
                     tree = chunker.parser.parse(content_buffer)
-                    for code_chunk in chunker._walk_streaming(tree.
-                        root_node, content_buffer, path):
+                    for code_chunk in chunker._walk_streaming(
+                        tree.root_node,
+                        content_buffer,
+                        path,
+                    ):
                         yield code_chunk
                     content_buffer = content_buffer[-chunk_size:]
             if content_buffer:
                 tree = chunker.parser.parse(content_buffer)
-                for code_chunk in chunker._walk_streaming(tree.root_node,
-                    content_buffer, path):
+                for code_chunk in chunker._walk_streaming(
+                    tree.root_node,
+                    content_buffer,
+                    path,
+                ):
                     yield code_chunk
 
-    def chunk_directory(self, directory: str, recursive: bool = True,
-        file_patterns: (list[str] | None) = None, streaming: bool = False,
-        ) -> Iterator[tuple[str, list[CodeChunk]]]:
+    def chunk_directory(
+        self,
+        directory: str,
+        recursive: bool = True,
+        file_patterns: list[str] | None = None,
+        streaming: bool = False,
+    ) -> Iterator[tuple[str, list[CodeChunk]]]:
         """Chunk all files in a directory.
 
         Args:
@@ -116,24 +134,29 @@ class VFSChunker:
         for vf in self._walk_directory(directory, recursive):
             if vf.is_dir:
                 continue
-            if file_patterns and not any(self._match_pattern(vf.path,
-                pattern) for pattern in file_patterns):
+            if file_patterns and not any(
+                self._match_pattern(vf.path, pattern) for pattern in file_patterns
+            ):
                 continue
             if self._detect_language(vf.path):
                 files_to_process.append(vf.path)
-        self._memory_optimizer.optimize_for_file_processing(len(
-            files_to_process))
-        for batch in self._memory_optimizer.memory_efficient_batch(
-            files_to_process):
+        self._memory_optimizer.optimize_for_file_processing(len(files_to_process))
+        for batch in self._memory_optimizer.memory_efficient_batch(files_to_process):
             for file_path in batch:
-                try:
-                    chunks = self.chunk_file(file_path, streaming=streaming)
-                    if streaming:
-                        chunks = list(chunks)
-                    yield file_path, chunks
-                except (FileNotFoundError, OSError) as e:
-                    logger.error("Error processing %s: %s", file_path, e)
-                    continue
+                result = self._process_file_safe(file_path, streaming)
+                if result is not None:
+                    yield file_path, result
+
+    def _process_file_safe(self, file_path: str, streaming: bool) -> list | None:
+        """Process a file safely, returning None on error."""
+        try:
+            chunks = self.chunk_file(file_path, streaming=streaming)
+            if streaming:
+                chunks = list(chunks)
+            return chunks
+        except (FileNotFoundError, OSError) as e:
+            logger.error("Error processing %s: %s", file_path, e)
+            return None
 
     def _walk_directory(self, directory: str, recursive: bool) -> Iterator:
         """Walk directory tree in VFS."""
@@ -143,25 +166,65 @@ class VFSChunker:
                 yield from self._walk_directory(vf.path, recursive)
 
     @classmethod
-    def _detect_language(cls, path: str) -> (str | None):
+    def _detect_language(cls, path: str) -> str | None:
         """Detect language from file path/extension."""
         path_obj = Path(path)
         ext = path_obj.suffix.lower()
-        language_map = {".py": "python", ".js": "javascript", ".jsx":
-            "javascript", ".ts": "typescript", ".tsx": "typescript", ".c":
-            "c", ".h": "c", ".cpp": "cpp", ".cc": "cpp", ".cxx": "cpp",
-            ".hpp": "cpp", ".rs": "rust", ".go": "go", ".java": "java",
-            ".rb": "ruby", ".php": "php", ".cs": "csharp", ".swift":
-            "swift", ".kt": "kotlin", ".scala": "scala", ".r": "r", ".lua":
-            "lua", ".dart": "dart", ".jl": "julia", ".ex": "elixir", ".exs":
-            "elixir", ".clj": "clojure", ".hs": "haskell", ".ml": "ocaml",
-            ".vim": "vim", ".sh": "bash", ".bash": "bash", ".zsh": "bash",
-            ".fish": "bash", ".ps1": "powershell", ".yaml": "yaml", ".yml":
-            "yaml", ".toml": "toml", ".json": "json", ".xml": "xml",
-            ".html": "html", ".htm": "html", ".css": "css", ".scss": "scss",
-            ".sass": "sass", ".less": "less", ".sql": "sql", ".graphql":
-            "graphql", ".proto": "protobuf", ".tf": "hcl", ".hcl": "hcl",
-            ".dockerfile": "dockerfile", ".containerfile": "dockerfile"}
+        language_map = {
+            ".py": "python",
+            ".js": "javascript",
+            ".jsx": "javascript",
+            ".ts": "typescript",
+            ".tsx": "typescript",
+            ".c": "c",
+            ".h": "c",
+            ".cpp": "cpp",
+            ".cc": "cpp",
+            ".cxx": "cpp",
+            ".hpp": "cpp",
+            ".rs": "rust",
+            ".go": "go",
+            ".java": "java",
+            ".rb": "ruby",
+            ".php": "php",
+            ".cs": "csharp",
+            ".swift": "swift",
+            ".kt": "kotlin",
+            ".scala": "scala",
+            ".r": "r",
+            ".lua": "lua",
+            ".dart": "dart",
+            ".jl": "julia",
+            ".ex": "elixir",
+            ".exs": "elixir",
+            ".clj": "clojure",
+            ".hs": "haskell",
+            ".ml": "ocaml",
+            ".vim": "vim",
+            ".sh": "bash",
+            ".bash": "bash",
+            ".zsh": "bash",
+            ".fish": "bash",
+            ".ps1": "powershell",
+            ".yaml": "yaml",
+            ".yml": "yaml",
+            ".toml": "toml",
+            ".json": "json",
+            ".xml": "xml",
+            ".html": "html",
+            ".htm": "html",
+            ".css": "css",
+            ".scss": "scss",
+            ".sass": "sass",
+            ".less": "less",
+            ".sql": "sql",
+            ".graphql": "graphql",
+            ".proto": "protobuf",
+            ".tf": "hcl",
+            ".hcl": "hcl",
+            ".dockerfile": "dockerfile",
+            ".containerfile": "dockerfile",
+        }
         if path_obj.name.lower() in {"dockerfile", "containerfile"}:
             return "dockerfile"
         return language_map.get(ext)
@@ -172,9 +235,12 @@ class VFSChunker:
         return fnmatch.fnmatch(path, pattern)
 
 
-def chunk_file_from_vfs(path: str, vfs: (VirtualFileSystem | None) = None,
-    language: (str | None) = None, streaming: bool = False) -> (list[CodeChunk] |
-    Iterator[CodeChunk]):
+def chunk_file_from_vfs(
+    path: str,
+    vfs: VirtualFileSystem | None = None,
+    language: str | None = None,
+    streaming: bool = False,
+) -> list[CodeChunk] | Iterator[CodeChunk]:
     """Chunk a file from a virtual file system.
 
     Args:
@@ -192,8 +258,11 @@ def chunk_file_from_vfs(path: str, vfs: (VirtualFileSystem | None) = None,
     return chunker.chunk_file(path, language, streaming)
 
 
-def chunk_from_url(url: str, language: (str | None) = None, streaming: bool = False,
-    ) -> (list[CodeChunk] | Iterator[CodeChunk]):
+def chunk_from_url(
+    url: str,
+    language: str | None = None,
+    streaming: bool = False,
+) -> list[CodeChunk] | Iterator[CodeChunk]:
     """Chunk a file from a URL.
 
     Args:
@@ -209,8 +278,12 @@ def chunk_from_url(url: str, language: (str | None) = None, streaming: bool = Fa
     return chunker.chunk_file(url, language, streaming)
 
 
-def chunk_from_zip(zip_path: str, file_path: str, language: (str | None) =
-    None, streaming: bool = False) -> (list[CodeChunk] | Iterator[CodeChunk]):
+def chunk_from_zip(
+    zip_path: str,
+    file_path: str,
+    language: str | None = None,
+    streaming: bool = False,
+) -> list[CodeChunk] | Iterator[CodeChunk]:
     """Chunk a file from a ZIP archive.
 
     Args:

@@ -19,7 +19,6 @@ def fix_nested_self_refs(file_path: Path) -> list[str]:
     # Pattern to find @staticmethod followed by a method that has nested functions using self
     lines = content.split("\n")
     fixed_lines = []
-    in_staticmethod = False
     method_indent = 0
 
     i = 0
@@ -51,8 +50,14 @@ def fix_nested_self_refs(file_path: Path) -> list[str]:
                         nested_func_indent = None
                         m = k - 1
                         while m > j:
-                            if "def " in lines[m] and len(lines[m]) - len(lines[m].lstrip()) > method_indent:
-                                nested_func_indent = len(lines[m]) - len(lines[m].lstrip())
+                            if (
+                                "def " in lines[m]
+                                and len(lines[m]) - len(lines[m].lstrip())
+                                > method_indent
+                            ):
+                                nested_func_indent = len(lines[m]) - len(
+                                    lines[m].lstrip(),
+                                )
                                 break
                             m -= 1
                         if nested_func_indent is not None:
@@ -77,7 +82,10 @@ def fix_nested_self_refs(file_path: Path) -> list[str]:
                                 method_def = method_def.replace("()", "(self)")
                             else:
                                 # Insert self as first parameter
-                                match = re.match(r"(\s*def\s+\w+\s*\()(.+?)(\)\s*(?:->.*)?:)", method_def)
+                                match = re.match(
+                                    r"(\s*def\s+\w+\s*\()(.+?)(\)\s*(?:->.*)?:)",
+                                    method_def,
+                                )
                                 if match:
                                     method_def = f"{match.group(1)}self, {match.group(2)}{match.group(3)}"
                         fixed_lines.append(method_def)

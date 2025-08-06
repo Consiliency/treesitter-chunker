@@ -2,6 +2,7 @@
 
 This module provides shared test fixtures that all integration tests can use.
 """
+
 import asyncio
 import multiprocessing
 import shutil
@@ -19,7 +20,7 @@ import pytest
 from .interfaces import ConfigChangeObserver, ErrorPropagationMixin, ResourceTracker
 
 
-@pytest.fixture
+@pytest.fixture()
 def temp_workspace() -> Generator[Path, None, None]:
     """Provide a temporary workspace directory for integration tests.
 
@@ -36,15 +37,15 @@ def temp_workspace() -> Generator[Path, None, None]:
     shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-@pytest.fixture
+@pytest.fixture()
 def sample_code_files() -> dict[str, str]:
     """Provide sample code files for different languages.
 
     Returns:
         Dictionary mapping filenames to code content
     """
-    return {"example.py":
-        """
+    return {
+        "example.py": """
 def calculate_sum(numbers):
     '''Calculate sum of numbers.'''
     return sum(numbers)
@@ -62,9 +63,8 @@ async def fetch_data(url):
     '''Async function to fetch data.'''
     await asyncio.sleep(0.1)
     return {"url": url, "data": "sample"}
-"""
-        , "example.js":
-        """
+""",
+        "example.js": """
 function calculateSum(numbers) {
     // Calculate sum of array
     return numbers.reduce((a, b) => a + b, 0);
@@ -87,9 +87,8 @@ async function fetchData(url) {
     await new Promise(r => setTimeout(r, 100));
     return { url, data: 'sample' };
 }
-"""
-        , "example.rs":
-        """
+""",
+        "example.rs": """
 fn calculate_sum(numbers: &[i32]) -> i32 {
     // Calculate sum of slice
     numbers.iter().sum()
@@ -116,9 +115,8 @@ async fn fetch_data(url: &str) -> Result<String, Error> {
     tokio::time::sleep(Duration::from_millis(100)).await;
     Ok(format!("Data from {}", url))
 }
-"""
-        , "example.c":
-        """
+""",
+        "example.c": """
 #include <stdio.h>
 
 int calculate_sum(int* numbers, int count) {
@@ -145,7 +143,7 @@ void process_item(DataProcessor* dp, int item) {
     dp->data[dp->size++] = item * 2;
 }
 """,
-        }
+    }
 
 
 class ErrorTrackingContext(ErrorPropagationMixin):
@@ -161,20 +159,26 @@ class ErrorTrackingContext(ErrorPropagationMixin):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_val:
-            self.capture_cross_module_error(source_module="test_context",
-                target_module="test_runner", error=exc_val)
+            self.capture_cross_module_error(
+                source_module="test_context",
+                target_module="test_runner",
+                error=exc_val,
+            )
         return False
 
     def register_handler(self, module: str, handler: Callable):
         """Register error handler for specific module."""
         self.error_handlers[module] = handler
 
-    def capture_and_propagate(self, source: str, target: str, error: Exception,
-        ):
+    def capture_and_propagate(
+        self,
+        source: str,
+        target: str,
+        error: Exception,
+    ):
         """Capture error and trigger registered handlers."""
         with self._lock:
-            error_context = self.capture_cross_module_error(source, target,
-                error)
+            error_context = self.capture_cross_module_error(source, target, error)
             self.captured_errors.append(error_context)
             if target in self.error_handlers:
                 self.error_handlers[target](error_context)
@@ -186,13 +190,13 @@ class ErrorTrackingContext(ErrorPropagationMixin):
             return self.captured_errors.copy()
 
 
-@pytest.fixture
+@pytest.fixture()
 def error_tracking_context():
     """Context manager for tracking errors across modules."""
     return ErrorTrackingContext()
 
 
-@pytest.fixture
+@pytest.fixture()
 def config_change_tracker():
     """Fixture for tracking configuration changes."""
     tracker = ConfigChangeObserver()
@@ -200,28 +204,30 @@ def config_change_tracker():
 
     def log_changes(event):
         change_log.append(event)
+
     tracker.register_observer(log_changes)
     tracker.change_log = change_log
     return tracker
 
 
-@pytest.fixture
+@pytest.fixture()
 def resource_monitor():
     """Fixture for monitoring resource allocation/cleanup."""
     monitor = ResourceTracker()
 
-    def assert_no_leaks(module: (str | None) = None):
+    def assert_no_leaks(module: str | None = None):
         if module:
             leaked = monitor.verify_cleanup(module)
             assert not leaked, f"Module {module} leaked resources: {leaked}"
         else:
             all_active = monitor.get_all_resources(state="active")
             assert not all_active, f"Found leaked resources: {all_active}"
+
     monitor.assert_no_leaks = assert_no_leaks
     return monitor
 
 
-@pytest.fixture
+@pytest.fixture()
 def parallel_test_environment(temp_workspace):
     """Set up environment for parallel processing tests."""
 
@@ -284,12 +290,13 @@ def parallel_test_environment(temp_workspace):
 
         def __exit__(self, exc_type, exc_val, exc_tb):
             self.cleanup()
+
     env = ParallelTestEnv(temp_workspace)
     yield env
     env.cleanup()
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_parser_factory():
     """Mock parser with controllable failures."""
 
@@ -306,8 +313,7 @@ def mock_parser_factory():
             self.parse_count += 1
             if self.fail_on_parse:
                 raise RuntimeError(f"Parser failed for {self.language}")
-            if (self.fail_on_nth_call and self.parse_count == self.
-                fail_on_nth_call):
+            if self.fail_on_nth_call and self.parse_count == self.fail_on_nth_call:
                 raise RuntimeError(f"Parser failed on call {self.parse_count}")
             if self.timeout:
                 time.sleep(self.timeout)
@@ -357,10 +363,11 @@ def mock_parser_factory():
         def reset(self):
             """Reset all parsers."""
             self.parsers.clear()
+
     return MockParserFactory()
 
 
-@pytest.fixture
+@pytest.fixture()
 def test_file_generator(temp_workspace):
     """Generate test files with specific patterns."""
 
@@ -382,8 +389,13 @@ def test_file_generator(temp_workspace):
             self.generated_files.append(file_path)
             return file_path
 
-        def create_large_file(self, name: str, size_mb: int, pattern: str =
-            "function", language: str = "python") -> Path:
+        def create_large_file(
+            self,
+            name: str,
+            size_mb: int,
+            pattern: str = "function",
+            language: str = "python",
+        ) -> Path:
             """Create a large file with repeated patterns."""
             if language == "python":
                 template = f"""
@@ -409,16 +421,27 @@ function {pattern}_{{i}}(x) {{
                 content += template.format(i=i)
             return self.create_file(name, content)
 
-        def create_error_file(self, name: str, error_type: str, language:
-            str = "python") -> Path:
+        def create_error_file(
+            self,
+            name: str,
+            error_type: str,
+            language: str = "python",
+        ) -> Path:
             """Create file with specific error patterns."""
-            error_patterns = {"syntax": {"python": "def broken(\n    pass",
-                "javascript": "function broken() { { }"}, "unicode": {
-                "python": "# 🚨 def test(): return '\\x80\\x81'",
-                "javascript":
-                "// 🚨 function test() { return '\\x80\\x81'; }"}, "binary":
-                {"python": b"\x00\x01\x02def test(): pass", "javascript":
-                b"\x00\x01\x02function test() {}"}}
+            error_patterns = {
+                "syntax": {
+                    "python": "def broken(\n    pass",
+                    "javascript": "function broken() { { }",
+                },
+                "unicode": {
+                    "python": "# 🚨 def test(): return '\\x80\\x81'",
+                    "javascript": "// 🚨 function test() { return '\\x80\\x81'; }",
+                },
+                "binary": {
+                    "python": b"\x00\x01\x02def test(): pass",
+                    "javascript": b"\x00\x01\x02function test() {}",
+                },
+            }
             content = error_patterns.get(error_type, {}).get(language, "")
             if isinstance(content, bytes):
                 file_path = self.workspace / name
@@ -432,12 +455,13 @@ function {pattern}_{{i}}(x) {{
             for file_path in self.generated_files:
                 if file_path.exists():
                     file_path.unlink()
+
     generator = TestFileGenerator(temp_workspace)
     yield generator
     generator.cleanup()
 
 
-@pytest.fixture
+@pytest.fixture()
 def async_test_runner():
     """Runner for async test scenarios."""
 
@@ -474,8 +498,9 @@ def async_test_runner():
                 if not task.done():
                     task.cancel()
             if self.loop:
-                self.loop.run_until_complete(asyncio.gather(*self.tasks,
-                    return_exceptions=True))
+                self.loop.run_until_complete(
+                    asyncio.gather(*self.tasks, return_exceptions=True),
+                )
                 self.loop.close()
 
         def __enter__(self):
@@ -483,12 +508,13 @@ def async_test_runner():
 
         def __exit__(self, exc_type, exc_val, exc_tb):
             self.cleanup()
+
     runner = AsyncTestRunner()
     yield runner
     runner.cleanup()
 
 
-@pytest.fixture
+@pytest.fixture()
 def thread_safe_counter():
     """Thread-safe counter for tracking concurrent operations."""
 
@@ -512,10 +538,11 @@ def thread_safe_counter():
         def value(self) -> int:
             with self._lock:
                 return self._value
+
     return ThreadSafeCounter()
 
 
-@pytest.fixture
+@pytest.fixture()
 def performance_monitor():
     """Monitor performance metrics during tests."""
 
@@ -552,6 +579,12 @@ def performance_monitor():
             if operation not in self.metrics:
                 return {}
             times = self.metrics[operation]
-            return {"count": len(times), "total": sum(times), "average":
-                sum(times) / len(times), "min": min(times), "max": max(times)}
+            return {
+                "count": len(times),
+                "total": sum(times),
+                "average": sum(times) / len(times),
+                "min": min(times),
+                "max": max(times),
+            }
+
     return PerformanceMonitor()

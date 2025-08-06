@@ -13,7 +13,8 @@ def fix_static_method_self_errors():
     # Get all F821 errors
     result = subprocess.run(
         ["ruff", "check", "--select", "F821", "--output-format", "json"],
-        check=False, capture_output=True,
+        check=False,
+        capture_output=True,
         text=True,
     )
 
@@ -32,10 +33,12 @@ def fix_static_method_self_errors():
             file_path = Path(error["filename"])
             if file_path not in files_to_fix:
                 files_to_fix[file_path] = []
-            files_to_fix[file_path].append({
-                "line": error["location"]["row"],
-                "message": error["message"],
-            })
+            files_to_fix[file_path].append(
+                {
+                    "line": error["location"]["row"],
+                    "message": error["message"],
+                },
+            )
 
     for file_path, errors in files_to_fix.items():
         try:
@@ -58,7 +61,9 @@ def fix_static_method_self_errors():
                         func_line_num = j + 1  # 1-based line number
 
                         # Check if this function has self errors
-                        has_self_error = any(err["line"] >= func_line_num for err in errors)
+                        has_self_error = any(
+                            err["line"] >= func_line_num for err in errors
+                        )
 
                         if has_self_error:
                             # Remove @staticmethod
@@ -73,20 +78,30 @@ def fix_static_method_self_errors():
                                 if paren_idx != -1:
                                     if func_line[paren_idx + 1] == ")":
                                         # Empty parameter list
-                                        lines[j] = func_line[:paren_idx + 1] + "self" + func_line[paren_idx + 1:]
+                                        lines[j] = (
+                                            func_line[: paren_idx + 1]
+                                            + "self"
+                                            + func_line[paren_idx + 1 :]
+                                        )
                                     else:
                                         # Has parameters
-                                        lines[j] = func_line[:paren_idx + 1] + "self, " + func_line[paren_idx + 1:]
+                                        lines[j] = (
+                                            func_line[: paren_idx + 1]
+                                            + "self, "
+                                            + func_line[paren_idx + 1 :]
+                                        )
 
                             modified = True
-                            fixes_made.append(f"Fixed @staticmethod in {file_path}:{func_line_num}")
+                            fixes_made.append(
+                                f"Fixed @staticmethod in {file_path}:{func_line_num}",
+                            )
 
                 i += 1
 
             if modified:
                 file_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-        except Exception as e:
+        except Exception as e:  # noqa: PERF203
             print(f"Error fixing {file_path}: {e}")
 
     return fixes_made
@@ -122,7 +137,8 @@ def fix_missing_imports():
     # Get remaining F821 errors
     result = subprocess.run(
         ["ruff", "check", "--select", "F821", "--output-format", "json"],
-        check=False, capture_output=True,
+        check=False,
+        capture_output=True,
         text=True,
     )
 
@@ -156,17 +172,20 @@ def fix_missing_imports():
             # Find where to insert imports
             insert_pos = 0
             has_future_import = False
-            last_import = -1
 
             for i, line in enumerate(lines):
                 if line.startswith("from __future__ import"):
                     has_future_import = True
                     insert_pos = i + 1
-                elif line.startswith("import ") or line.startswith("from "):
+                elif line.startswith(("import ", "from ")):
                     # Track last import line for potential use
                     if not has_future_import:
                         insert_pos = i + 1
-                elif line.strip() and not line.startswith("#") and not line.startswith('"""'):
+                elif (
+                    line.strip()
+                    and not line.startswith("#")
+                    and not line.startswith('"""')
+                ):
                     if insert_pos == 0:
                         insert_pos = i
                     break
@@ -191,7 +210,9 @@ def fix_missing_imports():
                     lines.insert(insert_pos, "")
 
                 file_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-                fixes_made.extend([f"Added '{imp}' to {file_path}" for imp in imports_to_add])
+                fixes_made.extend(
+                    [f"Added '{imp}' to {file_path}" for imp in imports_to_add],
+                )
 
         except Exception as e:
             print(f"Error fixing imports in {file_path}: {e}")
@@ -222,7 +243,8 @@ def main():
     # Check remaining errors
     result = subprocess.run(
         ["ruff", "check", "--select", "F821", "--statistics"],
-        check=False, capture_output=True,
+        check=False,
+        capture_output=True,
         text=True,
     )
 
@@ -233,7 +255,8 @@ def main():
         # Show a few examples
         result = subprocess.run(
             ["ruff", "check", "--select", "F821"],
-            check=False, capture_output=True,
+            check=False,
+            capture_output=True,
             text=True,
         )
         if result.stdout:

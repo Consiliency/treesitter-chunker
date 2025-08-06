@@ -213,7 +213,8 @@ def demo_streaming():
 
     def line_generator():
         with Path(log_file).open(
-            "r", encoding="utf-8",
+            "r",
+            encoding="utf-8",
         ) as f:
             yield from f
 
@@ -248,7 +249,7 @@ def main():
     for demo in demos:
         try:
             demo()
-        except (TypeError, ValueError) as e:
+        except (TypeError, ValueError) as e:  # noqa: PERF203
             print(f"\nError in {demo.__name__}: {e}")
 
     print("\n" + "=" * 60)

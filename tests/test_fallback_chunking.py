@@ -1,4 +1,5 @@
 """Tests for fallback chunking functionality."""
+
 import tempfile
 import warnings
 from pathlib import Path
@@ -65,8 +66,7 @@ class TestFallbackBase:
         """Test delimiter-based chunking."""
         chunker = LineBasedChunker()
         content = "Section 1\n---\nSection 2\n---\nSection 3"
-        chunks = chunker.chunk_by_delimiter(content, "---",
-            include_delimiter=False)
+        chunks = chunker.chunk_by_delimiter(content, "---", include_delimiter=False)
         assert len(chunks) == 3
         assert chunks[0].content.strip() == "Section 1"
         assert chunks[1].content.strip() == "Section 2"
@@ -90,7 +90,12 @@ class TestFileTypeDetection:
     def test_content_detection(cls):
         """Test detection by content patterns."""
         detector = FileTypeDetector()
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".unknown", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".unknown",
+            delete=False,
+        ) as f:
             f.write("2024-01-15 10:30:45 ERROR Something went wrong\n")
             f.write("2024-01-15 10:30:46 INFO Process started\n")
             f.flush()
@@ -106,8 +111,7 @@ class TestFileTypeDetection:
             f.flush()
             encoding, _confidence = EncodingDetector.detect_encoding(f.name)
             assert encoding.lower() in {"utf-8", "utf8"}
-            content, _used_encoding = EncodingDetector.read_with_encoding(f
-                .name)
+            content, _used_encoding = EncodingDetector.read_with_encoding(f.name)
             assert "Hello, world!" in content
             assert "你好世界" in content
             Path(f.name).unlink()
@@ -210,11 +214,12 @@ Some more text.
 - Item 3
 
 Final paragraph."""
-        chunks = chunker.chunk_by_sections(md_content, include_code_blocks=True,
-            )
+        chunks = chunker.chunk_by_sections(
+            md_content,
+            include_code_blocks=True,
+        )
         assert len(chunks) >= 4
-        code_chunk = next((c for c in chunks if "code_block" in c.node_type
-            ), None)
+        code_chunk = next((c for c in chunks if "code_block" in c.node_type), None)
         assert code_chunk is not None
         assert "def hello():" in code_chunk.content
 
@@ -255,7 +260,12 @@ class TestFallbackManager:
     def test_manager_file_detection(cls):
         """Test manager's file type detection and chunking."""
         manager = FallbackManager()
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".log", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".log",
+            delete=False,
+        ) as f:
             f.write("2024-01-15 10:30:00 INFO Test log entry\n")
             f.write("2024-01-15 10:30:01 ERROR Something failed\n")
             f.flush()
@@ -264,17 +274,22 @@ class TestFallbackManager:
                 warnings.simplefilter("always")
                 chunks = manager.chunk_file(f.name)
                 assert len(chunks) > 0
-                assert any("Test log entry" in chunk.content for chunk in
-                    chunks)
-                assert any(issubclass(warning.category, FallbackWarning) for
-                    warning in w)
+                assert any("Test log entry" in chunk.content for chunk in chunks)
+                assert any(
+                    issubclass(warning.category, FallbackWarning) for warning in w
+                )
             Path(f.name).unlink()
 
     @classmethod
     def test_manager_fallback_info(cls):
         """Test getting fallback information."""
         manager = FallbackManager()
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".csv", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".csv",
+            delete=False,
+        ) as f:
             f.write("name,age,city\n")
             f.write("Alice,30,NYC\n")
             f.flush()
@@ -289,15 +304,24 @@ class TestFallbackManager:
     def test_csv_chunking(cls):
         """Test CSV-specific chunking."""
         manager = FallbackManager()
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".csv", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".csv",
+            delete=False,
+        ) as f:
             f.write("id,name,score\n")
             for i in range(60):
                 f.write(f"{i},User{i},{i * 10}\n")
             f.flush()
             chunks = manager.chunk_file(f.name)
             assert len(chunks) > 0
-            assert len(chunks,
-                ) > 1, "Need multiple chunks to test header inclusion"
+            assert (
+                len(
+                    chunks,
+                )
+                > 1
+            ), "Need multiple chunks to test header inclusion"
             assert chunks[0].start_line == 2
             assert "id,name,score" not in chunks[0].content
             for i, chunk in enumerate(chunks[1:], 1):

@@ -1,4 +1,5 @@
 """Comprehensive tests for chunk hierarchy building and navigation."""
+
 import pytest
 
 from chunker.core import chunk_text
@@ -27,32 +28,92 @@ class TestChunkHierarchyBuilder:
           - function helper_func
         - function standalone_func (root)
         """
-        module_chunk = CodeChunk(language="python", file_path="test.py",
-            node_type="module", start_line=1, end_line=20, byte_start=0,
-            byte_end=500, parent_context="", content="# module content",
-            chunk_id="module_1", parent_chunk_id=None)
-        class_chunk = CodeChunk(language="python", file_path="test.py",
-            node_type="class_definition", start_line=3, end_line=15,
-            byte_start=50, byte_end=400, parent_context="module", content="class TestClass:", chunk_id="class_1", parent_chunk_id="module_1")
-        method1_chunk = CodeChunk(language="python", file_path="test.py",
-            node_type="function_definition", start_line=5, end_line=8,
-            byte_start=100, byte_end=200, parent_context="class_definition",
-            content="def test_method1(self):", chunk_id="method_1",
-            parent_chunk_id="class_1")
-        method2_chunk = CodeChunk(language="python", file_path="test.py",
-            node_type="function_definition", start_line=10, end_line=13,
-            byte_start=250, byte_end=350, parent_context="class_definition",
-            content="def test_method2(self):", chunk_id="method_2",
-            parent_chunk_id="class_1")
-        helper_chunk = CodeChunk(language="python", file_path="test.py",
-            node_type="function_definition", start_line=17, end_line=19,
-            byte_start=420, byte_end=480, parent_context="module", content="def helper_func():", chunk_id="helper_1", parent_chunk_id="module_1")
-        standalone_chunk = CodeChunk(language="python", file_path="test.py",
-            node_type="function_definition", start_line=22, end_line=25,
-            byte_start=520, byte_end=600, parent_context="", content="def standalone_func():", chunk_id="standalone_1",
-            parent_chunk_id=None)
-        return [module_chunk, class_chunk, method1_chunk, method2_chunk,
-            helper_chunk, standalone_chunk]
+        module_chunk = CodeChunk(
+            language="python",
+            file_path="test.py",
+            node_type="module",
+            start_line=1,
+            end_line=20,
+            byte_start=0,
+            byte_end=500,
+            parent_context="",
+            content="# module content",
+            chunk_id="module_1",
+            parent_chunk_id=None,
+        )
+        class_chunk = CodeChunk(
+            language="python",
+            file_path="test.py",
+            node_type="class_definition",
+            start_line=3,
+            end_line=15,
+            byte_start=50,
+            byte_end=400,
+            parent_context="module",
+            content="class TestClass:",
+            chunk_id="class_1",
+            parent_chunk_id="module_1",
+        )
+        method1_chunk = CodeChunk(
+            language="python",
+            file_path="test.py",
+            node_type="function_definition",
+            start_line=5,
+            end_line=8,
+            byte_start=100,
+            byte_end=200,
+            parent_context="class_definition",
+            content="def test_method1(self):",
+            chunk_id="method_1",
+            parent_chunk_id="class_1",
+        )
+        method2_chunk = CodeChunk(
+            language="python",
+            file_path="test.py",
+            node_type="function_definition",
+            start_line=10,
+            end_line=13,
+            byte_start=250,
+            byte_end=350,
+            parent_context="class_definition",
+            content="def test_method2(self):",
+            chunk_id="method_2",
+            parent_chunk_id="class_1",
+        )
+        helper_chunk = CodeChunk(
+            language="python",
+            file_path="test.py",
+            node_type="function_definition",
+            start_line=17,
+            end_line=19,
+            byte_start=420,
+            byte_end=480,
+            parent_context="module",
+            content="def helper_func():",
+            chunk_id="helper_1",
+            parent_chunk_id="module_1",
+        )
+        standalone_chunk = CodeChunk(
+            language="python",
+            file_path="test.py",
+            node_type="function_definition",
+            start_line=22,
+            end_line=25,
+            byte_start=520,
+            byte_end=600,
+            parent_context="",
+            content="def standalone_func():",
+            chunk_id="standalone_1",
+            parent_chunk_id=None,
+        )
+        return [
+            module_chunk,
+            class_chunk,
+            method1_chunk,
+            method2_chunk,
+            helper_chunk,
+            standalone_chunk,
+        ]
 
     def test_build_hierarchy_basic(self):
         """Test building a basic hierarchy."""
@@ -66,10 +127,8 @@ class TestChunkHierarchyBuilder:
         assert hierarchy.parent_map["helper_1"] == "module_1"
         assert "module_1" not in hierarchy.parent_map
         assert "standalone_1" not in hierarchy.parent_map
-        assert set(hierarchy.children_map["module_1"]) == {"class_1",
-            "helper_1"}
-        assert set(hierarchy.children_map["class_1"]) == {"method_1",
-            "method_2"}
+        assert set(hierarchy.children_map["module_1"]) == {"class_1", "helper_1"}
+        assert set(hierarchy.children_map["class_1"]) == {"method_1", "method_2"}
         assert "method_1" not in hierarchy.children_map
         assert "standalone_1" not in hierarchy.children_map
 
@@ -83,10 +142,21 @@ class TestChunkHierarchyBuilder:
 
     def test_build_hierarchy_orphaned_chunks(self):
         """Test handling chunks with missing parents."""
-        chunks = [CodeChunk(language="python", file_path="test.py",
-            node_type="function_definition", start_line=1, end_line=3,
-            byte_start=0, byte_end=50, parent_context="", content="def func():", chunk_id="func_1", parent_chunk_id="missing_parent"),
-            ]
+        chunks = [
+            CodeChunk(
+                language="python",
+                file_path="test.py",
+                node_type="function_definition",
+                start_line=1,
+                end_line=3,
+                byte_start=0,
+                byte_end=50,
+                parent_context="",
+                content="def func():",
+                chunk_id="func_1",
+                parent_chunk_id="missing_parent",
+            ),
+        ]
         hierarchy = self.builder.build_hierarchy(chunks)
         assert hierarchy.root_chunks == ["func_1"]
         assert hierarchy.parent_map == {"func_1": "missing_parent"}
@@ -95,8 +165,7 @@ class TestChunkHierarchyBuilder:
         """Test finding common ancestor when both chunks are the same."""
         hierarchy = self.builder.build_hierarchy(self.chunks)
         method1 = self.chunks[2]
-        ancestor = self.builder.find_common_ancestor(method1, method1,
-            hierarchy)
+        ancestor = self.builder.find_common_ancestor(method1, method1, hierarchy)
         assert ancestor == "method_1"
 
     def test_find_common_ancestor_siblings(self):
@@ -104,8 +173,7 @@ class TestChunkHierarchyBuilder:
         hierarchy = self.builder.build_hierarchy(self.chunks)
         method1 = self.chunks[2]
         method2 = self.chunks[3]
-        ancestor = self.builder.find_common_ancestor(method1, method2,
-            hierarchy)
+        ancestor = self.builder.find_common_ancestor(method1, method2, hierarchy)
         assert ancestor == "class_1"
 
     def test_find_common_ancestor_parent_child(self):
@@ -113,8 +181,7 @@ class TestChunkHierarchyBuilder:
         hierarchy = self.builder.build_hierarchy(self.chunks)
         class_chunk = self.chunks[1]
         method1 = self.chunks[2]
-        ancestor = self.builder.find_common_ancestor(class_chunk, method1,
-            hierarchy)
+        ancestor = self.builder.find_common_ancestor(class_chunk, method1, hierarchy)
         assert ancestor == "class_1"
 
     def test_find_common_ancestor_no_common(self):
@@ -122,8 +189,7 @@ class TestChunkHierarchyBuilder:
         hierarchy = self.builder.build_hierarchy(self.chunks)
         method1 = self.chunks[2]
         standalone = self.chunks[5]
-        ancestor = self.builder.find_common_ancestor(method1, standalone,
-            hierarchy)
+        ancestor = self.builder.find_common_ancestor(method1, standalone, hierarchy)
         assert ancestor is None
 
     def test_validate_hierarchy_valid(self):
@@ -183,18 +249,26 @@ class TestHierarchyNavigator:
 
     def test_get_descendants(self):
         """Test getting all descendants of a chunk."""
-        descendants = self.navigator.get_descendants("module_1", self.hierarchy,
-            )
+        descendants = self.navigator.get_descendants(
+            "module_1",
+            self.hierarchy,
+        )
         assert len(descendants) == 4
         descendant_ids = {d.chunk_id for d in descendants}
-        assert descendant_ids == {"class_1", "method_1", "method_2", "helper_1",
-            }
+        assert descendant_ids == {
+            "class_1",
+            "method_1",
+            "method_2",
+            "helper_1",
+        }
         descendants = self.navigator.get_descendants("class_1", self.hierarchy)
         assert len(descendants) == 2
         assert descendants[0].chunk_id == "method_1"
         assert descendants[1].chunk_id == "method_2"
-        descendants = self.navigator.get_descendants("method_1", self.hierarchy,
-            )
+        descendants = self.navigator.get_descendants(
+            "method_1",
+            self.hierarchy,
+        )
         assert descendants == []
 
     def test_get_ancestors(self):
@@ -220,18 +294,27 @@ class TestHierarchyNavigator:
 
     def test_filter_by_depth(self):
         """Test filtering chunks by depth."""
-        chunks = self.navigator.filter_by_depth(self.hierarchy, min_depth=0,
-            max_depth=0)
+        chunks = self.navigator.filter_by_depth(
+            self.hierarchy,
+            min_depth=0,
+            max_depth=0,
+        )
         assert len(chunks) == 2
         chunk_ids = {c.chunk_id for c in chunks}
         assert chunk_ids == {"module_1", "standalone_1"}
-        chunks = self.navigator.filter_by_depth(self.hierarchy, min_depth=1,
-            max_depth=1)
+        chunks = self.navigator.filter_by_depth(
+            self.hierarchy,
+            min_depth=1,
+            max_depth=1,
+        )
         assert len(chunks) == 2
         chunk_ids = {c.chunk_id for c in chunks}
         assert chunk_ids == {"class_1", "helper_1"}
-        chunks = self.navigator.filter_by_depth(self.hierarchy, min_depth=2,
-            max_depth=2)
+        chunks = self.navigator.filter_by_depth(
+            self.hierarchy,
+            min_depth=2,
+            max_depth=2,
+        )
         assert len(chunks) == 2
         chunk_ids = {c.chunk_id for c in chunks}
         assert chunk_ids == {"method_1", "method_2"}
@@ -254,8 +337,7 @@ class TestHierarchyNavigator:
         subtree = self.navigator.get_subtree("class_1", self.hierarchy)
         assert subtree.root_chunks == ["class_1"]
         assert len(subtree.chunk_map) == 3
-        assert set(subtree.chunk_map.keys()) == {"class_1", "method_1",
-            "method_2"}
+        assert set(subtree.chunk_map.keys()) == {"class_1", "method_1", "method_2"}
         assert subtree.children_map["class_1"] == ["method_1", "method_2"]
         assert "method_1" in subtree.parent_map
         assert subtree.parent_map["method_1"] == "class_1"
@@ -284,22 +366,25 @@ class TestHierarchyNavigator:
 
     def test_find_chunks_by_type(self):
         """Test finding chunks by node type."""
-        functions = self.navigator.find_chunks_by_type("function_definition",
-            self.hierarchy)
+        functions = self.navigator.find_chunks_by_type(
+            "function_definition",
+            self.hierarchy,
+        )
         assert len(functions) == 4
         func_ids = {f.chunk_id for f in functions}
         assert func_ids == {"method_1", "method_2", "helper_1", "standalone_1"}
-        classes = self.navigator.find_chunks_by_type("class_definition",
-            self.hierarchy)
+        classes = self.navigator.find_chunks_by_type("class_definition", self.hierarchy)
         assert len(classes) == 1
         assert classes[0].chunk_id == "class_1"
-        functions = self.navigator.find_chunks_by_type("function_definition",
-            self.hierarchy, subtree_root="class_1")
+        functions = self.navigator.find_chunks_by_type(
+            "function_definition",
+            self.hierarchy,
+            subtree_root="class_1",
+        )
         assert len(functions) == 2
         func_ids = {f.chunk_id for f in functions}
         assert func_ids == {"method_1", "method_2"}
-        results = self.navigator.find_chunks_by_type("nonexistent_type",
-            self.hierarchy)
+        results = self.navigator.find_chunks_by_type("nonexistent_type", self.hierarchy)
         assert results == []
 
 
@@ -343,13 +428,10 @@ async def async_function():
         chunks = chunk_text(python_code, "python", "calculator.py")
         hierarchy = self.builder.build_hierarchy(chunks)
         assert len(hierarchy.root_chunks) >= 3
-        calc_chunks = self.navigator.find_chunks_by_type("class_definition",
-            hierarchy)
-        calc_chunk = next((c for c in calc_chunks if "Calculator" in c.
-            content), None)
+        calc_chunks = self.navigator.find_chunks_by_type("class_definition", hierarchy)
+        calc_chunk = next((c for c in calc_chunks if "Calculator" in c.content), None)
         assert calc_chunk is not None
-        calc_children = self.navigator.get_children(calc_chunk.chunk_id,
-            hierarchy)
+        calc_children = self.navigator.get_children(calc_chunk.chunk_id, hierarchy)
         calc_child_types = {c.node_type for c in calc_children}
         assert "function_definition" in calc_child_types
         depth_0 = self.navigator.filter_by_depth(hierarchy, 0, 0)
@@ -387,22 +469,32 @@ const arrowFunc = () => {
         chunks = chunk_text(js_code, "javascript", "component.js")
         hierarchy = self.builder.build_hierarchy(chunks)
         assert len(hierarchy.chunk_map) > 0
-        root_funcs = [hierarchy.chunk_map[cid] for cid in hierarchy.
-            root_chunks if cid in hierarchy.chunk_map and hierarchy.
-            chunk_map[cid].node_type in {"function_declaration",
-            "arrow_function"}]
+        root_funcs = [
+            hierarchy.chunk_map[cid]
+            for cid in hierarchy.root_chunks
+            if cid in hierarchy.chunk_map
+            and hierarchy.chunk_map[cid].node_type
+            in {"function_declaration", "arrow_function"}
+        ]
         assert len(root_funcs) >= 1
 
     def test_complex_nesting(self):
         """Test deeply nested structures."""
         chunks = []
         for i in range(5):
-            chunk = CodeChunk(language="python", file_path="nested.py",
-                node_type="class_definition" if i % 2 == 0 else
-                "function_definition", start_line=i * 10 + 1, end_line=(i +
-                1) * 10, byte_start=i * 100, byte_end=(i + 1) * 100,
-                parent_context="", content=f"level_{i}", chunk_id=f"chunk_{i}", parent_chunk_id=f"chunk_{i - 1}" if i > 0 else
-                None)
+            chunk = CodeChunk(
+                language="python",
+                file_path="nested.py",
+                node_type="class_definition" if i % 2 == 0 else "function_definition",
+                start_line=i * 10 + 1,
+                end_line=(i + 1) * 10,
+                byte_start=i * 100,
+                byte_end=(i + 1) * 100,
+                parent_context="",
+                content=f"level_{i}",
+                chunk_id=f"chunk_{i}",
+                parent_chunk_id=f"chunk_{i - 1}" if i > 0 else None,
+            )
             chunks.append(chunk)
         hierarchy = self.builder.build_hierarchy(chunks)
         assert hierarchy.get_depth("chunk_0") == 0

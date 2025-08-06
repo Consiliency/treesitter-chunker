@@ -101,50 +101,29 @@ class RepoProcessor(RepoProcessorInterface):
         if not repo_path.exists():
             raise ChunkerError(f"Repository path does not exist: {repo_path}")
         files_to_process = self.get_processable_files(
-            str(repo_path), file_pattern, exclude_patterns,
+            str(repo_path),
+            file_pattern,
+            exclude_patterns,
         )
         if incremental and hasattr(self, "get_changed_files"):
             state = self.load_incremental_state(str(repo_path))
             if state and "last_commit" in state:
                 changed_files = self.get_changed_files(
-                    str(repo_path), since_commit=state["last_commit"],
+                    str(repo_path),
+                    since_commit=state["last_commit"],
                 )
                 changed_paths = {(repo_path / f) for f in changed_files}
                 files_to_process = [f for f in files_to_process if f in changed_paths]
-        file_results = []
-        errors = {}
-        skipped_files = []
-        total_chunks = 0
-        progress_bar = None
-        if self.show_progress:
-            progress_bar = tqdm(total=len(files_to_process), desc="Processing files")
-        try:
-            with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                future_to_file = {
-                    executor.submit(
-                        self._process_single_file, file_path, repo_path,
-                    ): file_path
-                    for file_path in files_to_process
-                }
-                for future in as_completed(future_to_file):
-                    file_path = future_to_file[future]
-                    try:
-                        result = future.result()
-                        if result:
-                            file_results.append(result)
-                            total_chunks += len(result.chunks)
-                            if result.error:
-                                errors[str(file_path)] = result.error
-                        else:
-                            skipped_files.append(str(file_path))
-                    except (FileNotFoundError, IndexError, KeyError) as e:
-                        errors[str(file_path)] = e
-                        skipped_files.append(str(file_path))
-                    if progress_bar:
-                        progress_bar.update(1)
-        finally:
-            if progress_bar:
-                progress_bar.close()
+        # Process files in parallel
+        processing_result = self._process_files_parallel(
+            files_to_process,
+            repo_path,
+        )
+
+        file_results = processing_result["file_results"]
+        errors = processing_result["errors"]
+        skipped_files = processing_result["skipped_files"]
+        total_chunks = processing_result["total_chunks"]
         if incremental and hasattr(self, "save_incremental_state"):
             try:
                 repo = self.git.Repo(repo_path)
@@ -192,7 +171,9 @@ class RepoProcessor(RepoProcessorInterface):
         """
         repo_path = Path(repo_path).resolve()
         files_to_process = self.get_processable_files(
-            str(repo_path), file_pattern, exclude_patterns,
+            str(repo_path),
+            file_pattern,
+            exclude_patterns,
         )
         for file_path in files_to_process:
             result = self._process_single_file(file_path, repo_path)
@@ -213,15 +194,18 @@ class RepoProcessor(RepoProcessorInterface):
         total_size = 0
         language_counts = {}
         for file_path in files:
-            try:
-                size = file_path.stat().st_size
-                total_size += size
-                ext = file_path.suffix.lower()
-                if ext in self._language_extensions:
-                    lang = self._language_extensions[ext]
-                    language_counts[lang] = language_counts.get(lang, 0) + 1
-            except (AttributeError, FileNotFoundError, IndexError):
-                pass
+            # Use LBYL pattern to avoid try-except in loop
+            if file_path.exists():
+                try:
+                    stat_info = file_path.stat()
+                    total_size += stat_info.st_size
+                    ext = file_path.suffix.lower()
+                    if ext in self._language_extensions:
+                        lang = self._language_extensions[ext]
+                        language_counts[lang] = language_counts.get(lang, 0) + 1
+                except (AttributeError, OSError):
+                    # Handle rare cases where file is deleted between exists() and stat()
+                    pass
         base_time = total_size / (1024 * 1024)
         file_overhead = len(files) * 0.1
         return base_time + file_overhead
@@ -272,42 +256,67 @@ class RepoProcessor(RepoProcessorInterface):
         exclude_spec = pathspec.PathSpec.from_lines("gitwildmatch", all_excludes)
         files = []
         if self.traversal_strategy == "breadth-first":
-            dirs_to_process = [repo_path]
-            while dirs_to_process:
-                current_dir = dirs_to_process.pop(0)
-                try:
-                    for item in current_dir.iterdir():
-                        if item.is_dir():
-                            if not exclude_spec.match_file(
-                                str(item.relative_to(repo_path)),
-                            ):
-                                dirs_to_process.append(item)
-                        elif item.is_file():
-                            rel_path = item.relative_to(repo_path)
-                            if not exclude_spec.match_file(
-                                str(rel_path),
-                            ) and self._should_process_file(item, file_pattern):
-                                files.append(item)
-                except PermissionError:
-                    pass
+            files = self._traverse_breadth_first(repo_path, exclude_spec, file_pattern)
         else:
-            for root, dirs, filenames in os.walk(repo_path):
-                root_path = Path(root)
-                rel_root = root_path.relative_to(repo_path)
-                dirs[:] = [
-                    d for d in dirs if not exclude_spec.match_file(str(rel_root / d))
-                ]
-                for filename in filenames:
-                    file_path = root_path / filename
-                    rel_path = file_path.relative_to(repo_path)
-                    if not exclude_spec.match_file(
-                        str(rel_path),
-                    ) and self._should_process_file(
-                        file_path,
-                        file_pattern,
-                    ):
-                        files.append(file_path)
+            files = self._traverse_depth_first(repo_path, exclude_spec, file_pattern)
         return sorted(files)
+
+    def _process_files_parallel(
+        self,
+        files_to_process: list[Path],
+        repo_path: Path,
+    ) -> dict[str, Any]:
+        """Process files in parallel and return results."""
+        file_results = []
+        errors = []
+        skipped_files = []
+        total_chunks = 0
+
+        if self.show_progress:
+            pbar = tqdm(total=len(files_to_process), desc="Processing files")
+
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            futures = {
+                executor.submit(
+                    self._process_single_file,
+                    file_path,
+                    repo_path,
+                ): file_path
+                for file_path in files_to_process
+            }
+
+            for future in as_completed(futures):
+                file_path = futures[future]
+                rel_path = file_path.relative_to(repo_path)
+
+                try:
+                    result = future.result()
+                    if result:
+                        file_results.append(result)
+                        total_chunks += len(result.chunks)
+                    else:
+                        skipped_files.append(str(rel_path))
+                except Exception as e:
+                    errors.append(
+                        {
+                            "file": str(rel_path),
+                            "error": str(e),
+                            "type": type(e).__name__,
+                        },
+                    )
+
+                if self.show_progress:
+                    pbar.update(1)
+
+        if self.show_progress:
+            pbar.close()
+
+        return {
+            "file_results": file_results,
+            "errors": errors,
+            "skipped_files": skipped_files,
+            "total_chunks": total_chunks,
+        }
 
     def _should_process_file(
         self,
@@ -321,7 +330,9 @@ class RepoProcessor(RepoProcessorInterface):
         return ext in self._language_extensions
 
     def _process_single_file(
-        self, file_path: Path, repo_path: Path,
+        self,
+        file_path: Path,
+        repo_path: Path,
     ) -> FileChunkResult | None:
         """Process a single file and return results."""
         start_time = time.time()
@@ -331,22 +342,13 @@ class RepoProcessor(RepoProcessorInterface):
             language = self._language_extensions.get(ext)
             if not language:
                 return None
-            try:
-                content = file_path.read_text(encoding="utf-8")
-            except UnicodeDecodeError:
-                for encoding in ["latin-1", "cp1252"]:
-                    try:
-                        content = file_path.read_text(encoding=encoding)
-                        break
-                    except (OSError, FileNotFoundError, IndexError):
-                        continue
-                else:
-                    return FileChunkResult(
-                        file_path=str(rel_path),
-                        chunks=[],
-                        error=ChunkerError(f"Unable to decode file: {rel_path}"),
-                        processing_time=time.time() - start_time,
-                    )
+            content = RepoProcessor._read_file_with_fallback_encoding(
+                file_path,
+                rel_path,
+                start_time,
+            )
+            if isinstance(content, FileChunkResult):
+                return content
             chunks = self.chunker.chunk(content, language=language)
             for chunk in chunks:
                 if not chunk.metadata:
@@ -366,6 +368,128 @@ class RepoProcessor(RepoProcessorInterface):
                 processing_time=time.time() - start_time,
             )
 
+    def _traverse_breadth_first(
+        self,
+        repo_path: Path,
+        exclude_spec: pathspec.PathSpec,
+        file_pattern: str | None,
+    ) -> list[Path]:
+        """Traverse directory tree breadth-first."""
+        files = []
+        dirs_to_process = [repo_path]
+
+        while dirs_to_process:
+            current_dir = dirs_to_process.pop(0)
+            items = RepoProcessor._get_directory_items(current_dir)
+
+            for item in items:
+                if item.is_dir():
+                    if RepoProcessor._should_include_directory(
+                        item,
+                        repo_path,
+                        exclude_spec,
+                    ):
+                        dirs_to_process.append(item)
+                elif item.is_file() and self._should_include_file(
+                    item,
+                    repo_path,
+                    exclude_spec,
+                    file_pattern,
+                ):
+                    files.append(item)
+
+        return files
+
+    def _traverse_depth_first(
+        self,
+        repo_path: Path,
+        exclude_spec: pathspec.PathSpec,
+        file_pattern: str | None,
+    ) -> list[Path]:
+        """Traverse directory tree depth-first."""
+        files = []
+
+        for root, dirs, filenames in os.walk(repo_path):
+            root_path = Path(root)
+            rel_root = root_path.relative_to(repo_path)
+
+            # Filter directories in-place
+            dirs[:] = [
+                d for d in dirs if not exclude_spec.match_file(str(rel_root / d))
+            ]
+
+            # Process files
+            for filename in filenames:
+                file_path = root_path / filename
+                if self._should_include_file(
+                    file_path,
+                    repo_path,
+                    exclude_spec,
+                    file_pattern,
+                ):
+                    files.append(file_path)
+
+        return files
+
+    @staticmethod
+    def _get_directory_items(directory: Path) -> list[Path]:
+        """Get directory items, handling permission errors."""
+        try:
+            return list(directory.iterdir())
+        except PermissionError:
+            return []
+
+    @staticmethod
+    def _should_include_directory(
+        directory: Path,
+        repo_path: Path,
+        exclude_spec: pathspec.PathSpec,
+    ) -> bool:
+        """Check if directory should be included in traversal."""
+        rel_path = directory.relative_to(repo_path)
+        return not exclude_spec.match_file(str(rel_path))
+
+    def _should_include_file(
+        self,
+        file_path: Path,
+        repo_path: Path,
+        exclude_spec: pathspec.PathSpec,
+        file_pattern: str | None,
+    ) -> bool:
+        """Check if file should be included in processing."""
+        rel_path = file_path.relative_to(repo_path)
+        return not exclude_spec.match_file(str(rel_path)) and self._should_process_file(
+            file_path,
+            file_pattern,
+        )
+
+    @staticmethod
+    def _read_file_with_fallback_encoding(
+        file_path: Path,
+        rel_path: Path,
+        start_time: float,
+    ) -> str | FileChunkResult:
+        """Read file with fallback encoding support."""
+        try:
+            return file_path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            pass
+
+        # Try fallback encodings
+        for encoding in ["latin-1", "cp1252"]:
+            try:
+                return file_path.read_text(encoding=encoding)
+            except (OSError, FileNotFoundError, IndexError):  # noqa: PERF203
+                continue
+
+        # Unable to decode file
+        return FileChunkResult(
+            file_path=str(rel_path),
+            chunks=[],
+            error=ChunkerError(f"Unable to decode file: {rel_path}"),
+            processing_time=time.time() - start_time,
+        )
+
 
 class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
     """Repository processor with Git awareness."""
@@ -376,7 +500,10 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
         self._incremental_state_file = ".chunker_state.json"
 
     def get_changed_files(
-        self, repo_path: str, since_commit: str | None = None, branch: str | None = None,
+        self,
+        repo_path: str,
+        since_commit: str | None = None,
+        branch: str | None = None,
     ) -> list[str]:
         """
         Get files changed since a commit or between branches.
@@ -405,7 +532,7 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
                 if path and Path(repo_path, path).exists():
                     changed_files.append(path)
             return changed_files
-        except self.git.InvalidGitRepositoryError:
+        except self.git.InvalidGitRepositoryError as e:
             raise ChunkerError(
                 f"Not a valid git repository: {repo_path}",
             ) from e
@@ -433,9 +560,7 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
             rel_path = Path(file_path).relative_to(repo_path)
             if str(rel_path) not in [item.path for item in repo.index.entries]:
                 untracked = repo.untracked_files
-                if str(rel_path) in untracked:
-                    return True
-                return False
+                return str(rel_path) in untracked
             return True
         except (FileNotFoundError, IndexError, KeyError):
             return True
@@ -485,30 +610,43 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
             List of gitignore patterns
         """
         patterns = []
+
+        # Load patterns from .gitignore file
         gitignore_path = Path(repo_path) / ".gitignore"
         if gitignore_path.exists():
-            try:
-                with Path(gitignore_path).open("r", encoding="utf-8") as f:
-                    for line in f:
-                        line = line.strip()
-                        if line and not line.startswith("#"):
-                            patterns.append(line)
-            except (OSError, FileNotFoundError, IndexError):
-                pass
+            patterns.extend(RepoProcessor._read_ignore_patterns(gitignore_path))
+
+        # Load patterns from global excludes file
+        excludes_path = self._get_global_excludes_path(repo_path)
+        if excludes_path and excludes_path.exists():
+            patterns.extend(RepoProcessor._read_ignore_patterns(excludes_path))
+
+        return patterns
+
+    @staticmethod
+    def _read_ignore_patterns(file_path: Path) -> list[str]:
+        """Read ignore patterns from a file."""
+        patterns = []
+        try:
+            with file_path.open("r", encoding="utf-8") as f:
+                for line in f:
+                    stripped_line = line.strip()
+                    if stripped_line and not stripped_line.startswith("#"):
+                        patterns.append(stripped_line)
+        except (OSError, FileNotFoundError, IndexError):
+            pass
+        return patterns
+
+    def _get_global_excludes_path(self, repo_path: str) -> Path | None:
+        """Get the path to the global excludes file."""
         try:
             repo = self.git.Repo(repo_path)
             excludes_file = repo.config_reader().get_value("core", "excludesfile", None)
             if excludes_file:
-                excludes_path = Path(excludes_file).expanduser()
-                if excludes_path.exists():
-                    with Path(excludes_path).open("r", encoding="utf-8") as f:
-                        for line in f:
-                            line = line.strip()
-                            if line and not line.startswith("#"):
-                                patterns.append(line)
+                return Path(excludes_file).expanduser()
         except (OSError, FileNotFoundError, IndexError):
             pass
-        return patterns
+        return None
 
     def save_incremental_state(
         self,
@@ -567,11 +705,12 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
         """
         files = super().get_processable_files(repo_path, file_pattern, exclude_patterns)
         try:
-            git.Repo(repo_path)
+            self.git.Repo(repo_path)
             gitignore_patterns = self.load_gitignore_patterns(repo_path)
             if gitignore_patterns:
                 gitignore_spec = pathspec.PathSpec.from_lines(
-                    "gitwildmatch", gitignore_patterns,
+                    "gitwildmatch",
+                    gitignore_patterns,
                 )
                 filtered_files = []
                 for file_path in files:

@@ -1,4 +1,5 @@
 """Comprehensive tests for Scala language support."""
+
 from chunker import chunk_file
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from chunker.languages.scala import ScalaPlugin
@@ -28,11 +29,12 @@ def fibonacci(n: Int): Int = {
 
 val double: Int => Int = _ * 2
 """,
-            )
+        )
         chunks = chunk_file(src, "scala")
         assert len(chunks) >= 3
-        function_chunks = [c for c in chunks if "function" in c.node_type or
-            "method" in c.node_type]
+        function_chunks = [
+            c for c in chunks if "function" in c.node_type or "method" in c.node_type
+        ]
         assert len(function_chunks) >= 2
         assert any("factorial" in c.content for c in chunks)
         assert any("fibonacci" in c.content for c in chunks)
@@ -67,7 +69,7 @@ trait Greeting {
   def sayHello(): String
 }
 """,
-            )
+        )
         chunks = chunk_file(src, "scala")
         chunk_types = {chunk.node_type for chunk in chunks}
         assert "class_definition" in chunk_types
@@ -99,16 +101,16 @@ def processOption(opt: Option[Int]): String = opt match {
   case None => "No value"
 }
 """,
-            )
+        )
         chunks = chunk_file(src, "scala")
-        assert any("Color" in c.content and "trait" in c.node_type for c in
-            chunks)
-        assert any("Red" in c.content and "object" in c.node_type for c in
-            chunks)
-        function_chunks = [c for c in chunks if "function" in c.node_type or
-            "method" in c.node_type]
-        assert any("describe" in c.content and "match" in c.content for c in
-            function_chunks)
+        assert any("Color" in c.content and "trait" in c.node_type for c in chunks)
+        assert any("Red" in c.content and "object" in c.node_type for c in chunks)
+        function_chunks = [
+            c for c in chunks if "function" in c.node_type or "method" in c.node_type
+        ]
+        assert any(
+            "describe" in c.content and "match" in c.content for c in function_chunks
+        )
         assert any("processOption" in c.content for c in function_chunks)
 
     @staticmethod
@@ -130,10 +132,13 @@ def processWithTimeout(data: String)(implicit timeout: Int): Unit = {
   println(s"Processing with timeout: $timeout")
 }
 """,
-            )
+        )
         chunks = chunk_file(src, "scala")
-        implicit_chunks = [c for c in chunks if "implicit" in c.node_type or
-            "implicit" in c.content[:50]]
+        implicit_chunks = [
+            c
+            for c in chunks
+            if "implicit" in c.node_type or "implicit" in c.content[:50]
+        ]
         assert len(implicit_chunks) >= 3
         assert any("defaultTimeout" in c.content for c in chunks)
         assert any("stringToInt" in c.content for c in chunks)
@@ -163,6 +168,7 @@ class TestScalaContractCompliance:
                 self.start_point = 0, 0
                 self.end_point = 0, end
                 self.children = []
+
         root = MockNode("compilation_unit")
         func_node = MockNode("function_definition", 0, 50)
         root.children.append(func_node)
@@ -192,6 +198,7 @@ class TestScalaContractCompliance:
             def __init__(self, node_type):
                 self.type = node_type
                 self.children = []
+
         assert plugin.should_chunk_node(MockNode("function_definition"))
         assert plugin.should_chunk_node(MockNode("class_definition"))
         assert plugin.should_chunk_node(MockNode("object_definition"))
@@ -209,6 +216,7 @@ class TestScalaContractCompliance:
             def __init__(self, node_type):
                 self.type = node_type
                 self.children = []
+
         node = MockNode("function_definition")
         context = plugin.get_node_context(node, b"def factorial(n: Int)")
         assert context is not None
@@ -238,7 +246,7 @@ class TestScalaEdgeCases:
   * @param x the parameter
   */
 """,
-            )
+        )
         chunks = chunk_file(src, "scala")
         assert len(chunks) == 0
 
@@ -261,13 +269,16 @@ def complexFor(): List[Int] = {
   } yield i * j
 }
 """,
-            )
+        )
         chunks = chunk_file(src, "scala")
-        function_chunks = [c for c in chunks if "function" in c.node_type or
-            "method" in c.node_type]
+        function_chunks = [
+            c for c in chunks if "function" in c.node_type or "method" in c.node_type
+        ]
         assert len(function_chunks) >= 2
-        assert any("cartesianProduct" in c.content and "for" in c.content for
-            c in function_chunks)
+        assert any(
+            "cartesianProduct" in c.content and "for" in c.content
+            for c in function_chunks
+        )
         assert any("complexFor" in c.content for c in function_chunks)
 
     @staticmethod
@@ -287,13 +298,11 @@ def identity[T](x: T): T = x
 
 type StringMap[V] = Map[String, V]
 """,
-            )
+        )
         chunks = chunk_file(src, "scala")
         assert any("Box" in c.content and "[T]" in c.content for c in chunks)
-        assert any("Container" in c.content and "[+A]" in c.content for c in
-            chunks)
-        assert any("identity" in c.content and "[T]" in c.content for c in
-            chunks)
+        assert any("Container" in c.content and "[+A]" in c.content for c in chunks)
+        assert any("identity" in c.content and "[T]" in c.content for c in chunks)
         type_chunks = [c for c in chunks if c.node_type == "type_definition"]
         assert any("StringMap" in c.content for c in type_chunks)
 
@@ -323,13 +332,11 @@ object Utils {
   }
 }
 """,
-            )
+        )
         chunks = chunk_file(src, "scala")
-        assert any("Outer" in c.content and "class" in c.node_type for c in
-            chunks)
-        assert any("Inner" in c.content and "class" in c.node_type for c in
-            chunks)
-        assert any("InnerCompanion" in c.content and "object" in c.
-            node_type for c in chunks)
-        assert any("Utils" in c.content and "object" in c.node_type for c in
-            chunks)
+        assert any("Outer" in c.content and "class" in c.node_type for c in chunks)
+        assert any("Inner" in c.content and "class" in c.node_type for c in chunks)
+        assert any(
+            "InnerCompanion" in c.content and "object" in c.node_type for c in chunks
+        )
+        assert any("Utils" in c.content and "object" in c.node_type for c in chunks)

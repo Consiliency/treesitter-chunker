@@ -1,4 +1,5 @@
 """Tests for exception hierarchy."""
+
 from pathlib import Path
 
 import pytest
@@ -158,12 +159,15 @@ class TestExceptionHierarchy:
     @classmethod
     def test_all_inherit_from_chunker_error(cls):
         """Test that all exceptions inherit from ChunkerError."""
-        exceptions = [LanguageNotFoundError("test", []), LanguageLoadError(
-            "test", "reason"), ParserInitError("test", "reason"),
+        exceptions = [
+            LanguageNotFoundError("test", []),
+            LanguageLoadError("test", "reason"),
+            ParserInitError("test", "reason"),
             ParserConfigError("config", "value", "reason"),
-            LibraryNotFoundError(Path("test.so")), LibraryLoadError(Path(
-            "test.so"), "reason"), LibrarySymbolError("symbol", Path(
-            "test.so"))]
+            LibraryNotFoundError(Path("test.so")),
+            LibraryLoadError(Path("test.so"), "reason"),
+            LibrarySymbolError("symbol", Path("test.so")),
+        ]
         for exc in exceptions:
             assert isinstance(exc, ChunkerError)
             assert isinstance(exc, Exception)
@@ -174,13 +178,10 @@ class TestExceptionHierarchy:
         assert isinstance(LanguageNotFoundError("test", []), LanguageError)
         assert isinstance(LanguageLoadError("test", "reason"), LanguageError)
         assert isinstance(ParserInitError("test", "reason"), ParserError)
-        assert isinstance(ParserConfigError("config", "value", "reason"),
-            ParserError)
+        assert isinstance(ParserConfigError("config", "value", "reason"), ParserError)
         assert isinstance(LibraryNotFoundError(Path("test")), LibraryError)
-        assert isinstance(LibraryLoadError(Path("test"), "reason"),
-            LibraryError)
-        assert isinstance(LibrarySymbolError("symbol", Path("test")),
-            LibraryError)
+        assert isinstance(LibraryLoadError(Path("test"), "reason"), LibraryError)
+        assert isinstance(LibrarySymbolError("symbol", Path("test")), LibraryError)
 
     @classmethod
     def test_exception_catching(cls):
@@ -199,12 +200,15 @@ class TestErrorMessages:
     @classmethod
     def test_consistent_formatting(cls):
         """Test that error messages follow consistent format."""
-        errors = [LanguageNotFoundError("golang", ["python", "rust"]),
-            LanguageLoadError("rust", "Symbol error"), ParserInitError(
-            "python", "Version 15"), ParserConfigError("timeout", -1,
-            "Must be positive"), LibraryNotFoundError(Path("/lib.so")),
+        errors = [
+            LanguageNotFoundError("golang", ["python", "rust"]),
+            LanguageLoadError("rust", "Symbol error"),
+            ParserInitError("python", "Version 15"),
+            ParserConfigError("timeout", -1, "Must be positive"),
+            LibraryNotFoundError(Path("/lib.so")),
             LibraryLoadError(Path("/lib.so"), "Permission denied"),
-            LibrarySymbolError("tree_sitter_go", Path("/lib.so"))]
+            LibrarySymbolError("tree_sitter_go", Path("/lib.so")),
+        ]
         for err in errors:
             msg = str(err)
             assert len(msg) > 10

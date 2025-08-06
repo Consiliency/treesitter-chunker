@@ -1,4 +1,5 @@
 """Base class for graph export functionality."""
+
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
@@ -12,13 +13,23 @@ class GraphNode:
     def __init__(self, chunk: CodeChunk):
         self.id = f"{chunk.file_path}:{chunk.start_line}:{chunk.end_line}"
         self.chunk = chunk
-        chunk_type = chunk.metadata.get("chunk_type", chunk.node_type,
-            ) if chunk.metadata else chunk.node_type
+        chunk_type = (
+            chunk.metadata.get(
+                "chunk_type",
+                chunk.node_type,
+            )
+            if chunk.metadata
+            else chunk.node_type
+        )
         self.label = chunk_type or "unknown"
-        self.properties: dict[str, Any] = {"file_path": chunk.file_path,
-            "start_line": chunk.start_line, "end_line": chunk.end_line,
-            "chunk_type": chunk_type, "node_type": chunk.node_type,
-            "language": chunk.language}
+        self.properties: dict[str, Any] = {
+            "file_path": chunk.file_path,
+            "start_line": chunk.start_line,
+            "end_line": chunk.end_line,
+            "chunk_type": chunk_type,
+            "node_type": chunk.node_type,
+            "language": chunk.language,
+        }
         if chunk.metadata:
             self.properties.update(chunk.metadata)
 
@@ -26,8 +37,13 @@ class GraphNode:
 class GraphEdge:
     """Represents an edge between nodes in the graph."""
 
-    def __init__(self, source_id: str, target_id: str, relationship_type:
-        str, properties: (dict[str, Any] | None) = None):
+    def __init__(
+        self,
+        source_id: str,
+        target_id: str,
+        relationship_type: str,
+        properties: dict[str, Any] | None = None,
+    ):
         self.source_id = source_id
         self.target_id = target_id
         self.relationship_type = relationship_type
@@ -47,14 +63,17 @@ class GraphExporterBase(ABC):
             node = GraphNode(chunk)
             self.nodes[node.id] = node
 
-    def add_relationship(self, source_chunk: CodeChunk, target_chunk:
-        CodeChunk, relationship_type: str, properties: (dict[str, Any] |
-        None) = None) -> None:
+    def add_relationship(
+        self,
+        source_chunk: CodeChunk,
+        target_chunk: CodeChunk,
+        relationship_type: str,
+        properties: dict[str, Any] | None = None,
+    ) -> None:
         """Add a relationship between two chunks."""
         source_node = GraphNode(source_chunk)
         target_node = GraphNode(target_chunk)
-        edge = GraphEdge(source_node.id, target_node.id, relationship_type,
-            properties)
+        edge = GraphEdge(source_node.id, target_node.id, relationship_type, properties)
         self.edges.append(edge)
 
     def extract_relationships(self, chunks: list[CodeChunk]) -> None:
@@ -72,20 +91,32 @@ class GraphExporterBase(ABC):
             if chunk.metadata and "parent_id" in chunk.metadata:
                 parent_id = chunk.metadata["parent_id"]
                 if parent_id in chunk_map:
-                    self.add_relationship(chunk_map[parent_id], chunk,
-                        "CONTAINS", {"relationship_source": "hierarchy"})
+                    self.add_relationship(
+                        chunk_map[parent_id],
+                        chunk,
+                        "CONTAINS",
+                        {"relationship_source": "hierarchy"},
+                    )
             if chunk.metadata and "imports" in chunk.metadata:
                 for import_info in chunk.metadata["imports"]:
                     for target_chunk in chunks:
                         if self._matches_import(import_info, target_chunk):
-                            self.add_relationship(chunk, target_chunk,
-                                "IMPORTS", {"import_name": import_info})
+                            self.add_relationship(
+                                chunk,
+                                target_chunk,
+                                "IMPORTS",
+                                {"import_name": import_info},
+                            )
             if chunk.metadata and "calls" in chunk.metadata:
                 for call_info in chunk.metadata["calls"]:
                     for target_chunk in chunks:
                         if self._matches_call(call_info, target_chunk):
-                            self.add_relationship(chunk, target_chunk,
-                                "CALLS", {"call_name": call_info})
+                            self.add_relationship(
+                                chunk,
+                                target_chunk,
+                                "CALLS",
+                                {"call_name": call_info},
+                            )
 
     @staticmethod
     def _get_chunk_id(chunk: CodeChunk) -> str:

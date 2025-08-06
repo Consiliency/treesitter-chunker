@@ -3,6 +3,7 @@
 This module provides abstractions for working with various file systems,
 including local files, in-memory files, zip archives, and remote repositories.
 """
+
 from __future__ import annotations
 
 import io
@@ -21,6 +22,7 @@ if TYPE_CHECKING:
 @dataclass
 class VirtualFile:
     """Represents a file in a virtual file system."""
+
     path: str
     size: int
     is_dir: bool
@@ -79,7 +81,7 @@ class VirtualFileSystem(ABC):
 class LocalFileSystem(VirtualFileSystem):
     """Virtual file system for local files."""
 
-    def __init__(self, root_path: (Path | None) = None):
+    def __init__(self, root_path: Path | None = None):
         """Initialize with optional root path for sandboxing."""
         self.root = Path(root_path) if root_path else Path("/")
 
@@ -92,7 +94,7 @@ class LocalFileSystem(VirtualFileSystem):
     def open(self, path: str, mode: str = "r") -> io.IOBase:
         """Open a local file."""
         resolved = self._resolve_path(path)
-        return open(resolved, mode)
+        return resolved.open(mode)
 
     def exists(self, path: str) -> bool:
         """Check if a local path exists."""
@@ -113,9 +115,14 @@ class LocalFileSystem(VirtualFileSystem):
             return
         for item in resolved.iterdir():
             stat = item.stat()
-            yield VirtualFile(path=str(item.relative_to(self.root) if self.
-                root != Path("/") else item), size=stat.st_size if item.
-                is_file() else 0, is_dir=item.is_dir(), mtime=stat.st_mtime)
+            yield VirtualFile(
+                path=str(
+                    item.relative_to(self.root) if self.root != Path("/") else item,
+                ),
+                size=stat.st_size if item.is_file() else 0,
+                is_dir=item.is_dir(),
+                mtime=stat.st_mtime,
+            )
 
     def get_size(self, path: str) -> int:
         """Get the size of a local file."""
@@ -130,11 +137,10 @@ class InMemoryFileSystem(VirtualFileSystem):
         self.files: dict[str, bytes | str] = {}
         self.metadata: dict[str, VirtualFile] = {}
 
-    def add_file(self, path: str, content: (str | bytes), _is_text: bool = True):
+    def add_file(self, path: str, content: str | bytes, _is_text: bool = True):
         """Add a file to the in-memory file system."""
         self.files[path] = content
-        size = len(content) if isinstance(content, bytes) else len(content.
-            encode())
+        size = len(content) if isinstance(content, bytes) else len(content.encode())
         self.metadata[path] = VirtualFile(path=path, size=size, is_dir=False)
 
     def open(self, path: str, mode: str = "r") -> io.IOBase:
@@ -179,13 +185,11 @@ class InMemoryFileSystem(VirtualFileSystem):
         seen_dirs = set()
         for file_path in sorted(self.files.keys()):
             normalized_file_path = file_path.lstrip("/")
-            if path == "/" or normalized_file_path.startswith(path_prefix.
-                lstrip("/")):
+            if path == "/" or normalized_file_path.startswith(path_prefix.lstrip("/")):
                 if path == "/":
                     relative = normalized_file_path
                 else:
-                    relative = normalized_file_path[len(path_prefix.lstrip(
-                        "/")):]
+                    relative = normalized_file_path[len(path_prefix.lstrip("/")) :]
                 if "/" in relative:
                     dir_name = relative.split("/")[0]
                     if dir_name not in seen_dirs:
@@ -205,7 +209,7 @@ class InMemoryFileSystem(VirtualFileSystem):
 class ZipFileSystem(VirtualFileSystem):
     """Virtual file system for ZIP archives."""
 
-    def __init__(self, zip_path: (str | Path)):
+    def __init__(self, zip_path: str | Path):
         """Initialize with path to ZIP file."""
         self.zip_path = Path(zip_path)
         self.zip_file = zipfile.ZipFile(self.zip_path, "r")
@@ -254,15 +258,23 @@ class ZipFileSystem(VirtualFileSystem):
         seen = set()
         for file_path, info in self.files.items():
             if file_path.startswith(path_prefix):
-                relative = file_path[len(path_prefix):]
+                relative = file_path[len(path_prefix) :]
                 if "/" in relative:
                     dir_name = relative.split("/")[0]
                     if dir_name not in seen:
                         seen.add(dir_name)
-                        yield VirtualFile(path=path_prefix + dir_name, size=0, is_dir=True)
+                        yield VirtualFile(
+                            path=path_prefix + dir_name,
+                            size=0,
+                            is_dir=True,
+                        )
                 else:
-                    yield VirtualFile(path=file_path, size=info.file_size,
-                        is_dir=False, mtime=None)
+                    yield VirtualFile(
+                        path=file_path,
+                        size=info.file_size,
+                        is_dir=False,
+                        mtime=None,
+                    )
 
     def get_size(self, path: str) -> int:
         """Get the size of a file in the ZIP."""
@@ -304,7 +316,9 @@ class HTTPFileSystem(VirtualFileSystem):
         if url in self._cache:
             content = self._cache[url]
         else:
-            with urllib.request.urlopen(url) as response:  # noqa: S310 - VFS supports various URL schemes
+            with urllib.request.urlopen(
+                url,
+            ) as response:
                 content = response.read()
                 self._cache[url] = content
         if "b" in mode:
@@ -315,8 +329,13 @@ class HTTPFileSystem(VirtualFileSystem):
         """Check if a URL is accessible."""
         url = self._make_url(path)
         try:
-            req = urllib.request.Request(url, method="HEAD")  # noqa: S310 - VFS supports various URL schemes
-            with urllib.request.urlopen(req) as response:  # noqa: S310 - VFS supports various URL schemes
+            req = urllib.request.Request(
+                url,
+                method="HEAD",
+            )
+            with urllib.request.urlopen(
+                req,
+            ) as response:
                 return response.status == 200
         except (FileNotFoundError, OSError):
             return False
@@ -338,8 +357,13 @@ class HTTPFileSystem(VirtualFileSystem):
     def get_size(self, path: str) -> int:
         """Get the size of a file from HTTP headers."""
         url = self._make_url(path)
-        req = urllib.request.Request(url, method="HEAD")  # noqa: S310 - VFS supports various URL schemes
-        with urllib.request.urlopen(req) as response:  # noqa: S310 - VFS supports various URL schemes
+        req = urllib.request.Request(
+            url,
+            method="HEAD",
+        )
+        with urllib.request.urlopen(
+            req,
+        ) as response:
             content_length = response.headers.get("Content-Length")
             if content_length:
                 return int(content_length)
@@ -363,7 +387,7 @@ class CompositeFileSystem(VirtualFileSystem):
         """Find the file system responsible for a path."""
         for prefix, fs in self.filesystems:
             if path.startswith(prefix):
-                relative_path = path[len(prefix):].lstrip("/")
+                relative_path = path[len(prefix) :].lstrip("/")
                 return fs, relative_path
         raise FileNotFoundError(f"No filesystem mounted for path: {path}")
 
@@ -395,17 +419,20 @@ class CompositeFileSystem(VirtualFileSystem):
         yielded_paths = set()
         path = path.rstrip("/") or "/"
         for prefix, fs in self.filesystems:
-            if path == "/" or path.startswith(prefix) or prefix.startswith(path,
-                ):
+            if (
+                path == "/"
+                or path.startswith(prefix)
+                or prefix.startswith(
+                    path,
+                )
+            ):
                 if path == "/":
                     if prefix.count("/") == 1 and prefix not in yielded_paths:
                         yielded_paths.add(prefix)
-                        yield VirtualFile(path=prefix, size=0, is_dir=True,
-                            mtime=None)
+                        yield VirtualFile(path=prefix, size=0, is_dir=True, mtime=None)
                 elif path.startswith(prefix):
-                    relative_path = path[len(prefix):].lstrip("/")
-                    for vf in fs.list_dir(relative_path if relative_path else
-                        "/"):
+                    relative_path = path[len(prefix) :].lstrip("/")
+                    for vf in fs.list_dir(relative_path if relative_path else "/"):
                         if vf.path.startswith("/"):
                             full_path = f"{prefix}{vf.path}"
                         else:
@@ -413,8 +440,12 @@ class CompositeFileSystem(VirtualFileSystem):
                         full_path = full_path.replace("//", "/")
                         if full_path not in yielded_paths:
                             yielded_paths.add(full_path)
-                            yield VirtualFile(path=full_path, size=vf.size,
-                                is_dir=vf.is_dir, mtime=vf.mtime)
+                            yield VirtualFile(
+                                path=full_path,
+                                size=vf.size,
+                                is_dir=vf.is_dir,
+                                mtime=vf.mtime,
+                            )
 
     def get_size(self, path: str) -> int:
         """Get the size of a file."""

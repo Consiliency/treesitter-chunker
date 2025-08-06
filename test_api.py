@@ -11,7 +11,6 @@ BASE_URL = "http://localhost:8000"
 DEFAULT_TIMEOUT = 30
 
 
-
 def test_health():
     """Test health endpoint."""
     print("Testing /health endpoint...")
@@ -57,7 +56,6 @@ class Calculator:
         "min_chunk_size": 1,  # Include small chunks
     }
 
-
     response = requests.post(f"{BASE_URL}/chunk/text", json=payload)
     print(f"Status: {response.status_code}")
 
@@ -78,7 +76,6 @@ def test_chunk_file():
     print("Testing /chunk/file endpoint...")
 
     # Use an existing example file
-
 
     payload = {
         "file_path": "examples/example.py",

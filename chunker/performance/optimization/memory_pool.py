@@ -1,4 +1,5 @@
 """Memory pool implementation for reusing expensive objects."""
+
 import logging
 import weakref
 from collections import defaultdict, deque
@@ -30,10 +31,8 @@ class MemoryPool(MemoryPoolInterface):
         self._in_use: dict[str, weakref.WeakSet] = defaultdict(weakref.WeakSet)
         self._max_size = max_pool_size
         self._lock = RLock()
-        self._stats = defaultdict(lambda: {"acquired": 0, "released": 0,
-            "created": 0})
-        logger.info("Initialized MemoryPool with max size %s per type",
-            max_pool_size)
+        self._stats = defaultdict(lambda: {"acquired": 0, "released": 0, "created": 0})
+        logger.info("Initialized MemoryPool with max size %s per type", max_pool_size)
 
     def acquire(self, resource_type: str) -> Any:
         """Acquire a resource from the pool.
@@ -50,7 +49,6 @@ class MemoryPool(MemoryPoolInterface):
                 resource = pool.popleft()
                 self._stats[resource_type]["acquired"] += 1
 
-
                 logger.debug(
                     "Acquired %s from pool (pool size: %d)",
                     resource_type,
@@ -59,10 +57,10 @@ class MemoryPool(MemoryPoolInterface):
             else:
                 resource = self._create_resource(resource_type)
                 self._stats[resource_type]["created"] += 1
-                logger.debug("Created new %s (no pooled instances)",
-                    resource_type)
+                logger.debug("Created new %s (no pooled instances)", resource_type)
             self._in_use[resource_type].add(resource)
             return resource
+
     def release(self, resource: Any) -> None:
         """Return a resource to the pool.
 
@@ -84,8 +82,7 @@ class MemoryPool(MemoryPoolInterface):
                     len(pool),
                 )
             else:
-                logger.debug("Pool full for %s, discarding resource",
-                    resource_type)
+                logger.debug("Pool full for %s, discarding resource", resource_type)
 
     def size(self, resource_type: str) -> int:
         """Get current pool size for a resource type.
@@ -99,7 +96,7 @@ class MemoryPool(MemoryPoolInterface):
         with self._lock:
             return len(self._pools[resource_type])
 
-    def clear(self, resource_type: (str | None) = None) -> None:
+    def clear(self, resource_type: str | None = None) -> None:
         """Clear pooled resources.
 
         Args:
@@ -110,8 +107,7 @@ class MemoryPool(MemoryPoolInterface):
                 if resource_type in self._pools:
                     count = len(self._pools[resource_type])
                     self._pools[resource_type].clear()
-                    logger.info("Cleared %s pooled %s resources", count,
-                        resource_type)
+                    logger.info("Cleared %s pooled %s resources", count, resource_type)
             else:
                 total = sum(len(pool) for pool in self._pools.values())
                 self._pools.clear()
@@ -128,11 +124,13 @@ class MemoryPool(MemoryPoolInterface):
         with self._lock:
             stats = {}
             for resource_type, pool in self._pools.items():
-                stats[resource_type] = {"pooled": len(pool), "in_use": len(
-                    self._in_use[resource_type]), "acquired": self._stats[
-                    resource_type]["acquired"], "released": self._stats[
-                    resource_type]["released"], "created": self._stats[
-                    resource_type]["created"]}
+                stats[resource_type] = {
+                    "pooled": len(pool),
+                    "in_use": len(self._in_use[resource_type]),
+                    "acquired": self._stats[resource_type]["acquired"],
+                    "released": self._stats[resource_type]["released"],
+                    "created": self._stats[resource_type]["created"],
+                }
             return stats
 
     @classmethod

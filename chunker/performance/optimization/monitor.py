@@ -1,4 +1,5 @@
 """Performance monitoring implementation."""
+
 import logging
 import statistics
 import time
@@ -16,6 +17,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TimingInfo:
     """Information about a timed operation."""
+
     operation_id: str
     operation_name: str
     start_time: float
@@ -55,12 +57,14 @@ class PerformanceMonitor(PerformanceMonitorInterface):
             self._operation_counter += 1
             operation_id = (
                 f"{operation_name}_{self._operation_counter}_{int(time.time() * 1000)}"
-                )
-            timing_info = TimingInfo(operation_id=operation_id,
-                operation_name=operation_name, start_time=time.perf_counter())
+            )
+            timing_info = TimingInfo(
+                operation_id=operation_id,
+                operation_name=operation_name,
+                start_time=time.perf_counter(),
+            )
             self._operations[operation_id] = timing_info
-            logger.debug("Started operation: %s (ID: %s)", operation_name,
-                operation_id)
+            logger.debug("Started operation: %s (ID: %s)", operation_name, operation_id)
             return operation_id
 
     def end_operation(self, operation_id: str) -> float:
@@ -78,12 +82,11 @@ class PerformanceMonitor(PerformanceMonitorInterface):
                 return 0.0
             timing_info = self._operations[operation_id]
             timing_info.end_time = time.perf_counter()
-            timing_info.duration_ms = (timing_info.end_time - timing_info.
-                start_time) * 1000
+            timing_info.duration_ms = (
+                timing_info.end_time - timing_info.start_time
+            ) * 1000
             self._completed_operations.append(timing_info)
             del self._operations[operation_id]
-
-
 
             # Record as metric
             self.record_metric(
@@ -98,6 +101,7 @@ class PerformanceMonitor(PerformanceMonitorInterface):
             )
 
             return timing_info.duration_ms
+
     def record_metric(self, metric_name: str, value: float) -> None:
         """Record a performance metric.
 
@@ -121,36 +125,44 @@ class PerformanceMonitor(PerformanceMonitorInterface):
             for metric_name, values in self._metrics.items():
                 if not values:
                     continue
-                result[metric_name] = {"count": len(values), "mean":
-                    statistics.mean(values), "median": statistics.median(
-                    values), "min": min(values), "max": max(values), "sum":
-                    sum(values)}
+                result[metric_name] = {
+                    "count": len(values),
+                    "mean": statistics.mean(values),
+                    "median": statistics.median(values),
+                    "min": min(values),
+                    "max": max(values),
+                    "sum": sum(values),
+                }
                 if len(values) > 1:
                     result[metric_name]["std_dev"] = statistics.stdev(values)
                 else:
                     result[metric_name]["std_dev"] = 0.0
                 if len(values) >= 10:
                     sorted_values = sorted(values)
-                    result[metric_name]["p50"] = sorted_values[len(
-                        sorted_values) // 2]
-                    result[metric_name]["p90"] = sorted_values[int(len(
-                        sorted_values) * 0.9)]
-                    result[metric_name]["p95"] = sorted_values[int(len(
-                        sorted_values) * 0.95)]
-                    result[metric_name]["p99"] = sorted_values[int(len(
-                        sorted_values) * 0.99)]
+                    result[metric_name]["p50"] = sorted_values[len(sorted_values) // 2]
+                    result[metric_name]["p90"] = sorted_values[
+                        int(len(sorted_values) * 0.9)
+                    ]
+                    result[metric_name]["p95"] = sorted_values[
+                        int(len(sorted_values) * 0.95)
+                    ]
+                    result[metric_name]["p99"] = sorted_values[
+                        int(len(sorted_values) * 0.99)
+                    ]
             operation_durations = defaultdict(list)
             for op in self._completed_operations:
                 if op.duration_ms is not None:
-                    operation_durations[op.operation_name].append(op.
-                        duration_ms)
+                    operation_durations[op.operation_name].append(op.duration_ms)
             for op_name, durations in operation_durations.items():
                 if f"operation.{op_name}" not in result and durations:
-                    result[f"operation.{op_name}"] = {"count": len(
-                        durations), "mean": statistics.mean(durations),
-                        "median": statistics.median(durations), "min": min(
-                        durations), "max": max(durations), "sum": sum(
-                        durations)}
+                    result[f"operation.{op_name}"] = {
+                        "count": len(durations),
+                        "mean": statistics.mean(durations),
+                        "median": statistics.median(durations),
+                        "min": min(durations),
+                        "max": max(durations),
+                        "sum": sum(durations),
+                    }
             return result
 
     def reset(self) -> None:

@@ -1,4 +1,5 @@
 """Grammar manager implementation for tree-sitter language support."""
+
 import ctypes
 import json
 import logging
@@ -21,8 +22,12 @@ class GrammarManagerError(ChunkerError):
 class GrammarManager(GrammarManagerContract):
     """Manages tree-sitter grammar downloads and compilation."""
 
-    def __init__(self, root_dir: (Path | None) = None, config_file: (Path |
-        None) = None, max_workers: int = 4):
+    def __init__(
+        self,
+        root_dir: Path | None = None,
+        config_file: Path | None = None,
+        max_workers: int = 4,
+    ):
         """Initialize the grammar manager.
 
         Args:
@@ -31,8 +36,9 @@ class GrammarManager(GrammarManagerContract):
             max_workers: Maximum parallel workers for fetch/compile operations
         """
         self._root_dir = root_dir or Path(__file__).parent.parent
-        self._config_file = (config_file or self._root_dir / "config" /
-            "grammar_sources.json")
+        self._config_file = (
+            config_file or self._root_dir / "config" / "grammar_sources.json"
+        )
         self._grammars_dir = self._root_dir / "grammars"
         self._build_dir = self._root_dir / "build"
         self._lib_path = self._build_dir / "my-languages.so"
@@ -75,11 +81,16 @@ class GrammarManager(GrammarManagerContract):
             GrammarManagerError: If URL is invalid or language already exists
         """
         parsed = urlparse(repo_url)
-        if parsed.scheme not in {"http", "https",
-            } or "github.com" not in parsed.netloc:
+        if (
+            parsed.scheme
+            not in {
+                "http",
+                "https",
+            }
+            or "github.com" not in parsed.netloc
+        ):
             raise GrammarManagerError(f"Invalid GitHub URL: {repo_url}")
         if language in self._grammar_sources:
-
 
             logger.warning(
                 "Language '%s' already exists with URL: %s",
@@ -94,8 +105,7 @@ class GrammarManager(GrammarManagerContract):
         logger.info("Added grammar source for '%s': %s", language, repo_url)
         return True
 
-    def fetch_grammars(self, languages: (list[str] | None) = None) -> dict[str,
-        bool]:
+    def fetch_grammars(self, languages: list[str] | None = None) -> dict[str, bool]:
         """Fetch grammar repositories.
 
         Args:
@@ -110,8 +120,9 @@ class GrammarManager(GrammarManagerContract):
             missing = set(languages) - set(self._grammar_sources.keys())
             if missing:
                 logger.warning("Unknown languages requested: %s", missing)
-            languages_to_fetch = [lang for lang in languages if lang in
-                self._grammar_sources]
+            languages_to_fetch = [
+                lang for lang in languages if lang in self._grammar_sources
+            ]
         if not languages_to_fetch:
             logger.warning("No languages to fetch")
             return {}
@@ -122,14 +133,16 @@ class GrammarManager(GrammarManagerContract):
             repo_url = self._grammar_sources[lang]
             target_dir = self._grammars_dir / f"tree-sitter-{lang}"
             if target_dir.exists():
-                logger.info("[skip] %s already present at %s", lang, target_dir,
-                    )
+                logger.info(
+                    "[skip] %s already present at %s",
+                    lang,
+                    target_dir,
+                )
                 return lang, True
             try:
                 logger.info("[clone] %s from %s", lang, repo_url)
                 cmd = ["git", "clone", "--depth=1", repo_url, str(target_dir)]
-                result = subprocess.run(cmd, capture_output=True, text=True,
-                    check=True)
+                result = subprocess.run(cmd, capture_output=True, text=True, check=True)
                 logger.debug("Clone output for %s: %s", lang, result.stdout)
                 return lang, True
             except subprocess.CalledProcessError as e:
@@ -138,19 +151,19 @@ class GrammarManager(GrammarManagerContract):
             except (OSError, IndexError, KeyError) as e:
                 logger.error("Unexpected error cloning %s: %s", lang, e)
                 return lang, False
+
         with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
-            futures = {executor.submit(fetch_single, lang): lang for lang in
-                languages_to_fetch}
+            futures = {
+                executor.submit(fetch_single, lang): lang for lang in languages_to_fetch
+            }
             for future in as_completed(futures):
                 lang, success = future.result()
                 results[lang] = success
         successful = sum(1 for s in results.values() if s)
-        logger.info("Fetched %s/%s grammars successfully", successful, len(
-            results))
+        logger.info("Fetched %s/%s grammars successfully", successful, len(results))
         return results
 
-    def compile_grammars(self, languages: (list[str] | None) = None) -> dict[
-        str, bool]:
+    def compile_grammars(self, languages: list[str] | None = None) -> dict[str, bool]:
         """Compile fetched grammars into shared library.
 
         Args:
@@ -170,8 +183,9 @@ class GrammarManager(GrammarManagerContract):
             missing = set(languages) - set(available_grammars.keys())
             if missing:
                 logger.warning("Languages not fetched: %s", missing)
-            languages_to_compile = [lang for lang in languages if lang in
-                available_grammars]
+            languages_to_compile = [
+                lang for lang in languages if lang in available_grammars
+            ]
         if not languages_to_compile:
             logger.warning("No languages to compile")
             return {}

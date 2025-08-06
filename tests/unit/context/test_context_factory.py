@@ -1,4 +1,5 @@
 """Unit tests for context factory."""
+
 import pytest
 
 from chunker.context import ContextFactory
@@ -107,8 +108,7 @@ class TestContextFactory:
     @staticmethod
     def test_create_all_python():
         """Test creating all components for Python."""
-        extractor, resolver, analyzer, filter_func = ContextFactory.create_all(
-            "python")
+        extractor, resolver, analyzer, filter_func = ContextFactory.create_all("python")
         assert isinstance(extractor, PythonContextExtractor)
         assert isinstance(resolver, PythonSymbolResolver)
         assert isinstance(analyzer, PythonScopeAnalyzer)
@@ -118,7 +118,8 @@ class TestContextFactory:
     def test_create_all_javascript():
         """Test creating all components for JavaScript."""
         extractor, resolver, analyzer, filter_func = ContextFactory.create_all(
-            "javascript")
+            "javascript",
+        )
         assert isinstance(extractor, JavaScriptContextExtractor)
         assert isinstance(resolver, JavaScriptSymbolResolver)
         assert isinstance(analyzer, JavaScriptScopeAnalyzer)

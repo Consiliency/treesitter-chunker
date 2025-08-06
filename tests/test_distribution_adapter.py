@@ -3,6 +3,7 @@ Test adapter for distribution integration tests
 
 This adapter allows the integration tests to use our actual implementation
 """
+
 import tempfile
 from pathlib import Path
 
@@ -15,7 +16,7 @@ class TestDistributionAdapter:
     """Adapter to make integration tests work with our implementation"""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def distributor(cls):
         """Provide a real distributor instance"""
         return Distributor()
@@ -28,8 +29,11 @@ class TestDistributionAdapter:
             wheel_file = package_dir / "test-1.0.0-py3-none-any.whl"
             wheel_file.touch()
             distributor.pypi_publisher.twine_cmd = None
-            success, info = distributor.publish_to_pypi(package_dir,
-                repository="testpypi", dry_run=True)
+            success, info = distributor.publish_to_pypi(
+                package_dir,
+                repository="testpypi",
+                dry_run=True,
+            )
             assert not success
             assert "twine not found" in info.get("error", "")
 
@@ -38,8 +42,9 @@ class TestDistributionAdapter:
         """Docker image building should validate requirements"""
         distributor.docker_builder.docker_cmd = None
         success, message = distributor.build_docker_image(
-            "treesitter-chunker:latest", platforms=["linux/amd64",
-            "linux/arm64"])
+            "treesitter-chunker:latest",
+            platforms=["linux/amd64", "linux/arm64"],
+        )
         assert not success
         assert "Docker not found" in message
 
@@ -48,8 +53,10 @@ class TestDistributionAdapter:
         """Homebrew formula should be generated correctly"""
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir)
-            success, formula_path = distributor.create_homebrew_formula("1.0.0"
-                , output_path)
+            success, formula_path = distributor.create_homebrew_formula(
+                "1.0.0",
+                output_path,
+            )
             assert success
             assert formula_path.exists()
             assert formula_path.suffix == ".rb"
@@ -66,8 +73,10 @@ class TestDistributionAdapter:
             pyproject.write_text('version = "0.9.0"')
             distributor.release_manager._run_tests = lambda: True
             distributor.release_manager._create_git_tag = lambda tag, msg: True
-            success, info = distributor.prepare_release("1.0.0",
-                "Initial stable release")
+            success, info = distributor.prepare_release(
+                "1.0.0",
+                "Initial stable release",
+            )
             assert success
             assert info["version"] == "1.0.0"
             assert "pyproject.toml" in info["updated_files"]

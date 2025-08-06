@@ -7,6 +7,7 @@ between tree-sitter and sliding window chunking based on:
 - Parse failures or errors
 - Content characteristics
 """
+
 import logging
 from enum import Enum
 from pathlib import Path
@@ -28,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 class ChunkingDecision(Enum):
     """Decision about which chunking method to use."""
+
     TREE_SITTER = "tree_sitter"
     TREE_SITTER_WITH_SPLIT = "tree_sitter_with_split"
     SLIDING_WINDOW = "sliding_window"
@@ -55,8 +57,12 @@ class DecisionMetrics:
 class IntelligentFallbackChunker(FallbackChunker):
     """Intelligent fallback that makes smart decisions about chunking methods."""
 
-    def __init__(self, token_limit: (int | None) = None, model: str = "gpt-4",
-        sliding_window_config: (dict[str, Any] | None) = None):
+    def __init__(
+        self,
+        token_limit: int | None = None,
+        model: str = "gpt-4",
+        sliding_window_config: dict[str, Any] | None = None,
+    ):
         """Initialize intelligent fallback chunker.
 
         Args:
@@ -71,17 +77,43 @@ class IntelligentFallbackChunker(FallbackChunker):
         self.file_detector = FileTypeDetector()
         self.sliding_window = SlidingWindowFallback(config=sliding_window_config)
         self._supported_languages = set(list_languages())
-        self.extension_to_language = {".py": "python", ".js": "javascript",
-            ".jsx": "javascript", ".ts": "typescript", ".tsx": "typescript",
-            ".java": "java", ".c": "c", ".cpp": "cpp", ".cc": "cpp", ".cxx":
-            "cpp", ".h": "c", ".hpp": "cpp", ".rs": "rust", ".go": "go",
-            ".rb": "ruby", ".php": "php", ".cs": "csharp", ".swift":
-            "swift", ".kt": "kotlin", ".scala": "scala", ".r": "r", ".m":
-            "objc", ".mm": "objcpp", ".lua": "lua", ".jl": "julia", ".ml":
-            "ocaml", ".ex": "elixir", ".clj": "clojure", ".hs": "haskell",
-            ".pl": "perl", ".sh": "bash", ".vim": "vim", ".el": "elisp"}
+        self.extension_to_language = {
+            ".py": "python",
+            ".js": "javascript",
+            ".jsx": "javascript",
+            ".ts": "typescript",
+            ".tsx": "typescript",
+            ".java": "java",
+            ".c": "c",
+            ".cpp": "cpp",
+            ".cc": "cpp",
+            ".cxx": "cpp",
+            ".h": "c",
+            ".hpp": "cpp",
+            ".rs": "rust",
+            ".go": "go",
+            ".rb": "ruby",
+            ".php": "php",
+            ".cs": "csharp",
+            ".swift": "swift",
+            ".kt": "kotlin",
+            ".scala": "scala",
+            ".r": "r",
+            ".m": "objc",
+            ".mm": "objcpp",
+            ".lua": "lua",
+            ".jl": "julia",
+            ".ml": "ocaml",
+            ".ex": "elixir",
+            ".clj": "clojure",
+            ".hs": "haskell",
+            ".pl": "perl",
+            ".sh": "bash",
+            ".vim": "vim",
+            ".el": "elisp",
+        }
 
-    def _detect_language(self, file_path: str, content: str) -> (str | None):
+    def _detect_language(self, file_path: str, content: str) -> str | None:
         """Detect programming language from file path and content.
 
         Args:
@@ -97,21 +129,25 @@ class IntelligentFallbackChunker(FallbackChunker):
             if lang in self._supported_languages:
                 return lang
         if content.startswith("#!"):
-            first_line = content.split("\n")[0]
+            first_line = content.split("\n", maxsplit=1)[0]
             if "python" in first_line:
-                return ("python" if "python" in self._supported_languages else
-                    None)
+                return "python" if "python" in self._supported_languages else None
             if "node" in first_line or "javascript" in first_line:
-                return ("javascript" if "javascript" in self.
-                    _supported_languages else None)
+                return (
+                    "javascript" if "javascript" in self._supported_languages else None
+                )
             if "bash" in first_line or "/sh" in first_line:
                 return "bash" if "bash" in self._supported_languages else None
             if "ruby" in first_line:
                 return "ruby" if "ruby" in self._supported_languages else None
         return None
 
-    def _analyze_content(self, content: str, file_path: str, language: (str |
-        None)) -> DecisionMetrics:
+    def _analyze_content(
+        self,
+        content: str,
+        file_path: str,
+        language: str | None,
+    ) -> DecisionMetrics:
         """Analyze content to gather decision metrics.
 
         Args:
@@ -125,9 +161,31 @@ class IntelligentFallbackChunker(FallbackChunker):
         metrics = DecisionMetrics()
         metrics.file_type = self.file_detector.detect_file_type(file_path)
         ext = Path(file_path).suffix.lower()
-        code_extensions = {".py", ".js", ".jsx", ".ts", ".tsx", ".java",
-            ".c", ".cpp", ".cc", ".h", ".hpp", ".cs", ".go", ".rs", ".rb",
-            ".php", ".swift", ".kt", ".scala", ".r", ".m", ".lua", ".jl"}
+        code_extensions = {
+            ".py",
+            ".js",
+            ".jsx",
+            ".ts",
+            ".tsx",
+            ".java",
+            ".c",
+            ".cpp",
+            ".cc",
+            ".h",
+            ".hpp",
+            ".cs",
+            ".go",
+            ".rs",
+            ".rb",
+            ".php",
+            ".swift",
+            ".kt",
+            ".scala",
+            ".r",
+            ".m",
+            ".lua",
+            ".jl",
+        }
         metrics.is_code_file = ext in code_extensions
         processor_info = self.sliding_window.get_processor_info(file_path)
         available_processors = processor_info.get("available_processors", [])
@@ -151,28 +209,28 @@ class IntelligentFallbackChunker(FallbackChunker):
                 elif chunks:
                     token_counts = []
                     for chunk in chunks:
-                        token_count = self.token_counter.count_tokens(chunk
-                            .content, self.model)
+                        token_count = self.token_counter.count_tokens(
+                            chunk.content,
+                            self.model,
+                        )
                         token_counts.append(token_count)
                     metrics.largest_chunk_tokens = max(token_counts)
-                    metrics.average_chunk_tokens = sum(token_counts) / len(
-                        token_counts)
+                    metrics.average_chunk_tokens = sum(token_counts) / len(token_counts)
                     metrics.total_tokens = sum(token_counts)
-                    if (self.token_limit and metrics.largest_chunk_tokens >
-                        self.token_limit):
+                    if (
+                        self.token_limit
+                        and metrics.largest_chunk_tokens > self.token_limit
+                    ):
                         metrics.token_limit_exceeded = True
             except (FileNotFoundError, OSError, SyntaxError) as e:
                 metrics.parse_success = False
                 metrics.parse_error = str(e)
-                logger.debug("Tree-sitter parse failed for %s: %s",
-                    file_path, e)
+                logger.debug("Tree-sitter parse failed for %s: %s", file_path, e)
         if not metrics.total_tokens:
-            metrics.total_tokens = self.token_counter.count_tokens(content,
-                self.model)
+            metrics.total_tokens = self.token_counter.count_tokens(content, self.model)
         return metrics
 
-    def _make_decision(self, metrics: DecisionMetrics) -> tuple[
-        ChunkingDecision, str]:
+    def _make_decision(self, metrics: DecisionMetrics) -> tuple[ChunkingDecision, str]:
         """Make chunking decision based on metrics.
 
         Args:
@@ -182,16 +240,17 @@ class IntelligentFallbackChunker(FallbackChunker):
             Tuple of (decision, reason)
         """
         if metrics.has_specialized_processor and not metrics.is_code_file:
-            return (ChunkingDecision.SPECIALIZED_PROCESSOR,
+            return (
+                ChunkingDecision.SPECIALIZED_PROCESSOR,
                 f"Using specialized processor: {metrics.specialized_processor_name}",
-                )
+            )
         if metrics.has_tree_sitter_support and metrics.parse_success:
             if self.token_limit and metrics.token_limit_exceeded:
-                return (ChunkingDecision.TREE_SITTER_WITH_SPLIT,
+                return (
+                    ChunkingDecision.TREE_SITTER_WITH_SPLIT,
                     f"Tree-sitter with splitting (largest chunk: {metrics.largest_chunk_tokens} tokens)",
-                    )
-            return (ChunkingDecision.TREE_SITTER,
-                "Tree-sitter parsing successful")
+                )
+            return (ChunkingDecision.TREE_SITTER, "Tree-sitter parsing successful")
         reasons = []
         if not metrics.has_tree_sitter_support:
             reasons.append("no tree-sitter support")
@@ -200,12 +259,18 @@ class IntelligentFallbackChunker(FallbackChunker):
         if metrics.has_specialized_processor:
             reasons.append(
                 f"specialized processor available: {metrics.specialized_processor_name}",
-                )
-        return (ChunkingDecision.SLIDING_WINDOW, "Using sliding window: " +
-            ", ".join(reasons))
+            )
+        return (
+            ChunkingDecision.SLIDING_WINDOW,
+            "Using sliding window: " + ", ".join(reasons),
+        )
 
-    def chunk_text(self, content: str, file_path: str, language: (str |
-        None) = None) -> list[CodeChunk]:
+    def chunk_text(
+        self,
+        content: str,
+        file_path: str,
+        language: str | None = None,
+    ) -> list[CodeChunk]:
         """Intelligently chunk content using the best available method.
 
         Args:
@@ -220,8 +285,12 @@ class IntelligentFallbackChunker(FallbackChunker):
         if not language and metrics.detected_language:
             language = metrics.detected_language
         decision, reason = self._make_decision(metrics)
-        logger.info("Chunking decision for %s: %s - %s", file_path,
-            decision.value, reason)
+        logger.info(
+            "Chunking decision for %s: %s - %s",
+            file_path,
+            decision.value,
+            reason,
+        )
         chunks = []
         if decision == ChunkingDecision.TREE_SITTER:
             lang_to_use = language
@@ -229,8 +298,7 @@ class IntelligentFallbackChunker(FallbackChunker):
                 lang_to_use = self._detect_language(file_path, content)
             if not lang_to_use:
                 logger.error("No language detected for %s", file_path)
-                return self.sliding_window.chunk_text(content, file_path,
-                    language)
+                return self.sliding_window.chunk_text(content, file_path, language)
             chunks = chunk_text(content, lang_to_use, file_path)
         elif decision == ChunkingDecision.TREE_SITTER_WITH_SPLIT:
             lang_to_use = language
@@ -238,23 +306,29 @@ class IntelligentFallbackChunker(FallbackChunker):
                 lang_to_use = self._detect_language(file_path, content)
             if not lang_to_use:
                 logger.error("No language detected for %s", file_path)
-                return self.sliding_window.chunk_text(content, file_path,
-                    language)
-            chunks = chunk_text_with_token_limit(content, lang_to_use, self
-                .token_limit, file_path, self.model)
-        elif decision in {ChunkingDecision.SLIDING_WINDOW, ChunkingDecision
-            .SPECIALIZED_PROCESSOR}:
-            chunks = self.sliding_window.chunk_text(content, file_path,
-                language)
+                return self.sliding_window.chunk_text(content, file_path, language)
+            chunks = chunk_text_with_token_limit(
+                content,
+                lang_to_use,
+                self.token_limit,
+                file_path,
+                self.model,
+            )
+        elif decision in {
+            ChunkingDecision.SLIDING_WINDOW,
+            ChunkingDecision.SPECIALIZED_PROCESSOR,
+        }:
+            chunks = self.sliding_window.chunk_text(content, file_path, language)
         for chunk in chunks:
             if not hasattr(chunk, "metadata"):
                 chunk.metadata = {}
             chunk.metadata["chunking_decision"] = decision.value
             chunk.metadata["chunking_reason"] = reason
             if "token_count" not in chunk.metadata and self.token_limit:
-                chunk.metadata["token_count"
-                    ] = self.token_counter.count_tokens(chunk.content, self
-                    .model)
+                chunk.metadata["token_count"] = self.token_counter.count_tokens(
+                    chunk.content,
+                    self.model,
+                )
                 chunk.metadata["tokenizer_model"] = self.model
         return chunks
 
@@ -271,8 +345,11 @@ class IntelligentFallbackChunker(FallbackChunker):
         """
         return True
 
-    def get_fallback_reason(self, file_path: str, language: str,
-        ) -> FallbackReason:
+    def get_fallback_reason(
+        self,
+        file_path: str,
+        language: str,
+    ) -> FallbackReason:
         """Get the reason for using fallback.
 
         Args:
@@ -289,8 +366,12 @@ class IntelligentFallbackChunker(FallbackChunker):
             return FallbackReason.BINARY_FILE
         return FallbackReason.NO_GRAMMAR
 
-    def get_decision_info(self, file_path: str, content: str, language: (
-        str | None) = None) -> dict[str, Any]:
+    def get_decision_info(
+        self,
+        file_path: str,
+        content: str,
+        language: str | None = None,
+    ) -> dict[str, Any]:
         """Get detailed information about the chunking decision.
 
         Args:
@@ -303,14 +384,22 @@ class IntelligentFallbackChunker(FallbackChunker):
         """
         metrics = self._analyze_content(content, file_path, language)
         decision, reason = self._make_decision(metrics)
-        return {"decision": decision.value, "reason": reason, "metrics": {
-            "has_tree_sitter_support": metrics.has_tree_sitter_support,
-            "parse_success": metrics.parse_success, "largest_chunk_tokens":
-            metrics.largest_chunk_tokens, "average_chunk_tokens": metrics.
-            average_chunk_tokens, "total_tokens": metrics.total_tokens,
-            "file_type": metrics.file_type.value, "is_code_file": metrics.
-            is_code_file, "has_specialized_processor": metrics.
-            has_specialized_processor, "specialized_processor_name":
-            metrics.specialized_processor_name, "token_limit_exceeded":
-            metrics.token_limit_exceeded, "parse_error": metrics.
-            parse_error}, "token_limit": self.token_limit, "model": self.model}
+        return {
+            "decision": decision.value,
+            "reason": reason,
+            "metrics": {
+                "has_tree_sitter_support": metrics.has_tree_sitter_support,
+                "parse_success": metrics.parse_success,
+                "largest_chunk_tokens": metrics.largest_chunk_tokens,
+                "average_chunk_tokens": metrics.average_chunk_tokens,
+                "total_tokens": metrics.total_tokens,
+                "file_type": metrics.file_type.value,
+                "is_code_file": metrics.is_code_file,
+                "has_specialized_processor": metrics.has_specialized_processor,
+                "specialized_processor_name": metrics.specialized_processor_name,
+                "token_limit_exceeded": metrics.token_limit_exceeded,
+                "parse_error": metrics.parse_error,
+            },
+            "token_limit": self.token_limit,
+            "model": self.model,
+        }

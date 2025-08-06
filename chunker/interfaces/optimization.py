@@ -1,4 +1,5 @@
 """Chunk optimization interface for adapting chunks to specific use cases."""
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
@@ -8,6 +9,7 @@ from chunker.types import CodeChunk
 
 class OptimizationStrategy(Enum):
     """Optimization strategies."""
+
     AGGRESSIVE = "aggressive"
     CONSERVATIVE = "conservative"
     BALANCED = "balanced"
@@ -16,6 +18,7 @@ class OptimizationStrategy(Enum):
 @dataclass
 class OptimizationMetrics:
     """Metrics for optimization results."""
+
     original_count: int
     optimized_count: int
     avg_tokens_before: float
@@ -29,9 +32,12 @@ class ChunkOptimizer(ABC):
 
     @staticmethod
     @abstractmethod
-    def optimize_for_llm(chunks: list[CodeChunk], model: str, max_tokens:
-        int, strategy: OptimizationStrategy = OptimizationStrategy.BALANCED,
-        ) -> tuple[list[CodeChunk], OptimizationMetrics]:
+    def optimize_for_llm(
+        chunks: list[CodeChunk],
+        model: str,
+        max_tokens: int,
+        strategy: OptimizationStrategy = OptimizationStrategy.BALANCED,
+    ) -> tuple[list[CodeChunk], OptimizationMetrics]:
         """
         Optimize chunks for LLM consumption.
 
@@ -50,8 +56,11 @@ class ChunkOptimizer(ABC):
 
     @staticmethod
     @abstractmethod
-    def merge_small_chunks(chunks: list[CodeChunk], min_tokens: int,
-        preserve_boundaries: bool = True) -> list[CodeChunk]:
+    def merge_small_chunks(
+        chunks: list[CodeChunk],
+        min_tokens: int,
+        preserve_boundaries: bool = True,
+    ) -> list[CodeChunk]:
         """
         Merge chunks that are too small.
 
@@ -66,8 +75,11 @@ class ChunkOptimizer(ABC):
 
     @staticmethod
     @abstractmethod
-    def split_large_chunks(chunks: list[CodeChunk], max_tokens: int,
-        split_points: (list[str] | None) = None) -> list[CodeChunk]:
+    def split_large_chunks(
+        chunks: list[CodeChunk],
+        max_tokens: int,
+        split_points: list[str] | None = None,
+    ) -> list[CodeChunk]:
         """
         Split chunks that are too large.
 
@@ -82,8 +94,11 @@ class ChunkOptimizer(ABC):
 
     @staticmethod
     @abstractmethod
-    def rebalance_chunks(chunks: list[CodeChunk], target_tokens: int,
-        variance: float = 0.2) -> list[CodeChunk]:
+    def rebalance_chunks(
+        chunks: list[CodeChunk],
+        target_tokens: int,
+        variance: float = 0.2,
+    ) -> list[CodeChunk]:
         """
         Rebalance chunks to have similar sizes.
 
@@ -98,8 +113,11 @@ class ChunkOptimizer(ABC):
 
     @staticmethod
     @abstractmethod
-    def optimize_for_embedding(chunks: list[CodeChunk], embedding_model:
-        str, max_tokens: int = 512) -> list[CodeChunk]:
+    def optimize_for_embedding(
+        chunks: list[CodeChunk],
+        embedding_model: str,
+        max_tokens: int = 512,
+    ) -> list[CodeChunk]:
         """
         Optimize chunks for embedding generation.
 
@@ -150,8 +168,7 @@ class ChunkBoundaryAnalyzer(ABC):
 
     @staticmethod
     @abstractmethod
-    def suggest_merge_points(chunks: list[CodeChunk]) -> list[tuple[int, int,
-        float]]:
+    def suggest_merge_points(chunks: list[CodeChunk]) -> list[tuple[int, int, float]]:
         """
         Suggest which chunks to merge.
 

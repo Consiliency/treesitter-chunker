@@ -3,6 +3,7 @@ Setup script for treesitter-chunker.
 
 This handles PyPI packaging with proper grammar compilation and platform-specific wheels.
 """
+
 import platform
 import subprocess
 import sys
@@ -25,11 +26,12 @@ class BuildGrammars:
         grammars_dir = root_dir / "grammars"
         if not grammars_dir.exists() or not any(grammars_dir.iterdir()):
             print("Fetching grammars...")
-            subprocess.run([sys.executable, str(scripts_dir /
-                "fetch_grammars.py")], check=True)
+            subprocess.run(
+                [sys.executable, str(scripts_dir / "fetch_grammars.py")],
+                check=True,
+            )
         print("Building tree-sitter grammars...")
-        subprocess.run([sys.executable, str(scripts_dir / "build_lib.py")],
-            check=True)
+        subprocess.run([sys.executable, str(scripts_dir / "build_lib.py")], check=True)
 
 
 class CustomInstallCommand(install, BuildGrammars):
@@ -67,8 +69,16 @@ def get_long_description():
 
 def get_requirements():
     """Parse requirements from pyproject.toml dependencies."""
-    return ["tree_sitter", "rich", "typer", "pyarrow>=11.0.0", "toml",
-        "pyyaml", "pygments", "chardet"]
+    return [
+        "tree_sitter",
+        "rich",
+        "typer",
+        "pyarrow>=11.0.0",
+        "toml",
+        "pyyaml",
+        "pygments",
+        "chardet",
+    ]
 
 
 def get_platform_tag():
@@ -94,32 +104,55 @@ def get_platform_tag():
     return None
 
 
-setup(name="treesitter-chunker", version="1.0.0", author="Consiliency",
-    author_email="dev@consiliency.com", description="Semantic code chunker using Tree-sitter for intelligent code analysis",
-    long_description=get_long_description(), long_description_content_type="text/markdown", url="https://github.com/Consiliency/treesitter-chunker", project_urls={
-    "Bug Tracker":
-    "https://github.com/Consiliency/treesitter-chunker/issues",
-    "Documentation":
-    "https://github.com/Consiliency/treesitter-chunker/wiki", "Source Code":
-    "https://github.com/Consiliency/treesitter-chunker"}, packages=find_packages(exclude=["tests*", "benchmarks*", "examples*", "docs*",
-    "scripts*"]), include_package_data=True, python_requires=">=3.10",
-    install_requires=get_requirements(), extras_require={"dev": ["pytest",
-    "psutil", "build", "wheel", "twine"], "viz": ["graphviz"], "all": [
-    "pytest", "psutil", "graphviz", "build", "wheel", "twine"]},
-    entry_points={"console_scripts": ["treesitter-chunker=cli.main:app",
-    "tsc=cli.main:app"]}, classifiers=["Development Status :: 4 - Beta",
-    "Intended Audience :: Developers",
-    "Topic :: Software Development :: Libraries :: Python Modules",
-    "Topic :: Software Development :: Code Generators",
-    "Topic :: Text Processing :: Linguistic",
-    "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Operating System :: OS Independent",
-    "Operating System :: POSIX :: Linux",
-    "Operating System :: MacOS :: MacOS X",
-    "Operating System :: Microsoft :: Windows"], keywords="tree-sitter, code-analysis, chunking, parsing, ast, semantic-analysis",
-    cmdclass={"install": CustomInstallCommand, "develop":
-    CustomDevelopCommand, "egg_info": CustomEggInfoCommand}, zip_safe=False)
+setup(
+    name="treesitter-chunker",
+    version="1.0.0",
+    author="Consiliency",
+    author_email="dev@consiliency.com",
+    description="Semantic code chunker using Tree-sitter for intelligent code analysis",
+    long_description=get_long_description(),
+    long_description_content_type="text/markdown",
+    url="https://github.com/Consiliency/treesitter-chunker",
+    project_urls={
+        "Bug Tracker": "https://github.com/Consiliency/treesitter-chunker/issues",
+        "Documentation": "https://github.com/Consiliency/treesitter-chunker/wiki",
+        "Source Code": "https://github.com/Consiliency/treesitter-chunker",
+    },
+    packages=find_packages(
+        exclude=["tests*", "benchmarks*", "examples*", "docs*", "scripts*"],
+    ),
+    include_package_data=True,
+    python_requires=">=3.10",
+    install_requires=get_requirements(),
+    extras_require={
+        "dev": ["pytest", "psutil", "build", "wheel", "twine"],
+        "viz": ["graphviz"],
+        "all": ["pytest", "psutil", "graphviz", "build", "wheel", "twine"],
+    },
+    entry_points={
+        "console_scripts": ["treesitter-chunker=cli.main:app", "tsc=cli.main:app"],
+    },
+    classifiers=[
+        "Development Status :: 4 - Beta",
+        "Intended Audience :: Developers",
+        "Topic :: Software Development :: Libraries :: Python Modules",
+        "Topic :: Software Development :: Code Generators",
+        "Topic :: Text Processing :: Linguistic",
+        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Operating System :: OS Independent",
+        "Operating System :: POSIX :: Linux",
+        "Operating System :: MacOS :: MacOS X",
+        "Operating System :: Microsoft :: Windows",
+    ],
+    keywords="tree-sitter, code-analysis, chunking, parsing, ast, semantic-analysis",
+    cmdclass={
+        "install": CustomInstallCommand,
+        "develop": CustomDevelopCommand,
+        "egg_info": CustomEggInfoCommand,
+    },
+    zip_safe=False,
+)

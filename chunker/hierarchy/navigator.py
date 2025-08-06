@@ -109,7 +109,9 @@ class HierarchyNavigator(HierarchyNavigatorInterface):
 
     @staticmethod
     def filter_by_depth(
-        hierarchy: ChunkHierarchy, min_depth: int = 0, max_depth: int | None = None,
+        hierarchy: ChunkHierarchy,
+        min_depth: int = 0,
+        max_depth: int | None = None,
     ) -> list[CodeChunk]:
         """
         Filter chunks by their depth in the hierarchy.
@@ -151,7 +153,10 @@ class HierarchyNavigator(HierarchyNavigatorInterface):
         """
         if chunk_id not in hierarchy.chunk_map:
             return ChunkHierarchy(
-                root_chunks=[], parent_map={}, children_map={}, chunk_map={},
+                root_chunks=[],
+                parent_map={},
+                children_map={},
+                chunk_map={},
             )
         subtree_chunks: set[str] = {chunk_id}
         queue = deque([chunk_id])
@@ -186,7 +191,8 @@ class HierarchyNavigator(HierarchyNavigatorInterface):
         )
 
     def get_level_order_traversal(
-        self, hierarchy: ChunkHierarchy,
+        self,
+        hierarchy: ChunkHierarchy,
     ) -> list[list[CodeChunk]]:
         """
         Get chunks organized by level (depth) in the hierarchy.
@@ -217,7 +223,10 @@ class HierarchyNavigator(HierarchyNavigatorInterface):
         return levels
 
     def find_chunks_by_type(
-        self, node_type: str, hierarchy: ChunkHierarchy, subtree_root: str | None = None,
+        self,
+        node_type: str,
+        hierarchy: ChunkHierarchy,
+        subtree_root: str | None = None,
     ) -> list[CodeChunk]:
         """
         Find all chunks of a specific node type within the hierarchy.

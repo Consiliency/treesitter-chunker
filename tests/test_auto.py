@@ -1,4 +1,5 @@
 """Unit tests for the ZeroConfigAPI implementation."""
+
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -16,10 +17,19 @@ class MockRegistry:
 
     def __init__(self):
         self.installed_languages = {"python", "javascript", "go"}
-        self.available_languages = ["python", "javascript", "go", "java",
-            "rust", "ruby"]
-        self.language_versions = {"python": "0.20.0", "javascript":
-            "0.20.0", "go": "0.20.0"}
+        self.available_languages = [
+            "python",
+            "javascript",
+            "go",
+            "java",
+            "rust",
+            "ruby",
+        ]
+        self.language_versions = {
+            "python": "0.20.0",
+            "javascript": "0.20.0",
+            "go": "0.20.0",
+        }
         self.parsers = {}
 
     def is_language_installed(self, language: str) -> bool:
@@ -31,15 +41,18 @@ class MockRegistry:
     def list_available_languages(self) -> list[str]:
         return sorted(self.available_languages)
 
-    def install_language(self, language: str, version: (str | None) = None,
-        ) -> bool:
+    def install_language(
+        self,
+        language: str,
+        version: str | None = None,
+    ) -> bool:
         if language in self.available_languages:
             self.installed_languages.add(language)
             self.language_versions[language] = version or "0.20.0"
             return True
         return False
 
-    def get_language_version(self, language: str) -> (str | None):
+    def get_language_version(self, language: str) -> str | None:
         return self.language_versions.get(language)
 
     def update_language(self, language: str) -> tuple[bool, str]:
@@ -64,8 +77,10 @@ class MockRegistry:
 
     def get_language_metadata(self, language: str) -> dict:
         if language in self.installed_languages:
-            return {"version": self.language_versions[language],
-                "extensions": [f".{language[:2]}"]}
+            return {
+                "version": self.language_versions[language],
+                "extensions": [f".{language[:2]}"],
+            }
         return {}
 
 
@@ -73,7 +88,7 @@ class TestZeroConfigAPI:
     """Test cases for ZeroConfigAPI."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def api(cls):
         """Create a ZeroConfigAPI instance with mock registry."""
         registry = MockRegistry()
@@ -101,8 +116,11 @@ class TestZeroConfigAPI:
     def test_ensure_language_with_version(api):
         """Test ensuring a specific version of a language."""
         assert api.ensure_language("python", "0.20.0") is True
-        with patch.object(api.registry, "update_language", return_value=(
-            True, "Updated")):
+        with patch.object(
+            api.registry,
+            "update_language",
+            return_value=(True, "Updated"),
+        ):
             assert api.ensure_language("python", "0.21.0") is True
 
     @classmethod
@@ -145,15 +163,29 @@ class TestZeroConfigAPI:
     @classmethod
     def test_auto_chunk_file_with_tree_sitter(cls, api):
         """Test auto chunking a file with tree-sitter available."""
-        with tempfile.NamedTemporaryFile(encoding="utf-8", suffix=".py",
-            mode="w", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            suffix=".py",
+            mode="w",
+            delete=False,
+        ) as f:
             f.write("def hello():\n    print('world')")
             f.flush()
-            mock_chunks = [CodeChunk(language="python", file_path=f.name,
-                node_type="function_definition", start_line=1, end_line=2,
-                byte_start=0, byte_end=30, parent_context="", content="""def hello():
-    print('world')""", metadata={"name":
-                "hello"})]
+            mock_chunks = [
+                CodeChunk(
+                    language="python",
+                    file_path=f.name,
+                    node_type="function_definition",
+                    start_line=1,
+                    end_line=2,
+                    byte_start=0,
+                    byte_end=30,
+                    parent_context="",
+                    content="""def hello():
+    print('world')""",
+                    metadata={"name": "hello"},
+                ),
+            ]
             with patch("chunker.auto.chunk_file", return_value=mock_chunks):
                 result = api.auto_chunk_file(f.name)
             assert isinstance(result, AutoChunkResult)
@@ -166,8 +198,12 @@ class TestZeroConfigAPI:
     @classmethod
     def test_auto_chunk_file_fallback(cls, api):
         """Test auto chunking falls back when tree-sitter fails."""
-        with tempfile.NamedTemporaryFile(encoding="utf-8", suffix=".txt",
-            mode="w", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            suffix=".txt",
+            mode="w",
+            delete=False,
+        ) as f:
             f.write("This is some text content\nthat should be chunked")
             f.flush()
             result = api.auto_chunk_file(f.name)
@@ -180,14 +216,28 @@ class TestZeroConfigAPI:
     @classmethod
     def test_auto_chunk_file_with_language_override(cls, api):
         """Test auto chunking with explicit language."""
-        with tempfile.NamedTemporaryFile(encoding="utf-8", suffix=".txt",
-            mode="w", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            suffix=".txt",
+            mode="w",
+            delete=False,
+        ) as f:
             f.write("def hello():\n    print('world')")
             f.flush()
-            mock_chunks = [CodeChunk(language="python", file_path=f.name,
-                node_type="function_definition", start_line=1, end_line=2,
-                byte_start=0, byte_end=30, parent_context="", content="""def hello():
-    print('world')""")]
+            mock_chunks = [
+                CodeChunk(
+                    language="python",
+                    file_path=f.name,
+                    node_type="function_definition",
+                    start_line=1,
+                    end_line=2,
+                    byte_start=0,
+                    byte_end=30,
+                    parent_context="",
+                    content="""def hello():
+    print('world')""",
+                ),
+            ]
             with patch("chunker.auto.chunk_file", return_value=mock_chunks):
                 result = api.auto_chunk_file(f.name, language="python")
             assert result.language == "python"
@@ -198,8 +248,19 @@ class TestZeroConfigAPI:
     def test_chunk_text_success(cls, api):
         """Test chunking text content successfully."""
         text = "def hello():\n    print('world')"
-        mock_chunks = [CodeChunk(language="python", file_path="", node_type="function_definition", start_line=1, end_line=2, byte_start=0,
-            byte_end=len(text.encode()), parent_context="", content=text)]
+        mock_chunks = [
+            CodeChunk(
+                language="python",
+                file_path="",
+                node_type="function_definition",
+                start_line=1,
+                end_line=2,
+                byte_start=0,
+                byte_end=len(text.encode()),
+                parent_context="",
+                content=text,
+            ),
+        ]
         with patch("chunker.auto.chunk_text", return_value=mock_chunks):
             result = api.chunk_text(text, "python")
         assert isinstance(result, AutoChunkResult)

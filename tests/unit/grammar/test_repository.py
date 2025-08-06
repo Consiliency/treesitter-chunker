@@ -1,4 +1,5 @@
 """Unit tests for grammar repository."""
+
 import json
 import tempfile
 from pathlib import Path
@@ -51,10 +52,20 @@ class TestTreeSitterGrammarRepository:
 
     def test_get_grammar_by_extension(self):
         """Test finding grammar by file extension."""
-        test_cases = [(".py", "python"), (".js", "javascript"), (".rs",
-            "rust"), (".go", "go"), (".rb", "ruby"), (".java", "java"), (
-            ".cpp", "cpp"), (".c", "c"), (".cs", "csharp"), (".php", "php"),
-            (".swift", "swift"), (".kt", "kotlin")]
+        test_cases = [
+            (".py", "python"),
+            (".js", "javascript"),
+            (".rs", "rust"),
+            (".go", "go"),
+            (".rb", "ruby"),
+            (".java", "java"),
+            (".cpp", "cpp"),
+            (".c", "c"),
+            (".cs", "csharp"),
+            (".php", "php"),
+            (".swift", "swift"),
+            (".kt", "kotlin"),
+        ]
         for ext, expected_lang in test_cases:
             grammar = self.repo.get_grammar_by_extension(ext)
             assert grammar is not None, f"No grammar found for {ext}"
@@ -91,10 +102,19 @@ class TestTreeSitterGrammarRepository:
     @classmethod
     def test_custom_repository_file(cls):
         """Test loading custom repositories."""
-        custom_grammars = {"mylang": {"url":
-            "https://github.com/example/tree-sitter-mylang", "extensions":
-            [".ml", ".myl"], "description": "My custom language"}}
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".json", delete=False) as f:
+        custom_grammars = {
+            "mylang": {
+                "url": "https://github.com/example/tree-sitter-mylang",
+                "extensions": [".ml", ".myl"],
+                "description": "My custom language",
+            },
+        }
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".json",
+            delete=False,
+        ) as f:
             json.dump(custom_grammars, f)
             custom_file = Path(f.name)
         try:

@@ -1,4 +1,5 @@
 """Track and infer relationships between code chunks using Tree-sitter AST."""
+
 from __future__ import annotations
 
 import re
@@ -26,9 +27,13 @@ class ASTRelationshipTracker(RelationshipTracker):
         self._chunk_index: dict[str, CodeChunk] = {}
         self._parsers: dict[str, Parser] = {}
 
-    def track_relationship(self, source: CodeChunk, target: CodeChunk,
-        relationship_type: RelationshipType, metadata: (dict[str, Any] |
-        None) = None) -> None:
+    def track_relationship(
+        self,
+        source: CodeChunk,
+        target: CodeChunk,
+        relationship_type: RelationshipType,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
         """Track a relationship between chunks.
 
         Args:
@@ -39,13 +44,19 @@ class ASTRelationshipTracker(RelationshipTracker):
         """
         self._chunk_index[source.chunk_id] = source
         self._chunk_index[target.chunk_id] = target
-        relationship = ChunkRelationship(source_chunk_id=source.chunk_id,
-            target_chunk_id=target.chunk_id, relationship_type=relationship_type, metadata=metadata or {})
+        relationship = ChunkRelationship(
+            source_chunk_id=source.chunk_id,
+            target_chunk_id=target.chunk_id,
+            relationship_type=relationship_type,
+            metadata=metadata or {},
+        )
         self._relationships.append(relationship)
 
-    def get_relationships(self, chunk: (CodeChunk | None) = None,
-        relationship_type: (RelationshipType | None) = None) -> list[
-        ChunkRelationship]:
+    def get_relationships(
+        self,
+        chunk: CodeChunk | None = None,
+        relationship_type: RelationshipType | None = None,
+    ) -> list[ChunkRelationship]:
         """Get tracked relationships.
 
         Args:
@@ -57,15 +68,16 @@ class ASTRelationshipTracker(RelationshipTracker):
         """
         results = self._relationships
         if chunk:
-            results = [r for r in results if chunk.chunk_id in {r.
-                source_chunk_id, r.target_chunk_id}]
+            results = [
+                r
+                for r in results
+                if chunk.chunk_id in {r.source_chunk_id, r.target_chunk_id}
+            ]
         if relationship_type:
-            results = [r for r in results if r.relationship_type ==
-                relationship_type]
+            results = [r for r in results if r.relationship_type == relationship_type]
         return results
 
-    def infer_relationships(self, chunks: list[CodeChunk]) -> list[
-        ChunkRelationship]:
+    def infer_relationships(self, chunks: list[CodeChunk]) -> list[ChunkRelationship]:
         """Infer relationships from chunk data using AST analysis.
 
         Args:
@@ -119,8 +131,11 @@ class ASTRelationshipTracker(RelationshipTracker):
         elif language == "rust":
             self._analyze_rust_chunks(chunks, parser)
 
-    def _analyze_python_chunks(self, chunks: list[CodeChunk], parser: Parser,
-        ) -> None:
+    def _analyze_python_chunks(
+        self,
+        chunks: list[CodeChunk],
+        parser: Parser,
+    ) -> None:
         """Analyze Python chunks for relationships."""
         for chunk in chunks:
             tree = parser.parse(chunk.content.encode())
@@ -128,8 +143,11 @@ class ASTRelationshipTracker(RelationshipTracker):
             self._find_python_calls(chunk, tree.root_node, chunks)
             self._find_python_inheritance(chunk, tree.root_node, chunks)
 
-    def _analyze_javascript_chunks(self, chunks: list[CodeChunk], parser:
-        Parser) -> None:
+    def _analyze_javascript_chunks(
+        self,
+        chunks: list[CodeChunk],
+        parser: Parser,
+    ) -> None:
         """Analyze JavaScript chunks for relationships."""
         for chunk in chunks:
             tree = parser.parse(chunk.content.encode())
@@ -137,16 +155,22 @@ class ASTRelationshipTracker(RelationshipTracker):
             self._find_javascript_calls(chunk, tree.root_node, chunks)
             self._find_javascript_inheritance(chunk, tree.root_node, chunks)
 
-    def _analyze_c_cpp_chunks(self, chunks: list[CodeChunk], parser: Parser,
-        ) -> None:
+    def _analyze_c_cpp_chunks(
+        self,
+        chunks: list[CodeChunk],
+        parser: Parser,
+    ) -> None:
         """Analyze C/C++ chunks for relationships."""
         for chunk in chunks:
             tree = parser.parse(chunk.content.encode())
             self._find_c_includes(chunk, tree.root_node)
             self._find_c_calls(chunk, tree.root_node, chunks)
 
-    def _analyze_rust_chunks(self, chunks: list[CodeChunk], parser: Parser,
-        ) -> None:
+    def _analyze_rust_chunks(
+        self,
+        chunks: list[CodeChunk],
+        parser: Parser,
+    ) -> None:
         """Analyze Rust chunks for relationships."""
         for chunk in chunks:
             tree = parser.parse(chunk.content.encode())
@@ -159,44 +183,54 @@ class ASTRelationshipTracker(RelationshipTracker):
         if node.type in {"import_statement", "import_from_statement"}:
             for child in node.children:
                 if child.type in {"dotted_name", "identifier"}:
-                    imported_name = chunk.content[child.start_byte:child.
-                        end_byte]
+                    imported_name = chunk.content[child.start_byte : child.end_byte]
                     self._add_dependency_relationship(chunk, imported_name)
         for child in node.children:
             self._find_python_imports(chunk, child)
 
-    def _find_python_calls(self, chunk: CodeChunk, node: Node, all_chunks:
-        list[CodeChunk]) -> None:
+    def _find_python_calls(
+        self,
+        chunk: CodeChunk,
+        node: Node,
+        all_chunks: list[CodeChunk],
+    ) -> None:
         """Find function/method calls in Python code."""
         if node.type == "call" and node.children:
             func_node = node.children[0]
             if func_node.type == "identifier":
-                func_name = chunk.content[func_node.start_byte:func_node.
-                    end_byte]
+                func_name = chunk.content[func_node.start_byte : func_node.end_byte]
                 target_chunk = self._find_chunk_by_name(func_name, all_chunks)
                 if target_chunk and target_chunk.chunk_id != chunk.chunk_id:
-                    self.track_relationship(chunk, target_chunk,
-                        RelationshipType.CALLS, {"function": func_name})
+                    self.track_relationship(
+                        chunk,
+                        target_chunk,
+                        RelationshipType.CALLS,
+                        {"function": func_name},
+                    )
         for child in node.children:
             self._find_python_calls(chunk, child, all_chunks)
 
-    def _find_python_inheritance(self, chunk: CodeChunk, node: Node,
-        all_chunks: list[CodeChunk]) -> None:
+    def _find_python_inheritance(
+        self,
+        chunk: CodeChunk,
+        node: Node,
+        all_chunks: list[CodeChunk],
+    ) -> None:
         """Find class inheritance in Python code."""
         if node.type == "class_definition":
             for child in node.children:
                 if child.type == "argument_list":
                     for arg in child.children:
                         if arg.type == "identifier":
-                            base_name = chunk.content[arg.start_byte:arg.
-                                end_byte]
-                            base_chunk = self._find_chunk_by_name(base_name,
-                                all_chunks)
-                            if (base_chunk and base_chunk.chunk_id != chunk
-                                .chunk_id):
-                                self.track_relationship(chunk, base_chunk,
-                                    RelationshipType.INHERITS, {
-                                    "base_class": base_name})
+                            base_name = chunk.content[arg.start_byte : arg.end_byte]
+                            base_chunk = self._find_chunk_by_name(base_name, all_chunks)
+                            if base_chunk and base_chunk.chunk_id != chunk.chunk_id:
+                                self.track_relationship(
+                                    chunk,
+                                    base_chunk,
+                                    RelationshipType.INHERITS,
+                                    {"base_class": base_name},
+                                )
         for child in node.children:
             self._find_python_inheritance(chunk, child, all_chunks)
 
@@ -205,44 +239,58 @@ class ASTRelationshipTracker(RelationshipTracker):
         if node.type in {"import_statement", "import_clause"}:
             for child in node.children:
                 if child.type == "string":
-                    module_name = chunk.content[child.start_byte + 1:child.
-                        end_byte - 1]
+                    module_name = chunk.content[
+                        child.start_byte + 1 : child.end_byte - 1
+                    ]
                     self._add_dependency_relationship(chunk, module_name)
         for child in node.children:
             self._find_javascript_imports(chunk, child)
 
-    def _find_javascript_calls(self, chunk: CodeChunk, node: Node,
-        all_chunks: list[CodeChunk]) -> None:
+    def _find_javascript_calls(
+        self,
+        chunk: CodeChunk,
+        node: Node,
+        all_chunks: list[CodeChunk],
+    ) -> None:
         """Find function calls in JavaScript code."""
         if node.type == "call_expression" and node.children:
             func_node = node.children[0]
             if func_node.type == "identifier":
-                func_name = chunk.content[func_node.start_byte:func_node.
-                    end_byte]
+                func_name = chunk.content[func_node.start_byte : func_node.end_byte]
                 target_chunk = self._find_chunk_by_name(func_name, all_chunks)
                 if target_chunk and target_chunk.chunk_id != chunk.chunk_id:
-                    self.track_relationship(chunk, target_chunk,
-                        RelationshipType.CALLS, {"function": func_name})
+                    self.track_relationship(
+                        chunk,
+                        target_chunk,
+                        RelationshipType.CALLS,
+                        {"function": func_name},
+                    )
         for child in node.children:
             self._find_javascript_calls(chunk, child, all_chunks)
 
-    def _find_javascript_inheritance(self, chunk: CodeChunk, node: Node,
-        all_chunks: list[CodeChunk]) -> None:
+    def _find_javascript_inheritance(
+        self,
+        chunk: CodeChunk,
+        node: Node,
+        all_chunks: list[CodeChunk],
+    ) -> None:
         """Find class inheritance in JavaScript code."""
         if node.type == "class_declaration":
             for child in node.children:
                 if child.type == "class_heritage":
                     for heritage_child in child.children:
                         if heritage_child.type == "identifier":
-                            base_name = chunk.content[heritage_child.
-                                start_byte:heritage_child.end_byte]
-                            base_chunk = self._find_chunk_by_name(base_name,
-                                all_chunks)
-                            if (base_chunk and base_chunk.chunk_id != chunk
-                                .chunk_id):
-                                self.track_relationship(chunk, base_chunk,
-                                    RelationshipType.INHERITS, {
-                                    "base_class": base_name})
+                            base_name = chunk.content[
+                                heritage_child.start_byte : heritage_child.end_byte
+                            ]
+                            base_chunk = self._find_chunk_by_name(base_name, all_chunks)
+                            if base_chunk and base_chunk.chunk_id != chunk.chunk_id:
+                                self.track_relationship(
+                                    chunk,
+                                    base_chunk,
+                                    RelationshipType.INHERITS,
+                                    {"base_class": base_name},
+                                )
         for child in node.children:
             self._find_javascript_inheritance(chunk, child, all_chunks)
 
@@ -251,24 +299,32 @@ class ASTRelationshipTracker(RelationshipTracker):
         if node.type == "preproc_include":
             for child in node.children:
                 if child.type in {"string_literal", "system_lib_string"}:
-                    include_name = chunk.content[child.start_byte:child.
-                        end_byte].strip('"<>')
+                    include_name = chunk.content[
+                        child.start_byte : child.end_byte
+                    ].strip('"<>')
                     self._add_dependency_relationship(chunk, include_name)
         for child in node.children:
             self._find_c_includes(chunk, child)
 
-    def _find_c_calls(self, chunk: CodeChunk, node: Node, all_chunks: list[
-        CodeChunk]) -> None:
+    def _find_c_calls(
+        self,
+        chunk: CodeChunk,
+        node: Node,
+        all_chunks: list[CodeChunk],
+    ) -> None:
         """Find function calls in C/C++ code."""
         if node.type == "call_expression" and node.children:
             func_node = node.children[0]
             if func_node.type == "identifier":
-                func_name = chunk.content[func_node.start_byte:func_node.
-                    end_byte]
+                func_name = chunk.content[func_node.start_byte : func_node.end_byte]
                 target_chunk = self._find_chunk_by_name(func_name, all_chunks)
                 if target_chunk and target_chunk.chunk_id != chunk.chunk_id:
-                    self.track_relationship(chunk, target_chunk,
-                        RelationshipType.CALLS, {"function": func_name})
+                    self.track_relationship(
+                        chunk,
+                        target_chunk,
+                        RelationshipType.CALLS,
+                        {"function": func_name},
+                    )
         for child in node.children:
             self._find_c_calls(chunk, child, all_chunks)
 
@@ -277,64 +333,87 @@ class ASTRelationshipTracker(RelationshipTracker):
         if node.type == "use_declaration":
             for child in node.children:
                 if child.type in {"scoped_identifier", "identifier"}:
-                    use_name = chunk.content[child.start_byte:child.end_byte]
+                    use_name = chunk.content[child.start_byte : child.end_byte]
                     self._add_dependency_relationship(chunk, use_name)
         for child in node.children:
             self._find_rust_uses(chunk, child)
 
-    def _find_rust_calls(self, chunk: CodeChunk, node: Node, all_chunks:
-        list[CodeChunk]) -> None:
+    def _find_rust_calls(
+        self,
+        chunk: CodeChunk,
+        node: Node,
+        all_chunks: list[CodeChunk],
+    ) -> None:
         """Find function calls in Rust code."""
         if node.type == "call_expression" and node.children:
             func_node = node.children[0]
             if func_node.type in {"identifier", "scoped_identifier"}:
-                func_name = chunk.content[func_node.start_byte:func_node.
-                    end_byte]
-                target_chunk = self._find_chunk_by_name(func_name.split(
-                    "::")[-1], all_chunks)
+                func_name = chunk.content[func_node.start_byte : func_node.end_byte]
+                target_chunk = self._find_chunk_by_name(
+                    func_name.split("::")[-1],
+                    all_chunks,
+                )
                 if target_chunk and target_chunk.chunk_id != chunk.chunk_id:
-                    self.track_relationship(chunk, target_chunk,
-                        RelationshipType.CALLS, {"function": func_name})
+                    self.track_relationship(
+                        chunk,
+                        target_chunk,
+                        RelationshipType.CALLS,
+                        {"function": func_name},
+                    )
         for child in node.children:
             self._find_rust_calls(chunk, child, all_chunks)
 
-    def _find_rust_impls(self, chunk: CodeChunk, node: Node, all_chunks:
-        list[CodeChunk]) -> None:
+    def _find_rust_impls(
+        self,
+        chunk: CodeChunk,
+        node: Node,
+        all_chunks: list[CodeChunk],
+    ) -> None:
         """Find impl blocks in Rust code."""
         if node.type == "impl_item":
             trait_name = None
             type_name = None
             for child in node.children:
                 if child.type == "type_identifier" and trait_name is None:
-                    trait_name = chunk.content[child.start_byte:child.end_byte]
+                    trait_name = chunk.content[child.start_byte : child.end_byte]
                 else:
-                    type_name = chunk.content[child.start_byte:child.end_byte]
+                    type_name = chunk.content[child.start_byte : child.end_byte]
             if trait_name and type_name:
                 trait_chunk = self._find_chunk_by_name(trait_name, all_chunks)
                 if trait_chunk and trait_chunk.chunk_id != chunk.chunk_id:
-                    self.track_relationship(chunk, trait_chunk,
-                        RelationshipType.IMPLEMENTS, {"trait": trait_name,
-                        "type": type_name})
+                    self.track_relationship(
+                        chunk,
+                        trait_chunk,
+                        RelationshipType.IMPLEMENTS,
+                        {"trait": trait_name, "type": type_name},
+                    )
         for child in node.children:
             self._find_rust_impls(chunk, child, all_chunks)
 
     @staticmethod
-    def _find_chunk_by_name(name: str, chunks: list[CodeChunk]) -> (CodeChunk |
-        None):
+    def _find_chunk_by_name(name: str, chunks: list[CodeChunk]) -> CodeChunk | None:
         """Find a chunk by function/class name."""
         for chunk in chunks:
             lines = chunk.content.split("\n")
             for line in lines:
                 if re.match(
-                    f"^\\s*(def|class|function|fn|struct|impl)\\s+{re.escape(name)}\\b"
-                    , line):
+                    f"^\\s*(def|class|function|fn|struct|impl)\\s+{re.escape(name)}\\b",
+                    line,
+                ):
                     return chunk
                 if re.match(f"^\\s*{re.escape(name)}\\s*=", line):
                     return chunk
         return None
 
-    def _add_dependency_relationship(self, chunk: CodeChunk, dependency: str,
-        ) -> None:
+    def _add_dependency_relationship(
+        self,
+        chunk: CodeChunk,
+        dependency: str,
+    ) -> None:
         """Add a dependency relationship."""
-        self.track_relationship(chunk, chunk, RelationshipType.DEPENDS_ON,
-            {"dependency": dependency})
+        self.track_relationship(
+            chunk,
+            chunk,
+            RelationshipType.DEPENDS_ON,
+            {"dependency": dependency},
+        )

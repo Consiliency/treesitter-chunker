@@ -3,6 +3,7 @@
 This module tests complex CLI scenarios including interactive mode,
 signal handling, complex command chains, and error recovery.
 """
+
 import json
 import signal
 import subprocess
@@ -64,15 +65,19 @@ def func_{i}():
 class Class_{i}:
     pass
 """,
-                )
+            )
         runner = CliRunner()
-        result1 = runner.invoke(app, ["chunk", str(src_dir / "module0.py"),
-            "-l", "python", "--json"])
+        result1 = runner.invoke(
+            app,
+            ["chunk", str(src_dir / "module0.py"), "-l", "python", "--json"],
+        )
         assert result1.exit_code == 0
         chunks1 = json.loads(result1.stdout)
         assert len(chunks1) >= 2
-        result2 = runner.invoke(app, ["batch", str(src_dir), "--pattern",
-            "*.py", "--jsonl", "--quiet"])
+        result2 = runner.invoke(
+            app,
+            ["batch", str(src_dir), "--pattern", "*.py", "--jsonl", "--quiet"],
+        )
         assert result2.exit_code == 0
         lines = result2.stdout.strip().split("\n")
         assert len(lines) >= 6
@@ -86,9 +91,15 @@ class Class_{i}:
         (tmp_path / "src" / "core").mkdir(parents=True)
         (tmp_path / "src" / "utils").mkdir()
         (tmp_path / "tests").mkdir()
-        files = ["src/core/main.py", "src/core/config.py",
-            "src/utils/helpers.py", "src/utils/data.json",
-            "tests/test_main.py", "tests/test_config.py", "README.md"]
+        files = [
+            "src/core/main.py",
+            "src/core/config.py",
+            "src/utils/helpers.py",
+            "src/utils/data.json",
+            "tests/test_main.py",
+            "tests/test_config.py",
+            "README.md",
+        ]
         for file_path in files:
             full_path = tmp_path / file_path
             if file_path.endswith(".py"):
@@ -96,14 +107,19 @@ class Class_{i}:
             else:
                 full_path.write_text("data")
         runner = CliRunner()
-        patterns = [("**/*.py", 5), ("src/**/*.py", 3), ("**/test_*.py", 2),
-            ("src/*/*.py", 3)]
+        patterns = [
+            ("**/*.py", 5),
+            ("src/**/*.py", 3),
+            ("**/test_*.py", 2),
+            ("src/*/*.py", 3),
+        ]
         for pattern, expected_count in patterns:
-            result = runner.invoke(app, ["batch", str(tmp_path),
-                "--pattern", pattern, "--jsonl", "--quiet"])
+            result = runner.invoke(
+                app,
+                ["batch", str(tmp_path), "--pattern", pattern, "--jsonl", "--quiet"],
+            )
             assert result.exit_code == 0
-            lines = [line for line in result.stdout.strip().split("\n") if line
-                ]
+            lines = [line for line in result.stdout.strip().split("\n") if line]
             assert len(lines) >= expected_count
 
     @classmethod
@@ -117,10 +133,21 @@ class Class_{i}:
                 f"""
 def level_{i}_function():
     return {i}
-""")
+""",
+            )
         runner = CliRunner()
-        result = runner.invoke(app, ["batch", str(tmp_path), "--pattern",
-            "**/*.py", "--recursive", "--jsonl", "--quiet"])
+        result = runner.invoke(
+            app,
+            [
+                "batch",
+                str(tmp_path),
+                "--pattern",
+                "**/*.py",
+                "--recursive",
+                "--jsonl",
+                "--quiet",
+            ],
+        )
         assert result.exit_code == 0
         chunks = parse_jsonl_output(result.stdout)
         if len(chunks) < 5:
@@ -128,7 +155,7 @@ def level_{i}_function():
             print(f"Stdout: {result.stdout}")
             print(
                 f"Stderr: {result.stderr if hasattr(result, 'stderr') else 'N/A'}",
-                )
+            )
             print(f"Exception: {result.exception}")
             print(f"Chunks parsed: {len(chunks)}")
         assert len(chunks) >= 5
@@ -136,10 +163,9 @@ def level_{i}_function():
     @classmethod
     def test_mixed_language_batch_processing(cls, tmp_path):
         """Test multi-language projects."""
-        files = {"app.py":
-            '\ndef main():\n    print("Python app")\n\nclass App:\n    pass\n',
-            "server.js":
-            """
+        files = {
+            "app.py": '\ndef main():\n    print("Python app")\n\nclass App:\n    pass\n',
+            "server.js": """
 function startServer() {
     console.log("Starting server");
 }
@@ -147,9 +173,8 @@ function startServer() {
 class Server {
     constructor() {}
 }
-"""
-            , "lib.rs":
-            """
+""",
+            "lib.rs": """
 fn process_data() -> i32 {
     42
 }
@@ -157,9 +182,8 @@ fn process_data() -> i32 {
 struct DataProcessor {
     value: i32,
 }
-"""
-            , "utils.c":
-            """
+""",
+            "utils.c": """
 int calculate(int a, int b) {
     return a + b;
 }
@@ -169,12 +193,14 @@ struct Point {
     int y;
 };
 """,
-            }
+        }
         for filename, content in files.items():
             (tmp_path / filename).write_text(content)
         runner = CliRunner()
-        result = runner.invoke(app, ["batch", str(tmp_path), "--pattern",
-            "*.*", "--jsonl", "--quiet"])
+        result = runner.invoke(
+            app,
+            ["batch", str(tmp_path), "--pattern", "*.*", "--jsonl", "--quiet"],
+        )
         if result.exit_code == 0:
             chunks = parse_jsonl_output(result.stdout)
             languages_found = set()
@@ -197,9 +223,20 @@ class TestInteractiveMode:
         """Test real-time progress updates."""
         for i in range(20):
             (tmp_path / f"file{i}.py").write_text(f"def func{i}(): pass")
-        process = subprocess.Popen([sys.executable, "-m", "cli.main",
-            "batch", str(tmp_path), "--pattern", "*.py"], stdout=subprocess
-            .PIPE, stderr=subprocess.PIPE, text=True)
+        process = subprocess.Popen(
+            [
+                sys.executable,
+                "-m",
+                "cli.main",
+                "batch",
+                str(tmp_path),
+                "--pattern",
+                "*.py",
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
         stdout, stderr = process.communicate(timeout=10)
         assert process.returncode == 0
         assert stdout or stderr
@@ -211,8 +248,10 @@ class TestInteractiveMode:
         (tmp_path / "bad.py").write_text("def bad(: syntax error")
         (tmp_path / "empty.py").write_text("")
         runner = CliRunner()
-        result = runner.invoke(app, ["batch", str(tmp_path), "--pattern",
-            "*.py", "--jsonl", "--quiet"])
+        result = runner.invoke(
+            app,
+            ["batch", str(tmp_path), "--pattern", "*.py", "--jsonl", "--quiet"],
+        )
         assert result.exit_code in {0, 1}
         if result.stdout:
             assert "good" in result.stdout
@@ -223,11 +262,22 @@ class TestInteractiveMode:
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
             for i in range(100):
-                (tmp_path / f"file{i}.py").write_text(
-                    f"def func{i}(): pass\n" * 100)
-            process = subprocess.Popen([sys.executable, "-m", "cli.main",
-                "batch", str(tmp_path), "--pattern", "*.py", "--jsonl"],
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                (tmp_path / f"file{i}.py").write_text(f"def func{i}(): pass\n" * 100)
+            process = subprocess.Popen(
+                [
+                    sys.executable,
+                    "-m",
+                    "cli.main",
+                    "batch",
+                    str(tmp_path),
+                    "--pattern",
+                    "*.py",
+                    "--jsonl",
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
             time.sleep(0.2)
             if process.poll() is not None:
                 pytest.skip("Process completed before signal could be sent")
@@ -248,9 +298,21 @@ class TestSignalHandling:
     def test_sigint_handling(tmp_path):
         """Test Ctrl+C handling."""
         (tmp_path / "test.py").write_text("def test(): pass\n" * 1000)
-        process = subprocess.Popen([sys.executable, "-m", "cli.main",
-            "chunk", str(tmp_path / "test.py"), "-l", "python", "--json"],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        process = subprocess.Popen(
+            [
+                sys.executable,
+                "-m",
+                "cli.main",
+                "chunk",
+                str(tmp_path / "test.py"),
+                "-l",
+                "python",
+                "--json",
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
         time.sleep(0.05)
         if process.poll() is not None:
             pytest.skip("Process completed before signal could be sent")
@@ -268,8 +330,21 @@ class TestSignalHandling:
         """Test graceful termination."""
         for i in range(50):
             (tmp_path / f"file{i}.py").write_text("def test(): pass\n" * 50)
-        process = subprocess.Popen([sys.executable, "-m", "cli.main",
-            "batch", str(tmp_path), "--pattern", "*.py", "--jsonl"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        process = subprocess.Popen(
+            [
+                sys.executable,
+                "-m",
+                "cli.main",
+                "batch",
+                str(tmp_path),
+                "--pattern",
+                "*.py",
+                "--jsonl",
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
         time.sleep(0.1)
         if process.poll() is not None:
             pytest.skip("Process completed before SIGTERM could be sent")
@@ -287,9 +362,22 @@ class TestSignalHandling:
         output_dir = tmp_path / "output"
         output_dir.mkdir()
         marker = output_dir / ".chunker_lock"
-        subprocess.run([sys.executable, "-m", "cli.main", "chunk", __file__,
-            "-l", "python", "--json"], check=False, capture_output=True,
-            text=True, cwd=str(output_dir))
+        subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "cli.main",
+                "chunk",
+                __file__,
+                "-l",
+                "python",
+                "--json",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            cwd=str(output_dir),
+        )
         assert not marker.exists()
         temp_files = list(output_dir.glob(".chunker_tmp_*"))
         assert len(temp_files) == 0
@@ -300,8 +388,20 @@ class TestSignalHandling:
         for i in range(50):
             (tmp_path / f"file{i}.py").write_text(f"def func{i}(): pass")
         output_file = tmp_path / "partial_output.jsonl"
-        process = subprocess.Popen([sys.executable, "-m", "cli.main",
-            "batch", str(tmp_path), "--pattern", "*.py", "--jsonl"], stdout=Path(output_file).open("w", encoding="utf-8"), stderr=subprocess.PIPE)
+        process = subprocess.Popen(
+            [
+                sys.executable,
+                "-m",
+                "cli.main",
+                "batch",
+                str(tmp_path),
+                "--pattern",
+                "*.py",
+                "--jsonl",
+            ],
+            stdout=Path(output_file).open("w", encoding="utf-8"),
+            stderr=subprocess.PIPE,
+        )
         time.sleep(0.5)
         process.terminate()
         process.wait(timeout=5)
@@ -318,18 +418,23 @@ class TestOutputFormats:
         """Test custom output formatting."""
         test_file = tmp_path / "test.py"
         test_file.write_text(
-            '\ndef hello():\n    return "world"\n\nclass Test:\n    pass\n')
+            '\ndef hello():\n    return "world"\n\nclass Test:\n    pass\n',
+        )
         runner = CliRunner()
         result1 = runner.invoke(app, ["chunk", str(test_file), "-l", "python"])
         assert result1.exit_code == 0
-        assert "function_definition" in result1.stdout or "class_definition" in result1.stdout
-        result2 = runner.invoke(app, ["chunk", str(test_file), "-l",
-            "python", "--json"])
+        assert (
+            "function_definition" in result1.stdout
+            or "class_definition" in result1.stdout
+        )
+        result2 = runner.invoke(
+            app,
+            ["chunk", str(test_file), "-l", "python", "--json"],
+        )
         assert result2.exit_code == 0
         data = json.loads(result2.stdout)
         assert isinstance(data, list)
-        result3 = runner.invoke(app, ["batch", str(test_file), "--jsonl",
-            "--quiet"])
+        result3 = runner.invoke(app, ["batch", str(test_file), "--jsonl", "--quiet"])
         assert result3.exit_code == 0
         chunks = parse_jsonl_output(result3.stdout)
         assert len(chunks) >= 2
@@ -340,16 +445,33 @@ class TestOutputFormats:
         test_file = tmp_path / "test.py"
         test_file.write_text("def test(): pass")
         output_file = tmp_path / "output.json"
-        result = subprocess.run([sys.executable, "-m", "cli.main", "chunk",
-            str(test_file), "-l", "python", "--json"], check=False, stdout=Path(output_file).open("w", encoding="utf-8"), stderr=subprocess.PIPE)
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "cli.main",
+                "chunk",
+                str(test_file),
+                "-l",
+                "python",
+                "--json",
+            ],
+            check=False,
+            stdout=Path(output_file).open("w", encoding="utf-8"),
+            stderr=subprocess.PIPE,
+        )
         assert result.returncode == 0
         assert output_file.exists()
         with Path(output_file).open("r", encoding="utf-8") as f:
             data = json.load(f)
             assert len(data) >= 1
         result = subprocess.run(
-            f"{sys.executable} -m cli.main chunk {test_file} -l python --json | {sys.executable} -m json.tool"
-            , check=False, shell=True, capture_output=True, text=True)
+            f"{sys.executable} -m cli.main chunk {test_file} -l python --json | {sys.executable} -m json.tool",
+            check=False,
+            shell=True,
+            capture_output=True,
+            text=True,
+        )
         assert result.returncode == 0
         assert "{\n" in result.stdout
 
@@ -359,8 +481,10 @@ class TestOutputFormats:
         test_file = tmp_path / "test.py"
         test_file.write_text("def test(): pass")
         runner = CliRunner()
-        result_quiet = runner.invoke(app, ["batch", str(test_file),
-            "--quiet", "--json"])
+        result_quiet = runner.invoke(
+            app,
+            ["batch", str(test_file), "--quiet", "--json"],
+        )
         assert result_quiet.exit_code == 0
         result_normal = runner.invoke(app, ["batch", str(test_file), "--json"])
         assert result_normal.exit_code == 0
@@ -370,10 +494,23 @@ class TestOutputFormats:
         """Test streaming JSON output."""
         for i in range(5):
             (tmp_path / f"file{i}.py").write_text(f"def func{i}(): pass")
-        process = subprocess.Popen([sys.executable, "-m", "cli.main",
-            "batch", str(tmp_path), "--pattern", "*.py", "--jsonl",
-            "--quiet"], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            text=True, bufsize=1)
+        process = subprocess.Popen(
+            [
+                sys.executable,
+                "-m",
+                "cli.main",
+                "batch",
+                str(tmp_path),
+                "--pattern",
+                "*.py",
+                "--jsonl",
+                "--quiet",
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1,
+        )
         stdout, _stderr = process.communicate()
         chunks = parse_jsonl_output(stdout)
         assert len(chunks) >= 5
@@ -386,11 +523,9 @@ class TestErrorScenarios:
     def test_invalid_option_combinations(cls):
         """Test conflicting options."""
         runner = CliRunner()
-        result = runner.invoke(app, ["chunk", __file__, "-l", "python",
-            "--jsonl"])
+        result = runner.invoke(app, ["chunk", __file__, "-l", "python", "--jsonl"])
         assert result.exit_code != 0
-        result = runner.invoke(app, ["chunk", __file__, "-l",
-            "invalid_language"])
+        result = runner.invoke(app, ["chunk", __file__, "-l", "invalid_language"])
         assert "not found" in result.stdout.lower() or result.exit_code != 0
         result = runner.invoke(app, ["chunk", __file__])
         assert result.exit_code == 0
@@ -401,11 +536,12 @@ class TestErrorScenarios:
         unsupported_file = tmp_path / "test.xyz"
         unsupported_file.write_text("content")
         runner = CliRunner()
-        result = runner.invoke(app, ["chunk", str(unsupported_file), "-l",
-            "xyz"])
-        assert "not found" in result.stdout.lower(
-            ) or "not supported" in result.stdout.lower(
-            ) or result.exit_code != 0
+        result = runner.invoke(app, ["chunk", str(unsupported_file), "-l", "xyz"])
+        assert (
+            "not found" in result.stdout.lower()
+            or "not supported" in result.stdout.lower()
+            or result.exit_code != 0
+        )
 
     @classmethod
     def test_filesystem_permission_errors(cls, tmp_path):
@@ -419,8 +555,10 @@ class TestErrorScenarios:
         readonly_dir.mkdir()
         readonly_dir.chmod(365)
         runner = CliRunner()
-        result = runner.invoke(app, ["chunk", str(readonly_file), "-l",
-            "python", "--json"])
+        result = runner.invoke(
+            app,
+            ["chunk", str(readonly_file), "-l", "python", "--json"],
+        )
         assert result.exit_code == 0
         readonly_dir.chmod(493)
         readonly_file.chmod(420)
@@ -429,11 +567,18 @@ class TestErrorScenarios:
     def test_network_timeout_handling(cls, tmp_path):
         """Test remote operation timeouts."""
         runner = CliRunner()
-        result = runner.invoke(app, ["chunk", "/non/existent/path/file.py",
-            "-l", "python"])
+        result = runner.invoke(
+            app,
+            ["chunk", "/non/existent/path/file.py", "-l", "python"],
+        )
         assert result.exit_code != 0
-        error_keywords = ["not found", "does not exist", "no such file",
-            "error", "path"]
+        error_keywords = [
+            "not found",
+            "does not exist",
+            "no such file",
+            "error",
+            "path",
+        ]
         output = result.stdout.lower()
         if hasattr(result, "stderr") and result.stderr:
             output += " " + result.stderr.lower()
@@ -473,7 +618,7 @@ min_chunk_size = 5
 [output]
 default_format = "json\"
 """,
-        )
+    )
     test_file = tmp_path / "test.py"
     test_file.write_text(
         """
@@ -488,10 +633,9 @@ def larger_function():
     # Line 5
     pass
 """,
-        )
+    )
     runner = CliRunner()
-    result = runner.invoke(app, ["chunk", str(test_file), "--config", str(
-        config_file)])
+    result = runner.invoke(app, ["chunk", str(test_file), "--config", str(config_file)])
     assert result.exit_code == 0
     if "--json" in result.stdout or result.stdout.startswith("["):
         data = json.loads(result.stdout)

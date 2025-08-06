@@ -1,4 +1,5 @@
 """Integration tests for metadata extraction with custom rules."""
+
 from typing import Any
 
 import pytest
@@ -13,7 +14,7 @@ class TestMetadataRulesIntegration:
     """Test metadata extraction integrated with custom rules."""
 
     @staticmethod
-    @pytest.fixture
+    @pytest.fixture()
     def sample_python_file_with_todos(tmp_path):
         """Create a Python file with TODO comments and various metadata."""
         file_path = tmp_path / "tasks.py"
@@ -117,15 +118,19 @@ def create_default_manager() -> TaskManager:
 # TODO: Add CLI interface
 # TODO: Add export functionality
 """,
-            )
+        )
         return file_path
 
     @staticmethod
-    def test_metadata_extraction_with_todo_rules(sample_python_file_with_todos,
-        ):
+    def test_metadata_extraction_with_todo_rules(
+        sample_python_file_with_todos,
+    ):
         """Test extracting metadata while also finding TODO comments."""
-        chunks = chunk_file(sample_python_file_with_todos, "python",
-            extract_metadata=True)
+        chunks = chunk_file(
+            sample_python_file_with_todos,
+            "python",
+            extract_metadata=True,
+        )
         content = sample_python_file_with_todos.read_text()
         assert "TODO:" in content, "File should contain TODO comments"
         assert "Copyright (c)" in content, "File should contain copyright"
@@ -133,20 +138,24 @@ def create_default_manager() -> TaskManager:
             assert hasattr(chunk, "metadata"), "Chunk should have metadata"
             metadata = chunk.metadata
             if chunk.node_type in {"function_definition", "method"}:
-                assert "signature" in metadata, f"Function chunk should have signature: {chunk.node_type}"
+                assert (
+                    "signature" in metadata
+                ), f"Function chunk should have signature: {chunk.node_type}"
                 sig = metadata["signature"]
                 assert "name" in sig
                 assert "parameters" in sig
         chunk_types = {chunk.node_type for chunk in chunks}
         assert "class_definition" in chunk_types
         assert "function_definition" in chunk_types or "method" in chunk_types
-        async_chunks = [c for c in chunks if c.node_type in {
-            "function_definition", "method"} and "async" in c.content]
+        async_chunks = [
+            c
+            for c in chunks
+            if c.node_type in {"function_definition", "method"} and "async" in c.content
+        ]
         assert len(async_chunks) > 0, "Should have async functions"
 
     @classmethod
-    def test_custom_rule_with_metadata_filtering(cls,
-        sample_python_file_with_todos):
+    def test_custom_rule_with_metadata_filtering(cls, sample_python_file_with_todos):
         """Test using custom rules to filter chunks based on metadata."""
 
         class AsyncFunctionRule(MetadataRule):
@@ -161,20 +170,29 @@ def create_default_manager() -> TaskManager:
                 """Check if chunk is an async function."""
                 if "signature" in metadata:
                     sig = metadata["signature"]
-                    return sig.get("modifiers", []) and "async" in sig[
-                        "modifiers"]
+                    return sig.get("modifiers", []) and "async" in sig["modifiers"]
                 return False
-        chunks = chunk_file(sample_python_file_with_todos, "python",
-            extract_metadata=True)
+
+        chunks = chunk_file(
+            sample_python_file_with_todos,
+            "python",
+            extract_metadata=True,
+        )
         async_rule = AsyncFunctionRule()
-        async_chunks = [chunk for chunk in chunks if hasattr(chunk,
-            "metadata") and async_rule.matches_metadata(chunk.metadata)]
+        async_chunks = [
+            chunk
+            for chunk in chunks
+            if hasattr(chunk, "metadata")
+            and async_rule.matches_metadata(chunk.metadata)
+        ]
         assert len(async_chunks) > 0, "Should find async functions"
         assert any("process_tasks" in chunk.content for chunk in async_chunks)
 
     @classmethod
-    def test_complexity_metadata_with_rules(cls, sample_python_file_with_todos,
-        ):
+    def test_complexity_metadata_with_rules(
+        cls,
+        sample_python_file_with_todos,
+    ):
         """Test complexity analysis with custom complexity rules."""
 
         class ComplexFunctionRule(MetadataRule):
@@ -189,13 +207,22 @@ def create_default_manager() -> TaskManager:
                 """Check if function has high complexity."""
                 if "complexity" in metadata:
                     complexity = metadata["complexity"]
-                    return complexity.get("cyclomatic", 0,
-                        ) > 3 or complexity.get("cognitive", 0) > 5
+                    return (
+                        complexity.get(
+                            "cyclomatic",
+                            0,
+                        )
+                        > 3
+                        or complexity.get("cognitive", 0) > 5
+                    )
                 return False
-        chunks = chunk_file(sample_python_file_with_todos, "python",
-            extract_metadata=True)
-        complex_rule = ComplexFunctionRule()
 
+        chunks = chunk_file(
+            sample_python_file_with_todos,
+            "python",
+            extract_metadata=True,
+        )
+        complex_rule = ComplexFunctionRule()
 
         [
             chunk
@@ -213,28 +240,42 @@ def create_default_manager() -> TaskManager:
                 assert "cyclomatic" in complexity
                 assert "cognitive" in complexity
                 assert "lines_of_code" in complexity
+
     @staticmethod
     def test_docstring_extraction_with_rules(sample_python_file_with_todos):
         """Test docstring extraction combined with docstring rules."""
-        chunks = chunk_file(sample_python_file_with_todos, "python",
-            extract_metadata=True)
-        chunks_with_docstrings = [c for c in chunks if hasattr(c,
-            "metadata") and "docstring" in c.metadata]
-        assert len(chunks_with_docstrings,
-            ) > 0, "Should have chunks with docstrings"
+        chunks = chunk_file(
+            sample_python_file_with_todos,
+            "python",
+            extract_metadata=True,
+        )
+        chunks_with_docstrings = [
+            c for c in chunks if hasattr(c, "metadata") and "docstring" in c.metadata
+        ]
+        assert (
+            len(
+                chunks_with_docstrings,
+            )
+            > 0
+        ), "Should have chunks with docstrings"
         for chunk in chunks_with_docstrings:
             docstring = chunk.metadata["docstring"]
             assert docstring, f"Chunk {chunk.node_type} should have non-empty docstring"
             assert isinstance(docstring, str)
         class_chunks = [c for c in chunks if c.node_type == "class_definition"]
-        assert any("Represents a single task" in c.metadata.get("docstring",
-            "") for c in class_chunks), "Should find Task class docstring"
+        assert any(
+            "Represents a single task" in c.metadata.get("docstring", "")
+            for c in class_chunks
+        ), "Should find Task class docstring"
 
     @classmethod
     def test_import_analysis_with_rules(cls, sample_python_file_with_todos):
         """Test import dependency analysis with import block rules."""
-        chunks = chunk_file(sample_python_file_with_todos, "python",
-            extract_metadata=True)
+        chunks = chunk_file(
+            sample_python_file_with_todos,
+            "python",
+            extract_metadata=True,
+        )
         rule_engine = DefaultRuleEngine()
         rule_engine.add_rule(ImportBlockRule())
         content = sample_python_file_with_todos.read_text()
@@ -339,7 +380,7 @@ if __name__ == "__main__":
     test_data = [1, {"value": 5}, "3.14", None]
     print(proc.process(test_data))
 """,
-            )
+        )
         from chunker.rules.builtin import (
             ConfigurationBlockRule,
             DebugStatementRule,
@@ -347,6 +388,7 @@ if __name__ == "__main__":
             ImportBlockRule,
             TodoCommentRule,
         )
+
         chunks = chunk_file(complex_file, "python", extract_metadata=True)
         rule_engine = DefaultRuleEngine()
         rule_engine.add_rule(TodoCommentRule())
@@ -359,17 +401,14 @@ if __name__ == "__main__":
         assert "FIXME:" in content
         assert "import os" in content
         assert '"""' in content
-        function_chunks = [c for c in chunks if c.node_type ==
-            "function_definition"]
+        function_chunks = [c for c in chunks if c.node_type == "function_definition"]
         assert len(function_chunks) > 0
-        fib_chunk = next((c for c in function_chunks if "fibonacci" in c.
-            content), None)
+        fib_chunk = next((c for c in function_chunks if "fibonacci" in c.content), None)
         assert fib_chunk is not None
         assert "signature" in fib_chunk.metadata
         assert "decorators" in fib_chunk.metadata["signature"]
         assert len(fib_chunk.metadata["signature"]["decorators"]) > 0
-        process_chunk = next((c for c in chunks if "def process" in c.
-            content), None)
+        process_chunk = next((c for c in chunks if "def process" in c.content), None)
         assert process_chunk is not None
         assert "complexity" in process_chunk.metadata
         assert process_chunk.metadata["complexity"]["cyclomatic"] > 5

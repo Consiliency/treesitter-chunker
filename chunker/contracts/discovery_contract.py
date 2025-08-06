@@ -1,4 +1,5 @@
 """Define the boundary for grammar discovery service - Team: Grammar Discovery"""
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
@@ -7,6 +8,7 @@ from datetime import datetime
 @dataclass
 class GrammarInfo:
     """Information about a tree-sitter grammar"""
+
     name: str
     url: str
     version: str
@@ -20,6 +22,7 @@ class GrammarInfo:
 @dataclass
 class GrammarCompatibility:
     """Compatibility information for a grammar"""
+
     min_tree_sitter_version: str
     max_tree_sitter_version: str
     abi_version: int
@@ -31,8 +34,7 @@ class GrammarDiscoveryContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def list_available_grammars(include_community: bool = False) -> list[
-        GrammarInfo]:
+    def list_available_grammars(include_community: bool = False) -> list[GrammarInfo]:
         """List all available tree-sitter grammars
 
         Args:
@@ -51,7 +53,7 @@ class GrammarDiscoveryContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def get_grammar_info(language: str) -> (GrammarInfo | None):
+    def get_grammar_info(language: str) -> GrammarInfo | None:
         """Get detailed information about a specific grammar
 
         Args:
@@ -70,8 +72,9 @@ class GrammarDiscoveryContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def check_grammar_updates(installed_grammars: dict[str, str]) -> dict[
-        str, tuple[str, str]]:
+    def check_grammar_updates(
+        installed_grammars: dict[str, str],
+    ) -> dict[str, tuple[str, str]]:
         """Check for updates to installed grammars
 
         Args:
@@ -90,8 +93,10 @@ class GrammarDiscoveryContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def get_grammar_compatibility(language: str, version: str,
-        ) -> GrammarCompatibility:
+    def get_grammar_compatibility(
+        language: str,
+        version: str,
+    ) -> GrammarCompatibility:
         """Get compatibility requirements for a grammar version
 
         Args:

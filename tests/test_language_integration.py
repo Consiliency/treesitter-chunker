@@ -1,4 +1,5 @@
 """Test integration of language configurations with the chunker."""
+
 import importlib
 
 import chunker.languages.python
@@ -47,11 +48,14 @@ def decorated_function():
 # This is a comment
 lambda x: x + 1
 """,
-            )
+        )
         chunks = chunk_file(test_file, "python")
         chunk_types = {chunk.node_type for chunk in chunks}
-        expected_types = {"function_definition", "class_definition",
-            "decorated_definition"}
+        expected_types = {
+            "function_definition",
+            "class_definition",
+            "decorated_definition",
+        }
         assert expected_types.issubset(chunk_types)
         assert "lambda" in chunk_types
         assert len(chunks) >= 5
@@ -72,7 +76,7 @@ class MyClass {
     }
 }
 """,
-            )
+        )
         chunks = chunk_file(test_file, "javascript")
         assert len(chunks) > 0
 
@@ -88,8 +92,13 @@ class MyClass {
 
             @property
             def chunk_types(self) -> set[str]:
-                return {"function_declaration", "class_declaration",
-                    "method_definition", "arrow_function"}
+                return {
+                    "function_declaration",
+                    "class_declaration",
+                    "method_definition",
+                    "arrow_function",
+                }
+
         language_config_registry.register(CustomJSConfig())
         test_file = tmp_path / "test.js"
         test_file.write_text(
@@ -108,7 +117,7 @@ class TestClass {
     }
 }
 """,
-            )
+        )
         chunks = chunk_file(test_file, "javascript")
         chunk_types = {chunk.node_type for chunk in chunks}
         assert "function_declaration" in chunk_types or "arrow_function" in chunk_types
@@ -130,8 +139,14 @@ class TestClass {
 
             @property
             def chunk_types(self) -> set[str]:
-                return {"function_definition", "class_definition",
-                    "if_statement", "for_statement", "assignment"}
+                return {
+                    "function_definition",
+                    "class_definition",
+                    "if_statement",
+                    "for_statement",
+                    "assignment",
+                }
+
         test_file = tmp_path / "test_ignore.py"
         test_file.write_text(
             """
@@ -145,7 +160,7 @@ def my_function():
 class MyClass:
     pass
 """,
-            )
+        )
         language_config_registry.clear()
         language_config_registry.register(TestConfigAllNodes())
         chunks = chunk_file(test_file, "python")
@@ -170,6 +185,7 @@ class MyClass:
                 self.add_ignore_type("if_statement")
                 self.add_ignore_type("for_statement")
                 self.add_ignore_type("assignment")
+
         language_config_registry.clear()
         language_config_registry.register(TestConfigWithIgnores())
         chunks_filtered = chunk_file(test_file, "python")
@@ -181,8 +197,10 @@ class MyClass:
         assert "assignment" not in chunk_types_filtered
         language_config_registry.clear()
         if original_config:
-            language_config_registry.register(original_config, aliases=[
-                "py", "python3"])
+            language_config_registry.register(
+                original_config,
+                aliases=["py", "python3"],
+            )
         else:
             importlib.reload(chunker.languages.python)
 
@@ -211,21 +229,46 @@ def top_level_function():
     def nested_function():
         pass
 """,
-            )
+        )
         chunks = chunk_file(test_file, "python")
         for chunk in chunks:
-            if (chunk.node_type == "class_definition" and "OuterClass" in
-                chunk.content):
+            if chunk.node_type == "class_definition" and "OuterClass" in chunk.content:
                 assert not chunk.parent_context
-            elif chunk.node_type == "function_definition" and "outer_method" in chunk.content:
+            elif (
+                chunk.node_type == "function_definition"
+                and "outer_method" in chunk.content
+            ):
                 assert chunk.parent_context == "class_definition"
-            elif (chunk.node_type == "function_definition" and "inner_function" in chunk.content and "deeply_nested" not in chunk.content) or (chunk.node_type == "function_definition" and "deeply_nested" in chunk.content) or (chunk.node_type == "class_definition" and "InnerClass" in chunk.content):
+            elif (
+                (
+                    chunk.node_type == "function_definition"
+                    and "inner_function" in chunk.content
+                    and "deeply_nested" not in chunk.content
+                )
+                or (
+                    chunk.node_type == "function_definition"
+                    and "deeply_nested" in chunk.content
+                )
+                or (
+                    chunk.node_type == "class_definition"
+                    and "InnerClass" in chunk.content
+                )
+            ):
                 assert chunk.parent_context == "function_definition"
-            elif chunk.node_type == "function_definition" and "inner_method" in chunk.content:
+            elif (
+                chunk.node_type == "function_definition"
+                and "inner_method" in chunk.content
+            ):
                 assert chunk.parent_context == "class_definition"
-            elif chunk.node_type == "function_definition" and "top_level_function():" in chunk.content:
+            elif (
+                chunk.node_type == "function_definition"
+                and "top_level_function():" in chunk.content
+            ):
                 assert not chunk.parent_context
-            elif chunk.node_type == "function_definition" and "nested_function():" in chunk.content:
+            elif (
+                chunk.node_type == "function_definition"
+                and "nested_function():" in chunk.content
+            ):
                 assert chunk.parent_context == "function_definition"
 
     @staticmethod
@@ -243,7 +286,7 @@ class ClassTest:
 
 lambda x: x + 1
 """,
-            )
+        )
         original_config = language_config_registry.get("python")
         language_config_registry.clear()
         chunks_no_config = chunk_file(test_file, "python")
@@ -252,8 +295,10 @@ lambda x: x + 1
         assert "class_definition" in chunk_types_no_config
         assert "lambda" not in chunk_types_no_config
         if original_config:
-            language_config_registry.register(original_config, aliases=[
-                "py", "python3"])
+            language_config_registry.register(
+                original_config,
+                aliases=["py", "python3"],
+            )
         else:
             importlib.reload(chunker.languages.python)
         chunks_with_config = chunk_file(test_file, "python")
@@ -304,7 +349,7 @@ if True
 def another_valid():
     return True
 """,
-            )
+        )
         chunks = chunk_file(test_file, "python")
         chunk_contents = [c.content for c in chunks]
         assert any("valid_function" in c for c in chunk_contents)
@@ -331,8 +376,9 @@ class 数学类:
 def process_données(données):  # French parameter names
     résultat = len(données)
     return résultat
-"""
-            , encoding="utf-8")
+""",
+            encoding="utf-8",
+        )
         chunks = chunk_file(test_file, "python")
         assert len(chunks) >= 3
         chunk_contents = [c.content for c in chunks]
@@ -377,7 +423,7 @@ complex_lambda = lambda x, y: (
     else x - y
 )
 """,
-            )
+        )
         chunks = chunk_file(test_file, "python")
         lambda_chunks = [c for c in chunks if c.node_type == "lambda"]
         assert len(lambda_chunks) >= 4
@@ -410,6 +456,7 @@ complex_lambda = lambda x, y: (
             @property
             def chunk_types(self) -> set[str]:
                 return {"function_definition", "class_definition", "string"}
+
         original_config = language_config_registry.get("python")
         language_config_registry.clear()
         language_config_registry.register(StringChunkConfig())
@@ -421,17 +468,18 @@ def my_function():
     text = "This is a string literal"
     return text
 """,
-            )
+        )
         chunks_with_strings = chunk_file(test_file, "python")
         chunk_types = {c.node_type for c in chunks_with_strings}
         assert "string" in chunk_types
-        string_chunks = [c for c in chunks_with_strings if c.node_type ==
-            "string"]
+        string_chunks = [c for c in chunks_with_strings if c.node_type == "string"]
         assert len(string_chunks) >= 2
         language_config_registry.clear()
         if original_config:
-            language_config_registry.register(original_config, aliases=[
-                "py", "python3"])
+            language_config_registry.register(
+                original_config,
+                aliases=["py", "python3"],
+            )
         else:
             importlib.reload(chunker.languages.python)
         chunks_no_strings = chunk_file(test_file, "python")
@@ -482,15 +530,17 @@ class Container:
     def static_method():
         pass
 """,
-            )
+        )
         chunks = chunk_file(test_file, "python")
-        decorated_chunks = [c for c in chunks if c.node_type ==
-            "decorated_definition"]
+        decorated_chunks = [c for c in chunks if c.node_type == "decorated_definition"]
         assert len(decorated_chunks) >= 4
         decorated_contents = [c.content for c in decorated_chunks]
-        assert any("@decorator" in c and "decorated_function" in c for c in
-            decorated_contents)
-        assert any("@decorator1" in c and "@decorator2" in c for c in
-            decorated_contents)
-        assert any("@dataclass" in c and "DecoratedClass" in c for c in
-            decorated_contents)
+        assert any(
+            "@decorator" in c and "decorated_function" in c for c in decorated_contents
+        )
+        assert any(
+            "@decorator1" in c and "@decorator2" in c for c in decorated_contents
+        )
+        assert any(
+            "@dataclass" in c and "DecoratedClass" in c for c in decorated_contents
+        )

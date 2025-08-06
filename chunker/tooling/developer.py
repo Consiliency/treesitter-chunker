@@ -2,6 +2,7 @@
 
 Team responsible: Developer Tooling Team
 """
+
 import json
 import subprocess
 import sys
@@ -28,8 +29,7 @@ class DeveloperToolingImpl(DeveloperToolingContract):
             current = current.parent
         return Path.cwd()
 
-    def run_pre_commit_checks(self, files: list[Path]) -> tuple[bool, dict[
-        str, Any]]:
+    def run_pre_commit_checks(self, files: list[Path]) -> tuple[bool, dict[str, Any]]:
         """Run all pre-commit checks on specified files
 
         Args:
@@ -43,10 +43,13 @@ class DeveloperToolingImpl(DeveloperToolingContract):
             - 'tests': Dict with test results
             - 'errors': List of error messages
         """
-        results = {"linting": {"checked": 0, "errors": 0, "warnings": 0},
-            "formatting": {"checked": 0, "formatted": 0}, "type_checking":
-            {"checked": 0, "errors": 0}, "tests": {"run": 0, "passed": 0,
-            "failed": 0}, "errors": []}
+        results = {
+            "linting": {"checked": 0, "errors": 0, "warnings": 0},
+            "formatting": {"checked": 0, "formatted": 0},
+            "type_checking": {"checked": 0, "errors": 0},
+            "tests": {"run": 0, "passed": 0, "failed": 0},
+            "errors": [],
+        }
         all_success = True
         python_files = [f for f in files if f.suffix == ".py" and f.exists()]
         if not python_files:
@@ -54,12 +57,12 @@ class DeveloperToolingImpl(DeveloperToolingContract):
             return False, results
         format_results = self.format_code(python_files, fix=False)
         results["formatting"]["checked"] = len(python_files)
-        results["formatting"]["formatted"] = len(format_results.get(
-            "formatted", []))
+        results["formatting"]["formatted"] = len(format_results.get("formatted", []))
         if format_results.get("errors"):
             all_success = False
-            results["errors"].extend([f"Format error: {e}" for e in
-                format_results["errors"]])
+            results["errors"].extend(
+                [f"Format error: {e}" for e in format_results["errors"]],
+            )
         lint_results = self.run_linting(python_files, fix=False)
         results["linting"]["checked"] = len(python_files)
         for issues in lint_results.values():
@@ -101,8 +104,13 @@ class DeveloperToolingImpl(DeveloperToolingContract):
                 cmd.append("--check")
                 cmd.append("--diff")
             cmd.extend([str(f) for f in python_files])
-            proc = subprocess.run(cmd, cwd=self.project_root,
-                capture_output=True, text=True, check=False)
+            proc = subprocess.run(
+                cmd,
+                cwd=self.project_root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
             if proc.returncode == 0:
                 pass
             elif proc.returncode == 1:
@@ -114,8 +122,9 @@ class DeveloperToolingImpl(DeveloperToolingContract):
                         if line.startswith(("--- ", "+++ ")):
                             if line.startswith("--- "):
                                 if current_file and current_diff:
-                                    result["diff"][str(current_file)
-                                        ] = "\n".join(current_diff)
+                                    result["diff"][str(current_file)] = "\n".join(
+                                        current_diff,
+                                    )
                                 file_path = line.split("\t")[0][4:]
                                 current_file = Path(file_path).resolve()
                                 current_diff = [line]
@@ -124,10 +133,10 @@ class DeveloperToolingImpl(DeveloperToolingContract):
                         elif current_file:
                             current_diff.append(line)
                     if current_file and current_diff:
-                        result["diff"][str(current_file)] = "\n".join(
-                            current_diff)
-                    result["formatted"] = [str(f) for f in python_files if
-                        str(f) in result["diff"]]
+                        result["diff"][str(current_file)] = "\n".join(current_diff)
+                    result["formatted"] = [
+                        str(f) for f in python_files if str(f) in result["diff"]
+                    ]
                 else:
                     result["formatted"] = [str(f) for f in python_files]
             else:
@@ -136,8 +145,11 @@ class DeveloperToolingImpl(DeveloperToolingContract):
             result["errors"] = [str(e)]
         return result
 
-    def run_linting(self, files: list[Path], fix: bool = False) -> dict[str,
-        list[dict[str, Any]]]:
+    def run_linting(
+        self,
+        files: list[Path],
+        fix: bool = False,
+    ) -> dict[str, list[dict[str, Any]]]:
         """Run linting checks on specified files
 
         Args:
@@ -157,13 +169,17 @@ class DeveloperToolingImpl(DeveloperToolingContract):
         if not python_files:
             return results
         try:
-            cmd = [sys.executable, "-m", "ruff", "check", "--output-format",
-                "json"]
+            cmd = [sys.executable, "-m", "ruff", "check", "--output-format", "json"]
             if fix:
                 cmd.append("--fix")
             cmd.extend([str(f) for f in python_files])
-            proc = subprocess.run(cmd, cwd=self.project_root,
-                capture_output=True, text=True, check=False)
+            proc = subprocess.run(
+                cmd,
+                cwd=self.project_root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
             if proc.stdout:
                 try:
                     issues = json.loads(proc.stdout)
@@ -171,20 +187,24 @@ class DeveloperToolingImpl(DeveloperToolingContract):
                         file_path = str(Path(issue["filename"]).resolve())
                         if file_path not in results:
                             results[file_path] = []
-                        results[file_path].append({"line": issue.get(
-                            "location", {}).get("row", 0), "column": issue.
-                            get("location", {}).get("column", 0), "code":
-                            issue.get("code", ""), "message": issue.get(
-                            "message", ""), "severity": "error" if issue.
-                            get("fix") is None else "warning"})
+                        results[file_path].append(
+                            {
+                                "line": issue.get("location", {}).get("row", 0),
+                                "column": issue.get("location", {}).get("column", 0),
+                                "code": issue.get("code", ""),
+                                "message": issue.get("message", ""),
+                                "severity": (
+                                    "error" if issue.get("fix") is None else "warning"
+                                ),
+                            },
+                        )
                 except json.JSONDecodeError:
                     pass
         except (AttributeError, FileNotFoundError, IndexError):
             pass
         return results
 
-    def run_type_checking(self, files: list[Path]) -> dict[str, list[dict[
-        str, Any]]]:
+    def run_type_checking(self, files: list[Path]) -> dict[str, list[dict[str, Any]]]:
         """Run static type checking on files
 
         Args:
@@ -204,8 +224,13 @@ class DeveloperToolingImpl(DeveloperToolingContract):
         try:
             cmd = [sys.executable, "-m", "mypy", "--no-error-summary"]
             cmd.extend([str(f) for f in python_files])
-            proc = subprocess.run(cmd, cwd=self.project_root,
-                capture_output=True, text=True, check=False)
+            proc = subprocess.run(
+                cmd,
+                cwd=self.project_root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
             for line in proc.stdout.split("\n"):
                 if not line or ": " not in line:
                     continue
@@ -219,10 +244,18 @@ class DeveloperToolingImpl(DeveloperToolingContract):
                         message = parts[4].strip()
                         if file_path not in results:
                             results[file_path] = []
-                        results[file_path].append({"line": line_num,
-                            "column": col_num, "message": message,
-                            "severity": severity if severity in {"error",
-                            "warning", "note"} else "error"})
+                        results[file_path].append(
+                            {
+                                "line": line_num,
+                                "column": col_num,
+                                "message": message,
+                                "severity": (
+                                    severity
+                                    if severity in {"error", "warning", "note"}
+                                    else "error"
+                                ),
+                            },
+                        )
                     except (ValueError, IndexError):
                         pass
         except (IndexError, KeyError):

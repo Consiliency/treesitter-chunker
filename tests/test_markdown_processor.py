@@ -7,6 +7,7 @@ This module tests the MarkdownProcessor's ability to:
 - Handle various Markdown features
 - Apply smart chunking with overlap
 """
+
 import pytest
 
 from chunker.processors import ProcessorConfig
@@ -18,17 +19,21 @@ class TestMarkdownProcessor:
     """Test suite for MarkdownProcessor."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def processor(cls):
         """Create a default processor instance."""
         return MarkdownProcessor()
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def custom_processor(cls):
         """Create a processor with custom configuration."""
-        config = ProcessorConfig(max_chunk_size=500, min_chunk_size=50,
-            overlap_size=50, preserve_structure=True)
+        config = ProcessorConfig(
+            max_chunk_size=500,
+            min_chunk_size=50,
+            overlap_size=50,
+            preserve_structure=True,
+        )
         return MarkdownProcessor(config)
 
     @staticmethod
@@ -161,8 +166,7 @@ This is the document.
         structure = processor.extract_structure(content)
         assert structure["front_matter"] is not None
         assert structure["front_matter"].type == "front_matter"
-        assert "title: My Document" in structure["front_matter"].metadata["raw"
-            ]
+        assert "title: My Document" in structure["front_matter"].metadata["raw"]
 
     @staticmethod
     def test_find_boundaries_respects_atomic(processor):
@@ -294,13 +298,13 @@ Content after table.
             if "[...]" in chunk.content:
                 continue
             lines = chunk.content.strip().split("\n")
-            non_empty_lines = [line for line in lines if line.strip() and
-                line.strip() != "[...]"]
+            non_empty_lines = [
+                line for line in lines if line.strip() and line.strip() != "[...]"
+            ]
             assert len(non_empty_lines) >= 3
             assert "|" in non_empty_lines[0]
             assert "|" in non_empty_lines[1]
-            assert all("|" in line for line in non_empty_lines[2:] if line.
-                strip())
+            assert all("|" in line for line in non_empty_lines[2:] if line.strip())
 
     @staticmethod
     def test_apply_overlap(custom_processor):
@@ -330,18 +334,44 @@ And this is the third section for testing overlap behavior.
         """Test chunk validation."""
         config = ProcessorConfig(min_chunk_size=10)
         processor = MarkdownProcessor(config)
-        valid_chunk = CodeChunk(content="# Header\n\nContent here.",
-            start_line=1, end_line=3, node_type="section_h1", language="markdown", file_path="test.md", byte_start=0, byte_end=25,
-            parent_context="", metadata={"tokens": 4})
+        valid_chunk = CodeChunk(
+            content="# Header\n\nContent here.",
+            start_line=1,
+            end_line=3,
+            node_type="section_h1",
+            language="markdown",
+            file_path="test.md",
+            byte_start=0,
+            byte_end=25,
+            parent_context="",
+            metadata={"tokens": 4},
+        )
         assert processor.validate_chunk(valid_chunk)
-        short_chunk = CodeChunk(content="Hi", start_line=1, end_line=1,
-            node_type="paragraph", language="markdown", file_path="test.md",
-            byte_start=0, byte_end=2, parent_context="", metadata={"tokens": 1},
-            )
+        short_chunk = CodeChunk(
+            content="Hi",
+            start_line=1,
+            end_line=1,
+            node_type="paragraph",
+            language="markdown",
+            file_path="test.md",
+            byte_start=0,
+            byte_end=2,
+            parent_context="",
+            metadata={"tokens": 1},
+        )
         assert not processor.validate_chunk(short_chunk)
-        bad_code = CodeChunk(content="```python\ncode here", start_line=1,
-            end_line=2, node_type="code_block", language="markdown",
-            file_path="test.md", byte_start=0, byte_end=20, parent_context="", metadata={"tokens": 3})
+        bad_code = CodeChunk(
+            content="```python\ncode here",
+            start_line=1,
+            end_line=2,
+            node_type="code_block",
+            language="markdown",
+            file_path="test.md",
+            byte_start=0,
+            byte_end=20,
+            parent_context="",
+            metadata={"tokens": 3},
+        )
         assert not processor.validate_chunk(bad_code)
 
     @staticmethod
@@ -451,9 +481,7 @@ More content without closing fence.
 """
         chunks1 = processor.process(content1, "malformed1.md")
         assert len(chunks1) > 0
-        content2 = (
-            "# Test\n\n| Col1 | Col2 |\n| Data without separator row |\n\nNormal content.\n"
-            )
+        content2 = "# Test\n\n| Col1 | Col2 |\n| Data without separator row |\n\nNormal content.\n"
         chunks2 = processor.process(content2, "malformed2.md")
         assert len(chunks2) > 0
 

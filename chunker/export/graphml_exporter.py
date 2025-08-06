@@ -1,4 +1,5 @@
 """GraphML export implementation for code chunks."""
+
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
@@ -12,8 +13,10 @@ class GraphMLExporter(GraphExporterBase):
 
     def __init__(self):
         super().__init__()
-        self.graph_attrs: dict[str, Any] = {"edgedefault": "directed", "id":
-            "CodeGraph"}
+        self.graph_attrs: dict[str, Any] = {
+            "edgedefault": "directed",
+            "id": "CodeGraph",
+        }
         self.node_attrs: dict[str, str] = {}
         self.edge_attrs: dict[str, str] = {}
 
@@ -64,8 +67,12 @@ class GraphMLExporter(GraphExporterBase):
         key.set("attr.name", "label")
         key.set("attr.type", "string")
 
-    def _create_node_element(self, graph: ET.Element, node_id: str, node:
-        GraphNode) -> None:
+    def _create_node_element(
+        self,
+        graph: ET.Element,
+        node_id: str,
+        node: GraphNode,
+    ) -> None:
         """Create a node element with all its data."""
         node_elem = ET.SubElement(graph, "node")
         node_elem.set("id", node_id)
@@ -78,8 +85,12 @@ class GraphMLExporter(GraphExporterBase):
                 data.set("key", f"n_{key}")
                 data.text = str(value)
 
-    def _create_edge_element(self, graph: ET.Element, edge: GraphEdge,
-        edge_id: int) -> None:
+    def _create_edge_element(
+        self,
+        graph: ET.Element,
+        edge: GraphEdge,
+        edge_id: int,
+    ) -> None:
         """Create an edge element with all its data."""
         edge_elem = ET.SubElement(graph, "edge")
         edge_elem.set("id", f"e{edge_id}")
@@ -94,7 +105,7 @@ class GraphMLExporter(GraphExporterBase):
                 data.set("key", f"e_{key}")
                 data.text = str(value)
 
-    def export_string(self, pretty_print: bool = True, **options) -> str:
+    def export_string(self, pretty_print: bool = True, **_options) -> str:
         """Export the graph as a GraphML string.
 
         Args:
@@ -108,9 +119,10 @@ class GraphMLExporter(GraphExporterBase):
         root = ET.Element("graphml")
         root.set("xmlns", "http://graphml.graphdrawing.org/xmlns")
         root.set("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
-        root.set("xsi:schemaLocation",
+        root.set(
+            "xsi:schemaLocation",
             "http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd",
-            )
+        )
         self._create_key_elements(root)
         graph = ET.SubElement(root, "graph")
         for attr, value in self.graph_attrs.items():
@@ -125,8 +137,12 @@ class GraphMLExporter(GraphExporterBase):
             return reparsed.toprettyxml(indent="  ")
         return ET.tostring(root, encoding="unicode")
 
-    def export(self, output_path: Path, pretty_print: bool = True, **options,
-        ) -> None:
+    def export(
+        self,
+        output_path: Path,
+        pretty_print: bool = True,
+        **options,
+    ) -> None:
         """Export the graph to a GraphML file.
 
         Args:
@@ -134,13 +150,15 @@ class GraphMLExporter(GraphExporterBase):
             pretty_print: Whether to format the XML with indentation
             **options: Additional options
         """
-        graphml_content = self.export_string(pretty_print=pretty_print, **
-            options)
+        graphml_content = self.export_string(pretty_print=pretty_print, **options)
         output_path.write_text(graphml_content, encoding="utf-8")
 
-    def add_visualization_hints(self, node_colors: (dict[str, str] | None) =
-        None, edge_colors: (dict[str, str] | None) = None, node_shapes: (dict
-        [str, str] | None) = None) -> None:
+    def add_visualization_hints(
+        self,
+        node_colors: dict[str, str] | None = None,
+        edge_colors: dict[str, str] | None = None,
+        node_shapes: dict[str, str] | None = None,
+    ) -> None:
         """Add visualization hints for graph rendering tools.
 
         Args:
@@ -164,5 +182,4 @@ class GraphMLExporter(GraphExporterBase):
             self.edge_attrs["color"] = "string"
             for edge in self.edges:
                 if edge.relationship_type in edge_colors:
-                    edge.properties["color"] = edge_colors[edge.
-                        relationship_type]
+                    edge.properties["color"] = edge_colors[edge.relationship_type]

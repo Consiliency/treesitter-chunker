@@ -1,4 +1,5 @@
 """Advanced query interface for Phase 10 - searching and filtering chunks."""
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
@@ -9,6 +10,7 @@ from chunker.types import CodeChunk
 
 class QueryType(Enum):
     """Types of queries supported."""
+
     NATURAL_LANGUAGE = "natural_language"
     STRUCTURED = "structured"
     REGEX = "regex"
@@ -18,6 +20,7 @@ class QueryType(Enum):
 @dataclass
 class QueryResult:
     """Result of a chunk query."""
+
     chunk: CodeChunk
     score: float
     highlights: list[tuple[int, int]]
@@ -29,9 +32,12 @@ class ChunkQueryAdvanced(ABC):
 
     @staticmethod
     @abstractmethod
-    def search(query: str, chunks: list[CodeChunk], query_type: QueryType =
-        QueryType.NATURAL_LANGUAGE, limit: (int | None) = None) -> list[
-        QueryResult]:
+    def search(
+        query: str,
+        chunks: list[CodeChunk],
+        query_type: QueryType = QueryType.NATURAL_LANGUAGE,
+        limit: int | None = None,
+    ) -> list[QueryResult]:
         """
         Search chunks using various query types.
 
@@ -47,10 +53,14 @@ class ChunkQueryAdvanced(ABC):
 
     @staticmethod
     @abstractmethod
-    def filter(chunks: list[CodeChunk], node_types: (list[str] | None) = None,
-        languages: (list[str] | None) = None, min_lines: (int | None) = None,
-        max_lines: (int | None) = None, metadata_filters: (dict[str, Any] |
-        None) = None) -> list[CodeChunk]:
+    def filter(
+        chunks: list[CodeChunk],
+        node_types: list[str] | None = None,
+        languages: list[str] | None = None,
+        min_lines: int | None = None,
+        max_lines: int | None = None,
+        metadata_filters: dict[str, Any] | None = None,
+    ) -> list[CodeChunk]:
         """
         Filter chunks by structured criteria.
 
@@ -68,8 +78,12 @@ class ChunkQueryAdvanced(ABC):
 
     @staticmethod
     @abstractmethod
-    def find_similar(chunk: CodeChunk, chunks: list[CodeChunk], threshold:
-        float = 0.7, limit: (int | None) = None) -> list[QueryResult]:
+    def find_similar(
+        chunk: CodeChunk,
+        chunks: list[CodeChunk],
+        threshold: float = 0.7,
+        limit: int | None = None,
+    ) -> list[QueryResult]:
         """
         Find chunks similar to a given chunk.
 
@@ -117,8 +131,11 @@ class QueryIndexAdvanced(ABC):
 
     @staticmethod
     @abstractmethod
-    def query(query: str, query_type: QueryType = QueryType.NATURAL_LANGUAGE,
-        limit: int = 10) -> list[QueryResult]:
+    def query(
+        query: str,
+        query_type: QueryType = QueryType.NATURAL_LANGUAGE,
+        limit: int = 10,
+    ) -> list[QueryResult]:
         """
         Query the index.
 
@@ -158,8 +175,7 @@ class QueryOptimizer(ABC):
 
     @staticmethod
     @abstractmethod
-    def suggest_queries(partial_query: str, chunks: list[CodeChunk]) -> list[str
-        ]:
+    def suggest_queries(partial_query: str, chunks: list[CodeChunk]) -> list[str]:
         """
         Suggest query completions based on indexed content.
 

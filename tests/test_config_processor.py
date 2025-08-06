@@ -2,6 +2,7 @@
 
 Tests section-based chunking for INI, TOML, YAML, and JSON files.
 """
+
 import json
 
 import pytest
@@ -54,20 +55,35 @@ ttl = 3600
     def test_format_detection_json(self):
         """Test JSON fmt detection."""
         json_content = '{"name": "test", "version": "1.0.0"}'
-        assert self.processor.detect_format("config.json", json_content,
-            ) == "json"
+        assert (
+            self.processor.detect_format(
+                "config.json",
+                json_content,
+            )
+            == "json"
+        )
         assert self.processor.detect_format("unknown", json_content) == "json"
 
     def test_format_detection_yaml(self):
         """Test YAML fmt detection."""
         yaml_content = (
             "\nname: test\nversion: 1.0.0\nfeatures:\n  - authentication\n  - logging\n"
-            )
+        )
         try:
-            assert self.processor.detect_format("config.yaml", yaml_content,
-                ) == "yaml"
-            assert self.processor.detect_format("unknown", yaml_content,
-                ) == "yaml"
+            assert (
+                self.processor.detect_format(
+                    "config.yaml",
+                    yaml_content,
+                )
+                == "yaml"
+            )
+            assert (
+                self.processor.detect_format(
+                    "unknown",
+                    yaml_content,
+                )
+                == "yaml"
+            )
         except ImportError:
             pytest.skip("yaml library not available")
 
@@ -83,10 +99,20 @@ name = "requests"
 version = "2.28.0\"
 """
         try:
-            assert self.processor.detect_format("pyproject.toml", toml_content,
-                ) == "toml"
-            assert self.processor.detect_format("unknown", toml_content,
-                ) == "toml"
+            assert (
+                self.processor.detect_format(
+                    "pyproject.toml",
+                    toml_content,
+                )
+                == "toml"
+            )
+            assert (
+                self.processor.detect_format(
+                    "unknown",
+                    toml_content,
+                )
+                == "toml"
+            )
         except ImportError:
             pytest.skip("toml library not available")
 
@@ -160,9 +186,15 @@ port = 5432
 
     def test_chunk_json_object(self):
         """Test chunking JSON objects."""
-        json_content = json.dumps({"name": "myapp", "version": "1.0.0",
-            "dependencies": {"express": "^4.18.0", "mongoose": "^6.0.0"},
-            "scripts": {"start": "node index.js", "test": "jest"}}, indent=2)
+        json_content = json.dumps(
+            {
+                "name": "myapp",
+                "version": "1.0.0",
+                "dependencies": {"express": "^4.18.0", "mongoose": "^6.0.0"},
+                "scripts": {"start": "node index.js", "test": "jest"},
+            },
+            indent=2,
+        )
         chunks = self.processor.process("package.json", json_content)
         for chunk in chunks:
             assert isinstance(chunk, CodeChunk)

@@ -1,4 +1,5 @@
 """Manager for fallback chunking strategies."""
+
 import logging
 import warnings
 
@@ -24,12 +25,16 @@ class FallbackManager:
     def __init__(self):
         """Initialize fallback manager."""
         self.detector = FileTypeDetector()
-        self.chunker_map: dict[FileType, type[FallbackChunker]] = {FileType
-            .LOG: LogChunker, FileType.MARKDOWN: MarkdownChunker, FileType.
-            TEXT: LineBasedChunker, FileType.CSV: LineBasedChunker,
-            FileType.CONFIG: LineBasedChunker, FileType.JSON:
-            LineBasedChunker, FileType.XML: LineBasedChunker, FileType.YAML:
-            LineBasedChunker}
+        self.chunker_map: dict[FileType, type[FallbackChunker]] = {
+            FileType.LOG: LogChunker,
+            FileType.MARKDOWN: MarkdownChunker,
+            FileType.TEXT: LineBasedChunker,
+            FileType.CSV: LineBasedChunker,
+            FileType.CONFIG: LineBasedChunker,
+            FileType.JSON: LineBasedChunker,
+            FileType.XML: LineBasedChunker,
+            FileType.YAML: LineBasedChunker,
+        }
         self._chunker_cache: dict[FileType, FallbackChunker] = {}
 
     def can_chunk(self, file_path: str) -> bool:
@@ -44,8 +49,11 @@ class FallbackManager:
         file_type = self.detector.detect_file_type(file_path)
         return file_type not in {FileType.BINARY, FileType.UNKNOWN}
 
-    def chunk_file(self, file_path: str, reason: (FallbackReason | None) = None,
-        ) -> list[CodeChunk]:
+    def chunk_file(
+        self,
+        file_path: str,
+        reason: FallbackReason | None = None,
+    ) -> list[CodeChunk]:
         """Chunk a file using appropriate fallback strategy.
 
         Args:
@@ -62,16 +70,20 @@ class FallbackManager:
         if file_type == FileType.BINARY:
             raise ValueError(f"Cannot chunk binary file: {file_path}")
         if file_type == FileType.UNKNOWN:
-            logger.warning("Unknown file type, using line-based chunking: %s",
-                file_path)
+            logger.warning(
+                "Unknown file type, using line-based chunking: %s",
+                file_path,
+            )
             file_type = FileType.TEXT
         chunker = self._get_chunker(file_type)
         if reason is None:
             _, reason = self.detector.should_use_fallback(file_path)
         chunker.set_fallback_reason(reason)
         warnings.warn(
-            f"Using fallback chunking for {file_path} (type: {file_type.value}, reason: {reason})"
-            , FallbackWarning, stacklevel=2)
+            f"Using fallback chunking for {file_path} (type: {file_type.value}, reason: {reason})",
+            FallbackWarning,
+            stacklevel=2,
+        )
         try:
             content, _encoding = EncodingDetector.read_with_encoding(file_path)
         except (FileNotFoundError, OSError) as e:
@@ -95,8 +107,6 @@ class FallbackManager:
             if not chunk.file_path:
                 chunk.file_path = file_path
 
-
-
         logger.info(
             "Created %d chunks for %s using %s strategy",
             len(chunks),
@@ -105,6 +115,7 @@ class FallbackManager:
         )
 
         return chunks
+
     def _get_chunker(self, file_type: FileType) -> FallbackChunker:
         """Get or create chunker for file type.
 
@@ -139,8 +150,11 @@ class FallbackManager:
         file_type = self.detector.detect_file_type(file_path)
         should_fallback, reason = self.detector.should_use_fallback(file_path)
         metadata = self.detector.get_metadata(file_path)
-        return {"file_type": file_type.value, "can_chunk": self.can_chunk(
-            file_path), "should_use_fallback": should_fallback,
+        return {
+            "file_type": file_type.value,
+            "can_chunk": self.can_chunk(file_path),
+            "should_use_fallback": should_fallback,
             "fallback_reason": reason.value if reason else None,
             "suggested_grammar": self.detector.suggest_grammar(file_path),
-            "metadata": metadata}
+            "metadata": metadata,
+        }

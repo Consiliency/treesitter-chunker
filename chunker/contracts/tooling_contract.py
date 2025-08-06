@@ -57,8 +57,10 @@ class DeveloperToolingContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def run_linting(files: list[Path], fix: bool = False) -> dict[str, list[
-        dict[str, Any]]]:
+    def run_linting(
+        files: list[Path],
+        fix: bool = False,
+    ) -> dict[str, list[dict[str, Any]]]:
         """Run linting checks on specified files
 
         Args:

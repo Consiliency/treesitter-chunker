@@ -1,4 +1,5 @@
 """Go language support for chunking."""
+
 from tree_sitter import Node
 
 from chunker.types import CodeChunk
@@ -22,16 +23,30 @@ class GoChunker(LanguageChunker):
     @staticmethod
     def get_chunk_node_types() -> set[str]:
         """Get node types that should be chunked."""
-        return {"function_declaration", "method_declaration",
-            "type_declaration", "type_spec", "interface_type",
-            "struct_type", "const_declaration", "var_declaration",
-            "package_clause"}
+        return {
+            "function_declaration",
+            "method_declaration",
+            "type_declaration",
+            "type_spec",
+            "interface_type",
+            "struct_type",
+            "const_declaration",
+            "var_declaration",
+            "package_clause",
+        }
 
     @staticmethod
     def get_scope_node_types() -> set[str]:
         """Get node types that define scopes."""
-        return {"source_file", "function_declaration", "method_declaration",
-            "block", "if_statement", "for_statement", "switch_statement"}
+        return {
+            "source_file",
+            "function_declaration",
+            "method_declaration",
+            "block",
+            "if_statement",
+            "for_statement",
+            "switch_statement",
+        }
 
     def should_chunk_node(self, node: Node) -> bool:
         """Determine if a node should be chunked."""
@@ -103,7 +118,7 @@ class GoChunker(LanguageChunker):
         return name_node is not None and name_node.text != b""
 
     @staticmethod
-    def _get_method_receiver(node: Node) -> (Node | None):
+    def _get_method_receiver(node: Node) -> Node | None:
         """Get the receiver type for a method."""
         params_node = node.child_by_field_name("parameters")
         if params_node and params_node.child_count > 0:
@@ -128,8 +143,6 @@ class GoChunker(LanguageChunker):
                     merged.append(chunk)
             else:
                 merged.append(chunk)
-
-
 
         # Add method groups (optionally merge them)
         for methods in method_groups.values():

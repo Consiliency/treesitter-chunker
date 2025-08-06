@@ -23,7 +23,9 @@ def fix_mktemp_in_file(file_path: Path) -> list[str]:
     def replace_mktemp(match):
         suffix = match.group(1)
         changes.append(f"Replaced mktemp with NamedTemporaryFile for suffix {suffix}")
-        return f'Path(tempfile.NamedTemporaryFile(suffix="{suffix}", delete=False).name)'
+        return (
+            f'Path(tempfile.NamedTemporaryFile(suffix="{suffix}", delete=False).name)'
+        )
 
     content = re.sub(pattern, replace_mktemp, content)
 

@@ -28,9 +28,9 @@ class StreamingChunker:
         parent_ctx: str | None = None,
     ) -> Iterator[CodeChunk]:
         """Yield chunks as they're found without building full list in memory."""
-        CHUNK_TYPES = {"function_definition", "class_definition", "method_definition"}
+        chunk_types = {"function_definition", "class_definition", "method_definition"}
 
-        if node.type in CHUNK_TYPES:
+        if node.type in chunk_types:
             # Extract content from memory-mapped data
             text = mmap_data[node.start_byte : node.end_byte].decode(
                 "utf-8",

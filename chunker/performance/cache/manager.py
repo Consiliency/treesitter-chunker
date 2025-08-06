@@ -1,4 +1,5 @@
 """Cache manager implementation."""
+
 import hashlib
 import logging
 from typing import Any
@@ -13,8 +14,13 @@ logger = logging.getLogger(__name__)
 class CacheManager(CacheManagerInterface):
     """Implementation of CacheManager interface with multi-level caching."""
 
-    def __init__(self, ast_size: int = 100, chunk_size: int = 1000, query_size:
-        int = 500, metadata_size: int = 500):
+    def __init__(
+        self,
+        ast_size: int = 100,
+        chunk_size: int = 1000,
+        query_size: int = 500,
+        metadata_size: int = 500,
+    ):
         """Initialize cache manager.
 
         Args:
@@ -23,8 +29,7 @@ class CacheManager(CacheManagerInterface):
             query_size: Max entries for query cache
             metadata_size: Max entries for metadata cache
         """
-        self._cache = MultiLevelCache(ast_size, chunk_size, query_size,
-            metadata_size)
+        self._cache = MultiLevelCache(ast_size, chunk_size, query_size, metadata_size)
         logger.info(
             "Initialized CacheManager with sizes - AST: %d, Chunk: %d, Query: %d, Metadata: %d",
             ast_size,
@@ -33,9 +38,7 @@ class CacheManager(CacheManagerInterface):
             metadata_size,
         )
 
-
-
-    def get(self, key: str) -> (Any | None):
+    def get(self, key: str) -> Any | None:
         """Get a value from cache.
 
         Args:
@@ -51,7 +54,7 @@ class CacheManager(CacheManagerInterface):
             logger.debug("Cache miss for key: %s", key)
         return value
 
-    def put(self, key: str, value: Any, ttl_seconds: (int | None) = None) -> None:
+    def put(self, key: str, value: Any, ttl_seconds: int | None = None) -> None:
         """Put a value in cache.
 
         Args:
@@ -93,6 +96,7 @@ class CacheManager(CacheManagerInterface):
                 pattern,
             )
         return count
+
     def clear(self) -> None:
         """Clear all cache entries."""
         self._cache.clear()
@@ -133,8 +137,14 @@ class CacheManager(CacheManagerInterface):
         """
         return self._cache.get_stats()
 
-    def cache_ast(self, file_path: str, source_hash: str, ast: Any,
-        language: str, parse_time_ms: float) -> None:
+    def cache_ast(
+        self,
+        file_path: str,
+        source_hash: str,
+        ast: Any,
+        language: str,
+        parse_time_ms: float,
+    ) -> None:
         """Cache a parsed AST.
 
         Args:
@@ -145,12 +155,15 @@ class CacheManager(CacheManagerInterface):
             parse_time_ms: Time taken to parse
         """
         key = f"ast:{file_path}:{source_hash}"
-        value = {"ast": ast, "language": language, "parse_time_ms":
-            parse_time_ms, "source_hash": source_hash}
+        value = {
+            "ast": ast,
+            "language": language,
+            "parse_time_ms": parse_time_ms,
+            "source_hash": source_hash,
+        }
         self.put(key, value, ttl_seconds=3600)
 
-    def get_cached_ast(self, file_path: str, source_hash: str) -> (dict[str,
-        Any] | None):
+    def get_cached_ast(self, file_path: str, source_hash: str) -> dict[str, Any] | None:
         """Get cached AST if available.
 
         Args:
@@ -163,8 +176,12 @@ class CacheManager(CacheManagerInterface):
         key = f"ast:{file_path}:{source_hash}"
         return self.get(key)
 
-    def cache_chunks(self, file_path: str, source_hash: str, chunks: Any,
-        ) -> None:
+    def cache_chunks(
+        self,
+        file_path: str,
+        source_hash: str,
+        chunks: Any,
+    ) -> None:
         """Cache code chunks.
 
         Args:
@@ -175,8 +192,7 @@ class CacheManager(CacheManagerInterface):
         key = f"chunk:{file_path}:{source_hash}"
         self.put(key, chunks, ttl_seconds=1800)
 
-    def get_cached_chunks(self, file_path: str, source_hash: str) -> (Any | None
-        ):
+    def get_cached_chunks(self, file_path: str, source_hash: str) -> Any | None:
         """Get cached chunks if available.
 
         Args:
@@ -198,8 +214,12 @@ class CacheManager(CacheManagerInterface):
         Returns:
             Number of entries invalidated
         """
-        patterns = [f"ast:{file_path}:*", f"chunk:{file_path}:*",
-            f"query:{file_path}:*", f"metadata:{file_path}:*"]
+        patterns = [
+            f"ast:{file_path}:*",
+            f"chunk:{file_path}:*",
+            f"query:{file_path}:*",
+            f"metadata:{file_path}:*",
+        ]
         total = 0
         for pattern in patterns:
             total += self.invalidate_pattern(pattern)

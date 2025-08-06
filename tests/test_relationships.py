@@ -37,7 +37,12 @@ def test_chunk_id_generation():
 
 def test_parent_child_relationships():
     """Test parent-child relationship tracking."""
-    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        encoding="utf-8",
+        mode="w",
+        suffix=".py",
+        delete=False,
+    ) as f:
         f.write(
             """
 class OuterClass:
@@ -84,7 +89,12 @@ class OuterClass:
 
 def test_nested_functions():
     """Test nested function relationships."""
-    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        encoding="utf-8",
+        mode="w",
+        suffix=".py",
+        delete=False,
+    ) as f:
         f.write(
             """
 def outer_function():
@@ -127,7 +137,12 @@ def outer_function():
 
 def test_flat_structure_no_relationships():
     """Test that flat structure has no parent relationships."""
-    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        encoding="utf-8",
+        mode="w",
+        suffix=".py",
+        delete=False,
+    ) as f:
         f.write(
             """
 def function1():

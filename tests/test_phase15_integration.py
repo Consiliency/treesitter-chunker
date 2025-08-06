@@ -1,4 +1,5 @@
 """Integration tests for Phase 15: Production Readiness & Developer Experience."""
+
 import contextlib
 from pathlib import Path
 
@@ -20,12 +21,15 @@ class TestPhase15Integration:
         """Test that pre-commit checks run before CI/CD pipeline"""
         tooling = DeveloperToolingImpl()
         cicd = CICDPipelineStub()
-        changed_files = [Path("chunker/parser.py"), Path(
-            "chunker/factory.py"), Path("tests/test_parser.py")]
-        checks_passed, check_results = tooling.run_pre_commit_checks(
-            changed_files)
-        workflow_valid, errors = cicd.validate_workflow_syntax(Path(
-            ".github/workflows/test.yml"))
+        changed_files = [
+            Path("chunker/parser.py"),
+            Path("chunker/factory.py"),
+            Path("tests/test_parser.py"),
+        ]
+        checks_passed, check_results = tooling.run_pre_commit_checks(changed_files)
+        workflow_valid, errors = cicd.validate_workflow_syntax(
+            Path(".github/workflows/test.yml"),
+        )
         assert isinstance(checks_passed, bool)
         assert isinstance(check_results, dict)
         assert "linting" in check_results
@@ -39,12 +43,20 @@ class TestPhase15Integration:
         """Test debug tools can analyze built artifacts"""
         debug_viz = DebugVisualizationStub()
         build_system = BuildSystemStub()
-        success, build_info = build_system.compile_grammars(languages=[
-            "python", "javascript"], platform="linux", output_dir=Path(
-            "build/"))
-        ast_viz = debug_viz.visualize_ast(file_path="examples/sample.py",
-            language="python", output_format="json")
-        profile_data = debug_viz.profile_chunking(file_path="examples/sample.py", language="python")
+        success, build_info = build_system.compile_grammars(
+            languages=["python", "javascript"],
+            platform="linux",
+            output_dir=Path("build/"),
+        )
+        ast_viz = debug_viz.visualize_ast(
+            file_path="examples/sample.py",
+            language="python",
+            output_format="json",
+        )
+        profile_data = debug_viz.profile_chunking(
+            file_path="examples/sample.py",
+            language="python",
+        )
         assert isinstance(success, bool)
         assert isinstance(build_info, dict)
         assert isinstance(ast_viz, str | bytes)
@@ -63,18 +75,30 @@ class TestPhase15Integration:
         version = "1.0.0"
         all_files = list(Path("chunker").rglob("*.py"))
         checks_passed, _ = tooling.run_pre_commit_checks(all_files[:5])
-        test_results = cicd.run_test_matrix(python_versions=["3.8", "3.9",
-            "3.10"], platforms=["ubuntu-latest", "windows-latest",
-            "macos-latest"])
-        dist_info = cicd.build_distribution(version=version, platforms=[
-            "linux", "darwin", "win32"])
-        release_ready, _release_info = release_mgmt.prepare_release(version=version, changelog="""## New Features
-- Initial release""")
-        published, _pypi_info = distribution.publish_to_pypi(package_dir=Path("dist/"), repository="testpypi", dry_run=True)
+        test_results = cicd.run_test_matrix(
+            python_versions=["3.8", "3.9", "3.10"],
+            platforms=["ubuntu-latest", "windows-latest", "macos-latest"],
+        )
+        dist_info = cicd.build_distribution(
+            version=version,
+            platforms=["linux", "darwin", "win32"],
+        )
+        release_ready, _release_info = release_mgmt.prepare_release(
+            version=version,
+            changelog="""## New Features
+- Initial release""",
+        )
+        published, _pypi_info = distribution.publish_to_pypi(
+            package_dir=Path("dist/"),
+            repository="testpypi",
+            dry_run=True,
+        )
         assert isinstance(checks_passed, bool)
         assert isinstance(test_results, dict)
-        assert all("status" in result and "tests_run" in result for result in
-            test_results.values())
+        assert all(
+            "status" in result and "tests_run" in result
+            for result in test_results.values()
+        )
         assert isinstance(dist_info, dict)
         assert "wheels" in dist_info
         assert isinstance(release_ready, bool)
@@ -87,10 +111,19 @@ class TestPhase15Integration:
         build_system = BuildSystemStub()
         distribution = DistributionStub()
         platform_info = platform_support.detect_platform()
-        wheel_success, wheel_path = build_system.build_wheel(platform=platform_info.get("platform_tag", "unknown"), python_version="cp39", output_dir=Path("dist/"))
-        verify_success, verify_info = build_system.verify_build(artifact_path=wheel_path, platform=platform_info.get("platform_tag", "unknown"))
+        wheel_success, wheel_path = build_system.build_wheel(
+            platform=platform_info.get("platform_tag", "unknown"),
+            python_version="cp39",
+            output_dir=Path("dist/"),
+        )
+        verify_success, verify_info = build_system.verify_build(
+            artifact_path=wheel_path,
+            platform=platform_info.get("platform_tag", "unknown"),
+        )
         install_success, _install_info = distribution.verify_installation(
-            method="pip", platform=platform_info.get("os", "unknown"))
+            method="pip",
+            platform=platform_info.get("os", "unknown"),
+        )
         assert isinstance(platform_info, dict)
         assert "os" in platform_info
         assert isinstance(wheel_success, bool)
@@ -104,10 +137,15 @@ class TestPhase15Integration:
         """Test Docker image includes debug capabilities"""
         distribution = DistributionStub()
         # debug_viz = DebugVisualizationStub()  # Available if needed
-        docker_success, image_id = distribution.build_docker_image(tag="treesitter-chunker:latest", platforms=["linux/amd64",
-            "linux/arm64"])
-        comparison_data = ChunkComparisonStub().compare_strategies(file_path="/app/examples/sample.py", language="python", strategies=[
-            "default", "aggressive", "conservative"])
+        docker_success, image_id = distribution.build_docker_image(
+            tag="treesitter-chunker:latest",
+            platforms=["linux/amd64", "linux/arm64"],
+        )
+        comparison_data = ChunkComparisonStub().compare_strategies(
+            file_path="/app/examples/sample.py",
+            language="python",
+            strategies=["default", "aggressive", "conservative"],
+        )
         assert isinstance(docker_success, bool)
         assert isinstance(image_id, str)
         assert isinstance(comparison_data, dict)
@@ -122,10 +160,18 @@ class TestPhase15Integration:
         python_versions = ["3.8", "3.9", "3.10", "3.11"]
         wheels = []
         for py_version in python_versions:
-            success, wheel_path = build_system.build_wheel(platform="manylinux2014_x86_64", python_version=f"cp{py_version.replace('.', '')}", output_dir=Path("dist/"))
+            success, wheel_path = build_system.build_wheel(
+                platform="manylinux2014_x86_64",
+                python_version=f"cp{py_version.replace('.', '')}",
+                output_dir=Path("dist/"),
+            )
             wheels.append((success, wheel_path))
         artifacts = [wheel[1] for wheel in wheels]
-        release_data = cicd.create_release(version="1.0.0", artifacts=artifacts, changelog="Multi-version release")
+        release_data = cicd.create_release(
+            version="1.0.0",
+            artifacts=artifacts,
+            changelog="Multi-version release",
+        )
         assert len(wheels) == len(python_versions)
         assert all(isinstance(w[0], bool) for w in wheels)
         assert all(isinstance(w[1], Path) for w in wheels)
@@ -155,13 +201,19 @@ class TestPhase15Integration:
         distribution_results = []
         if platform.get("os") == "darwin":
             success, formula_path = distribution.create_homebrew_formula(
-                version="1.0.0", output_path=Path("formula/"))
+                version="1.0.0",
+                output_path=Path("formula/"),
+            )
             distribution_results.append(("homebrew", success, formula_path))
-        success, pypi_info = distribution.publish_to_pypi(package_dir=Path(
-            "dist/"), dry_run=True)
+        success, pypi_info = distribution.publish_to_pypi(
+            package_dir=Path("dist/"),
+            dry_run=True,
+        )
         distribution_results.append(("pypi", success, pypi_info))
         if platform.get("os") in {"linux", "windows"}:
-            success, image_id = distribution.build_docker_image(tag="treesitter-chunker:1.0.0")
+            success, image_id = distribution.build_docker_image(
+                tag="treesitter-chunker:1.0.0",
+            )
             distribution_results.append(("docker", success, image_id))
         assert len(distribution_results) >= 1
         assert all(isinstance(r[1], bool) for r in distribution_results)

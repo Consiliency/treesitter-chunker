@@ -3,7 +3,9 @@
 This module tests various scenarios for discovering and loading plugins
 from custom directories, including edge cases and error conditions.
 """
+
 import os
+import pathlib
 from unittest.mock import patch
 
 import pytest
@@ -45,7 +47,7 @@ class SimplePlugin(LanguagePlugin):
     def get_node_name(self, node, source):
         return "test\"
 """,
-            )
+        )
         plugins_created.append("SimplePlugin")
         plugin2_file = plugin_dir / "complex_plugin.py"
         plugin2_file.write_text(
@@ -78,7 +80,7 @@ class ComplexPlugin(LanguagePlugin):
     def get_node_name(self, node, source):
         return "test\"
 """,
-            )
+        )
         plugins_created.append("ComplexPlugin")
         manager = PluginManager()
         manager.add_plugin_directory(plugin_dir)
@@ -130,16 +132,41 @@ class {class_name}(LanguagePlugin):
     def get_node_name(self, node, source):
         return "test\"
 """
-        (dir1 / "lang1_plugin.py").write_text(plugin_template.format(
-            class_name="Lang1Plugin", lang_name="lang1", ext="l1"))
-        (dir1 / "lang2_plugin.py").write_text(plugin_template.format(
-            class_name="Lang2Plugin", lang_name="lang2", ext="l2"))
-        (dir2 / "lang3_plugin.py").write_text(plugin_template.format(
-            class_name="Lang3Plugin", lang_name="lang3", ext="l3"))
-        (dir3 / "lang4_plugin.py").write_text(plugin_template.format(
-            class_name="Lang4Plugin", lang_name="lang4", ext="l4"))
-        (dir3 / "lang5_plugin.py").write_text(plugin_template.format(
-            class_name="Lang5Plugin", lang_name="lang5", ext="l5"))
+        (dir1 / "lang1_plugin.py").write_text(
+            plugin_template.format(
+                class_name="Lang1Plugin",
+                lang_name="lang1",
+                ext="l1",
+            ),
+        )
+        (dir1 / "lang2_plugin.py").write_text(
+            plugin_template.format(
+                class_name="Lang2Plugin",
+                lang_name="lang2",
+                ext="l2",
+            ),
+        )
+        (dir2 / "lang3_plugin.py").write_text(
+            plugin_template.format(
+                class_name="Lang3Plugin",
+                lang_name="lang3",
+                ext="l3",
+            ),
+        )
+        (dir3 / "lang4_plugin.py").write_text(
+            plugin_template.format(
+                class_name="Lang4Plugin",
+                lang_name="lang4",
+                ext="l4",
+            ),
+        )
+        (dir3 / "lang5_plugin.py").write_text(
+            plugin_template.format(
+                class_name="Lang5Plugin",
+                lang_name="lang5",
+                ext="l5",
+            ),
+        )
         manager = PluginManager()
         for d in [dir1, dir2, dir3]:
             manager.add_plugin_directory(d)
@@ -186,14 +213,38 @@ class {class_name}(LanguagePlugin):
     def get_node_name(self, node, source):
         return "test\"
 """
-        (root_dir / "root_plugin.py").write_text(plugin_template.format(
-            class_name="RootPlugin", name="root", ext="root", location="root"))
-        (sub_dir1 / "cat1_plugin.py").write_text(plugin_template.format(
-            class_name="Cat1Plugin", name="cat1", ext="c1", location="category1"))
-        (sub_dir2 / "cat2_plugin.py").write_text(plugin_template.format(
-            class_name="Cat2Plugin", name="cat2", ext="c2", location="category2"))
-        (deep_dir / "deep_plugin.py").write_text(plugin_template.format(
-            class_name="DeepPlugin", name="deep", ext="deep", location="subcategory"))
+        (root_dir / "root_plugin.py").write_text(
+            plugin_template.format(
+                class_name="RootPlugin",
+                name="root",
+                ext="root",
+                location="root",
+            ),
+        )
+        (sub_dir1 / "cat1_plugin.py").write_text(
+            plugin_template.format(
+                class_name="Cat1Plugin",
+                name="cat1",
+                ext="c1",
+                location="category1",
+            ),
+        )
+        (sub_dir2 / "cat2_plugin.py").write_text(
+            plugin_template.format(
+                class_name="Cat2Plugin",
+                name="cat2",
+                ext="c2",
+                location="category2",
+            ),
+        )
+        (deep_dir / "deep_plugin.py").write_text(
+            plugin_template.format(
+                class_name="DeepPlugin",
+                name="deep",
+                ext="deep",
+                location="subcategory",
+            ),
+        )
         manager = PluginManager()
         manager.add_plugin_directory(root_dir)
         root_plugins = manager.discover_plugins(root_dir)
@@ -242,7 +293,7 @@ class ValidPlugin(LanguagePlugin):
     def get_node_name(self, node, source):
         return "test\"
 """,
-            )
+        )
         syntax_error_file = plugin_dir / "syntax_error.py"
         syntax_error_file.write_text(
             """
@@ -253,7 +304,7 @@ class SyntaxErrorPlugin(LanguagePlugin  # Missing closing parenthesis
     def language_name(self):
         return "syntax_error\"
 """,
-            )
+        )
         import_error_file = plugin_dir / "import_error.py"
         import_error_file.write_text(
             """
@@ -265,7 +316,7 @@ class ImportErrorPlugin(LanguagePlugin):
     def language_name(self):
         return "import_error\"
 """,
-            )
+        )
         not_plugin_file = plugin_dir / "not_plugin.py"
         not_plugin_file.write_text(
             """
@@ -273,7 +324,7 @@ class ImportErrorPlugin(LanguagePlugin):
 def hello():
     return "world\"
 """,
-            )
+        )
         wrong_base_file = plugin_dir / "wrong_base.py"
         wrong_base_file.write_text(
             """
@@ -282,7 +333,7 @@ class WrongBasePlugin:  # Not inheriting from LanguagePlugin
     def language_name(self):
         return "wrong_base\"
 """,
-            )
+        )
         manager = PluginManager()
         manager.add_plugin_directory(plugin_dir)
         with patch("chunker.plugin_manager.logger") as mock_logger:
@@ -324,7 +375,7 @@ class ReadablePlugin(LanguagePlugin):
     def get_node_name(self, node, source):
         return "test\"
 """,
-            )
+        )
         manager = PluginManager()
         non_existent = tmp_path / "non_existent"
         with patch("chunker.plugin_manager.logger") as mock_logger:
@@ -343,13 +394,13 @@ class ReadablePlugin(LanguagePlugin):
         if os.name != "nt":
             unreadable_dir = tmp_path / "unreadable_plugins"
             unreadable_dir.mkdir()
-            os.chmod(unreadable_dir, 0)
+            pathlib.Path(unreadable_dir).chmod(0)
             try:
                 with patch("chunker.plugin_manager.logger") as mock_logger:
                     plugins = manager.discover_plugins(unreadable_dir)
                     assert len(plugins) == 0
             finally:
-                os.chmod(unreadable_dir, 493)
+                pathlib.Path(unreadable_dir).chmod(0o755)
 
     @classmethod
     def test_plugin_file_patterns(cls, tmp_path):
@@ -379,15 +430,23 @@ class {class_name}(LanguagePlugin):
     def get_node_name(self, node, source):
         return "test\"
 """
-        patterns = [("plugin_lang1.py", "PluginLang1", "lang1", "l1"), (
-            "lang2_plugin.py", "Lang2Plugin", "lang2", "l2"), (
-            "my_custom_lang.py", "MyCustomLang", "customlang", "cl"), (
-            "advanced_lang_support.py", "AdvancedLangSupport", "advlang",
-            "al"), ("__test_plugin.py", "TestPlugin", "testlang", "tl")]
+        patterns = [
+            ("plugin_lang1.py", "PluginLang1", "lang1", "l1"),
+            ("lang2_plugin.py", "Lang2Plugin", "lang2", "l2"),
+            ("my_custom_lang.py", "MyCustomLang", "customlang", "cl"),
+            ("advanced_lang_support.py", "AdvancedLangSupport", "advlang", "al"),
+            ("__test_plugin.py", "TestPlugin", "testlang", "tl"),
+        ]
         for filename, class_name, lang_name, ext in patterns:
             if not filename.startswith("__"):
                 file_path = plugin_dir / filename
-                file_path.write_text(plugin_template.format(class_name=class_name, name=lang_name, ext=ext))
+                file_path.write_text(
+                    plugin_template.format(
+                        class_name=class_name,
+                        name=lang_name,
+                        ext=ext,
+                    ),
+                )
         manager = PluginManager()
         plugins = manager.discover_plugins(plugin_dir)
         assert len(plugins) >= 4
@@ -432,7 +491,7 @@ class HotPlugin1(LanguagePlugin):
     def get_node_name(self, node, source):
         return "test\"
 """,
-            )
+        )
         plugins = manager.discover_plugins(plugin_dir)
         assert len(plugins) == 1
         plugin2_file = plugin_dir / "hot_plugin2.py"
@@ -460,7 +519,7 @@ class HotPlugin2(LanguagePlugin):
     def get_node_name(self, node, source):
         return "test\"
 """,
-            )
+        )
         plugins = manager.discover_plugins(plugin_dir)
         assert len(plugins) == 2
         plugin1_file.unlink()
@@ -508,7 +567,7 @@ class SymlinkedPlugin(LanguagePlugin):
     def get_node_name(self, node, source):
         return "test\"
 """,
-            )
+        )
         symlink_dir = tmp_path / "plugin_link"
         symlink_dir.symlink_to(actual_dir)
         manager = PluginManager()

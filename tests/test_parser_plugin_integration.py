@@ -11,6 +11,7 @@ Note: Since the current implementation doesn't have full plugin integration with
 the parser factory, these tests demonstrate the patterns that would be used in
 a full integration while working with the existing architecture.
 """
+
 import gc
 import os
 import shutil
@@ -28,10 +29,8 @@ import psutil
 import pytest
 import tree_sitter
 
-
 from chunker._internal.factory import ParserFactory
 from chunker._internal.registry import LanguageRegistry
-
 
 
 class MockDynamicParser:
@@ -63,8 +62,13 @@ class TestParserPoolManagement:
     def setup_method(self):
         """Set up test environment."""
         try:
-            lib_path = Path(__file__,
-                ).parent.parent / "build" / "my-languages.so"
+            lib_path = (
+                Path(
+                    __file__,
+                ).parent.parent
+                / "build"
+                / "my-languages.so"
+            )
             self.registry = LanguageRegistry(lib_path)
         except (FileNotFoundError, ImportError, ModuleNotFoundError):
             self.registry = Mock(spec=LanguageRegistry)
@@ -82,8 +86,10 @@ class TestParserPoolManagement:
     def test_dynamic_language_parser_pool_creation(self):
         """Test that parser pools are created for dynamically loaded languages."""
         dynamic_lang = "dynamic_test_lang"
-        with patch.object(self.parser_factory._registry, "get_language",
-            ) as mock_get_lang:
+        with patch.object(
+            self.parser_factory._registry,
+            "get_language",
+        ) as mock_get_lang:
             mock_get_lang.return_value = Mock()
             parsers = []
             for _i in range(5):
@@ -114,8 +120,7 @@ class TestParserPoolManagement:
             except (IndexError, KeyError, SyntaxError):
                 pass
         assert parsers_added == max_pool_size
-        assert self.parser_factory._pools[dynamic_lang].qsize(
-            ) == max_pool_size
+        assert self.parser_factory._pools[dynamic_lang].qsize() == max_pool_size
 
     def test_parser_pool_cleanup_pattern(self):
         """Test cleanup pattern when plugins are unloaded."""
@@ -145,8 +150,7 @@ class TestParserPoolManagement:
             else:
                 self.parser_factory._pools[dynamic_lang].put(parser)
                 successful_puts += 1
-        assert self.parser_factory._pools[dynamic_lang].qsize(
-            ) == successful_puts
+        assert self.parser_factory._pools[dynamic_lang].qsize() == successful_puts
         assert failed_puts > 0
 
 
@@ -209,6 +213,7 @@ class TestMemoryLeaks:
             def __init__(self, language):
                 super().__init__(language)
                 self.pool_ref = None
+
         parser = CircularParser("circular_test")
         parser_ref = weakref.ref(parser)
         pool = Queue()
@@ -259,6 +264,7 @@ class TestThreadSafety:
             except (OSError, IndexError, KeyError) as e:
                 with self.lock:
                     self.errors.append((worker_id, str(e)))
+
         threads = []
         for i in range(5):
             thread = threading.Thread(target=worker, args=(i,))
@@ -294,6 +300,7 @@ class TestThreadSafety:
                 with parser_lock:
                     active_parsers.remove(parser.id)
                 pool.put(parser)
+
         threads = []
         for i in range(10):
             thread = threading.Thread(target=worker, args=(i,))
@@ -322,8 +329,7 @@ class TestParserConfiguration:
     def test_configuration_propagation_pattern(cls):
         """Test pattern for propagating configuration to parsers."""
         parser = MockDynamicParser("config_test")
-        config = {"timeout": 5000, "max_depth": 50, "custom_option":
-            "test_value"}
+        config = {"timeout": 5000, "max_depth": 50, "custom_option": "test_value"}
         if "timeout" in config:
             parser.set_timeout_micros(config["timeout"])
         parser.config.update(config)
@@ -353,6 +359,7 @@ class TestParserConfiguration:
                 raise ValueError("Timeout must be positive")
             if "max_depth" in config and config["max_depth"] > 1000:
                 raise ValueError("Max depth too large")
+
         with pytest.raises(ValueError, match="Timeout must be positive"):
             validate_config({"timeout": -100})
         with pytest.raises(ValueError, match="Max depth too large"):
@@ -411,6 +418,7 @@ class TestIntegrationPatterns:
                 if current_count >= self.fail_after:
                     raise RuntimeError("Parser failed")
                 return MockDynamicParser.parse(self, code, keep_text)
+
         parser = FailingParser()
         successful_parses = 0
         failed_parses = 0
@@ -439,6 +447,7 @@ class TestIntegrationPatterns:
             parser = parsers[lang]
             parser.parse_count += 1
             parser.parse(b"test")
+
         with ThreadPoolExecutor(max_workers=10) as executor:
             futures = []
             for lang in parsers:

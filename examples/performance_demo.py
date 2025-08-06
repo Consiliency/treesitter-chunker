@@ -67,7 +67,12 @@ class TestClass:
         return 3
 '''
 
-    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        encoding="utf-8",
+        mode="w",
+        suffix=".py",
+        delete=False,
+    ) as f:
         f.write(test_content)
         test_file = Path(f.name)
 
@@ -236,7 +241,7 @@ def main():
     for demo in demos:
         try:
             demo()
-        except (TypeError, ValueError) as e:
+        except (TypeError, ValueError) as e:  # noqa: PERF203
             print(f"\nError in {demo.__name__}: {e}")
 
     print("\n\nDemo complete!")

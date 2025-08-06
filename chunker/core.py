@@ -28,10 +28,10 @@ def _walk(
     config = language_config_registry.get(language)
     if not config:
         # Fallback to hardcoded defaults for backward compatibility
-        CHUNK_TYPES = {"function_definition", "class_definition", "method_definition"}
+        chunk_types = {"function_definition", "class_definition", "method_definition"}
 
         def should_chunk(node_type):
-            return node_type in CHUNK_TYPES
+            return node_type in chunk_types
 
         def should_ignore(_node_type):
             return False

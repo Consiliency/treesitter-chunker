@@ -63,7 +63,7 @@ class ExtendedLanguagePluginContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def get_node_context(node: Node, source: bytes) -> (str | None):
+    def get_node_context(node: Node, source: bytes) -> str | None:
         """Extract meaningful context for a node
 
         Args:

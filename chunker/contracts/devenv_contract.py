@@ -2,6 +2,7 @@
 Contract for Development Environment Component
 Defines the interface for pre-commit hooks, linting, and CI/CD integration
 """
+
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
@@ -34,8 +35,10 @@ class DevelopmentEnvironmentContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def run_linting(paths: (list[str] | None) = None, fix: bool = False) -> tuple[
-        bool, list[dict[str, Any]]]:
+    def run_linting(
+        paths: list[str] | None = None,
+        fix: bool = False,
+    ) -> tuple[bool, list[dict[str, Any]]]:
         """
         Run linting tools (ruff, mypy) on specified paths
 
@@ -58,8 +61,10 @@ class DevelopmentEnvironmentContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def format_code(paths: (list[str] | None) = None, check_only: bool = False,
-        ) -> tuple[bool, list[str]]:
+    def format_code(
+        paths: list[str] | None = None,
+        check_only: bool = False,
+    ) -> tuple[bool, list[str]]:
         """
         Format code using configured formatter (black/ruff)
 
@@ -82,8 +87,10 @@ class DevelopmentEnvironmentContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def generate_ci_config(platforms: list[str], python_versions: list[str],
-        ) -> dict[str, Any]:
+    def generate_ci_config(
+        platforms: list[str],
+        python_versions: list[str],
+    ) -> dict[str, Any]:
         """
         Generate CI/CD configuration for specified platforms
 
@@ -110,8 +117,7 @@ class QualityAssuranceContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def check_type_coverage(min_coverage: float = 80.0) -> tuple[float, dict[
-        str, Any]]:
+    def check_type_coverage(min_coverage: float = 80.0) -> tuple[float, dict[str, Any]]:
         """
         Check type annotation coverage using mypy
 
@@ -133,8 +139,7 @@ class QualityAssuranceContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def check_test_coverage(min_coverage: float = 80.0) -> tuple[float, dict[
-        str, Any]]:
+    def check_test_coverage(min_coverage: float = 80.0) -> tuple[float, dict[str, Any]]:
         """
         Check test coverage using pytest-cov
 

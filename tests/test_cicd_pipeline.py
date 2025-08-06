@@ -17,7 +17,12 @@ class TestCICDPipelineImpl:
 
     def test_validate_workflow_syntax_valid_workflow(self):
         """Test validation of a valid workflow"""
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".yml", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".yml",
+            delete=False,
+        ) as f:
             workflow = {
                 "name": "Test Workflow",
                 "on": ["push", "pull_request"],
@@ -43,7 +48,12 @@ class TestCICDPipelineImpl:
 
     def test_validate_workflow_syntax_missing_required_fields(self):
         """Test validation catches missing required fields"""
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".yml", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".yml",
+            delete=False,
+        ) as f:
             # Missing 'name' and 'on'
             workflow = {
                 "jobs": {
@@ -67,7 +77,12 @@ class TestCICDPipelineImpl:
 
     def test_validate_workflow_syntax_invalid_yaml(self):
         """Test validation handles invalid YAML"""
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".yml", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".yml",
+            delete=False,
+        ) as f:
             f.write("invalid: yaml:\n  - with bad: indentation:\nand syntax")
             workflow_path = Path(f.name)
 
@@ -89,7 +104,12 @@ class TestCICDPipelineImpl:
 
     def test_validate_workflow_syntax_job_validation(self):
         """Test validation of job structure"""
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".yml", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".yml",
+            delete=False,
+        ) as f:
             workflow = {
                 "name": "Test",
                 "on": "push",

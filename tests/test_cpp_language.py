@@ -10,6 +10,7 @@ As a result, these tests verify that C++ code can be parsed and that functions/m
 are properly detected, but more advanced chunking (classes, namespaces, templates as
 separate chunks) requires proper configuration setup.
 """
+
 import importlib
 
 import pytest
@@ -54,7 +55,7 @@ auto add(T a, U b) -> decltype(a + b) {
     return a + b;
 }
 """,
-            )
+        )
         chunks = chunk_file(test_file, "cpp")
         assert len(chunks) == 2
         for chunk in chunks:
@@ -102,15 +103,15 @@ private:
     std::vector<uint8_t> data_;
 };
 """,
-            )
+        )
         chunks = chunk_file(test_file, "cpp")
         assert len(chunks) >= 4
-        method_names = [c.content.split("(")[0].split()[-1] for c in chunks if
-            "(" in c.content]
+        method_names = [
+            c.content.split("(")[0].split()[-1] for c in chunks if "(" in c.content
+        ]
         assert "Vector" in method_names
         assert "push_back" in method_names
-        assert "operator[]" in method_names or "operator" in " ".join(
-            method_names)
+        assert "operator[]" in method_names or "operator" in " ".join(method_names)
 
     @staticmethod
     def test_namespace_handling(tmp_path):
@@ -159,10 +160,9 @@ namespace MyLib::Network {  // C++17 nested namespace
     };
 }
 """,
-            )
+        )
         chunks = chunk_file(test_file, "cpp")
-        function_chunks = [c for c in chunks if c.node_type ==
-            "function_definition"]
+        function_chunks = [c for c in chunks if c.node_type == "function_definition"]
         assert len(function_chunks) >= 5
         assert any("swap" in c.content for c in chunks)
         assert any("log" in c.content for c in chunks)
@@ -224,13 +224,13 @@ private:
     double height_;
 };
 """,
-            )
+        )
         chunks = chunk_file(test_file, "cpp")
-        function_chunks = [c for c in chunks if c.node_type ==
-            "function_definition"]
+        function_chunks = [c for c in chunks if c.node_type == "function_definition"]
         assert len(function_chunks) >= 8
-        virtual_methods = [c for c in chunks if "virtual" in c.content or
-            "override" in c.content]
+        virtual_methods = [
+            c for c in chunks if "virtual" in c.content or "override" in c.content
+        ]
         assert len(virtual_methods) >= 6
         assert any("area" in c.content for c in chunks)
         assert any("perimeter" in c.content for c in chunks)
@@ -301,7 +301,7 @@ Complex operator*(double scalar, const Complex& c) {
     return Complex(scalar * c.real_, scalar * c.imag_);
 }
 """,
-            )
+        )
         chunks = chunk_file(test_file, "cpp")
         operator_chunks = [c for c in chunks if "operator" in c.content]
         assert len(operator_chunks) >= 10
@@ -385,10 +385,9 @@ void demonstrateSTL() {
                   [](int n) { return n * n; });
 }
 """,
-            )
+        )
         chunks = chunk_file(test_file, "cpp")
-        function_chunks = [c for c in chunks if c.node_type ==
-            "function_definition"]
+        function_chunks = [c for c in chunks if c.node_type == "function_definition"]
         assert len(function_chunks) >= 6
         template_methods = [c for c in chunks if "filter" in c.content]
         assert len(template_methods) >= 1
@@ -465,10 +464,9 @@ private:
     size_t size_;
 };
 """,
-            )
+        )
         chunks = chunk_file(test_file, "cpp")
-        all_functions = [c for c in chunks if c.node_type ==
-            "function_definition"]
+        all_functions = [c for c in chunks if c.node_type == "function_definition"]
         assert len(all_functions) >= 7
         constructor_like = [c for c in chunks if "Resource(" in c.content]
         assert len(constructor_like) >= 3
@@ -540,17 +538,22 @@ public:
     NonCopyable& operator=(NonCopyable&&) = default;
 };
 """,
-            )
+        )
         chunks = chunk_file(test_file, "cpp")
         assert len(chunks) >= 4
-        constexpr_chunks = [c for c in chunks if "constexpr" in c.content and
-            "factorial" in c.content]
+        constexpr_chunks = [
+            c for c in chunks if "constexpr" in c.content and "factorial" in c.content
+        ]
         assert len(constexpr_chunks) >= 1
-        variadic_chunks = [c for c in chunks if "print" in c.content and
-            "..." in c.content]
+        variadic_chunks = [
+            c for c in chunks if "print" in c.content and "..." in c.content
+        ]
         assert len(variadic_chunks) >= 1
-        concept_chunks = [c for c in chunks if "add" in c.content and c.
-            node_type == "function_definition"]
+        concept_chunks = [
+            c
+            for c in chunks
+            if "add" in c.content and c.node_type == "function_definition"
+        ]
         assert len(concept_chunks) >= 1
         assert any("getPoint" in c.content for c in chunks)
 
@@ -613,10 +616,9 @@ struct Container {
     };
 };
 """,
-            )
+        )
         chunks = chunk_file(test_file, "cpp")
-        function_chunks = [c for c in chunks if c.node_type ==
-            "function_definition"]
+        function_chunks = [c for c in chunks if c.node_type == "function_definition"]
         assert len(function_chunks) >= 5
         inner_method_chunks = [c for c in chunks if "innerMethod" in c.content]
         assert len(inner_method_chunks) >= 1

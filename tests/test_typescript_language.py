@@ -1,4 +1,5 @@
 """Test TypeScript and TSX language support."""
+
 import pytest
 
 from chunker.core import chunk_text
@@ -82,8 +83,7 @@ export default Modal;
 """
         chunks = chunk_text(code, language="tsx")
         assert len(chunks) >= 2
-        component_chunk = next((c for c in chunks if "Modal" in c.content),
-            None)
+        component_chunk = next((c for c in chunks if "Modal" in c.content), None)
         assert component_chunk is not None
         assert "<div" in component_chunk.content
 
@@ -179,8 +179,7 @@ namespace Validation {
 """
         chunks = chunk_text(code, language="typescript")
         assert len(chunks) >= 1
-        namespace_chunk = next((c for c in chunks if "namespace" in c.
-            content), None)
+        namespace_chunk = next((c for c in chunks if "namespace" in c.content), None)
         assert namespace_chunk is not None
 
     @staticmethod

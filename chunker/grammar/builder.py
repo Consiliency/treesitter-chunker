@@ -1,4 +1,5 @@
 """Tree-sitter grammar builder implementation."""
+
 import logging
 import platform
 import shutil
@@ -26,8 +27,11 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
         self._source_dir = Path("grammars")
         self._build_logs: dict[str, str] = {}
         self._platform = platform.system()
-        self._lib_extension = {"Linux": ".so", "Darwin": ".dylib",
-            "Windows": ".dll"}.get(self._platform, ".so")
+        self._lib_extension = {
+            "Linux": ".so",
+            "Darwin": ".dylib",
+            "Windows": ".dll",
+        }.get(self._platform, ".so")
 
     def set_build_directory(self, path: Path) -> None:
         """Set directory for build output.
@@ -61,13 +65,13 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
             lang_path = self._source_dir / f"tree-sitter-{lang}"
             if not lang_path.exists():
 
-
                 logger.error(
-                    "Source directory for '%s' not found at %s", lang, lang_path,
+                    "Source directory for '%s' not found at %s",
+                    lang,
+                    lang_path,
                 )
                 results[lang] = False
-                self._build_logs[lang
-                    ] = f"Source directory not found: {lang_path}"
+                self._build_logs[lang] = f"Source directory not found: {lang_path}"
                 continue
             language_paths.append((lang, lang_path))
         if not language_paths:
@@ -75,16 +79,19 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
         lib_path = self._build_dir / f"languages{self._lib_extension}"
         try:
             logger.info("Building %s languages...", len(language_paths))
-            Language.build_library(str(lib_path), [str(path) for _, path in
-                language_paths])
+            Language.build_library(
+                str(lib_path),
+                [str(path) for _, path in language_paths],
+            )
             if lib_path.exists():
                 logger.info("Successfully built library at %s", lib_path)
                 for lang, _ in language_paths:
                     results[lang] = True
                     self._build_logs[lang] = "Build successful"
             else:
-                raise BuildError(f"Library file_path not created at {lib_path}",
-                    )
+                raise BuildError(
+                    f"Library file_path not created at {lib_path}",
+                )
         except (FileNotFoundError, IndexError, KeyError) as e:
             logger.error("Build failed: %s", e)
             for lang, _ in language_paths:
@@ -117,8 +124,7 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
             if not c_files:
                 raise BuildError(f"No C source files found in {src_dir}")
             cmd = ["gcc", "-shared", "-fPIC", "-o", str(lib_path), *c_files]
-            result = subprocess.run(cmd, check=False, capture_output=True,
-                text=True)
+            result = subprocess.run(cmd, check=False, capture_output=True, text=True)
             if result.returncode != 0:
                 raise BuildError(f"Compilation failed: {result.stderr}")
             if lib_path.exists():
@@ -131,31 +137,34 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
             self._build_logs[language] = str(e)
             return False
 
-    def clean(self, language: (str | None) = None) -> None:
+    def clean(self, language: str | None = None) -> None:
         """Clean build artifacts.
 
         Args:
             language: Specific language (None for all)
         """
         if language:
-            patterns = [f"{language}{self._lib_extension}",
-                f"{language}.*{self._lib_extension}"]
+            patterns = [
+                f"{language}{self._lib_extension}",
+                f"{language}.*{self._lib_extension}",
+            ]
         else:
-            patterns = [f"*{self._lib_extension}", "*.o", "*.obj", "*.exp",
-                "*.lib"]
+            patterns = [f"*{self._lib_extension}", "*.o", "*.obj", "*.exp", "*.lib"]
         cleaned = 0
         for pattern in patterns:
             for file_path in self._build_dir.glob(pattern):
-                try:
-                    file_path.unlink()
-                    cleaned += 1
-                    logger.debug("Removed %s", file_path)
-                except (FileNotFoundError, OSError) as e:
-                    logger.error("Failed to remove %s: %s", file_path, e)
+                # Use LBYL pattern to avoid try-except in loop
+                if file_path.exists():
+                    try:
+                        file_path.unlink()
+                        cleaned += 1
+                        logger.debug("Removed %s", file_path)
+                    except OSError as e:
+                        logger.error("Failed to remove %s: %s", file_path, e)
         if cleaned > 0:
             logger.info("Cleaned %s build artifacts", cleaned)
 
-    def get_build_log(self, language: str) -> (str | None):
+    def get_build_log(self, language: str) -> str | None:
         """Get build log for a language.
 
         Args:

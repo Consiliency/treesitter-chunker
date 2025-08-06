@@ -2,6 +2,7 @@
 Contract for Build System Component
 Defines the interface for cross-platform build support
 """
+
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
@@ -12,8 +13,11 @@ class BuildSystemContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def compile_grammars(languages: list[str], platform: str, output_dir: Path,
-        ) -> tuple[bool, dict[str, Any]]:
+    def compile_grammars(
+        languages: list[str],
+        platform: str,
+        output_dir: Path,
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Compile tree-sitter grammars for specified platform
 
@@ -38,8 +42,11 @@ class BuildSystemContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def build_wheel(platform: str, python_version: str, output_dir: Path,
-        ) -> tuple[bool, Path]:
+    def build_wheel(
+        platform: str,
+        python_version: str,
+        output_dir: Path,
+    ) -> tuple[bool, Path]:
         """
         Build platform-specific wheel for distribution
 
@@ -63,8 +70,7 @@ class BuildSystemContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def create_conda_package(platform: str, output_dir: Path) -> tuple[bool,
-        Path]:
+    def create_conda_package(platform: str, output_dir: Path) -> tuple[bool, Path]:
         """
         Create conda package for distribution
 
@@ -87,8 +93,7 @@ class BuildSystemContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def verify_build(artifact_path: Path, platform: str) -> tuple[bool, dict
-        [str, Any]]:
+    def verify_build(artifact_path: Path, platform: str) -> tuple[bool, dict[str, Any]]:
         """
         Verify build artifact is correctly constructed
 

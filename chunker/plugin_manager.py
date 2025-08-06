@@ -28,14 +28,13 @@ class PluginRegistry:
     def register(self, plugin_class: type[LanguagePlugin]) -> None:
         """Register a plugin class."""
         if not issubclass(plugin_class, LanguagePlugin):
-            raise TypeError(
-                f"{plugin_class} must be a subclass of LanguagePlugin")
+            raise TypeError(f"{plugin_class} must be a subclass of LanguagePlugin")
         try:
             temp_instance = plugin_class()
         except (IndexError, KeyError, OSError) as e:
             raise RuntimeError(
                 f"Failed to instantiate plugin {plugin_class.__name__}: {e}",
-                ) from e
+            ) from e
         language = temp_instance.language_name
         metadata = temp_instance.plugin_metadata
         if language in self._plugins:
@@ -52,12 +51,11 @@ class PluginRegistry:
             )
 
         # Check for extension conflicts
-        extension_conflicts = []
-        for ext in temp_instance.supported_extensions:
-            if ext in self._extension_map and self._extension_map[ext] != language:
-                extension_conflicts.append(
-                    f"{ext} (currently mapped to {self._extension_map[ext]})",
-                )
+        extension_conflicts = [
+            f"{ext} (currently mapped to {self._extension_map[ext]})"
+            for ext in temp_instance.supported_extensions
+            if ext in self._extension_map and self._extension_map[ext] != language
+        ]
 
         if extension_conflicts:
             logger.info(
@@ -89,8 +87,11 @@ class PluginRegistry:
             self._instances.pop(language, None)
             logger.info("Unregistered plugin for language: %s", language)
 
-    def get_plugin(self, language: str, config: (PluginConfig | None) = None,
-        ) -> LanguagePlugin:
+    def get_plugin(
+        self,
+        language: str,
+        config: PluginConfig | None = None,
+    ) -> LanguagePlugin:
         """Get or create a plugin instance."""
         if language not in self._plugins:
             raise ValueError(f"No plugin registered for language: {language}")
@@ -108,7 +109,7 @@ class PluginRegistry:
             self._instances[language] = instance
         return instance
 
-    def get_language_for_file(self, file_path: Path) -> (str | None):
+    def get_language_for_file(self, file_path: Path) -> str | None:
         """Determine language from file extension."""
         ext = file_path.suffix.lower()
         return self._extension_map.get(ext)
@@ -139,8 +140,10 @@ class PluginManager:
         else:
             logger.warning("Plugin directory does not exist: %s", directory)
 
-    def discover_plugins(self, directory: (Path | None) = None) -> list[type[
-        LanguagePlugin]]:
+    def discover_plugins(
+        self,
+        directory: Path | None = None,
+    ) -> list[type[LanguagePlugin]]:
         """Discover plugin classes in a directory."""
         plugins: list[type[LanguagePlugin]] = []
         if directory:
@@ -157,12 +160,10 @@ class PluginManager:
                     plugin_classes = self._load_plugin_from_file(py_file)
                     plugins.extend(plugin_classes)
                 except (FileNotFoundError, IndexError, KeyError) as e:
-                    logger.error("Failed to load plugin from %s: %s",
-                        py_file, e)
+                    logger.error("Failed to load plugin from %s: %s", py_file, e)
         return plugins
 
-    def _load_plugin_from_file(self, file_path: Path) -> list[type[
-        LanguagePlugin]]:
+    def _load_plugin_from_file(self, file_path: Path) -> list[type[LanguagePlugin]]:
         """Load plugin classes from a Python file."""
         module_name = f"chunker_plugin_{file_path.stem}_{id(file_path)}"
         if module_name in self._loaded_modules:
@@ -171,13 +172,18 @@ class PluginManager:
             try:
                 if file_path.stem == "base":
                     return []
-                module = importlib.import_module(
-                    f"chunker.languages.{file_path.stem}")
+                module = importlib.import_module(f"chunker.languages.{file_path.stem}")
                 plugins = []
                 for _name, obj in inspect.getmembers(module):
-                    if inspect.isclass(obj) and issubclass(obj, LanguagePlugin,
-                        ) and obj is not LanguagePlugin and not inspect.isabstract(
-                        obj):
+                    if (
+                        inspect.isclass(obj)
+                        and issubclass(
+                            obj,
+                            LanguagePlugin,
+                        )
+                        and obj is not LanguagePlugin
+                        and not inspect.isabstract(obj)
+                    ):
                         plugins.append(obj)
                         logger.info(
                             "Found plugin class: %s in %s",
@@ -187,12 +193,14 @@ class PluginManager:
 
                 return plugins
             except ImportError as e:
-                logger.error("Failed to import builtin plugin %s: %s",
-                    file_path.stem, e)
+                logger.error(
+                    "Failed to import builtin plugin %s: %s",
+                    file_path.stem,
+                    e,
+                )
                 return []
         try:
-            spec = importlib.util.spec_from_file_location(module_name,
-                file_path)
+            spec = importlib.util.spec_from_file_location(module_name, file_path)
             if not spec or not spec.loader:
                 raise ImportError(f"Cannot load module from {file_path}")
             module = importlib.util.module_from_spec(spec)
@@ -203,12 +211,17 @@ class PluginManager:
             self._loaded_modules.add(module_name)
             plugins = []
             for _name, obj in inspect.getmembers(module):
-                if inspect.isclass(obj) and issubclass(obj, LanguagePlugin,
-                    ) and obj is not LanguagePlugin and not inspect.isabstract(
-                    obj):
+                if (
+                    inspect.isclass(obj)
+                    and issubclass(
+                        obj,
+                        LanguagePlugin,
+                    )
+                    and obj is not LanguagePlugin
+                    and not inspect.isabstract(obj)
+                ):
                     plugins.append(obj)
-                    logger.info("Found plugin class: %s in %s", obj.
-                        __name__, file_path)
+                    logger.info("Found plugin class: %s in %s", obj.__name__, file_path)
             return plugins
         except (FileNotFoundError, IndexError, KeyError) as e:
             logger.error("Failed to load plugin from %s: %s", file_path, e)
@@ -222,9 +235,8 @@ class PluginManager:
         for plugin_class in plugins:
             try:
                 self.registry.register(plugin_class)
-            except (FileNotFoundError, OSError) as e:
-                logger.error("Failed to register %s: %s", plugin_class.
-                    __name__, e)
+            except (FileNotFoundError, OSError) as e:  # noqa: PERF203
+                logger.error("Failed to register %s: %s", plugin_class.__name__, e)
 
     def load_plugins_from_directory(self, directory: Path) -> int:
         """Load all plugins from a directory."""
@@ -235,27 +247,37 @@ class PluginManager:
             try:
                 self.registry.register(plugin_class)
                 loaded += 1
-            except (FileNotFoundError, OSError) as e:
-                logger.error("Failed to register %s: %s", plugin_class.
-                    __name__, e)
+            except (FileNotFoundError, OSError) as e:  # noqa: PERF203
+                logger.error("Failed to register %s: %s", plugin_class.__name__, e)
         return loaded
 
-    def get_plugin(self, language: str, config: (PluginConfig | None) = None,
-        ) -> LanguagePlugin:
+    def get_plugin(
+        self,
+        language: str,
+        config: PluginConfig | None = None,
+    ) -> LanguagePlugin:
         """Get a plugin instance."""
         return self.registry.get_plugin(language, config)
 
     @staticmethod
-    def _detect_h_file_language(file_path: Path) -> (str | None):
+    def _detect_h_file_language(file_path: Path) -> str | None:
         """Detect if .h file is C or C++ based on content."""
         try:
             content = file_path.read_text(encoding="utf-8", errors="ignore")
-            cpp_patterns = ["\\bclass\\s+\\w+\\s*[:{]",
-                "\\bnamespace\\s+\\w+", "\\btemplate\\s*<",
-                "\\busing\\s+namespace\\s+", "\\bpublic\\s*:",
-                "\\bprivate\\s*:", "\\bprotected\\s*:", "std::",
-                "\\bvirtual\\s+", "\\boverride\\b", "\\bfinal\\b",
-                "#include\\s*<\\w+>"]
+            cpp_patterns = [
+                "\\bclass\\s+\\w+\\s*[:{]",
+                "\\bnamespace\\s+\\w+",
+                "\\btemplate\\s*<",
+                "\\busing\\s+namespace\\s+",
+                "\\bpublic\\s*:",
+                "\\bprivate\\s*:",
+                "\\bprotected\\s*:",
+                "std::",
+                "\\bvirtual\\s+",
+                "\\boverride\\b",
+                "\\bfinal\\b",
+                "#include\\s*<\\w+>",
+            ]
             for pattern in cpp_patterns:
                 if re.search(pattern, content):
                     return "cpp"
@@ -264,8 +286,12 @@ class PluginManager:
             logger.debug("Could not detect language for %s: %s", file_path, e)
             return None
 
-    def chunk_file(self, file_path: Path, language: (str | None) = None,
-        config: (PluginConfig | None) = None) -> list[Any]:
+    def chunk_file(
+        self,
+        file_path: Path,
+        language: str | None = None,
+        config: PluginConfig | None = None,
+    ) -> list[Any]:
         """Chunk a file using the appropriate plugin."""
         file_path = Path(file_path)
         if not language:
@@ -274,8 +300,11 @@ class PluginManager:
                 detected_lang = self._detect_h_file_language(file_path)
                 if detected_lang:
                     language = detected_lang
-                    logger.info("Detected %s as %s based on content",
-                        file_path, language)
+                    logger.info(
+                        "Detected %s as %s based on content",
+                        file_path,
+                        language,
+                    )
                 elif language:
                     logger.info(
                         "Could not detect language for %s, defaulting to %s",
@@ -286,7 +315,7 @@ class PluginManager:
             if not language:
                 raise ValueError(
                     f"Cannot determine language for file: {file_path}. Please specify language explicitly.",
-                    )
+                )
         plugin = self.get_plugin(language, config)
         return plugin.chunk_file(file_path)
 

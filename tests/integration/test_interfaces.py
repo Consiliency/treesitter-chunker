@@ -1,4 +1,5 @@
 """Tests for the integration test interfaces."""
+
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -22,7 +23,11 @@ class TestErrorPropagationMixin:
         try:
             raise ValueError("Test error message")
         except ValueError as e:
-            context = mixin.capture_cross_module_error(source_module="test.source", target_module="test.target", error=e)
+            context = mixin.capture_cross_module_error(
+                source_module="test.source",
+                target_module="test.target",
+                error=e,
+            )
         assert context["source_module"] == "test.source"
         assert context["target_module"] == "test.target"
         assert context["error_type"] == "ValueError"
@@ -37,14 +42,18 @@ class TestErrorPropagationMixin:
     def test_verify_error_context(cls):
         """Test error context verification."""
         mixin = ErrorPropagationMixin()
-        context = {"source_module": "test.source", "target_module":
-            "test.target", "error_type": "RuntimeError", "timestamp": time.
-            time()}
-        mixin.verify_error_context(context, {"source_module": "test.source",
-            "error_type": "RuntimeError"})
+        context = {
+            "source_module": "test.source",
+            "target_module": "test.target",
+            "error_type": "RuntimeError",
+            "timestamp": time.time(),
+        }
+        mixin.verify_error_context(
+            context,
+            {"source_module": "test.source", "error_type": "RuntimeError"},
+        )
         with pytest.raises(AssertionError):
-            mixin.verify_error_context(context, {"source_module":
-                "wrong.module"})
+            mixin.verify_error_context(context, {"source_module": "wrong.module"})
         mixin.verify_error_context(context, {"timestamp": 12345.0})
 
     @classmethod
@@ -57,8 +66,13 @@ class TestErrorPropagationMixin:
             try:
                 raise RuntimeError(f"Error {i}")
             except RuntimeError as e:
-                context = mixin.capture_cross_module_error(source_module=f"module_{i}", target_module="target", error=e)
+                context = mixin.capture_cross_module_error(
+                    source_module=f"module_{i}",
+                    target_module="target",
+                    error=e,
+                )
                 errors.append(context)
+
         with ThreadPoolExecutor(max_workers=10) as executor:
             futures = [executor.submit(capture_error, i) for i in range(100)]
             for future in futures:
@@ -75,8 +89,11 @@ class TestConfigChangeObserver:
     def test_basic_config_change(cls):
         """Test recording configuration changes."""
         observer = ConfigChangeObserver()
-        event = observer.on_config_change(config_key="parser_timeout",
-            old_value=30, new_value=60)
+        event = observer.on_config_change(
+            config_key="parser_timeout",
+            old_value=30,
+            new_value=60,
+        )
         assert event["config_path"] == "parser_timeout"
         assert event["old_value"] == 30
         assert event["new_value"] == 60
@@ -105,6 +122,7 @@ class TestConfigChangeObserver:
 
         def callback(event):
             events_received.append(event)
+
         observer.register_observer(callback)
         observer.on_config_change("test1", "old", "new")
         observer.on_config_change("test2", 10, 20)
@@ -132,6 +150,7 @@ class TestConfigChangeObserver:
         def make_changes(thread_id):
             for i in range(10):
                 observer.on_config_change(f"key_{thread_id}_{i}", i, i + 1)
+
         threads = []
         for i in range(10):
             t = threading.Thread(target=make_changes, args=(i,))
@@ -150,8 +169,11 @@ class TestResourceTracker:
     def test_track_and_release_resource(cls):
         """Test basic resource tracking."""
         tracker = ResourceTracker()
-        resource = tracker.track_resource(module="test.module",
-            resource_type="process", resource_id="proc_123")
+        resource = tracker.track_resource(
+            module="test.module",
+            resource_type="process",
+            resource_id="proc_123",
+        )
         assert resource["resource_id"] == "proc_123"
         assert resource["resource_type"] == "process"
         assert resource["owner_module"] == "test.module"
@@ -217,10 +239,14 @@ class TestResourceTracker:
 
         def track_resources(thread_id):
             for i in range(20):
-                tracker.track_resource(module=f"module_{thread_id}",
-                    resource_type="thread_resource", resource_id=f"res_{thread_id}_{i}")
+                tracker.track_resource(
+                    module=f"module_{thread_id}",
+                    resource_type="thread_resource",
+                    resource_id=f"res_{thread_id}_{i}",
+                )
                 if i % 2 == 0:
                     tracker.release_resource(f"res_{thread_id}_{i}")
+
         with ThreadPoolExecutor(max_workers=5) as executor:
             futures = [executor.submit(track_resources, i) for i in range(5)]
             for future in futures:

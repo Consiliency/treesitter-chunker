@@ -13,7 +13,7 @@ import sys
 from utils.constants import ensure_session_log_dir
 
 try:
-    from dotenv import load_dotenv  # noqa: E402,PLC0415
+    from dotenv import load_dotenv
 
     load_dotenv()
 except ImportError:

@@ -1,4 +1,5 @@
 """Unit tests for GrammarDiscoveryService implementation"""
+
 import json
 import tempfile
 from datetime import datetime, timedelta
@@ -15,7 +16,7 @@ class TestGrammarDiscoveryService:
     """Test the real GrammarDiscoveryService implementation"""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def discovery_service(cls):
         """Create a discovery service with a temporary cache directory"""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -25,26 +26,42 @@ class TestGrammarDiscoveryService:
             yield service
 
     @staticmethod
-    @pytest.fixture
+    @pytest.fixture()
     def mock_github_response():
         """Mock GitHub API response"""
-        return [{"name": "tree-sitter-python", "html_url":
-            "https://github.com/tree-sitter/tree-sitter-python",
-            "updated_at": "2023-01-01T00:00:00Z", "stargazers_count": 500,
-            "description": "Python grammar for tree-sitter", "archived":
-            False}, {"name": "tree-sitter-rust", "html_url":
-            "https://github.com/tree-sitter/tree-sitter-rust", "updated_at":
-            "2023-01-01T00:00:00Z", "stargazers_count": 400, "description":
-            "Rust grammar for tree-sitter", "archived": False}, {"name":
-            "tree-sitter-template", "html_url":
-            "https://github.com/tree-sitter/tree-sitter-template",
-            "updated_at": "2023-01-01T00:00:00Z", "stargazers_count": 100,
-            "description": "Template for tree-sitter grammars", "archived":
-            False}]
+        return [
+            {
+                "name": "tree-sitter-python",
+                "html_url": "https://github.com/tree-sitter/tree-sitter-python",
+                "updated_at": "2023-01-01T00:00:00Z",
+                "stargazers_count": 500,
+                "description": "Python grammar for tree-sitter",
+                "archived": False,
+            },
+            {
+                "name": "tree-sitter-rust",
+                "html_url": "https://github.com/tree-sitter/tree-sitter-rust",
+                "updated_at": "2023-01-01T00:00:00Z",
+                "stargazers_count": 400,
+                "description": "Rust grammar for tree-sitter",
+                "archived": False,
+            },
+            {
+                "name": "tree-sitter-template",
+                "html_url": "https://github.com/tree-sitter/tree-sitter-template",
+                "updated_at": "2023-01-01T00:00:00Z",
+                "stargazers_count": 100,
+                "description": "Template for tree-sitter grammars",
+                "archived": False,
+            },
+        ]
 
     @classmethod
-    def test_list_available_grammars_from_github(cls, discovery_service,
-        mock_github_response):
+    def test_list_available_grammars_from_github(
+        cls,
+        discovery_service,
+        mock_github_response,
+    ):
         """Test listing grammars from GitHub API"""
         with patch.object(discovery_service._session, "get") as mock_get:
             mock_response = MagicMock()
@@ -55,10 +72,12 @@ class TestGrammarDiscoveryService:
             grammars = discovery_service.list_available_grammars()
             assert len(grammars) == 2
             assert all(isinstance(g, GrammarInfo) for g in grammars)
-            python_grammar = next((g for g in grammars if g.name ==
-                "python"), None)
+            python_grammar = next((g for g in grammars if g.name == "python"), None)
             assert python_grammar is not None
-            assert python_grammar.url == "https://github.com/tree-sitter/tree-sitter-python"
+            assert (
+                python_grammar.url
+                == "https://github.com/tree-sitter/tree-sitter-python"
+            )
             assert python_grammar.stars == 500
             assert python_grammar.official is True
             assert ".py" in python_grammar.supported_extensions
@@ -83,21 +102,36 @@ class TestGrammarDiscoveryService:
     def test_cache_expiration(cls, discovery_service):
         """Test that expired cache is refreshed"""
         old_timestamp = (datetime.now() - timedelta(hours=25)).isoformat()
-        cache_data = {"timestamp": old_timestamp, "grammars": [{"name":
-            "old-grammar", "url": "https://example.com", "version": "0.1.0",
-            "last_updated": datetime.now().isoformat(), "stars": 10,
-            "description": "Old cached grammar", "supported_extensions": [
-            ".old"], "official": True}]}
+        cache_data = {
+            "timestamp": old_timestamp,
+            "grammars": [
+                {
+                    "name": "old-grammar",
+                    "url": "https://example.com",
+                    "version": "0.1.0",
+                    "last_updated": datetime.now().isoformat(),
+                    "stars": 10,
+                    "description": "Old cached grammar",
+                    "supported_extensions": [".old"],
+                    "official": True,
+                },
+            ],
+        }
         discovery_service.cache_file.parent.mkdir(parents=True, exist_ok=True)
         with discovery_service.cache_file.open("w", "r") as f:
             json.dump(cache_data, f)
         with patch.object(discovery_service._session, "get") as mock_get:
             mock_response = MagicMock()
-            mock_response.json.return_value = [{"name": "tree-sitter-new",
-                "html_url":
-                "https://github.com/tree-sitter/tree-sitter-new",
-                "updated_at": "2023-01-01T00:00:00Z", "stargazers_count":
-                200, "description": "New grammar", "archived": False}]
+            mock_response.json.return_value = [
+                {
+                    "name": "tree-sitter-new",
+                    "html_url": "https://github.com/tree-sitter/tree-sitter-new",
+                    "updated_at": "2023-01-01T00:00:00Z",
+                    "stargazers_count": 200,
+                    "description": "New grammar",
+                    "archived": False,
+                },
+            ]
             mock_response.headers = {"X-RateLimit-Remaining": "59"}
             mock_get.side_effect = [mock_response, MagicMock(json=list)]
             grammars = discovery_service.list_available_grammars()
@@ -108,16 +142,31 @@ class TestGrammarDiscoveryService:
     @staticmethod
     def test_get_grammar_info(discovery_service):
         """Test getting info for a specific grammar"""
-        cache_data = {"timestamp": datetime.now().isoformat(), "grammars":
-            [{"name": "python", "url":
-            "https://github.com/tree-sitter/tree-sitter-python", "version":
-            "0.20.0", "last_updated": datetime.now().isoformat(), "stars":
-            500, "description": "Python grammar", "supported_extensions": [
-            ".py", ".pyw"], "official": True}, {"name": "tree-sitter-rust",
-            "url": "https://github.com/tree-sitter/tree-sitter-rust",
-            "version": "0.20.0", "last_updated": datetime.now().isoformat(),
-            "stars": 400, "description": "Rust grammar",
-            "supported_extensions": [".rs"], "official": True}]}
+        cache_data = {
+            "timestamp": datetime.now().isoformat(),
+            "grammars": [
+                {
+                    "name": "python",
+                    "url": "https://github.com/tree-sitter/tree-sitter-python",
+                    "version": "0.20.0",
+                    "last_updated": datetime.now().isoformat(),
+                    "stars": 500,
+                    "description": "Python grammar",
+                    "supported_extensions": [".py", ".pyw"],
+                    "official": True,
+                },
+                {
+                    "name": "tree-sitter-rust",
+                    "url": "https://github.com/tree-sitter/tree-sitter-rust",
+                    "version": "0.20.0",
+                    "last_updated": datetime.now().isoformat(),
+                    "stars": 400,
+                    "description": "Rust grammar",
+                    "supported_extensions": [".rs"],
+                    "official": True,
+                },
+            ],
+        }
         discovery_service.cache_file.parent.mkdir(parents=True, exist_ok=True)
         with discovery_service.cache_file.open("w", "r") as f:
             json.dump(cache_data, f)
@@ -134,16 +183,31 @@ class TestGrammarDiscoveryService:
     @staticmethod
     def test_check_grammar_updates(discovery_service):
         """Test checking for grammar updates"""
-        cache_data = {"timestamp": datetime.now().isoformat(), "grammars":
-            [{"name": "python", "url":
-            "https://github.com/tree-sitter/tree-sitter-python", "version":
-            "0.21.0", "last_updated": datetime.now().isoformat(), "stars":
-            500, "description": "Python grammar", "supported_extensions": [
-            ".py"], "official": True}, {"name": "rust", "url":
-            "https://github.com/tree-sitter/tree-sitter-rust", "version":
-            "0.20.0", "last_updated": datetime.now().isoformat(), "stars":
-            400, "description": "Rust grammar", "supported_extensions": [
-            ".rs"], "official": True}]}
+        cache_data = {
+            "timestamp": datetime.now().isoformat(),
+            "grammars": [
+                {
+                    "name": "python",
+                    "url": "https://github.com/tree-sitter/tree-sitter-python",
+                    "version": "0.21.0",
+                    "last_updated": datetime.now().isoformat(),
+                    "stars": 500,
+                    "description": "Python grammar",
+                    "supported_extensions": [".py"],
+                    "official": True,
+                },
+                {
+                    "name": "rust",
+                    "url": "https://github.com/tree-sitter/tree-sitter-rust",
+                    "version": "0.20.0",
+                    "last_updated": datetime.now().isoformat(),
+                    "stars": 400,
+                    "description": "Rust grammar",
+                    "supported_extensions": [".rs"],
+                    "official": True,
+                },
+            ],
+        }
         discovery_service.cache_file.parent.mkdir(parents=True, exist_ok=True)
         with discovery_service.cache_file.open("w", "r") as f:
             json.dump(cache_data, f)
@@ -156,22 +220,41 @@ class TestGrammarDiscoveryService:
     @staticmethod
     def test_search_grammars(discovery_service):
         """Test searching for grammars"""
-        cache_data = {"timestamp": datetime.now().isoformat(), "grammars":
-            [{"name": "python", "url":
-            "https://github.com/tree-sitter/tree-sitter-python", "version":
-            "0.20.0", "last_updated": datetime.now().isoformat(), "stars":
-            500, "description": "Python grammar for tree-sitter",
-            "supported_extensions": [".py"], "official": True}, {"name":
-            "rust", "url":
-            "https://github.com/tree-sitter/tree-sitter-rust", "version":
-            "0.20.0", "last_updated": datetime.now().isoformat(), "stars":
-            400, "description": "Rust grammar for tree-sitter",
-            "supported_extensions": [".rs"], "official": True}, {"name":
-            "javascript", "url":
-            "https://github.com/tree-sitter/tree-sitter-javascript",
-            "version": "0.20.0", "last_updated": datetime.now().isoformat(),
-            "stars": 600, "description": "JavaScript and JSX grammar",
-            "supported_extensions": [".js"], "official": True}]}
+        cache_data = {
+            "timestamp": datetime.now().isoformat(),
+            "grammars": [
+                {
+                    "name": "python",
+                    "url": "https://github.com/tree-sitter/tree-sitter-python",
+                    "version": "0.20.0",
+                    "last_updated": datetime.now().isoformat(),
+                    "stars": 500,
+                    "description": "Python grammar for tree-sitter",
+                    "supported_extensions": [".py"],
+                    "official": True,
+                },
+                {
+                    "name": "rust",
+                    "url": "https://github.com/tree-sitter/tree-sitter-rust",
+                    "version": "0.20.0",
+                    "last_updated": datetime.now().isoformat(),
+                    "stars": 400,
+                    "description": "Rust grammar for tree-sitter",
+                    "supported_extensions": [".rs"],
+                    "official": True,
+                },
+                {
+                    "name": "javascript",
+                    "url": "https://github.com/tree-sitter/tree-sitter-javascript",
+                    "version": "0.20.0",
+                    "last_updated": datetime.now().isoformat(),
+                    "stars": 600,
+                    "description": "JavaScript and JSX grammar",
+                    "supported_extensions": [".js"],
+                    "official": True,
+                },
+            ],
+        }
         discovery_service.cache_file.parent.mkdir(parents=True, exist_ok=True)
         with discovery_service.cache_file.open("w", "r") as f:
             json.dump(cache_data, f)
@@ -190,8 +273,10 @@ class TestGrammarDiscoveryService:
     @staticmethod
     def test_get_grammar_compatibility(discovery_service):
         """Test getting grammar compatibility info"""
-        compat = discovery_service.get_grammar_compatibility("python", "0.20.0",
-            )
+        compat = discovery_service.get_grammar_compatibility(
+            "python",
+            "0.20.0",
+        )
         assert isinstance(compat, GrammarCompatibility)
         assert compat.min_tree_sitter_version == "0.20.0"
         assert compat.max_tree_sitter_version == "0.22.0"
@@ -203,11 +288,16 @@ class TestGrammarDiscoveryService:
         """Test manual cache refresh"""
         with patch.object(discovery_service._session, "get") as mock_get:
             mock_response = MagicMock()
-            mock_response.json.return_value = [{"name":
-                "tree-sitter-python", "html_url":
-                "https://github.com/tree-sitter/tree-sitter-python",
-                "updated_at": "2023-01-01T00:00:00Z", "stargazers_count":
-                500, "description": "Python grammar", "archived": False}]
+            mock_response.json.return_value = [
+                {
+                    "name": "tree-sitter-python",
+                    "html_url": "https://github.com/tree-sitter/tree-sitter-python",
+                    "updated_at": "2023-01-01T00:00:00Z",
+                    "stargazers_count": 500,
+                    "description": "Python grammar",
+                    "archived": False,
+                },
+            ]
             mock_response.headers = {"X-RateLimit-Remaining": "59"}
             mock_get.side_effect = [mock_response, MagicMock(json=list)]
             result = discovery_service.refresh_cache()
@@ -227,8 +317,13 @@ class TestGrammarDiscoveryService:
         assert discovery_service._is_newer_version("0.20.0", "0.20.1") is True
         assert discovery_service._is_newer_version("1.0.0", "2.0.0") is True
         assert discovery_service._is_newer_version("0.20", "0.20.1") is True
-        assert discovery_service._is_newer_version("invalid", "0.20.0",
-            ) is False
+        assert (
+            discovery_service._is_newer_version(
+                "invalid",
+                "0.20.0",
+            )
+            is False
+        )
 
     @classmethod
     def test_rate_limit_handling(cls, discovery_service):

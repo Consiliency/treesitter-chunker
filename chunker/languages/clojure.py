@@ -1,6 +1,7 @@
 """
 Support for Clojure language.
 """
+
 from __future__ import annotations
 
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
@@ -19,9 +20,19 @@ class ClojureConfig(LanguageConfig):
     @property
     def chunk_types(self) -> set[str]:
         """Clojure-specific chunk types."""
-        return {"list_lit", "defmacro", "defprotocol", "deftype",
-            "defrecord", "definterface", "defmulti", "defmethod", "ns_form",
-            "defonce", "defstruct"}
+        return {
+            "list_lit",
+            "defmacro",
+            "defprotocol",
+            "deftype",
+            "defrecord",
+            "definterface",
+            "defmulti",
+            "defmethod",
+            "ns_form",
+            "defonce",
+            "defstruct",
+        }
 
     @property
     def file_extensions(self) -> set[str]:
@@ -29,11 +40,22 @@ class ClojureConfig(LanguageConfig):
 
     def __init__(self):
         super().__init__()
-        self.add_chunk_rule(ChunkRule(node_types={"let_form", "letfn_form"},
-            include_children=True, priority=5, metadata={"type":
-            "let_binding"}))
-        self.add_chunk_rule(ChunkRule(node_types={"fn_form"},
-            include_children=False, priority=4, metadata={"type": "lambda"}))
+        self.add_chunk_rule(
+            ChunkRule(
+                node_types={"let_form", "letfn_form"},
+                include_children=True,
+                priority=5,
+                metadata={"type": "let_binding"},
+            ),
+        )
+        self.add_chunk_rule(
+            ChunkRule(
+                node_types={"fn_form"},
+                include_children=False,
+                priority=4,
+                metadata={"type": "lambda"},
+            ),
+        )
         self.add_ignore_type("comment")
         self.add_ignore_type("str_lit")
         self.add_ignore_type("num_lit")
@@ -63,36 +85,55 @@ class ClojurePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
 
     @property
     def default_chunk_types(self) -> set[str]:
-        return {"list_lit", "defmacro", "defprotocol", "deftype",
-            "defrecord", "definterface", "defmulti", "defmethod", "ns_form",
-            "defonce", "defstruct"}
+        return {
+            "list_lit",
+            "defmacro",
+            "defprotocol",
+            "deftype",
+            "defrecord",
+            "definterface",
+            "defmulti",
+            "defmethod",
+            "ns_form",
+            "defonce",
+            "defstruct",
+        }
 
     @staticmethod
-    def get_node_name(node: Node, source: bytes) -> (str | None):
+    def get_node_name(node: Node, source: bytes) -> str | None:
         """Extract the name from a Clojure node."""
         if node.type == "list_lit":
             children = list(node.children)
             if len(children) >= 2:
                 first_child = children[0]
                 if first_child.type == "sym_lit":
-                    form_name = source[first_child.start_byte:first_child.
-                        end_byte].decode("utf-8")
-                    if form_name in {"defn", "defn-", "def", "defmacro",
-                        "defprotocol", "deftype", "defrecord", "defmulti",
-                        "defmethod"}:
+                    form_name = source[
+                        first_child.start_byte : first_child.end_byte
+                    ].decode("utf-8")
+                    if form_name in {
+                        "defn",
+                        "defn-",
+                        "def",
+                        "defmacro",
+                        "defprotocol",
+                        "deftype",
+                        "defrecord",
+                        "defmulti",
+                        "defmethod",
+                    }:
                         name_child = children[1]
                         if name_child.type == "sym_lit":
-                            return source[name_child.start_byte:name_child.
-                                end_byte].decode("utf-8")
+                            return source[
+                                name_child.start_byte : name_child.end_byte
+                            ].decode("utf-8")
         elif node.type == "ns_form":
             for child in node.children:
                 if child.type == "sym_lit" and child != node.children[0]:
-                    return source[child.start_byte:child.end_byte].decode(
-                        "utf-8")
+                    return source[child.start_byte : child.end_byte].decode("utf-8")
         return None
 
     @staticmethod
-    def _is_definition_form(node: Node, source: bytes) -> (str | None):
+    def _is_definition_form(node: Node, source: bytes) -> str | None:
         """Check if a list literal is a definition form and return its type."""
         if node.type != "list_lit":
             return None
@@ -100,36 +141,58 @@ class ClojurePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         if len(children) >= 2:
             first_child = children[0]
             if first_child.type == "sym_lit":
-                form_name = source[first_child.start_byte:first_child.end_byte
-                    ].decode("utf-8")
-                if form_name in {"defn", "defn-", "def", "defmacro",
-                    "defprotocol", "deftype", "defrecord", "defmulti",
-                    "defmethod", "defonce", "defstruct"}:
+                form_name = source[
+                    first_child.start_byte : first_child.end_byte
+                ].decode("utf-8")
+                if form_name in {
+                    "defn",
+                    "defn-",
+                    "def",
+                    "defmacro",
+                    "defprotocol",
+                    "deftype",
+                    "defrecord",
+                    "defmulti",
+                    "defmethod",
+                    "defonce",
+                    "defstruct",
+                }:
                     return form_name
         return None
 
-    @staticmethod
-    def get_semantic_chunks(node: Node, source: bytes) -> list[dict[str, any]]:
+    def get_semantic_chunks(self, node: Node, source: bytes) -> list[dict[str, any]]:
         """Extract semantic chunks specific to Clojure."""
         chunks = []
 
-        def extract_chunks(n: Node, namespace: (str | None) = None):
+        def extract_chunks(n: Node, namespace: str | None = None):
             if n.type == "ns_form":
-                content = source[n.start_byte:n.end_byte].decode("utf-8",
-                    errors="replace")
-                chunk = {"type": "namespace", "start_line": n.start_point[0
-                    ] + 1, "end_line": n.end_point[0] + 1, "content":
-                    content, "name": ClojureChunker.get_node_name(n, source)}
+                content = source[n.start_byte : n.end_byte].decode(
+                    "utf-8",
+                    errors="replace",
+                )
+                chunk = {
+                    "type": "namespace",
+                    "start_line": n.start_point[0] + 1,
+                    "end_line": n.end_point[0] + 1,
+                    "content": content,
+                    "name": self.get_node_name(n, source),
+                }
                 chunks.append(chunk)
                 namespace = chunk["name"]
             elif n.type == "list_lit":
-                def_type = ClojureChunker._is_definition_form(n, source)
+                def_type = self._is_definition_form(n, source)
                 if def_type:
-                    content = source[n.start_byte:n.end_byte].decode("utf-8",
-                        errors="replace")
-                    chunk = {"type": def_type, "start_line": n.start_point[
-                        0] + 1, "end_line": n.end_point[0] + 1, "content":
-                        content, "name": ClojureChunker.get_node_name(n, source)}
+                    content = source[n.start_byte : n.end_byte].decode(
+                        "utf-8",
+                        errors="replace",
+                    )
+                    chunk = {
+                        "type": def_type,
+                        "start_line": n.start_point[0] + 1,
+                        "end_line": n.end_point[0] + 1,
+                        "content": content,
+                        "name": self.get_node_name(n, source),
+                    }
                     if def_type == "defn":
                         chunk["is_function"] = True
                         chunk["visibility"] = "public"
@@ -145,17 +208,24 @@ class ClojurePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     if namespace:
                         chunk["namespace"] = namespace
                     chunks.append(chunk)
-            elif n.type in ClojureChunker.default_chunk_types:
-                content = source[n.start_byte:n.end_byte].decode("utf-8",
-                    errors="replace")
-                chunk = {"type": n.type, "start_line": n.start_point[0] + 1,
-                    "end_line": n.end_point[0] + 1, "content": content,
-                    "name": self.get_node_name(n, source)}
+            elif n.type in self.default_chunk_types:
+                content = source[n.start_byte : n.end_byte].decode(
+                    "utf-8",
+                    errors="replace",
+                )
+                chunk = {
+                    "type": n.type,
+                    "start_line": n.start_point[0] + 1,
+                    "end_line": n.end_point[0] + 1,
+                    "content": content,
+                    "name": self.get_node_name(n, source),
+                }
                 if namespace:
                     chunk["namespace"] = namespace
                 chunks.append(chunk)
             for child in n.children:
                 extract_chunks(child, namespace)
+
         extract_chunks(node)
         return chunks
 
@@ -173,33 +243,42 @@ class ClojurePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             return len(node.children) > 2
         return False
 
-    def get_node_context(self, node: Node, source: bytes) -> (str | None):
+    def get_node_context(self, node: Node, source: bytes) -> str | None:
         """Extract meaningful context for a node."""
         name = self.get_node_name(node, source)
+
+        # Handle list literals (definition forms)
         if node.type == "list_lit":
             def_type = self._is_definition_form(node, source)
             if def_type:
-                if name:
-                    return f"({def_type} {name})"
-                return f"({def_type})"
-        elif node.type == "ns_form":
-            return f"(ns {name})" if name else "(ns)"
-        elif node.type == "defprotocol":
-            return f"(defprotocol {name})" if name else "(defprotocol)"
-        elif node.type == "deftype":
-            return f"(deftype {name})" if name else "(deftype)"
-        elif node.type == "defrecord":
-            return f"(defrecord {name})" if name else "(defrecord)"
+                return f"({def_type} {name})" if name else f"({def_type})"
+
+        # Map node types to their context format
+        node_context_map = {
+            "ns_form": "ns",
+            "defprotocol": "defprotocol",
+            "deftype": "deftype",
+            "defrecord": "defrecord",
+        }
+
+        context_type = node_context_map.get(node.type)
+        if context_type:
+            return f"({context_type} {name})" if name else f"({context_type})"
+
         return None
 
-    def process_node(self, node: Node, source: bytes, file_path: str,
-        parent_context: (str | None) = None):
+    def process_node(
+        self,
+        node: Node,
+        source: bytes,
+        file_path: str,
+        parent_context: str | None = None,
+    ):
         """Process Clojure nodes with special handling for S-expressions."""
         if node.type == "list_lit":
             def_type = self._is_definition_form(node, source)
             if def_type:
-                chunk = self.create_chunk(node, source, file_path,
-                    parent_context)
+                chunk = self.create_chunk(node, source, file_path, parent_context)
                 if chunk:
                     chunk.node_type = def_type
                     chunk.metadata = {"definition_type": def_type}

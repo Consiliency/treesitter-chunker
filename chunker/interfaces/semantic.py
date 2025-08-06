@@ -1,4 +1,5 @@
 """Semantic analysis interfaces for intelligent chunk merging and relationship analysis."""
+
 from abc import ABC, abstractmethod
 
 from chunker.types import CodeChunk
@@ -42,7 +43,7 @@ class SemanticMerger(ABC):
 
     @staticmethod
     @abstractmethod
-    def get_merge_reason(chunk1: CodeChunk, chunk2: CodeChunk) -> (str | None):
+    def get_merge_reason(chunk1: CodeChunk, chunk2: CodeChunk) -> str | None:
         """
         Get the reason why two chunks would be merged.
 
@@ -73,8 +74,7 @@ class RelationshipAnalyzer(ABC):
 
     @staticmethod
     @abstractmethod
-    def find_overloaded_functions(chunks: list[CodeChunk]) -> list[list[
-        CodeChunk]]:
+    def find_overloaded_functions(chunks: list[CodeChunk]) -> list[list[CodeChunk]]:
         """
         Find groups of overloaded functions.
 
@@ -87,8 +87,9 @@ class RelationshipAnalyzer(ABC):
 
     @staticmethod
     @abstractmethod
-    def find_getter_setter_pairs(chunks: list[CodeChunk]) -> list[tuple[
-        CodeChunk, CodeChunk]]:
+    def find_getter_setter_pairs(
+        chunks: list[CodeChunk],
+    ) -> list[tuple[CodeChunk, CodeChunk]]:
         """
         Find getter/setter method pairs.
 
@@ -101,8 +102,7 @@ class RelationshipAnalyzer(ABC):
 
     @staticmethod
     @abstractmethod
-    def find_interface_implementations(chunks: list[CodeChunk]) -> dict[str,
-        list[str]]:
+    def find_interface_implementations(chunks: list[CodeChunk]) -> dict[str, list[str]]:
         """
         Find interface/implementation relationships.
 

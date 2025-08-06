@@ -1,6 +1,7 @@
 """
 Tests for enhanced CLI features.
 """
+
 from __future__ import annotations
 
 import json
@@ -26,7 +27,12 @@ class TestConfigLoading:
     @classmethod
     def test_load_config_from_file(cls):
         """Test loading configuration from specified file."""
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".toml", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".toml",
+            delete=False,
+        ) as f:
             f.write(
                 """
 chunk_types = ["function_definition"]
@@ -36,7 +42,7 @@ include_patterns = ["*.py"]
 exclude_patterns = ["test_*"]
 parallel_workers = 2
 """,
-                )
+            )
             f.flush()
             config = load_config(Path(f.name))
             assert config["chunk_types"] == ["function_definition"]
@@ -56,7 +62,12 @@ parallel_workers = 2
     @classmethod
     def test_load_config_invalid_toml(cls):
         """Test loading invalid TOML file."""
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".toml", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".toml",
+            delete=False,
+        ) as f:
             f.write("invalid toml {")
             f.flush()
             config = load_config(Path(f.name))
@@ -87,16 +98,25 @@ class TestFilePatterns:
     def test_should_include_file(cls):
         """Test file inclusion/exclusion logic."""
         assert should_include_file(Path("test.py"), include_patterns=["*.py"])
-        assert not should_include_file(Path("test.js"), include_patterns=[
-            "*.py"])
-        assert not should_include_file(Path("test_file.py"),
-            exclude_patterns=["test_*"])
-        assert should_include_file(Path("main.py"), exclude_patterns=["test_*"],
-            )
-        assert should_include_file(Path("main.py"), include_patterns=[
-            "*.py"], exclude_patterns=["test_*"])
-        assert not should_include_file(Path("test_main.py"),
-            include_patterns=["*.py"], exclude_patterns=["test_*"])
+        assert not should_include_file(Path("test.js"), include_patterns=["*.py"])
+        assert not should_include_file(
+            Path("test_file.py"),
+            exclude_patterns=["test_*"],
+        )
+        assert should_include_file(
+            Path("main.py"),
+            exclude_patterns=["test_*"],
+        )
+        assert should_include_file(
+            Path("main.py"),
+            include_patterns=["*.py"],
+            exclude_patterns=["test_*"],
+        )
+        assert not should_include_file(
+            Path("test_main.py"),
+            include_patterns=["*.py"],
+            exclude_patterns=["test_*"],
+        )
 
 
 class TestProcessFile:
@@ -105,7 +125,12 @@ class TestProcessFile:
     @classmethod
     def test_process_file_auto_detect_language(cls):
         """Test auto-detecting language from file extension."""
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
             f.write(
                 """
 def test_function():
@@ -115,7 +140,7 @@ class TestClass:
     def test_method(self):
         pass
 """,
-                )
+            )
             f.flush()
             results = process_file(Path(f.name), language=None)
             assert len(results) > 0
@@ -125,7 +150,12 @@ class TestClass:
     @classmethod
     def test_process_file_with_filters(cls):
         """Test processing file with chunk type and size filters."""
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
             f.write(
                 """
 def small_func():
@@ -144,10 +174,13 @@ class TestClass:
     def method(self):
         pass
 """,
-                )
+            )
             f.flush()
-            results = process_file(Path(f.name), language="python",
-                chunk_types=["class_definition"])
+            results = process_file(
+                Path(f.name),
+                language="python",
+                chunk_types=["class_definition"],
+            )
             assert all(r["node_type"] == "class_definition" for r in results)
             results = process_file(Path(f.name), language="python", min_size=5)
             assert all(r["size"] >= 5 for r in results)
@@ -160,17 +193,21 @@ class TestCLICommands:
     @classmethod
     def test_chunk_command_basic(cls):
         """Test basic chunk command."""
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
             f.write(
                 """def test_function():
     # This is a test function
     result = 42
     return result
 """,
-                )
+            )
             f.flush()
-            result = runner.invoke(app, ["chunk", str(f.name), "--lang",
-                "python"])
+            result = runner.invoke(app, ["chunk", str(f.name), "--lang", "python"])
             assert result.exit_code == 0
             assert "function_definition" in result.output
             Path(f.name).unlink()
@@ -178,7 +215,12 @@ class TestCLICommands:
     @classmethod
     def test_chunk_command_json_output(cls):
         """Test chunk command with JSON output."""
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
             f.write(
                 "def test_function():\n"
                 "    # This is a test function\n"
@@ -186,10 +228,11 @@ class TestCLICommands:
                 "    return result\n",
             )
 
-
             f.flush()
-            result = runner.invoke(app, ["chunk", str(f.name), "--lang",
-                "python", "--json"])
+            result = runner.invoke(
+                app,
+                ["chunk", str(f.name), "--lang", "python", "--json"],
+            )
             assert result.exit_code == 0
             assert result.output.startswith("[")
             assert result.output.strip().endswith("]")
@@ -205,6 +248,7 @@ class TestCLICommands:
             except json.JSONDecodeError:
                 pass
             Path(f.name).unlink()
+
     @classmethod
     def test_batch_command_directory(cls):
         """Test batch command with directory input."""
@@ -216,7 +260,7 @@ class TestCLICommands:
     x = 1
     return x
 """,
-                )
+            )
             (tmppath / "file2.py").write_text(
                 """def func2():
     # This is function 2
@@ -242,7 +286,7 @@ class TestCLICommands:
     result = "sample"
     return result
 """,
-                )
+            )
             (tmppath / "main.py").write_text(
                 """def main_func():
     # Main function
@@ -274,16 +318,22 @@ function testFunc() {}
             file1 = tmppath / "file1.py"
             file1.write_text(
                 "def func1():\n    # First function\n    x = 1\n    return x\n",
-                )
+            )
             file2 = tmppath / "file2.py"
             file2.write_text(
                 "def func2():\n    # Second function\n    y = 2\n    return y\n",
-                )
+            )
             input_data = f"{file1}\n{file2}\n"
-            result = runner.invoke(app, ["batch", "--stdin", "--quiet"],
-                input=input_data)
+            result = runner.invoke(
+                app,
+                ["batch", "--stdin", "--quiet"],
+                input=input_data,
+            )
             if result.exit_code == 0:
-                assert "2 total chunks" in result.output or "No files to process" in result.output
+                assert (
+                    "2 total chunks" in result.output
+                    or "No files to process" in result.output
+                )
 
     @classmethod
     def test_batch_command_filters(cls):
@@ -309,7 +359,7 @@ def test_function():
             # Test with include/exclude patterns
             import os
 
-            old_cwd = os.getcwd()
+            old_cwd = Path.cwd()
             os.chdir(tmpdir)
 
             try:
@@ -325,19 +375,13 @@ def test_function():
                         "--types",
                         "function_definition",
                     ],
-            for line in lines:
-                if line.strip():
-                    try:
-                        json_objects.append(json.loads(line))
-                    except json.JSONDecodeError:
-                        pass
-
-            # If JSON parsing failed due to runner issues, check raw output
-            else:
-                assert len(json_objects) == 2
-                for data in json_objects:
-                    assert "node_type" in data
-                    assert data["node_type"] == "function_definition"
+                )
+                assert result.exit_code == 0
+                # Check output contains expected summary
+                assert "function_definition" in result.output
+                assert "1 total chunks" in result.output or "Count" in result.output
+            finally:
+                os.chdir(old_cwd)
 
     @staticmethod
     def test_languages_command():
@@ -359,7 +403,7 @@ class TestCLIWithConfig:
             config_file = tmppath / ".chunkerrc"
             config_file.write_text(
                 '\nchunk_types = ["function_definition"]\nmin_chunk_size = 5\n',
-                )
+            )
             test_file = tmppath / "test.py"
             test_file.write_text(
                 """
@@ -376,9 +420,11 @@ def large():
 class TestClass:
     pass
 """,
-                )
-            result = runner.invoke(app, ["chunk", str(test_file),
-                "--config", str(config_file)])
+            )
+            result = runner.invoke(
+                app,
+                ["chunk", str(test_file), "--config", str(config_file)],
+            )
             assert result.exit_code == 0
             assert "5-10" in result.output
             assert "class_definition" not in result.output

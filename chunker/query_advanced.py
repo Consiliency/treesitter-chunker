@@ -1,4 +1,5 @@
 """Advanced query implementation for Phase 10 - searching and filtering chunks."""
+
 import re
 from collections import Counter, defaultdict
 from difflib import SequenceMatcher
@@ -28,63 +29,124 @@ class NaturalLanguageQueryEngine(ChunkQueryAdvanced):
     @staticmethod
     def _initialize_query_patterns() -> dict[str, list[re.Pattern]]:
         """Initialize patterns for understanding natural language queries."""
-        return {"error_handling": [re.compile(
-            r"\\b(error|exception|try|catch|handle|raise|throw)\\b", re.I),
-            re.compile(r"\\b(error\\s+handling|exception\\s+handling)\\b",
-            re.I)], "authentication": [re.compile(
-            r"\\b(auth|authenticate|login|logout|session|token|credential)\\b",
-            re.I), re.compile(
-            r"\\b(authentication|authorization|oauth|jwt)\\b", re.I)],
-            "database": [re.compile(
-            r"\\b(database|db|sql|query|table|column|index)\\b", re.I), re.
-            compile(r"\\b(select|insert|update|delete|join)\\b", re.I)],
-            "api": [re.compile(
-            r"\\b(api|endpoint|route|rest|graphql|request|response)\\b", re.
-            I), re.compile(r"\\b(get|post|put|delete|patch)\\b", re.I)],
-            "testing": [re.compile(
-            r"\\b(test|testing|unit|integration|mock|assert|expect)\\b", re.
-            I), re.compile(r"\\b(describe|it|should|before|after)\\b", re.I),
-            ], "configuration": [re.compile(
-            r"\\b(config|configuration|settings|env|environment|option)\\b",
-            re.I), re.compile(r"\\b(setup|initialize|configure)\\b", re.I)],
-            "logging": [re.compile(
-            r"\\b(log|logging|logger|debug|info|warn|error|trace)\\b", re.I),
-            re.compile(r"\\b(console|file|stream)\\b", re.I)], "security": [
-            re.compile(
-            r"\\b(security|secure|encrypt|decrypt|hash|salt|vulnerability)\\b",
-            re.I), re.compile(r"\\b(password|key|certificate|ssl|tls)\\b",
-            re.I)], "validation": [re.compile(
-            r"\\b(validate|validation|verify|check|ensure|assert)\\b", re.I),
-            re.compile(r"\\b(valid|invalid|format|pattern|constraint)\\b",
-            re.I)], "caching": [re.compile(
-            r"\\b(cache|caching|cached|redis|memcache|store|retrieve)\\b",
-            re.I), re.compile(r"\\b(ttl|expire|invalidate|refresh)\\b", re.I)]}
+        return {
+            "error_handling": [
+                re.compile(
+                    r"\\b(error|exception|try|catch|handle|raise|throw)\\b",
+                    re.I,
+                ),
+                re.compile(r"\\b(error\\s+handling|exception\\s+handling)\\b", re.I),
+            ],
+            "authentication": [
+                re.compile(
+                    r"\\b(auth|authenticate|login|logout|session|token|credential)\\b",
+                    re.I,
+                ),
+                re.compile(r"\\b(authentication|authorization|oauth|jwt)\\b", re.I),
+            ],
+            "database": [
+                re.compile(r"\\b(database|db|sql|query|table|column|index)\\b", re.I),
+                re.compile(r"\\b(select|insert|update|delete|join)\\b", re.I),
+            ],
+            "api": [
+                re.compile(
+                    r"\\b(api|endpoint|route|rest|graphql|request|response)\\b",
+                    re.I,
+                ),
+                re.compile(r"\\b(get|post|put|delete|patch)\\b", re.I),
+            ],
+            "testing": [
+                re.compile(
+                    r"\\b(test|testing|unit|integration|mock|assert|expect)\\b",
+                    re.I,
+                ),
+                re.compile(r"\\b(describe|it|should|before|after)\\b", re.I),
+            ],
+            "configuration": [
+                re.compile(
+                    r"\\b(config|configuration|settings|env|environment|option)\\b",
+                    re.I,
+                ),
+                re.compile(r"\\b(setup|initialize|configure)\\b", re.I),
+            ],
+            "logging": [
+                re.compile(
+                    r"\\b(log|logging|logger|debug|info|warn|error|trace)\\b",
+                    re.I,
+                ),
+                re.compile(r"\\b(console|file|stream)\\b", re.I),
+            ],
+            "security": [
+                re.compile(
+                    r"\\b(security|secure|encrypt|decrypt|hash|salt|vulnerability)\\b",
+                    re.I,
+                ),
+                re.compile(r"\\b(password|key|certificate|ssl|tls)\\b", re.I),
+            ],
+            "validation": [
+                re.compile(
+                    r"\\b(validate|validation|verify|check|ensure|assert)\\b",
+                    re.I,
+                ),
+                re.compile(r"\\b(valid|invalid|format|pattern|constraint)\\b", re.I),
+            ],
+            "caching": [
+                re.compile(
+                    r"\\b(cache|caching|cached|redis|memcache|store|retrieve)\\b",
+                    re.I,
+                ),
+                re.compile(r"\\b(ttl|expire|invalidate|refresh)\\b", re.I),
+            ],
+        }
 
     @staticmethod
     def _initialize_code_patterns() -> dict[str, list[re.Pattern]]:
         """Initialize patterns for matching code constructs."""
-        return {"error_handling": [re.compile(r"\\btry\\s*[:{]"), re.compile
-            (r"\\bcatch\\s*\\("), re.compile(r"\\bexcept\\s*\\w*\\s*:"), re.
-            compile("\\braise\\s+\\w+"), re.compile(r"\\bthrow\\s+\\w+"), re
-            .compile(r"\\b\\.catch\\s*\\("), re.compile(
-            r"\\b\\.then\\s*\\(.*\\)\\.catch\\s*\\(")],
-            "function_definition": [re.compile(r"\\bdef\\s+\\w+\\s*\\("), re
-            .compile(r"\\bfunction\\s+\\w+\\s*\\("), re.compile(
-            r"\\b(public|private|protected)?\\s*\\w+\\s+\\w+\\s*\\("), re.
-            compile(r"\\bfunc\\s+\\w+\\s*\\(")], "class_definition": [re.
-            compile("\\bclass\\s+\\w+"), re.compile(r"\\binterface\\s+\\w+"),
-            re.compile(r"\\bstruct\\s+\\w+")], "import_statement": [re.
-            compile(r"\\bimport\\s+"), re.compile(
-            r"\\bfrom\\s+\\w+\\s+import"), re.compile(r"\\brequire\\s*\\("),
-            re.compile(r"\\busing\\s+\\w+")], "test_code": [re.compile(
-            r"\\b(test|spec)\\s*\\("), re.compile(r"\\bdescribe\\s*\\("), re.
-            compile("\\bit\\s*\\("), re.compile(r"\\b@Test\\b"), re.compile(
-            r"\\bdef\\s+test_\\w+"), re.compile(r"\\bassert\\w*\\s*\\("), re.
-            compile(r"\\bexpect\\s*\\(")]}
+        return {
+            "error_handling": [
+                re.compile(r"\btry\s*[:{]"),
+                re.compile(r"\bcatch\s*\("),
+                re.compile(r"\bexcept\s*\w*\s*:"),
+                re.compile(r"\braise\s+\w+"),
+                re.compile(r"\bthrow\s+\w+"),
+                re.compile(r"\b\.catch\s*\("),
+                re.compile(r"\b\.then\s*\(.*\)\.catch\s*\("),
+            ],
+            "function_definition": [
+                re.compile(r"\bdef\s+\w+\s*\("),
+                re.compile(r"\bfunction\s+\w+\s*\("),
+                re.compile(r"\b(public|private|protected)?\s*\w+\s+\w+\s*\("),
+                re.compile(r"\bfunc\s+\w+\s*\("),
+            ],
+            "class_definition": [
+                re.compile(r"\bclass\s+\w+"),
+                re.compile(r"\binterface\s+\w+"),
+                re.compile(r"\bstruct\s+\w+"),
+            ],
+            "import_statement": [
+                re.compile(r"\bimport\s+"),
+                re.compile(r"\bfrom\s+\w+\s+import"),
+                re.compile(r"\brequire\s*\("),
+                re.compile(r"\busing\s+\w+"),
+            ],
+            "test_code": [
+                re.compile(r"\b(test|spec)\s*\("),
+                re.compile(r"\bdescribe\s*\("),
+                re.compile(r"\bit\s*\("),
+                re.compile(r"\b@Test\b"),
+                re.compile(r"\bdef\s+test_\w+"),
+                re.compile(r"\bassert\w*\s*\("),
+                re.compile(r"\bexpect\s*\("),
+            ],
+        }
 
-    def search(self, query: str, chunks: list[CodeChunk], query_type:
-        QueryType = QueryType.NATURAL_LANGUAGE, limit: (int | None) = None) -> list[
-        QueryResult]:
+    def search(
+        self,
+        query: str,
+        chunks: list[CodeChunk],
+        query_type: QueryType = QueryType.NATURAL_LANGUAGE,
+        limit: int | None = None,
+    ) -> list[QueryResult]:
         """Search chunks using various query types."""
         if query_type == QueryType.NATURAL_LANGUAGE:
             results = self._natural_language_search(query, chunks)
@@ -101,14 +163,18 @@ class NaturalLanguageQueryEngine(ChunkQueryAdvanced):
             results = results[:limit]
         return results
 
-    def _natural_language_search(self, query: str, chunks: list[CodeChunk],
-        ) -> list[QueryResult]:
+    def _natural_language_search(
+        self,
+        query: str,
+        chunks: list[CodeChunk],
+    ) -> list[QueryResult]:
         """Search using natural language understanding."""
         query_lower = query.lower()
         results = []
         intents = self._extract_query_intents(query_lower)
-        if ("authentication" in query_lower and "function" in query_lower
-            ) and "authentication" not in intents:
+        if (
+            "authentication" in query_lower and "function" in query_lower
+        ) and "authentication" not in intents:
             intents.append("authentication")
         for chunk in chunks:
             score = 0.0
@@ -119,34 +185,51 @@ class NaturalLanguageQueryEngine(ChunkQueryAdvanced):
                     score += 0.4
                     metadata["matched_intents"].append(intent)
             text_score, text_highlights = self._calculate_text_similarity(
-                query_lower, chunk.content.lower())
+                query_lower,
+                chunk.content.lower(),
+            )
             score += text_score * 0.4
             highlights.extend(text_highlights)
             if self._is_semantically_relevant(query_lower, chunk):
                 score += 0.3
             if score > 0:
-                results.append(QueryResult(chunk=chunk, score=min(1.0,
-                    score), highlights=highlights, metadata=metadata))
+                results.append(
+                    QueryResult(
+                        chunk=chunk,
+                        score=min(1.0, score),
+                        highlights=highlights,
+                        metadata=metadata,
+                    ),
+                )
         return results
 
-    def _structured_search(self, query: str, chunks: list[CodeChunk]) -> list[
-        QueryResult]:
+    def _structured_search(
+        self,
+        query: str,
+        chunks: list[CodeChunk],
+    ) -> list[QueryResult]:
         """Search using structured query syntax."""
         criteria = self._parse_structured_query(query)
         results = []
         for chunk in chunks:
             if self._chunk_matches_criteria(chunk, criteria):
                 score = self._calculate_structured_score(chunk, criteria)
-                highlights = self._find_keyword_highlights(chunk.content,
-                    criteria.get("keywords", []))
-                results.append(QueryResult(chunk=chunk, score=score,
-                    highlights=highlights, metadata={"matched_criteria":
-                    criteria}))
+                highlights = self._find_keyword_highlights(
+                    chunk.content,
+                    criteria.get("keywords", []),
+                )
+                results.append(
+                    QueryResult(
+                        chunk=chunk,
+                        score=score,
+                        highlights=highlights,
+                        metadata={"matched_criteria": criteria},
+                    ),
+                )
         return results
 
     @classmethod
-    def _regex_search(cls, query: str, chunks: list[CodeChunk]) -> list[
-        QueryResult]:
+    def _regex_search(cls, query: str, chunks: list[CodeChunk]) -> list[QueryResult]:
         """Search using regular expressions."""
         try:
             pattern = re.compile(query, re.MULTILINE | re.DOTALL)
@@ -158,30 +241,47 @@ class NaturalLanguageQueryEngine(ChunkQueryAdvanced):
             if matches:
                 score = min(1.0, len(matches) * 0.2)
                 highlights = [(m.start(), m.end()) for m in matches]
-                results.append(QueryResult(chunk=chunk, score=score,
-                    highlights=highlights, metadata={"match_count": len(
-                    matches)}))
+                results.append(
+                    QueryResult(
+                        chunk=chunk,
+                        score=score,
+                        highlights=highlights,
+                        metadata={"match_count": len(matches)},
+                    ),
+                )
         return results
 
-    def _ast_pattern_search(self, query: str, chunks: list[CodeChunk]) -> list[
-        QueryResult]:
+    def _ast_pattern_search(
+        self,
+        query: str,
+        chunks: list[CodeChunk],
+    ) -> list[QueryResult]:
         """Search using AST pattern matching."""
         pattern_type, pattern_details = self._parse_ast_pattern(query)
         results = []
         for chunk in chunks:
-            if self._chunk_matches_ast_pattern(chunk, pattern_type,
-                pattern_details):
+            if self._chunk_matches_ast_pattern(chunk, pattern_type, pattern_details):
                 score = 0.8
                 highlights = []
-                results.append(QueryResult(chunk=chunk, score=score,
-                    highlights=highlights, metadata={"ast_pattern":
-                    pattern_type}))
+                results.append(
+                    QueryResult(
+                        chunk=chunk,
+                        score=score,
+                        highlights=highlights,
+                        metadata={"ast_pattern": pattern_type},
+                    ),
+                )
         return results
 
-    def filter(self, chunks: list[CodeChunk], node_types: (list[str] | None
-        ) = None, languages: (list[str] | None) = None, min_lines: (int | None)
-        = None, max_lines: (int | None) = None, metadata_filters: (dict[str,
-        Any] | None) = None) -> list[CodeChunk]:
+    def filter(
+        self,
+        chunks: list[CodeChunk],
+        node_types: list[str] | None = None,
+        languages: list[str] | None = None,
+        min_lines: int | None = None,
+        max_lines: int | None = None,
+        metadata_filters: dict[str, Any] | None = None,
+    ) -> list[CodeChunk]:
         """Filter chunks by structured criteria."""
         filtered = chunks
         if node_types:
@@ -189,18 +289,26 @@ class NaturalLanguageQueryEngine(ChunkQueryAdvanced):
         if languages:
             filtered = [c for c in filtered if c.language in languages]
         if min_lines is not None:
-            filtered = [c for c in filtered if c.end_line - c.start_line +
-                1 >= min_lines]
+            filtered = [
+                c for c in filtered if c.end_line - c.start_line + 1 >= min_lines
+            ]
         if max_lines is not None:
-            filtered = [c for c in filtered if c.end_line - c.start_line +
-                1 <= max_lines]
+            filtered = [
+                c for c in filtered if c.end_line - c.start_line + 1 <= max_lines
+            ]
         if metadata_filters:
-            filtered = [c for c in filtered if self._matches_metadata(c,
-                metadata_filters)]
+            filtered = [
+                c for c in filtered if self._matches_metadata(c, metadata_filters)
+            ]
         return filtered
 
-    def find_similar(self, chunk: CodeChunk, chunks: list[CodeChunk],
-        threshold: float = 0.7, limit: (int | None) = None) -> list[QueryResult]:
+    def find_similar(
+        self,
+        chunk: CodeChunk,
+        chunks: list[CodeChunk],
+        threshold: float = 0.7,
+        limit: int | None = None,
+    ) -> list[QueryResult]:
         """Find chunks similar to a given chunk."""
         results = []
         for candidate in chunks:
@@ -209,10 +317,20 @@ class NaturalLanguageQueryEngine(ChunkQueryAdvanced):
             score = self._calculate_chunk_similarity(chunk, candidate)
             if score >= threshold:
                 highlights = []
-                metadata = {"similarity_factors": self.
-                    _get_similarity_factors(chunk, candidate)}
-                results.append(QueryResult(chunk=candidate, score=score,
-                    highlights=highlights, metadata=metadata))
+                metadata = {
+                    "similarity_factors": self._get_similarity_factors(
+                        chunk,
+                        candidate,
+                    ),
+                }
+                results.append(
+                    QueryResult(
+                        chunk=candidate,
+                        score=score,
+                        highlights=highlights,
+                        metadata=metadata,
+                    ),
+                )
         results.sort(key=lambda r: r.score, reverse=True)
         if limit:
             results = results[:limit]
@@ -237,18 +355,39 @@ class NaturalLanguageQueryEngine(ChunkQueryAdvanced):
         for pattern in patterns:
             if pattern.search(chunk.content):
                 return True
-        if (intent == "error_handling" and chunk.node_type in {"try_statement",
-            "catch_clause",
-            }) or (intent == "testing" and "test" in chunk.file_path.lower()):
+        if (
+            intent == "error_handling"
+            and chunk.node_type
+            in {
+                "try_statement",
+                "catch_clause",
+            }
+        ) or (intent == "testing" and "test" in chunk.file_path.lower()):
             return True
-        return bool((intent == "configuration" and "config" in chunk.
-            file_path.lower()) or (intent == "authentication" and any(
-            auth_term in content_lower for auth_term in ["auth", "login",
-            "logout", "password", "token", "credential"])))
+        return bool(
+            (intent == "configuration" and "config" in chunk.file_path.lower())
+            or (
+                intent == "authentication"
+                and any(
+                    auth_term in content_lower
+                    for auth_term in [
+                        "auth",
+                        "login",
+                        "logout",
+                        "password",
+                        "token",
+                        "credential",
+                    ]
+                )
+            ),
+        )
 
     @classmethod
-    def _calculate_text_similarity(cls, query: str, text: str) -> tuple[
-        float, list[tuple[int, int]]]:
+    def _calculate_text_similarity(
+        cls,
+        query: str,
+        text: str,
+    ) -> tuple[float, list[tuple[int, int]]]:
         """Calculate text similarity and find highlights."""
         words = query.split()
         score = 0.0
@@ -273,13 +412,14 @@ class NaturalLanguageQueryEngine(ChunkQueryAdvanced):
     @staticmethod
     def _is_semantically_relevant(query: str, chunk: CodeChunk) -> bool:
         """Check if chunk is semantically relevant to query."""
-        relevance_map = {"function": ["function_definition",
-            "method_definition"], "class": ["class_definition",
-            "class_declaration"], "import": ["import_statement",
-            "import_from_statement"], "variable": ["variable_declaration",
-            "assignment"], "loop": ["for_statement", "while_statement",
-            "do_statement"], "condition": ["if_statement",
-            "conditional_expression"]}
+        relevance_map = {
+            "function": ["function_definition", "method_definition"],
+            "class": ["class_definition", "class_declaration"],
+            "import": ["import_statement", "import_from_statement"],
+            "variable": ["variable_declaration", "assignment"],
+            "loop": ["for_statement", "while_statement", "do_statement"],
+            "condition": ["if_statement", "conditional_expression"],
+        }
         for concept, node_types in relevance_map.items():
             if concept in query and chunk.node_type in node_types:
                 return True
@@ -306,11 +446,12 @@ class NaturalLanguageQueryEngine(ChunkQueryAdvanced):
         return criteria
 
     @staticmethod
-    def _chunk_matches_criteria(chunk: CodeChunk, criteria: dict[str, Any],
-        ) -> bool:
+    def _chunk_matches_criteria(
+        chunk: CodeChunk,
+        criteria: dict[str, Any],
+    ) -> bool:
         """Check if chunk matches structured criteria."""
-        if "node_type" in criteria and chunk.node_type != criteria["node_type"
-            ]:
+        if "node_type" in criteria and chunk.node_type != criteria["node_type"]:
             return False
         if "language" in criteria and chunk.language != criteria["language"]:
             return False
@@ -326,24 +467,26 @@ class NaturalLanguageQueryEngine(ChunkQueryAdvanced):
         return True
 
     @staticmethod
-    def _calculate_structured_score(chunk: CodeChunk, criteria: dict[str, Any],
-        ) -> float:
+    def _calculate_structured_score(
+        chunk: CodeChunk,
+        criteria: dict[str, Any],
+    ) -> float:
         """Calculate relevance score for structured search."""
         score = 0.5
-        if "node_type" in criteria and chunk.node_type == criteria["node_type"
-            ]:
+        if "node_type" in criteria and chunk.node_type == criteria["node_type"]:
             score += 0.2
         keywords = criteria.get("keywords", [])
         if keywords:
             content_lower = chunk.content.lower()
-            keyword_count = sum(content_lower.count(kw.lower()) for kw in
-                keywords)
+            keyword_count = sum(content_lower.count(kw.lower()) for kw in keywords)
             score += min(0.3, keyword_count * 0.05)
         return min(1.0, score)
 
     @staticmethod
-    def _find_keyword_highlights(content: str, keywords: list[str]) -> list[
-        tuple[int, int]]:
+    def _find_keyword_highlights(
+        content: str,
+        keywords: list[str],
+    ) -> list[tuple[int, int]]:
         """Find positions of keywords in content."""
         highlights = []
         content_lower = content.lower()
@@ -371,8 +514,11 @@ class NaturalLanguageQueryEngine(ChunkQueryAdvanced):
         return pattern_type, pattern_details
 
     @staticmethod
-    def _chunk_matches_ast_pattern(chunk: CodeChunk, pattern_type: str,
-        pattern_details: dict[str, Any]) -> bool:
+    def _chunk_matches_ast_pattern(
+        chunk: CodeChunk,
+        pattern_type: str,
+        pattern_details: dict[str, Any],
+    ) -> bool:
         """Check if chunk matches AST pattern."""
         if pattern_type and chunk.node_type != pattern_type:
             return False
@@ -399,8 +545,11 @@ class NaturalLanguageQueryEngine(ChunkQueryAdvanced):
         return True
 
     @classmethod
-    def _calculate_chunk_similarity(cls, chunk1: CodeChunk, chunk2: CodeChunk,
-        ) -> float:
+    def _calculate_chunk_similarity(
+        cls,
+        chunk1: CodeChunk,
+        chunk2: CodeChunk,
+    ) -> float:
         """Calculate similarity between two chunks."""
         score = 0.0
         if chunk1.language == chunk2.language:
@@ -409,22 +558,34 @@ class NaturalLanguageQueryEngine(ChunkQueryAdvanced):
             score += 0.2
         if chunk1.file_path == chunk2.file_path:
             score += 0.1
-        if (chunk1.parent_context and chunk1.parent_context == chunk2.
-            parent_context):
+        if chunk1.parent_context and chunk1.parent_context == chunk2.parent_context:
             score += 0.1
-        content_sim = SequenceMatcher(None, chunk1.content, chunk2.content,
-            ).ratio()
+        content_sim = SequenceMatcher(
+            None,
+            chunk1.content,
+            chunk2.content,
+        ).ratio()
         score += content_sim * 0.4
         size1 = chunk1.end_line - chunk1.start_line
         size2 = chunk2.end_line - chunk2.start_line
-        size_ratio = min(size1, size2) / max(size1, size2) if max(size1, size2,
-            ) > 0 else 0
+        size_ratio = (
+            min(size1, size2) / max(size1, size2)
+            if max(
+                size1,
+                size2,
+            )
+            > 0
+            else 0
+        )
         score += size_ratio * 0.1
         return min(1.0, score)
 
     @classmethod
-    def _get_similarity_factors(cls, chunk1: CodeChunk, chunk2: CodeChunk,
-        ) -> dict[str, Any]:
+    def _get_similarity_factors(
+        cls,
+        chunk1: CodeChunk,
+        chunk2: CodeChunk,
+    ) -> dict[str, Any]:
         """Get factors contributing to similarity."""
         factors = {}
         if chunk1.language == chunk2.language:
@@ -433,8 +594,11 @@ class NaturalLanguageQueryEngine(ChunkQueryAdvanced):
             factors["same_node_type"] = True
         if chunk1.file_path == chunk2.file_path:
             factors["same_file"] = True
-        content_sim = SequenceMatcher(None, chunk1.content, chunk2.content,
-            ).ratio()
+        content_sim = SequenceMatcher(
+            None,
+            chunk1.content,
+            chunk2.content,
+        ).ratio()
         factors["content_similarity"] = round(content_sim, 3)
         return factors
 
@@ -503,24 +667,35 @@ class AdvancedQueryIndex(QueryIndexAdvanced):
         self.remove_chunk(chunk.chunk_id)
         self.add_chunk(chunk)
 
-    def query(self, query: str, query_type: QueryType = QueryType.
-        NATURAL_LANGUAGE, limit: int = 10) -> list[QueryResult]:
+    def query(
+        self,
+        query: str,
+        query_type: QueryType = QueryType.NATURAL_LANGUAGE,
+        limit: int = 10,
+    ) -> list[QueryResult]:
         """Query the index."""
         candidate_ids = self._get_candidate_chunks(query)
-        candidates = [self.chunks[cid] for cid in candidate_ids if cid in
-            self.chunks]
-        results = self.query_engine.search(query, candidates, query_type, limit,
-            )
+        candidates = [self.chunks[cid] for cid in candidate_ids if cid in self.chunks]
+        results = self.query_engine.search(
+            query,
+            candidates,
+            query_type,
+            limit,
+        )
         return results
 
     def get_statistics(self) -> dict[str, Any]:
         """Get index statistics."""
-        return {"total_chunks": len(self.chunks), "unique_terms": len(self.
-            text_index), "unique_node_types": len(self.type_index),
-            "unique_files": len(self.file_index), "unique_languages": len(
-            self.language_index), "embeddings_count": len(self.embeddings),
+        return {
+            "total_chunks": len(self.chunks),
+            "unique_terms": len(self.text_index),
+            "unique_node_types": len(self.type_index),
+            "unique_files": len(self.file_index),
+            "unique_languages": len(self.language_index),
+            "embeddings_count": len(self.embeddings),
             "avg_terms_per_chunk": self._calculate_avg_terms_per_chunk(),
-            "index_memory_bytes": self._estimate_memory_usage()}
+            "index_memory_bytes": self._estimate_memory_usage(),
+        }
 
     @staticmethod
     def _tokenize(text: str) -> set[str]:
@@ -531,7 +706,9 @@ class AdvancedQueryIndex(QueryIndexAdvanced):
             if len(word) >= 2:
                 tokens.add(word.lower())
                 camel_parts = re.findall(
-                    r"[A-Z]?[a-z]+|[A-Z]+(?=[A-Z][a-z]|\\b|\\d)|[0-9]+", word)
+                    r"[A-Z]?[a-z]+|[A-Z]+(?=[A-Z][a-z]|\\b|\\d)|[0-9]+",
+                    word,
+                )
                 for part in camel_parts:
                     if len(part) >= 2:
                         tokens.add(part.lower())
@@ -605,29 +782,55 @@ class SmartQueryOptimizer(QueryOptimizer):
         """Initialize the optimizer with language models and patterns."""
         self.common_typos = self._load_common_typos()
         self.synonyms = self._load_programming_synonyms()
-        self.stop_words = {"the", "a", "an", "in", "on", "at", "to", "for",
-            "of", "with"}
+        self.stop_words = {
+            "the",
+            "a",
+            "an",
+            "in",
+            "on",
+            "at",
+            "to",
+            "for",
+            "of",
+            "with",
+        }
 
     @staticmethod
     def _load_common_typos() -> dict[str, str]:
         """Load common programming typos."""
-        return {"fucntion": "function", "funciton": "function", "calss":
-            "class", "improt": "import", "retrun": "return", "ture": "true",
-            "flase": "false", "nulll": "null", "undefinded": "undefined",
-            "cosnt": "const", "vra": "var", "asyng": "async", "awiat":
-            "await", "teh": "the", "adn": "and"}
+        return {
+            "fucntion": "function",
+            "funciton": "function",
+            "calss": "class",
+            "improt": "import",
+            "retrun": "return",
+            "ture": "true",
+            "flase": "false",
+            "nulll": "null",
+            "undefinded": "undefined",
+            "cosnt": "const",
+            "vra": "var",
+            "asyng": "async",
+            "awiat": "await",
+            "teh": "the",
+            "adn": "and",
+        }
 
     @staticmethod
     def _load_programming_synonyms() -> dict[str, list[str]]:
         """Load programming term synonyms."""
-        return {"function": ["method", "func", "procedure", "routine"],
-            "variable": ["var", "field", "attribute", "property"], "class":
-            ["type", "struct", "object"], "error": ["exception", "fault",
-            "bug", "issue"], "test": ["spec", "unittest", "check"],
-            "import": ["include", "require", "using"], "authentication": [
-            "auth", "login", "signin"], "configuration": ["config",
-            "settings", "options"], "database": ["db", "datastore",
-            "repository"], "api": ["endpoint", "service", "interface"]}
+        return {
+            "function": ["method", "func", "procedure", "routine"],
+            "variable": ["var", "field", "attribute", "property"],
+            "class": ["type", "struct", "object"],
+            "error": ["exception", "fault", "bug", "issue"],
+            "test": ["spec", "unittest", "check"],
+            "import": ["include", "require", "using"],
+            "authentication": ["auth", "login", "signin"],
+            "configuration": ["config", "settings", "options"],
+            "database": ["db", "datastore", "repository"],
+            "api": ["endpoint", "service", "interface"],
+        }
 
     def optimize_query(self, query: str, query_type: QueryType) -> str:
         """Optimize a query for better results."""
@@ -646,18 +849,17 @@ class SmartQueryOptimizer(QueryOptimizer):
         for word in words:
             if word in self.stop_words:
                 continue
-            if word in self.common_typos:
-                word = self.common_typos[word]
+            corrected_word = self.common_typos.get(word, word)
             expanded = False
             for base, synonyms in self.synonyms.items():
-                if word == base or word in synonyms:
+                if corrected_word == base or corrected_word in synonyms:
                     optimized_words.append(base)
                     if synonyms and synonyms[0] != base:
                         optimized_words.append(synonyms[0])
                     expanded = True
                     break
             if not expanded:
-                optimized_words.append(word)
+                optimized_words.append(corrected_word)
         seen = set()
         result = []
         for word in optimized_words:
@@ -672,17 +874,20 @@ class SmartQueryOptimizer(QueryOptimizer):
         for part in query.split():
             if ":" in part:
                 key, value = part.split(":", 1)
-                key_map = {"typ": "type", "lang": "language", "fn":
-                    "function", "cls": "class"}
+                key_map = {
+                    "typ": "type",
+                    "lang": "language",
+                    "fn": "function",
+                    "cls": "class",
+                }
                 if key in key_map:
                     key = key_map[key]
                 if value in self.common_typos:
                     value = self.common_typos[value]
                 parts.append(f"{key}:{value}")
             else:
-                if part in self.common_typos:
-                    part = self.common_typos[part]
-                parts.append(part)
+                corrected_part = self.common_typos.get(part, part)
+                parts.append(corrected_part)
         return " ".join(parts)
 
     @staticmethod
@@ -695,8 +900,11 @@ class SmartQueryOptimizer(QueryOptimizer):
         return query
 
     @classmethod
-    def suggest_queries(cls, partial_query: str, chunks: list[CodeChunk],
-        ) -> list[str]:
+    def suggest_queries(
+        cls,
+        partial_query: str,
+        chunks: list[CodeChunk],
+    ) -> list[str]:
         """Suggest query completions based on indexed content."""
         suggestions = []
         partial_lower = partial_query.lower()
@@ -713,11 +921,17 @@ class SmartQueryOptimizer(QueryOptimizer):
                 if term != partial_lower:
                     suggestions.append(term)
             if partial_lower.startswith("find"):
-                suggestions.extend(["find all functions",
-                    "find error handling", "find test cases"])
+                suggestions.extend(
+                    ["find all functions", "find error handling", "find test cases"],
+                )
             elif partial_lower.startswith("show"):
-                suggestions.extend(["show me authentication code",
-                    "show database queries", "show configuration"])
+                suggestions.extend(
+                    [
+                        "show me authentication code",
+                        "show database queries",
+                        "show configuration",
+                    ],
+                )
         if ":" in partial_query:
             key, partial_value = partial_query.rsplit(":", 1)
             if key == "type":
@@ -726,6 +940,9 @@ class SmartQueryOptimizer(QueryOptimizer):
                         suggestions.append(f"{key}:{node_type}")
             elif key == "language":
                 languages = {chunk.language for chunk in chunks[:50]}
-                suggestions.extend(f"{key}:{lang}" for lang in sorted(
-                    languages) if lang.startswith(partial_value))
+                suggestions.extend(
+                    f"{key}:{lang}"
+                    for lang in sorted(languages)
+                    if lang.startswith(partial_value)
+                )
         return suggestions[:10]

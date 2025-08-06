@@ -1,4 +1,5 @@
 """Semantic analysis for understanding code meaning and relationships."""
+
 from typing import Any
 
 from tree_sitter import Node
@@ -17,42 +18,124 @@ class SemanticAnalyzer(ASTProcessor):
     """
 
     def __init__(self):
-        self.semantic_patterns = {"initialization": ["constructor",
-            "__init__", "new", "create", "build", "setup", "initialize",
-            "config", "configure"], "validation": ["validate", "check",
-            "verify", "assert", "ensure", "is_valid", "can_", "should_",
-            "must_"], "computation": ["calculate", "compute", "process",
-            "transform", "convert", "parse", "analyze", "evaluate"],
-            "io_operation": ["read", "write", "load", "save", "fetch",
-            "send", "receive", "get", "put", "post"], "lifecycle": ["start",
-            "stop", "begin", "end", "open", "close", "connect",
-            "disconnect", "dispose"], "error_handling": ["handle", "catch",
-            "error", "exception", "fail", "retry", "recover", "fallback"]}
-        self.side_effect_nodes = {"assignment", "augmented_assignment",
-            "call", "method_call", "print_statement",
-            "expression_statement", "delete_statement", "return_statement",
-            "yield_statement", "raise_statement", "throw_statement",
-            "await_expression"}
-        self.pure_patterns = {"const", "final", "readonly", "immutable",
-            "pure", "functional", "deterministic"}
+        self.semantic_patterns = {
+            "initialization": [
+                "constructor",
+                "__init__",
+                "new",
+                "create",
+                "build",
+                "setup",
+                "initialize",
+                "config",
+                "configure",
+            ],
+            "validation": [
+                "validate",
+                "check",
+                "verify",
+                "assert",
+                "ensure",
+                "is_valid",
+                "can_",
+                "should_",
+                "must_",
+            ],
+            "computation": [
+                "calculate",
+                "compute",
+                "process",
+                "transform",
+                "convert",
+                "parse",
+                "analyze",
+                "evaluate",
+            ],
+            "io_operation": [
+                "read",
+                "write",
+                "load",
+                "save",
+                "fetch",
+                "send",
+                "receive",
+                "get",
+                "put",
+                "post",
+            ],
+            "lifecycle": [
+                "start",
+                "stop",
+                "begin",
+                "end",
+                "open",
+                "close",
+                "connect",
+                "disconnect",
+                "dispose",
+            ],
+            "error_handling": [
+                "handle",
+                "catch",
+                "error",
+                "exception",
+                "fail",
+                "retry",
+                "recover",
+                "fallback",
+            ],
+        }
+        self.side_effect_nodes = {
+            "assignment",
+            "augmented_assignment",
+            "call",
+            "method_call",
+            "print_statement",
+            "expression_statement",
+            "delete_statement",
+            "return_statement",
+            "yield_statement",
+            "raise_statement",
+            "throw_statement",
+            "await_expression",
+        }
+        self.pure_patterns = {
+            "const",
+            "final",
+            "readonly",
+            "immutable",
+            "pure",
+            "functional",
+            "deterministic",
+        }
 
     def analyze_semantics(self, node: Node, _source: bytes) -> dict[str, Any]:
         """Perform semantic analysis on the AST node."""
-        context = {"semantic_role": None, "patterns": [], "side_effects": [
-            ], "data_flow": {"inputs": set(), "outputs": set(),
-            "transformations": []}, "purity_score": 1.0,
-            "semantic_cohesion": 0.0, "semantic_markers": []}
+        context = {
+            "semantic_role": None,
+            "patterns": [],
+            "side_effects": [],
+            "data_flow": {"inputs": set(), "outputs": set(), "transformations": []},
+            "purity_score": 1.0,
+            "semantic_cohesion": 0.0,
+            "semantic_markers": [],
+        }
         self.traverse(node, context)
         context["semantic_role"] = self._determine_semantic_role(node, context)
         context["semantic_cohesion"] = self._calculate_cohesion(context)
-        return {"role": context["semantic_role"], "patterns": list(set(
-            context["patterns"])), "side_effects": context["side_effects"],
-            "data_flow": {"inputs": list(context["data_flow"]["inputs"]),
-            "outputs": list(context["data_flow"]["outputs"]),
-            "transformations": context["data_flow"]["transformations"]},
-            "purity_score": context["purity_score"], "cohesion_score":
-            context["semantic_cohesion"], "markers": context[
-            "semantic_markers"]}
+        return {
+            "role": context["semantic_role"],
+            "patterns": list(set(context["patterns"])),
+            "side_effects": context["side_effects"],
+            "data_flow": {
+                "inputs": list(context["data_flow"]["inputs"]),
+                "outputs": list(context["data_flow"]["outputs"]),
+                "transformations": context["data_flow"]["transformations"],
+            },
+            "purity_score": context["purity_score"],
+            "cohesion_score": context["semantic_cohesion"],
+            "markers": context["semantic_markers"],
+        }
 
     def process_node(self, node: Node, context: dict[str, Any]) -> Any:
         """Process node for semantic analysis."""
@@ -74,24 +157,55 @@ class SemanticAnalyzer(ASTProcessor):
         """Process all children for complete semantic analysis."""
         return True
 
-    def _determine_semantic_role(self, node: Node, context: dict[str, Any],
-        ) -> str:
+    def _determine_semantic_role(
+        self,
+        node: Node,
+        context: dict[str, Any],
+    ) -> str:
         """Determine the primary semantic role of a code block."""
+        # Check pattern matching first
+        role = self._check_pattern_role(node, context)
+        if role:
+            return role
+
+        # Check side effects
+        role = SemanticAnalyzer._check_side_effect_role(context)
+        if role:
+            return role
+
+        # Check error handling patterns
+        if "exception" in context["patterns"] or "error" in context["patterns"]:
+            return "error_handling"
+
+        # Check node type specific roles
+        return SemanticAnalyzer._get_node_type_role(node, context)
+
+    def _check_pattern_role(self, node: Node, context: dict[str, Any]) -> str | None:
+        """Check if node matches semantic patterns."""
         name = self._get_node_name(node).lower()
         for role, patterns in self.semantic_patterns.items():
             for pattern in patterns:
                 if pattern in name:
                     context["patterns"].append(role)
                     return role
-        if context["side_effects"]:
-            effect_types = [e["type"] for e in context["side_effects"]]
-            if "io" in effect_types:
-                return "io_operation"
-            if "state_mutation" in effect_types:
-                return "state_management"
-        if "exception" in context["patterns"] or "error" in context["patterns"
-            ]:
-            return "error_handling"
+        return None
+
+    @staticmethod
+    def _check_side_effect_role(context: dict[str, Any]) -> str | None:
+        """Check role based on side effects."""
+        if not context["side_effects"]:
+            return None
+
+        effect_types = [e["type"] for e in context["side_effects"]]
+        if "io" in effect_types:
+            return "io_operation"
+        if "state_mutation" in effect_types:
+            return "state_management"
+        return None
+
+    @staticmethod
+    def _get_node_type_role(node: Node, context: dict[str, Any]) -> str:
+        """Get role based on node type."""
         if node.type == "class_definition":
             return "data_structure"
         if node.type in {"function_definition", "method_definition"}:
@@ -112,8 +226,10 @@ class SemanticAnalyzer(ASTProcessor):
         elif node.type in {"call", "method_call"}:
             func_name = self._extract_call_name(node)
             if func_name:
-                if any(io_word in func_name.lower() for io_word in ["read",
-                    "write", "print", "send", "save", "load"]):
+                if any(
+                    io_word in func_name.lower()
+                    for io_word in ["read", "write", "print", "send", "save", "load"]
+                ):
                     effect_info["type"] = "io"
                     effect_info["severity"] = "high"
                 else:
@@ -125,8 +241,10 @@ class SemanticAnalyzer(ASTProcessor):
         if effect_info["type"]:
             context["side_effects"].append(effect_info)
             severity_penalty = {"low": 0.1, "medium": 0.3, "high": 0.5}
-            context["purity_score"] -= severity_penalty.get(effect_info[
-                "severity"], 0.1)
+            context["purity_score"] -= severity_penalty.get(
+                effect_info["severity"],
+                0.1,
+            )
             context["purity_score"] = max(0.0, context["purity_score"])
 
     def _analyze_function_semantics(self, node: Node, context: dict[str, Any]):
@@ -158,17 +276,25 @@ class SemanticAnalyzer(ASTProcessor):
         elif parent.type == "augmented_assignment":
             context["data_flow"]["inputs"].add(identifier)
             context["data_flow"]["outputs"].add(identifier)
-            context["data_flow"]["transformations"].append({"variable":
-                identifier, "operation": parent.type})
+            context["data_flow"]["transformations"].append(
+                {"variable": identifier, "operation": parent.type},
+            )
 
     @staticmethod
     def _analyze_semantic_marker(node: Node, context: dict[str, Any]):
         """Analyze comments and decorators for semantic hints."""
         text = node.text.decode().lower()
-        semantic_keywords = {"pure": "functional", "side effect": "impure",
-            "mutates": "state_mutation", "thread-safe": "concurrent",
-            "async": "asynchronous", "deprecated": "legacy", "api":
-            "interface", "internal": "private", "public": "api"}
+        semantic_keywords = {
+            "pure": "functional",
+            "side effect": "impure",
+            "mutates": "state_mutation",
+            "thread-safe": "concurrent",
+            "async": "asynchronous",
+            "deprecated": "legacy",
+            "api": "interface",
+            "internal": "private",
+            "public": "api",
+        }
         for keyword, marker in semantic_keywords.items():
             if keyword in text:
                 context["semantic_markers"].append(marker)
@@ -177,8 +303,10 @@ class SemanticAnalyzer(ASTProcessor):
         """Analyze control flow patterns."""
         if node.type == "if_statement":
             condition = self._get_condition_text(node)
-            if condition and any(word in condition for word in ["valid",
-                "null", "empty", "exists", "error"]):
+            if condition and any(
+                word in condition
+                for word in ["valid", "null", "empty", "exists", "error"]
+            ):
                 context["patterns"].append("validation")
         elif node.type == "try_statement":
             context["patterns"].append("error_handling")

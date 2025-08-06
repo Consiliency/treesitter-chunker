@@ -1,4 +1,5 @@
 """Fix PERF401 - Convert manual list comprehensions to proper list comprehensions using AST."""
+
 import ast
 import os
 from pathlib import Path
@@ -31,10 +32,16 @@ class ListComprehensionTransformer(ast.NodeTransformer):
     def visit_For(self, node):
         """Look for patterns that can be converted to list comprehensions."""
         self.generic_visit(node)
-        if len(node.body) == 1 and isinstance(node.body[0], ast.Expr,
-            ) and isinstance(node.body[0].value, ast.Call) and isinstance(node
-            .body[0].value.func, ast.Attribute) and node.body[0
-            ].value.func.attr == "append":
+        if (
+            len(node.body) == 1
+            and isinstance(
+                node.body[0],
+                ast.Expr,
+            )
+            and isinstance(node.body[0].value, ast.Call)
+            and isinstance(node.body[0].value.func, ast.Attribute)
+            and node.body[0].value.func.attr == "append"
+        ):
             pass
         return node
 
@@ -44,18 +51,32 @@ class ListComprehensionTransformer(ast.NodeTransformer):
         i = 0
         while i < len(node.body):
             current = node.body[i]
-            if i + 1 < len(node.body) and isinstance(current, ast.Assign,
-                ) and len(current.targets) == 1 and isinstance(current.
-                targets[0], ast.Name) and isinstance(current.value, ast.List,
-                ) and len(current.value.elts) == 0:
+            if (
+                i + 1 < len(node.body)
+                and isinstance(
+                    current,
+                    ast.Assign,
+                )
+                and len(current.targets) == 1
+                and isinstance(current.targets[0], ast.Name)
+                and isinstance(
+                    current.value,
+                    ast.List,
+                )
+                and len(current.value.elts) == 0
+            ):
                 list_var = current.targets[0].id
                 next_stmt = node.body[i + 1]
-                if isinstance(next_stmt, ast.For,
-                    ) and self._is_simple_append_loop(next_stmt, list_var):
-                    list_comp = self._create_list_comprehension(next_stmt,
-                        list_var)
+                if isinstance(
+                    next_stmt,
+                    ast.For,
+                ) and self._is_simple_append_loop(next_stmt, list_var):
+                    list_comp = self._create_list_comprehension(next_stmt, list_var)
                     if list_comp:
-                        new_assign = ast.Assign(targets=[ast.Name(id=list_var, ctx=ast.Store())], value=list_comp)
+                        new_assign = ast.Assign(
+                            targets=[ast.Name(id=list_var, ctx=ast.Store())],
+                            value=list_comp,
+                        )
                         ast.fix_missing_locations(new_assign)
                         new_body.append(new_assign)
                         self.changes_made = True
@@ -72,40 +93,72 @@ class ListComprehensionTransformer(ast.NodeTransformer):
         if len(for_node.body) != 1:
             return False
         stmt = for_node.body[0]
-        if (isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Call) and
-            isinstance(stmt.value.func, ast.Attribute) and isinstance(stmt.
-            value.func.value, ast.Name) and stmt.value.func.value.id ==
-            list_var and stmt.value.func.attr == "append" and len(stmt.
-            value.args) == 1):
+        if (
+            isinstance(stmt, ast.Expr)
+            and isinstance(stmt.value, ast.Call)
+            and isinstance(stmt.value.func, ast.Attribute)
+            and isinstance(stmt.value.func.value, ast.Name)
+            and stmt.value.func.value.id == list_var
+            and stmt.value.func.attr == "append"
+            and len(stmt.value.args) == 1
+        ):
             return True
-        return bool(isinstance(stmt, ast.If) and len(stmt.body) == 1 and
-            len(stmt.orelse) == 0 and isinstance(stmt.body[0], ast.Expr) and
-            isinstance(stmt.body[0].value, ast.Call) and isinstance(stmt.
-            body[0].value.func, ast.Attribute) and isinstance(stmt.body[0].
-            value.func.value, ast.Name) and stmt.body[0].value.func.value.
-            id == list_var and stmt.body[0].value.func.attr == "append" and
-            len(stmt.body[0].value.args) == 1)
-
+        return bool(
+            isinstance(stmt, ast.If)
+            and len(stmt.body) == 1
+            and len(stmt.orelse) == 0
+            and isinstance(stmt.body[0], ast.Expr)
+            and isinstance(stmt.body[0].value, ast.Call)
+            and isinstance(stmt.body[0].value.func, ast.Attribute)
+            and isinstance(stmt.body[0].value.func.value, ast.Name)
+            and stmt.body[0].value.func.value.id == list_var
+            and stmt.body[0].value.func.attr == "append"
+            and len(stmt.body[0].value.args) == 1,
+        )
 
         # Check for conditional append
-        return bool(isinstance(stmt, ast.If) and len(stmt.body) == 1 and len(stmt.orelse) == 0 and isinstance(stmt.body[0], ast.Expr) and isinstance(stmt.body[0].value, ast.Call) and isinstance(stmt.body[0].value.func, ast.Attribute) and isinstance(stmt.body[0].value.func.value, ast.Name) and stmt.body[0].value.func.value.id == list_var and stmt.body[0].value.func.attr == "append" and len(stmt.body[0].value.args) == 1)
+        return bool(
+            isinstance(stmt, ast.If)
+            and len(stmt.body) == 1
+            and len(stmt.orelse) == 0
+            and isinstance(stmt.body[0], ast.Expr)
+            and isinstance(stmt.body[0].value, ast.Call)
+            and isinstance(stmt.body[0].value.func, ast.Attribute)
+            and isinstance(stmt.body[0].value.func.value, ast.Name)
+            and stmt.body[0].value.func.value.id == list_var
+            and stmt.body[0].value.func.attr == "append"
+            and len(stmt.body[0].value.args) == 1,
+        )
+
     def _create_list_comprehension(self, for_node, list_var):
-=======
-    @staticmethod
-    def _create_list_comprehension(for_node, list_var):
->>>>>>> origin/main
         """Create a list comprehension from a for loop."""
         stmt = for_node.body[0]
         if isinstance(stmt, ast.Expr):
             elt = stmt.value.args[0]
-            return ast.ListComp(elt=elt, generators=[ast.comprehension(
-                target=for_node.target, iter=for_node.iter, ifs=[],
-                is_async=False)])
+            return ast.ListComp(
+                elt=elt,
+                generators=[
+                    ast.comprehension(
+                        target=for_node.target,
+                        iter=for_node.iter,
+                        ifs=[],
+                        is_async=False,
+                    ),
+                ],
+            )
         if isinstance(stmt, ast.If):
             elt = stmt.body[0].value.args[0]
-            return ast.ListComp(elt=elt, generators=[ast.comprehension(
-                target=for_node.target, iter=for_node.iter, ifs=[stmt.test],
-                is_async=False)])
+            return ast.ListComp(
+                elt=elt,
+                generators=[
+                    ast.comprehension(
+                        target=for_node.target,
+                        iter=for_node.iter,
+                        ifs=[stmt.test],
+                        is_async=False,
+                    ),
+                ],
+            )
         return None
 
 
@@ -127,6 +180,7 @@ def fix_perf401_in_file(file_path: Path) -> bool:
     if transformer.changes_made:
         try:
             import astor
+
             new_content = astor.to_source(new_tree)
             with Path(file_path).open("w", encoding="utf-8") as f:
                 f.write(new_content)
@@ -147,12 +201,32 @@ def main():
     python_files = []
     for pattern in ["**/*.py"]:
         python_files.extend(Path().glob(pattern))
-    exclude_dirs = {".git", ".mypy_cache", ".ruff_cache", ".venv",
-        "__pycache__", "build", "dist", ".claude", "grammars", "archive",
-        "worktrees", "flask", "rust", "click", "gin", "guava", "googletest",
-        "lodash", "ruby", "serde", "TypeScript"}
-    python_files = [f for f in python_files if not any(exc in f.parts for
-        exc in exclude_dirs)]
+    exclude_dirs = {
+        ".git",
+        ".mypy_cache",
+        ".ruff_cache",
+        ".venv",
+        "__pycache__",
+        "build",
+        "dist",
+        ".claude",
+        "grammars",
+        "archive",
+        "worktrees",
+        "flask",
+        "rust",
+        "click",
+        "gin",
+        "guava",
+        "googletest",
+        "lodash",
+        "ruby",
+        "serde",
+        "TypeScript",
+    }
+    python_files = [
+        f for f in python_files if not any(exc in f.parts for exc in exclude_dirs)
+    ]
     fixed_count = 0
     for file_path in python_files:
         if fix_perf401_in_file(file_path):

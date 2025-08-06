@@ -1,4 +1,5 @@
 """Unit tests for release manager"""
+
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -19,14 +20,25 @@ class TestReleaseManager:
                 assert not success
                 assert "Invalid version bump" in info["errors"][0]
                 with patch.object(manager, "_run_tests", return_value=True):
-                    with patch.object(manager, "_update_version_in_file",
-                        return_value=True):
-                        with patch.object(manager, "_update_changelog",
-                            return_value=True):
-                            with patch.object(manager, "_create_git_tag",
-                                return_value=True):
-                                success, info = manager.prepare_release("1.1.0"
-                                    , "changelog")
+                    with patch.object(
+                        manager,
+                        "_update_version_in_file",
+                        return_value=True,
+                    ):
+                        with patch.object(
+                            manager,
+                            "_update_changelog",
+                            return_value=True,
+                        ):
+                            with patch.object(
+                                manager,
+                                "_create_git_tag",
+                                return_value=True,
+                            ):
+                                success, info = manager.prepare_release(
+                                    "1.1.0",
+                                    "changelog",
+                                )
                                 assert success
 
     @classmethod
@@ -55,14 +67,12 @@ class TestReleaseManager:
         with tempfile.TemporaryDirectory() as tmpdir:
             manager = ReleaseManager(Path(tmpdir))
             changelog_path = Path(tmpdir) / "CHANGELOG.md"
-            assert manager._update_changelog(changelog_path, "1.0.0",
-                "Initial release")
+            assert manager._update_changelog(changelog_path, "1.0.0", "Initial release")
             content = changelog_path.read_text()
             assert "# Changelog" in content
             assert "[1.0.0]" in content
             assert "Initial release" in content
-            assert manager._update_changelog(changelog_path, "1.1.0",
-                "New features")
+            assert manager._update_changelog(changelog_path, "1.1.0", "New features")
             content = changelog_path.read_text()
             assert "[1.1.0]" in content
             assert "[1.0.0]" in content
@@ -83,8 +93,7 @@ class TestReleaseManager:
     def test_create_git_tag(cls, mock_run):
         """Test git tag creation"""
         manager = ReleaseManager()
-        mock_run.side_effect = [Mock(returncode=0, stdout=""), Mock(
-            returncode=0)]
+        mock_run.side_effect = [Mock(returncode=0, stdout=""), Mock(returncode=0)]
         assert manager._create_git_tag("v1.0.0", "Release 1.0.0")
         mock_run.side_effect = [Mock(returncode=0, stdout="v1.0.0\n")]
         assert not manager._create_git_tag("v1.0.0", "Release 1.0.0")
@@ -116,6 +125,7 @@ class TestReleaseManager:
                 elif "--wheel" in args[0]:
                     (output_dir / "package-1.0.0-py3-none-any.whl").touch()
                 return Mock(returncode=0)
+
             mock_run.side_effect = create_files
             artifacts = manager.create_release_artifacts("1.0.0", output_dir)
             assert len(artifacts) >= 2
@@ -132,8 +142,7 @@ class TestReleaseManager:
             file1.write_text("content1")
             file2 = output_dir / "test2.txt"
             file2.write_text("content2")
-            checksum_path = manager._generate_checksums([file1, file2],
-                output_dir)
+            checksum_path = manager._generate_checksums([file1, file2], output_dir)
             assert checksum_path.exists()
             content = checksum_path.read_text()
             assert "test1.txt" in content
@@ -165,7 +174,7 @@ class TestReleaseManager:
 ### Added
 - Beta features
 """,
-                )
+            )
             notes_path = project_root / "RELEASE_NOTES.md"
             assert manager._create_release_notes("1.0.0", notes_path)
             content = notes_path.read_text()
@@ -181,6 +190,5 @@ class TestReleaseManager:
             manager = ReleaseManager(project_root)
             assert manager._get_current_version() == "0.0.0"
             pyproject = project_root / "pyproject.toml"
-            pyproject.write_text(
-                '\n[project]\nname = "test"\nversion = "1.2.3"\n')
+            pyproject.write_text('\n[project]\nname = "test"\nversion = "1.2.3"\n')
             assert manager._get_current_version() == "1.2.3"

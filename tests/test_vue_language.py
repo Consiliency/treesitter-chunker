@@ -1,4 +1,5 @@
 """Comprehensive tests for Vue language support."""
+
 from chunker import chunk_file
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from chunker.languages.vue import VuePlugin
@@ -46,11 +47,10 @@ h1 {
 }
 </style>
 """,
-            )
+        )
         chunks = chunk_file(src, "vue")
         assert len(chunks) >= 3
-        template_chunks = [c for c in chunks if c.node_type ==
-            "template_element"]
+        template_chunks = [c for c in chunks if c.node_type == "template_element"]
         assert len(template_chunks) >= 1
         assert any("{{ message }}" in c.content for c in template_chunks)
         script_chunks = [c for c in chunks if c.node_type == "script_element"]
@@ -59,8 +59,7 @@ h1 {
         style_chunks = [c for c in chunks if c.node_type == "style_element"]
         assert len(style_chunks) >= 1
         assert any("scoped" in c.content for c in style_chunks)
-        component_chunks = [c for c in chunks if c.node_type ==
-            "component_definition"]
+        component_chunks = [c for c in chunks if c.node_type == "component_definition"]
         assert len(component_chunks) >= 1
 
     @staticmethod
@@ -119,7 +118,7 @@ div {
 }
 </style>
 """,
-            )
+        )
         chunks = chunk_file(src, "vue")
         script_chunks = [c for c in chunks if c.node_type == "script_element"]
         assert any("setup" in c.content for c in script_chunks)
@@ -175,12 +174,11 @@ export default defineComponent({
 }
 </style>
 """,
-            )
+        )
         chunks = chunk_file(src, "vue")
         script_chunks = [c for c in chunks if c.node_type == "script_element"]
         assert any('lang="ts"' in c.content for c in script_chunks)
-        component_chunks = [c for c in chunks if c.node_type ==
-            "component_definition"]
+        component_chunks = [c for c in chunks if c.node_type == "component_definition"]
         assert any("defineComponent" in c.content for c in component_chunks)
 
     @staticmethod
@@ -235,10 +233,9 @@ export default {
 }
 </script>
 """,
-            )
+        )
         chunks = chunk_file(src, "vue")
-        template_chunks = [c for c in chunks if c.node_type ==
-            "template_element"]
+        template_chunks = [c for c in chunks if c.node_type == "template_element"]
         assert len(template_chunks) >= 1
         template_content = template_chunks[0].content
         assert "v-if" in template_content
@@ -270,6 +267,7 @@ class TestVueContractCompliance:
                 self.start_point = 0, 0
                 self.end_point = 0, end
                 self.children = []
+
         root = MockNode("document")
         template_node = MockNode("template_element", 0, 50)
         script_node = MockNode("script_element", 51, 100)
@@ -302,6 +300,7 @@ class TestVueContractCompliance:
             def __init__(self, node_type):
                 self.type = node_type
                 self.children = []
+
         assert plugin.should_chunk_node(MockNode("template_element"))
         assert plugin.should_chunk_node(MockNode("script_element"))
         assert plugin.should_chunk_node(MockNode("style_element"))
@@ -318,6 +317,7 @@ class TestVueContractCompliance:
             def __init__(self, node_type):
                 self.type = node_type
                 self.children = []
+
         node = MockNode("template_element")
         context = plugin.get_node_context(node, b"<template></template>")
         assert context is not None
@@ -340,7 +340,8 @@ class TestVueEdgeCases:
         """Test Vue file with only template."""
         src = tmp_path / "TemplateOnly.vue"
         src.write_text(
-            "<template>\n  <div>Template only component</div>\n</template>\n")
+            "<template>\n  <div>Template only component</div>\n</template>\n",
+        )
         chunks = chunk_file(src, "vue")
         assert len(chunks) >= 1
         assert all(c.node_type == "template_element" for c in chunks)
@@ -368,7 +369,7 @@ const count = ref(0)
   <div>{{ count }}</div>
 </template>
 """,
-            )
+        )
         chunks = chunk_file(src, "vue")
         script_chunks = [c for c in chunks if c.node_type == "script_element"]
         assert len(script_chunks) >= 2
@@ -407,10 +408,9 @@ export default {
 }
 </script>
 """,
-            )
+        )
         chunks = chunk_file(src, "vue")
-        template_chunks = [c for c in chunks if c.node_type ==
-            "template_element"]
+        template_chunks = [c for c in chunks if c.node_type == "template_element"]
         assert len(template_chunks) >= 1
         assert "slot" in template_chunks[0].content
 
@@ -446,7 +446,7 @@ export default {
 This component demonstrates internationalization.
 </docs>
 """,
-            )
+        )
         chunks = chunk_file(src, "vue")
         assert any(c.node_type == "template_element" for c in chunks)
         assert any(c.node_type == "script_element" for c in chunks)
@@ -480,7 +480,7 @@ div {
 }
 </style>
 """,
-            )
+        )
         chunks = chunk_file(src, "vue")
         assert any(c.node_type == "script_element" for c in chunks)
         assert any(c.node_type == "style_element" for c in chunks)
@@ -507,9 +507,8 @@ export default {
 }
 </script>
 """,
-            )
+        )
         chunks = chunk_file(src, "vue")
-        template_chunks = [c for c in chunks if c.node_type ==
-            "template_element"]
+        template_chunks = [c for c in chunks if c.node_type == "template_element"]
         assert len(template_chunks) >= 1
         assert "functional" in template_chunks[0].content

@@ -2,6 +2,7 @@
 Integration tests for Development Environment Component
 Tests the actual implementation against the contract
 """
+
 import shutil
 import subprocess
 import tempfile
@@ -28,8 +29,12 @@ class TestDevEnvironmentIntegration:
         dev_env: DevelopmentEnvironmentContract = DevelopmentEnvironment()
         with tempfile.TemporaryDirectory() as tmpdir:
             project_root = Path(tmpdir)
-            subprocess.run(["git", "init"], check=False, cwd=project_root,
-                capture_output=True)
+            subprocess.run(
+                ["git", "init"],
+                check=False,
+                cwd=project_root,
+                capture_output=True,
+            )
             config_content = """repos:
   - repo: https://github.com/psf/black
     rev: 24.3.0
@@ -62,7 +67,7 @@ def bad_function( ):
     y = 2
     return x
 """,
-                )
+            )
             success, issues = dev_env.run_linting([str(bad_file)])
             if shutil.which("ruff") or shutil.which("mypy"):
                 assert not success
@@ -88,15 +93,26 @@ class BadClass:
   def __init__(self):
       pass
 """,
-                )
-            success, modified_files = dev_env.format_code([str(bad_file)],
-                check_only=True)
+            )
+            success, modified_files = dev_env.format_code(
+                [str(bad_file)],
+                check_only=True,
+            )
             if shutil.which("ruff") or shutil.which("black"):
                 assert not success or len(modified_files) > 0
-                success, modified_files = dev_env.format_code([str(bad_file,
-                    )], check_only=False)
+                success, modified_files = dev_env.format_code(
+                    [
+                        str(
+                            bad_file,
+                        ),
+                    ],
+                    check_only=False,
+                )
                 formatted_content = bad_file.read_text()
-                assert "def poorly_formatted(x, y):" in formatted_content or "def poorly_formatted(" in formatted_content
+                assert (
+                    "def poorly_formatted(x, y):" in formatted_content
+                    or "def poorly_formatted(" in formatted_content
+                )
 
     @classmethod
     def test_ci_config_generation(cls):
@@ -111,8 +127,7 @@ class BadClass:
         assert set(matrix["os"]) == set(platforms)
         assert set(matrix["python-version"]) == set(python_versions)
         steps = config["jobs"]["test"]["steps"]
-        step_names = [step.get("name", "") for step in steps if isinstance(
-            step, dict)]
+        step_names = [step.get("name", "") for step in steps if isinstance(step, dict)]
         assert any("checkout" in str(step) for step in steps)
         assert any("Python" in name for name in step_names)
         assert any("test" in str(step) for step in steps)
@@ -143,7 +158,11 @@ class TestQualityAssuranceIntegration:
         if "error" not in report:
             assert "uncovered_lines" in report or "coverage_percentage" in report
             if coverage > 0:
-                assert "files" in report or "lines_covered" in report or "total_lines" in report
+                assert (
+                    "files" in report
+                    or "lines_covered" in report
+                    or "total_lines" in report
+                )
 
 
 if __name__ == "__main__":

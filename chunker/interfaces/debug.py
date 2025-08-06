@@ -3,6 +3,7 @@
 Interfaces for tools that help developers understand and debug
 Tree-sitter ASTs, queries, and chunking behavior.
 """
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
@@ -17,6 +18,7 @@ from .query import Query, QueryMatch
 
 class VisualizationFormat(Enum):
     """Output formats for visualization."""
+
     TEXT = "text"
     HTML = "html"
     SVG = "svg"
@@ -27,6 +29,7 @@ class VisualizationFormat(Enum):
 
 class HighlightStyle(Enum):
     """Styles for highlighting nodes."""
+
     SELECTED = "selected"
     MATCHED = "matched"
     CHUNK = "chunk"
@@ -49,6 +52,7 @@ class NodeInfo:
         text: Text content of the node
         children_count: Number of children
     """
+
     node_type: str
     start_position: tuple[int, int]
     end_position: tuple[int, int]
@@ -64,8 +68,11 @@ class ASTVisualizer(ABC):
 
     @staticmethod
     @abstractmethod
-    def visualize(node: Node, source: bytes, fmt: VisualizationFormat =
-        VisualizationFormat.TEXT) -> str:
+    def visualize(
+        node: Node,
+        source: bytes,
+        fmt: VisualizationFormat = VisualizationFormat.TEXT,
+    ) -> str:
         """Visualize an AST.
 
         Args:
@@ -79,8 +86,12 @@ class ASTVisualizer(ABC):
 
     @staticmethod
     @abstractmethod
-    def visualize_with_chunks(node: Node, source: bytes, chunks: list[
-        CodeChunk], fmt: VisualizationFormat = VisualizationFormat.TEXT) -> str:
+    def visualize_with_chunks(
+        node: Node,
+        source: bytes,
+        chunks: list[CodeChunk],
+        fmt: VisualizationFormat = VisualizationFormat.TEXT,
+    ) -> str:
         """Visualize AST with chunk boundaries highlighted.
 
         Args:
@@ -136,8 +147,7 @@ class QueryDebugger(ABC):
 
     @staticmethod
     @abstractmethod
-    def debug_query(query: Query, node: Node, source: bytes) -> list[dict[
-        str, Any]]:
+    def debug_query(query: Query, node: Node, source: bytes) -> list[dict[str, Any]]:
         """Debug a query execution.
 
         Args:
@@ -151,8 +161,12 @@ class QueryDebugger(ABC):
 
     @staticmethod
     @abstractmethod
-    def visualize_matches(matches: list[QueryMatch], node: Node, source:
-        bytes, fmt: VisualizationFormat = VisualizationFormat.TEXT) -> str:
+    def visualize_matches(
+        matches: list[QueryMatch],
+        node: Node,
+        source: bytes,
+        fmt: VisualizationFormat = VisualizationFormat.TEXT,
+    ) -> str:
         """Visualize query matches.
 
         Args:
@@ -180,8 +194,7 @@ class QueryDebugger(ABC):
 
     @staticmethod
     @abstractmethod
-    def validate_captures(query: Query, expected_captures: list[str]) -> list[
-        str]:
+    def validate_captures(query: Query, expected_captures: list[str]) -> list[str]:
         """Validate that query has expected captures.
 
         Args:
@@ -194,8 +207,7 @@ class QueryDebugger(ABC):
 
     @staticmethod
     @abstractmethod
-    def generate_test_cases(query_string: str, language: str) -> list[tuple[
-        str, bool]]:
+    def generate_test_cases(query_string: str, language: str) -> list[tuple[str, bool]]:
         """Generate test cases for a query.
 
         Args:
@@ -212,8 +224,11 @@ class ChunkDebugger(ABC):
 
     @staticmethod
     @abstractmethod
-    def trace_chunking(node: Node, source: bytes, language: str) -> list[dict
-        [str, Any]]:
+    def trace_chunking(
+        node: Node,
+        source: bytes,
+        language: str,
+    ) -> list[dict[str, Any]]:
         """Trace the chunking process.
 
         Args:
@@ -239,8 +254,11 @@ class ChunkDebugger(ABC):
 
     @staticmethod
     @abstractmethod
-    def find_orphaned_code(node: Node, source: bytes, chunks: list[CodeChunk],
-        ) -> list[tuple[int, int]]:
+    def find_orphaned_code(
+        node: Node,
+        source: bytes,
+        chunks: list[CodeChunk],
+    ) -> list[tuple[int, int]]:
         """Find code not included in any chunk.
 
         Args:
@@ -283,8 +301,7 @@ class NodeExplorer(ABC):
 
     @staticmethod
     @abstractmethod
-    def get_node_at_position(root: Node, line: int, column: int) -> (Node | None
-        ):
+    def get_node_at_position(root: Node, line: int, column: int) -> Node | None:
         """Find node at specific position.
 
         Args:
@@ -311,8 +328,7 @@ class NodeExplorer(ABC):
 
     @staticmethod
     @abstractmethod
-    def find_similar_nodes(node: Node, root: Node, max_results: int = 10) -> list[
-        Node]:
+    def find_similar_nodes(node: Node, root: Node, max_results: int = 10) -> list[Node]:
         """Find nodes similar to given node.
 
         Args:
@@ -330,8 +346,11 @@ class PerformanceProfiler(ABC):
 
     @staticmethod
     @abstractmethod
-    def profile_parsing(source: bytes, language: str, iterations: int = 100,
-        ) -> dict[str, float]:
+    def profile_parsing(
+        source: bytes,
+        language: str,
+        iterations: int = 100,
+    ) -> dict[str, float]:
         """Profile parsing performance.
 
         Args:
@@ -345,8 +364,11 @@ class PerformanceProfiler(ABC):
 
     @staticmethod
     @abstractmethod
-    def profile_query(query: Query, node: Node, iterations: int = 100) -> dict[
-        str, float]:
+    def profile_query(
+        query: Query,
+        node: Node,
+        iterations: int = 100,
+    ) -> dict[str, float]:
         """Profile query performance.
 
         Args:
@@ -360,8 +382,11 @@ class PerformanceProfiler(ABC):
 
     @staticmethod
     @abstractmethod
-    def compare_strategies(strategies: list[str], source: bytes, language: str,
-        ) -> dict[str, dict[str, float]]:
+    def compare_strategies(
+        strategies: list[str],
+        source: bytes,
+        language: str,
+    ) -> dict[str, dict[str, float]]:
         """Compare performance of different strategies.
 
         Args:

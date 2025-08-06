@@ -112,7 +112,12 @@ class DataProcessor:
 
     # Write to a temporary file
 
-    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        encoding="utf-8",
+        mode="w",
+        suffix=".py",
+        delete=False,
+    ) as f:
         f.write(large_class)
         temp_file = f.name
 

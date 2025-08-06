@@ -2,6 +2,7 @@
 Integration tests for Phase 13: Developer Tools & Distribution
 These tests define expected behavior across component boundaries
 """
+
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -31,7 +32,12 @@ class TestDebugToolsIntegration:
     def test_visualize_ast_produces_valid_output(cls):
         """AST visualization should produce valid SVG/PNG output"""
         debug_tools = DebugVisualization()
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
             f.write("def hello():\n    print('world')")
             test_file = f.name
         try:
@@ -48,22 +54,38 @@ class TestDebugToolsIntegration:
     def test_chunk_inspection_includes_all_metadata(cls):
         """Chunk inspection should return comprehensive metadata"""
         debug_tools = DebugVisualization()
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
             f.write(
                 "def hello():\n    print('world')\n\ndef world():\n    print('hello')",
-                )
+            )
             test_file = f.name
         try:
             chunks = chunk_file(test_file, "python")
             if chunks:
                 chunk_id = chunks[0].chunk_id
-                result = debug_tools.inspect_chunk(test_file, chunk_id,
-                    include_context=True)
+                result = debug_tools.inspect_chunk(
+                    test_file,
+                    chunk_id,
+                    include_context=True,
+                )
             else:
                 pytest.skip("No chunks found in test file")
             assert isinstance(result, dict)
-            required_fields = ["id", "type", "start_line", "end_line",
-                "content", "metadata", "relationships", "context"]
+            required_fields = [
+                "id",
+                "type",
+                "start_line",
+                "end_line",
+                "content",
+                "metadata",
+                "relationships",
+                "context",
+            ]
             for field in required_fields:
                 assert field in result
         finally:
@@ -73,7 +95,12 @@ class TestDebugToolsIntegration:
     def test_profiling_provides_performance_metrics(cls):
         """Profiling should return timing and memory metrics"""
         debug_tools = DebugVisualization()
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
             f.write("def hello():\n    print('world')\n" * 10)
             test_file = f.name
         try:
@@ -98,8 +125,13 @@ class TestDevEnvironmentIntegration:
         with tempfile.TemporaryDirectory() as tmpdir:
             project_root = Path(tmpdir)
             import subprocess
-            subprocess.run(["git", "init"], check=False, cwd=project_root,
-                capture_output=True)
+
+            subprocess.run(
+                ["git", "init"],
+                check=False,
+                cwd=project_root,
+                capture_output=True,
+            )
             config_file = project_root / ".pre-commit-config.yaml"
             config_file.write_text(
                 """repos:
@@ -108,12 +140,13 @@ class TestDevEnvironmentIntegration:
     hooks:
       - id: black
 """,
-                )
+            )
             success = dev_env.setup_pre_commit_hooks(project_root)
             bad_file = project_root / "bad_code.py"
             bad_file.write_text("import unused\nx=1")
             success, issues = dev_env.run_linting([str(bad_file)])
             import shutil
+
             if shutil.which("ruff") or shutil.which("mypy"):
                 assert not success
                 assert len(issues) > 0
@@ -156,8 +189,11 @@ class TestBuildSystemIntegration:
             output_dir = Path(tmpdir)
             platform_info = platform_support.detect_platform()
             current_platform = platform_info["os"]
-            success, build_info = build_sys.compile_grammars(["python",
-                "javascript", "rust"], current_platform, output_dir)
+            success, build_info = build_sys.compile_grammars(
+                ["python", "javascript", "rust"],
+                current_platform,
+                output_dir,
+            )
             assert success
             assert "libraries" in build_info
             assert len(build_info["libraries"]) >= 1
@@ -170,8 +206,7 @@ class TestBuildSystemIntegration:
         build_sys = BuildSystem()
         with tempfile.TemporaryDirectory() as tmpdir:
             output_dir = Path(tmpdir)
-            success, wheel_path = build_sys.build_wheel("linux", "cp39",
-                output_dir)
+            success, wheel_path = build_sys.build_wheel("linux", "cp39", output_dir)
             assert isinstance(success, bool)
             if success:
                 assert wheel_path.exists()
@@ -204,7 +239,11 @@ class TestDistributionIntegration:
         dist = Distributor()
         with tempfile.TemporaryDirectory() as tmpdir:
             package_dir = Path(tmpdir)
-            success, info = dist.publish_to_pypi(package_dir, repository="testpypi", dry_run=True)
+            success, info = dist.publish_to_pypi(
+                package_dir,
+                repository="testpypi",
+                dry_run=True,
+            )
             assert isinstance(success, bool)
             assert "validation" in info or "checks" in info
 
@@ -212,21 +251,21 @@ class TestDistributionIntegration:
     def test_docker_image_works_cross_platform(cls):
         """Docker image should support multiple platforms"""
         dist = Distributor()
-        success, image_id = dist.build_docker_image("treesitter-chunker:latest"
-            , platforms=["linux/amd64", "linux/arm64"])
+        success, image_id = dist.build_docker_image(
+            "treesitter-chunker:latest",
+            platforms=["linux/amd64", "linux/arm64"],
+        )
         assert isinstance(success, bool)
         assert isinstance(image_id, str)
         if success:
-            verify_success, _details = dist.verify_installation("docker",
-                "linux/amd64")
+            verify_success, _details = dist.verify_installation("docker", "linux/amd64")
             assert verify_success
 
     @classmethod
     def test_release_process_updates_all_locations(cls):
         """Release process should update version everywhere"""
         release_mgmt = ReleaseManager()
-        success, info = release_mgmt.prepare_release("1.0.0",
-            "Initial stable release")
+        success, info = release_mgmt.prepare_release("1.0.0", "Initial stable release")
         assert isinstance(success, bool)
         assert "updated_files" in info
         assert "git_tag" in info
@@ -244,8 +283,11 @@ class TestCrossComponentIntegration:
         debug = DebugVisualization()
         with tempfile.TemporaryDirectory() as tmpdir:
             output_dir = Path(tmpdir)
-            success, _wheel = build_sys.build_wheel("linux", "cp39", output_dir,
-                )
+            success, _wheel = build_sys.build_wheel(
+                "linux",
+                "cp39",
+                output_dir,
+            )
             assert isinstance(success, bool)
             verify_success, details = dist.verify_installation("pip", "linux")
             assert isinstance(verify_success, bool)
@@ -271,8 +313,7 @@ class TestCrossComponentIntegration:
         test_coverage, _ = qa.check_test_coverage()
         with tempfile.TemporaryDirectory() as tmpdir:
             if lint_success and type_coverage >= 80 and test_coverage >= 80:
-                build_success, _ = build_sys.build_wheel("linux", "cp39",
-                    Path(tmpdir))
+                build_success, _ = build_sys.build_wheel("linux", "cp39", Path(tmpdir))
                 assert isinstance(build_success, bool)
 
     @classmethod
@@ -284,17 +325,20 @@ class TestCrossComponentIntegration:
         assert isinstance(success, bool)
         if not success:
             assert "errors" in info or "error" in info
-        artifacts = release_mgmt.create_release_artifacts("1.0.0", Path("dist"),
-            )
+        artifacts = release_mgmt.create_release_artifacts(
+            "1.0.0",
+            Path("dist"),
+        )
         assert isinstance(artifacts, list)
         channels = ["pypi", "docker", "homebrew"]
         for channel in channels:
             if channel == "pypi":
-                success, info = dist.publish_to_pypi(Path("dist"), dry_run=True,
-                    )
+                success, info = dist.publish_to_pypi(
+                    Path("dist"),
+                    dry_run=True,
+                )
             elif channel == "docker":
-                success, info = dist.build_docker_image(
-                    "treesitter-chunker:1.0.0")
+                success, info = dist.build_docker_image("treesitter-chunker:1.0.0")
             elif channel == "homebrew":
                 success, info = dist.create_homebrew_formula("1.0.0", Path())
             assert isinstance(success, bool)

@@ -81,9 +81,15 @@ class MethodDecoratorFixer(ast.NodeTransformer):
         # Check if method could be @staticmethod
         elif not is_staticmethod and not is_classmethod and first_param == "self":
             method_key = f"{self.current_class.name}.{node.name}"
-            if method_key not in self.methods_using_self and method_key not in self.methods_using_cls:
+            if (
+                method_key not in self.methods_using_self
+                and method_key not in self.methods_using_cls
+            ):
                 # Add @staticmethod decorator
-                node.decorator_list.insert(0, ast.Name(id="staticmethod", ctx=ast.Load()))
+                node.decorator_list.insert(
+                    0,
+                    ast.Name(id="staticmethod", ctx=ast.Load()),
+                )
                 # Remove self parameter
                 node.args.args = node.args.args[1:]
                 self.changes_made.append(
@@ -138,7 +144,7 @@ class MethodAnalyzer(ast.NodeVisitor):
         if isinstance(node.ctx, ast.Load):
             if node.id == "self" and self.first_param == "self":
                 self.methods_using_self.add(method_key)
-            elif node.id == "cls" and self.first_param in ("self", "cls"):
+            elif node.id == "cls" and self.first_param in {"self", "cls"}:
                 self.methods_using_cls.add(method_key)
 
     def visit_Attribute(self, node):
@@ -151,7 +157,7 @@ class MethodAnalyzer(ast.NodeVisitor):
         if isinstance(node.value, ast.Name):
             if node.value.id == "self" and self.first_param == "self":
                 self.methods_using_self.add(method_key)
-            elif node.value.id == "cls" and self.first_param in ("self", "cls"):
+            elif node.value.id == "cls" and self.first_param in {"self", "cls"}:
                 self.methods_using_cls.add(method_key)
 
         self.generic_visit(node)
@@ -186,6 +192,7 @@ def fix_file(file_path: Path) -> list[str]:
         # Convert AST back to code
         try:
             import astor
+
             new_code = astor.to_source(new_tree)
         except ImportError:
             # Fallback to ast.unparse (Python 3.9+)
@@ -204,9 +211,19 @@ def main():
 
     # Directories to exclude
     exclude_dirs = {
-        ".venv", "venv", "build", "dist", ".git", "ide",
-        "node_modules", "grammars", "__pycache__", ".mypy_cache",
-        ".ruff_cache", ".pytest_cache", "egg-info",
+        ".venv",
+        "venv",
+        "build",
+        "dist",
+        ".git",
+        "ide",
+        "node_modules",
+        "grammars",
+        "__pycache__",
+        ".mypy_cache",
+        ".ruff_cache",
+        ".pytest_cache",
+        "egg-info",
     }
 
     python_files = []

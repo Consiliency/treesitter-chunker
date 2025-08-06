@@ -1,4 +1,5 @@
 """Base metadata extraction implementation."""
+
 from abc import ABC
 
 from tree_sitter import Node
@@ -30,10 +31,10 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
         Returns:
             Text content of the node
         """
-        return source[node.start_byte:node.end_byte].decode("utf-8", errors="replace")
+        return source[node.start_byte : node.end_byte].decode("utf-8", errors="replace")
 
     @staticmethod
-    def _find_child_by_type(node: Node, node_type: str) -> (Node | None):
+    def _find_child_by_type(node: Node, node_type: str) -> Node | None:
         """
         Find first child node of specific type.
 
@@ -92,6 +93,7 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
         def collect_identifiers(n: Node, _depth: int):
             if n.type == "identifier":
                 identifiers.add(self._get_node_text(n, source))
+
         self._walk_tree(node, collect_identifiers)
         return identifiers
 
@@ -108,8 +110,7 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
         """
         return node.type in {"comment", "line_comment", "block_comment"}
 
-    def _extract_leading_comment(self, node: Node, source: bytes) -> (str | None
-        ):
+    def _extract_leading_comment(self, node: Node, source: bytes) -> str | None:
         """
         Extract comment immediately before a node.
 

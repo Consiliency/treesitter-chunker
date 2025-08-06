@@ -1,4 +1,5 @@
 """Overlapping support for fallback chunker only - NOT for Tree-sitter chunks."""
+
 from abc import abstractmethod
 from enum import Enum
 from typing import Literal
@@ -9,6 +10,7 @@ from chunker.types import CodeChunk
 
 class OverlapStrategy(Enum):
     """Strategy for calculating overlap size."""
+
     FIXED = "fixed"
     PERCENTAGE = "percentage"
     DYNAMIC = "dynamic"
@@ -25,10 +27,14 @@ class OverlappingFallbackChunker(FallbackChunker):
 
     @staticmethod
     @abstractmethod
-    def chunk_with_overlap(content: str, file_path: str, chunk_size: int =
-        1000, overlap_size: int = 200, strategy: OverlapStrategy =
-        OverlapStrategy.FIXED, unit: Literal["lines", "characters"] =
-        "characters") -> list[CodeChunk]:
+    def chunk_with_overlap(
+        content: str,
+        file_path: str,
+        chunk_size: int = 1000,
+        overlap_size: int = 200,
+        strategy: OverlapStrategy = OverlapStrategy.FIXED,
+        unit: Literal["lines", "characters"] = "characters",
+    ) -> list[CodeChunk]:
         """
         Chunk content with overlapping windows.
 
@@ -48,10 +54,14 @@ class OverlappingFallbackChunker(FallbackChunker):
 
     @staticmethod
     @abstractmethod
-    def chunk_with_asymmetric_overlap(content: str, file_path: str,
-        chunk_size: int = 1000, overlap_before: int = 100, overlap_after: int =
-        200, unit: Literal["lines", "characters"] = "characters") -> list[
-        CodeChunk]:
+    def chunk_with_asymmetric_overlap(
+        content: str,
+        file_path: str,
+        chunk_size: int = 1000,
+        overlap_before: int = 100,
+        overlap_after: int = 200,
+        unit: Literal["lines", "characters"] = "characters",
+    ) -> list[CodeChunk]:
         """
         Chunk with different overlap sizes before and after.
 
@@ -71,9 +81,14 @@ class OverlappingFallbackChunker(FallbackChunker):
 
     @staticmethod
     @abstractmethod
-    def chunk_with_dynamic_overlap(content: str, file_path: str, chunk_size:
-        int = 1000, min_overlap: int = 50, max_overlap: int = 300, unit: Literal[
-        "lines", "characters"] = "characters") -> list[CodeChunk]:
+    def chunk_with_dynamic_overlap(
+        content: str,
+        file_path: str,
+        chunk_size: int = 1000,
+        min_overlap: int = 50,
+        max_overlap: int = 300,
+        unit: Literal["lines", "characters"] = "characters",
+    ) -> list[CodeChunk]:
         """
         Chunk with dynamically adjusted overlap based on content.
 
@@ -93,8 +108,11 @@ class OverlappingFallbackChunker(FallbackChunker):
 
     @staticmethod
     @abstractmethod
-    def find_natural_overlap_boundary(content: str, desired_position: int,
-        search_window: int = 100) -> int:
+    def find_natural_overlap_boundary(
+        content: str,
+        desired_position: int,
+        search_window: int = 100,
+    ) -> int:
         """
         Find a natural boundary for overlap near desired position.
 

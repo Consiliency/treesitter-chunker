@@ -21,13 +21,25 @@ def fix_empty_string_in_file(file_path: Path) -> list[str]:
     # Patterns to fix
     replacements = [
         # x == "" -> not x  (but be careful with edge cases)
-        (r'(\s+)if\s+([a-zA-Z_][a-zA-Z0-9_\.\[\]]*)\s*==\s*["\'][\'"]\s*:', r"\1if not \2:"),
+        (
+            r'(\s+)if\s+([a-zA-Z_][a-zA-Z0-9_\.\[\]]*)\s*==\s*["\'][\'"]\s*:',
+            r"\1if not \2:",
+        ),
         # x != "" -> x
-        (r'(\s+)if\s+([a-zA-Z_][a-zA-Z0-9_\.\[\]]*)\s*!=\s*["\'][\'"]\s*:', r"\1if \2:"),
+        (
+            r'(\s+)if\s+([a-zA-Z_][a-zA-Z0-9_\.\[\]]*)\s*!=\s*["\'][\'"]\s*:',
+            r"\1if \2:",
+        ),
         # return x == "" -> return not x
-        (r'(\s+)return\s+([a-zA-Z_][a-zA-Z0-9_\.\[\]]*)\s*==\s*["\'][\'"]', r"\1return not \2"),
+        (
+            r'(\s+)return\s+([a-zA-Z_][a-zA-Z0-9_\.\[\]]*)\s*==\s*["\'][\'"]',
+            r"\1return not \2",
+        ),
         # return x != "" -> return bool(x)
-        (r'(\s+)return\s+([a-zA-Z_][a-zA-Z0-9_\.\[\]]*)\s*!=\s*["\'][\'"]', r"\1return bool(\2)"),
+        (
+            r'(\s+)return\s+([a-zA-Z_][a-zA-Z0-9_\.\[\]]*)\s*!=\s*["\'][\'"]',
+            r"\1return bool(\2)",
+        ),
         # Simple comparisons in conditionals
         (r'\s+([a-zA-Z_][a-zA-Z0-9_\.\[\]]*)\s*==\s*["\'][\'"]\s+', r" not \1 "),
         (r'\s+([a-zA-Z_][a-zA-Z0-9_\.\[\]]*)\s*!=\s*["\'][\'"]\s+', r" \1 "),
@@ -53,7 +65,8 @@ def main():
     # Get all files with PLC1901 errors
     result = subprocess.run(
         ["ruff", "check", "--select", "PLC1901", "--output-format", "json"],
-        check=False, capture_output=True,
+        check=False,
+        capture_output=True,
         text=True,
     )
 
@@ -87,7 +100,8 @@ def main():
     # Check remaining errors
     result = subprocess.run(
         ["ruff", "check", "--select", "PLC1901", "--statistics"],
-        check=False, capture_output=True,
+        check=False,
+        capture_output=True,
         text=True,
     )
 

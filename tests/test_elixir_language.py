@@ -1,4 +1,5 @@
 """Comprehensive tests for Elixir language support."""
+
 from chunker import chunk_file
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from chunker.languages.elixir import ElixirPlugin
@@ -28,11 +29,10 @@ class TestElixirBasicChunking:
   def sum(list), do: Enum.reduce(list, 0, &+/2)
 end
 """,
-            )
+        )
         chunks = chunk_file(src, "elixir")
         assert len(chunks) >= 5
-        module_chunks = [c for c in chunks if c.node_type ==
-            "module_definition"]
+        module_chunks = [c for c in chunks if c.node_type == "module_definition"]
         assert len(module_chunks) >= 1
         assert any("Math" in c.content for c in module_chunks)
         function_chunks = [c for c in chunks if "function" in c.node_type]
@@ -67,15 +67,22 @@ end
   @callback process(binary) :: {:ok, term} | {:error, String.t}
 end
 """,
-            )
+        )
         chunks = chunk_file(src, "elixir")
-        macro_chunks = [c for c in chunks if "macro" in c.content or any(kw in
-            c.content for kw in ["defmacro", "defmacrop"])]
+        macro_chunks = [
+            c
+            for c in chunks
+            if "macro" in c.content
+            or any(kw in c.content for kw in ["defmacro", "defmacrop"])
+        ]
         assert len(macro_chunks) >= 2
         assert any("unless" in c.content for c in chunks)
         assert any("debug" in c.content for c in chunks)
-        spec_chunks = [c for c in chunks if c.node_type ==
-            "spec_definition" or "@spec" in c.content]
+        spec_chunks = [
+            c
+            for c in chunks
+            if c.node_type == "spec_definition" or "@spec" in c.content
+        ]
         assert len(spec_chunks) >= 1
 
     @staticmethod
@@ -116,14 +123,14 @@ end
   end
 end
 """,
-            )
+        )
         chunks = chunk_file(src, "elixir")
-        assert any("Counter" in c.content and "module" in c.node_type for c in
-            chunks)
+        assert any("Counter" in c.content and "module" in c.node_type for c in chunks)
         api_functions = ["start_link", "increment", "get_value"]
         for func_name in api_functions:
-            assert any(func_name in c.content and "function" in c.node_type for
-                c in chunks)
+            assert any(
+                func_name in c.content and "function" in c.node_type for c in chunks
+            )
         callback_functions = ["init", "handle_call"]
         for func_name in callback_functions:
             assert any(func_name in c.content for c in chunks)
@@ -149,7 +156,7 @@ end
   def handle_user(%{name: name}), do: "Minor: #{name}"
 end
 """,
-            )
+        )
         chunks = chunk_file(src, "elixir")
         function_chunks = [c for c in chunks if "function" in c.node_type]
         assert len(function_chunks) >= 9
@@ -181,6 +188,7 @@ class TestElixirContractCompliance:
                 self.start_point = 0, 0
                 self.end_point = 0, end
                 self.children = []
+
         root = MockNode("source")
         module_node = MockNode("module_definition", 0, 100)
         func_node = MockNode("call", 10, 50)
@@ -216,6 +224,7 @@ class TestElixirContractCompliance:
                 self.type = node_type
                 self.children = []
                 self.text = b""
+
         assert plugin.should_chunk_node(MockNode("module_definition"))
         assert plugin.should_chunk_node(MockNode("macro_definition"))
         assert plugin.should_chunk_node(MockNode("spec_definition"))
@@ -232,6 +241,7 @@ class TestElixirContractCompliance:
             def __init__(self, node_type):
                 self.type = node_type
                 self.children = []
+
         node = MockNode("module_definition")
         context = plugin.get_node_context(node, b"defmodule Test do")
         assert context is not None
@@ -260,7 +270,7 @@ class TestElixirEdgeCases:
 # Module comment
 # More details
 """,
-            )
+        )
         chunks = chunk_file(src, "elixir")
         assert len(chunks) == 0
 
@@ -293,10 +303,9 @@ class TestElixirEdgeCases:
   end
 end
 """,
-            )
+        )
         chunks = chunk_file(src, "elixir")
-        assert any("Anon" in c.content and "module" in c.node_type for c in
-            chunks)
+        assert any("Anon" in c.content and "module" in c.node_type for c in chunks)
         assert any("map_example" in c.content for c in chunks)
         assert any("complex_anon" in c.content for c in chunks)
 
@@ -322,15 +331,17 @@ defimpl Stringify, for: List do
   end
 end
 """,
-            )
+        )
         chunks = chunk_file(src, "elixir")
         chunk_types = {chunk.node_type for chunk in chunks}
         assert "protocol_definition" in chunk_types
         assert "implementation_definition" in chunk_types
-        assert any("Stringify" in c.content and "protocol" in c.node_type for
-            c in chunks)
-        assert any("Integer" in c.content and "implementation" in c.
-            node_type for c in chunks)
+        assert any(
+            "Stringify" in c.content and "protocol" in c.node_type for c in chunks
+        )
+        assert any(
+            "Integer" in c.content and "implementation" in c.node_type for c in chunks
+        )
 
     @staticmethod
     def test_pipe_operators(tmp_path):
@@ -363,10 +374,16 @@ end
   defp log_error(reason), do: IO.puts("Error: #{reason}")
 end
 """,
-            )
+        )
         chunks = chunk_file(src, "elixir")
-        function_names = ["process_data", "complex_pipeline", "validate",
-            "transform", "persist", "log_error"]
+        function_names = [
+            "process_data",
+            "complex_pipeline",
+            "validate",
+            "transform",
+            "persist",
+            "log_error",
+        ]
         for name in function_names:
             assert any(name in c.content for c in chunks)
 
@@ -396,11 +413,13 @@ end
   end
 end
 """,
-            )
+        )
         chunks = chunk_file(src, "elixir")
         assert any("defstruct" in c.content for c in chunks)
-        assert any("@behaviour" in c.content or "behaviour_definition" in c
-            .node_type for c in chunks)
+        assert any(
+            "@behaviour" in c.content or "behaviour_definition" in c.node_type
+            for c in chunks
+        )
         impl_functions = ["fetch", "get_and_update", "pop"]
         for func in impl_functions:
             assert any(func in c.content for c in chunks)

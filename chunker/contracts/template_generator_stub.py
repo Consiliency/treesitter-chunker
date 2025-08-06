@@ -7,14 +7,20 @@ class TemplateGeneratorStub(TemplateGeneratorContract):
     """Stub implementation for template generator"""
 
     @classmethod
-    def generate_plugin(cls, language_name: str, _config: dict[str, any],
-        ) -> tuple[bool, Path]:
+    def generate_plugin(
+        cls,
+        language_name: str,
+        _config: dict[str, any],
+    ) -> tuple[bool, Path]:
         """Stub that returns success with fake path"""
         return False, Path(f"chunker/languages/{language_name}.py")
 
     @classmethod
-    def generate_test(cls, language_name: str, _test_cases: list[dict[str,
-        str]]) -> tuple[bool, Path]:
+    def generate_test(
+        cls,
+        language_name: str,
+        _test_cases: list[dict[str, str]],
+    ) -> tuple[bool, Path]:
         """Stub that returns success with fake path"""
         return False, Path(f"tests/test_{language_name}_language.py")
 

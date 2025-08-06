@@ -1,4 +1,5 @@
 """Comprehensive tests for R language support."""
+
 from chunker import chunk_file, get_parser
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from chunker.languages.r import RPlugin
@@ -22,7 +23,7 @@ multiply_numbers = function(x, y) {
     x * y
 }
 """,
-            )
+        )
         chunks = chunk_file(src, "r")
         assert len(chunks) >= 2
         func_chunks = [c for c in chunks if "function" in c.content]
@@ -61,7 +62,7 @@ repeat {
     if (x > 10) break
 }
 """,
-            )
+        )
         chunks = chunk_file(src, "r")
         chunk_types = {chunk.node_type for chunk in chunks}
         assert "if_statement" in chunk_types
@@ -89,7 +90,7 @@ repeat {
 data <- 1:10
 squared <- sapply(data, function(x) x^2)
 """,
-            )
+        )
         chunks = chunk_file(src, "r")
         func_chunks = [c for c in chunks if "function" in c.content]
         assert len(func_chunks) >= 2
@@ -123,7 +124,7 @@ myclass <- function(value) {
     )
 }
 """,
-            )
+        )
         chunks = chunk_file(src, "r")
         func_chunks = [c for c in chunks if "function" in c.content]
         assert any("print.myclass" in c.content for c in func_chunks)
@@ -157,7 +158,7 @@ clean_data <- function(data) {
         as.data.frame()
 }
 """,
-            )
+        )
         chunks = chunk_file(src, "r")
         func_chunks = [c for c in chunks if "function" in c.content]
         assert len(func_chunks) == 2
@@ -212,16 +213,17 @@ class TestRContractCompliance:
                 if has_function_child:
                     child = MockNode("function_definition")
                     self.children.append(child)
+
         assert plugin.should_chunk_node(MockNode("function_definition"))
-        assert plugin.should_chunk_node(MockNode("assignment",
-            has_function_child=True))
+        assert plugin.should_chunk_node(MockNode("assignment", has_function_child=True))
         assert plugin.should_chunk_node(MockNode("if_statement"))
         assert plugin.should_chunk_node(MockNode("for_statement"))
         assert plugin.should_chunk_node(MockNode("comment"))
         assert not plugin.should_chunk_node(MockNode("identifier"))
         assert not plugin.should_chunk_node(MockNode("number"))
-        assert not plugin.should_chunk_node(MockNode("assignment",
-            has_function_child=False))
+        assert not plugin.should_chunk_node(
+            MockNode("assignment", has_function_child=False),
+        )
 
     @staticmethod
     def test_get_node_context():
@@ -234,6 +236,7 @@ class TestRContractCompliance:
                 self.type = node_type
                 self.children = []
                 self.parent = parent
+
         node = MockNode("function_definition")
         context = plugin.get_node_context(node, b"function(x) x^2")
         assert context is not None
@@ -266,7 +269,7 @@ class TestREdgeCases:
 # TODO: implement function
 # NOTE: important information
 """,
-            )
+        )
         chunks = chunk_file(src, "r")
         assert all(c.node_type == "comment" for c in chunks)
 
@@ -293,10 +296,11 @@ process <- function(data, method = "mean", na.rm = TRUE) {
     )
 }
 """,
-            )
+        )
         chunks = chunk_file(src, "r")
-        func_chunks = [c for c in chunks if "process" in c.content and
-            "function" in c.content]
+        func_chunks = [
+            c for c in chunks if "process" in c.content and "function" in c.content
+        ]
         assert len(func_chunks) == 1
         assert "switch" in func_chunks[0].content
 
@@ -335,7 +339,7 @@ create_plot <- function(data, x_var, y_var) {
 }
 ```
 """,
-            )
+        )
         chunks = chunk_file(src, "r")
         func_chunks = [c for c in chunks if "function" in c.content]
         assert len(func_chunks) >= 2
@@ -373,11 +377,10 @@ setMethod("birthday", "Person",
     }
 )
 """,
-            )
+        )
         chunks = chunk_file(src, "r")
-        assert any("setClass" in c.content and "Person" in c.content for c in
-            chunks)
-        assert any("setMethod" in c.content and "show" in c.content for c in
-            chunks)
-        assert any("setGeneric" in c.content and "birthday" in c.content for
-            c in chunks)
+        assert any("setClass" in c.content and "Person" in c.content for c in chunks)
+        assert any("setMethod" in c.content and "show" in c.content for c in chunks)
+        assert any(
+            "setGeneric" in c.content and "birthday" in c.content for c in chunks
+        )

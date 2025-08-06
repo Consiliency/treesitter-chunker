@@ -1,4 +1,5 @@
 """Custom rule interfaces for extending Tree-sitter chunking."""
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from re import Pattern
@@ -12,6 +13,7 @@ from chunker.types import CodeChunk
 @dataclass
 class RuleMatch:
     """Represents a match from a custom rule."""
+
     rule_name: str
     start_byte: int
     end_byte: int
@@ -49,8 +51,7 @@ class CustomRule(ABC):
 
     @staticmethod
     @abstractmethod
-    def extract_chunk(node: Node, source: bytes, file_path: str) -> (CodeChunk |
-        None):
+    def extract_chunk(node: Node, source: bytes, file_path: str) -> CodeChunk | None:
         """
         Extract a chunk based on this rule.
 
@@ -112,7 +113,7 @@ class RuleEngine(ABC):
 
     @staticmethod
     @abstractmethod
-    def add_rule(rule: CustomRule, priority: (int | None) = None) -> None:
+    def add_rule(rule: CustomRule, priority: int | None = None) -> None:
         """
         Add a custom rule to the engine.
 
@@ -136,8 +137,7 @@ class RuleEngine(ABC):
 
     @staticmethod
     @abstractmethod
-    def apply_rules(tree: Tree, source: bytes, file_path: str) -> list[CodeChunk
-        ]:
+    def apply_rules(tree: Tree, source: bytes, file_path: str) -> list[CodeChunk]:
         """
         Apply all rules to extract chunks.
 
@@ -168,8 +168,10 @@ class RuleEngine(ABC):
 
     @staticmethod
     @abstractmethod
-    def merge_with_tree_sitter_chunks(custom_chunks: list[CodeChunk],
-        tree_sitter_chunks: list[CodeChunk]) -> list[CodeChunk]:
+    def merge_with_tree_sitter_chunks(
+        custom_chunks: list[CodeChunk],
+        tree_sitter_chunks: list[CodeChunk],
+    ) -> list[CodeChunk]:
         """
         Merge custom rule chunks with Tree-sitter chunks.
 

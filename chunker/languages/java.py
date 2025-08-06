@@ -1,4 +1,5 @@
 """Java language support for chunking."""
+
 from tree_sitter import Node
 
 from chunker.types import CodeChunk
@@ -22,30 +23,58 @@ class JavaChunker(LanguageChunker):
     @staticmethod
     def get_chunk_node_types() -> set[str]:
         """Get node types that should be chunked."""
-        return {"class_declaration", "interface_declaration",
-            "enum_declaration", "annotation_type_declaration",
-            "record_declaration", "method_declaration",
-            "constructor_declaration", "field_declaration", "class_body",
-            "static_initializer", "block"}
+        return {
+            "class_declaration",
+            "interface_declaration",
+            "enum_declaration",
+            "annotation_type_declaration",
+            "record_declaration",
+            "method_declaration",
+            "constructor_declaration",
+            "field_declaration",
+            "class_body",
+            "static_initializer",
+            "block",
+        }
 
     @staticmethod
     def get_scope_node_types() -> set[str]:
         """Get node types that define scopes."""
-        return {"program", "class_declaration", "interface_declaration",
-            "enum_declaration", "method_declaration",
-            "constructor_declaration", "block", "if_statement",
-            "for_statement", "while_statement", "do_statement",
-            "switch_expression", "try_statement", "lambda_expression"}
+        return {
+            "program",
+            "class_declaration",
+            "interface_declaration",
+            "enum_declaration",
+            "method_declaration",
+            "constructor_declaration",
+            "block",
+            "if_statement",
+            "for_statement",
+            "while_statement",
+            "do_statement",
+            "switch_expression",
+            "try_statement",
+            "lambda_expression",
+        }
 
     def should_chunk_node(self, node: Node) -> bool:
         """Determine if a node should be chunked."""
         if node.type not in self.get_chunk_node_types():
             return False
-        if (node.type == "class_body" and node.parent and node.parent.type !=
-            "class_declaration"):
+        if (
+            node.type == "class_body"
+            and node.parent
+            and node.parent.type != "class_declaration"
+        ):
             return False
-        if node.type in {"static_initializer", "block",
-            } and node.child_count <= 2:
+        if (
+            node.type
+            in {
+                "static_initializer",
+                "block",
+            }
+            and node.child_count <= 2
+        ):
             return False
         if node.type == "constructor_declaration":
             body = node.child_by_field_name("body")
@@ -86,8 +115,11 @@ class JavaChunker(LanguageChunker):
             params = node.child_by_field_name("parameters")
             if params:
                 info["parameters"] = self._extract_parameters(params)
-            if info.get("method_name") == "main" and "static" in info.get(
-                "modifiers", []) and "public" in info.get("modifiers", []):
+            if (
+                info.get("method_name") == "main"
+                and "static" in info.get("modifiers", [])
+                and "public" in info.get("modifiers", [])
+            ):
                 info["is_main"] = True
         elif node.type == "constructor_declaration":
             name_node = node.child_by_field_name("name")
@@ -118,9 +150,12 @@ class JavaChunker(LanguageChunker):
         context_nodes = []
         current = node.parent
         while current:
-            if current.type in {"class_declaration",
-                "interface_declaration", "enum_declaration",
-                "record_declaration"}:
+            if current.type in {
+                "class_declaration",
+                "interface_declaration",
+                "enum_declaration",
+                "record_declaration",
+            }:
                 context_nodes.append(current)
             elif current.type == "program":
                 for child in current.children:
@@ -138,9 +173,16 @@ class JavaChunker(LanguageChunker):
         for child in node.children:
             if child.type == "modifiers":
                 for modifier in child.children:
-                    if modifier.type in {"public", "private", "protected",
-                        "static", "final", "abstract", "synchronized",
-                        "volatile"}:
+                    if modifier.type in {
+                        "public",
+                        "private",
+                        "protected",
+                        "static",
+                        "final",
+                        "abstract",
+                        "synchronized",
+                        "volatile",
+                    }:
                         modifiers.append(modifier.type)
                     elif modifier.type == "annotation":
                         name = modifier.child_by_field_name("name")
@@ -151,9 +193,11 @@ class JavaChunker(LanguageChunker):
     @staticmethod
     def _extract_interface_list(interfaces_node: Node) -> list[str]:
         """Extract list of interface names."""
-        interfaces = [child.text.decode("utf-8") for child in
-            interfaces_node.children if child.type in {"type_identifier",
-            "scoped_type_identifier"}]
+        interfaces = [
+            child.text.decode("utf-8")
+            for child in interfaces_node.children
+            if child.type in {"type_identifier", "scoped_type_identifier"}
+        ]
         return interfaces
 
     @staticmethod

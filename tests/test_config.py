@@ -15,7 +15,7 @@ class TestConfigLoading:
     """Test configuration loading from different formats."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def temp_config_dir(cls):
         """Create a temporary directory for config files."""
         temp_dir = Path(tempfile.mkdtemp())
@@ -26,12 +26,20 @@ class TestConfigLoading:
     def test_load_yaml_config(cls, temp_config_dir):
         """Test loading configuration from YAML file."""
         config_path = temp_config_dir / "chunker.config.yaml"
-        config_data = {"chunker": {"plugin_dirs": ["./plugins"],
-            "enabled_languages": ["python", "rust"],
-            "default_plugin_config": {"min_chunk_size": 5, "max_chunk_size":
-            100}}, "languages": {"python": {"enabled": True, "chunk_types":
-            ["function_definition", "class_definition"],
-            "include_docstrings": True}}}
+        config_data = {
+            "chunker": {
+                "plugin_dirs": ["./plugins"],
+                "enabled_languages": ["python", "rust"],
+                "default_plugin_config": {"min_chunk_size": 5, "max_chunk_size": 100},
+            },
+            "languages": {
+                "python": {
+                    "enabled": True,
+                    "chunk_types": ["function_definition", "class_definition"],
+                    "include_docstrings": True,
+                },
+            },
+        }
         with Path(config_path).open("w", encoding="utf-8") as f:
             yaml.safe_dump(config_data, f)
         config = ChunkerConfig(config_path)
@@ -42,19 +50,30 @@ class TestConfigLoading:
         assert "python" in config.plugin_configs
         assert config.plugin_configs["python"].enabled is True
         assert config.plugin_configs["python"].chunk_types == {
-            "function_definition", "class_definition"}
-        assert config.plugin_configs["python"].custom_options[
-            "include_docstrings"] is True
+            "function_definition",
+            "class_definition",
+        }
+        assert (
+            config.plugin_configs["python"].custom_options["include_docstrings"] is True
+        )
 
     @classmethod
     def test_load_json_config(cls, temp_config_dir):
         """Test loading configuration from JSON file."""
         config_path = temp_config_dir / "chunker.config.json"
-        config_data = {"chunker": {"plugin_dirs": ["~/plugins",
-            "/usr/local/plugins"], "enabled_languages": ["javascript",
-            "typescript"]}, "languages": {"javascript": {"enabled": True,
-            "chunk_types": ["function_declaration", "arrow_function"],
-            "min_chunk_size": 10}}}
+        config_data = {
+            "chunker": {
+                "plugin_dirs": ["~/plugins", "/usr/local/plugins"],
+                "enabled_languages": ["javascript", "typescript"],
+            },
+            "languages": {
+                "javascript": {
+                    "enabled": True,
+                    "chunk_types": ["function_declaration", "arrow_function"],
+                    "min_chunk_size": 10,
+                },
+            },
+        }
         with Path(config_path).open("w", encoding="utf-8") as f:
             json.dump(config_data, f)
         config = ChunkerConfig(config_path)
@@ -67,11 +86,20 @@ class TestConfigLoading:
     def test_load_toml_config(cls, temp_config_dir):
         """Test loading configuration from TOML file."""
         config_path = temp_config_dir / "chunker.config.toml"
-        config_data = {"chunker": {"plugin_dirs": ["./custom_plugins"],
-            "enabled_languages": ["c", "cpp"]}, "languages": {"c": {
-            "enabled": False, "chunk_types": ["function_definition"]},
-            "cpp": {"enabled": True, "chunk_types": ["function_definition",
-            "class_specifier"], "max_chunk_size": 200}}}
+        config_data = {
+            "chunker": {
+                "plugin_dirs": ["./custom_plugins"],
+                "enabled_languages": ["c", "cpp"],
+            },
+            "languages": {
+                "c": {"enabled": False, "chunk_types": ["function_definition"]},
+                "cpp": {
+                    "enabled": True,
+                    "chunk_types": ["function_definition", "class_specifier"],
+                    "max_chunk_size": 200,
+                },
+            },
+        }
         with Path(config_path).open("w", encoding="utf-8") as f:
             toml.dump(config_data, f)
         config = ChunkerConfig(config_path)
@@ -124,7 +152,7 @@ class TestConfigSaving:
     """Test configuration saving to different formats."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def temp_config_dir(cls):
         """Create a temporary directory for config files."""
         temp_dir = Path(tempfile.mkdtemp())
@@ -137,20 +165,24 @@ class TestConfigSaving:
         config = ChunkerConfig()
         config.plugin_dirs = [Path("./plugins"), Path("~/.chunker/plugins")]
         config.enabled_languages = {"python", "rust"}
-        config.default_plugin_config = PluginConfig(min_chunk_size=3,
-            max_chunk_size=500)
-        config.plugin_configs["python"] = PluginConfig(enabled=True,
+        config.default_plugin_config = PluginConfig(
+            min_chunk_size=3,
+            max_chunk_size=500,
+        )
+        config.plugin_configs["python"] = PluginConfig(
+            enabled=True,
             chunk_types={"function_definition", "class_definition"},
-            custom_options={"include_docstrings": True})
+            custom_options={"include_docstrings": True},
+        )
         save_path = temp_config_dir / "saved.yaml"
         config.save(save_path)
         loaded_data = yaml.safe_load(save_path.read_text())
-        assert loaded_data["chunker"]["plugin_dirs"] == ["plugins", str(
-            Path("~/.chunker/plugins"))]
-        assert set(loaded_data["chunker"]["enabled_languages"]) == {"python",
-            "rust"}
-        assert loaded_data["chunker"]["default_plugin_config"]["min_chunk_size"
-            ] == 3
+        assert loaded_data["chunker"]["plugin_dirs"] == [
+            "plugins",
+            str(Path("~/.chunker/plugins")),
+        ]
+        assert set(loaded_data["chunker"]["enabled_languages"]) == {"python", "rust"}
+        assert loaded_data["chunker"]["default_plugin_config"]["min_chunk_size"] == 3
         assert loaded_data["languages"]["python"]["include_docstrings"] is True
 
     @classmethod
@@ -158,8 +190,10 @@ class TestConfigSaving:
         """Test saving configuration to JSON file."""
         config = ChunkerConfig()
         config.enabled_languages = {"javascript"}
-        config.plugin_configs["javascript"] = PluginConfig(chunk_types={
-            "function_declaration"}, min_chunk_size=5)
+        config.plugin_configs["javascript"] = PluginConfig(
+            chunk_types={"function_declaration"},
+            min_chunk_size=5,
+        )
         save_path = temp_config_dir / "saved.json"
         config.save(save_path)
         loaded_data = json.loads(save_path.read_text())
@@ -194,8 +228,7 @@ class TestConfigSaving:
         config.enabled_languages = {"python", "rust"}
         config.save()
         loaded_data = yaml.safe_load(original_path.read_text())
-        assert set(loaded_data["chunker"]["enabled_languages"]) == {"python",
-            "rust"}
+        assert set(loaded_data["chunker"]["enabled_languages"]) == {"python", "rust"}
 
     @classmethod
     def test_roundtrip_yaml(cls, temp_config_dir):
@@ -204,11 +237,14 @@ class TestConfigSaving:
         config1 = ChunkerConfig()
         config1.plugin_dirs = [Path("./plugins")]
         config1.enabled_languages = {"python", "rust", "javascript"}
-        config1.default_plugin_config = PluginConfig(min_chunk_size=2,
-            max_chunk_size=100)
-        config1.plugin_configs["python"] = PluginConfig(chunk_types={
-            "function_definition", "class_definition"}, custom_options={
-            "docstring_style": "google"})
+        config1.default_plugin_config = PluginConfig(
+            min_chunk_size=2,
+            max_chunk_size=100,
+        )
+        config1.plugin_configs["python"] = PluginConfig(
+            chunk_types={"function_definition", "class_definition"},
+            custom_options={"docstring_style": "google"},
+        )
         config1.save(config_path)
         config2 = ChunkerConfig(config_path)
         save_path2 = temp_config_dir / "roundtrip2.yaml"
@@ -217,20 +253,30 @@ class TestConfigSaving:
         config4 = ChunkerConfig(save_path2)
         assert len(config3.plugin_dirs) == len(config4.plugin_dirs)
         assert config3.enabled_languages == config4.enabled_languages
-        assert config3.default_plugin_config.min_chunk_size == config4.default_plugin_config.min_chunk_size
-        assert config3.default_plugin_config.max_chunk_size == config4.default_plugin_config.max_chunk_size
+        assert (
+            config3.default_plugin_config.min_chunk_size
+            == config4.default_plugin_config.min_chunk_size
+        )
+        assert (
+            config3.default_plugin_config.max_chunk_size
+            == config4.default_plugin_config.max_chunk_size
+        )
         assert config3.plugin_configs.keys() == config4.plugin_configs.keys()
-        assert config3.plugin_configs["python"
-            ].chunk_types == config4.plugin_configs["python"].chunk_types
-        assert config3.plugin_configs["python"
-            ].custom_options == config4.plugin_configs["python"].custom_options
+        assert (
+            config3.plugin_configs["python"].chunk_types
+            == config4.plugin_configs["python"].chunk_types
+        )
+        assert (
+            config3.plugin_configs["python"].custom_options
+            == config4.plugin_configs["python"].custom_options
+        )
 
 
 class TestPathResolution:
     """Test path resolution in configuration."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def temp_config_dir(cls):
         """Create a temporary directory for config files."""
         temp_dir = Path(tempfile.mkdtemp())
@@ -253,8 +299,7 @@ class TestPathResolution:
     def test_resolve_home_path(cls, temp_config_dir):
         """Test resolution of home directory paths."""
         config_path = temp_config_dir / "config.yaml"
-        config_data = {"chunker": {"plugin_dirs": ["~/plugins",
-            "~/.chunker/plugins"]}}
+        config_data = {"chunker": {"plugin_dirs": ["~/plugins", "~/.chunker/plugins"]}}
         with Path(config_path).open("w", encoding="utf-8") as f:
             yaml.safe_dump(config_data, f)
         config = ChunkerConfig(config_path)
@@ -266,14 +311,14 @@ class TestPathResolution:
     def test_resolve_relative_path(cls, temp_config_dir):
         """Test resolution of relative paths."""
         config_path = temp_config_dir / "config.yaml"
-        config_data = {"chunker": {"plugin_dirs": ["./plugins",
-            "../shared_plugins"]}}
+        config_data = {"chunker": {"plugin_dirs": ["./plugins", "../shared_plugins"]}}
         with Path(config_path).open("w", encoding="utf-8") as f:
             yaml.safe_dump(config_data, f)
         config = ChunkerConfig(config_path)
         assert config.plugin_dirs[0] == (temp_config_dir / "plugins").resolve()
-        assert config.plugin_dirs[1] == (temp_config_dir / "../shared_plugins"
-            ).resolve()
+        assert (
+            config.plugin_dirs[1] == (temp_config_dir / "../shared_plugins").resolve()
+        )
 
     @classmethod
     def test_resolve_without_config_path(cls):
@@ -286,7 +331,7 @@ class TestConfigFinding:
     """Test configuration file discovery."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def temp_project_dir(cls):
         """Create a temporary project directory structure."""
         temp_dir = Path(tempfile.mkdtemp())
@@ -349,7 +394,7 @@ class TestConfigValidation:
     """Test configuration validation and error handling."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def temp_config_dir(cls):
         """Create a temporary directory for config files."""
         temp_dir = Path(tempfile.mkdtemp())
@@ -360,8 +405,7 @@ class TestConfigValidation:
     def test_negative_min_chunk_size(cls, temp_config_dir):
         """Test handling of negative min_chunk_size."""
         config_path = temp_config_dir / "config.yaml"
-        config_data = {"chunker": {"default_plugin_config": {
-            "min_chunk_size": -1}}}
+        config_data = {"chunker": {"default_plugin_config": {"min_chunk_size": -1}}}
         with Path(config_path).open("w", encoding="utf-8") as f:
             yaml.safe_dump(config_data, f)
         config = ChunkerConfig(config_path)
@@ -407,8 +451,11 @@ class TestConfigMerging:
     def test_get_plugin_config_with_defaults(cls):
         """Test getting plugin config falls back to defaults."""
         config = ChunkerConfig()
-        config.default_plugin_config = PluginConfig(min_chunk_size=5,
-            max_chunk_size=100, custom_options={"global_option": True})
+        config.default_plugin_config = PluginConfig(
+            min_chunk_size=5,
+            max_chunk_size=100,
+            custom_options={"global_option": True},
+        )
         python_config = config.get_plugin_config("python")
         assert python_config.min_chunk_size == 5
         assert python_config.max_chunk_size == 100
@@ -419,8 +466,10 @@ class TestConfigMerging:
         """Test language-specific config overrides default."""
         config = ChunkerConfig()
         config.default_plugin_config = PluginConfig(min_chunk_size=5)
-        config.plugin_configs["python"] = PluginConfig(min_chunk_size=10,
-            chunk_types={"function_definition"})
+        config.plugin_configs["python"] = PluginConfig(
+            min_chunk_size=10,
+            chunk_types={"function_definition"},
+        )
         python_config = config.get_plugin_config("python")
         assert python_config.min_chunk_size == 10
         assert python_config.chunk_types == {"function_definition"}
@@ -437,8 +486,10 @@ class TestConfigMerging:
     def test_set_plugin_config(cls):
         """Test setting plugin configuration."""
         config = ChunkerConfig()
-        new_config = PluginConfig(chunk_types={"function_declaration"},
-            min_chunk_size=3)
+        new_config = PluginConfig(
+            chunk_types={"function_declaration"},
+            min_chunk_size=3,
+        )
         config.set_plugin_config("javascript", new_config)
         assert "javascript" in config.plugin_configs
         assert config.plugin_configs["javascript"] == new_config
@@ -476,7 +527,7 @@ class TestExampleConfig:
     """Test example configuration creation."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def temp_config_dir(cls):
         """Create a temporary directory for config files."""
         temp_dir = Path(tempfile.mkdtemp())
@@ -497,7 +548,7 @@ class TestEnvironmentVariables:
     """Test environment variable expansion in configuration."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def temp_config_dir(cls):
         """Create a temporary directory for config files."""
         temp_dir = Path(tempfile.mkdtemp())
@@ -509,20 +560,20 @@ class TestEnvironmentVariables:
         """Test environment variable expansion in paths."""
         monkeypatch.setenv("CHUNKER_PLUGINS", "/custom/plugins")
         config_path = temp_config_dir / "config.yaml"
-        config_data = {"chunker": {"plugin_dirs": [
-            "$CHUNKER_PLUGINS/language_plugins"]}}
+        config_data = {
+            "chunker": {"plugin_dirs": ["$CHUNKER_PLUGINS/language_plugins"]},
+        }
         with Path(config_path).open("w", encoding="utf-8") as f:
             yaml.safe_dump(config_data, f)
         config = ChunkerConfig(config_path)
-        assert str(config.plugin_dirs[0]).endswith(
-            "$CHUNKER_PLUGINS/language_plugins")
+        assert str(config.plugin_dirs[0]).endswith("$CHUNKER_PLUGINS/language_plugins")
 
 
 class TestComplexScenarios:
     """Test complex configuration scenarios."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def temp_config_dir(cls):
         """Create a temporary directory for config files."""
         temp_dir = Path(tempfile.mkdtemp())
@@ -533,8 +584,13 @@ class TestComplexScenarios:
     def test_deeply_nested_config(cls, temp_config_dir):
         """Test handling of deeply nested configuration."""
         config_path = temp_config_dir / "config.yaml"
-        config_data = {"chunker": {"default_plugin_config": {"level1": {
-            "level2": {"level3": "deep_value"}}}}}
+        config_data = {
+            "chunker": {
+                "default_plugin_config": {
+                    "level1": {"level2": {"level3": "deep_value"}},
+                },
+            },
+        }
         with Path(config_path).open("w", encoding="utf-8") as f:
             yaml.safe_dump(config_data, f)
         config = ChunkerConfig(config_path)
@@ -545,8 +601,15 @@ class TestComplexScenarios:
     def test_unicode_in_config(cls, temp_config_dir):
         """Test handling of Unicode in configuration."""
         config_path = temp_config_dir / "config.yaml"
-        config_data = {"languages": {"python": {"author": "José García",
-            "description": "配置文件测试", "emoji": "🐍"}}}
+        config_data = {
+            "languages": {
+                "python": {
+                    "author": "José García",
+                    "description": "配置文件测试",
+                    "emoji": "🐍",
+                },
+            },
+        }
         with Path(config_path).open("w", encoding="utf-8") as f:
             yaml.safe_dump(config_data, f, allow_unicode=True)
         config = ChunkerConfig(config_path)
@@ -561,12 +624,16 @@ class TestComplexScenarios:
         config_path = temp_config_dir / "config.yaml"
         languages = {}
         for i in range(100):
-            languages[f"lang_{i}"] = {"enabled": i % 2 == 0, "chunk_types":
-                [f"type_{j}" for j in range(10)], "min_chunk_size": i + 1,
-                "custom_options": {f"option_{k}": f"value_{k}" for k in
-                range(20)}}
-        config_data = {"chunker": {"enabled_languages": [f"lang_{i}" for i in
-            range(50)]}, "languages": languages}
+            languages[f"lang_{i}"] = {
+                "enabled": i % 2 == 0,
+                "chunk_types": [f"type_{j}" for j in range(10)],
+                "min_chunk_size": i + 1,
+                "custom_options": {f"option_{k}": f"value_{k}" for k in range(20)},
+            }
+        config_data = {
+            "chunker": {"enabled_languages": [f"lang_{i}" for i in range(50)]},
+            "languages": languages,
+        }
         with Path(config_path).open("w", encoding="utf-8") as f:
             yaml.safe_dump(config_data, f)
         config = ChunkerConfig(config_path)

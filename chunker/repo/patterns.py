@@ -186,9 +186,9 @@ class GitignoreMatcher:
         try:
             with Path(gitignore_path).open(encoding="utf-8") as f:
                 for line in f:
-                    line = line.strip()
-                    if line and not line.startswith("#"):
-                        patterns.append(line)
+                    stripped_line = line.strip()
+                    if stripped_line and not stripped_line.startswith("#"):
+                        patterns.append(stripped_line)
 
             self.add_patterns(patterns, base_dir)
         except (OSError, FileNotFoundError, IndexError):

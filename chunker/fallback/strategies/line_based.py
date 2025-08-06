@@ -1,4 +1,5 @@
 """Line-based fallback chunking strategy."""
+
 import logging
 import re
 
@@ -19,20 +20,26 @@ class LineBasedChunker(FallbackChunker):
     - Any text file without structure
     """
 
-    @staticmethod
-    def __init__(lines_per_chunk: int = 50, overlap: int = 5):
+    def __init__(self, lines_per_chunk: int = 50, overlap: int = 5):
         """Initialize line-based chunker.
 
         Args:
             lines_per_chunk: Number of lines per chunk
             overlap: Number of lines to overlap between chunks
         """
-        config = FallbackConfig(method=ChunkingMethod.LINE_BASED,
-            chunk_size=lines_per_chunk, overlap=overlap)
+        config = FallbackConfig(
+            method=ChunkingMethod.LINE_BASED,
+            chunk_size=lines_per_chunk,
+            overlap=overlap,
+        )
         super().__init__(config)
 
-    def chunk_csv(self, content: str, include_header: bool = True,
-        lines_per_chunk: (int | None) = None) -> list[CodeChunk]:
+    def chunk_csv(
+        self,
+        content: str,
+        include_header: bool = True,
+        lines_per_chunk: int | None = None,
+    ) -> list[CodeChunk]:
         """Special handling for CSV files.
 
         Args:
@@ -62,15 +69,25 @@ class LineBasedChunker(FallbackChunker):
             chunk_content = "".join(chunk_lines)
             start_line = i + 1
             end_line = chunk_end
-            chunk = CodeChunk(language="csv", file_path=self.file_path or
-                "", node_type="csv_chunk", start_line=start_line, end_line=end_line, byte_start=sum(len(line) for line in lines[:i]),
+            chunk = CodeChunk(
+                language="csv",
+                file_path=self.file_path or "",
+                node_type="csv_chunk",
+                start_line=start_line,
+                end_line=end_line,
+                byte_start=sum(len(line) for line in lines[:i]),
                 byte_end=sum(len(line) for line in lines[:chunk_end]),
-                parent_context=f"csv_rows_{start_line}_{end_line}", content=chunk_content)
+                parent_context=f"csv_rows_{start_line}_{end_line}",
+                content=chunk_content,
+            )
             chunks.append(chunk)
         return chunks
 
-    def chunk_config(self, content: str, section_pattern: (str | None) = None,
-        ) -> list[CodeChunk]:
+    def chunk_config(
+        self,
+        content: str,
+        section_pattern: str | None = None,
+    ) -> list[CodeChunk]:
         """Special handling for config files.
 
         Args:
@@ -83,11 +100,15 @@ class LineBasedChunker(FallbackChunker):
         if section_pattern:
             pattern = re.compile(section_pattern, re.MULTILINE)
             return self.chunk_by_pattern(content, pattern, include_match=True)
-        return self.chunk_by_lines(content, self.config.chunk_size, self.
-            config.overlap)
+        return self.chunk_by_lines(content, self.config.chunk_size, self.config.overlap)
 
-    def adaptive_chunk(self, content: str, min_lines: int = 10, max_lines:
-        int = 100, target_bytes: int = 4096) -> list[CodeChunk]:
+    def adaptive_chunk(
+        self,
+        content: str,
+        min_lines: int = 10,
+        max_lines: int = 100,
+        target_bytes: int = 4096,
+    ) -> list[CodeChunk]:
         """Adaptively chunk based on content density.
 
         This method adjusts chunk size based on the content,
@@ -111,14 +132,26 @@ class LineBasedChunker(FallbackChunker):
             line_bytes = len(line.encode("utf-8"))
             would_exceed_bytes = current_bytes + line_bytes > target_bytes
             would_exceed_lines = len(current_chunk) >= max_lines
-            if current_chunk and len(current_chunk) >= min_lines and (
-                would_exceed_bytes or would_exceed_lines):
+            if (
+                current_chunk
+                and len(current_chunk) >= min_lines
+                and (would_exceed_bytes or would_exceed_lines)
+            ):
                 chunk_content = "".join(current_chunk)
-                chunk = CodeChunk(language=self._detect_language(),
-                    file_path=self.file_path or "", node_type="adaptive_chunk", start_line=current_start, end_line=current_start + len(current_chunk) - 1, byte_start=sum(
-                    len(line) for line in lines[:current_start - 1]),
-                    byte_end=sum(len(line) for line in lines[:current_start -
-                    1 + len(current_chunk)]), parent_context=f"adaptive_{current_start}", content=chunk_content)
+                chunk = CodeChunk(
+                    language=self._detect_language(),
+                    file_path=self.file_path or "",
+                    node_type="adaptive_chunk",
+                    start_line=current_start,
+                    end_line=current_start + len(current_chunk) - 1,
+                    byte_start=sum(len(line) for line in lines[: current_start - 1]),
+                    byte_end=sum(
+                        len(line)
+                        for line in lines[: current_start - 1 + len(current_chunk)]
+                    ),
+                    parent_context=f"adaptive_{current_start}",
+                    content=chunk_content,
+                )
                 chunks.append(chunk)
                 current_chunk = []
                 current_bytes = 0
@@ -127,8 +160,16 @@ class LineBasedChunker(FallbackChunker):
             current_bytes += line_bytes
         if current_chunk:
             chunk_content = "".join(current_chunk)
-            chunk = CodeChunk(language=self._detect_language(), file_path=self.file_path or "", node_type="adaptive_chunk",
-                start_line=current_start, end_line=len(lines), byte_start=sum(len(line) for line in lines[:current_start - 1]),
-                byte_end=len(content), parent_context=f"adaptive_{current_start}", content=chunk_content)
+            chunk = CodeChunk(
+                language=self._detect_language(),
+                file_path=self.file_path or "",
+                node_type="adaptive_chunk",
+                start_line=current_start,
+                end_line=len(lines),
+                byte_start=sum(len(line) for line in lines[: current_start - 1]),
+                byte_end=len(content),
+                parent_context=f"adaptive_{current_start}",
+                content=chunk_content,
+            )
             chunks.append(chunk)
         return chunks

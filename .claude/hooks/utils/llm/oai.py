@@ -30,7 +30,7 @@ def prompt_llm(prompt_text):
         return None
 
     try:
-        from openai import OpenAI  # noqa: E402,PLC0415
+        from openai import OpenAI  # noqa: PLC0415
 
         client = OpenAI(api_key=api_key)
 

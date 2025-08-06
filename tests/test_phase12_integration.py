@@ -1,4 +1,5 @@
 """Integration tests for Phase 12: Graph & Database Export."""
+
 import csv
 import sqlite3
 import xml.etree.ElementTree as ET
@@ -14,26 +15,66 @@ from chunker.export.sqlite_exporter import SQLiteExporter
 from chunker.types import CodeChunk
 
 
-@pytest.fixture
+@pytest.fixture()
 def sample_chunks():
     """Create sample code chunks for testing."""
-    return [CodeChunk(language="python", file_path="src/main.py", node_type="function", start_line=1, end_line=10, byte_start=0, byte_end=200,
-        parent_context="module", content="""def main():
+    return [
+        CodeChunk(
+            language="python",
+            file_path="src/main.py",
+            node_type="function",
+            start_line=1,
+            end_line=10,
+            byte_start=0,
+            byte_end=200,
+            parent_context="module",
+            content="""def main():
     pass""",
-        metadata={"name": "main", "cyclomatic_complexity": 1, "token_count":
-        15, "imports": ["sys", "os"], "chunk_type": "function"}), CodeChunk
-        (language="python", file_path="src/utils.py", node_type="function",
-        start_line=5, end_line=15, byte_start=100, byte_end=300,
-        parent_context="module", content="""def helper():
+            metadata={
+                "name": "main",
+                "cyclomatic_complexity": 1,
+                "token_count": 15,
+                "imports": ["sys", "os"],
+                "chunk_type": "function",
+            },
+        ),
+        CodeChunk(
+            language="python",
+            file_path="src/utils.py",
+            node_type="function",
+            start_line=5,
+            end_line=15,
+            byte_start=100,
+            byte_end=300,
+            parent_context="module",
+            content="""def helper():
     return 42""",
-        metadata={"name": "helper", "cyclomatic_complexity": 2,
-        "token_count": 20, "chunk_type": "function"}), CodeChunk(language="python", file_path="src/main.py", node_type="class", start_line=15,
-        end_line=30, byte_start=250, byte_end=500, parent_context="module",
-        content="""class App:
+            metadata={
+                "name": "helper",
+                "cyclomatic_complexity": 2,
+                "token_count": 20,
+                "chunk_type": "function",
+            },
+        ),
+        CodeChunk(
+            language="python",
+            file_path="src/main.py",
+            node_type="class",
+            start_line=15,
+            end_line=30,
+            byte_start=250,
+            byte_end=500,
+            parent_context="module",
+            content="""class App:
     def __init__(self):
         pass""",
-        metadata={"name": "App", "parent_id": "src/main.py:1:10",
-        "chunk_type": "class"})]
+            metadata={
+                "name": "App",
+                "parent_id": "src/main.py:1:10",
+                "chunk_type": "class",
+            },
+        ),
+    ]
 
 
 class TestGraphMLExporter:
@@ -44,8 +85,12 @@ class TestGraphMLExporter:
         """Test basic GraphML export."""
         exporter = GraphMLExporter()
         exporter.add_chunks(sample_chunks)
-        exporter.add_relationship(sample_chunks[0], sample_chunks[1],
-            "CALLS", {"line": 5})
+        exporter.add_relationship(
+            sample_chunks[0],
+            sample_chunks[1],
+            "CALLS",
+            {"line": 5},
+        )
         output_file = tmp_path / "test.graphml"
         exporter.export(output_file)
         assert output_file.exists()
@@ -63,9 +108,11 @@ class TestGraphMLExporter:
         """Test adding visualization hints."""
         exporter = GraphMLExporter()
         exporter.add_chunks(sample_chunks)
-        exporter.add_visualization_hints(node_colors={"function": "#FF0000",
-            "class": "#00FF00"}, edge_colors={"CALLS": "#0000FF"},
-            node_shapes={"function": "ellipse", "class": "rectangle"})
+        exporter.add_visualization_hints(
+            node_colors={"function": "#FF0000", "class": "#00FF00"},
+            edge_colors={"CALLS": "#0000FF"},
+            node_shapes={"function": "ellipse", "class": "rectangle"},
+        )
         graphml_str = exporter.export_string()
         assert "color" in graphml_str
         assert "#FF0000" in graphml_str
@@ -78,8 +125,9 @@ class TestGraphMLExporter:
         exporter.add_chunks(sample_chunks)
         exporter.extract_relationships(sample_chunks)
         assert len(exporter.edges) >= 1
-        parent_child_found = any(edge.relationship_type == "CONTAINS" for
-            edge in exporter.edges)
+        parent_child_found = any(
+            edge.relationship_type == "CONTAINS" for edge in exporter.edges
+        )
         assert parent_child_found
 
 
@@ -91,8 +139,12 @@ class TestNeo4jExporter:
         """Test CSV export for Neo4j."""
         exporter = Neo4jExporter()
         exporter.add_chunks(sample_chunks)
-        exporter.add_relationship(sample_chunks[0], sample_chunks[1],
-            "CALLS", {"frequency": 10})
+        exporter.add_relationship(
+            sample_chunks[0],
+            sample_chunks[1],
+            "CALLS",
+            {"frequency": 10},
+        )
         output_base = tmp_path / "neo4j_export"
         exporter.export(output_base, format="csv")
         nodes_file = tmp_path / "neo4j_export_nodes.csv"
@@ -118,8 +170,9 @@ class TestNeo4jExporter:
         index_found = any("INDEX" in stmt for stmt in statements)
         assert constraint_found
         assert index_found
-        create_found = any("CREATE" in stmt and "CodeChunk" in stmt for
-            stmt in statements)
+        create_found = any(
+            "CREATE" in stmt and "CodeChunk" in stmt for stmt in statements
+        )
         assert create_found
 
     @classmethod
@@ -164,8 +217,11 @@ class TestDotExporter:
         """Test custom styling."""
         exporter = DotExporter()
         exporter.add_chunks(sample_chunks)
-        exporter.set_node_style("function", shape="diamond", fillcolor="yellow",
-            )
+        exporter.set_node_style(
+            "function",
+            shape="diamond",
+            fillcolor="yellow",
+        )
         exporter.set_edge_style("CALLS", style="bold", color="red")
         dot_str = exporter.export_string()
         assert "diamond" in dot_str
@@ -206,8 +262,7 @@ class TestSQLiteExporter:
         exporter.export(db_path, enable_fts=True)
         conn = sqlite3.connect(str(db_path))
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM chunks_fts WHERE chunks_fts MATCH ?",
-            ("main",))
+        cursor.execute("SELECT * FROM chunks_fts WHERE chunks_fts MATCH ?", ("main",))
         results = cursor.fetchall()
         assert len(results) > 0
         conn.close()
@@ -239,8 +294,11 @@ class TestPostgresExporter:
         """Test SQL export for PostgreSQL."""
         exporter = PostgresExporter()
         exporter.add_chunks(sample_chunks)
-        exporter.add_relationship(sample_chunks[0], sample_chunks[1], "IMPORTS",
-            )
+        exporter.add_relationship(
+            sample_chunks[0],
+            sample_chunks[1],
+            "IMPORTS",
+        )
         sql_file = tmp_path / "postgres_export.sql"
         exporter.export(sql_file, format="sql")
         content = sql_file.read_text()
@@ -305,16 +363,24 @@ class TestCrossExporterIntegration:
     @classmethod
     def test_relationship_consistency(cls, sample_chunks):
         """Test that relationships are handled consistently."""
-        exporters = [GraphMLExporter(), Neo4jExporter(), DotExporter(),
-            SQLiteExporter(), PostgresExporter()]
+        exporters = [
+            GraphMLExporter(),
+            Neo4jExporter(),
+            DotExporter(),
+            SQLiteExporter(),
+            PostgresExporter(),
+        ]
         for exporter in exporters:
             exporter.add_chunks(sample_chunks)
-            exporter.add_relationship(sample_chunks[0], sample_chunks[1],
-                "DEPENDS_ON", {"weight": 1})
+            exporter.add_relationship(
+                sample_chunks[0],
+                sample_chunks[1],
+                "DEPENDS_ON",
+                {"weight": 1},
+            )
         for exporter in exporters[:3]:
             assert len(exporter.edges) == 1
             assert exporter.edges[0].relationship_type == "DEPENDS_ON"
         for exporter in exporters[3:]:
             assert len(exporter.relationships) == 1
-            assert exporter.relationships[0]["relationship_type"
-                ] == "DEPENDS_ON"
+            assert exporter.relationships[0]["relationship_type"] == "DEPENDS_ON"

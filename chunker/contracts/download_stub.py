@@ -1,4 +1,5 @@
 """Concrete stub implementation for testing - Grammar Download"""
+
 import tempfile
 from collections.abc import Callable
 from pathlib import Path
@@ -17,15 +18,21 @@ class GrammarDownloadStub(GrammarDownloadContract):
         self._cache_dir = Path(tempfile.gettempdir()) / "grammar_cache_stub"
         self._cache_dir.mkdir(exist_ok=True)
 
-    def download_grammar(self, language: str, version: (str | None) = None,
-        progress_callback: (Callable[[DownloadProgress], None] | None) = None,
-        ) -> Path:
+    def download_grammar(
+        self,
+        language: str,
+        version: str | None = None,
+        progress_callback: Callable[[DownloadProgress], None] | None = None,
+    ) -> Path:
         """Stub that simulates download"""
         if progress_callback:
             for i in range(0, 101, 20):
-                progress = DownloadProgress(bytes_downloaded=i * 1000,
-                    total_bytes=100000, percent_complete=float(i),
-                    current_file=f"{language}-grammar.tar.gz")
+                progress = DownloadProgress(
+                    bytes_downloaded=i * 1000,
+                    total_bytes=100000,
+                    percent_complete=float(i),
+                    current_file=f"{language}-grammar.tar.gz",
+                )
                 progress_callback(progress)
         download_path = self._cache_dir / f"{language}-{version or 'latest'}"
         download_path.mkdir(exist_ok=True)
@@ -33,19 +40,33 @@ class GrammarDownloadStub(GrammarDownloadContract):
         return download_path
 
     @classmethod
-    def compile_grammar(cls, grammar_path: Path, output_dir: Path,
-        ) -> CompilationResult:
+    def compile_grammar(
+        cls,
+        grammar_path: Path,
+        output_dir: Path,
+    ) -> CompilationResult:
         """Stub that simulates compilation"""
         if not grammar_path.exists():
-            return CompilationResult(success=False, output_path=None,
-                error_message="Grammar path does not exist", abi_version=None)
+            return CompilationResult(
+                success=False,
+                output_path=None,
+                error_message="Grammar path does not exist",
+                abi_version=None,
+            )
         output_file = output_dir / f"{grammar_path.name}.so"
         output_file.touch()
-        return CompilationResult(success=True, output_path=output_file,
-            error_message=None, abi_version=14)
+        return CompilationResult(
+            success=True,
+            output_path=output_file,
+            error_message=None,
+            abi_version=14,
+        )
 
-    def download_and_compile(self, language: str, version: (str | None) = None,
-        ) -> tuple[bool, str]:
+    def download_and_compile(
+        self,
+        language: str,
+        version: str | None = None,
+    ) -> tuple[bool, str]:
         """Stub that simulates download and compile"""
         try:
             grammar_path = self.download_grammar(language, version)
@@ -60,8 +81,11 @@ class GrammarDownloadStub(GrammarDownloadContract):
         """Stub that returns test cache directory"""
         return self._cache_dir
 
-    def is_grammar_cached(self, language: str, version: (str | None) = None,
-        ) -> bool:
+    def is_grammar_cached(
+        self,
+        language: str,
+        version: str | None = None,
+    ) -> bool:
         """Stub that checks for cached grammar"""
         cached_file = self._cache_dir / f"{language}-{version or 'latest'}.so"
         return cached_file.exists()

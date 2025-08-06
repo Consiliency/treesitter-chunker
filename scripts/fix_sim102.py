@@ -9,7 +9,8 @@ def fix_sim102_in_file(file_path):
     """Fix SIM102 errors in a single file."""
     try:
         with Path(file_path).open(
-            "r", encoding="utf-8",
+            "r",
+            encoding="utf-8",
         ) as f:
             content = f.read()
 
@@ -70,7 +71,8 @@ def fix_sim102_in_file(file_path):
 
         if content != original:
             with Path(file_path).open(
-                "w", encoding="utf-8",
+                "w",
+                encoding="utf-8",
             ) as f:
                 f.write(content)
             return True

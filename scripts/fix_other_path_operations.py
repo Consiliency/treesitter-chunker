@@ -1,4 +1,5 @@
 """Fix other path operation errors (PTH108, PTH118, PTH101)."""
+
 import re
 import subprocess
 from pathlib import Path
@@ -11,8 +12,9 @@ def fix_path_operations(file_path: Path) -> bool:
         original_content = content
         lines = content.splitlines(keepends=True)
         needs_path_import = False
-        has_path_import = any("from pathlib import" in line and "Path" in
-            line for line in lines)
+        has_path_import = any(
+            "from pathlib import" in line and "Path" in line for line in lines
+        )
         join_pattern = "os\\.path\\.join\\((.*?)\\)"
 
         def replace_join(match):
@@ -29,6 +31,7 @@ def fix_path_operations(file_path: Path) -> bool:
                     result += f" / {part}"
                 return result
             return match.group(0)
+
         content = re.sub(join_pattern, replace_join, content)
         dirname_pattern = "os\\.path\\.dirname\\((.*?)\\)"
 
@@ -37,6 +40,7 @@ def fix_path_operations(file_path: Path) -> bool:
             arg = match.group(1).strip()
             needs_path_import = True
             return f"Path({arg}).parent"
+
         content = re.sub(dirname_pattern, replace_dirname, content)
         exists_pattern = "os\\.path\\.exists\\((.*?)\\)"
 
@@ -45,6 +49,7 @@ def fix_path_operations(file_path: Path) -> bool:
             arg = match.group(1).strip()
             needs_path_import = True
             return f"Path({arg}).exists()"
+
         content = re.sub(exists_pattern, replace_exists, content)
         isfile_pattern = "os\\.path\\.isfile\\((.*?)\\)"
 
@@ -53,6 +58,7 @@ def fix_path_operations(file_path: Path) -> bool:
             arg = match.group(1).strip()
             needs_path_import = True
             return f"Path({arg}).is_file()"
+
         content = re.sub(isfile_pattern, replace_isfile, content)
         isdir_pattern = "os\\.path\\.isdir\\((.*?)\\)"
 
@@ -61,6 +67,7 @@ def fix_path_operations(file_path: Path) -> bool:
             arg = match.group(1).strip()
             needs_path_import = True
             return f"Path({arg}).is_dir()"
+
         content = re.sub(isdir_pattern, replace_isdir, content)
         abspath_pattern = "os\\.path\\.abspath\\((.*?)\\)"
 
@@ -69,6 +76,7 @@ def fix_path_operations(file_path: Path) -> bool:
             arg = match.group(1).strip()
             needs_path_import = True
             return f"Path({arg}).resolve()"
+
         content = re.sub(abspath_pattern, replace_abspath, content)
         makedirs_pattern = "os\\.makedirs\\((.*?)\\)"
 
@@ -82,18 +90,22 @@ def fix_path_operations(file_path: Path) -> bool:
                 return f"Path({path_arg}).mkdir(parents=True, exist_ok=True)"
             needs_path_import = True
             return f"Path({args}).mkdir(parents=True)"
+
         content = re.sub(makedirs_pattern, replace_makedirs, content)
-        if (needs_path_import and not has_path_import and content !=
-            original_content):
+        if needs_path_import and not has_path_import and content != original_content:
             lines = content.splitlines(keepends=True)
             import_line = 0
             for i, line in enumerate(lines):
                 if line.strip() and not line.startswith("#"):
-                    if line.strip().startswith('"""') or line.strip(
-                        ).startswith("'''"):
+                    if line.strip().startswith('"""') or line.strip().startswith("'''"):
                         quote = line.strip()[:3]
-                        if line.strip().endswith(quote) and len(line.strip(),
-                            ) > 6:
+                        if (
+                            line.strip().endswith(quote)
+                            and len(
+                                line.strip(),
+                            )
+                            > 6
+                        ):
                             import_line = i + 1
                         else:
                             for j in range(i + 1, len(lines)):
@@ -111,8 +123,7 @@ def fix_path_operations(file_path: Path) -> bool:
             if not has_path_import and needs_path_import:
                 if any("pathlib" in line for line in lines):
                     for i, line in enumerate(lines):
-                        if ("from pathlib import" in line and "Path" not in
-                            line):
+                        if "from pathlib import" in line and "Path" not in line:
                             lines[i] = line.rstrip().rstrip("\n")
                             if line.rstrip().endswith(")"):
                                 lines[i] = lines[i][:-1] + ", Path)\n"
@@ -136,14 +147,21 @@ def fix_path_operations(file_path: Path) -> bool:
 def main():
     """Main function."""
     repo_root = Path.cwd()
-    result = subprocess.run(["git", "ls-files", "*.py"], check=False,
-        capture_output=True, text=True, cwd=repo_root)
+    result = subprocess.run(
+        ["git", "ls-files", "*.py"],
+        check=False,
+        capture_output=True,
+        text=True,
+        cwd=repo_root,
+    )
     if result.returncode != 0:
         print("Error getting file list from git")
         return
-    python_files = [(repo_root / f.strip()) for f in result.stdout.
-        splitlines() if f.strip() and not f.startswith((".venv", "venv",
-        "build"))]
+    python_files = [
+        (repo_root / f.strip())
+        for f in result.stdout.splitlines()
+        if f.strip() and not f.startswith((".venv", "venv", "build"))
+    ]
     fixed_count = 0
     total_files = len(python_files)
     print(f"Processing {total_files} Python files...")

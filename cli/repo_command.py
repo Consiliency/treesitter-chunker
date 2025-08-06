@@ -110,7 +110,8 @@ def process(
                 output_data["files"].append(file_data)
 
             with Path(output).open(
-                "w", encoding="utf-8",
+                "w",
+                encoding="utf-8",
             ) as f:
                 json.dump(output_data, f, indent=2)
 

@@ -1,6 +1,7 @@
 """
 Integration tests for Debug Tools implementation
 """
+
 import json
 import tempfile
 from pathlib import Path
@@ -15,7 +16,7 @@ class TestDebugToolsIntegration:
     """Test debug tools integrate with core chunker"""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def sample_python_file(cls):
         """Create a sample Python file for testing"""
         content = """def hello(name):
@@ -33,7 +34,12 @@ def main():
     greeter = Greeter()
     greeter.greet("World")
 """
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
             f.write(content)
             f.flush()
             yield f.name
@@ -47,8 +53,11 @@ def main():
         assert isinstance(result, str | bytes)
         if isinstance(result, str):
             assert result.startswith(("<?xml", "<svg", "digraph"))
-        result = debug_tools.visualize_ast(sample_python_file, "python", "json",
-            )
+        result = debug_tools.visualize_ast(
+            sample_python_file,
+            "python",
+            "json",
+        )
         assert isinstance(result, str)
         data = json.loads(result)
         assert "type" in data
@@ -62,22 +71,46 @@ def main():
         chunks = chunk_file(sample_python_file, "python")
         if chunks:
             chunk_id = chunks[0].chunk_id
-            result = debug_tools.inspect_chunk(sample_python_file, chunk_id,
-                include_context=True)
+            result = debug_tools.inspect_chunk(
+                sample_python_file,
+                chunk_id,
+                include_context=True,
+            )
         else:
             try:
-                result = debug_tools.inspect_chunk(sample_python_file,
-                    "nonexistent_chunk", include_context=True)
+                result = debug_tools.inspect_chunk(
+                    sample_python_file,
+                    "nonexistent_chunk",
+                    include_context=True,
+                )
             except ValueError:
-                result = {"id": "test", "type": "module", "start_line": 1,
-                    "end_line": 1, "content": "test", "metadata": {},
-                    "relationships": {"parent": None, "children": [],
-                    "siblings": []}, "context": {"before": "", "after": "",
-                    "parent_context": "", "file_path": sample_python_file,
-                    "language": "python"}}
+                result = {
+                    "id": "test",
+                    "type": "module",
+                    "start_line": 1,
+                    "end_line": 1,
+                    "content": "test",
+                    "metadata": {},
+                    "relationships": {"parent": None, "children": [], "siblings": []},
+                    "context": {
+                        "before": "",
+                        "after": "",
+                        "parent_context": "",
+                        "file_path": sample_python_file,
+                        "language": "python",
+                    },
+                }
         assert isinstance(result, dict)
-        required_fields = ["id", "type", "start_line", "end_line",
-            "content", "metadata", "relationships", "context"]
+        required_fields = [
+            "id",
+            "type",
+            "start_line",
+            "end_line",
+            "content",
+            "metadata",
+            "relationships",
+            "context",
+        ]
         for field in required_fields:
             assert field in result
         assert "before" in result["context"]
@@ -116,19 +149,27 @@ def main():
         assert result["node_visits"] > 0
         assert len(result["steps"]) > 0
         breakpoints = ["function_definition", "class_definition"]
-        result = debug_tools.debug_mode_chunking(sample_python_file,
-            "python", breakpoints=breakpoints)
+        result = debug_tools.debug_mode_chunking(
+            sample_python_file,
+            "python",
+            breakpoints=breakpoints,
+        )
         breakpoint_steps = [s for s in result["steps"] if s.get("breakpoint")]
         node_types = [s["node_type"] for s in result["steps"]]
-        assert "function_definition" in node_types or "class_definition" in node_types, f"Expected node types not found. Found: {set(node_types)}"
+        assert (
+            "function_definition" in node_types or "class_definition" in node_types
+        ), f"Expected node types not found. Found: {set(node_types)}"
         assert len(breakpoint_steps) > 0, "Should have found breakpoint steps"
 
     @classmethod
     def test_compare_strategies_shows_differences(cls, sample_python_file):
         """Strategy comparison should show meaningful differences"""
         comparison = ChunkComparison()
-        result = comparison.compare_strategies(sample_python_file, "python",
-            ["default", "token_aware"])
+        result = comparison.compare_strategies(
+            sample_python_file,
+            "python",
+            ["default", "token_aware"],
+        )
         assert isinstance(result, dict)
         assert "strategies" in result
         assert "overlaps" in result
@@ -164,5 +205,4 @@ def main():
             f.write("print('test')")
             f.flush()
             with pytest.raises(ValueError):
-                comparison.compare_strategies(f.name, "python", [
-                    "invalid_strategy"])
+                comparison.compare_strategies(f.name, "python", ["invalid_strategy"])

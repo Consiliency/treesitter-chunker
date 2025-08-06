@@ -1,4 +1,5 @@
 """Test C# language support."""
+
 import pytest
 
 from chunker import chunk_text

@@ -1,4 +1,5 @@
 """Define the boundary for enhanced grammar registry - Team: Grammar Registry"""
+
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -10,8 +11,10 @@ class UniversalRegistryContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def get_parser(language: str, auto_download: bool = True,
-        ) -> tree_sitter.Parser:
+    def get_parser(
+        language: str,
+        auto_download: bool = True,
+    ) -> tree_sitter.Parser:
         """Get a parser for a language, downloading if needed
 
         Args:
@@ -73,7 +76,7 @@ class UniversalRegistryContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def install_language(language: str, version: (str | None) = None) -> bool:
+    def install_language(language: str, version: str | None = None) -> bool:
         """Install a language grammar
 
         Args:
@@ -109,7 +112,7 @@ class UniversalRegistryContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def get_language_version(language: str) -> (str | None):
+    def get_language_version(language: str) -> str | None:
         """Get the installed version of a language
 
         Args:

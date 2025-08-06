@@ -1,4 +1,5 @@
 """DOT (Graphviz) export implementation for code chunks."""
+
 from pathlib import Path
 
 from .graph_exporter_base import GraphEdge, GraphExporterBase, GraphNode
@@ -9,25 +10,44 @@ class DotExporter(GraphExporterBase):
 
     def __init__(self):
         super().__init__()
-        self.graph_attrs: dict[str, str] = {"rankdir": "TB", "fontname":
-            "Arial", "fontsize": "10", "compound": "true"}
-        self.node_attrs: dict[str, str] = {"shape": "box", "style":
-            "rounded,filled", "fillcolor": "lightblue", "fontname": "Arial",
-            "fontsize": "10"}
-        self.edge_attrs: dict[str, str] = {"fontname": "Arial", "fontsize": "8",
-            }
-        self.chunk_type_styles: dict[str, dict[str, str]] = {"class": {
-            "shape": "box", "fillcolor": "lightgreen", "style": "filled"},
-            "function": {"shape": "ellipse", "fillcolor": "lightblue",
-            "style": "filled"}, "method": {"shape": "ellipse", "fillcolor":
-            "lightyellow", "style": "filled"}, "module": {"shape": "tab",
-            "fillcolor": "lightgray", "style": "filled"}, "import": {
-            "shape": "note", "fillcolor": "pink", "style": "filled"}}
-        self.edge_type_styles: dict[str, dict[str, str]] = {"CONTAINS": {
-            "style": "solid", "color": "black"}, "IMPORTS": {"style":
-            "dashed", "color": "blue"}, "CALLS": {"style": "dotted",
-            "color": "red"}, "INHERITS": {"style": "solid", "color":
-            "green", "arrowhead": "empty"}}
+        self.graph_attrs: dict[str, str] = {
+            "rankdir": "TB",
+            "fontname": "Arial",
+            "fontsize": "10",
+            "compound": "true",
+        }
+        self.node_attrs: dict[str, str] = {
+            "shape": "box",
+            "style": "rounded,filled",
+            "fillcolor": "lightblue",
+            "fontname": "Arial",
+            "fontsize": "10",
+        }
+        self.edge_attrs: dict[str, str] = {
+            "fontname": "Arial",
+            "fontsize": "8",
+        }
+        self.chunk_type_styles: dict[str, dict[str, str]] = {
+            "class": {"shape": "box", "fillcolor": "lightgreen", "style": "filled"},
+            "function": {
+                "shape": "ellipse",
+                "fillcolor": "lightblue",
+                "style": "filled",
+            },
+            "method": {
+                "shape": "ellipse",
+                "fillcolor": "lightyellow",
+                "style": "filled",
+            },
+            "module": {"shape": "tab", "fillcolor": "lightgray", "style": "filled"},
+            "import": {"shape": "note", "fillcolor": "pink", "style": "filled"},
+        }
+        self.edge_type_styles: dict[str, dict[str, str]] = {
+            "CONTAINS": {"style": "solid", "color": "black"},
+            "IMPORTS": {"style": "dashed", "color": "blue"},
+            "CALLS": {"style": "dotted", "color": "red"},
+            "INHERITS": {"style": "solid", "color": "green", "arrowhead": "empty"},
+        }
 
     @staticmethod
     def _escape_label(text: str) -> str:
@@ -49,13 +69,24 @@ class DotExporter(GraphExporterBase):
     def _get_node_attributes(self, node: GraphNode) -> dict[str, str]:
         """Get attributes for a node based on its type."""
         attrs = self.node_attrs.copy()
-        chunk_type = node.chunk.metadata.get("chunk_type", node.chunk.node_type,
-            ) if node.chunk.metadata else node.chunk.node_type
+        chunk_type = (
+            node.chunk.metadata.get(
+                "chunk_type",
+                node.chunk.node_type,
+            )
+            if node.chunk.metadata
+            else node.chunk.node_type
+        )
         if chunk_type and chunk_type in self.chunk_type_styles:
             attrs.update(self.chunk_type_styles[chunk_type])
         label_parts = []
-        chunk_type = node.chunk.metadata.get("chunk_type",
-            ) if node.chunk.metadata else None
+        chunk_type = (
+            node.chunk.metadata.get(
+                "chunk_type",
+            )
+            if node.chunk.metadata
+            else None
+        )
         chunk_type = chunk_type or node.chunk.node_type or "chunk"
         if node.chunk.metadata and "name" in node.chunk.metadata:
             label_parts.append(f"{node.chunk.metadata['name']} ({chunk_type})")
@@ -63,14 +94,12 @@ class DotExporter(GraphExporterBase):
             label_parts.append(chunk_type)
         label_parts.append(
             f"{node.chunk.file_path}:{node.chunk.start_line}-{node.chunk.end_line}",
-            )
+        )
         if node.chunk.metadata:
             if "complexity" in node.chunk.metadata:
-                label_parts.append(
-                    f"Complexity: {node.chunk.metadata['complexity']}")
+                label_parts.append(f"Complexity: {node.chunk.metadata['complexity']}")
             if "token_count" in node.chunk.metadata:
-                label_parts.append(
-                    f"Tokens: {node.chunk.metadata['token_count']}")
+                label_parts.append(f"Tokens: {node.chunk.metadata['token_count']}")
         attrs["label"] = self._escape_label("\\n".join(label_parts))
         return attrs
 
@@ -95,7 +124,7 @@ class DotExporter(GraphExporterBase):
             attr_parts.append(f'{key}="{value}"')
         return f" [{', '.join(attr_parts)}]"
 
-    def export_string(self, use_clusters: bool = True, **options) -> str:
+    def export_string(self, use_clusters: bool = True, **_options) -> str:
         """Export the graph as a DOT string.
 
         Args:
@@ -114,11 +143,11 @@ class DotExporter(GraphExporterBase):
         lines.append("")
         if use_clusters:
             clusters = self.get_subgraph_clusters()
-            for cluster_idx, (cluster_name, node_ids) in enumerate(clusters
-                .items()):
+            for cluster_idx, (cluster_name, node_ids) in enumerate(clusters.items()):
                 lines.append(f"  subgraph cluster_{cluster_idx} {{")
-                lines.append(f'    label="{self._escape_label(cluster_name)}";',
-                    )
+                lines.append(
+                    f'    label="{self._escape_label(cluster_name)}";',
+                )
                 lines.append('    style="rounded,filled";')
                 lines.append('    fillcolor="lightgray";')
                 lines.append('    color="black";')
@@ -129,7 +158,7 @@ class DotExporter(GraphExporterBase):
                         attrs = self._get_node_attributes(node)
                         lines.append(
                             f"    {self._format_node_id(node_id)}{self._format_attributes(attrs)};",
-                            )
+                        )
                 lines.append("  }")
                 lines.append("")
             clustered_nodes = set()
@@ -140,25 +169,28 @@ class DotExporter(GraphExporterBase):
                     attrs = self._get_node_attributes(node)
                     lines.append(
                         f"  {self._format_node_id(node_id)}{self._format_attributes(attrs)};",
-                        )
+                    )
         else:
             for node_id, node in self.nodes.items():
                 attrs = self._get_node_attributes(node)
                 lines.append(
                     f"  {self._format_node_id(node_id)}{self._format_attributes(attrs)};",
-                    )
+                )
         lines.append("")
         for edge in self.edges:
             attrs = self._get_edge_attributes(edge)
             source = self._format_node_id(edge.source_id)
             target = self._format_node_id(edge.target_id)
-            lines.append(
-                f"  {source} -> {target}{self._format_attributes(attrs)};")
+            lines.append(f"  {source} -> {target}{self._format_attributes(attrs)};")
         lines.append("}")
         return "\n".join(lines)
 
-    def export(self, output_path: Path, use_clusters: bool = True, **options,
-        ) -> None:
+    def export(
+        self,
+        output_path: Path,
+        use_clusters: bool = True,
+        **options,
+    ) -> None:
         """Export the graph to a DOT file.
 
         Args:

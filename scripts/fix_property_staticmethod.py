@@ -17,7 +17,9 @@ def fix_property_decorators(file_path: Path) -> list[str]:
     changes = []
 
     # Pattern to find @staticmethod followed by @property
-    pattern = r"(\s*)@staticmethod\s*\n\s*@property\s*\n(\s*def\s+\w+\([^)]*\)\s*->\s*[^:]+:)"
+    pattern = (
+        r"(\s*)@staticmethod\s*\n\s*@property\s*\n(\s*def\s+\w+\([^)]*\)\s*->\s*[^:]+:)"
+    )
 
     def replace_decorators(match):
         indent = match.group(1)
@@ -56,7 +58,9 @@ def main():
         if dir_path.exists():
             language_files.extend(dir_path.rglob("*.py"))
 
-    print(f"Checking {len(language_files)} files for @staticmethod + @property issues...")
+    print(
+        f"Checking {len(language_files)} files for @staticmethod + @property issues...",
+    )
 
     total_changes = []
 

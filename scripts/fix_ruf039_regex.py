@@ -18,8 +18,14 @@ def fix_regex_patterns_in_file(file_path: Path) -> list[str]:
 
     # Patterns to find regex functions with string literals
     regex_functions = [
-        "re.compile", "re.search", "re.match", "re.findall",
-        "re.finditer", "re.sub", "re.subn", "re.split",
+        "re.compile",
+        "re.search",
+        "re.match",
+        "re.findall",
+        "re.finditer",
+        "re.sub",
+        "re.subn",
+        "re.split",
     ]
 
     # For each regex function, find calls with non-raw strings
@@ -52,7 +58,10 @@ def fix_regex_patterns_in_file(file_path: Path) -> list[str]:
         pattern_str = match.group(4)
 
         # Check if this variable is used in a regex function nearby
-        if any(f"{func}({var_name}" in content or f"{func}( {var_name}" in content for func in regex_functions):
+        if any(
+            f"{func}({var_name}" in content or f"{func}( {var_name}" in content
+            for func in regex_functions
+        ):
             changes.append(f"Converted pattern variable '{var_name}' to raw string")
             return f"{indent}{var_name} = r{quote}{pattern_str}{quote}"
         return match.group(0)
@@ -73,15 +82,27 @@ def main():
 
     # Directories to exclude
     exclude_dirs = {
-        ".venv", "venv", "build", "dist", ".git", "ide",
-        "node_modules", "grammars", "__pycache__", ".mypy_cache",
-        ".ruff_cache", ".pytest_cache", "egg-info", "archive",
+        ".venv",
+        "venv",
+        "build",
+        "dist",
+        ".git",
+        "ide",
+        "node_modules",
+        "grammars",
+        "__pycache__",
+        ".mypy_cache",
+        ".ruff_cache",
+        ".pytest_cache",
+        "egg-info",
+        "archive",
     }
 
-    python_files = []
-    for py_file in project_root.rglob("*.py"):
-        if not any(exc in str(py_file) for exc in exclude_dirs):
-            python_files.append(py_file)
+    python_files = [
+        py_file
+        for py_file in project_root.rglob("*.py")
+        if not any(exc in str(py_file) for exc in exclude_dirs)
+    ]
 
     print(f"Found {len(python_files)} Python files to check")
 
@@ -90,14 +111,25 @@ def main():
 
     # First, run ruff to identify files with RUF039 errors
     import subprocess
+
     result = subprocess.run(
-        ["ruff", "check", str(project_root), "--select", "RUF039", "--output-format", "json"],
-        check=False, capture_output=True,
+        [
+            "ruff",
+            "check",
+            str(project_root),
+            "--select",
+            "RUF039",
+            "--output-format",
+            "json",
+        ],
+        check=False,
+        capture_output=True,
         text=True,
     )
 
     if result.stdout:
         import json
+
         try:
             errors = json.loads(result.stdout)
             files_with_errors = {Path(err["filename"]) for err in errors}

@@ -3,6 +3,7 @@ PyPI Publisher for package distribution
 
 Handles uploading packages to PyPI and TestPyPI with validation
 """
+
 import os
 import shutil
 import subprocess
@@ -16,8 +17,12 @@ class PyPIPublisher:
     def __init__(self):
         self.twine_cmd = shutil.which("twine")
 
-    def publish(self, package_dir: Path, repository: str = "pypi", dry_run:
-        bool = False) -> tuple[bool, dict[str, Any]]:
+    def publish(
+        self,
+        package_dir: Path,
+        repository: str = "pypi",
+        dry_run: bool = False,
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Publish package to PyPI or TestPyPI
 
@@ -29,65 +34,132 @@ class PyPIPublisher:
         Returns:
             Tuple of (success, upload_info)
         """
-        info = {"repository": repository, "dry_run": dry_run, "files": [],
-            "validation": {}, "upload_urls": []}
+        info = {
+            "repository": repository,
+            "dry_run": dry_run,
+            "files": [],
+            "validation": {},
+            "upload_urls": [],
+        }
+
+        # Validate prerequisites
+        validation_result = self._validate_prerequisites(package_dir, info)
+        if not validation_result:
+            return False, info
+
+        dist_files = validation_result
+        info["files"] = [str(f) for f in dist_files]
+
+        # Check package validity
+        if not self._check_package_validity(dist_files, info):
+            return False, info
+
+        # Handle dry run
+        if dry_run:
+            info["message"] = (
+                "Dry run completed successfully. Package is ready for upload."
+            )
+            return True, info
+
+        # Perform actual upload
+        return self._perform_upload(dist_files, repository, info)
+
+    def _validate_prerequisites(
+        self,
+        package_dir: Path,
+        info: dict[str, Any],
+    ) -> list[Path] | None:
+        """Validate twine availability and distribution files existence."""
         if not self.twine_cmd:
             info["error"] = "twine not found. Install with: pip install twine"
-            return False, info
-        dist_files = list(package_dir.glob("*.whl")) + list(package_dir.
-            glob("*.tar.gz"))
+            return None
+
+        dist_files = list(package_dir.glob("*.whl")) + list(
+            package_dir.glob("*.tar.gz"),
+        )
         if not dist_files:
             info["error"] = f"No distribution files found in {package_dir}"
-            return False, info
-        info["files"] = [str(f) for f in dist_files]
+            return None
+
+        return dist_files
+
+    def _check_package_validity(
+        self,
+        dist_files: list[Path],
+        info: dict[str, Any],
+    ) -> bool:
+        """Check package validity using twine check."""
         try:
-            check_result = subprocess.run([self.twine_cmd, "check"] + [str(
-                f) for f in dist_files], capture_output=True, text=True,
-                check=True)
+            check_result = subprocess.run(
+                [self.twine_cmd, "check"] + [str(f) for f in dist_files],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
             info["validation"]["check_output"] = check_result.stdout
             info["validation"]["passed"] = True
+            return True
         except subprocess.CalledProcessError as e:
             info["validation"]["passed"] = False
             info["validation"]["error"] = e.stderr
             info["error"] = f"Package validation failed: {e.stderr}"
-            return False, info
-        if dry_run:
-            info["message"
-                ] = "Dry run completed successfully. Package is ready for upload."
-            return True, info
-        if repository == "pypi":
-            repo_url = "https://upload.pypi.org/legacy/"
-        elif repository == "testpypi":
-            repo_url = "https://test.pypi.org/legacy/"
-        else:
+            return False
+
+    def _perform_upload(
+        self,
+        dist_files: list[Path],
+        repository: str,
+        info: dict[str, Any],
+    ) -> tuple[bool, dict[str, Any]]:
+        """Perform the actual upload to PyPI."""
+        # Get repository URL
+        repo_urls = {
+            "pypi": "https://upload.pypi.org/legacy/",
+            "testpypi": "https://test.pypi.org/legacy/",
+        }
+
+        repo_url = repo_urls.get(repository)
+        if not repo_url:
             info["error"] = f"Unknown repository: {repository}"
             return False, info
+
+        # Check credentials
         if not self._check_credentials(repository):
             info["error"] = (
-                f"No credentials found for {repository}. Set TWINE_USERNAME and TWINE_PASSWORD or use .pypirc"
-                )
+                f"No credentials found for {repository}. "
+                "Set TWINE_USERNAME and TWINE_PASSWORD or use .pypirc"
+            )
             return False, info
+
+        # Upload
         try:
-            upload_cmd = [self.twine_cmd, "upload", "--repository-url",
-                repo_url]
+            upload_cmd = [self.twine_cmd, "upload", "--repository-url", repo_url]
             upload_cmd.extend(str(f) for f in dist_files)
-            upload_result = subprocess.run(upload_cmd, capture_output=True,
-                text=True, check=True)
+            upload_result = subprocess.run(
+                upload_cmd,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+
+            # Extract upload URLs
             for line in upload_result.stdout.splitlines():
                 if "https://" in line and repository in line:
                     info["upload_urls"].append(line.strip())
+
             info["upload_output"] = upload_result.stdout
             info["success"] = True
+            return True, info
         except subprocess.CalledProcessError as e:
             info["error"] = f"Upload failed: {e.stderr}"
             return False, info
-        return True, info
 
     @classmethod
     def _check_credentials(cls, repository: str) -> bool:
         """Check if PyPI credentials are available"""
-        if os.environ.get("TWINE_USERNAME") and os.environ.get("TWINE_PASSWORD",
-            ):
+        if os.environ.get("TWINE_USERNAME") and os.environ.get(
+            "TWINE_PASSWORD",
+        ):
             return True
         pypirc_path = Path.home() / ".pypirc"
         if pypirc_path.exists():

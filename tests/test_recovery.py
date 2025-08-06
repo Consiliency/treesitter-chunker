@@ -3,6 +3,8 @@
 This module tests system resilience including crash recovery,
 state persistence, partial processing, and graceful degradation.
 """
+
+import contextlib
 import gc
 import json
 import os
@@ -42,7 +44,7 @@ def problematic_function():
     '''Unclosed string literal
     return "problem\"
 """,
-            )
+        )
         with patch("chunker.chunker.get_parser") as mock_get_parser:
             mock_parser = MagicMock()
             mock_tree = MagicMock()
@@ -53,8 +55,12 @@ def problematic_function():
             mock_tree.root_node.end_byte = 100
             mock_tree.root_node.start_point = 0, 0
             mock_tree.root_node.end_point = 10, 0
-            mock_parser.parse.side_effect = [RuntimeError("Parser crashed!",
-                ), mock_tree]
+            mock_parser.parse.side_effect = [
+                RuntimeError(
+                    "Parser crashed!",
+                ),
+                mock_tree,
+            ]
             mock_get_parser.return_value = mock_parser
             try:
                 chunk_file(test_file, language="python")
@@ -82,6 +88,7 @@ def problematic_function():
             if call_count == 1:
                 raise MemoryError("Out of memory!")
             return original_chunk_file(file_path, language)
+
         with patch("chunker.chunk_file", side_effect=mock_chunk_file):
             try:
                 chunks = chunk_file(large_file, language="python")
@@ -101,14 +108,21 @@ def problematic_function():
         failed = []
         for file_path in files:
             try:
-                result = subprocess.run([sys.executable, "-c",
-                    f"""
+                result = subprocess.run(
+                    [
+                        sys.executable,
+                        "-c",
+                        f"""
 import sys
 if "file2" in "{file_path}":
     sys.exit(-11)  # Simulate segfault
 print("processed")
 """,
-                    ], check=False, capture_output=True, timeout=2)
+                    ],
+                    check=False,
+                    capture_output=True,
+                    timeout=2,
+                )
                 if result.returncode == 0:
                     processed.append(file_path)
                 else:
@@ -121,7 +135,7 @@ print("processed")
         assert len(failed) >= 1
 
     @staticmethod
-    def test_deadlock_detection_and_recovery(tmp_path):
+    def test_deadlock_detection_and_recovery(_tmp_path):
         """Test deadlock handling."""
         lock1 = threading.Lock()
         lock2 = threading.Lock()
@@ -146,6 +160,7 @@ print("processed")
                     results.put("worker2_success")
                 else:
                     results.put("worker2_timeout")
+
         t1 = threading.Thread(target=worker1)
         t2 = threading.Thread(target=worker2)
         t1.start()
@@ -178,12 +193,19 @@ class TestStatePersistence:
         processed = []
         for i, file_path in enumerate(files_to_process):
             chunks = chunk_file(file_path, language="python")
-            processed.append({"file": str(file_path), "chunks": len(chunks),
-                "index": i})
+            processed.append(
+                {"file": str(file_path), "chunks": len(chunks), "index": i},
+            )
             if (i + 1) % 3 == 0:
                 with Path(checkpoint_file).open("w", encoding="utf-8") as f:
-                    json.dump({"processed": processed, "total": len(
-                        files_to_process), "timestamp": time.time()}, f)
+                    json.dump(
+                        {
+                            "processed": processed,
+                            "total": len(files_to_process),
+                            "timestamp": time.time(),
+                        },
+                        f,
+                    )
         assert checkpoint_file.exists()
         with Path(checkpoint_file).open(encoding="utf-8") as f:
             checkpoint_data = json.load(f)
@@ -199,8 +221,11 @@ class TestStatePersistence:
             f = tmp_path / f"file{i}.py"
             f.write_text(f"def func{i}(): pass")
             files_to_process.append(str(f))
-        checkpoint_data = {"processed": files_to_process[:6], "remaining":
-            files_to_process[6:], "timestamp": time.time()}
+        checkpoint_data = {
+            "processed": files_to_process[:6],
+            "remaining": files_to_process[6:],
+            "timestamp": time.time(),
+        }
         with Path(checkpoint_file).open("w", encoding="utf-8") as f:
             json.dump(checkpoint_data, f)
         with Path(checkpoint_file).open(encoding="utf-8") as f:
@@ -225,9 +250,11 @@ class TestStatePersistence:
             with Path(checkpoint_file).open(encoding="utf-8") as f:
                 checkpoint_data = json.load(f)
         except json.JSONDecodeError:
-            checkpoint_data = {"processed": [], "error":
-                "Checkpoint corrupted, starting fresh", "timestamp": time.
-                time()}
+            checkpoint_data = {
+                "processed": [],
+                "error": "Checkpoint corrupted, starting fresh",
+                "timestamp": time.time(),
+            }
         assert checkpoint_data is not None
         assert len(checkpoint_data["processed"]) == 0
         assert "error" in checkpoint_data
@@ -264,8 +291,10 @@ class TestStatePersistence:
                     state["workers"][worker_id] = []
                 state["workers"][worker_id].append(item)
                 state["items"].append(item)
-                temp_file = (state_file.parent /
-                    f"tmp_{worker_id}_{random.randint(1000, 9999)}.json")
+                temp_file = (
+                    state_file.parent
+                    / f"tmp_{worker_id}_{random.randint(1000, 9999)}.json"
+                )
                 with Path(temp_file).open("w", encoding="utf-8") as f:
                     json.dump(state, f)
                     f.flush()
@@ -273,10 +302,8 @@ class TestStatePersistence:
                 temp_file.replace(state_file)
             finally:
                 if lock_file.exists():
-                    try:
+                    with contextlib.suppress(FileNotFoundError):
                         lock_file.unlink()
-                    except FileNotFoundError:
-                        pass
 
         def worker(worker_id, items):
             for item in items:
@@ -285,6 +312,7 @@ class TestStatePersistence:
                     time.sleep(0.01)
                 except (OSError, FileNotFoundError, IndexError) as e:
                     print(f"Worker {worker_id} error: {e}")
+
         items_per_worker = 5
         workers = []
         for i in range(3):
@@ -299,8 +327,11 @@ class TestStatePersistence:
                 final_state = json.load(f)
             assert len(final_state["workers"]) >= 1
             assert len(final_state["items"]) >= 5
-            all_items = [item for worker_items in final_state["workers"].
-                values() for item in worker_items]
+            all_items = [
+                item
+                for worker_items in final_state["workers"].values()
+                for item in worker_items
+            ]
             assert len(all_items) == len(final_state["items"])
         else:
             pytest.skip("Workers failed to create state file")
@@ -329,14 +360,23 @@ def function3():
 def function4():
     return 4
 """,
-            )
+        )
         all_chunks = chunk_file(test_file, language="python")
         interruption_point = len(all_chunks) // 2
         processed_chunks = all_chunks[:interruption_point]
-        {"file": str(test_file), "total_chunks": len(all_chunks),
-            "processed": interruption_point, "chunks": [{"content": chunk.
-            content, "start_line": chunk.start_line, "end_line": chunk.
-            end_line} for chunk in processed_chunks]}
+        {
+            "file": str(test_file),
+            "total_chunks": len(all_chunks),
+            "processed": interruption_point,
+            "chunks": [
+                {
+                    "content": chunk.content,
+                    "start_line": chunk.start_line,
+                    "end_line": chunk.end_line,
+                }
+                for chunk in processed_chunks
+            ],
+        }
         remaining_chunks = all_chunks[interruption_point:]
         assert len(processed_chunks) + len(remaining_chunks) == len(all_chunks)
         assert processed_chunks[0].content != remaining_chunks[0].content
@@ -360,7 +400,7 @@ class OuterClass:
     def method2(self):
         return "method2\"
 """,
-            )
+        )
         chunks = []
         errors = []
         try:
@@ -380,9 +420,12 @@ class OuterClass:
         partial_export = tmp_path / "partial_export.jsonl"
         with Path(partial_export).open("w", encoding="utf-8") as f:
             for i in range(3):
-                chunk_data = {"content": f"def func{i}(): pass",
-                    "start_line": i * 3 + 1, "end_line": i * 3 + 2,
-                    "language": "python"}
+                chunk_data = {
+                    "content": f"def func{i}(): pass",
+                    "start_line": i * 3 + 1,
+                    "end_line": i * 3 + 2,
+                    "language": "python",
+                }
                 f.write(json.dumps(chunk_data) + "\n")
             incomplete = {"content": "def incomplete():", "start_line": 10}
             f.write(json.dumps(incomplete))
@@ -394,8 +437,9 @@ class OuterClass:
                 if line:
                     try:
                         chunk = json.loads(line)
-                        if all(k in chunk for k in ["content", "start_line",
-                            "end_line"]):
+                        if all(
+                            k in chunk for k in ["content", "start_line", "end_line"]
+                        ):
                             complete_chunks.append(chunk)
                         else:
                             incomplete_chunks.append(chunk)
@@ -403,8 +447,14 @@ class OuterClass:
                         incomplete_chunks.append(line)
         assert len(complete_chunks) == 3
         assert len(incomplete_chunks) >= 1
-        remaining_chunks = [{"content": "def func4(): pass", "start_line":
-            13, "end_line": 14, "language": "python"}]
+        remaining_chunks = [
+            {
+                "content": "def func4(): pass",
+                "start_line": 13,
+                "end_line": 14,
+                "language": "python",
+            },
+        ]
         with Path(partial_export).open("a", encoding="utf-8") as f:
             f.write("\n")
             for chunk in remaining_chunks:
@@ -418,21 +468,26 @@ class OuterClass:
         """Test incremental updates."""
         project_dir = tmp_path / "project"
         project_dir.mkdir()
-        initial_files = {"module1.py": "def func1(): pass", "module2.py":
-            "def func2(): pass"}
+        initial_files = {
+            "module1.py": "def func1(): pass",
+            "module2.py": "def func2(): pass",
+        }
         for name, content in initial_files.items():
             (project_dir / name).write_text(content)
         results_file = tmp_path / "results.json"
         results = {}
         for file_path in project_dir.glob("*.py"):
             chunks = chunk_file(file_path, language="python")
-            results[str(file_path)] = {"mtime": file_path.stat().st_mtime,
-                "chunks": len(chunks)}
+            results[str(file_path)] = {
+                "mtime": file_path.stat().st_mtime,
+                "chunks": len(chunks),
+            }
         with Path(results_file).open("w", encoding="utf-8") as f:
             json.dump(results, f)
         time.sleep(0.1)
         (project_dir / "module1.py").write_text(
-            "def func1(): pass\ndef func1_new(): pass")
+            "def func1(): pass\ndef func1_new(): pass",
+        )
         (project_dir / "module3.py").write_text("def func3(): pass")
         with Path(results_file).open(encoding="utf-8") as f:
             previous_results = json.load(f)
@@ -471,7 +526,7 @@ async def complex_function(*args, **kwargs) -> Optional[List[Dict[str, Any]]]:
 def simple_function():
     return 42
 """,
-            )
+        )
         original_parser = get_parser("python")
         with patch("chunker.parser.get_parser") as mock_get_parser:
             call_count = 0
@@ -482,6 +537,7 @@ def simple_function():
                 if call_count == 1:
                     raise ParserError("Complex syntax not supported")
                 return original_parser
+
             mock_get_parser.side_effect = get_parser_with_fallback
             try:
                 chunks = chunk_file(test_file, language="python")
@@ -491,26 +547,30 @@ def simple_function():
                     lines = f.readlines()
                 current_chunk = []
                 for i, line in enumerate(lines):
-                    if line.strip().startswith("def ") or line.strip(
-                        ).startswith("class "):
+                    if line.strip().startswith("def ") or line.strip().startswith(
+                        "class ",
+                    ):
                         if current_chunk:
                             content = "".join(current_chunk)
                             if content.strip():
-                                chunks.append(MagicMock(content=content,
-                                    start_line=i - len(current_chunk) + 1,
-                                    end_line=i, node_type="function_definition"))
+                                chunks.append(
+                                    MagicMock(
+                                        content=content,
+                                        start_line=i - len(current_chunk) + 1,
+                                        end_line=i,
+                                        node_type="function_definition",
+                                    ),
+                                )
                         current_chunk = [line]
                     elif current_chunk:
                         current_chunk.append(line)
-            assert any("simple_function" in str(chunk.content) for chunk in
-                chunks)
+            assert any("simple_function" in str(chunk.content) for chunk in chunks)
 
     @staticmethod
     def test_language_unavailable_handling(tmp_path):
         """Test missing language handling."""
         test_file = tmp_path / "test.xyz"
-        test_file.write_text(
-            '\nfunction test() {\n    return "unknown language";\n}\n')
+        test_file.write_text('\nfunction test() {\n    return "unknown language";\n}\n')
         with pytest.raises(Exception) as exc_info:
             chunk_file(test_file, language="xyz")
         assert "language" in str(exc_info.value).lower()
@@ -523,10 +583,8 @@ def simple_function():
         elif "#include" in content:
             detected_language = "c"
         if detected_language:
-            try:
+            with contextlib.suppress(FileNotFoundError, IndexError, KeyError):
                 chunk_file(test_file, language=detected_language)
-            except (FileNotFoundError, IndexError, KeyError):
-                pass
 
     @classmethod
     def test_reduced_functionality_mode(cls, tmp_path):
@@ -540,6 +598,7 @@ def simple_function():
 
         def mock_chunk_files_parallel(files, **kwargs):
             raise RuntimeError("Parallel processing unavailable")
+
         for file_path in files:
             try:
                 mock_chunk_files_parallel([file_path])
@@ -608,6 +667,7 @@ class TestSystemResilience:
                 return str(file_path), chunks, None
             except (OSError, FileNotFoundError, ImportError) as e:
                 return str(file_path), [], str(e)
+
         with ThreadPoolExecutor(max_workers=3) as executor:
             futures = {executor.submit(process_file_safe, f): f for f in files}
             for future in futures:
@@ -624,8 +684,7 @@ class TestSystemResilience:
     @classmethod
     def test_cascading_failure_prevention(cls, tmp_path):
         """Test preventing failure chains."""
-        (tmp_path / "base.py").write_text(
-            '\ndef base_function():\n    return "base"\n')
+        (tmp_path / "base.py").write_text('\ndef base_function():\n    return "base"\n')
         (tmp_path / "dependent1.py").write_text(
             """
 from base import base_function
@@ -633,7 +692,7 @@ from base import base_function
 def dependent_function1():
     return base_function() + "_dep1\"
 """,
-            )
+        )
         (tmp_path / "dependent2.py").write_text(
             """
 from dependent1 import dependent_function1
@@ -641,7 +700,7 @@ from dependent1 import dependent_function1
 def dependent_function2():
     return dependent_function1() + "_dep2\"
 """,
-            )
+        )
         processing_order = []
         failures = []
         files = ["base.py", "dependent1.py", "dependent2.py"]
@@ -660,7 +719,9 @@ def dependent_function2():
         assert ("base.py", "success") in processing_order
         assert ("dependent1.py", "failed") in processing_order
         assert ("dependent2.py", "success") in processing_order or (
-            "dependent2.py", "failed") in processing_order
+            "dependent2.py",
+            "failed",
+        ) in processing_order
 
     @classmethod
     def test_automatic_retry_logic(cls, tmp_path):
@@ -681,8 +742,9 @@ def dependent_function2():
                 except RuntimeError:
                     if i == retries - 1:
                         raise
-                    time.sleep(0.1 * 2 ** i)
+                    time.sleep(0.1 * 2**i)
             return []
+
         chunks = chunk_with_retry(test_file, "python", max_retries)
         assert len(chunks) > 0
         assert attempt_count == 2
@@ -702,8 +764,7 @@ def dependent_function2():
 
             def call(self, func, *args, **kwargs):
                 if self.state == "open":
-                    if time.time(
-                        ) - self.last_failure_time > self.recovery_timeout:
+                    if time.time() - self.last_failure_time > self.recovery_timeout:
                         self.state = "half-open"
                     else:
                         raise RuntimeError("Circuit breaker is open")
@@ -719,6 +780,7 @@ def dependent_function2():
                     if self.failure_count >= self.failure_threshold:
                         self.state = "open"
                     raise
+
         breaker = CircuitBreaker(failure_threshold=2, recovery_timeout=0.5)
         call_count = 0
 
@@ -728,6 +790,7 @@ def dependent_function2():
             if call_count <= 3:
                 raise RuntimeError("Operation failed")
             return "success"
+
         results = []
         for _i in range(6):
             try:
@@ -746,11 +809,16 @@ def test_comprehensive_recovery_scenario(tmp_path):
     """Test a comprehensive recovery scenario."""
     project_dir = tmp_path / "resilient_project"
     project_dir.mkdir()
-    files = {"good.py": "def good(): return 'ok'", "syntax_error.py":
-        "def bad(: error", "large.py": "def large():\n" +
-        """    x = 'a' * 1000000
-""" * 100, "nested/deep.py":
-        "def deep(): pass", "binary.bin": b"\x00\x01\x02\x03"}
+    files = {
+        "good.py": "def good(): return 'ok'",
+        "syntax_error.py": "def bad(: error",
+        "large.py": "def large():\n"
+        + """    x = 'a' * 1000000
+"""
+        * 100,
+        "nested/deep.py": "def deep(): pass",
+        "binary.bin": b"\x00\x01\x02\x03",
+    }
     for path, content in files.items():
         file_path = project_dir / path
         file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -767,22 +835,29 @@ def test_comprehensive_recovery_scenario(tmp_path):
             continue
         try:
             chunks = chunk_file(file_path, language="python")
-            results["successful"].append({"file": str(file_path), "chunks":
-                len(chunks)})
+            results["successful"].append(
+                {"file": str(file_path), "chunks": len(chunks)},
+            )
         except (FileNotFoundError, IndexError, KeyError) as e:
             recovered = False
             try:
                 chunks = chunk_file(file_path, language="python")
-                results["recovered"].append({"file": str(file_path),
-                    "strategy": "retry", "chunks": len(chunks)})
+                results["recovered"].append(
+                    {
+                        "file": str(file_path),
+                        "strategy": "retry",
+                        "chunks": len(chunks),
+                    },
+                )
                 recovered = True
             except (FileNotFoundError, IndexError, KeyError):
                 pass
             if not recovered:
-                results["failed"].append({"file": str(file_path), "error":
-                    str(e)})
+                results["failed"].append({"file": str(file_path), "error": str(e)})
     assert len(results["successful"]) >= 1
-    assert len(results["successful"]) + len(results["failed"]) + len(results
-        ["recovered"]) >= 3
+    assert (
+        len(results["successful"]) + len(results["failed"]) + len(results["recovered"])
+        >= 3
+    )
     assert len(results["skipped"]) >= 1
     assert True

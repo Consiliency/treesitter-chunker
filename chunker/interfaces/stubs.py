@@ -4,6 +4,7 @@ These are minimal implementations that raise NotImplementedError
 for all methods. Worktrees can import these for testing their
 code before the actual implementations are available.
 """
+
 import io
 from pathlib import Path
 from re import Pattern
@@ -28,18 +29,20 @@ class ChunkingStrategyStub(ChunkingStrategy):
 
     @staticmethod
     def can_handle(file_path: str, language: str) -> bool:
-        raise NotImplementedError(
-            "ChunkingStrategyStub.can_handle not implemented")
+        raise NotImplementedError("ChunkingStrategyStub.can_handle not implemented")
 
     @staticmethod
-    def chunk(ast: Node, source: bytes, file_path: str, language: str) -> list[
-        CodeChunk]:
+    def chunk(
+        ast: Node,
+        source: bytes,
+        file_path: str,
+        language: str,
+    ) -> list[CodeChunk]:
         raise NotImplementedError("ChunkingStrategyStub.chunk not implemented")
 
     @staticmethod
     def configure(config: dict[str, Any]) -> None:
-        raise NotImplementedError(
-            "ChunkingStrategyStub.configure not implemented")
+        raise NotImplementedError("ChunkingStrategyStub.configure not implemented")
 
 
 class ASTProcessorStub(ASTProcessor):
@@ -47,13 +50,13 @@ class ASTProcessorStub(ASTProcessor):
 
     @staticmethod
     def process_node(node: Node, context: dict[str, Any]) -> Any:
-        raise NotImplementedError(
-            "ASTProcessorStub.process_node not implemented")
+        raise NotImplementedError("ASTProcessorStub.process_node not implemented")
 
     @staticmethod
     def should_process_children(node: Node, context: dict[str, Any]) -> bool:
         raise NotImplementedError(
-            "ASTProcessorStub.should_process_children not implemented")
+            "ASTProcessorStub.should_process_children not implemented",
+        )
 
 
 class QueryStub(Query):
@@ -73,8 +76,7 @@ class QueryStub(Query):
 
     @staticmethod
     def is_pattern_enabled(pattern_index: int) -> bool:
-        raise NotImplementedError(
-            "QueryStub.is_pattern_enabled not implemented")
+        raise NotImplementedError("QueryStub.is_pattern_enabled not implemented")
 
 
 class QueryEngineStub(QueryEngine):
@@ -82,19 +84,17 @@ class QueryEngineStub(QueryEngine):
 
     @staticmethod
     def parse_query(query_string: str, language: str) -> Query:
-        raise NotImplementedError("QueryEngineStub.parse_query not implemented",
-            )
+        raise NotImplementedError(
+            "QueryEngineStub.parse_query not implemented",
+        )
 
     @staticmethod
     def execute_query(ast: Node, query: Query) -> list[QueryMatch]:
-        raise NotImplementedError(
-            "QueryEngineStub.execute_query not implemented")
+        raise NotImplementedError("QueryEngineStub.execute_query not implemented")
 
     @staticmethod
-    def validate_query(query_string: str, language: str) -> tuple[bool, str |
-        None]:
-        raise NotImplementedError(
-            "QueryEngineStub.validate_query not implemented")
+    def validate_query(query_string: str, language: str) -> tuple[bool, str | None]:
+        raise NotImplementedError("QueryEngineStub.validate_query not implemented")
 
 
 class ContextExtractorStub(ContextExtractor):
@@ -103,67 +103,77 @@ class ContextExtractorStub(ContextExtractor):
     @staticmethod
     def extract_imports(ast: Node, source: bytes) -> list[ContextItem]:
         raise NotImplementedError(
-            "ContextExtractorStub.extract_imports not implemented")
+            "ContextExtractorStub.extract_imports not implemented",
+        )
 
     @staticmethod
     def extract_type_definitions(ast: Node, source: bytes) -> list[ContextItem]:
         raise NotImplementedError(
-            "ContextExtractorStub.extract_type_definitions not implemented")
+            "ContextExtractorStub.extract_type_definitions not implemented",
+        )
 
     @staticmethod
-    def extract_dependencies(node: Node, ast: Node, source: bytes) -> list[
-        ContextItem]:
+    def extract_dependencies(node: Node, ast: Node, source: bytes) -> list[ContextItem]:
         raise NotImplementedError(
-            "ContextExtractorStub.extract_dependencies not implemented")
+            "ContextExtractorStub.extract_dependencies not implemented",
+        )
 
     @staticmethod
-    def extract_parent_context(node: Node, ast: Node, source: bytes) -> list[
-        ContextItem]:
+    def extract_parent_context(
+        node: Node,
+        ast: Node,
+        source: bytes,
+    ) -> list[ContextItem]:
         raise NotImplementedError(
-            "ContextExtractorStub.extract_parent_context not implemented")
+            "ContextExtractorStub.extract_parent_context not implemented",
+        )
 
     @staticmethod
     def find_decorators(node: Node, source: bytes) -> list[ContextItem]:
         raise NotImplementedError(
-            "ContextExtractorStub.find_decorators not implemented")
+            "ContextExtractorStub.find_decorators not implemented",
+        )
 
     @staticmethod
-    def build_context_prefix(context_items: list[ContextItem], max_size: (
-        int | None) = None) -> str:
+    def build_context_prefix(
+        context_items: list[ContextItem],
+        max_size: int | None = None,
+    ) -> str:
         raise NotImplementedError(
-            "ContextExtractorStub.build_context_prefix not implemented")
+            "ContextExtractorStub.build_context_prefix not implemented",
+        )
 
     @staticmethod
     def process_node(node: Node, context: dict[str, Any]) -> Any:
-        raise NotImplementedError(
-            "ContextExtractorStub.process_node not implemented")
+        raise NotImplementedError("ContextExtractorStub.process_node not implemented")
 
     @staticmethod
     def should_process_children(node: Node, context: dict[str, Any]) -> bool:
         raise NotImplementedError(
-            "ContextExtractorStub.should_process_children not implemented")
+            "ContextExtractorStub.should_process_children not implemented",
+        )
 
 
 class CacheManagerStub(CacheManager):
     """Stub implementation of CacheManager."""
 
     @staticmethod
-    def get(key: str) -> (Any | None):
+    def get(key: str) -> Any | None:
         raise NotImplementedError("CacheManagerStub.get not implemented")
 
     @staticmethod
-    def put(key: str, value: Any, ttl_seconds: (int | None) = None) -> None:
+    def put(key: str, value: Any, ttl_seconds: int | None = None) -> None:
         raise NotImplementedError("CacheManagerStub.put not implemented")
 
     @staticmethod
     def invalidate(key: str) -> bool:
-        raise NotImplementedError("CacheManagerStub.invalidate not implemented",
-            )
+        raise NotImplementedError(
+            "CacheManagerStub.invalidate not implemented",
+        )
 
     @staticmethod
     def invalidate_pattern(pattern: str) -> int:
-        raise NotImplementedError(
-            "CacheManagerStub.invalidate_pattern not implemented")
+        raise NotImplementedError("CacheManagerStub.invalidate_pattern not implemented")
 
     @staticmethod
     def clear() -> None:
@@ -175,13 +185,11 @@ class CacheManagerStub(CacheManager):
 
     @staticmethod
     def memory_usage() -> int:
-        raise NotImplementedError(
-            "CacheManagerStub.memory_usage not implemented")
+        raise NotImplementedError("CacheManagerStub.memory_usage not implemented")
 
     @staticmethod
     def evict_expired() -> int:
-        raise NotImplementedError(
-            "CacheManagerStub.evict_expired not implemented")
+        raise NotImplementedError("CacheManagerStub.evict_expired not implemented")
 
     @staticmethod
     def get_stats() -> dict[str, Any]:
@@ -192,77 +200,77 @@ class StructuredExporterStub(StructuredExporter):
     """Stub implementation of StructuredExporter."""
 
     @staticmethod
-    def export(chunks: list[CodeChunk], relationships: list[
-        ChunkRelationship], output: (Path | io.IOBase), metadata: (Any |
-        None) = None) -> None:
-        raise NotImplementedError(
-            "StructuredExporterStub.export not implemented")
+    def export(
+        chunks: list[CodeChunk],
+        relationships: list[ChunkRelationship],
+        output: Path | io.IOBase,
+        metadata: Any | None = None,
+    ) -> None:
+        raise NotImplementedError("StructuredExporterStub.export not implemented")
 
     @staticmethod
-    def export_streaming(chunk_iterator: Any, relationship_iterator: Any,
-        output: (Path | io.IOBase)) -> None:
+    def export_streaming(
+        chunk_iterator: Any,
+        relationship_iterator: Any,
+        output: Path | io.IOBase,
+    ) -> None:
         raise NotImplementedError(
-            "StructuredExporterStub.export_streaming not implemented")
+            "StructuredExporterStub.export_streaming not implemented",
+        )
 
     @staticmethod
     def supports_format(fmt: ExportFormat) -> bool:
         raise NotImplementedError(
-            "StructuredExporterStub.supports_format not implemented")
+            "StructuredExporterStub.supports_format not implemented",
+        )
 
     @staticmethod
     def get_schema() -> dict[str, Any]:
-        raise NotImplementedError(
-            "StructuredExporterStub.get_schema not implemented")
+        raise NotImplementedError("StructuredExporterStub.get_schema not implemented")
 
 
 class GrammarManagerStub(GrammarManager):
     """Stub implementation of GrammarManager."""
 
     @staticmethod
-    def add_grammar(name: str, repository_url: str, commit_hash: (str |
-        None) = None) -> Any:
-        raise NotImplementedError(
-            "GrammarManagerStub.add_grammar not implemented")
+    def add_grammar(
+        name: str,
+        repository_url: str,
+        commit_hash: str | None = None,
+    ) -> Any:
+        raise NotImplementedError("GrammarManagerStub.add_grammar not implemented")
 
     @staticmethod
     def fetch_grammar(name: str) -> bool:
-        raise NotImplementedError(
-            "GrammarManagerStub.fetch_grammar not implemented")
+        raise NotImplementedError("GrammarManagerStub.fetch_grammar not implemented")
 
     @staticmethod
     def build_grammar(name: str) -> bool:
-        raise NotImplementedError(
-            "GrammarManagerStub.build_grammar not implemented")
+        raise NotImplementedError("GrammarManagerStub.build_grammar not implemented")
 
     @staticmethod
-    def get_grammar_info(name: str) -> (Any | None):
-        raise NotImplementedError(
-            "GrammarManagerStub.get_grammar_info not implemented")
+    def get_grammar_info(name: str) -> Any | None:
+        raise NotImplementedError("GrammarManagerStub.get_grammar_info not implemented")
 
     @staticmethod
-    def list_grammars(status: (Any | None) = None) -> list[Any]:
-        raise NotImplementedError(
-            "GrammarManagerStub.list_grammars not implemented")
+    def list_grammars(status: Any | None = None) -> list[Any]:
+        raise NotImplementedError("GrammarManagerStub.list_grammars not implemented")
 
     @staticmethod
     def update_grammar(name: str) -> bool:
-        raise NotImplementedError(
-            "GrammarManagerStub.update_grammar not implemented")
+        raise NotImplementedError("GrammarManagerStub.update_grammar not implemented")
 
     @staticmethod
     def remove_grammar(name: str) -> bool:
-        raise NotImplementedError(
-            "GrammarManagerStub.remove_grammar not implemented")
+        raise NotImplementedError("GrammarManagerStub.remove_grammar not implemented")
 
     @staticmethod
     def get_node_types(language: str) -> list[Any]:
-        raise NotImplementedError(
-            "GrammarManagerStub.get_node_types not implemented")
+        raise NotImplementedError("GrammarManagerStub.get_node_types not implemented")
 
     @staticmethod
     def validate_grammar(name: str) -> tuple[bool, str | None]:
-        raise NotImplementedError(
-            "GrammarManagerStub.validate_grammar not implemented")
+        raise NotImplementedError("GrammarManagerStub.validate_grammar not implemented")
 
 
 class FallbackChunkerStub(FallbackChunker):
@@ -270,46 +278,58 @@ class FallbackChunkerStub(FallbackChunker):
 
     @staticmethod
     def can_handle(file_path: str, language: str) -> bool:
-        raise NotImplementedError(
-            "FallbackChunkerStub.can_handle not implemented")
+        raise NotImplementedError("FallbackChunkerStub.can_handle not implemented")
 
     @staticmethod
-    def chunk(ast: Node, source: bytes, file_path: str, language: str) -> list[
-        CodeChunk]:
+    def chunk(
+        ast: Node,
+        source: bytes,
+        file_path: str,
+        language: str,
+    ) -> list[CodeChunk]:
         raise NotImplementedError("FallbackChunkerStub.chunk not implemented")
 
     @staticmethod
     def configure(config: dict[str, Any]) -> None:
-        raise NotImplementedError(
-            "FallbackChunkerStub.configure not implemented")
+        raise NotImplementedError("FallbackChunkerStub.configure not implemented")
 
     @staticmethod
     def set_fallback_reason(reason: Any) -> None:
         raise NotImplementedError(
-            "FallbackChunkerStub.set_fallback_reason not implemented")
+            "FallbackChunkerStub.set_fallback_reason not implemented",
+        )
 
     @staticmethod
-    def chunk_by_lines(content: str, lines_per_chunk: int, overlap_lines: int = 0,
-        ) -> list[CodeChunk]:
-        raise NotImplementedError(
-            "FallbackChunkerStub.chunk_by_lines not implemented")
+    def chunk_by_lines(
+        content: str,
+        lines_per_chunk: int,
+        overlap_lines: int = 0,
+    ) -> list[CodeChunk]:
+        raise NotImplementedError("FallbackChunkerStub.chunk_by_lines not implemented")
 
     @staticmethod
-    def chunk_by_delimiter(content: str, delimiter: str, include_delimiter:
-        bool = True) -> list[CodeChunk]:
+    def chunk_by_delimiter(
+        content: str,
+        delimiter: str,
+        include_delimiter: bool = True,
+    ) -> list[CodeChunk]:
         raise NotImplementedError(
-            "FallbackChunkerStub.chunk_by_delimiter not implemented")
+            "FallbackChunkerStub.chunk_by_delimiter not implemented",
+        )
 
     @staticmethod
-    def chunk_by_pattern(content: str, pattern: Pattern, include_match:
-        bool = True) -> list[CodeChunk]:
+    def chunk_by_pattern(
+        content: str,
+        pattern: Pattern,
+        include_match: bool = True,
+    ) -> list[CodeChunk]:
         raise NotImplementedError(
-            "FallbackChunkerStub.chunk_by_pattern not implemented")
+            "FallbackChunkerStub.chunk_by_pattern not implemented",
+        )
 
     @staticmethod
     def emit_warning() -> str:
-        raise NotImplementedError(
-            "FallbackChunkerStub.emit_warning not implemented")
+        raise NotImplementedError("FallbackChunkerStub.emit_warning not implemented")
 
 
 class ASTVisualizerStub(ASTVisualizer):
@@ -317,37 +337,49 @@ class ASTVisualizerStub(ASTVisualizer):
 
     @staticmethod
     def visualize(node: Node, source: bytes, fmt: Any = None) -> str:
-        raise NotImplementedError("ASTVisualizerStub.visualize not implemented",
-            )
+        raise NotImplementedError(
+            "ASTVisualizerStub.visualize not implemented",
+        )
 
     @staticmethod
-    def visualize_with_chunks(node: Node, source: bytes, chunks: list[
-        CodeChunk], fmt: Any = None) -> str:
+    def visualize_with_chunks(
+        node: Node,
+        source: bytes,
+        chunks: list[CodeChunk],
+        fmt: Any = None,
+    ) -> str:
         raise NotImplementedError(
-            "ASTVisualizerStub.visualize_with_chunks not implemented")
+            "ASTVisualizerStub.visualize_with_chunks not implemented",
+        )
 
     @staticmethod
     def highlight_nodes(nodes: list[Node], style: Any) -> None:
-        raise NotImplementedError(
-            "ASTVisualizerStub.highlight_nodes not implemented")
+        raise NotImplementedError("ASTVisualizerStub.highlight_nodes not implemented")
 
     @staticmethod
     def set_max_depth(depth: int) -> None:
-        raise NotImplementedError(
-            "ASTVisualizerStub.set_max_depth not implemented")
+        raise NotImplementedError("ASTVisualizerStub.set_max_depth not implemented")
 
     @staticmethod
     def set_node_filter(filter_func: Any) -> None:
-        raise NotImplementedError(
-            "ASTVisualizerStub.set_node_filter not implemented")
+        raise NotImplementedError("ASTVisualizerStub.set_node_filter not implemented")
 
     @staticmethod
     def export_interactive(output_path: str) -> None:
         raise NotImplementedError(
-            "ASTVisualizerStub.export_interactive not implemented")
+            "ASTVisualizerStub.export_interactive not implemented",
+        )
 
 
-__all__ = ["ASTProcessorStub", "ASTVisualizerStub", "CacheManagerStub",
-    "ChunkingStrategyStub", "ContextExtractorStub", "FallbackChunkerStub",
-    "GrammarManagerStub", "QueryEngineStub", "QueryStub",
-    "StructuredExporterStub"]
+__all__ = [
+    "ASTProcessorStub",
+    "ASTVisualizerStub",
+    "CacheManagerStub",
+    "ChunkingStrategyStub",
+    "ContextExtractorStub",
+    "FallbackChunkerStub",
+    "GrammarManagerStub",
+    "QueryEngineStub",
+    "QueryStub",
+    "StructuredExporterStub",
+]

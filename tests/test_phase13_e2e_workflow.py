@@ -2,6 +2,7 @@
 End-to-end workflow tests for Phase 13 components
 Testing real-world development scenarios
 """
+
 import shutil
 import tempfile
 from pathlib import Path
@@ -43,10 +44,9 @@ def unused_function():
     import os  # unused import
     pass
 """,
-                )
+            )
             debug_tools = DebugVisualization()
-            ast_output = debug_tools.visualize_ast(str(test_file), "python",
-                "json")
+            ast_output = debug_tools.visualize_ast(str(test_file), "python", "json")
             assert ast_output is not None
             assert isinstance(ast_output, str | dict)
             profile = debug_tools.profile_chunking(str(test_file), "python")
@@ -60,8 +60,10 @@ def unused_function():
                 assert isinstance(success, bool)
             else:
                 assert isinstance(formatted_result, bool)
-            ci_config = dev_env.generate_ci_config(["ubuntu-latest",
-                "windows-latest"], ["3.9", "3.10", "3.11"])
+            ci_config = dev_env.generate_ci_config(
+                ["ubuntu-latest", "windows-latest"],
+                ["3.9", "3.10", "3.11"],
+            )
             assert "jobs" in ci_config
             assert "test" in ci_config["jobs"]
             build_sys = BuildSystem()
@@ -76,14 +78,15 @@ build-backend = "setuptools.build_meta"
 name = "test-package"
 version = "0.1.0\"
 """,
-                )
-            success, _wheel_path = build_sys.build_wheel("linux", "cp39",
-                project_dir)
+            )
+            success, _wheel_path = build_sys.build_wheel("linux", "cp39", project_dir)
             assert isinstance(success, bool)
             dist = Distributor()
             ReleaseManager()
             validation_success, validation_info = dist.publish_to_pypi(
-                project_dir, dry_run=True)
+                project_dir,
+                dry_run=True,
+            )
             assert isinstance(validation_success, bool)
             assert isinstance(validation_info, dict)
 
@@ -120,13 +123,17 @@ class DataProcessor:
     def clear_cache(self):
         self.cache.clear()
 """,
-                )
+            )
             debug_tools = DebugVisualization()
             from chunker.core import chunk_file
+
             chunks = chunk_file(str(complex_file), "python")
             for chunk in chunks[:2]:
-                chunk_info = debug_tools.inspect_chunk(str(complex_file),
-                    chunk.chunk_id, include_context=True)
+                chunk_info = debug_tools.inspect_chunk(
+                    str(complex_file),
+                    chunk.chunk_id,
+                    include_context=True,
+                )
                 assert "content" in chunk_info
                 assert "metadata" in chunk_info
                 assert "relationships" in chunk_info
@@ -142,21 +149,19 @@ class DataProcessor:
         """Test workflow for projects with multiple languages"""
         with tempfile.TemporaryDirectory() as tmpdir:
             project_dir = Path(tmpdir)
-            files = {"server.py":
-                """
+            files = {
+                "server.py": """
 def start_server(port=8080):
     print(f"Starting server on port {port}")
     return True
-"""
-                , "client.js":
-                """
+""",
+                "client.js": """
 function connectToServer(host, port) {
     console.log(`Connecting to ${host}:${port}`);
     return {host, port};
 }
-"""
-                , "config.rs":
-                """
+""",
+                "config.rs": """
 pub struct Config {
     pub host: String,
     pub port: u16,
@@ -168,7 +173,7 @@ impl Config {
     }
 }
 """,
-                }
+            }
             for filename, content in files.items():
                 filepath = project_dir / filename
                 filepath.write_text(content)
@@ -177,7 +182,8 @@ impl Config {
             for filename in files:
                 filepath = project_dir / filename
                 lang = {".py": "python", ".js": "javascript", ".rs": "rust"}[
-                    filepath.suffix]
+                    filepath.suffix
+                ]
                 viz = debug_tools.visualize_ast(str(filepath), lang, "json")
                 visualizations[filename] = viz
                 assert viz is not None
@@ -222,7 +228,7 @@ class DataCache:
     def set(self, key, value):
         self.cache[key] = value  # No eviction policy
 """,
-                )
+            )
             debug_tools = DebugVisualization()
             profile = debug_tools.profile_chunking(str(perf_file), "python")
             assert "total_time" in profile
@@ -231,9 +237,11 @@ class DataCache:
             profile["total_time"]
             profile["memory_peak"]
             from chunker.core import chunk_file
+
             chunks = chunk_file(str(perf_file), "python")
-            function_chunks = [c for c in chunks if c.node_type ==
-                "function_definition"]
+            function_chunks = [
+                c for c in chunks if c.node_type == "function_definition"
+            ]
             assert len(function_chunks) >= 2
             QualityAssurance()
             dev_env = DevelopmentEnvironment()

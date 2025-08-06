@@ -87,7 +87,12 @@ class Statistics:
         return calculate_average(self.data)
 '''
 
-    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        encoding="utf-8",
+        mode="w",
+        suffix=".py",
+        delete=False,
+    ) as f:
         f.write(test_code)
         temp_file = f.name
 

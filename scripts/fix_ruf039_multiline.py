@@ -11,7 +11,6 @@ def fix_regex_in_file(file_path: Path) -> list[str]:
     """Fix regex patterns in a file using AST-aware approach."""
     try:
         content = file_path.read_text(encoding="utf-8")
-        original = content
     except Exception as e:
         print(f"Error reading {file_path}: {e}")
         return []
@@ -20,8 +19,17 @@ def fix_regex_in_file(file_path: Path) -> list[str]:
 
     # Get specific line numbers with RUF039 errors from ruff
     result = subprocess.run(
-        ["ruff", "check", str(file_path), "--select", "RUF039", "--output-format", "json"],
-        check=False, capture_output=True,
+        [
+            "ruff",
+            "check",
+            str(file_path),
+            "--select",
+            "RUF039",
+            "--output-format",
+            "json",
+        ],
+        check=False,
+        capture_output=True,
         text=True,
     )
 
@@ -77,7 +85,8 @@ def main():
     # First get all files with RUF039 errors
     result = subprocess.run(
         ["ruff", "check", "--select", "RUF039", "--output-format", "json"],
-        check=False, capture_output=True,
+        check=False,
+        capture_output=True,
         text=True,
     )
 
@@ -111,7 +120,8 @@ def main():
     # Check remaining errors
     result = subprocess.run(
         ["ruff", "check", "--select", "RUF039", "--statistics"],
-        check=False, capture_output=True,
+        check=False,
+        capture_output=True,
         text=True,
     )
 

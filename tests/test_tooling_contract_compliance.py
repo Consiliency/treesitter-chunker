@@ -1,4 +1,5 @@
 """Test that DeveloperToolingImpl complies with the contract."""
+
 import inspect
 from pathlib import Path
 from typing import get_type_hints
@@ -9,12 +10,16 @@ from chunker.tooling.developer import DeveloperToolingImpl
 
 def verify_contract_compliance(contract_class, implementation_class):
     """Verify that implementation class properly implements the contract"""
-    contract_methods = {name: method for name, method in inspect.getmembers
-        (contract_class, inspect.isfunction) if hasattr(method,
-        "__isabstractmethod__") and method.__isabstractmethod__}
+    contract_methods = {
+        name: method
+        for name, method in inspect.getmembers(contract_class, inspect.isfunction)
+        if hasattr(method, "__isabstractmethod__") and method.__isabstractmethod__
+    }
     for method_name, contract_method in contract_methods.items():
-        assert hasattr(implementation_class, method_name,
-            ), f"{implementation_class.__name__} missing method: {method_name}"
+        assert hasattr(
+            implementation_class,
+            method_name,
+        ), f"{implementation_class.__name__} missing method: {method_name}"
         impl_method = getattr(implementation_class, method_name)
         contract_sig = inspect.signature(contract_method)
         impl_sig = inspect.signature(impl_method)
@@ -22,13 +27,18 @@ def verify_contract_compliance(contract_class, implementation_class):
         impl_params = dict(impl_sig.parameters)
         contract_params.pop("self", None)
         impl_params.pop("self", None)
-        assert contract_params == impl_params, f"Signature mismatch for {method_name}: {contract_params} != {impl_params}"
+        assert (
+            contract_params == impl_params
+        ), f"Signature mismatch for {method_name}: {contract_params} != {impl_params}"
         contract_hints = get_type_hints(contract_method)
         impl_hints = get_type_hints(impl_method)
         if "return" in contract_hints:
-            assert "return" in impl_hints, f"{method_name} missing return type annotation"
-            assert contract_hints["return"] == impl_hints["return"
-                ], f"Return type mismatch for {method_name}"
+            assert (
+                "return" in impl_hints
+            ), f"{method_name} missing return type annotation"
+            assert (
+                contract_hints["return"] == impl_hints["return"]
+            ), f"Return type mismatch for {method_name}"
 
 
 class TestDeveloperToolingImplCompliance:
@@ -37,8 +47,7 @@ class TestDeveloperToolingImplCompliance:
     @classmethod
     def test_contract_compliance(cls):
         """Verify DeveloperToolingImpl matches contract"""
-        verify_contract_compliance(DeveloperToolingContract,
-            DeveloperToolingImpl)
+        verify_contract_compliance(DeveloperToolingContract, DeveloperToolingImpl)
         tooling = DeveloperToolingImpl()
         assert isinstance(tooling, DeveloperToolingContract)
 

@@ -1,9 +1,9 @@
 """Implementation of overlapping fallback chunker for non-Tree-sitter files only."""
 
 import logging
-import os
 import re
 import warnings
+from pathlib import Path
 from typing import Literal
 
 from chunker.exceptions import ChunkerError
@@ -59,7 +59,7 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
             self._supported_languages = list_languages()
         if language and language.lower() in self._supported_languages:
             raise TreeSitterOverlapError(language)
-        ext = os.path.splitext(file_path)[1].lower()
+        ext = Path(file_path).suffix.lower()
         ext_to_lang = {
             ".py": "python",
             ".js": "javascript",
@@ -121,10 +121,14 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
         actual_overlap = self._calculate_overlap(chunk_size, overlap_size, strategy)
         if unit == "lines":
             return self._chunk_by_lines_with_overlap(
-                content, chunk_size, actual_overlap,
+                content,
+                chunk_size,
+                actual_overlap,
             )
         return self._chunk_by_characters_with_overlap(
-            content, chunk_size, actual_overlap,
+            content,
+            chunk_size,
+            actual_overlap,
         )
 
     def chunk_with_asymmetric_overlap(
@@ -159,10 +163,16 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
         logger.warning(warning_msg)
         if unit == "lines":
             return self._chunk_by_lines_asymmetric(
-                content, chunk_size, overlap_before, overlap_after,
+                content,
+                chunk_size,
+                overlap_before,
+                overlap_after,
             )
         return self._chunk_by_characters_asymmetric(
-            content, chunk_size, overlap_before, overlap_after,
+            content,
+            chunk_size,
+            overlap_before,
+            overlap_after,
         )
 
     def chunk_with_dynamic_overlap(
@@ -197,15 +207,23 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
         logger.warning(warning_msg)
         if unit == "lines":
             return self._chunk_by_lines_dynamic(
-                content, chunk_size, min_overlap, max_overlap,
+                content,
+                chunk_size,
+                min_overlap,
+                max_overlap,
             )
         return self._chunk_by_characters_dynamic(
-            content, chunk_size, min_overlap, max_overlap,
+            content,
+            chunk_size,
+            min_overlap,
+            max_overlap,
         )
 
     @staticmethod
     def find_natural_overlap_boundary(
-        content: str, desired_position: int, search_window: int = 100,
+        content: str,
+        desired_position: int,
+        search_window: int = 100,
     ) -> int:
         """
         Find a natural boundary for overlap near desired position.
@@ -249,7 +267,9 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
 
     @staticmethod
     def _calculate_overlap(
-        chunk_size: int, overlap_size: int, strategy: OverlapStrategy,
+        chunk_size: int,
+        overlap_size: int,
+        strategy: OverlapStrategy,
     ) -> int:
         """Calculate actual overlap size based on strategy."""
         if strategy == OverlapStrategy.FIXED:
@@ -259,7 +279,10 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
         return overlap_size
 
     def _chunk_by_lines_with_overlap(
-        self, content: str, lines_per_chunk: int, overlap_lines: int,
+        self,
+        content: str,
+        lines_per_chunk: int,
+        overlap_lines: int,
     ) -> list[CodeChunk]:
         """Chunk by lines with overlap."""
         lines = content.splitlines(keepends=True)
@@ -295,7 +318,10 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
         return chunks
 
     def _chunk_by_characters_with_overlap(
-        self, content: str, chars_per_chunk: int, overlap_chars: int,
+        self,
+        content: str,
+        chars_per_chunk: int,
+        overlap_chars: int,
     ) -> list[CodeChunk]:
         """Chunk by characters with overlap."""
         chunks = []
@@ -413,7 +439,11 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
         return chunks
 
     def _chunk_by_lines_dynamic(
-        self, content: str, lines_per_chunk: int, min_overlap: int, max_overlap: int,
+        self,
+        content: str,
+        lines_per_chunk: int,
+        min_overlap: int,
+        max_overlap: int,
     ) -> list[CodeChunk]:
         """Chunk by lines with dynamic overlap based on content."""
         lines = content.splitlines(keepends=True)
@@ -428,7 +458,8 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
                 overlap_pos = max(0, i - desired_overlap_lines)
                 boundary_content = "".join(lines[overlap_pos:i])
                 natural_pos = self.find_natural_overlap_boundary(
-                    boundary_content, len(boundary_content) // 2,
+                    boundary_content,
+                    len(boundary_content) // 2,
                 )
                 lines_before = boundary_content[:natural_pos].count("\n")
                 actual_overlap_lines = min(max_overlap, max(min_overlap, lines_before))
@@ -456,7 +487,11 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
         return chunks
 
     def _chunk_by_characters_dynamic(
-        self, content: str, chars_per_chunk: int, min_overlap: int, max_overlap: int,
+        self,
+        content: str,
+        chars_per_chunk: int,
+        min_overlap: int,
+        max_overlap: int,
     ) -> list[CodeChunk]:
         """Chunk by characters with dynamic overlap based on content."""
         chunks = []
@@ -469,7 +504,9 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
                 desired_overlap = (min_overlap + max_overlap) // 2
                 desired_pos = max(0, i - desired_overlap)
                 natural_pos = self.find_natural_overlap_boundary(
-                    content, desired_pos, max_overlap - min_overlap,
+                    content,
+                    desired_pos,
+                    max_overlap - min_overlap,
                 )
                 actual_overlap = i - natural_pos
                 if actual_overlap < min_overlap:

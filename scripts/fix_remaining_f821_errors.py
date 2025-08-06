@@ -52,7 +52,8 @@ def fix_staticmethod_self_references():
     # Get all F821 errors
     result = subprocess.run(
         ["ruff", "check", "--select", "F821", "--output-format", "json"],
-        check=False, capture_output=True,
+        check=False,
+        capture_output=True,
         text=True,
     )
 
@@ -71,10 +72,12 @@ def fix_staticmethod_self_references():
             file_path = Path(error["filename"])
             if file_path not in files_to_fix:
                 files_to_fix[file_path] = []
-            files_to_fix[file_path].append({
-                "line": error["location"]["row"],
-                "message": error["message"],
-            })
+            files_to_fix[file_path].append(
+                {
+                    "line": error["location"]["row"],
+                    "message": error["message"],
+                },
+            )
 
     for file_path, errors in files_to_fix.items():
         try:
@@ -119,13 +122,25 @@ def fix_staticmethod_self_references():
                                     paren_idx = method_def.find("(")
                                     if paren_idx != -1:
                                         close_paren = method_def.find(")", paren_idx)
-                                        params = method_def[paren_idx + 1:close_paren].strip()
+                                        params = method_def[
+                                            paren_idx + 1 : close_paren
+                                        ].strip()
                                         if params:
-                                            lines[method_line] = method_def[:paren_idx + 1] + "self, " + method_def[paren_idx + 1:]
+                                            lines[method_line] = (
+                                                method_def[: paren_idx + 1]
+                                                + "self, "
+                                                + method_def[paren_idx + 1 :]
+                                            )
                                         else:
-                                            lines[method_line] = method_def[:paren_idx + 1] + "self" + method_def[paren_idx + 1:]
+                                            lines[method_line] = (
+                                                method_def[: paren_idx + 1]
+                                                + "self"
+                                                + method_def[paren_idx + 1 :]
+                                            )
 
-                                fixes_made.append(f"Fixed @staticmethod in {file_path}:{method_line + 1}")
+                                fixes_made.append(
+                                    f"Fixed @staticmethod in {file_path}:{method_line + 1}",
+                                )
                                 break
 
             if modified:
@@ -211,7 +226,8 @@ def main():
     # Check remaining errors
     result = subprocess.run(
         ["ruff", "check", "--select", "F821", "--statistics"],
-        check=False, capture_output=True,
+        check=False,
+        capture_output=True,
         text=True,
     )
 

@@ -1,12 +1,18 @@
 """
 Support for Haskell language.
 """
+
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
+
+if TYPE_CHECKING:
+    from tree_sitter import Node
 
 
 class HaskellConfig(LanguageConfig):
@@ -19,10 +25,21 @@ class HaskellConfig(LanguageConfig):
     @property
     def chunk_types(self) -> set[str]:
         """Haskell-specific chunk types."""
-        return {"function", "function_declaration", "function_body",
-            "type_alias", "type_synonym", "data_type", "data_constructor",
-            "newtype", "class_declaration", "instance_declaration",
-            "module_declaration", "import_declaration", "pragma"}
+        return {
+            "function",
+            "function_declaration",
+            "function_body",
+            "type_alias",
+            "type_synonym",
+            "data_type",
+            "data_constructor",
+            "newtype",
+            "class_declaration",
+            "instance_declaration",
+            "module_declaration",
+            "import_declaration",
+            "pragma",
+        }
 
     @property
     def file_extensions(self) -> set[str]:
@@ -30,16 +47,25 @@ class HaskellConfig(LanguageConfig):
 
     def __init__(self):
         super().__init__()
-        self.add_chunk_rule(ChunkRule(node_types={"where_clause"},
-            include_children=True, priority=5, metadata={"type":
-            "where_bindings"}))
-        self.add_chunk_rule(ChunkRule(node_types={"case_expression",
-            "guards"}, include_children=False, priority=4, metadata={"type":
-            "pattern_matching"}))
+        self.add_chunk_rule(
+            ChunkRule(
+                node_types={"where_clause"},
+                include_children=True,
+                priority=5,
+                metadata={"type": "where_bindings"},
+            ),
+        )
+        self.add_chunk_rule(
+            ChunkRule(
+                node_types={"case_expression", "guards"},
+                include_children=False,
+                priority=4,
+                metadata={"type": "pattern_matching"},
+            ),
+        )
         self.add_ignore_type("comment")
         self.add_ignore_type("string")
         self.add_ignore_type("integer")
-
 
 
 # Register the Haskell configuration
@@ -58,43 +84,54 @@ class HaskellPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
 
     @property
     def default_chunk_types(self) -> set[str]:
-        return {"function", "function_declaration", "function_body",
-            "type_alias", "type_synonym", "data_type", "data_constructor",
-            "newtype", "class_declaration", "instance_declaration",
-            "module_declaration"}
+        return {
+            "function",
+            "function_declaration",
+            "function_body",
+            "type_alias",
+            "type_synonym",
+            "data_type",
+            "data_constructor",
+            "newtype",
+            "class_declaration",
+            "instance_declaration",
+            "module_declaration",
+        }
 
     @staticmethod
-    def get_node_name(node: Node, source: bytes) -> (str | None):
+    def get_node_name(node: Node, source: bytes) -> str | None:
         """Extract the name from a Haskell node."""
         if node.type in {"function", "function_declaration"}:
             for child in node.children:
                 if child.type in {"variable", "variable_identifier"}:
-                    return source[child.start_byte:child.end_byte].decode(
-                        "utf-8")
+                    return source[child.start_byte : child.end_byte].decode("utf-8")
         elif node.type in {"type_alias", "data_type", "newtype"}:
             for child in node.children:
                 if child.type in {"type", "type_constructor_identifier"}:
-                    return source[child.start_byte:child.end_byte].decode(
-                        "utf-8")
+                    return source[child.start_byte : child.end_byte].decode("utf-8")
         elif node.type in {"class_declaration", "instance_declaration"}:
             for child in node.children:
                 if child.type in {"class_name", "type_class_identifier"}:
-                    return source[child.start_byte:child.end_byte].decode(
-                        "utf-8")
+                    return source[child.start_byte : child.end_byte].decode("utf-8")
         return None
 
-    @staticmethod
-    def get_semantic_chunks(node: Node, source: bytes) -> list[dict[str, any]]:
+    def get_semantic_chunks(self, node: Node, source: bytes) -> list[dict[str, any]]:
         """Extract semantic chunks specific to Haskell."""
         chunks = []
 
-        def extract_chunks(n: Node, parent_context: (str | None) = None):
+        def extract_chunks(n: Node, parent_context: str | None = None):
             if n.type in self.default_chunk_types:
-                content = source[n.start_byte:n.end_byte].decode("utf-8",
-                    errors="replace")
-                chunk = {"type": n.type, "start_line": n.start_point[0] + 1,
-                    "end_line": n.end_point[0] + 1, "content": content,
-                    "name": self.get_node_name(n, source)}
+                content = source[n.start_byte : n.end_byte].decode(
+                    "utf-8",
+                    errors="replace",
+                )
+                chunk = {
+                    "type": n.type,
+                    "start_line": n.start_point[0] + 1,
+                    "end_line": n.end_point[0] + 1,
+                    "content": content,
+                    "name": self.get_node_name(n, source),
+                }
                 if n.type == "function":
                     chunk["is_function"] = True
                     if parent_context == "type_signature":
@@ -104,10 +141,18 @@ class HaskellPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 elif n.type in {"class_declaration", "instance_declaration"}:
                     chunk["is_typeclass"] = True
                 chunks.append(chunk)
-            new_context = n.type if n.type in {"type_signature", "where",
-                } else parent_context
+            new_context = (
+                n.type
+                if n.type
+                in {
+                    "type_signature",
+                    "where",
+                }
+                else parent_context
+            )
             for child in n.children:
                 extract_chunks(child, new_context)
+
         extract_chunks(node)
         return chunks
 
@@ -123,27 +168,38 @@ class HaskellPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             return len(node.children) > 2
         return False
 
-    def get_node_context(self, node: Node, source: bytes) -> (str | None):
+    def get_node_context(self, node: Node, source: bytes) -> str | None:
         """Extract meaningful context for a node."""
-        name = self.get_node_name(node, source)
-        if node.type == "function":
-            return f"function {name}" if name else "function"
-        if node.type in {"type_alias", "type_synonym"}:
-            return f"type {name}" if name else "type alias"
-        if node.type == "data_type":
-            return f"data {name}" if name else "data type"
-        if node.type == "newtype":
-            return f"newtype {name}" if name else "newtype"
-        if node.type == "class_declaration":
-            return f"class {name}" if name else "typeclass"
-        if node.type == "instance_declaration":
-            return f"instance {name}" if name else "instance"
-        if node.type == "module_declaration":
-            return "module declaration"
-        return None
+        # Map node types to their context format (prefix, default, needs_name)
+        node_context_map = {
+            "function": ("function", "function", True),
+            "type_alias": ("type", "type alias", True),
+            "type_synonym": ("type", "type alias", True),
+            "data_type": ("data", "data type", True),
+            "newtype": ("newtype", "newtype", True),
+            "class_declaration": ("class", "typeclass", True),
+            "instance_declaration": ("instance", "instance", True),
+            "module_declaration": (None, "module declaration", False),
+        }
 
-    def process_node(self, node: Node, source: bytes, file_path: str,
-        parent_context: (str | None) = None):
+        context_info = node_context_map.get(node.type)
+        if not context_info:
+            return None
+
+        prefix, default, needs_name = context_info
+        if not needs_name or prefix is None:
+            return default
+
+        name = self.get_node_name(node, source)
+        return f"{prefix} {name}" if name else default
+
+    def process_node(
+        self,
+        node: Node,
+        source: bytes,
+        file_path: str,
+        parent_context: str | None = None,
+    ):
         """Process Haskell nodes with special handling for nested definitions."""
         if node.type == "function" and parent_context != "processed":
             parent = node.parent
@@ -156,19 +212,31 @@ class HaskellPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 if prev_sibling and prev_sibling.type == "type_signature":
                     combined_start = prev_sibling.start_byte
                     combined_end = node.end_byte
-                    combined_content = source[combined_start:combined_end
-                        ].decode("utf-8", errors="replace")
-                    chunk = self.create_chunk(node, source, file_path,
-                        parent_context)
+                    combined_content = source[combined_start:combined_end].decode(
+                        "utf-8",
+                        errors="replace",
+                    )
+                    chunk = self.create_chunk(node, source, file_path, parent_context)
                     if chunk:
                         chunk.content = combined_content
                         chunk.start_line = prev_sibling.start_point[0] + 1
                         chunk.byte_start = combined_start
                         chunk.node_type = "function_with_signature"
-                        return chunk if self.should_include_chunk(chunk,
-                            ) else None
-        if node.type == "where" and any(child.type in {"function",
-            "function_declaration"} for child in node.children):
-            return super().process_node(node, source, file_path, parent_context,
-                )
+                        return (
+                            chunk
+                            if self.should_include_chunk(
+                                chunk,
+                            )
+                            else None
+                        )
+        if node.type == "where" and any(
+            child.type in {"function", "function_declaration"}
+            for child in node.children
+        ):
+            return super().process_node(
+                node,
+                source,
+                file_path,
+                parent_context,
+            )
         return super().process_node(node, source, file_path, parent_context)

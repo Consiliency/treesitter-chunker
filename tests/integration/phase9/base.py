@@ -1,4 +1,5 @@
 """Base class and utilities for Phase 9 integration tests."""
+
 import os
 import subprocess
 from pathlib import Path
@@ -17,7 +18,7 @@ class Phase9IntegrationTestBase:
     """Base class for Phase 9 integration tests."""
 
     @staticmethod
-    @pytest.fixture
+    @pytest.fixture()
     def test_repo_path(tmp_path):
         """Create a test repository with various file types."""
         repo_path = tmp_path / "test_repo"
@@ -81,7 +82,7 @@ def main():
 if __name__ == "__main__":
     main()
 """,
-            )
+        )
         (python_dir / "utils.py").write_text(
             """
 ""\"Utility functions.""\"
@@ -117,7 +118,7 @@ class StringUtils:
         ""\"Count words in text.""\"
         return len(text.split())
 """,
-            )
+        )
         js_dir = repo_path / "src" / "javascript"
         js_dir.mkdir(parents=True)
         (js_dir / "app.js").write_text(
@@ -215,7 +216,7 @@ function getDefaultConfig() {
 
 export { Application, createApp, getDefaultConfig };
 """,
-            )
+        )
         docs_dir = repo_path / "docs"
         docs_dir.mkdir()
         (docs_dir / "README.md").write_text(
@@ -287,7 +288,7 @@ Please read CONTRIBUTING.md for details on our code of conduct.
 
 This project is licensed under the MIT License.
 """,
-            )
+        )
         logs_dir = repo_path / "logs"
         logs_dir.mkdir()
         (logs_dir / "app.log").write_text(
@@ -317,7 +318,7 @@ This project is licensed under the MIT License.
 2024-01-15 12:00:01 INFO Closing database connections
 2024-01-15 12:00:02 INFO Application stopped
 """,
-            )
+        )
         (repo_path / ".gitignore").write_text(
             """
 __pycache__/
@@ -367,19 +368,31 @@ yarn-error.log*
 ehthumbs.db
 Thumbs.db
 """,
-            )
-        subprocess.run(["git", "init"], check=False, cwd=repo_path,
-            capture_output=True)
-        subprocess.run(["git", "add", "."], check=False, cwd=repo_path,
-            capture_output=True)
-        subprocess.run(["git", "commit", "-m", "Initial commit"], check=False, cwd=repo_path, capture_output=True, env={**os.environ,
-            "GIT_AUTHOR_NAME": "Test", "GIT_AUTHOR_EMAIL":
-            "test@example.com", "GIT_COMMITTER_NAME": "Test",
-            "GIT_COMMITTER_EMAIL": "test@example.com"})
+        )
+        subprocess.run(["git", "init"], check=False, cwd=repo_path, capture_output=True)
+        subprocess.run(
+            ["git", "add", "."],
+            check=False,
+            cwd=repo_path,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "commit", "-m", "Initial commit"],
+            check=False,
+            cwd=repo_path,
+            capture_output=True,
+            env={
+                **os.environ,
+                "GIT_AUTHOR_NAME": "Test",
+                "GIT_AUTHOR_EMAIL": "test@example.com",
+                "GIT_COMMITTER_NAME": "Test",
+                "GIT_COMMITTER_EMAIL": "test@example.com",
+            },
+        )
         return repo_path
 
     @staticmethod
-    @pytest.fixture
+    @pytest.fixture()
     def sample_python_file(tmp_path):
         """Create a sample Python file for testing."""
         file_path = tmp_path / "sample.py"
@@ -424,14 +437,19 @@ def merge_processors(p1: DataProcessor, p2: DataProcessor) -> DataProcessor:
         merged.add_data(item)
     return merged
 """,
-            )
+        )
         return file_path
 
     @classmethod
-    def create_phase9_chunker(cls, enable_tokens: bool = True,
-        enable_hierarchy: bool = True, enable_metadata: bool = True,
-        enable_semantic: bool = True, enable_rules: bool = True, token_limit: (
-        int | None) = None) -> dict[str, Any]:
+    def create_phase9_chunker(
+        cls,
+        enable_tokens: bool = True,
+        enable_hierarchy: bool = True,
+        enable_metadata: bool = True,
+        enable_semantic: bool = True,
+        enable_rules: bool = True,
+        token_limit: int | None = None,
+    ) -> dict[str, Any]:
         """Create a chunker with Phase 9 features enabled."""
         components = {}
         if enable_tokens:
@@ -449,9 +467,11 @@ def merge_processors(p1: DataProcessor, p2: DataProcessor) -> DataProcessor:
                 TreeSitterRelationshipAnalyzer,
                 TreeSitterSemanticMerger,
             )
-            components["relationship_analyzer"
-                ] = TreeSitterRelationshipAnalyzer()
-            components["semantic_merger"] = TreeSitterSemanticMerger(config=MergeConfig())
+
+            components["relationship_analyzer"] = TreeSitterRelationshipAnalyzer()
+            components["semantic_merger"] = TreeSitterSemanticMerger(
+                config=MergeConfig(),
+            )
         if enable_rules:
             components["rule_engine"] = DefaultRuleEngine()
         return components
@@ -460,8 +480,10 @@ def merge_processors(p1: DataProcessor, p2: DataProcessor) -> DataProcessor:
     def assert_chunks_have_tokens(chunks: list[CodeChunk]) -> None:
         """Assert that all chunks have token counts."""
         for chunk in chunks:
-            assert hasattr(chunk, "metadata",
-                ), f"Chunk missing metadata: {chunk}"
+            assert hasattr(
+                chunk,
+                "metadata",
+            ), f"Chunk missing metadata: {chunk}"
             assert "tokens" in chunk.metadata, f"Chunk missing token count: {chunk}"
             assert isinstance(chunk.metadata["tokens"], int)
             assert chunk.metadata["tokens"] > 0
@@ -469,30 +491,46 @@ def merge_processors(p1: DataProcessor, p2: DataProcessor) -> DataProcessor:
     @staticmethod
     def assert_chunks_have_hierarchy(chunks: list[CodeChunk]) -> None:
         """Assert that chunks have hierarchical relationships."""
-        has_parent = any(chunk.metadata.get("parent_id") is not None for
-            chunk in chunks if hasattr(chunk, "metadata"))
-        has_children = any(chunk.metadata.get("child_ids", []) for chunk in
-            chunks if hasattr(chunk, "metadata"))
+        has_parent = any(
+            chunk.metadata.get("parent_id") is not None
+            for chunk in chunks
+            if hasattr(chunk, "metadata")
+        )
+        has_children = any(
+            chunk.metadata.get("child_ids", [])
+            for chunk in chunks
+            if hasattr(chunk, "metadata")
+        )
         assert has_parent or has_children, "No hierarchical relationships found"
 
     @staticmethod
     def assert_chunks_have_metadata(chunks: list[CodeChunk]) -> None:
         """Assert that chunks have extracted metadata."""
         for chunk in chunks:
-            assert hasattr(chunk, "metadata",
-                ), f"Chunk missing metadata: {chunk}"
+            assert hasattr(
+                chunk,
+                "metadata",
+            ), f"Chunk missing metadata: {chunk}"
             metadata = chunk.metadata
-            if chunk.chunk_type in {"function_definition", "method_definition",
-                }:
-                assert any(key in metadata for key in ["signature",
-                    "parameters", "return_type", "complexity"])
+            if chunk.chunk_type in {
+                "function_definition",
+                "method_definition",
+            }:
+                assert any(
+                    key in metadata
+                    for key in ["signature", "parameters", "return_type", "complexity"]
+                )
 
     @classmethod
-    def create_test_config_file(cls, path: Path, config: dict[str, Any],
-        ) -> Path:
+    def create_test_config_file(
+        cls,
+        path: Path,
+        config: dict[str, Any],
+    ) -> Path:
         """Create a test configuration file."""
         config_path = path / ".chunkerrc"
         with Path(config_path).open("w", encoding="utf-8") as f:
             import toml
+
             toml.dump(config, f)
         return config_path

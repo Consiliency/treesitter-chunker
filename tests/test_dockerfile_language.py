@@ -1,4 +1,5 @@
 """Comprehensive tests for Dockerfile language support."""
+
 from chunker import chunk_file, get_parser
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from chunker.languages.dockerfile import DockerfilePlugin
@@ -21,7 +22,7 @@ WORKDIR /app
 
 CMD ["python3", "app.py"]
 """,
-            )
+        )
         chunks = chunk_file(src, "dockerfile")
         assert len(chunks) >= 5
         chunk_types = {chunk.node_type for chunk in chunks}
@@ -44,7 +45,7 @@ RUN apk add --no-cache \\
     git \\
     && pip3 install --upgrade pip
 """,
-            )
+        )
         chunks = chunk_file(src, "dockerfile")
         run_chunks = [c for c in chunks if c.node_type == "run_instruction"]
         assert len(run_chunks) == 1
@@ -75,7 +76,7 @@ EXPOSE 3000
 # Start application
 CMD ["npm", "start"]
 """,
-            )
+        )
         chunks = chunk_file(src, "dockerfile")
         comment_chunks = [c for c in chunks if c.node_type == "comment"]
         assert len(comment_chunks) >= 5
@@ -96,7 +97,7 @@ ENV NODE_ENV=production
 
 WORKDIR ${APP_HOME}
 """,
-            )
+        )
         chunks = chunk_file(src, "dockerfile")
         chunk_types = {chunk.node_type for chunk in chunks}
         assert "arg_instruction" in chunk_types
@@ -116,10 +117,11 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \\
 
 EXPOSE 80
 """,
-            )
+        )
         chunks = chunk_file(src, "dockerfile")
-        healthcheck_chunks = [c for c in chunks if c.node_type ==
-            "healthcheck_instruction"]
+        healthcheck_chunks = [
+            c for c in chunks if c.node_type == "healthcheck_instruction"
+        ]
         assert len(healthcheck_chunks) == 1
         assert "curl -f http://localhost/" in healthcheck_chunks[0].content
 
@@ -136,9 +138,7 @@ class TestDockerfileContractCompliance:
     def test_get_semantic_chunks(cls, tmp_path):
         """Test get_semantic_chunks method."""
         plugin = DockerfilePlugin()
-        source = (
-            b'FROM python:3.9\nRUN pip install flask\nCMD ["python", "app.py"]\n'
-            )
+        source = b'FROM python:3.9\nRUN pip install flask\nCMD ["python", "app.py"]\n'
         parser = get_parser("dockerfile")
         plugin.set_parser(parser)
         tree = parser.parse(source)
@@ -169,6 +169,7 @@ class TestDockerfileContractCompliance:
 
             def __init__(self, node_type):
                 self.type = node_type
+
         assert plugin.should_chunk_node(MockNode("from_instruction"))
         assert plugin.should_chunk_node(MockNode("run_instruction"))
         assert plugin.should_chunk_node(MockNode("comment"))
@@ -185,6 +186,7 @@ class TestDockerfileContractCompliance:
             def __init__(self, node_type):
                 self.type = node_type
                 self.children = []
+
         node = MockNode("run_instruction")
         context = plugin.get_node_context(node, b"RUN apt-get update")
         assert context is not None
@@ -209,7 +211,8 @@ class TestDockerfileEdgeCases:
         """Test Dockerfile with only comments."""
         src = tmp_path / "Dockerfile"
         src.write_text(
-            "# This is a comment\n# Another comment\n# Yet another comment\n")
+            "# This is a comment\n# Another comment\n# Yet another comment\n",
+        )
         chunks = chunk_file(src, "dockerfile")
         assert all(c.node_type == "comment" for c in chunks)
 
@@ -223,7 +226,7 @@ class TestDockerfileEdgeCases:
 RUN echo "Hello \\"World\\"" && \\
     echo "Line continuation\"
 """,
-            )
+        )
         chunks = chunk_file(src, "dockerfile")
         assert len(chunks) >= 2
 
@@ -245,7 +248,7 @@ WORKDIR /root/
 COPY --from=builder /app/main .
 CMD ["./main"]
 """,
-            )
+        )
         chunks = chunk_file(src, "dockerfile")
         from_chunks = [c for c in chunks if c.node_type == "from_instruction"]
         assert len(from_chunks) == 2

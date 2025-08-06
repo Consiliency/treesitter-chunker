@@ -1,6 +1,7 @@
 """
 Unit tests for debug visualization module
 """
+
 import json
 import tempfile
 from pathlib import Path
@@ -15,17 +16,22 @@ class TestDebugVisualization:
     """Unit tests for DebugVisualization class"""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def visualizer(cls):
         """Create a DebugVisualization instance"""
         return DebugVisualization()
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def simple_python_file(cls):
         """Create a simple Python file for testing"""
         content = "print('hello')"
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
             f.write(content)
             f.flush()
             yield f.name
@@ -89,14 +95,21 @@ class TestDebugVisualization:
     def test_debug_mode_with_breakpoints(cls, visualizer):
         """Test debug mode with breakpoints"""
         content = "def test():\n    pass\n\nclass Example:\n    pass\n"
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
             f.write(content)
             f.flush()
         try:
-            result = visualizer.debug_mode_chunking(f.name, "python",
-                breakpoints=["function_definition", "class_definition"])
-            breakpoint_steps = [s for s in result["steps"] if s.get(
-                "breakpoint")]
+            result = visualizer.debug_mode_chunking(
+                f.name,
+                "python",
+                breakpoints=["function_definition", "class_definition"],
+            )
+            breakpoint_steps = [s for s in result["steps"] if s.get("breakpoint")]
             assert len(breakpoint_steps) >= 2
         finally:
             Path(f.name).unlink()
@@ -110,21 +123,29 @@ class TestDebugVisualization:
     @classmethod
     def test_inspect_chunk_with_context(cls, visualizer):
         """Test chunk inspection includes context"""
-        content = (
-            '# Before\ndef test():\n    """Test function"""\n    pass\n# After'
-            )
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+        content = '# Before\ndef test():\n    """Test function"""\n    pass\n# After'
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
             f.write(content)
             f.flush()
         try:
             chunks = chunk_file(f.name, "python")
             if chunks:
-                result = visualizer.inspect_chunk(f.name, chunks[0].
-                    chunk_id, include_context=True)
+                result = visualizer.inspect_chunk(
+                    f.name,
+                    chunks[0].chunk_id,
+                    include_context=True,
+                )
                 assert "context" in result
                 assert "before" in result["context"]
                 assert "after" in result["context"]
-                assert "# Before" in result["context"]["before"] or result[
-                    "context"]["before"] == ""
+                assert (
+                    "# Before" in result["context"]["before"]
+                    or result["context"]["before"] == ""
+                )
         finally:
             Path(f.name).unlink()

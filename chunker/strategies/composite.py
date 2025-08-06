@@ -1,4 +1,5 @@
 """Composite chunking strategy that combines multiple strategies."""
+
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any
@@ -16,6 +17,7 @@ from .semantic import SemanticChunker
 @dataclass
 class ChunkCandidate:
     """A candidate chunk with scores from different strategies."""
+
     chunk: CodeChunk
     scores: dict[str, float]
     strategies: list[str]
@@ -39,8 +41,10 @@ class ConsensusFilter(ChunkFilter):
         """Include chunk if enough strategies agree."""
         if hasattr(chunk, "candidate"):
             candidate: ChunkCandidate = chunk.candidate
-            return (len(candidate.strategies) >= self.min_strategies and
-                candidate.combined_score >= self.min_score)
+            return (
+                len(candidate.strategies) >= self.min_strategies
+                and candidate.combined_score >= self.min_score
+            )
         return True
 
     @staticmethod
@@ -66,8 +70,10 @@ class OverlapMerger(ChunkMerger):
         chunk2_lines = chunk2.end_line - chunk2.start_line + 1
         overlap_ratio1 = overlap_lines / chunk1_lines
         overlap_ratio2 = overlap_lines / chunk2_lines
-        return (overlap_ratio1 >= self.overlap_threshold or overlap_ratio2 >=
-            self.overlap_threshold)
+        return (
+            overlap_ratio1 >= self.overlap_threshold
+            or overlap_ratio2 >= self.overlap_threshold
+        )
 
     @staticmethod
     def merge(chunks: list[CodeChunk]) -> CodeChunk:
@@ -85,12 +91,16 @@ class OverlapMerger(ChunkMerger):
                 merged.byte_end = chunk.byte_end
             if hasattr(chunk, "metadata") and hasattr(merged, "metadata"):
                 merged.metadata["merged_strategies"] = merged.metadata.get(
-                    "merged_strategies", [])
-                merged.metadata["merged_strategies"].extend(chunk.metadata.
-                    get("strategies", [chunk.metadata.get("strategy",
-                    "unknown")]))
-            merged.dependencies = list(set(merged.dependencies + chunk.
-                dependencies))
+                    "merged_strategies",
+                    [],
+                )
+                merged.metadata["merged_strategies"].extend(
+                    chunk.metadata.get(
+                        "strategies",
+                        [chunk.metadata.get("strategy", "unknown")],
+                    ),
+                )
+            merged.dependencies = list(set(merged.dependencies + chunk.dependencies))
             merged.references = list(set(merged.references + chunk.references))
         return merged
 
@@ -107,25 +117,39 @@ class CompositeChunker(ChunkingStrategy):
     """
 
     def __init__(self):
-        self.strategies = {"semantic": SemanticChunker(), "hierarchical":
-            HierarchicalChunker(), "adaptive": AdaptiveChunker()}
-        self.config = {"strategy_weights": {"semantic": 1.0, "hierarchical":
-            0.8, "adaptive": 0.9}, "fusion_method": "consensus",
-            "min_consensus_strategies": 2, "consensus_threshold": 0.6,
-            "merge_overlaps": True, "overlap_threshold": 0.7,
-            "apply_filters": True, "min_chunk_quality": 0.5,
-            "strategy_configs": {"semantic": {}, "hierarchical": {},
-            "adaptive": {}}}
+        self.strategies = {
+            "semantic": SemanticChunker(),
+            "hierarchical": HierarchicalChunker(),
+            "adaptive": AdaptiveChunker(),
+        }
+        self.config = {
+            "strategy_weights": {"semantic": 1.0, "hierarchical": 0.8, "adaptive": 0.9},
+            "fusion_method": "consensus",
+            "min_consensus_strategies": 2,
+            "consensus_threshold": 0.6,
+            "merge_overlaps": True,
+            "overlap_threshold": 0.7,
+            "apply_filters": True,
+            "min_chunk_quality": 0.5,
+            "strategy_configs": {"semantic": {}, "hierarchical": {}, "adaptive": {}},
+        }
         self.filters = [ConsensusFilter()]
         self.merger = OverlapMerger()
 
     def can_handle(self, file_path: str, language: str) -> bool:
         """Can handle if any strategy can handle."""
-        return any(strategy.can_handle(file_path, language) for strategy in
-            self.strategies.values())
+        return any(
+            strategy.can_handle(file_path, language)
+            for strategy in self.strategies.values()
+        )
 
-    def chunk(self, ast: Node, source: bytes, file_path: str, language: str,
-        ) -> list[CodeChunk]:
+    def chunk(
+        self,
+        ast: Node,
+        source: bytes,
+        file_path: str,
+        language: str,
+    ) -> list[CodeChunk]:
         """Apply multiple strategies and combine results."""
         for name, config in self.config["strategy_configs"].items():
             if name in self.strategies and config:
@@ -159,17 +183,21 @@ class CompositeChunker(ChunkingStrategy):
     def configure(self, config: dict[str, Any]) -> None:
         """Update configuration settings."""
         self.config.update(config)
-        if ("min_consensus_strategies" in config or "consensus_threshold" in
-            config):
-            self.filters = [ConsensusFilter(self.config.get(
-                "min_consensus_strategies", 2), self.config.get(
-                "consensus_threshold", 0.6))]
+        if "min_consensus_strategies" in config or "consensus_threshold" in config:
+            self.filters = [
+                ConsensusFilter(
+                    self.config.get("min_consensus_strategies", 2),
+                    self.config.get("consensus_threshold", 0.6),
+                ),
+            ]
         if "overlap_threshold" in config:
             self.merger = OverlapMerger(config["overlap_threshold"])
 
     @staticmethod
-    def _fusion_union(strategy_results: dict[str, list[CodeChunk]], _source:
-        bytes) -> list[CodeChunk]:
+    def _fusion_union(
+        strategy_results: dict[str, list[CodeChunk]],
+        _source: bytes,
+    ) -> list[CodeChunk]:
         """Union fusion: include all chunks from all strategies."""
         all_chunks = []
         for strategy_name, chunks in strategy_results.items():
@@ -179,8 +207,11 @@ class CompositeChunker(ChunkingStrategy):
                 all_chunks.append(chunk)
         return all_chunks
 
-    def _fusion_intersection(self, strategy_results: dict[str, list[
-        CodeChunk]], _source: bytes) -> list[CodeChunk]:
+    def _fusion_intersection(
+        self,
+        strategy_results: dict[str, list[CodeChunk]],
+        _source: bytes,
+    ) -> list[CodeChunk]:
         """Intersection fusion: only chunks that appear in multiple strategies."""
         if not strategy_results:
             return []
@@ -195,15 +226,21 @@ class CompositeChunker(ChunkingStrategy):
             if len(strategy_chunks) >= min_strategies:
                 best_chunk = self._select_best_chunk(strategy_chunks)
                 best_chunk.metadata = best_chunk.metadata or {}
-                best_chunk.metadata["strategies"] = [s for s, _ in
-                    strategy_chunks]
-                best_chunk.metadata["agreement_score"] = len(strategy_chunks,
-                    ) / len(strategy_results)
+                best_chunk.metadata["strategies"] = [s for s, _ in strategy_chunks]
+                best_chunk.metadata["agreement_score"] = len(
+                    strategy_chunks,
+                ) / len(strategy_results)
                 intersection_chunks.append(best_chunk)
         return intersection_chunks
 
-    def _fusion_consensus(self, strategy_results: dict[str, list[CodeChunk],
-        ], _source: bytes) -> list[CodeChunk]:
+    def _fusion_consensus(
+        self,
+        strategy_results: dict[
+            str,
+            list[CodeChunk],
+        ],
+        _source: bytes,
+    ) -> list[CodeChunk]:
         """Consensus fusion: smart combination based on agreement."""
         candidates = self._build_chunk_candidates(strategy_results)
         scored_candidates = []
@@ -215,21 +252,30 @@ class CompositeChunker(ChunkingStrategy):
             for strategy in candidate.strategies:
                 weight = self.config["strategy_weights"].get(strategy, 1.0)
                 quality_scores.append(weight)
-            quality_score = sum(quality_scores) / len(quality_scores,
-                ) if quality_scores else 0
+            quality_score = (
+                sum(quality_scores)
+                / len(
+                    quality_scores,
+                )
+                if quality_scores
+                else 0
+            )
             candidate.scores["consensus"] = consensus_score
             candidate.scores["quality"] = quality_score
-            candidate.scores["combined"] = (consensus_score + quality_score
-                ) / 2
+            candidate.scores["combined"] = (consensus_score + quality_score) / 2
             candidate.chunk.candidate = candidate
             scored_candidates.append(candidate)
         threshold = self.config["consensus_threshold"]
-        consensus_chunks = [c.chunk for c in scored_candidates if c.scores[
-            "combined"] >= threshold]
+        consensus_chunks = [
+            c.chunk for c in scored_candidates if c.scores["combined"] >= threshold
+        ]
         return consensus_chunks
 
-    def _fusion_weighted(self, strategy_results: dict[str, list[CodeChunk]],
-        _source: bytes) -> list[CodeChunk]:
+    def _fusion_weighted(
+        self,
+        strategy_results: dict[str, list[CodeChunk]],
+        _source: bytes,
+    ) -> list[CodeChunk]:
         """Weighted fusion: combine based on strategy weights."""
         weighted_chunks = []
         candidates = self._build_chunk_candidates(strategy_results)
@@ -238,27 +284,36 @@ class CompositeChunker(ChunkingStrategy):
             for strategy in candidate.strategies:
                 weight = self.config["strategy_weights"].get(strategy, 1.0)
                 total_weight += weight
-            candidate.scores["weighted"] = total_weight / len(candidate.
-                strategies)
+            candidate.scores["weighted"] = total_weight / len(candidate.strategies)
             chunk = candidate.chunk
             chunk.metadata = chunk.metadata or {}
             chunk.metadata["weight_score"] = candidate.scores["weighted"]
             chunk.metadata["strategies"] = candidate.strategies
             weighted_chunks.append(chunk)
-        weighted_chunks.sort(key=lambda c: c.metadata.get("weight_score", 0,
-            ), reverse=True)
+        weighted_chunks.sort(
+            key=lambda c: c.metadata.get(
+                "weight_score",
+                0,
+            ),
+            reverse=True,
+        )
         return weighted_chunks
 
-    def _build_chunk_candidates(self, strategy_results: dict[str, list[
-        CodeChunk]]) -> list[ChunkCandidate]:
+    def _build_chunk_candidates(
+        self,
+        strategy_results: dict[str, list[CodeChunk]],
+    ) -> list[ChunkCandidate]:
         """Build chunk candidates from strategy results."""
         candidates_map = {}
         for strategy_name, chunks in strategy_results.items():
             for chunk in chunks:
                 key = self._get_chunk_key(chunk)
                 if key not in candidates_map:
-                    candidates_map[key] = ChunkCandidate(chunk=chunk,
-                        scores={}, strategies=[])
+                    candidates_map[key] = ChunkCandidate(
+                        chunk=chunk,
+                        scores={},
+                        strategies=[],
+                    )
                 candidate = candidates_map[key]
                 candidate.strategies.append(strategy_name)
                 if self._is_better_chunk(chunk, candidate.chunk):
@@ -275,17 +330,34 @@ class CompositeChunker(ChunkingStrategy):
     @staticmethod
     def _is_better_chunk(chunk1: CodeChunk, chunk2: CodeChunk) -> bool:
         """Determine if chunk1 is better than chunk2."""
-        metadata1 = len(chunk1.metadata) if hasattr(chunk1, "metadata",
-            ) and chunk1.metadata else 0
-        metadata2 = len(chunk2.metadata) if hasattr(chunk2, "metadata",
-            ) and chunk2.metadata else 0
+        metadata1 = (
+            len(chunk1.metadata)
+            if hasattr(
+                chunk1,
+                "metadata",
+            )
+            and chunk1.metadata
+            else 0
+        )
+        metadata2 = (
+            len(chunk2.metadata)
+            if hasattr(
+                chunk2,
+                "metadata",
+            )
+            and chunk2.metadata
+            else 0
+        )
         if metadata1 != metadata2:
             return metadata1 > metadata2
-        return abs(chunk1.end_line - chunk1.start_line) < abs(chunk2.
-            end_line - chunk2.start_line)
+        return abs(chunk1.end_line - chunk1.start_line) < abs(
+            chunk2.end_line - chunk2.start_line,
+        )
 
-    def _select_best_chunk(self, strategy_chunks: list[tuple[str, CodeChunk]],
-        ) -> CodeChunk:
+    def _select_best_chunk(
+        self,
+        strategy_chunks: list[tuple[str, CodeChunk]],
+    ) -> CodeChunk:
         """Select the best chunk from multiple strategies."""
         weighted = []
         for strategy_name, chunk in strategy_chunks:
@@ -302,8 +374,11 @@ class CompositeChunker(ChunkingStrategy):
             filtered = [c for c in filtered if filter_obj.should_include(c)]
         return filtered
 
-    def _merge_overlapping_chunks(self, chunks: list[CodeChunk], _source: bytes,
-        ) -> list[CodeChunk]:
+    def _merge_overlapping_chunks(
+        self,
+        chunks: list[CodeChunk],
+        _source: bytes,
+    ) -> list[CodeChunk]:
         """Merge chunks that overlap significantly."""
         if not chunks:
             return chunks
@@ -333,8 +408,11 @@ class CompositeChunker(ChunkingStrategy):
                 merged.append(group[0])
         return merged
 
-    def _ensure_chunk_quality(self, chunks: list[CodeChunk], _source: bytes,
-        ) -> list[CodeChunk]:
+    def _ensure_chunk_quality(
+        self,
+        chunks: list[CodeChunk],
+        _source: bytes,
+    ) -> list[CodeChunk]:
         """Final pass to ensure chunk quality."""
         quality_chunks = []
         for chunk in chunks:
@@ -358,11 +436,16 @@ class CompositeChunker(ChunkingStrategy):
         else:
             size_score = 1.0
         scores.append(size_score)
-        content_lines = [line for line in chunk.content.split("\n") if line
-            .strip()]
+        content_lines = [line for line in chunk.content.split("\n") if line.strip()]
         if content_lines:
-            content_score = min(1.0, len(content_lines) / lines,
-                ) if lines > 0 else 0
+            content_score = (
+                min(
+                    1.0,
+                    len(content_lines) / lines,
+                )
+                if lines > 0
+                else 0
+            )
         else:
             content_score = 0
         scores.append(content_score)
@@ -372,8 +455,7 @@ class CompositeChunker(ChunkingStrategy):
             metadata_score = 0.5
         scores.append(metadata_score)
         if hasattr(chunk, "metadata") and "strategies" in chunk.metadata:
-            agreement_score = len(chunk.metadata["strategies"]) / len(self.
-                strategies)
+            agreement_score = len(chunk.metadata["strategies"]) / len(self.strategies)
         else:
             agreement_score = 0.5
         scores.append(agreement_score)

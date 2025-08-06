@@ -1,4 +1,5 @@
 """Unit tests for Homebrew formula generator"""
+
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -15,8 +16,7 @@ class TestHomebrewFormulaGenerator:
         generator = HomebrewFormulaGenerator()
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / "formula.rb"
-            success, formula_path = generator.generate_formula("1.0.0",
-                output_path)
+            success, formula_path = generator.generate_formula("1.0.0", output_path)
             assert success
             assert formula_path.exists()
             content = formula_path.read_text()
@@ -43,8 +43,7 @@ class TestHomebrewFormulaGenerator:
         generator = HomebrewFormulaGenerator()
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / "homebrew" / "formula.rb"
-            success, formula_path = generator.generate_formula("1.0.0",
-                output_path)
+            success, formula_path = generator.generate_formula("1.0.0", output_path)
             assert success
             assert formula_path.exists()
             assert formula_path.parent.exists()
@@ -55,8 +54,7 @@ class TestHomebrewFormulaGenerator:
         generator = HomebrewFormulaGenerator()
         with tempfile.TemporaryDirectory() as tmpdir:
             output_dir = Path(tmpdir)
-            success, formula_path = generator.generate_formula("1.0.0",
-                output_dir)
+            success, formula_path = generator.generate_formula("1.0.0", output_dir)
             assert success
             assert formula_path.name == "treesitter-chunker.rb"
             assert formula_path.parent == output_dir
@@ -72,20 +70,22 @@ class TestHomebrewFormulaGenerator:
         with tempfile.TemporaryDirectory() as tmpdir:
             formula_path = Path(tmpdir) / "formula.rb"
             formula_path.write_text('sha256 "PLACEHOLDER_SHA256"')
-            success = generator.update_sha256(formula_path,
-                "https://example.com/package.tar.gz")
+            success = generator.update_sha256(
+                formula_path,
+                "https://example.com/package.tar.gz",
+            )
             assert success
             content = formula_path.read_text()
             assert "PLACEHOLDER_SHA256" not in content
             import re
+
             assert re.search(r'sha256 "[a-f0-9]{64}"', content)
 
     @classmethod
     def test_validate_formula_missing_file(cls):
         """Test formula validation with missing file"""
         generator = HomebrewFormulaGenerator()
-        success, issues = generator.validate_formula(Path(
-            "/nonexistent/formula.rb"))
+        success, issues = generator.validate_formula(Path("/nonexistent/formula.rb"))
         assert not success
         assert "Formula file does not exist" in issues
 
@@ -93,8 +93,10 @@ class TestHomebrewFormulaGenerator:
     @patch("subprocess.run")
     def test_validate_formula_with_brew(cls, mock_run):
         """Test formula validation when brew is available"""
-        mock_run.side_effect = [Mock(returncode=0), Mock(returncode=1,
-            stderr="Error: formula issue")]
+        mock_run.side_effect = [
+            Mock(returncode=0),
+            Mock(returncode=1, stderr="Error: formula issue"),
+        ]
         generator = HomebrewFormulaGenerator()
         with tempfile.TemporaryDirectory() as tmpdir:
             formula_path = Path(tmpdir) / "formula.rb"
@@ -144,13 +146,16 @@ end"""
         """Test package info extraction from pyproject.toml"""
         mock_exists.return_value = True
         with patch("builtins.open", create=True) as mock_open:
-            (mock_open.return_value.__enter__.return_value.read.return_value
-                ) = (
+            (mock_open.return_value.__enter__.return_value.read.return_value) = (
                 b'\n[project]\ndescription = "Custom description"\nlicense = {text = "Apache-2.0"}\n'
-                )
+            )
             with patch("tomllib.load") as mock_load:
-                mock_load.return_value = {"project": {"description":
-                    "Custom description", "license": {"text": "Apache-2.0"}}}
+                mock_load.return_value = {
+                    "project": {
+                        "description": "Custom description",
+                        "license": {"text": "Apache-2.0"},
+                    },
+                }
                 generator = HomebrewFormulaGenerator()
                 info = generator._get_package_info()
                 assert info["description"] == "Custom description"

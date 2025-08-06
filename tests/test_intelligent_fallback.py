@@ -1,4 +1,5 @@
 """Tests for intelligent fallback strategy."""
+
 from chunker.fallback.intelligent_fallback import (
     ChunkingDecision,
     DecisionMetrics,
@@ -28,8 +29,13 @@ class TestIntelligentFallback:
         python_content = "#!/usr/bin/env python3\nprint('hello')"
         assert fallback._detect_language("script", python_content) == "python"
         node_content = "#!/usr/bin/env node\nconsole.log('hello');"
-        assert fallback._detect_language("script", node_content,
-            ) == "javascript"
+        assert (
+            fallback._detect_language(
+                "script",
+                node_content,
+            )
+            == "javascript"
+        )
 
     @classmethod
     def test_tree_sitter_decision(cls):
@@ -44,8 +50,10 @@ def goodbye():
 """
         chunks = fallback.chunk_text(python_code, "test.py")
         assert len(chunks) == 2
-        assert all(c.metadata.get("chunking_decision") == ChunkingDecision.
-            TREE_SITTER.value for c in chunks)
+        assert all(
+            c.metadata.get("chunking_decision") == ChunkingDecision.TREE_SITTER.value
+            for c in chunks
+        )
 
     @classmethod
     def test_tree_sitter_with_split_decision(cls):
@@ -86,8 +94,11 @@ def process_data(data):
 """
         chunks = fallback.chunk_text(large_function, "process.py")
         assert len(chunks) > 1
-        assert any(c.metadata.get("chunking_decision") == ChunkingDecision.
-            TREE_SITTER_WITH_SPLIT.value for c in chunks)
+        assert any(
+            c.metadata.get("chunking_decision")
+            == ChunkingDecision.TREE_SITTER_WITH_SPLIT.value
+            for c in chunks
+        )
         for chunk in chunks:
             assert chunk.metadata.get("token_count", 0) <= 50
 
@@ -103,8 +114,10 @@ def process_data(data):
         """
         chunks = fallback.chunk_text(content, "unknown.xyz")
         assert len(chunks) >= 1
-        assert all(c.metadata.get("chunking_decision") == ChunkingDecision.
-            SLIDING_WINDOW.value for c in chunks)
+        assert all(
+            c.metadata.get("chunking_decision") == ChunkingDecision.SLIDING_WINDOW.value
+            for c in chunks
+        )
 
     @classmethod
     def test_specialized_processor_decision(cls):
@@ -126,7 +139,10 @@ More content.
         chunks = fallback.chunk_text(markdown_content, "test.md")
         assert len(chunks) >= 1
         decisions = {c.metadata.get("chunking_decision") for c in chunks}
-        assert ChunkingDecision.SLIDING_WINDOW.value in decisions or ChunkingDecision.SPECIALIZED_PROCESSOR.value in decisions
+        assert (
+            ChunkingDecision.SLIDING_WINDOW.value in decisions
+            or ChunkingDecision.SPECIALIZED_PROCESSOR.value in decisions
+        )
 
     @classmethod
     def test_get_decision_info(cls):
@@ -165,8 +181,12 @@ More content.
         unknown_content = "This is not valid code in any language"
         chunks2 = fallback.chunk_text(unknown_content, "unknown.xyz")
         assert len(chunks2) >= 1
-        assert chunks2[0].metadata.get("chunking_decision",
-            ) == ChunkingDecision.SLIDING_WINDOW.value
+        assert (
+            chunks2[0].metadata.get(
+                "chunking_decision",
+            )
+            == ChunkingDecision.SLIDING_WINDOW.value
+        )
 
     @classmethod
     def test_metrics_analysis(cls):

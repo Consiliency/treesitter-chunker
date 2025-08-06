@@ -1,4 +1,5 @@
 """Unit tests for PyPI publisher"""
+
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -36,7 +37,11 @@ class TestPyPIPublisher:
     def test_dry_run_validates_only(cls, mock_which, mock_run):
         """Test dry run only validates without uploading"""
         mock_which.return_value = "/usr/bin/twine"
-        mock_run.return_value = Mock(returncode=0, stdout="Checking dist/package.whl: PASSED", stderr="")
+        mock_run.return_value = Mock(
+            returncode=0,
+            stdout="Checking dist/package.whl: PASSED",
+            stderr="",
+        )
         publisher = PyPIPublisher()
         with tempfile.TemporaryDirectory() as tmpdir:
             package_dir = Path(tmpdir)
@@ -52,16 +57,24 @@ class TestPyPIPublisher:
 
     @patch("subprocess.run")
     @patch("shutil.which")
-    @patch.dict("os.environ", {"TWINE_USERNAME": "__token__",
-        "TWINE_PASSWORD": "pypi-token"})
+    @patch.dict(
+        "os.environ",
+        {"TWINE_USERNAME": "__token__", "TWINE_PASSWORD": "pypi-token"},
+    )
     @classmethod
     def test_publish_to_pypi(cls, mock_which, mock_run):
         """Test publishing to PyPI"""
         mock_which.return_value = "/usr/bin/twine"
-        mock_run.side_effect = [Mock(returncode=0, stdout="Checking: PASSED", stderr=""), Mock(returncode=0, stdout="""Uploading distributions to https://upload.pypi.org/legacy/
+        mock_run.side_effect = [
+            Mock(returncode=0, stdout="Checking: PASSED", stderr=""),
+            Mock(
+                returncode=0,
+                stdout="""Uploading distributions to https://upload.pypi.org/legacy/
 Uploading test-1.0.0.whl
-View at: https://pypi.org/project/test/1.0.0/"""
-            , stderr="")]
+View at: https://pypi.org/project/test/1.0.0/""",
+                stderr="",
+            ),
+        ]
         publisher = PyPIPublisher()
         with tempfile.TemporaryDirectory() as tmpdir:
             package_dir = Path(tmpdir)
@@ -76,8 +89,10 @@ View at: https://pypi.org/project/test/1.0.0/"""
     def test_credentials_check(cls):
         """Test credential checking logic"""
         publisher = PyPIPublisher()
-        with patch.dict("os.environ", {"TWINE_USERNAME": "user",
-            "TWINE_PASSWORD": "pass"}):
+        with patch.dict(
+            "os.environ",
+            {"TWINE_USERNAME": "user", "TWINE_PASSWORD": "pass"},
+        ):
             assert publisher._check_credentials("pypi")
         with patch.dict("os.environ", {}, clear=True):
             with patch("pathlib.Path.exists", return_value=False):
@@ -89,14 +104,15 @@ View at: https://pypi.org/project/test/1.0.0/"""
     def test_repository_url_mapping(cls, mock_which, mock_run):
         """Test repository URL mapping"""
         mock_which.return_value = "/usr/bin/twine"
-        mock_run.return_value = Mock(returncode=0, stdout="Check passed",
-            stderr="")
+        mock_run.return_value = Mock(returncode=0, stdout="Check passed", stderr="")
         publisher = PyPIPublisher()
         with tempfile.TemporaryDirectory() as tmpdir:
             package_dir = Path(tmpdir)
             wheel_file = package_dir / "test-1.0.0-py3-none-any.whl"
             wheel_file.touch()
-            success, info = publisher.publish(package_dir, repository="unknown",
-                )
+            success, info = publisher.publish(
+                package_dir,
+                repository="unknown",
+            )
             assert not success
             assert "Unknown repository" in info["error"]

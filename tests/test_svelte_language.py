@@ -1,4 +1,5 @@
 """Comprehensive tests for Svelte language support."""
+
 from chunker import chunk_file
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from chunker.languages.svelte import SveltePlugin
@@ -39,11 +40,12 @@ class TestSvelteBasicChunking:
   }
 </style>
 """,
-            )
+        )
         chunks = chunk_file(src, "svelte")
         assert len(chunks) >= 2
-        script_chunks = [c for c in chunks if c.node_type in {
-            "script_element", "instance_script"}]
+        script_chunks = [
+            c for c in chunks if c.node_type in {"script_element", "instance_script"}
+        ]
         assert len(script_chunks) >= 1
         assert any("count" in c.content for c in script_chunks)
         style_chunks = [c for c in chunks if c.node_type == "style_element"]
@@ -83,10 +85,13 @@ class TestSvelteBasicChunking:
   Count: {count}, Doubled: {doubled}, Quadrupled: {quadrupled}
 </button>
 """,
-            )
+        )
         chunks = chunk_file(src, "svelte")
-        reactive_chunks = [c for c in chunks if c.node_type ==
-            "reactive_statement" or "$:" in c.content]
+        reactive_chunks = [
+            c
+            for c in chunks
+            if c.node_type == "reactive_statement" or "$:" in c.content
+        ]
         assert len(reactive_chunks) >= 3
         assert any("doubled = count * 2" in c.content for c in chunks)
 
@@ -132,7 +137,7 @@ class TestSvelteBasicChunking:
   <p>Total items: {items.length}</p>
 {/key}
 """,
-            )
+        )
         chunks = chunk_file(src, "svelte")
         if_chunks = [c for c in chunks if c.node_type == "if_block"]
         each_chunks = [c for c in chunks if c.node_type == "each_block"]
@@ -173,13 +178,19 @@ class TestSvelteBasicChunking:
 <h1>{title}</h1>
 <p>Total instances: {totalInstances}</p>
 """,
-            )
+        )
         chunks = chunk_file(src, "svelte")
-        module_chunks = [c for c in chunks if c.node_type ==
-            "module_script" or 'context="module"' in c.content]
-        instance_chunks = [c for c in chunks if c.node_type ==
-            "instance_script" or (c.node_type == "script_element" and
-            'context="module"' not in c.content)]
+        module_chunks = [
+            c
+            for c in chunks
+            if c.node_type == "module_script" or 'context="module"' in c.content
+        ]
+        instance_chunks = [
+            c
+            for c in chunks
+            if c.node_type == "instance_script"
+            or (c.node_type == "script_element" and 'context="module"' not in c.content)
+        ]
         assert len(module_chunks) >= 1
         assert len(instance_chunks) >= 1
         assert any("totalInstances" in c.content for c in module_chunks)
@@ -220,10 +231,11 @@ class TestSvelteBasicChunking:
   }
 </style>
 """,
-            )
+        )
         chunks = chunk_file(src, "svelte")
-        script_chunks = [c for c in chunks if c.node_type in {
-            "script_element", "instance_script"}]
+        script_chunks = [
+            c for c in chunks if c.node_type in {"script_element", "instance_script"}
+        ]
         assert any("writable" in c.content for c in script_chunks)
         assert any("derived" in c.content for c in script_chunks)
 
@@ -251,6 +263,7 @@ class TestSvelteContractCompliance:
                 self.start_point = 0, 0
                 self.end_point = 0, end
                 self.children = []
+
         root = MockNode("document")
         script_node = MockNode("script_element", 0, 50)
         style_node = MockNode("style_element", 51, 100)
@@ -284,6 +297,7 @@ class TestSvelteContractCompliance:
             def __init__(self, node_type):
                 self.type = node_type
                 self.children = []
+
         assert plugin.should_chunk_node(MockNode("script_element"))
         assert plugin.should_chunk_node(MockNode("style_element"))
         assert plugin.should_chunk_node(MockNode("if_block"))
@@ -301,9 +315,9 @@ class TestSvelteContractCompliance:
             def __init__(self, node_type):
                 self.type = node_type
                 self.children = []
+
         node = MockNode("script_element")
-        context = plugin.get_node_context(node,
-            b'<script context="module"></script>')
+        context = plugin.get_node_context(node, b'<script context="module"></script>')
         assert context is not None
         assert "script" in context
 
@@ -358,10 +372,11 @@ class TestSvelteEdgeCases:
 <p>User: {user.name} ({user.email})</p>
 <button on:click={increment}>Increment</button>
 """,
-            )
+        )
         chunks = chunk_file(src, "svelte")
-        script_chunks = [c for c in chunks if c.node_type in {
-            "script_element", "instance_script"}]
+        script_chunks = [
+            c for c in chunks if c.node_type in {"script_element", "instance_script"}
+        ]
         assert len(script_chunks) >= 1
         assert any('lang="ts"' in c.content for c in script_chunks)
 
@@ -399,10 +414,9 @@ class TestSvelteEdgeCases:
   }
 </style>
 """,
-            )
+        )
         chunks = chunk_file(src, "svelte")
-        assert any(c.node_type in {"script_element", "instance_script"} for
-            c in chunks)
+        assert any(c.node_type in {"script_element", "instance_script"} for c in chunks)
         assert any(c.node_type == "style_element" for c in chunks)
 
     @staticmethod
@@ -447,10 +461,11 @@ class TestSvelteEdgeCases:
   <p>{message}</p>
 {/if}
 """,
-            )
+        )
         chunks = chunk_file(src, "svelte")
-        script_chunks = [c for c in chunks if c.node_type in {
-            "script_element", "instance_script"}]
+        script_chunks = [
+            c for c in chunks if c.node_type in {"script_element", "instance_script"}
+        ]
         if_chunks = [c for c in chunks if c.node_type == "if_block"]
         assert len(script_chunks) >= 1
         assert len(if_chunks) >= 1
@@ -496,7 +511,7 @@ class TestSvelteEdgeCases:
 
 <button on:click={addItem}>Add Item</button>
 """,
-            )
+        )
         chunks = chunk_file(src, "svelte")
         if_chunks = [c for c in chunks if c.node_type == "if_block"]
         each_chunks = [c for c in chunks if c.node_type == "each_block"]
@@ -544,10 +559,11 @@ class TestSvelteEdgeCases:
   }
 </style>
 """,
-            )
+        )
         chunks = chunk_file(src, "svelte")
-        script_chunks = [c for c in chunks if c.node_type in {
-            "script_element", "instance_script"}]
+        script_chunks = [
+            c for c in chunks if c.node_type in {"script_element", "instance_script"}
+        ]
         each_chunks = [c for c in chunks if c.node_type == "each_block"]
         if_chunks = [c for c in chunks if c.node_type == "if_block"]
         style_chunks = [c for c in chunks if c.node_type == "style_element"]

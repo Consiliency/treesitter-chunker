@@ -1,4 +1,5 @@
 """Comment-based chunking rules for extracting structured comments."""
+
 import re
 
 from tree_sitter import Node
@@ -11,8 +12,12 @@ from .custom import BaseCommentBlockRule
 class TodoBlockRule(BaseCommentBlockRule):
     """Extract TODO/FIXME blocks with context."""
 
-    def __init__(self, keywords: (list[str] | None) = None,
-        include_context_lines: int = 2, priority: int = 55):
+    def __init__(
+        self,
+        keywords: list[str] | None = None,
+        include_context_lines: int = 2,
+        priority: int = 55,
+    ):
         """
         Initialize TODO block rule.
 
@@ -21,37 +26,63 @@ class TodoBlockRule(BaseCommentBlockRule):
             include_context_lines: Number of context lines to include
             priority: Rule priority
         """
-        super().__init__(name="todo_blocks", description="Extract TODO/FIXME comment blocks with context", priority=priority, merge_adjacent=True)
-        self.keywords = keywords or ["TODO", "FIXME", "HACK", "NOTE", "XXX",
-            "BUG", "OPTIMIZE", "REFACTOR"]
+        super().__init__(
+            name="todo_blocks",
+            description="Extract TODO/FIXME comment blocks with context",
+            priority=priority,
+            merge_adjacent=True,
+        )
+        self.keywords = keywords or [
+            "TODO",
+            "FIXME",
+            "HACK",
+            "NOTE",
+            "XXX",
+            "BUG",
+            "OPTIMIZE",
+            "REFACTOR",
+        ]
         self.include_context_lines = include_context_lines
         self._keyword_pattern = re.compile(
-            f"\\b({'|'.join(self.keywords)})\\b\\s*:?\\s*(.+)", re.IGNORECASE)
+            f"\\b({'|'.join(self.keywords)})\\b\\s*:?\\s*(.+)",
+            re.IGNORECASE,
+        )
 
     @staticmethod
     def get_comment_markers() -> dict[str, list[str]]:
         """Get comment markers for different styles."""
-        return {"single_line": ["#", "//", "--"], "block_start": ["/*",
-            "/**", "<!--"], "block_end": ["*/", "-->", "*/"]}
+        return {
+            "single_line": ["#", "//", "--"],
+            "block_start": ["/*", "/**", "<!--"],
+            "block_end": ["*/", "-->", "*/"],
+        }
 
     def matches(self, node: Node, source: bytes) -> bool:
         """Check if node contains TODO-like keywords."""
         if not super().matches(node, source):
             return False
-        content = source[node.start_byte:node.end_byte].decode("utf-8",
-            errors="replace")
+        content = source[node.start_byte : node.end_byte].decode(
+            "utf-8",
+            errors="replace",
+        )
         return bool(self._keyword_pattern.search(content))
 
-    def extract_chunk(self, node: Node, source: bytes, file_path: str) -> (
-        CodeChunk | None):
+    def extract_chunk(
+        self,
+        node: Node,
+        source: bytes,
+        file_path: str,
+    ) -> CodeChunk | None:
         """Extract TODO block with context."""
         if not self.matches(node, source):
             return None
         chunk = super().extract_chunk(node, source, file_path)
         if not chunk:
             return None
-        content = source[node.start_byte:node.end_byte].decode("utf-8",
-            errors="replace")
+        content = source[node.start_byte : node.end_byte].decode(
+            "utf-8",
+            errors="replace",
+        )
         match = self._keyword_pattern.search(content)
         if match:
             keyword = match.group(1).upper()
@@ -81,32 +112,44 @@ class DocumentationBlockRule(BaseCommentBlockRule):
 
     def __init__(self, priority: int = 65):
         """Initialize documentation block rule."""
-        super().__init__(name="doc_blocks", description="Extract documentation comment blocks", priority=priority,
-            merge_adjacent=False)
-        self._doc_patterns = {"python": re.compile('^\\s*["\\\'].*["\\\']',
-            re.DOTALL), "javascript": re.compile(r"^\\s*/\\*\\*", re.
-            MULTILINE), "java": re.compile(r"^\\s*/\\*\\*", re.MULTILINE),
-            "rust": re.compile(r"^\\s*//[/!]", re.MULTILINE), "go": re.
-            compile(r"^\\s*//\\s*\\w+\\s+\\w+", re.MULTILINE)}
+        super().__init__(
+            name="doc_blocks",
+            description="Extract documentation comment blocks",
+            priority=priority,
+            merge_adjacent=False,
+        )
+        self._doc_patterns = {
+            "python": re.compile(r"^\s*[\"'].*[\"']", re.DOTALL),
+            "javascript": re.compile(r"^\s*/\*\*", re.MULTILINE),
+            "java": re.compile(r"^\s*/\*\*", re.MULTILINE),
+            "rust": re.compile(r"^\s*//[/!]", re.MULTILINE),
+            "go": re.compile(r"^\s*//\s*\w+\s+\w+", re.MULTILINE),
+        }
 
     @staticmethod
     def get_comment_markers() -> dict[str, list[str]]:
         """Get comment markers for different styles."""
-        return {"single_line": ["#", "//", "--", "///", "//!"],
-            "block_start": ["/*", "/**", '"""', "'''", "<!--"], "block_end":
-            ["*/", '"""', "'''", "-->"]}
+        return {
+            "single_line": ["#", "//", "--", "///", "//!"],
+            "block_start": ["/*", "/**", '"""', "'''", "<!--"],
+            "block_end": ["*/", '"""', "'''", "-->"],
+        }
 
     def matches(self, node: Node, source: bytes) -> bool:
         """Check if node is a documentation comment."""
         if not super().matches(node, source):
             return False
-        content = source[node.start_byte:node.end_byte].decode("utf-8",
-            errors="replace")
+        content = source[node.start_byte : node.end_byte].decode(
+            "utf-8",
+            errors="replace",
+        )
         if node.type in {"string", "string_literal", "template_string"}:
             parent = node.parent
-            if (parent and parent.type in {"function_definition",
-                "class_definition", "method_definition"}) and (parent.
-                children and node in parent.children[:3]):
+            if (
+                parent
+                and parent.type
+                in {"function_definition", "class_definition", "method_definition"}
+            ) and (parent.children and node in parent.children[:3]):
                 return True
         lang = self._get_language_from_node(node)
         if lang in self._doc_patterns:
@@ -114,20 +157,24 @@ class DocumentationBlockRule(BaseCommentBlockRule):
         return False
 
     @staticmethod
-    def extract_chunk(node: Node, source: bytes, file_path: str) -> (CodeChunk |
-        None):
+    def extract_chunk(node: Node, source: bytes, file_path: str) -> CodeChunk | None:
         """Extract documentation block with metadata."""
         chunk = super().extract_chunk(node, source, file_path)
         if not chunk:
             return None
         chunk.node_type = f"doc_block_{node.type}"
         parent = node.parent
-        if parent and parent.type in {"function_definition",
-            "class_definition", "method_definition"}:
+        if parent and parent.type in {
+            "function_definition",
+            "class_definition",
+            "method_definition",
+        }:
             for child in parent.children:
                 if child.type in {"identifier", "property_identifier"}:
-                    entity_name = source[child.start_byte:child.end_byte
-                        ].decode("utf-8", errors="replace")
+                    entity_name = source[child.start_byte : child.end_byte].decode(
+                        "utf-8",
+                        errors="replace",
+                    )
                     chunk.parent_context = f"{parent.type}:{entity_name}"
                     break
         return chunk
@@ -135,10 +182,13 @@ class DocumentationBlockRule(BaseCommentBlockRule):
     @staticmethod
     def _get_language_from_node(node: Node) -> str:
         """Try to determine language from node context."""
-        node_types_to_lang = {"python": ["def", "class", "import", "from"],
+        node_types_to_lang = {
+            "python": ["def", "class", "import", "from"],
             "javascript": ["function", "const", "let", "var", "require"],
-            "java": ["public", "private", "class", "interface"], "rust": [
-            "fn", "impl", "struct", "enum"], "go": ["func", "type", "package"]}
+            "java": ["public", "private", "class", "interface"],
+            "rust": ["fn", "impl", "struct", "enum"],
+            "go": ["func", "type", "package"],
+        }
         current = node
         for _ in range(5):
             if current.parent:
@@ -160,38 +210,46 @@ class HeaderCommentRule(BaseCommentBlockRule):
             max_lines_from_start: Maximum lines from file start to consider
             priority: Rule priority
         """
-        super().__init__(name="header_comments", description="Extract file header comments", priority=priority,
-            merge_adjacent=True)
+        super().__init__(
+            name="header_comments",
+            description="Extract file header comments",
+            priority=priority,
+            merge_adjacent=True,
+        )
         self.max_lines_from_start = max_lines_from_start
-        self._header_patterns = [re.compile(
-            r"\\b(?:copyright|©|\\(c\\)|license|author|created|modified)\\b",
-            re.IGNORECASE), re.compile(
-            r"^\\s*(?:@file|@module|@package|@brief)\\b", re.MULTILINE), re.
-            compile(r"^\\s*(?:File|Module|Package|Description):\\s*", re.
-            MULTILINE)]
+        self._header_patterns = [
+            re.compile(
+                r"\\b(?:copyright|©|\\(c\\)|license|author|created|modified)\\b",
+                re.IGNORECASE,
+            ),
+            re.compile(r"^\\s*(?:@file|@module|@package|@brief)\\b", re.MULTILINE),
+            re.compile(r"^\\s*(?:File|Module|Package|Description):\\s*", re.MULTILINE),
+        ]
 
     @staticmethod
     def get_comment_markers() -> dict[str, list[str]]:
         """Get comment markers for different styles."""
-        return {"single_line": ["#", "//", "--", ";"], "block_start": ["/*",
-            "/**", "<!--", '"""', "'''"], "block_end": ["*/", "-->", '"""',
-            "'''"]}
+        return {
+            "single_line": ["#", "//", "--", ";"],
+            "block_start": ["/*", "/**", "<!--", '"""', "'''"],
+            "block_end": ["*/", "-->", '"""', "'''"],
+        }
 
     def matches(self, node: Node, source: bytes) -> bool:
         """Check if node is a header comment."""
         if not super().matches(node, source):
             return False
-        lines_before = source[:node.start_byte].count(b"\n")
+        lines_before = source[: node.start_byte].count(b"\n")
         if lines_before > self.max_lines_from_start:
             return False
-        content = source[node.start_byte:node.end_byte].decode("utf-8",
-            errors="replace")
-        return any(pattern.search(content) for pattern in self._header_patterns
-            )
+        content = source[node.start_byte : node.end_byte].decode(
+            "utf-8",
+            errors="replace",
+        )
+        return any(pattern.search(content) for pattern in self._header_patterns)
 
     @staticmethod
-    def extract_chunk(node: Node, source: bytes, file_path: str) -> (CodeChunk |
-        None):
+    def extract_chunk(node: Node, source: bytes, file_path: str) -> CodeChunk | None:
         """Extract header comment."""
         chunk = super().extract_chunk(node, source, file_path)
         if chunk:
@@ -203,8 +261,12 @@ class HeaderCommentRule(BaseCommentBlockRule):
 class InlineCommentGroupRule(BaseCommentBlockRule):
     """Group related inline comments into chunks."""
 
-    def __init__(self, max_gap_lines: int = 1, min_comments: int = 2, priority:
-        int = 25):
+    def __init__(
+        self,
+        max_gap_lines: int = 1,
+        min_comments: int = 2,
+        priority: int = 25,
+    ):
         """
         Initialize inline comment group rule.
 
@@ -213,8 +275,12 @@ class InlineCommentGroupRule(BaseCommentBlockRule):
             min_comments: Minimum comments to form a group
             priority: Rule priority
         """
-        super().__init__(name="inline_comment_groups", description="Group related inline comments", priority=priority,
-            merge_adjacent=True)
+        super().__init__(
+            name="inline_comment_groups",
+            description="Group related inline comments",
+            priority=priority,
+            merge_adjacent=True,
+        )
         self.max_gap_lines = max_gap_lines
         self.min_comments = min_comments
         self._processed_nodes = set()
@@ -222,8 +288,11 @@ class InlineCommentGroupRule(BaseCommentBlockRule):
     @staticmethod
     def get_comment_markers() -> dict[str, list[str]]:
         """Get comment markers for different styles."""
-        return {"single_line": ["#", "//", "--", ";", "///", "//!"],
-            "block_start": [], "block_end": []}
+        return {
+            "single_line": ["#", "//", "--", ";", "///", "//!"],
+            "block_start": [],
+            "block_end": [],
+        }
 
     def matches(self, node: Node, source: bytes) -> bool:
         """Check if node is part of a comment group."""
@@ -233,8 +302,12 @@ class InlineCommentGroupRule(BaseCommentBlockRule):
             return False
         return self._find_comment_group(node, source) is not None
 
-    def extract_chunk(self, node: Node, source: bytes, file_path: str) -> (
-        CodeChunk | None):
+    def extract_chunk(
+        self,
+        node: Node,
+        source: bytes,
+        file_path: str,
+    ) -> CodeChunk | None:
         """Extract grouped comments."""
         group_nodes = self._find_comment_group(node, source)
         if not group_nodes or len(group_nodes) < self.min_comments:
@@ -246,20 +319,29 @@ class InlineCommentGroupRule(BaseCommentBlockRule):
         lines = source.decode("utf-8", errors="replace").split("\n")
         start_line = source[:start_byte].count(b"\n")
         end_line = source[:end_byte].count(b"\n")
-        content = "\n".join(lines[start_line:end_line + 1])
-        return CodeChunk(language=self._get_language_from_path(file_path),
-            file_path=file_path, node_type="inline_comment_group",
-            start_line=start_line + 1, end_line=end_line + 1, byte_start=start_byte, byte_end=end_byte, parent_context="code_section",
-            content=content)
+        content = "\n".join(lines[start_line : end_line + 1])
+        return CodeChunk(
+            language=self._get_language_from_path(file_path),
+            file_path=file_path,
+            node_type="inline_comment_group",
+            start_line=start_line + 1,
+            end_line=end_line + 1,
+            byte_start=start_byte,
+            byte_end=end_byte,
+            parent_context="code_section",
+            content=content,
+        )
 
-    def _find_comment_group(self, start_node: Node, source: bytes) -> (list[
-        Node] | None):
+    def _find_comment_group(self, start_node: Node, source: bytes) -> list[Node] | None:
         """Find all comments that should be grouped together."""
         if not start_node.parent:
             return None
         parent = start_node.parent
-        comment_nodes = [child for child in parent.children if child.type in
-            {"comment", "line_comment"}]
+        comment_nodes = [
+            child
+            for child in parent.children
+            if child.type in {"comment", "line_comment"}
+        ]
         if not comment_nodes:
             return None
         groups = []
@@ -267,8 +349,8 @@ class InlineCommentGroupRule(BaseCommentBlockRule):
         for i in range(1, len(comment_nodes)):
             prev_node = comment_nodes[i - 1]
             curr_node = comment_nodes[i]
-            prev_line = source[:prev_node.end_byte].count(b"\n")
-            curr_line = source[:curr_node.start_byte].count(b"\n")
+            prev_line = source[: prev_node.end_byte].count(b"\n")
+            curr_line = source[: curr_node.start_byte].count(b"\n")
             if curr_line - prev_line <= self.max_gap_lines:
                 current_group.append(curr_node)
             else:
@@ -288,33 +370,47 @@ class StructuredCommentRule(BaseCommentBlockRule):
 
     def __init__(self, priority: int = 40):
         """Initialize structured comment rule."""
-        super().__init__(name="structured_comments", description="Extract comments with structured content", priority=priority,
-            merge_adjacent=True)
-        self._structure_patterns = [re.compile(r"^\\s*[-*+]\\s+", re.
-            MULTILINE), re.compile(r"^\\s*\\d+\\.\\s+", re.MULTILINE), re.
-            compile(r"^\\s*\\|.*\\|", re.MULTILINE), re.compile(
-            r"^\\s*#+\\s+", re.MULTILINE), re.compile(r"^\\s*```", re.
-            MULTILINE), re.compile(r"^\\s*@\\w+\\s*:", re.MULTILINE)]
+        super().__init__(
+            name="structured_comments",
+            description="Extract comments with structured content",
+            priority=priority,
+            merge_adjacent=True,
+        )
+        self._structure_patterns = [
+            re.compile(r"^\\s*[-*+]\\s+", re.MULTILINE),
+            re.compile(r"^\\s*\\d+\\.\\s+", re.MULTILINE),
+            re.compile(r"^\\s*\\|.*\\|", re.MULTILINE),
+            re.compile(r"^\\s*#+\\s+", re.MULTILINE),
+            re.compile(r"^\\s*```", re.MULTILINE),
+            re.compile(r"^\\s*@\\w+\\s*:", re.MULTILINE),
+        ]
 
     @staticmethod
     def get_comment_markers() -> dict[str, list[str]]:
         """Get comment markers for different styles."""
-        return {"single_line": ["#", "//", "--", ";"], "block_start": ["/*",
-            "/**", "<!--", '"""', "'''"], "block_end": ["*/", "-->", '"""',
-            "'''"]}
+        return {
+            "single_line": ["#", "//", "--", ";"],
+            "block_start": ["/*", "/**", "<!--", '"""', "'''"],
+            "block_end": ["*/", "-->", '"""', "'''"],
+        }
 
     def matches(self, node: Node, source: bytes) -> bool:
         """Check if comment contains structured content."""
         if not super().matches(node, source):
             return False
-        content = source[node.start_byte:node.end_byte].decode("utf-8",
-            errors="replace")
+        content = source[node.start_byte : node.end_byte].decode(
+            "utf-8",
+            errors="replace",
+        )
         cleaned = self._clean_comment_markers(content)
-        return any(pattern.search(cleaned) for pattern in self.
-            _structure_patterns)
+        return any(pattern.search(cleaned) for pattern in self._structure_patterns)
 
-    def extract_chunk(self, node: Node, source: bytes, file_path: str) -> (
-        CodeChunk | None):
+    def extract_chunk(
+        self,
+        node: Node,
+        source: bytes,
+        file_path: str,
+    ) -> CodeChunk | None:
         """Extract structured comment."""
         chunk = super().extract_chunk(node, source, file_path)
         if chunk:
@@ -340,8 +436,9 @@ class StructuredCommentRule(BaseCommentBlockRule):
         return "\n".join(cleaned_lines)
 
 
-def create_comment_rule_chain(*rules: BaseCommentBlockRule) -> list[
-    BaseCommentBlockRule]:
+def create_comment_rule_chain(
+    *rules: BaseCommentBlockRule,
+) -> list[BaseCommentBlockRule]:
     """
     Create a chain of comment rules that work together.
 

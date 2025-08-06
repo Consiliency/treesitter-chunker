@@ -1,4 +1,5 @@
 """Fix import organization more carefully."""
+
 import subprocess
 from pathlib import Path
 
@@ -8,10 +9,32 @@ def fix_imports_simple(file_path: Path) -> bool:
     try:
         content = file_path.read_text(encoding="utf-8")
         lines = content.splitlines(keepends=True)
-        if any(line.strip() and not line[0].isspace() and not line.
-            startswith(("#", "import", "from", '"""', "'''", "def ",
-            "class ", "@", "if ", "elif ", "else:", "try:", "except",
-            "finally:", "with ", "for ", "while ")) for line in lines[10:]):
+        if any(
+            line.strip()
+            and not line[0].isspace()
+            and not line.startswith(
+                (
+                    "#",
+                    "import",
+                    "from",
+                    '"""',
+                    "'''",
+                    "def ",
+                    "class ",
+                    "@",
+                    "if ",
+                    "elif ",
+                    "else:",
+                    "try:",
+                    "except",
+                    "finally:",
+                    "with ",
+                    "for ",
+                    "while ",
+                ),
+            )
+            for line in lines[10:]
+        ):
             return False
         import_insert_line = 0
         in_docstring = False
@@ -29,8 +52,9 @@ def fix_imports_simple(file_path: Path) -> bool:
                 in_docstring = False
                 import_insert_line = i + 1
                 continue
-            if (not in_docstring and stripped and not stripped.startswith("#")
-                ) and not stripped.startswith(("import ", "from ")):
+            if (
+                not in_docstring and stripped and not stripped.startswith("#")
+            ) and not stripped.startswith(("import ", "from ")):
                 break
         misplaced_imports = []
         first_code_line = None
@@ -39,8 +63,9 @@ def fix_imports_simple(file_path: Path) -> bool:
             if stripped and not stripped.startswith(("#", "import ", "from ")):
                 if first_code_line is None:
                     first_code_line = i
-            elif first_code_line is not None and stripped.startswith((
-                "import ", "from ")):
+            elif first_code_line is not None and stripped.startswith(
+                ("import ", "from "),
+            ):
                 misplaced_imports.append((i, line))
         if not misplaced_imports:
             return False
@@ -61,14 +86,21 @@ def fix_imports_simple(file_path: Path) -> bool:
 def main():
     """Main function."""
     repo_root = Path.cwd()
-    result = subprocess.run(["git", "ls-files", "*.py"], check=False,
-        capture_output=True, text=True, cwd=repo_root)
+    result = subprocess.run(
+        ["git", "ls-files", "*.py"],
+        check=False,
+        capture_output=True,
+        text=True,
+        cwd=repo_root,
+    )
     if result.returncode != 0:
         print("Error getting file list from git")
         return
-    python_files = [(repo_root / f.strip()) for f in result.stdout.
-        splitlines() if f.strip() and not f.startswith((".venv", "venv",
-        "build"))]
+    python_files = [
+        (repo_root / f.strip())
+        for f in result.stdout.splitlines()
+        if f.strip() and not f.startswith((".venv", "venv", "build"))
+    ]
     fixed_count = 0
     print(f"Processing {len(python_files)} Python files...")
     for file_path in python_files:

@@ -3,6 +3,7 @@
 Components involved: Discovery, Download, Registry, Zero-Config
 Expected behavior: Seamless grammar discovery, download, and usage
 """
+
 import tempfile
 
 import pytest
@@ -23,13 +24,19 @@ class TestDiscoveryDownloadIntegration:
         downloader = GrammarDownloadStub()
         grammars = discovery.list_available_grammars()
         first_grammar = grammars[0]
-        success, path = downloader.download_and_compile(first_grammar.name,
-            first_grammar.version)
-        assert isinstance(grammars, list,
-            ), f"Expected list, got {type(grammars)}"
+        success, path = downloader.download_and_compile(
+            first_grammar.name,
+            first_grammar.version,
+        )
+        assert isinstance(
+            grammars,
+            list,
+        ), f"Expected list, got {type(grammars)}"
         assert len(grammars) > 0, "Should have at least one grammar"
-        assert hasattr(first_grammar, "name",
-            ), "Grammar should have name attribute"
+        assert hasattr(
+            first_grammar,
+            "name",
+        ), "Grammar should have name attribute"
         assert hasattr(first_grammar, "version"), "Grammar should have version"
         assert isinstance(success, bool), f"Expected bool, got {type(success)}"
         assert isinstance(path, str), f"Expected str, got {type(path)}"
@@ -42,8 +49,10 @@ class TestDiscoveryDownloadIntegration:
         downloader = GrammarDownloadStub()
         compat = discovery.get_grammar_compatibility("python", "0.20.0")
         download_path = downloader.download_grammar("python", "0.20.0")
-        compiled_result = downloader.compile_grammar(download_path,
-            download_path.parent)
+        compiled_result = downloader.compile_grammar(
+            download_path,
+            download_path.parent,
+        )
         assert compat.abi_version == compiled_result.abi_version
         assert isinstance(compat.min_tree_sitter_version, str)
         assert isinstance(compat.tested_python_versions, list)
@@ -63,23 +72,25 @@ class TestRegistryAutoIntegration:
         assert "go" not in initial_installed, "Go should not be initially installed"
         assert go_ready is True, "ensure_language should succeed"
         assert parser is not None, "Parser should be returned"
-        assert registry.is_language_installed("go",
-            ), "Go should now be installed"
+        assert registry.is_language_installed(
+            "go",
+        ), "Go should now be installed"
 
     @classmethod
     def test_file_chunking_with_auto_download(cls):
         """Test chunking a file that requires grammar download"""
         auto_api = ZeroConfigStub()
         UniversalRegistryStub()
-        with tempfile.NamedTemporaryFile(encoding="utf-8", suffix=".go",
-            mode="w") as f:
+        with tempfile.NamedTemporaryFile(encoding="utf-8", suffix=".go", mode="w") as f:
             f.write("package main\n\nfunc main() {}")
             f.flush()
             result = auto_api.auto_chunk_file(f.name)
             assert hasattr(result, "chunks"), "Result should have chunks"
             assert hasattr(result, "language"), "Result should have language"
-            assert hasattr(result, "grammar_downloaded",
-                ), "Result should have download flag"
+            assert hasattr(
+                result,
+                "grammar_downloaded",
+            ), "Result should have download flag"
             assert result.language == "go", f"Should detect Go, got {result.language}"
             assert isinstance(result.chunks, list), "Chunks should be a list"
             assert len(result.chunks) > 0, "Should have at least one chunk"
@@ -101,8 +112,7 @@ class TestFullWorkflowIntegration:
         java_grammars = discovery.search_grammars("java")
         assert len(java_grammars) == 0, "Java not in minimal stub list"
         all_available = discovery.list_available_grammars()
-        python_info = next((g for g in all_available if g.name == "python"),
-            None)
+        python_info = next((g for g in all_available if g.name == "python"), None)
         assert python_info is not None
         if not downloader.is_grammar_cached("python"):
             success, _path = downloader.download_and_compile("python")

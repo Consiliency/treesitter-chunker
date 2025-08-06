@@ -1,4 +1,5 @@
 """Tree-sitter grammar manager implementation."""
+
 import json
 import logging
 import shutil
@@ -26,8 +27,7 @@ class GrammarManagementError(ChunkerError):
 class TreeSitterGrammarManager(GrammarManager):
     """Manages Tree-sitter language grammars."""
 
-    def __init__(self, grammars_dir: (Path | None) = None, build_dir: (Path |
-        None) = None):
+    def __init__(self, grammars_dir: Path | None = None, build_dir: Path | None = None):
         """Initialize grammar manager.
 
         Args:
@@ -42,8 +42,12 @@ class TreeSitterGrammarManager(GrammarManager):
         self.build_dir.mkdir(parents=True, exist_ok=True)
         self._load_config()
 
-    def add_grammar(self, name: str, repository_url: str, commit_hash: (str |
-        None) = None) -> GrammarInfo:
+    def add_grammar(
+        self,
+        name: str,
+        repository_url: str,
+        commit_hash: str | None = None,
+    ) -> GrammarInfo:
         """Add a new grammar to manage.
 
         Args:
@@ -56,7 +60,6 @@ class TreeSitterGrammarManager(GrammarManager):
         """
         if name in self._grammars:
 
-
             logger.warning("Grammar '%s' already exists, updating...", name)
 
         # Create grammar info
@@ -68,11 +71,6 @@ class TreeSitterGrammarManager(GrammarManager):
         )
 
         # Check if source directory exists
-=======
-            logger.warning("Grammar '%s' already exists, updating..." % name)
-        grammar = GrammarInfo(name=name, repository_url=repository_url,
-            commit_hash=commit_hash, status=GrammarStatus.NOT_FOUND)
->>>>>>> origin/main
         grammar_path = self.grammars_dir / f"tree-sitter-{name}"
         if grammar_path.exists():
             grammar.status = GrammarStatus.NOT_BUILT
@@ -133,24 +131,30 @@ class TreeSitterGrammarManager(GrammarManager):
                     text=True,
                 )
                 if result.returncode != 0:
-                    raise GrammarManagementError(
-                        f"Git pull failed: {result.stderr}")
+                    raise GrammarManagementError(f"Git pull failed: {result.stderr}")
             else:
-                logger.info("Cloning grammar '%s'..." % name)
-                result = subprocess.run(["git", "clone", grammar.
-                    repository_url, str(grammar_path)], check=False,
-                    capture_output=True, text=True)
+                logger.info(f"Cloning grammar '{name}'...")
+                result = subprocess.run(
+                    ["git", "clone", grammar.repository_url, str(grammar_path)],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
                 if result.returncode != 0:
-                    raise GrammarManagementError(
-                        f"Git clone failed: {result.stderr}")
+                    raise GrammarManagementError(f"Git clone failed: {result.stderr}")
             if grammar.commit_hash:
                 logger.info("Checking out commit %s", grammar.commit_hash)
-                result = subprocess.run(["git", "checkout", grammar.
-                    commit_hash], check=False, cwd=grammar_path,
-                    capture_output=True, text=True)
+                result = subprocess.run(
+                    ["git", "checkout", grammar.commit_hash],
+                    check=False,
+                    cwd=grammar_path,
+                    capture_output=True,
+                    text=True,
+                )
                 if result.returncode != 0:
                     raise GrammarManagementError(
-                        f"Git checkout failed: {result.stderr}")
+                        f"Git checkout failed: {result.stderr}",
+                    )
             grammar.status = GrammarStatus.NOT_BUILT
             grammar.path = grammar_path
             self._save_config()
@@ -206,7 +210,7 @@ class TreeSitterGrammarManager(GrammarManager):
             self._save_config()
             return False
 
-    def get_grammar_info(self, name: str) -> (GrammarInfo | None):
+    def get_grammar_info(self, name: str) -> GrammarInfo | None:
         """Get information about a grammar.
 
         Args:
@@ -217,8 +221,7 @@ class TreeSitterGrammarManager(GrammarManager):
         """
         return self._grammars.get(name)
 
-    def list_grammars(self, status: (GrammarStatus | None) = None) -> list[
-        GrammarInfo]:
+    def list_grammars(self, status: GrammarStatus | None = None) -> list[GrammarInfo]:
         """List all managed grammars.
 
         Args:
@@ -289,7 +292,8 @@ class TreeSitterGrammarManager(GrammarManager):
             # Note: py-tree-sitter doesn't directly expose node types
             # This would require parsing the grammar file or using a test file
             logger.warning(
-                "Node type extraction not yet implemented for '%s'", language,
+                "Node type extraction not yet implemented for '%s'",
+                language,
             )
             return []
         except (FileNotFoundError, IndexError, KeyError) as e:
@@ -309,8 +313,7 @@ class TreeSitterGrammarManager(GrammarManager):
             return False, f"Grammar '{name}' not found"
         grammar = self._grammars[name]
         if grammar.status != GrammarStatus.READY:
-            return (False,
-                f"Grammar '{name}' is not ready (status: {grammar.status})")
+            return (False, f"Grammar '{name}' is not ready (status: {grammar.status})")
         try:
             parser = get_parser(name)
             test_code = self._get_test_code(name)
@@ -329,9 +332,15 @@ class TreeSitterGrammarManager(GrammarManager):
             with Path(self._config_file).open(encoding="utf-8") as f:
                 data = json.load(f)
             for name, info in data.items():
-                grammar = GrammarInfo(name=name, repository_url=info[
-                    "repository_url"], commit_hash=info.get("commit_hash"),
-                    abi_version=info.get("abi_version"), status=GrammarStatus(info.get("status", "not_found")), path=Path(info["path"]) if info.get("path") else None, error=info.get("error"))
+                grammar = GrammarInfo(
+                    name=name,
+                    repository_url=info["repository_url"],
+                    commit_hash=info.get("commit_hash"),
+                    abi_version=info.get("abi_version"),
+                    status=GrammarStatus(info.get("status", "not_found")),
+                    path=Path(info["path"]) if info.get("path") else None,
+                    error=info.get("error"),
+                )
                 self._grammars[name] = grammar
             logger.info("Loaded %s grammars from config", len(self._grammars))
         except (AttributeError, FileNotFoundError, IndexError) as e:
@@ -341,11 +350,14 @@ class TreeSitterGrammarManager(GrammarManager):
         """Save grammar configuration to file."""
         data = {}
         for name, grammar in self._grammars.items():
-            data[name] = {"repository_url": grammar.repository_url,
-                "commit_hash": grammar.commit_hash, "abi_version": grammar.
-                abi_version, "status": grammar.status.value, "path": str(
-                grammar.path) if grammar.path else None, "error": grammar.error,
-                }
+            data[name] = {
+                "repository_url": grammar.repository_url,
+                "commit_hash": grammar.commit_hash,
+                "abi_version": grammar.abi_version,
+                "status": grammar.status.value,
+                "path": str(grammar.path) if grammar.path else None,
+                "error": grammar.error,
+            }
         try:
             with Path(self._config_file).open("w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)
@@ -356,10 +368,15 @@ class TreeSitterGrammarManager(GrammarManager):
     @staticmethod
     def _get_test_code(language: str) -> str:
         """Get simple test code for a language."""
-        test_snippets = {"python": "def hello(): pass", "javascript":
-            "function hello() {}", "rust": "fn main() {}", "go":
-            """package main
-func main() {}""", "ruby": "def hello; end",
-            "java": "class Test { }", "c": "int main() { return 0; }",
-            "cpp": "int main() { return 0; }"}
+        test_snippets = {
+            "python": "def hello(): pass",
+            "javascript": "function hello() {}",
+            "rust": "fn main() {}",
+            "go": """package main
+func main() {}""",
+            "ruby": "def hello; end",
+            "java": "class Test { }",
+            "c": "int main() { return 0; }",
+            "cpp": "int main() { return 0; }",
+        }
         return test_snippets.get(language, "")

@@ -1,4 +1,5 @@
 """Tests for the integration test fixtures."""
+
 import asyncio
 import threading
 import time
@@ -48,8 +49,11 @@ class TestErrorTrackingFixtures:
         """Test basic error tracking context functionality."""
         with error_tracking_context as tracker:
             error = ValueError("Test error")
-            context = tracker.capture_and_propagate(source="module.a",
-                target="module.b", error=error)
+            context = tracker.capture_and_propagate(
+                source="module.a",
+                target="module.b",
+                error=error,
+            )
             assert context["source_module"] == "module.a"
             assert context["target_module"] == "module.b"
             assert context["error_type"] == "ValueError"
@@ -67,10 +71,15 @@ class TestErrorTrackingFixtures:
             nonlocal handler_called, received_context
             handler_called = True
             received_context = context
+
         with error_tracking_context as tracker:
             tracker.register_handler("module.target", error_handler)
             error = RuntimeError("Handler test")
-            tracker.capture_and_propagate(source="module.source", target="module.target", error=error)
+            tracker.capture_and_propagate(
+                source="module.source",
+                target="module.target",
+                error=error,
+            )
             assert handler_called
             assert received_context["error_message"] == "Handler test"
 
@@ -106,8 +115,11 @@ class TestResourceFixtures:
     @staticmethod
     def test_resource_monitor(resource_monitor):
         """Test resource monitoring fixture."""
-        resource_monitor.track_resource(module="test", resource_type="file",
-            resource_id="file_123")
+        resource_monitor.track_resource(
+            module="test",
+            resource_type="file",
+            resource_id="file_123",
+        )
         with pytest.raises(AssertionError, match="leaked resources"):
             resource_monitor.assert_no_leaks("test")
         resource_monitor.release_resource("file_123")
@@ -140,10 +152,14 @@ class TestParallelFixtures:
 
         def worker_func(worker_id, result_list):
             result_list.append(worker_id)
+
         with parallel_test_environment as env:
             for i in range(3):
-                p = env.create_worker_process(target=worker_func, args=(i,
-                    results), name=f"worker_{i}")
+                p = env.create_worker_process(
+                    target=worker_func,
+                    args=(i, results),
+                    name=f"worker_{i}",
+                )
                 assert p.name == f"worker_{i}"
             assert len(env.processes) == 3
 
@@ -156,10 +172,14 @@ class TestParallelFixtures:
         def worker_func(worker_id):
             with lock:
                 results.append(worker_id)
+
         with parallel_test_environment as env:
             for i in range(5):
-                t = env.create_worker_thread(target=worker_func, args=(i,),
-                    name=f"thread_{i}")
+                t = env.create_worker_thread(
+                    target=worker_func,
+                    args=(i,),
+                    name=f"thread_{i}",
+                )
                 t.start()
             for t in env.threads:
                 t.join()
@@ -207,20 +227,29 @@ class TestFileGeneratorFixtures:
     @staticmethod
     def test_test_file_generator(test_file_generator):
         """Test basic file generation."""
-        file_path = test_file_generator.create_file("test.py", "print('hello')",
-            )
+        file_path = test_file_generator.create_file(
+            "test.py",
+            "print('hello')",
+        )
         assert file_path.exists()
         assert file_path.read_text() == "print('hello')"
-        sub_file = test_file_generator.create_file("module.js",
-            "export default {};", subdir="src/components")
+        sub_file = test_file_generator.create_file(
+            "module.js",
+            "export default {};",
+            subdir="src/components",
+        )
         assert sub_file.exists()
         assert sub_file.parent.name == "components"
 
     @staticmethod
     def test_large_file_generation(test_file_generator):
         """Test large file generation."""
-        large_file = test_file_generator.create_large_file("large.py",
-            size_mb=1, pattern="process", language="python")
+        large_file = test_file_generator.create_large_file(
+            "large.py",
+            size_mb=1,
+            pattern="process",
+            language="python",
+        )
         assert large_file.exists()
         size = large_file.stat().st_size
         assert size >= 1024 * 1024
@@ -231,16 +260,25 @@ class TestFileGeneratorFixtures:
     @staticmethod
     def test_error_file_generation(test_file_generator):
         """Test error pattern file generation."""
-        syntax_file = test_file_generator.create_error_file("syntax_error.py",
-            error_type="syntax", language="python")
+        syntax_file = test_file_generator.create_error_file(
+            "syntax_error.py",
+            error_type="syntax",
+            language="python",
+        )
         content = syntax_file.read_text()
         assert "def broken(" in content
-        unicode_file = test_file_generator.create_error_file("unicode_error.js"
-            , error_type="unicode", language="javascript")
+        unicode_file = test_file_generator.create_error_file(
+            "unicode_error.js",
+            error_type="unicode",
+            language="javascript",
+        )
         content = unicode_file.read_text()
         assert "🚨" in content
-        binary_file = test_file_generator.create_error_file("binary.py",
-            error_type="binary", language="python")
+        binary_file = test_file_generator.create_error_file(
+            "binary.py",
+            error_type="binary",
+            language="python",
+        )
         content = binary_file.read_bytes()
         assert content.startswith(b"\x00\x01\x02")
 
@@ -255,6 +293,7 @@ class TestAsyncFixtures:
         async def test_coro():
             await asyncio.sleep(0.01)
             return "result"
+
         result = async_test_runner.run(test_coro())
         assert result == "result"
 
@@ -267,9 +306,13 @@ class TestAsyncFixtures:
             return n * 2
 
         async def run_test():
-            results = await async_test_runner.run_parallel(worker(1),
-                worker(2), worker(3))
+            results = await async_test_runner.run_parallel(
+                worker(1),
+                worker(2),
+                worker(3),
+            )
             return results
+
         results = async_test_runner.run(run_test())
         assert results == [2, 4, 6]
 
@@ -282,8 +325,8 @@ class TestAsyncFixtures:
             return "should not reach"
 
         async def run_with_timeout():
-            return await async_test_runner.run_with_timeout(slow_coro(),
-                timeout=0.1)
+            return await async_test_runner.run_with_timeout(slow_coro(), timeout=0.1)
+
         with pytest.raises(asyncio.TimeoutError):
             async_test_runner.run(run_with_timeout())
 
@@ -298,6 +341,7 @@ class TestConcurrencyFixtures:
         def increment_many():
             for _ in range(100):
                 thread_safe_counter.increment()
+
         threads = []
         for _ in range(10):
             t = threading.Thread(target=increment_many)

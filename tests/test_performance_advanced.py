@@ -3,6 +3,7 @@
 This module tests the chunker's performance under various loads and
 identifies optimization opportunities.
 """
+
 import gc
 import multiprocessing as mp
 import threading
@@ -10,13 +11,10 @@ import time
 
 import psutil
 
-from chunker.cache import ASTCache
-
 from chunker import chunk_file
 from chunker._internal.cache import ASTCache
-from chunker.parallel import ParallelChunker, chunk_files_parallel
-
 from chunker.export import JSONExporter, JSONLExporter, SchemaType
+from chunker.parallel import ParallelChunker, chunk_files_parallel
 from chunker.streaming import chunk_file_streaming
 
 
@@ -42,7 +40,7 @@ class TestClass:
     def method_2(self):
         pass
 """,
-            )
+        )
 
         def chunk_repeatedly(file_path, num_iterations):
             results = []
@@ -50,22 +48,25 @@ class TestClass:
                 chunks = chunk_file(file_path, language="python")
                 results.append(len(chunks))
             return results
+
         num_threads = 4
         iterations_per_thread = 25
         start_time = time.time()
         threads = []
         results = []
         for _ in range(num_threads):
-            thread = threading.Thread(target=lambda: results.append(
-                chunk_repeatedly(test_file, iterations_per_thread)))
+            thread = threading.Thread(
+                target=lambda: results.append(
+                    chunk_repeatedly(test_file, iterations_per_thread),
+                ),
+            )
             threads.append(thread)
             thread.start()
         for thread in threads:
             thread.join()
         concurrent_time = time.time() - start_time
         start_time = time.time()
-        [chunk_repeatedly(test_file, iterations_per_thread) for _ in range(
-            num_threads)]
+        [chunk_repeatedly(test_file, iterations_per_thread) for _ in range(num_threads)]
         sequential_time = time.time() - start_time
         if results:
             actual_count = results[0][0] if results[0] else 0
@@ -106,14 +107,17 @@ class Module_{i}:
     def transform(self):
         return str(self.value)
 """,
-                )
+            )
         file_paths = list(tmp_path.glob("*.py"))
         worker_counts = [1, 2, 4, mp.cpu_count()]
         times = {}
         for num_workers in worker_counts:
             start_time = time.time()
-            results = chunk_files_parallel(file_paths, language="python",
-                num_workers=num_workers)
+            results = chunk_files_parallel(
+                file_paths,
+                language="python",
+                num_workers=num_workers,
+            )
             elapsed = time.time() - start_time
             times[num_workers] = elapsed
             total_chunks = sum(len(chunks) for chunks in results.values())
@@ -133,11 +137,16 @@ class TestMemoryOptimization:
         large_file = tmp_path / "large_module.py"
         content_lines = []
         for i in range(500):
-            content_lines.extend([f"def function_{i}(x, y, z):",
-                f"    '''Process function {i} with inputs.'''",
-                "    result = x + y * z",
-                "    data = [j for j in range(10)]",
-                "    return result + sum(data)", ""])
+            content_lines.extend(
+                [
+                    f"def function_{i}(x, y, z):",
+                    f"    '''Process function {i} with inputs.'''",
+                    "    result = x + y * z",
+                    "    data = [j for j in range(10)]",
+                    "    return result + sum(data)",
+                    "",
+                ],
+            )
         large_file.write_text("\n".join(content_lines))
         process = psutil.Process()
         gc_collect()
@@ -162,14 +171,15 @@ class TestMemoryOptimization:
         large_chunks = []
         for i in range(20):
             test_file = tmp_path / f"cache_test_{i}.py"
-            lines = [f"# File {i} with substantial content",
+            lines = [
+                f"# File {i} with substantial content",
                 f"def large_function_{i}():",
-                f"    '''{'Large docstring ' * 100}'''"]
-            lines.extend(f"    data_{j} = [k for k in range(20)]" for j in
-                range(50))
+                f"    '''{'Large docstring ' * 100}'''",
+            ]
+            lines.extend(f"    data_{j} = [k for k in range(20)]" for j in range(50))
             lines.append(
                 "    return sum(sum(d) for d in locals().values() if isinstance(d, list))",
-                )
+            )
             content = "\n".join(lines)
             test_file.write_text(content)
             chunks = chunk_file(test_file, language="python")
@@ -238,8 +248,11 @@ class TestScalabilityLimits:
             small_file.write_text(f"def f{i}(): pass")
         file_paths = list(tmp_path.glob("tiny_*.py"))
         start_time = time.time()
-        results = chunk_files_parallel(file_paths, language="python",
-            num_workers=mp.cpu_count())
+        results = chunk_files_parallel(
+            file_paths,
+            language="python",
+            num_workers=mp.cpu_count(),
+        )
         elapsed = time.time() - start_time
         assert len(results) == 1000
         assert elapsed < 10.0
@@ -264,7 +277,7 @@ def function_{i}():
 class Class_{i}:
     pass
 """,
-                )
+            )
             test_files.append(test_file)
         start_time = time.time()
         for test_file in test_files:
@@ -285,9 +298,14 @@ class Class_{i}:
         test_file = tmp_path / "export_test.py"
         content_lines = []
         for i in range(200):
-            content_lines.extend([f"def function_{i}():",
-                f"    '''Docstring for function {i}'''", f"    return {i}", ""],
-                )
+            content_lines.extend(
+                [
+                    f"def function_{i}():",
+                    f"    '''Docstring for function {i}'''",
+                    f"    return {i}",
+                    "",
+                ],
+            )
         test_file.write_text("\n".join(content_lines))
         chunks = chunk_file(test_file, language="python")
         export_times = {}
@@ -315,42 +333,61 @@ class TestRealWorldScenarios:
         """Test performance with realistic mix of file sizes."""
         for i in range(20):
             small_file = tmp_path / f"small_{i}.py"
-            content = "\n".join([f"def small_func_{j}(): return {j}" for j in
-                range(5)])
+            content = "\n".join([f"def small_func_{j}(): return {j}" for j in range(5)])
             small_file.write_text(content)
         for i in range(10):
             medium_file = tmp_path / f"medium_{i}.py"
             content_lines = []
             for j in range(25):
-                content_lines.extend([f"def medium_func_{j}():",
-                    "    data = list(range(10))", "    result = sum(data)",
-                    "    return result", ""])
+                content_lines.extend(
+                    [
+                        f"def medium_func_{j}():",
+                        "    data = list(range(10))",
+                        "    result = sum(data)",
+                        "    return result",
+                        "",
+                    ],
+                )
             medium_file.write_text("\n".join(content_lines))
         for i in range(5):
             large_file = tmp_path / f"large_{i}.py"
             content_lines = []
             for j in range(100):
-                content_lines.extend([f"class LargeClass_{j}:",
-                    "    def __init__(self):", "        self.data = []",
-                    "    ", "    def method_a(self):",
-                    "        return len(self.data)", "    ",
-                    "    def method_b(self, value):",
-                    "        self.data.append(value)",
-                    "        return self.data", ""])
+                content_lines.extend(
+                    [
+                        f"class LargeClass_{j}:",
+                        "    def __init__(self):",
+                        "        self.data = []",
+                        "    ",
+                        "    def method_a(self):",
+                        "        return len(self.data)",
+                        "    ",
+                        "    def method_b(self, value):",
+                        "        self.data.append(value)",
+                        "        return self.data",
+                        "",
+                    ],
+                )
             large_file.write_text("\n".join(content_lines))
         all_files = list(tmp_path.glob("*.py"))
         start_time = time.time()
-        results = chunk_files_parallel(all_files, language="python",
-            num_workers=mp.cpu_count())
+        results = chunk_files_parallel(
+            all_files,
+            language="python",
+            num_workers=mp.cpu_count(),
+        )
         elapsed = time.time() - start_time
         assert len(results) == 35
         assert elapsed < 5.0
-        small_chunks = sum(len(chunks) for path, chunks in results.items() if
-            "small_" in path.name)
-        medium_chunks = sum(len(chunks) for path, chunks in results.items() if
-            "medium_" in path.name)
-        large_chunks = sum(len(chunks) for path, chunks in results.items() if
-            "large_" in path.name)
+        small_chunks = sum(
+            len(chunks) for path, chunks in results.items() if "small_" in path.name
+        )
+        medium_chunks = sum(
+            len(chunks) for path, chunks in results.items() if "medium_" in path.name
+        )
+        large_chunks = sum(
+            len(chunks) for path, chunks in results.items() if "large_" in path.name
+        )
         assert small_chunks >= 100
         assert medium_chunks >= 250
         assert large_chunks >= 1500
@@ -373,10 +410,13 @@ class Handler_{iteration}:
     def handle(self):
         return "handled\"
 """,
-                    )
+                )
             start_time = time.time()
-            chunk_files_parallel(list(tmp_path.glob("continuous_*.py")),
-                language="python", num_workers=2)
+            chunk_files_parallel(
+                list(tmp_path.glob("continuous_*.py")),
+                language="python",
+                num_workers=2,
+            )
             elapsed = time.time() - start_time
             processing_times.append(elapsed)
             time.sleep(0.1)

@@ -1,4 +1,5 @@
 """Standalone integration tests for token counting with hierarchy building."""
+
 import pytest
 
 from chunker.core import chunk_file
@@ -10,7 +11,7 @@ class TestTokenHierarchyStandalone:
     """Test token counting integrated with hierarchy building - standalone version."""
 
     @staticmethod
-    @pytest.fixture
+    @pytest.fixture()
     def sample_python_file(tmp_path):
         """Create a sample Python file for testing."""
         file_path = tmp_path / "sample.py"
@@ -31,7 +32,7 @@ class DataProcessor:
         ""\"Get all data.""\"
         return self._data.copy()
 """,
-            )
+        )
         return file_path
 
     @classmethod
@@ -57,6 +58,7 @@ class DataProcessor:
         assert len(hierarchy.root_chunks) > 0, "Should have root chunks"
         assert len(hierarchy.chunk_map) > 0, "Should have chunks in hierarchy"
         if hierarchy.children_map:
-            has_children = any(len(children) > 0 for children in hierarchy.
-                children_map.values())
+            has_children = any(
+                len(children) > 0 for children in hierarchy.children_map.values()
+            )
             assert has_children, "Should have parent-child relationships"

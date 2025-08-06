@@ -1,4 +1,5 @@
 """Test Swift language support."""
+
 import pytest
 
 from chunker import chunk_text

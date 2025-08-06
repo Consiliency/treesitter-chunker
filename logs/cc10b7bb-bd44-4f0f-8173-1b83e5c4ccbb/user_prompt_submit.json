@@ -40,5 +40,19 @@
     "cwd": "/home/jenner/code/treesitter-chunker",
     "hook_event_name": "UserPromptSubmit",
     "prompt": "Awesome, let's run our testing suite and then push the current progress to the remote as long as we pass the tests."
+  },
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "Okay, let's run our comprehensive test before we continue with the linting issues."
+  },
+  {
+    "session_id": "cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/cc10b7bb-bd44-4f0f-8173-1b83e5c4ccbb.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "Okay, before we move on, we need to make sure we're having 100% test passage. What's going on with the failing test?"
   }
 ]

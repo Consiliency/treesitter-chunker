@@ -33,8 +33,10 @@ class PostManager(BaseManager):
     @classmethod
     def find_by_author(cls, author_id):
         """Find posts by author."""
-        return [Post(1, "First Post", "Content 1", author_id), Post(2,
-            "Second Post", "Content 2", author_id)]
+        return [
+            Post(1, "First Post", "Content 1", author_id),
+            Post(2, "Second Post", "Content 2", author_id),
+        ]
 
     @classmethod
     def get_recent_posts(cls, limit=10):

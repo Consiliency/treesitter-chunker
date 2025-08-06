@@ -1,4 +1,5 @@
 """Neo4j export implementation for code chunks."""
+
 import csv
 from io import StringIO
 from pathlib import Path
@@ -22,8 +23,11 @@ class Neo4jExporter(GraphExporterBase):
         super().add_chunks(chunks)
         for node_id, node in self.nodes.items():
             labels = {"CodeChunk"}
-            chunk_type = node.chunk.metadata.get("chunk_type", node.chunk.
-                node_type) if node.chunk.metadata else node.chunk.node_type
+            chunk_type = (
+                node.chunk.metadata.get("chunk_type", node.chunk.node_type)
+                if node.chunk.metadata
+                else node.chunk.node_type
+            )
             if chunk_type:
                 label = self._to_pascal_case(chunk_type)
                 labels.add(label)
@@ -64,8 +68,7 @@ class Neo4jExporter(GraphExporterBase):
         headers = ["nodeId:ID", ":LABEL", *sorted(all_properties)]
         rows = []
         for node_id, node in self.nodes.items():
-            labels = ";".join(sorted(self.node_labels.get(node_id, {
-                "CodeChunk"})))
+            labels = ";".join(sorted(self.node_labels.get(node_id, {"CodeChunk"})))
             row = [node_id, labels]
             for prop in sorted(all_properties):
                 value = node.properties.get(prop, "")
@@ -120,28 +123,35 @@ class Neo4jExporter(GraphExporterBase):
         statements.append("// Create constraints for unique node IDs")
         statements.extend(
             f"CREATE CONSTRAINT {label.lower()}_unique_id IF NOT EXISTS FOR (n:{label}) REQUIRE n.nodeId IS UNIQUE;"
-             for label in unique_labels)
+            for label in unique_labels
+        )
         statements.append("\n// Create indexes for better query performance")
         statements.append(
             "CREATE INDEX codechunk_file_path IF NOT EXISTS FOR (n:CodeChunk) ON (n.file_path);",
-            )
+        )
         statements.append(
             "CREATE INDEX codechunk_node_type IF NOT EXISTS FOR (n:CodeChunk) ON (n.node_type);",
-            )
+        )
         statements.append(
             "CREATE INDEX codechunk_language IF NOT EXISTS FOR (n:CodeChunk) ON (n.language);",
-            )
+        )
         statements.append("\n// Create nodes")
         for node_id, node in self.nodes.items():
-            labels = ":".join(sorted(self.node_labels.get(node_id, {
-                "CodeChunk"})))
+            labels = ":".join(sorted(self.node_labels.get(node_id, {"CodeChunk"})))
             props = ["nodeId: " + self._escape_property_value(node_id)]
             for key, value in sorted(node.properties.items()):
-                if value is not None and value != "":
-                    props.append(f"{key}: {self._escape_property_value(value)}",
-                        )
-            cypher = f"CREATE (n:{labels} {{" + "\n  " + ",\n  ".join(props,
-                ) + "\n}});"
+                if value is not None and value:
+                    props.append(
+                        f"{key}: {self._escape_property_value(value)}",
+                    )
+            cypher = (
+                f"CREATE (n:{labels} {{"
+                "\n  "
+                + ",\n  ".join(
+                    props,
+                )
+                + "\n}});"
+            )
             statements.append(cypher)
         if self.edges:
             statements.append("\n// Create relationships")
@@ -150,8 +160,7 @@ class Neo4jExporter(GraphExporterBase):
                     props = []
                     for key, value in sorted(edge.properties.items()):
                         if value is not None:
-                            props.append(
-                                f"{key}: {self._escape_property_value(value)}")
+                            props.append(f"{key}: {self._escape_property_value(value)}")
                     prop_str = " {" + ", ".join(props) + "}"
                 else:
                     prop_str = ""
@@ -164,8 +173,7 @@ CREATE (a)-[:{edge.relationship_type}{prop_str}]->(b);"""
             setup_statements = []
             create_statements = []
             for stmt in statements:
-                if "CONSTRAINT" in stmt or "INDEX" in stmt or stmt.startswith(
-                    "//"):
+                if "CONSTRAINT" in stmt or "INDEX" in stmt or stmt.startswith("//"):
                     setup_statements.append(stmt)
                 else:
                     create_statements.append(stmt)
@@ -173,9 +181,8 @@ CREATE (a)-[:{edge.relationship_type}{prop_str}]->(b);"""
             if create_statements:
                 batched_statements.append("\n// Batched operations")
                 for i in range(0, len(create_statements), batch_size):
-                    batch = create_statements[i:i + batch_size]
-                    batched_statements.append(
-                        f"\n// Batch {i // batch_size + 1}")
+                    batch = create_statements[i : i + batch_size]
+                    batched_statements.append(f"\n// Batch {i // batch_size + 1}")
                     batched_statements.extend(batch)
                     if i + batch_size < len(create_statements):
                         batched_statements.append(":commit;")
@@ -216,12 +223,13 @@ CREATE (a)-[:{edge.relationship_type}{prop_str}]->(b);"""
             headers, data = self._generate_node_csv()
             nodes_path.write_text(headers + "\n" + data, encoding="utf-8")
             if self.edges:
-                rels_path = (output_path.parent /
-                    f"{output_path.stem}_relationships.csv")
+                rels_path = output_path.parent / f"{output_path.stem}_relationships.csv"
                 headers, data = self._generate_relationship_csv()
                 rels_path.write_text(headers + "\n" + data, encoding="utf-8")
-            import_cmd = self._generate_import_command(nodes_path,
-                rels_path if self.edges else None)
+            import_cmd = self._generate_import_command(
+                nodes_path,
+                rels_path if self.edges else None,
+            )
             cmd_path = output_path.parent / f"{output_path.stem}_import.sh"
             cmd_path.write_text(import_cmd, encoding="utf-8")
             cmd_path.chmod(493)
@@ -232,8 +240,10 @@ CREATE (a)-[:{edge.relationship_type}{prop_str}]->(b);"""
             raise ValueError(f"Unknown fmt: {fmt}")
 
     @staticmethod
-    def _generate_import_command(nodes_path: Path, relationships_path: (
-        Path | None)) -> str:
+    def _generate_import_command(
+        nodes_path: Path,
+        relationships_path: Path | None,
+    ) -> str:
         """Generate neo4j-admin import command."""
         cmd = "#!/bin/bash\n\n"
         cmd += "# Neo4j import command for code chunks\n"

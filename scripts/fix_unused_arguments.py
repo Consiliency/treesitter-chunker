@@ -1,4 +1,5 @@
 """Fix ARG001, ARG002, ARG005 errors by prefixing unused arguments with underscore."""
+
 import ast
 import re
 from pathlib import Path
@@ -25,14 +26,14 @@ class UnusedArgumentFixer(ast.NodeVisitor):
         self.generic_visit(node)
         self.current_function = prev_function
         self.used_names = prev_used_names
+
     visit_AsyncFunctionDef = visit_FunctionDef
 
     def _collect_used_names(self, node):
         """Collect all names used in the node."""
         if isinstance(node, ast.Name):
             self.used_names.add(node.id)
-        elif isinstance(node, ast.Attribute) and isinstance(node.value, ast
-            .Name):
+        elif isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
             self.used_names.add(node.value.id)
         for child in ast.iter_child_nodes(node):
             self._collect_used_names(child)
@@ -43,58 +44,149 @@ class UnusedArgumentFixer(ast.NodeVisitor):
             return
         for arg in func_node.args.args:
             if arg.arg not in self.used_names and not arg.arg.startswith("_"):
-                if arg.arg in {"self", "cls"} and func_node.args.args.index(arg,
-                    ) == 0:
+                if (
+                    arg.arg in {"self", "cls"}
+                    and func_node.args.args.index(
+                        arg,
+                    )
+                    == 0
+                ):
                     continue
                 if self._is_protocol_method(func_node):
                     continue
                 if self._is_override_method(func_node):
                     continue
-                self.fixes.append((arg.lineno, arg.col_offset, arg.arg,
-                    f"_{arg.arg}"))
+                self.fixes.append((arg.lineno, arg.col_offset, arg.arg, f"_{arg.arg}"))
         for arg in func_node.args.kwonlyargs:
             if arg.arg not in self.used_names and not arg.arg.startswith("_"):
-                self.fixes.append((arg.lineno, arg.col_offset, arg.arg,
-                    f"_{arg.arg}"))
+                self.fixes.append((arg.lineno, arg.col_offset, arg.arg, f"_{arg.arg}"))
 
     @staticmethod
     def _should_skip_function(node):
         """Check if function should be skipped."""
         if node.name.startswith("test_"):
             return True
-        special_methods = {"__init__", "__new__", "__del__", "__repr__",
-            "__str__", "__bytes__", "__format__", "__lt__", "__le__",
-            "__eq__", "__ne__", "__gt__", "__ge__", "__hash__", "__bool__",
-            "__getattr__", "__getattribute__", "__setattr__", "__delattr__",
-            "__dir__", "__get__", "__set__", "__delete__", "__set_name__",
-            "__slots__", "__init_subclass__", "__prepare__",
-            "__instancecheck__", "__subclasscheck__", "__call__", "__len__",
-            "__length_hint__", "__getitem__", "__setitem__", "__delitem__",
-            "__missing__", "__iter__", "__reversed__", "__contains__",
-            "__add__", "__sub__", "__mul__", "__matmul__", "__truediv__",
-            "__floordiv__", "__mod__", "__divmod__", "__pow__",
-            "__lshift__", "__rshift__", "__and__", "__xor__", "__or__",
-            "__radd__", "__rsub__", "__rmul__", "__rmatmul__",
-            "__rtruediv__", "__rfloordiv__", "__rmod__", "__rdivmod__",
-            "__rpow__", "__rlshift__", "__rrshift__", "__rand__",
-            "__rxor__", "__ror__", "__iadd__", "__isub__", "__imul__",
-            "__imatmul__", "__itruediv__", "__ifloordiv__", "__imod__",
-            "__ipow__", "__ilshift__", "__irshift__", "__iand__",
-            "__ixor__", "__ior__", "__neg__", "__pos__", "__abs__",
-            "__invert__", "__complex__", "__int__", "__float__",
-            "__index__", "__round__", "__trunc__", "__floor__", "__ceil__",
-            "__enter__", "__exit__", "__await__", "__aiter__", "__anext__",
-            "__aenter__", "__aexit__"}
+        special_methods = {
+            "__init__",
+            "__new__",
+            "__del__",
+            "__repr__",
+            "__str__",
+            "__bytes__",
+            "__format__",
+            "__lt__",
+            "__le__",
+            "__eq__",
+            "__ne__",
+            "__gt__",
+            "__ge__",
+            "__hash__",
+            "__bool__",
+            "__getattr__",
+            "__getattribute__",
+            "__setattr__",
+            "__delattr__",
+            "__dir__",
+            "__get__",
+            "__set__",
+            "__delete__",
+            "__set_name__",
+            "__slots__",
+            "__init_subclass__",
+            "__prepare__",
+            "__instancecheck__",
+            "__subclasscheck__",
+            "__call__",
+            "__len__",
+            "__length_hint__",
+            "__getitem__",
+            "__setitem__",
+            "__delitem__",
+            "__missing__",
+            "__iter__",
+            "__reversed__",
+            "__contains__",
+            "__add__",
+            "__sub__",
+            "__mul__",
+            "__matmul__",
+            "__truediv__",
+            "__floordiv__",
+            "__mod__",
+            "__divmod__",
+            "__pow__",
+            "__lshift__",
+            "__rshift__",
+            "__and__",
+            "__xor__",
+            "__or__",
+            "__radd__",
+            "__rsub__",
+            "__rmul__",
+            "__rmatmul__",
+            "__rtruediv__",
+            "__rfloordiv__",
+            "__rmod__",
+            "__rdivmod__",
+            "__rpow__",
+            "__rlshift__",
+            "__rrshift__",
+            "__rand__",
+            "__rxor__",
+            "__ror__",
+            "__iadd__",
+            "__isub__",
+            "__imul__",
+            "__imatmul__",
+            "__itruediv__",
+            "__ifloordiv__",
+            "__imod__",
+            "__ipow__",
+            "__ilshift__",
+            "__irshift__",
+            "__iand__",
+            "__ixor__",
+            "__ior__",
+            "__neg__",
+            "__pos__",
+            "__abs__",
+            "__invert__",
+            "__complex__",
+            "__int__",
+            "__float__",
+            "__index__",
+            "__round__",
+            "__trunc__",
+            "__floor__",
+            "__ceil__",
+            "__enter__",
+            "__exit__",
+            "__await__",
+            "__aiter__",
+            "__anext__",
+            "__aenter__",
+            "__aexit__",
+        }
         if node.name in special_methods:
             return True
         for decorator in node.decorator_list:
             if isinstance(decorator, ast.Name):
-                if decorator.id in {"property", "staticmethod",
-                    "classmethod", "abstractmethod", "click.command",
-                    "click.option"}:
+                if decorator.id in {
+                    "property",
+                    "staticmethod",
+                    "classmethod",
+                    "abstractmethod",
+                    "click.command",
+                    "click.option",
+                }:
                     return True
             elif isinstance(decorator, ast.Attribute) and decorator.attr in {
-                "setter", "deleter", "command", "option", "argument"}:
+                "setter",
+                "deleter",
+                "command",
+                "option",
+                "argument",
+            }:
                 return True
         return False
 
@@ -102,16 +194,30 @@ class UnusedArgumentFixer(ast.NodeVisitor):
     def _is_protocol_method(node):
         """Check if method is part of a protocol/interface."""
         for decorator in node.decorator_list:
-            if isinstance(decorator, ast.Name,
-                ) and decorator.id == "abstractmethod":
+            if (
+                isinstance(
+                    decorator,
+                    ast.Name,
+                )
+                and decorator.id == "abstractmethod"
+            ):
                 return True
-            if isinstance(decorator, ast.Attribute,
-                ) and decorator.attr == "abstractmethod":
+            if (
+                isinstance(
+                    decorator,
+                    ast.Attribute,
+                )
+                and decorator.attr == "abstractmethod"
+            ):
                 return True
         for stmt in node.body:
-            if isinstance(stmt, ast.Raise) and (isinstance(stmt.exc, ast.
-                Call) and (isinstance(stmt.exc.func, ast.Name) and stmt.exc
-                .func.id == "NotImplementedError")):
+            if isinstance(stmt, ast.Raise) and (
+                isinstance(stmt.exc, ast.Call)
+                and (
+                    isinstance(stmt.exc.func, ast.Name)
+                    and stmt.exc.func.id == "NotImplementedError"
+                )
+            ):
                 return True
         return False
 
@@ -119,8 +225,7 @@ class UnusedArgumentFixer(ast.NodeVisitor):
     def _is_override_method(node):
         """Check if method is likely overriding a parent method."""
         override_patterns = {"visit_", "process_", "handle_", "on_", "do_"}
-        return any(node.name.startswith(pattern) for pattern in
-            override_patterns)
+        return any(node.name.startswith(pattern) for pattern in override_patterns)
 
 
 def fix_file(file_path: Path) -> bool:
@@ -147,12 +252,16 @@ def fix_file(file_path: Path) -> bool:
                     matches = list(re.finditer(pattern, line))
                     best_match = None
                     for match in matches:
-                        if best_match is None or abs(match.start() - col_offset,
-                            ) < abs(best_match.start() - col_offset):
+                        if best_match is None or abs(
+                            match.start() - col_offset,
+                        ) < abs(best_match.start() - col_offset):
                             best_match = match
                     if best_match:
-                        new_line = line[:best_match.start()] + new_name + line[
-                            best_match.end():]
+                        new_line = (
+                            line[: best_match.start()]
+                            + new_name
+                            + line[best_match.end() :]
+                        )
                         lines[line_no - 1] = new_line
         new_content = "".join(lines)
         with Path(file_path).open("w", encoding="utf-8") as f:
@@ -169,12 +278,31 @@ def main():
     python_files = []
     for pattern in ["**/*.py"]:
         python_files.extend(Path().glob(pattern))
-    exclude_dirs = {".git", ".mypy_cache", ".ruff_cache", ".venv",
-        "__pycache__", "build", "dist", ".claude", "grammars", "archive",
-        "worktrees", "flask", "rust", "click", "gin", "guava", "googletest",
-        "lodash", "ruby", "serde"}
-    python_files = [f for f in python_files if not any(exc in f.parts for
-        exc in exclude_dirs)]
+    exclude_dirs = {
+        ".git",
+        ".mypy_cache",
+        ".ruff_cache",
+        ".venv",
+        "__pycache__",
+        "build",
+        "dist",
+        ".claude",
+        "grammars",
+        "archive",
+        "worktrees",
+        "flask",
+        "rust",
+        "click",
+        "gin",
+        "guava",
+        "googletest",
+        "lodash",
+        "ruby",
+        "serde",
+    }
+    python_files = [
+        f for f in python_files if not any(exc in f.parts for exc in exclude_dirs)
+    ]
     fixed_count = 0
     for file_path in python_files:
         if "test_" in file_path.name or "tests" in file_path.parts:

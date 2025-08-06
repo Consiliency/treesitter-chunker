@@ -1,4 +1,5 @@
 """Base class for database export functionality."""
+
 import hashlib
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -19,13 +20,20 @@ class DatabaseExporterBase(ABC):
         """Add chunks to be exported."""
         self.chunks.extend(chunks)
 
-    def add_relationship(self, source_chunk: CodeChunk, target_chunk:
-        CodeChunk, relationship_type: str, properties: (dict[str, Any] |
-        None) = None) -> None:
+    def add_relationship(
+        self,
+        source_chunk: CodeChunk,
+        target_chunk: CodeChunk,
+        relationship_type: str,
+        properties: dict[str, Any] | None = None,
+    ) -> None:
         """Add a relationship between chunks."""
-        rel = {"source_id": self._get_chunk_id(source_chunk), "target_id":
-            self._get_chunk_id(target_chunk), "relationship_type":
-            relationship_type, "properties": properties or {}}
+        rel = {
+            "source_id": self._get_chunk_id(source_chunk),
+            "target_id": self._get_chunk_id(target_chunk),
+            "relationship_type": relationship_type,
+            "properties": properties or {},
+        }
         self.relationships.append(rel)
 
     @staticmethod
@@ -36,13 +44,26 @@ class DatabaseExporterBase(ABC):
 
     def _get_chunk_data(self, chunk: CodeChunk) -> dict[str, Any]:
         """Convert chunk to database-friendly format."""
-        chunk_type = chunk.metadata.get("chunk_type", chunk.node_type,
-            ) if chunk.metadata else chunk.node_type
-        return {"id": self._get_chunk_id(chunk), "file_path": str(chunk.
-            file_path), "start_line": chunk.start_line, "end_line": chunk.
-            end_line, "start_byte": chunk.byte_start, "end_byte": chunk.
-            byte_end, "content": chunk.content, "chunk_type": chunk_type,
-            "language": chunk.language, "metadata": chunk.metadata or {}}
+        chunk_type = (
+            chunk.metadata.get(
+                "chunk_type",
+                chunk.node_type,
+            )
+            if chunk.metadata
+            else chunk.node_type
+        )
+        return {
+            "id": self._get_chunk_id(chunk),
+            "file_path": str(chunk.file_path),
+            "start_line": chunk.start_line,
+            "end_line": chunk.end_line,
+            "start_byte": chunk.byte_start,
+            "end_byte": chunk.byte_end,
+            "content": chunk.content,
+            "chunk_type": chunk_type,
+            "language": chunk.language,
+            "metadata": chunk.metadata or {},
+        }
 
     @classmethod
     @abstractmethod
@@ -76,8 +97,7 @@ class DatabaseExporterBase(ABC):
         Returns:
             List of SQL INSERT statements
         """
-        raise NotImplementedError(
-            "Subclasses must implement get_insert_statements()")
+        raise NotImplementedError("Subclasses must implement get_insert_statements()")
 
     @staticmethod
     def get_index_statements() -> list[str]:
@@ -86,25 +106,18 @@ class DatabaseExporterBase(ABC):
         Returns:
             List of CREATE INDEX statements
         """
-        return ["CREATE INDEX IF NOT EXISTS idx_file_path ON files(path);",
-            "CREATE INDEX IF NOT EXISTS idx_files_language ON files(language);"
-            ,
-            "CREATE INDEX IF NOT EXISTS idx_chunks_file_id ON chunks(file_id);"
-            ,
-            "CREATE INDEX IF NOT EXISTS idx_chunks_chunk_type ON chunks(chunk_type);"
-            ,
-            "CREATE INDEX IF NOT EXISTS idx_chunks_position ON chunks(file_id, start_line, end_line);"
-            ,
-            "CREATE INDEX IF NOT EXISTS idx_relationships_source ON relationships(source_id);"
-            ,
-            "CREATE INDEX IF NOT EXISTS idx_relationships_target ON relationships(target_id);"
-            ,
-            "CREATE INDEX IF NOT EXISTS idx_relationships_type ON relationships(relationship_type);"
-            ,
-            "CREATE INDEX IF NOT EXISTS idx_chunks_file_type ON chunks(file_id, chunk_type);"
-            ,
+        return [
+            "CREATE INDEX IF NOT EXISTS idx_file_path ON files(path);",
+            "CREATE INDEX IF NOT EXISTS idx_files_language ON files(language);",
+            "CREATE INDEX IF NOT EXISTS idx_chunks_file_id ON chunks(file_id);",
+            "CREATE INDEX IF NOT EXISTS idx_chunks_chunk_type ON chunks(chunk_type);",
+            "CREATE INDEX IF NOT EXISTS idx_chunks_position ON chunks(file_id, start_line, end_line);",
+            "CREATE INDEX IF NOT EXISTS idx_relationships_source ON relationships(source_id);",
+            "CREATE INDEX IF NOT EXISTS idx_relationships_target ON relationships(target_id);",
+            "CREATE INDEX IF NOT EXISTS idx_relationships_type ON relationships(relationship_type);",
+            "CREATE INDEX IF NOT EXISTS idx_chunks_file_type ON chunks(file_id, chunk_type);",
             "CREATE INDEX IF NOT EXISTS idx_relationships_source_type ON relationships(source_id, relationship_type);",
-            ]
+        ]
 
     @staticmethod
     def get_analysis_queries() -> dict[str, str]:
@@ -113,38 +126,34 @@ class DatabaseExporterBase(ABC):
         Returns:
             Dict mapping query names to SQL queries
         """
-        return {"chunks_per_file":
-            """
+        return {
+            "chunks_per_file": """
                 SELECT file_path, COUNT(*) as chunk_count
                 FROM chunks
                 GROUP BY file_path
                 ORDER BY chunk_count DESC;
-            """
-            , "chunks_by_type":
-            """
+            """,
+            "chunks_by_type": """
                 SELECT chunk_type, COUNT(*) as count
                 FROM chunks
                 GROUP BY chunk_type
                 ORDER BY count DESC;
-            """
-            , "average_chunk_size":
-            """
+            """,
+            "average_chunk_size": """
                 SELECT chunk_type,
                        AVG(end_line - start_line + 1) as avg_lines,
                        MIN(end_line - start_line + 1) as min_lines,
                        MAX(end_line - start_line + 1) as max_lines
                 FROM chunks
                 GROUP BY chunk_type;
-            """
-            , "relationship_summary":
-            """
+            """,
+            "relationship_summary": """
                 SELECT relationship_type, COUNT(*) as count
                 FROM relationships
                 GROUP BY relationship_type
                 ORDER BY count DESC;
-            """
-            , "most_connected_chunks":
-            """
+            """,
+            "most_connected_chunks": """
                 SELECT c.id, c.file_path, c.chunk_type,
                        COUNT(DISTINCT r1.target_id) as outgoing,
                        COUNT(DISTINCT r2.source_id) as incoming
@@ -154,9 +163,8 @@ class DatabaseExporterBase(ABC):
                 GROUP BY c.id, c.file_path, c.chunk_type
                 ORDER BY (outgoing + incoming) DESC
                 LIMIT 20;
-            """
-            , "find_dependencies":
-            """
+            """,
+            "find_dependencies": """
                 -- Find all chunks that a given chunk depends on
                 WITH RECURSIVE deps AS (
                     SELECT target_id as chunk_id, 1 as depth
@@ -176,4 +184,4 @@ class DatabaseExporterBase(ABC):
                 JOIN chunks c ON d.chunk_id = c.id
                 ORDER BY d.depth, c.file_path, c.start_line;
             """,
-            }
+        }

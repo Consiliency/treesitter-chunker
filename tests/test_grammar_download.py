@@ -1,4 +1,5 @@
 """Unit tests for Grammar Download Manager"""
+
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -33,13 +34,14 @@ class TestGrammarDownloadManager:
             manager = GrammarDownloadManager(cache_dir=cache_dir)
             assert manager._metadata["grammars"] == {}
             assert manager._metadata["version"] == "1.0"
-            manager._metadata["grammars"]["python"] = {"version": "master",
-                "path": str(cache_dir / "python")}
+            manager._metadata["grammars"]["python"] = {
+                "version": "master",
+                "path": str(cache_dir / "python"),
+            }
             manager._save_metadata()
             manager2 = GrammarDownloadManager(cache_dir=cache_dir)
             assert "python" in manager2._metadata["grammars"]
-            assert manager2._metadata["grammars"]["python"]["version"
-                ] == "master"
+            assert manager2._metadata["grammars"]["python"]["version"] == "master"
 
     @classmethod
     def test_is_grammar_cached(cls):
@@ -48,8 +50,10 @@ class TestGrammarDownloadManager:
             cache_dir = Path(tmpdir)
             manager = GrammarDownloadManager(cache_dir=cache_dir)
             assert not manager.is_grammar_cached("python")
-            manager._metadata["grammars"]["python"] = {"version": "master",
-                "compiled": str(cache_dir / "python.so")}
+            manager._metadata["grammars"]["python"] = {
+                "version": "master",
+                "compiled": str(cache_dir / "python.so"),
+            }
             assert not manager.is_grammar_cached("python")
             (cache_dir / "python.so").touch()
             assert manager.is_grammar_cached("python")
@@ -111,14 +115,20 @@ class TestGrammarDownloadManager:
 
             def progress_callback(progress: DownloadProgress):
                 progress_calls.append(progress)
+
             dest_file = cache_dir / "test.tar.gz"
-            manager._download_file("https://example.com/test.tar.gz", str(
-                dest_file), "python", progress_callback)
+            manager._download_file(
+                "https://example.com/test.tar.gz",
+                str(dest_file),
+                "python",
+                progress_callback,
+            )
             assert dest_file.exists()
             assert dest_file.read_bytes() == b"data" * 100
             assert len(progress_calls) > 0
-            assert all(p.current_file == "python-grammar.tar.gz" for p in
-                progress_calls)
+            assert all(
+                p.current_file == "python-grammar.tar.gz" for p in progress_calls
+            )
 
     @classmethod
     def test_compile_grammar(cls):
@@ -173,8 +183,10 @@ class TestGrammarDownloadManager:
             manager = GrammarDownloadManager(cache_dir=cache_dir)
             so_file = cache_dir / "python.so"
             so_file.touch()
-            manager._metadata["grammars"]["python"] = {"version": "master",
-                "compiled": str(so_file)}
+            manager._metadata["grammars"]["python"] = {
+                "version": "master",
+                "compiled": str(so_file),
+            }
             success, path = manager.download_and_compile("python")
             assert success
             assert path == str(so_file)
@@ -209,6 +221,7 @@ class TestGrammarDownloadManager:
             (inner_dir / "src").mkdir()
             (inner_dir / "src" / "parser.c").write_text("// parser")
             import tarfile
+
             archive_path = cache_dir / "test.tar.gz"
             with tarfile.Path(archive_path).open("w:gz") as tar:
                 tar.add(inner_dir, arcname="tree-sitter-python-master")

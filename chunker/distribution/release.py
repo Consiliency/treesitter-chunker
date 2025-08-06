@@ -3,6 +3,7 @@ Release Management Implementation
 
 Implements the ReleaseManagementContract for release preparation and artifact creation
 """
+
 import hashlib
 import re
 import subprocess
@@ -17,12 +18,15 @@ from chunker.contracts.distribution_contract import ReleaseManagementContract
 class ReleaseManagementImpl(ReleaseManagementContract):
     """Implementation of the release management contract"""
 
-    def __init__(self, project_root: (Path | None) = None):
+    def __init__(self, project_root: Path | None = None):
         """Initialize the release manager"""
         self.project_root = project_root or Path.cwd()
 
-    def prepare_release(self, version: str, changelog: str) -> tuple[bool,
-        dict[str, Any]]:
+    def prepare_release(
+        self,
+        version: str,
+        changelog: str,
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Prepare a new release with version bump and changelog
 
@@ -33,27 +37,41 @@ class ReleaseManagementImpl(ReleaseManagementContract):
         Returns:
             Tuple of (success, release_info)
         """
-        release_info = {"version": version, "tag": f"v{version}",
-            "files_updated": [], "errors": [], "status": "pending"}
+        release_info = {
+            "version": version,
+            "tag": f"v{version}",
+            "files_updated": [],
+            "errors": [],
+            "status": "pending",
+        }
         if not re.match(r"^\\d+\\.\\d+\\.\\d+(-\\w+)?$", version):
             release_info["errors"].append(f"Invalid version format: {version}")
             release_info["status"] = "failed"
             return False, release_info
         current_version = self._get_current_version()
-        if current_version and not self._is_version_higher(version,
-            current_version):
+        if current_version and not self._is_version_higher(version, current_version):
             release_info["errors"].append(
                 f"Version {version} is not higher than current {current_version}",
-                )
+            )
             release_info["status"] = "failed"
             return False, release_info
-        version_files = [("setup.py",
-            'version\\s*=\\s*["\\\']([^"\\\']+)["\\\']',
-            f'version="{version}"'), ("pyproject.toml",
-            'version\\s*=\\s*["\\\']([^"\\\']+)["\\\']',
-            f'version = "{version}"'), ("chunker/__init__.py",
-            '__version__\\s*=\\s*["\\\']([^"\\\']+)["\\\']',
-            f'__version__ = "{version}"')]
+        version_files = [
+            (
+                "setup.py",
+                "version\\s*=\\s*[\"\\']([^\"\\']+)[\"\\']",
+                f'version="{version}"',
+            ),
+            (
+                "pyproject.toml",
+                "version\\s*=\\s*[\"\\']([^\"\\']+)[\"\\']",
+                f'version = "{version}"',
+            ),
+            (
+                "chunker/__init__.py",
+                "__version__\\s*=\\s*[\"\\']([^\"\\']+)[\"\\']",
+                f'__version__ = "{version}"',
+            ),
+        ]
         for filename, pattern, replacement in version_files:
             filepath = self.project_root / filename
             if filepath.exists():
@@ -64,8 +82,7 @@ class ReleaseManagementImpl(ReleaseManagementContract):
                         filepath.write_text(new_content)
                         release_info["files_updated"].append(str(filepath))
                 except (OSError, FileNotFoundError, IndexError) as e:
-                    release_info["errors"].append(
-                        f"Failed to update {filename}: {e!s}")
+                    release_info["errors"].append(f"Failed to update {filename}: {e!s}")
         changelog_path = self.project_root / "CHANGELOG.md"
         try:
             if changelog_path.exists():
@@ -99,24 +116,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
             release_info["errors"].append(f"Failed to update CHANGELOG: {e!s}")
         try:
             subprocess.run(["git", "--version"], capture_output=True, check=True)
-            result = subprocess.run(["git", "tag", "-l", release_info["tag"
-                ]], capture_output=True, text=True, check=False)
+            result = subprocess.run(
+                ["git", "tag", "-l", release_info["tag"]],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
             if not result.stdout.strip():
-                subprocess.run(["git", "tag", "-a", release_info["tag"],
-                    "-m", f"""Release {version}
+                subprocess.run(
+                    [
+                        "git",
+                        "tag",
+                        "-a",
+                        release_info["tag"],
+                        "-m",
+                        f"""Release {version}
 
-{changelog}"""], check=True)
+{changelog}""",
+                    ],
+                    check=True,
+                )
                 release_info["git_tag_created"] = True
             else:
                 release_info["git_tag_created"] = False
                 release_info["errors"].append(
-                    f"Tag {release_info['tag']} already exists")
+                    f"Tag {release_info['tag']} already exists",
+                )
         except subprocess.CalledProcessError:
-            release_info["errors"].append(
-                "Git not available or tag creation failed")
+            release_info["errors"].append("Git not available or tag creation failed")
         if release_info["errors"]:
-            release_info["status"] = "partial_success" if release_info[
-                "files_updated"] else "failed"
+            release_info["status"] = (
+                "partial_success" if release_info["files_updated"] else "failed"
+            )
             success = False
         else:
             release_info["status"] = "success"
@@ -141,29 +172,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
             if old_file.is_file():
                 old_file.unlink()
         try:
-            subprocess.run([sys.executable, "-m", "build", "--sdist",
-                "--outdir", str(output_dir)], check=True, capture_output=True)
+            subprocess.run(
+                [sys.executable, "-m", "build", "--sdist", "--outdir", str(output_dir)],
+                check=True,
+                capture_output=True,
+            )
             sdist_files = list(output_dir.glob("*.tar.gz"))
             artifacts.extend(sdist_files)
         except subprocess.CalledProcessError:
             try:
-                subprocess.run([sys.executable, "setup.py", "sdist",
-                    "--dist-dir", str(output_dir)], check=True,
-                    capture_output=True)
+                subprocess.run(
+                    [
+                        sys.executable,
+                        "setup.py",
+                        "sdist",
+                        "--dist-dir",
+                        str(output_dir),
+                    ],
+                    check=True,
+                    capture_output=True,
+                )
                 sdist_files = list(output_dir.glob("*.tar.gz"))
                 artifacts.extend(sdist_files)
             except subprocess.CalledProcessError:
                 pass
         try:
-            subprocess.run([sys.executable, "-m", "build", "--wheel",
-                "--outdir", str(output_dir)], check=True, capture_output=True)
+            subprocess.run(
+                [sys.executable, "-m", "build", "--wheel", "--outdir", str(output_dir)],
+                check=True,
+                capture_output=True,
+            )
             wheel_files = list(output_dir.glob("*.whl"))
             artifacts.extend(wheel_files)
         except subprocess.CalledProcessError:
             try:
-                subprocess.run([sys.executable, "setup.py", "bdist_wheel",
-                    "--dist-dir", str(output_dir)], check=True,
-                    capture_output=True)
+                subprocess.run(
+                    [
+                        sys.executable,
+                        "setup.py",
+                        "bdist_wheel",
+                        "--dist-dir",
+                        str(output_dir),
+                    ],
+                    check=True,
+                    capture_output=True,
+                )
                 wheel_files = list(output_dir.glob("*.whl"))
                 artifacts.extend(wheel_files)
             except subprocess.CalledProcessError:
@@ -196,24 +249,22 @@ docker pull treesitter-chunker:{version}
 
 See `treesitter-chunker-{version}.sha256` for file checksums.
 """,
-            )
+        )
         artifacts.append(release_notes)
         return artifacts
 
-    def _get_current_version(self) -> (str | None):
+    def _get_current_version(self) -> str | None:
         """Get the current version from project files"""
         setup_py = self.project_root / "setup.py"
         if setup_py.exists():
             content = setup_py.read_text()
-            match = re.search('version\\s*=\\s*["\\\']([^"\\\']+)["\\\']',
-                content)
+            match = re.search(r"version\s*=\s*[\"']([^\"']+)[\"']", content)
             if match:
                 return match.group(1)
         pyproject = self.project_root / "pyproject.toml"
         if pyproject.exists():
             content = pyproject.read_text()
-            match = re.search('version\\s*=\\s*["\\\']([^"\\\']+)["\\\']',
-                content)
+            match = re.search(r"version\s*=\s*[\"']([^\"']+)[\"']", content)
             if match:
                 return match.group(1)
         return None
@@ -227,6 +278,7 @@ See `treesitter-chunker-{version}.sha256` for file checksums.
             if parts:
                 return tuple(int(p) for p in parts.groups())
             return 0, 0, 0
+
         new_parts = parse_version(new_version)
         current_parts = parse_version(current_version)
         return new_parts > current_parts

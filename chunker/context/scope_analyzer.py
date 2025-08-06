@@ -2,6 +2,7 @@
 
 Provides functionality to analyze scope relationships and visible symbols.
 """
+
 from tree_sitter import Node
 
 from chunker.interfaces.context import ScopeAnalyzer
@@ -20,7 +21,7 @@ class BaseScopeAnalyzer(ScopeAnalyzer):
         self._scope_cache: dict[int, Node | None] = {}
         self._visible_symbols_cache: dict[int, set[str]] = {}
 
-    def get_enclosing_scope(self, node: Node) -> (Node | None):
+    def get_enclosing_scope(self, node: Node) -> Node | None:
         """Get the enclosing scope for a node.
 
         Args:
@@ -132,6 +133,7 @@ class BaseScopeAnalyzer(ScopeAnalyzer):
                     symbols.add(name)
             for child in node.children:
                 collect_definitions(child, depth + 1)
+
         collect_definitions(scope_node)
         return symbols
 
@@ -153,6 +155,7 @@ class BaseScopeAnalyzer(ScopeAnalyzer):
                 imports.update(imported_names)
             for child in node.children:
                 collect_imports(child)
+
         collect_imports(ast)
         return imports
 
@@ -163,8 +166,12 @@ class BaseScopeAnalyzer(ScopeAnalyzer):
         Returns:
             Dictionary mapping node types to scope types
         """
-        return {"module": "module", "source_file": "module",
-            "function_definition": "function", "class_definition": "class"}
+        return {
+            "module": "module",
+            "source_file": "module",
+            "function_definition": "function",
+            "class_definition": "class",
+        }
 
     @staticmethod
     def _is_scope_node(_node: Node) -> bool:
@@ -203,7 +210,7 @@ class BaseScopeAnalyzer(ScopeAnalyzer):
         return False
 
     @staticmethod
-    def _get_defined_name(_node: Node) -> (str | None):
+    def _get_defined_name(_node: Node) -> str | None:
         """Get the name being defined by a definition node.
 
         Args:

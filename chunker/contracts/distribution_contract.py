@@ -2,6 +2,7 @@
 Contract for Distribution Component
 Defines the interface for package distribution across platforms
 """
+
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
@@ -12,8 +13,11 @@ class DistributionContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def publish_to_pypi(package_dir: Path, repository: str = "pypi", dry_run:
-        bool = False) -> tuple[bool, dict[str, Any]]:
+    def publish_to_pypi(
+        package_dir: Path,
+        repository: str = "pypi",
+        dry_run: bool = False,
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Publish package to PyPI or TestPyPI
 
@@ -38,8 +42,10 @@ class DistributionContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def build_docker_image(tag: str, platforms: (list[str] | None) = None,
-        ) -> tuple[bool, str]:
+    def build_docker_image(
+        tag: str,
+        platforms: list[str] | None = None,
+    ) -> tuple[bool, str]:
         """
         Build Docker image for distribution
 
@@ -62,8 +68,7 @@ class DistributionContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def create_homebrew_formula(version: str, output_path: Path) -> tuple[
-        bool, Path]:
+    def create_homebrew_formula(version: str, output_path: Path) -> tuple[bool, Path]:
         """
         Generate Homebrew formula for macOS distribution
 
@@ -86,8 +91,7 @@ class DistributionContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def verify_installation(method: str, platform: str) -> tuple[bool, dict[
-        str, Any]]:
+    def verify_installation(method: str, platform: str) -> tuple[bool, dict[str, Any]]:
         """
         Verify package installs correctly via specified method
 
@@ -114,8 +118,7 @@ class ReleaseManagementContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def prepare_release(version: str, changelog: str) -> tuple[bool, dict[
-        str, Any]]:
+    def prepare_release(version: str, changelog: str) -> tuple[bool, dict[str, Any]]:
         """
         Prepare a new release with version bump and changelog
 

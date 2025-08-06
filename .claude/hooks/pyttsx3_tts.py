@@ -29,7 +29,7 @@ def main():
     """
 
     try:
-        import pyttsx3  # noqa: E402,PLC0415
+        import pyttsx3  # noqa: PLC0415
 
         # Initialize TTS engine
         engine = pyttsx3.init()

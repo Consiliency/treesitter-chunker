@@ -1,4 +1,5 @@
 """Batch processing implementation for efficient multi-file_path operations."""
+
 import heapq
 import logging
 from collections.abc import Callable
@@ -20,6 +21,7 @@ logger = logging.getLogger(__name__)
 @dataclass(order=True)
 class FileTask:
     """Represents a file_path processing task with priority."""
+
     priority: int
     file_path: str = field(compare=False)
     added_time: float = field(compare=False, default_factory=lambda: 0)
@@ -35,9 +37,12 @@ class BatchProcessor(BatchProcessorInterface):
     - Progress tracking and cancellation
     """
 
-    def __init__(self, memory_pool: (MemoryPool | None) = None,
-        performance_monitor: (PerformanceMonitor | None) = None, max_workers:
-        int = 4):
+    def __init__(
+        self,
+        memory_pool: MemoryPool | None = None,
+        performance_monitor: PerformanceMonitor | None = None,
+        max_workers: int = 4,
+    ):
         """Initialize batch processor.
 
         Args:
@@ -70,13 +75,20 @@ class BatchProcessor(BatchProcessorInterface):
                     logger.debug("File already queued: %s", file_path)
                     return
             import time
+
             task = FileTask(-priority, file_path, time.time())
             heapq.heappush(self._queue, task)
-            logger.debug("Added file_path to batch: %s (priority: %s)",
-                file_path, priority)
+            logger.debug(
+                "Added file_path to batch: %s (priority: %s)",
+                file_path,
+                priority,
+            )
 
-    def process_batch(self, batch_size: int = 10, parallel: bool = True) -> dict[
-        str, list[CodeChunk]]:
+    def process_batch(
+        self,
+        batch_size: int = 10,
+        parallel: bool = True,
+    ) -> dict[str, list[CodeChunk]]:
         """Process a batch of files.
 
         Args:
@@ -91,8 +103,6 @@ class BatchProcessor(BatchProcessorInterface):
             logger.info("No files to process")
             return {}
 
-
-
         logger.info(
             "Processing batch of %d files (%s)",
             len(batch_files),
@@ -104,6 +114,7 @@ class BatchProcessor(BatchProcessorInterface):
         if parallel and len(batch_files) > 1:
             return self._process_parallel(batch_files)
         return self._process_sequential(batch_files)
+
     def pending_count(self) -> int:
         """Get number of files pending processing.
 
@@ -154,8 +165,10 @@ class BatchProcessor(BatchProcessorInterface):
                 self._processed.add(task.file_path)
             return batch
 
-    def _process_sequential(self, files: list[str]) -> dict[str, list[CodeChunk],
-        ]:
+    def _process_sequential(self, files: list[str]) -> dict[
+        str,
+        list[CodeChunk],
+    ]:
         """Process files sequentially.
 
         Args:
@@ -185,12 +198,16 @@ class BatchProcessor(BatchProcessorInterface):
         """
         results = {}
         with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
-            future_to_file = {executor.submit(self._process_file, file_path,
-                ): file_path for file_path in files}
+            future_to_file = {
+                executor.submit(
+                    self._process_file,
+                    file_path,
+                ): file_path
+                for file_path in files
+            }
             for future in as_completed(future_to_file):
                 if self._cancel_event.is_set():
-                    logger.info(
-                        "Batch processing cancelled, shutting down workers")
+                    logger.info("Batch processing cancelled, shutting down workers")
                     executor.shutdown(wait=False)
                     break
                 file_path = future_to_file[future]
@@ -202,7 +219,7 @@ class BatchProcessor(BatchProcessorInterface):
                     logger.error("Error processing %s: %s", file_path, e)
         return results
 
-    def _process_file(self, file_path: str) -> (list[CodeChunk] | None):
+    def _process_file(self, file_path: str) -> list[CodeChunk] | None:
         """Process a single file_path.
 
         Args:
@@ -221,12 +238,9 @@ class BatchProcessor(BatchProcessorInterface):
                 parser = self._memory_pool.acquire_parser(language)
                 try:
                     chunks = chunk_file_original(file_path, language)
-                    self._monitor.record_metric("batch.file_size", path.
-                        stat().st_size)
-                    self._monitor.record_metric("batch.chunk_count", len(
-                        chunks))
-                    logger.debug("Processed %s: %s chunks", file_path, len(
-                        chunks))
+                    self._monitor.record_metric("batch.file_size", path.stat().st_size)
+                    self._monitor.record_metric("batch.chunk_count", len(chunks))
+                    logger.debug("Processed %s: %s chunks", file_path, len(chunks))
                     return chunks
                 finally:
                     self._memory_pool.release_parser(parser, language)
@@ -236,7 +250,7 @@ class BatchProcessor(BatchProcessorInterface):
             return None
 
     @staticmethod
-    def _get_language_from_extension(extension: str) -> (str | None):
+    def _get_language_from_extension(extension: str) -> str | None:
         """Map file_path extension to language.
 
         Args:
@@ -245,15 +259,29 @@ class BatchProcessor(BatchProcessorInterface):
         Returns:
             Language name or None
         """
-        extension_map = {".py": "python", ".js": "javascript", ".jsx":
-            "javascript", ".ts": "javascript", ".tsx": "javascript", ".c":
-            "c", ".h": "c", ".cpp": "cpp", ".cc": "cpp", ".cxx": "cpp",
-            ".hpp": "cpp", ".rs": "rust"}
+        extension_map = {
+            ".py": "python",
+            ".js": "javascript",
+            ".jsx": "javascript",
+            ".ts": "javascript",
+            ".tsx": "javascript",
+            ".c": "c",
+            ".h": "c",
+            ".cpp": "cpp",
+            ".cc": "cpp",
+            ".cxx": "cpp",
+            ".hpp": "cpp",
+            ".rs": "rust",
+        }
         return extension_map.get(extension.lower())
 
-    def process_directory(self, directory: str, pattern: str = "**/*",
-        recursive: bool = True, priority_fn: (Callable[[Path], int] | None) = None,
-        ) -> dict[str, list[CodeChunk]]:
+    def process_directory(
+        self,
+        directory: str,
+        pattern: str = "**/*",
+        recursive: bool = True,
+        priority_fn: Callable[[Path], int] | None = None,
+    ) -> dict[str, list[CodeChunk]]:
         """Process all matching files in a directory.
 
         Args:
@@ -273,10 +301,13 @@ class BatchProcessor(BatchProcessorInterface):
             files = list(dir_path.rglob(pattern))
         else:
             files = list(dir_path.glob(pattern))
-        valid_files = [file_path for file_path in files if file_path.
-            is_file() and self._get_language_from_extension(file_path.suffix)]
-        logger.info("Found %s files to process in %s", len(valid_files),
-            directory)
+        valid_files = [
+            file_path
+            for file_path in files
+            if file_path.is_file()
+            and self._get_language_from_extension(file_path.suffix)
+        ]
+        logger.info("Found %s files to process in %s", len(valid_files), directory)
         for file_path in valid_files:
             priority = priority_fn(file_path) if priority_fn else 0
             self.add_file(str(file_path), priority)

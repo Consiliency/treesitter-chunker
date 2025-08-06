@@ -3,6 +3,7 @@
 This script demonstrates how the sliding window fallback integrates
 with the existing chunker infrastructure.
 """
+
 import tempfile
 from pathlib import Path
 
@@ -27,10 +28,17 @@ class DemoProcessor(TextProcessor):
         for i, section in enumerate(sections):
             if not section.strip():
                 continue
-            chunk = CodeChunk(language="demo", file_path=file_path,
-                node_type="demo_section", start_line=1, end_line=section.
-                count("\n") + 1, byte_start=0, byte_end=len(section),
-                parent_context=f"demo_{i}", content=section)
+            chunk = CodeChunk(
+                language="demo",
+                file_path=file_path,
+                node_type="demo_section",
+                start_line=1,
+                end_line=section.count("\n") + 1,
+                byte_start=0,
+                byte_end=len(section),
+                parent_context=f"demo_{i}",
+                content=section,
+            )
             chunks.append(chunk)
         return chunks
 
@@ -52,7 +60,12 @@ class Example:
     def get_value(self):
         return self.value
 """
-    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        encoding="utf-8",
+        mode="w",
+        suffix=".py",
+        delete=False,
+    ) as f:
         f.write(python_code)
         temp_file = f.name
     try:
@@ -63,7 +76,7 @@ class Example:
         for chunk in chunks:
             print(
                 f"  - {chunk.node_type}: lines {chunk.start_line}-{chunk.end_line}",
-                )
+            )
     finally:
         Path(temp_file).unlink()
 
@@ -82,14 +95,23 @@ With different content.
 
 Regular text without demo marker.
 """
-    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".demo", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        encoding="utf-8",
+        mode="w",
+        suffix=".demo",
+        delete=False,
+    ) as f:
         f.write(content)
         temp_file = f.name
     try:
         fallback = SlidingWindowFallback()
-        fallback.register_custom_processor(name="demo_processor",
-            processor_class=DemoProcessor, file_types={FileType.TEXT},
-            extensions={".demo"}, priority=150)
+        fallback.register_custom_processor(
+            name="demo_processor",
+            processor_class=DemoProcessor,
+            file_types={FileType.TEXT},
+            extensions={".demo"},
+            priority=150,
+        )
         chunks = fallback.chunk_text(content, temp_file)
         print(f"Processed {temp_file}")
         print(f"Found {len(chunks)} chunks using fallback")
@@ -105,37 +127,38 @@ def test_mixed_repository():
     """Test processing a mixed repository."""
     print("\n=== Testing Mixed Repository ===")
     with tempfile.TemporaryDirectory() as tmpdir:
-        files = {"README.md":
-            "# Project\n\nDescription\n\n## Installation\n\nSteps...",
-            "main.py":
-            """def main():
+        files = {
+            "README.md": "# Project\n\nDescription\n\n## Installation\n\nSteps...",
+            "main.py": """def main():
     print("Hello")
 
 if __name__ == "__main__":
-    main()"""
-            , "config.ini":
-            "[settings]\nkey=value\n\n[database]\nhost=localhost",
-            "app.log":
-            """[INFO] Started
+    main()""",
+            "config.ini": "[settings]\nkey=value\n\n[database]\nhost=localhost",
+            "app.log": """[INFO] Started
 [ERROR] Connection failed
 [INFO] Retrying""",
             "data.csv": """name,age
 Alice,30
 Bob,25
 Charlie,35""",
-            "custom.demo":
-            """DEMO: Feature 1
+            "custom.demo": """DEMO: Feature 1
 Implementation
 
 DEMO: Feature 2
-Details"""}
+Details""",
+        }
         for filename, content in files.items():
             filepath = Path(tmpdir) / filename
             filepath.write_text(content)
         fallback = SlidingWindowFallback()
-        fallback.register_custom_processor(name="demo_processor",
-            processor_class=DemoProcessor, file_types={FileType.TEXT},
-            extensions={".demo"}, priority=150)
+        fallback.register_custom_processor(
+            name="demo_processor",
+            processor_class=DemoProcessor,
+            file_types={FileType.TEXT},
+            extensions={".demo"},
+            priority=150,
+        )
         print(f"\nProcessing files in {tmpdir}")
         for filename in sorted(files.keys()):
             filepath = Path(tmpdir) / filename
@@ -146,8 +169,14 @@ Details"""}
                 print(f"\n{filename}: Would use Tree-sitter")
             else:
                 chunks = fallback.chunk_text(content, str(filepath))
-                processor = chunks[0].metadata.get("processor", "unknown",
-                    ) if chunks else "none"
+                processor = (
+                    chunks[0].metadata.get(
+                        "processor",
+                        "unknown",
+                    )
+                    if chunks
+                    else "none"
+                )
                 print(f"\n{filename}: Using fallback processor '{processor}'")
                 print(f"  Chunks: {len(chunks)}")
 
@@ -156,11 +185,20 @@ def test_processor_info_api():
     """Test processor information API."""
     print("\n=== Testing Processor Info API ===")
     fallback = SlidingWindowFallback()
-    fallback.register_custom_processor(name="demo_processor",
-        processor_class=DemoProcessor, file_types={FileType.TEXT},
-        extensions={".demo"}, priority=150)
-    test_files = ["example.py", "example.md", "example.log", "example.demo",
-        "example.xyz"]
+    fallback.register_custom_processor(
+        name="demo_processor",
+        processor_class=DemoProcessor,
+        file_types={FileType.TEXT},
+        extensions={".demo"},
+        priority=150,
+    )
+    test_files = [
+        "example.py",
+        "example.md",
+        "example.log",
+        "example.demo",
+        "example.xyz",
+    ]
     print("\nProcessor selection for different file types:")
     for filename in test_files:
         info = fallback.get_processor_info(filename)
@@ -171,7 +209,7 @@ def test_processor_info_api():
             top_proc = info["processors"][0]
             print(
                 f"  Top processor: {top_proc['name']} (priority: {top_proc['priority']})",
-                )
+            )
 
 
 def test_configuration_integration():
@@ -200,16 +238,20 @@ chunker:
         config_path.write_text(config_content)
         chunker_config = ChunkerConfig(config_path)
         fallback = SlidingWindowFallback(chunker_config=chunker_config)
-        fallback.register_custom_processor(name="demo_processor",
-            processor_class=DemoProcessor, file_types={FileType.TEXT},
-            extensions={".demo"}, priority=150)
+        fallback.register_custom_processor(
+            name="demo_processor",
+            processor_class=DemoProcessor,
+            file_types={FileType.TEXT},
+            extensions={".demo"},
+            priority=150,
+        )
         print(f"Loaded configuration from {config_path}")
         print("\nProcessor configurations:")
         info = fallback.get_processor_info("test.demo")
         for proc in info["processors"][:3]:
             print(
                 f"  {proc['name']}: priority={proc['priority']}, enabled={proc['enabled']}",
-                )
+            )
 
 
 def main():
@@ -227,6 +269,7 @@ def main():
     except (ImportError, ModuleNotFoundError, TypeError) as e:
         print(f"\nError during testing: {e}")
         import traceback
+
         traceback.print_exc()
 
 

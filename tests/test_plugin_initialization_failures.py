@@ -3,6 +3,7 @@
 This module specifically tests how the plugin system handles various
 initialization failures and error conditions.
 """
+
 import threading
 import time
 from unittest.mock import MagicMock, patch
@@ -42,6 +43,7 @@ class TestPluginInitializationFailures:
             @property
             def default_chunk_types():
                 return {"function_definition"}
+
         manager = PluginManager()
         with pytest.raises(RuntimeError) as exc_info:
             manager.registry.register(FailingConstructorPlugin)
@@ -64,13 +66,15 @@ class TestPluginInitializationFailures:
                 return {"function_definition"}
 
             @staticmethod
-            def get_node_name(node, source):
+            def get_node_name(_node, _source):
                 return "test"
+
         manager = PluginManager()
         with pytest.raises((TypeError, RuntimeError)) as exc_info:
             manager.registry.register(IncompletePlugin)
-        assert "abstract" in str(exc_info.value,
-            ) or "Failed to instantiate" in str(exc_info.value)
+        assert "abstract" in str(
+            exc_info.value,
+        ) or "Failed to instantiate" in str(exc_info.value)
 
     @staticmethod
     def test_plugin_parser_initialization_failure():
@@ -102,8 +106,9 @@ class TestPluginInitializationFailures:
                 raise RuntimeError("Parser initialization failed!")
 
             @staticmethod
-            def get_node_name(node, source):
+            def get_node_name(_node, _source):
                 return "test"
+
         manager = PluginManager()
         manager.registry.register(ParserFailPlugin)
         with patch("chunker.plugin_manager.get_parser") as mock_get_parser:
@@ -132,6 +137,7 @@ class TestPluginInitializationFailures:
             @property
             def default_chunk_types():
                 return {"function_definition"}
+
         manager = PluginManager()
         with pytest.raises((TypeError, RuntimeError)):
             manager.registry.register(InvalidNamePlugin)
@@ -166,8 +172,9 @@ class TestPluginInitializationFailures:
                 return {"function_definition"}
 
             @staticmethod
-            def get_node_name(node, source):
+            def get_node_name(_node, _source):
                 return "test"
+
         manager = PluginManager()
         with pytest.raises(RuntimeError) as exc_info:
             manager.registry.register(DependencyPlugin)
@@ -206,8 +213,9 @@ class TestPluginInitializationFailures:
                 return {"function_definition"}
 
             @staticmethod
-            def get_node_name(node, source):
+            def get_node_name(_node, _source):
                 return "test"
+
         manager = PluginManager()
         manager.registry.register(ValidatedPlugin)
         invalid_config = PluginConfig(min_chunk_size=100, max_chunk_size=50)
@@ -245,8 +253,9 @@ class TestPluginInitializationFailures:
                 return {"function_definition"}
 
             @staticmethod
-            def get_node_name(node, source):
+            def get_node_name(_node, _source):
                 return "test"
+
         manager = PluginManager()
         with pytest.raises(RuntimeError) as exc_info:
             manager.registry.register(ResourcePlugin)
@@ -266,7 +275,7 @@ class CorruptedPlugin(LanguagePlugin:  # Missing closing parenthesis
     def language_name(self):
         return "corrupted\"
 """,
-            )
+        )
         manager = PluginManager()
         manager.add_plugin_directory(tmp_path)
         with patch("chunker.plugin_manager.logger") as mock_logger:
@@ -301,7 +310,7 @@ class CorruptedPlugin(LanguagePlugin:  # Missing closing parenthesis
                 return {"function_definition"}
 
             @staticmethod
-            def get_node_name(node, source):
+            def get_node_name(_node, _source):
                 return "test"
 
         class PluginB(LanguagePlugin):
@@ -326,8 +335,9 @@ class CorruptedPlugin(LanguagePlugin:  # Missing closing parenthesis
                 return {"function_definition"}
 
             @staticmethod
-            def get_node_name(node, source):
+            def get_node_name(_node, _source):
                 return "test"
+
         with pytest.raises(RuntimeError) as exc_info:
             manager.registry.register(PluginA)
         assert "plugin_b" in str(exc_info.value)
@@ -352,7 +362,7 @@ class CorruptedPlugin(LanguagePlugin:  # Missing closing parenthesis
                 if current_version < required_version:
                     raise RuntimeError(
                         f"Plugin requires tree-sitter >={required_version}, but {current_version} is installed",
-                        )
+                    )
 
             @staticmethod
             @property
@@ -370,8 +380,9 @@ class CorruptedPlugin(LanguagePlugin:  # Missing closing parenthesis
                 return {"function_definition"}
 
             @staticmethod
-            def get_node_name(node, source):
+            def get_node_name(_node, _source):
                 return "test"
+
         manager = PluginManager()
         with pytest.raises(RuntimeError) as exc_info:
             manager.registry.register(VersionedPlugin)
@@ -394,8 +405,7 @@ class CorruptedPlugin(LanguagePlugin:  # Missing closing parenthesis
                 with init_lock:
                     init_count += 1
                     if init_count > 1:
-                        raise RuntimeError(
-                            "Multiple simultaneous initializations!")
+                        raise RuntimeError("Multiple simultaneous initializations!")
                 time.sleep(0.1)
                 with init_lock:
                     init_count -= 1
@@ -416,8 +426,9 @@ class CorruptedPlugin(LanguagePlugin:  # Missing closing parenthesis
                 return {"function_definition"}
 
             @staticmethod
-            def get_node_name(node, source):
+            def get_node_name(_node, _source):
                 return "test"
+
         manager.registry.register(ThreadSafePlugin)
         results = []
         errors = []
@@ -428,6 +439,7 @@ class CorruptedPlugin(LanguagePlugin:  # Missing closing parenthesis
                 results.append(plugin)
             except (OSError, IndexError, KeyError) as e:
                 errors.append(e)
+
         threads = []
         for _ in range(3):
             t = threading.Thread(target=get_plugin)
@@ -436,8 +448,7 @@ class CorruptedPlugin(LanguagePlugin:  # Missing closing parenthesis
         for t in threads:
             t.join()
         assert len(errors) >= 1
-        assert any("Language" in str(e) and "not found" in str(e) for e in
-            errors)
+        assert any("Language" in str(e) and "not found" in str(e) for e in errors)
 
     @staticmethod
     def test_plugin_cleanup_on_initialization_failure():
@@ -453,8 +464,7 @@ class CorruptedPlugin(LanguagePlugin:  # Missing closing parenthesis
                 resources_allocated.append("resource1")
                 self.resource2 = self._allocate_resource("resource2")
                 resources_allocated.append("resource2")
-                raise RuntimeError(
-                    "Initialization failed after resource allocation")
+                raise RuntimeError("Initialization failed after resource allocation")
 
             @staticmethod
             def _allocate_resource(name):
@@ -482,8 +492,9 @@ class CorruptedPlugin(LanguagePlugin:  # Missing closing parenthesis
                 return {"function_definition"}
 
             @staticmethod
-            def get_node_name(node, source):
+            def get_node_name(_node, _source):
                 return "test"
+
         manager = PluginManager()
         with pytest.raises(RuntimeError):
             try:
@@ -514,7 +525,7 @@ class ImportErrorPlugin(LanguagePlugin):
     def default_chunk_types(self):
         return {"function_definition"}
 """,
-            )
+        )
         manager = PluginManager()
         with patch("chunker.plugin_manager.logger") as mock_logger:
             plugins = manager._load_plugin_from_file(plugin_file)
@@ -548,8 +559,9 @@ class ImportErrorPlugin(LanguagePlugin):
                 return "not_a_dict"
 
             @staticmethod
-            def get_node_name(node, source):
+            def get_node_name(_node, _source):
                 return "test"
+
         manager = PluginManager()
         try:
             manager.registry.register(MalformedPlugin)

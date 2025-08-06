@@ -1,4 +1,5 @@
 """Tests for the integration coordinator."""
+
 import json
 import subprocess
 from pathlib import Path
@@ -17,7 +18,7 @@ class TestIntegrationCoordinator:
     """Test the IntegrationCoordinator class."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def coordinator(cls, tmp_path):
         """Create a coordinator instance."""
         base_path = tmp_path / "worktrees"
@@ -29,7 +30,12 @@ class TestIntegrationCoordinator:
     @classmethod
     def test_register_scenario(cls, coordinator):
         """Test scenario registration."""
-        scenario = TestScenario(name="test_scenario", description="Test description", worktree="test-worktree", test_file="test_file.py")
+        scenario = TestScenario(
+            name="test_scenario",
+            description="Test description",
+            worktree="test-worktree",
+            test_file="test_file.py",
+        )
         coordinator.register_scenario(scenario)
         assert "test_scenario" in coordinator.scenarios
         assert coordinator.scenarios["test_scenario"] == scenario
@@ -38,11 +44,24 @@ class TestIntegrationCoordinator:
     def test_register_scenarios_from_config(cls, coordinator, tmp_path):
         """Test loading scenarios from config file."""
         config_file = tmp_path / "test_scenarios.json"
-        config_data = {"scenarios": [{"name": "scenario1", "description":
-            "Test 1", "worktree": "wt1", "test_file": "test1.py"}, {"name":
-            "scenario2", "description": "Test 2", "worktree": "wt2",
-            "test_file": "test2.py", "dependencies": ["scenario1"], "tags":
-            ["important"]}]}
+        config_data = {
+            "scenarios": [
+                {
+                    "name": "scenario1",
+                    "description": "Test 1",
+                    "worktree": "wt1",
+                    "test_file": "test1.py",
+                },
+                {
+                    "name": "scenario2",
+                    "description": "Test 2",
+                    "worktree": "wt2",
+                    "test_file": "test2.py",
+                    "dependencies": ["scenario1"],
+                    "tags": ["important"],
+                },
+            ],
+        }
         with Path(config_file).open("w", encoding="utf-8") as f:
             json.dump(config_data, f)
         coordinator.register_scenarios_from_config(config_file)
@@ -93,7 +112,12 @@ class TestIntegrationCoordinator:
     @patch("subprocess.run")
     def test_run_scenario(cls, mock_run, coordinator):
         """Test running a single scenario."""
-        scenario = TestScenario(name="test", description="Test", worktree="test-wt", test_file="test.py")
+        scenario = TestScenario(
+            name="test",
+            description="Test",
+            worktree="test-wt",
+            test_file="test.py",
+        )
         worktree_path = coordinator.base_path / "test-wt"
         worktree_path.mkdir()
         (worktree_path / ".venv" / "bin").mkdir(parents=True)
@@ -110,22 +134,47 @@ class TestIntegrationCoordinator:
     @classmethod
     def test_check_dependencies(cls, coordinator):
         """Test dependency checking."""
-        scenario1 = TestScenario(name="test1", description="Test 1",
-            worktree="wt1", test_file="test1.py")
-        scenario2 = TestScenario(name="test2", description="Test 2",
-            worktree="wt2", test_file="test2.py", dependencies=["test1"])
+        scenario1 = TestScenario(
+            name="test1",
+            description="Test 1",
+            worktree="wt1",
+            test_file="test1.py",
+        )
+        scenario2 = TestScenario(
+            name="test2",
+            description="Test 2",
+            worktree="wt2",
+            test_file="test2.py",
+            dependencies=["test1"],
+        )
         assert not coordinator.check_dependencies(scenario2)
-        coordinator.results.append(TestResult(scenario=scenario1, status="failed", duration=1.0, output=""))
+        coordinator.results.append(
+            TestResult(scenario=scenario1, status="failed", duration=1.0, output=""),
+        )
         assert not coordinator.check_dependencies(scenario2)
-        coordinator.results.append(TestResult(scenario=scenario1, status="passed", duration=1.0, output=""))
+        coordinator.results.append(
+            TestResult(scenario=scenario1, status="passed", duration=1.0, output=""),
+        )
         assert coordinator.check_dependencies(scenario2)
 
     @classmethod
     def test_topological_sort(cls, coordinator):
         """Test scenario sorting by dependencies."""
         s1 = TestScenario(name="s1", description="", worktree="", test_file="")
-        s2 = TestScenario(name="s2", description="", worktree="", test_file="", dependencies=["s1"])
-        s3 = TestScenario(name="s3", description="", worktree="", test_file="", dependencies=["s1", "s2"])
+        s2 = TestScenario(
+            name="s2",
+            description="",
+            worktree="",
+            test_file="",
+            dependencies=["s1"],
+        )
+        s3 = TestScenario(
+            name="s3",
+            description="",
+            worktree="",
+            test_file="",
+            dependencies=["s1", "s2"],
+        )
         s4 = TestScenario(name="s4", description="", worktree="", test_file="")
         coordinator.scenarios = {"s1": s1, "s2": s2, "s3": s3, "s4": s4}
         sorted_scenarios = coordinator._topological_sort_scenarios()
@@ -137,8 +186,20 @@ class TestIntegrationCoordinator:
     @classmethod
     def test_circular_dependency_detection(cls, coordinator):
         """Test circular dependency detection."""
-        s1 = TestScenario(name="s1", description="", worktree="", test_file="", dependencies=["s2"])
-        s2 = TestScenario(name="s2", description="", worktree="", test_file="", dependencies=["s1"])
+        s1 = TestScenario(
+            name="s1",
+            description="",
+            worktree="",
+            test_file="",
+            dependencies=["s2"],
+        )
+        s2 = TestScenario(
+            name="s2",
+            description="",
+            worktree="",
+            test_file="",
+            dependencies=["s1"],
+        )
         coordinator.scenarios = {"s1": s1, "s2": s2}
         with pytest.raises(ValueError, match="Circular"):
             coordinator._topological_sort_scenarios()
@@ -146,12 +207,34 @@ class TestIntegrationCoordinator:
     @classmethod
     def test_generate_report(cls, coordinator):
         """Test report generation."""
-        scenario1 = TestScenario(name="test1", description="", worktree="wt1", test_file="")
-        scenario2 = TestScenario(name="test2", description="", worktree="wt2", test_file="")
-        coordinator.results = [TestResult(scenario=scenario1, status="passed", duration=1.5, output=""), TestResult(scenario=scenario2, status="failed", duration=2.0, output="", error="Test failed"), TestResult(scenario=scenario1, status="passed",
-            duration=1.0, output="")]
-        coordinator.resource_tracker.track_resource(module="test",
-            resource_type="process", resource_id="leaked_proc")
+        scenario1 = TestScenario(
+            name="test1",
+            description="",
+            worktree="wt1",
+            test_file="",
+        )
+        scenario2 = TestScenario(
+            name="test2",
+            description="",
+            worktree="wt2",
+            test_file="",
+        )
+        coordinator.results = [
+            TestResult(scenario=scenario1, status="passed", duration=1.5, output=""),
+            TestResult(
+                scenario=scenario2,
+                status="failed",
+                duration=2.0,
+                output="",
+                error="Test failed",
+            ),
+            TestResult(scenario=scenario1, status="passed", duration=1.0, output=""),
+        ]
+        coordinator.resource_tracker.track_resource(
+            module="test",
+            resource_type="process",
+            resource_id="leaked_proc",
+        )
         report = coordinator.generate_report()
         assert report["summary"]["total"] == 3
         assert report["summary"]["passed"] == 2
@@ -170,9 +253,15 @@ class TestIntegrationCoordinator:
     @classmethod
     def test_save_report(cls, coordinator, tmp_path):
         """Test saving report to file."""
-        scenario = TestScenario(name="test", description="", worktree="wt",
-            test_file="")
-        coordinator.results = [TestResult(scenario=scenario, status="passed", duration=1.0, output="")]
+        scenario = TestScenario(
+            name="test",
+            description="",
+            worktree="wt",
+            test_file="",
+        )
+        coordinator.results = [
+            TestResult(scenario=scenario, status="passed", duration=1.0, output=""),
+        ]
         report_file = tmp_path / "test_report.json"
         coordinator.save_report(report_file)
         assert report_file.exists()

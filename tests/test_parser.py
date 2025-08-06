@@ -1,4 +1,5 @@
 """Tests for the refactored parser module."""
+
 from unittest.mock import patch
 
 import pytest
@@ -19,7 +20,6 @@ from chunker import (
 from chunker._internal.registry import LanguageMetadata
 from chunker.exceptions import ParserConfigError
 from chunker.parser import _factory, _initialize
-
 
 
 class TestParserAPI:

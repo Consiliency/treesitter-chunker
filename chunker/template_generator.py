@@ -3,6 +3,7 @@
 This module implements the TemplateGeneratorContract to generate language plugin
 files and test files from Jinja2 templates.
 """
+
 from __future__ import annotations
 
 import ast
@@ -17,7 +18,7 @@ from .contracts.template_generator_contract import TemplateGeneratorContract
 class TemplateGenerator(TemplateGeneratorContract):
     """Generate language plugin and test files from templates."""
 
-    def __init__(self, template_dir: (Path | None) = None):
+    def __init__(self, template_dir: Path | None = None):
         """Initialize the template generator.
 
         Args:
@@ -26,12 +27,19 @@ class TemplateGenerator(TemplateGeneratorContract):
         if template_dir is None:
             template_dir = Path(__file__).parent.parent / "templates"
         self.template_dir = template_dir
-        self._env = Environment(loader=FileSystemLoader(str(template_dir)),
-            undefined=StrictUndefined, trim_blocks=True, lstrip_blocks=True,
-            autoescape=True)
+        self._env = Environment(
+            loader=FileSystemLoader(str(template_dir)),
+            undefined=StrictUndefined,
+            trim_blocks=True,
+            lstrip_blocks=True,
+            autoescape=True,
+        )
 
-    def generate_plugin(self, language_name: str, config: dict[str, any],
-        ) -> tuple[bool, Path]:
+    def generate_plugin(
+        self,
+        language_name: str,
+        config: dict[str, any],
+    ) -> tuple[bool, Path]:
         """Generate a language plugin file from template.
 
         Args:
@@ -52,8 +60,13 @@ class TemplateGenerator(TemplateGeneratorContract):
         except (FileNotFoundError, OSError, ValueError) as e:
             print(f"Error rendering template: {e}")
             return False, Path()
-        output_path = Path(__file__,
-            ).parent / "languages" / f"{language_name}.py"
+        output_path = (
+            Path(
+                __file__,
+            ).parent
+            / "languages"
+            / f"{language_name}.py"
+        )
         try:
             output_path.parent.mkdir(exist_ok=True)
             output_path.write_text(content)
@@ -62,8 +75,11 @@ class TemplateGenerator(TemplateGeneratorContract):
             return False, Path()
         return True, output_path
 
-    def generate_test(self, language_name: str, test_cases: list[dict[str,
-        str]]) -> tuple[bool, Path]:
+    def generate_test(
+        self,
+        language_name: str,
+        test_cases: list[dict[str, str]],
+    ) -> tuple[bool, Path]:
         """Generate test file for a language plugin.
 
         Args:
@@ -77,8 +93,13 @@ class TemplateGenerator(TemplateGeneratorContract):
             return False, Path()
         if not self._validate_test_cases(test_cases):
             return False, Path()
-        plugin_path = Path(__file__,
-            ).parent / "languages" / f"{language_name}.py"
+        plugin_path = (
+            Path(
+                __file__,
+            ).parent
+            / "languages"
+            / f"{language_name}.py"
+        )
         if not plugin_path.exists():
             print(f"Plugin for {language_name} does not exist")
             return False, Path()
@@ -89,8 +110,13 @@ class TemplateGenerator(TemplateGeneratorContract):
         except (FileNotFoundError, OSError, ValueError) as e:
             print(f"Error rendering template: {e}")
             return False, Path()
-        output_path = Path(__file__,
-            ).parent.parent / "tests" / f"test_{language_name}_language.py"
+        output_path = (
+            Path(
+                __file__,
+            ).parent.parent
+            / "tests"
+            / f"test_{language_name}_language.py"
+        )
         try:
             output_path.parent.mkdir(exist_ok=True)
             output_path.write_text(content)
@@ -122,25 +148,38 @@ class TemplateGenerator(TemplateGeneratorContract):
             ast.parse(content)
         except SyntaxError as e:
             issues.append(f"Syntax error: {e}")
-        required_imports = ["from tree_sitter import Node",
+        required_imports = [
+            "from tree_sitter import Node",
             "from .plugin_base import LanguagePlugin",
             "from ..contracts.language_plugin_contract import ExtendedLanguagePluginContract",
-            ]
-        issues.extend(f"Missing required import: {imp}" for imp in
-            required_imports if imp not in content)
+        ]
+        issues.extend(
+            f"Missing required import: {imp}"
+            for imp in required_imports
+            if imp not in content
+        )
         class_pattern = (
             "class \\w+Plugin\\(.*LanguagePlugin.*ExtendedLanguagePluginContract.*\\):"
-            )
+        )
         if not re.search(class_pattern, content):
             issues.append(
                 "Plugin class must inherit from both LanguagePlugin and ExtendedLanguagePluginContract",
-                )
-        required_methods = ["get_semantic_chunks", "get_chunk_node_types",
-            "should_chunk_node", "get_node_context", "language_name",
-            "supported_extensions", "default_chunk_types", "get_node_name"]
-        issues.extend(f"Missing required method: {method}" for method in
-            required_methods if f"def {method}" not in content and
-            f"def {method}(" not in content)
+            )
+        required_methods = [
+            "get_semantic_chunks",
+            "get_chunk_node_types",
+            "should_chunk_node",
+            "get_node_context",
+            "language_name",
+            "supported_extensions",
+            "default_chunk_types",
+            "get_node_name",
+        ]
+        issues.extend(
+            f"Missing required method: {method}"
+            for method in required_methods
+            if f"def {method}" not in content and f"def {method}(" not in content
+        )
         return len(issues) == 0, issues
 
     @staticmethod
@@ -164,28 +203,45 @@ class TemplateGenerator(TemplateGeneratorContract):
         return True
 
     @staticmethod
-    def _prepare_plugin_variables(language_name: str, config: dict[str, any],
-        ) -> dict[str, any]:
+    def _prepare_plugin_variables(
+        language_name: str,
+        config: dict[str, any],
+    ) -> dict[str, any]:
         """Prepare variables for plugin template rendering."""
         class_name = language_name.capitalize()
-        file_extensions = [(ext if ext.startswith(".") else f".{ext}") for
-            ext in config["file_extensions"]]
-        return {"language_name": language_name, "class_name": class_name,
-            "node_types": config["node_types"], "file_extensions":
-            file_extensions, "include_imports": config.get(
-            "include_imports", True), "include_decorators": config.get(
-            "include_decorators", False), "include_nested": config.get(
-            "include_nested", True), "custom_node_handling": config.get(
-            "custom_node_handling", {})}
+        file_extensions = [
+            (ext if ext.startswith(".") else f".{ext}")
+            for ext in config["file_extensions"]
+        ]
+        return {
+            "language_name": language_name,
+            "class_name": class_name,
+            "node_types": config["node_types"],
+            "file_extensions": file_extensions,
+            "include_imports": config.get("include_imports", True),
+            "include_decorators": config.get("include_decorators", False),
+            "include_nested": config.get("include_nested", True),
+            "custom_node_handling": config.get("custom_node_handling", {}),
+        }
 
     @staticmethod
-    def _prepare_test_variables(language_name: str, test_cases: list[dict[
-        str, str]]) -> dict[str, any]:
+    def _prepare_test_variables(
+        language_name: str,
+        test_cases: list[dict[str, str]],
+    ) -> dict[str, any]:
         """Prepare variables for test template rendering."""
         class_name = language_name.capitalize()
-        processed_cases = [{"name": case["name"], "code": case["code"],
-            "expected_chunks": case.get("expected_chunks", 1),
-            "expected_types": case.get("expected_types", [])} for case in
-            test_cases]
-        return {"language_name": language_name, "class_name": class_name,
-            "test_cases": processed_cases}
+        processed_cases = [
+            {
+                "name": case["name"],
+                "code": case["code"],
+                "expected_chunks": case.get("expected_chunks", 1),
+                "expected_types": case.get("expected_types", []),
+            }
+            for case in test_cases
+        ]
+        return {
+            "language_name": language_name,
+            "class_name": class_name,
+            "test_cases": processed_cases,
+        }

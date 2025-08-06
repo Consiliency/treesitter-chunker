@@ -1,4 +1,5 @@
 """Tests for NASM language plugin."""
+
 import pytest
 
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
@@ -11,13 +12,13 @@ class TestNASMPlugin:
     """Test suite for NASM language plugin."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def plugin(cls):
         """Create a NASM plugin instance."""
         return NASMPlugin()
 
     @staticmethod
-    @pytest.fixture
+    @pytest.fixture()
     def parser():
         """Get a NASM parser."""
         return get_parser("nasm")
@@ -62,8 +63,7 @@ _start:
         label_chunks = [c for c in chunks if c["type"] == "label"]
         assert len(label_chunks) >= 2
         global_labels = [c for c in label_chunks if c.get("is_global", False)]
-        local_labels = [c for c in label_chunks if not c.get("is_global",
-            False)]
+        local_labels = [c for c in label_chunks if not c.get("is_global", False)]
         assert len(global_labels) >= 1
         assert any(c["name"] == "_start" for c in global_labels)
         assert len(local_labels) >= 1
@@ -145,9 +145,7 @@ endstruc
     @staticmethod
     def test_global_extern_directives(plugin, parser):
         """Test chunking of global and extern directives."""
-        code = (
-            "\nglobal _start\nglobal print_message\nextern printf\nextern malloc\n"
-            )
+        code = "\nglobal _start\nglobal print_message\nextern printf\nextern malloc\n"
         plugin.set_parser(parser)
         tree = parser.parse(code.encode())
         chunks = plugin.get_semantic_chunks(tree.root_node, code.encode())
@@ -167,7 +165,7 @@ endstruc
         """Test should_chunk_node method."""
         code = (
             "\nsection .text\nmy_label:\n    ret\n\n%macro TEST 0\n    nop\n%endmacro\n"
-            )
+        )
         tree = parser.parse(code.encode())
 
         def find_nodes_by_type(node, node_type):
@@ -178,6 +176,7 @@ endstruc
             for child in node.children:
                 results.extend(find_nodes_by_type(child, node_type))
             return results
+
         root = tree.root_node
         label_nodes = find_nodes_by_type(root, "label")
         section_nodes = find_nodes_by_type(root, "section")
@@ -213,6 +212,7 @@ my_function:
                 if result:
                     return result
             return None
+
         label_node = find_first_node_by_type(tree.root_node, "label")
         if label_node:
             context = plugin.get_node_context(label_node, source)
@@ -314,6 +314,7 @@ next_label:
                 chunks.append(chunk)
             for child in node.children:
                 process_tree(child)
+
         process_tree(tree.root_node)
         [c for c in chunks if c.node_type == "procedure"]
         [c for c in chunks if c.node_type == "label"]
@@ -322,8 +323,7 @@ next_label:
     @staticmethod
     def test_section_metadata(plugin, parser):
         """Test section metadata extraction."""
-        code = (
-            "\nsection .text\nsection .data\nsection .bss\nsection .rodata\n")
+        code = "\nsection .text\nsection .data\nsection .bss\nsection .rodata\n"
         plugin.set_parser(parser)
         tree = parser.parse(code.encode())
         source = code.encode()
@@ -335,6 +335,7 @@ next_label:
                 chunks.append(chunk)
             for child in node.children:
                 process_tree(child)
+
         process_tree(tree.root_node)
         section_chunks = [c for c in chunks if "section" in c.node_type]
         for chunk in section_chunks:
@@ -345,5 +346,9 @@ next_label:
                 elif ".data" in name:
                     assert chunk.metadata.get("section_type") == "data"
                 elif ".bss" in name:
-                    assert chunk.metadata.get("section_type",
-                        ) == "uninitialized_data"
+                    assert (
+                        chunk.metadata.get(
+                            "section_type",
+                        )
+                        == "uninitialized_data"
+                    )

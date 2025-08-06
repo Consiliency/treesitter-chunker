@@ -1,4 +1,5 @@
 """Tests for Zig language plugin."""
+
 import pytest
 
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
@@ -11,13 +12,13 @@ class TestZigPlugin:
     """Test suite for Zig language plugin."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def plugin(cls):
         """Create a Zig plugin instance."""
         return ZigPlugin()
 
     @staticmethod
-    @pytest.fixture
+    @pytest.fixture()
     def parser():
         """Get a Zig parser."""
         return get_parser("zig")
@@ -177,9 +178,7 @@ const FileError = error{
     @staticmethod
     def test_comptime_chunking(plugin, parser):
         """Test chunking of comptime declarations."""
-        code = (
-            "\ncomptime {\n    const pi = 3.14159;\n    const tau = pi * 2;\n}\n"
-            )
+        code = "\ncomptime {\n    const pi = 3.14159;\n    const tau = pi * 2;\n}\n"
         plugin.set_parser(parser)
         tree = parser.parse(code.encode())
         chunks = plugin.get_semantic_chunks(tree.root_node, code.encode())
@@ -204,6 +203,7 @@ test "example" {}
             for child in node.children:
                 results.extend(find_nodes_by_type(child, node_type))
             return results
+
         root = tree.root_node
         func_nodes = find_nodes_by_type(root, "function_declaration")
         struct_nodes = find_nodes_by_type(root, "struct_declaration")
@@ -233,8 +233,8 @@ test "my test" {}
                 if result:
                     return result
             return None
-        func_node = find_first_node_by_type(tree.root_node,
-            "function_declaration")
+
+        func_node = find_first_node_by_type(tree.root_node, "function_declaration")
         if func_node:
             context = plugin.get_node_context(func_node, source)
             assert context is not None
@@ -312,6 +312,7 @@ pub fn syscall(number: usize, arg1: usize) usize {
             for child in node.children:
                 results.extend(find_asm_nodes(child))
             return results
+
         asm_nodes = find_asm_nodes(tree.root_node)
         if asm_nodes:
             assert all(plugin.should_chunk_node(n) for n in asm_nodes)

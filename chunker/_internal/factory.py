@@ -33,10 +33,13 @@ class ParserConfig:
             not isinstance(self.timeout_ms, int) or self.timeout_ms < 0
         ):
             raise ParserConfigError(
-                "timeout_ms", self.timeout_ms, "Must be a non-negative integer"
+                "timeout_ms",
+                self.timeout_ms,
+                "Must be a non-negative integer",
             )
         if self.included_ranges is not None and not isinstance(
-            self.included_ranges, list
+            self.included_ranges,
+            list,
         ):
             raise ParserConfigError(
                 "included_ranges",
@@ -111,7 +114,10 @@ class ParserFactory:
     """Factory for creating and managing parser instances with caching and pooling."""
 
     def __init__(
-        self, registry: LanguageRegistry, cache_size: int = 10, pool_size: int = 5
+        self,
+        registry: LanguageRegistry,
+        cache_size: int = 10,
+        pool_size: int = 5,
     ):
         """Initialize the parser factory.
 
@@ -148,7 +154,8 @@ class ParserFactory:
         except ValueError as e:
             if "Incompatible Language version" in str(e):
                 match = re.search(
-                    r"version (\\d+)\\. Must be between (\\d+) and (\\d+)", str(e)
+                    r"version (\\d+)\\. Must be between (\\d+) and (\\d+)",
+                    str(e),
                 )
                 if match:
                     grammar_ver, min_ver, max_ver = match.groups()

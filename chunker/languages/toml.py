@@ -1,4 +1,5 @@
 """TOML language configuration."""
+
 from typing import Any
 
 from .base import LanguageConfig, language_config_registry
@@ -16,7 +17,7 @@ class TOMLPlugin(LanguagePlugin):
     def supported_node_types(self) -> set[str]:
         return {"document", "table", "pair", "array", "inline_table"}
 
-    def get_chunk_type(self, node_type: str) -> (str | None):
+    def get_chunk_type(self, node_type: str) -> str | None:
         return node_type if node_type in self.supported_node_types else None
 
     @staticmethod
@@ -25,8 +26,9 @@ class TOMLPlugin(LanguagePlugin):
         if node.type == "pair":
             key_node = node.child_by_field_name("key")
             if key_node:
-                metadata["key"] = source_code[key_node.start_byte:key_node.
-                    end_byte].decode("utf-8")
+                metadata["key"] = source_code[
+                    key_node.start_byte : key_node.end_byte
+                ].decode("utf-8")
         elif node.type == "table":
             metadata["table_type"] = "standard"
         return metadata
@@ -56,8 +58,7 @@ class TOMLConfig(LanguageConfig):
         self.add_ignore_type("boolean")
         self.add_ignore_type("comment")
 
-    @staticmethod
-    def is_chunk_node(node: Any, source: bytes) -> bool:
+    def is_chunk_node(self, node: Any, source: bytes) -> bool:
         """Override to add TOML-specific logic."""
         if not super().is_chunk_node(node, source):
             return False

@@ -2,6 +2,7 @@
 Contract for Debug Tools Component
 Defines the interface for AST visualization and chunk inspection tools
 """
+
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -11,8 +12,11 @@ class DebugVisualizationContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def visualize_ast(file_path: str, language: str, output_format: str = "svg",
-        ) -> (str | bytes):
+    def visualize_ast(
+        file_path: str,
+        language: str,
+        output_format: str = "svg",
+    ) -> str | bytes:
         """
         Generate visual representation of the AST for a file
 
@@ -37,8 +41,11 @@ class DebugVisualizationContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def inspect_chunk(file_path: str, chunk_id: str, include_context: bool = True,
-        ) -> dict[str, Any]:
+    def inspect_chunk(
+        file_path: str,
+        chunk_id: str,
+        include_context: bool = True,
+    ) -> dict[str, Any]:
         """
         Inspect details of a specific chunk
 
@@ -85,8 +92,11 @@ class DebugVisualizationContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def debug_mode_chunking(file_path: str, language: str, breakpoints: (
-        list[str] | None) = None) -> dict[str, Any]:
+    def debug_mode_chunking(
+        file_path: str,
+        language: str,
+        breakpoints: list[str] | None = None,
+    ) -> dict[str, Any]:
         """
         Run chunking in debug mode with detailed trace information
 
@@ -114,8 +124,11 @@ class ChunkComparisonContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def compare_strategies(file_path: str, language: str, strategies: list[str],
-        ) -> dict[str, Any]:
+    def compare_strategies(
+        file_path: str,
+        language: str,
+        strategies: list[str],
+    ) -> dict[str, Any]:
         """
         Compare different chunking strategies on the same file
 

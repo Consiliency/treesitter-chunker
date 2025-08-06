@@ -1,12 +1,19 @@
 """
 Support for NASM (Netwide Assembler) language.
 """
+
 from __future__ import annotations
+
+import contextlib
+from typing import TYPE_CHECKING
 
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
+
+if TYPE_CHECKING:
+    from tree_sitter import Node
 
 
 class NASMConfig(LanguageConfig):
@@ -19,9 +26,17 @@ class NASMConfig(LanguageConfig):
     @property
     def chunk_types(self) -> set[str]:
         """NASM-specific chunk types."""
-        return {"label", "section", "segment", "macro_definition",
-            "struc_definition", "data_definition", "procedure",
-            "global_directive", "extern_directive"}
+        return {
+            "label",
+            "section",
+            "segment",
+            "macro_definition",
+            "struc_definition",
+            "data_definition",
+            "procedure",
+            "global_directive",
+            "extern_directive",
+        }
 
     @property
     def file_extensions(self) -> set[str]:
@@ -29,12 +44,22 @@ class NASMConfig(LanguageConfig):
 
     def __init__(self):
         super().__init__()
-        self.add_chunk_rule(ChunkRule(node_types={"multi_macro_definition"},
-            include_children=True, priority=6, metadata={"type":
-            "multi_line_macro"}))
-        self.add_chunk_rule(ChunkRule(node_types={"conditional_assembly"},
-            include_children=True, priority=5, metadata={"type":
-            "conditional"}))
+        self.add_chunk_rule(
+            ChunkRule(
+                node_types={"multi_macro_definition"},
+                include_children=True,
+                priority=6,
+                metadata={"type": "multi_line_macro"},
+            ),
+        )
+        self.add_chunk_rule(
+            ChunkRule(
+                node_types={"conditional_assembly"},
+                include_children=True,
+                priority=5,
+                metadata={"type": "conditional"},
+            ),
+        )
         self.add_ignore_type("comment")
         self.add_ignore_type("line_comment")
 
@@ -55,39 +80,43 @@ class NASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
 
     @property
     def default_chunk_types(self) -> set[str]:
-        return {"label", "section", "segment", "macro_definition",
-            "struc_definition", "data_definition", "global_directive",
-            "extern_directive"}
+        return {
+            "label",
+            "section",
+            "segment",
+            "macro_definition",
+            "struc_definition",
+            "data_definition",
+            "global_directive",
+            "extern_directive",
+        }
 
     @staticmethod
-    def get_node_name(node: Node, source: bytes) -> (str | None):
+    def get_node_name(node: Node, source: bytes) -> str | None:
         """Extract the name from a NASM node."""
         if node.type == "label":
             for child in node.children:
                 if child.type == "identifier":
-                    name = source[child.start_byte:child.end_byte].decode(
-                        "utf-8")
+                    name = source[child.start_byte : child.end_byte].decode("utf-8")
                     return name.rstrip(":")
         elif node.type in {"section", "segment"}:
             for child in node.children:
                 if child.type in {"identifier", "section_name"}:
-                    return source[child.start_byte:child.end_byte].decode(
-                        "utf-8")
+                    return source[child.start_byte : child.end_byte].decode("utf-8")
         elif node.type == "macro_definition":
             for i, child in enumerate(node.children):
                 if child.type == "identifier" and i > 0:
-                    return source[child.start_byte:child.end_byte].decode(
-                        "utf-8")
+                    return source[child.start_byte : child.end_byte].decode("utf-8")
         elif node.type == "struc_definition" or node.type in {
-            "global_directive", "extern_directive"}:
+            "global_directive",
+            "extern_directive",
+        }:
             for child in node.children:
                 if child.type == "identifier":
-                    return source[child.start_byte:child.end_byte].decode(
-                        "utf-8")
+                    return source[child.start_byte : child.end_byte].decode("utf-8")
         return None
 
-    @staticmethod
-    def get_semantic_chunks(node: Node, source: bytes) -> list[dict[str, any]]:
+    def get_semantic_chunks(self, node: Node, source: bytes) -> list[dict[str, any]]:
         """Extract semantic chunks specific to NASM."""
         chunks = []
         current_section = None
@@ -95,12 +124,18 @@ class NASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         def extract_chunks(n: Node):
             nonlocal current_section
             if n.type == "label":
-                content = source[n.start_byte:n.end_byte].decode("utf-8",
-                    errors="replace")
+                content = source[n.start_byte : n.end_byte].decode(
+                    "utf-8",
+                    errors="replace",
+                )
                 name = self.get_node_name(n, source)
-                chunk = {"type": "label", "start_line": n.start_point[0] +
-                    1, "end_line": n.end_point[0] + 1, "content": content,
-                    "name": name}
+                chunk = {
+                    "type": "label",
+                    "start_line": n.start_point[0] + 1,
+                    "end_line": n.end_point[0] + 1,
+                    "content": content,
+                    "name": name,
+                }
                 if name and not name.startswith("."):
                     chunk["is_global"] = True
                 else:
@@ -109,44 +144,75 @@ class NASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     chunk["section"] = current_section
                 chunks.append(chunk)
             elif n.type in {"section", "segment"}:
-                content = source[n.start_byte:n.end_byte].decode("utf-8",
-                    errors="replace")
+                content = source[n.start_byte : n.end_byte].decode(
+                    "utf-8",
+                    errors="replace",
+                )
                 name = self.get_node_name(n, source)
                 current_section = name
-                chunk = {"type": "section", "start_line": n.start_point[0] +
-                    1, "end_line": n.end_point[0] + 1, "content": content,
-                    "name": name}
+                chunk = {
+                    "type": "section",
+                    "start_line": n.start_point[0] + 1,
+                    "end_line": n.end_point[0] + 1,
+                    "content": content,
+                    "name": name,
+                }
                 chunks.append(chunk)
             elif n.type == "macro_definition":
-                content = source[n.start_byte:n.end_byte].decode("utf-8",
-                    errors="replace")
-                chunk = {"type": "macro", "start_line": n.start_point[0] +
-                    1, "end_line": n.end_point[0] + 1, "content": content,
-                    "name": self.get_node_name(n, source)}
+                content = source[n.start_byte : n.end_byte].decode(
+                    "utf-8",
+                    errors="replace",
+                )
+                chunk = {
+                    "type": "macro",
+                    "start_line": n.start_point[0] + 1,
+                    "end_line": n.end_point[0] + 1,
+                    "content": content,
+                    "name": self.get_node_name(n, source),
+                }
                 chunks.append(chunk)
             elif n.type == "struc_definition":
-                content = source[n.start_byte:n.end_byte].decode("utf-8",
-                    errors="replace")
-                chunk = {"type": "struct", "start_line": n.start_point[0] +
-                    1, "end_line": n.end_point[0] + 1, "content": content,
-                    "name": self.get_node_name(n, source)}
+                content = source[n.start_byte : n.end_byte].decode(
+                    "utf-8",
+                    errors="replace",
+                )
+                chunk = {
+                    "type": "struct",
+                    "start_line": n.start_point[0] + 1,
+                    "end_line": n.end_point[0] + 1,
+                    "content": content,
+                    "name": self.get_node_name(n, source),
+                }
                 chunks.append(chunk)
             elif n.type == "global_directive":
-                content = source[n.start_byte:n.end_byte].decode("utf-8",
-                    errors="replace")
-                chunk = {"type": "global", "start_line": n.start_point[0] +
-                    1, "end_line": n.end_point[0] + 1, "content": content,
-                    "name": self.get_node_name(n, source)}
+                content = source[n.start_byte : n.end_byte].decode(
+                    "utf-8",
+                    errors="replace",
+                )
+                chunk = {
+                    "type": "global",
+                    "start_line": n.start_point[0] + 1,
+                    "end_line": n.end_point[0] + 1,
+                    "content": content,
+                    "name": self.get_node_name(n, source),
+                }
                 chunks.append(chunk)
             elif n.type == "extern_directive":
-                content = source[n.start_byte:n.end_byte].decode("utf-8",
-                    errors="replace")
-                chunk = {"type": "extern", "start_line": n.start_point[0] +
-                    1, "end_line": n.end_point[0] + 1, "content": content,
-                    "name": self.get_node_name(n, source)}
+                content = source[n.start_byte : n.end_byte].decode(
+                    "utf-8",
+                    errors="replace",
+                )
+                chunk = {
+                    "type": "extern",
+                    "start_line": n.start_point[0] + 1,
+                    "end_line": n.end_point[0] + 1,
+                    "content": content,
+                    "name": self.get_node_name(n, source),
+                }
                 chunks.append(chunk)
             for child in n.children:
                 extract_chunks(child)
+
         extract_chunks(node)
         return chunks
 
@@ -166,27 +232,44 @@ class NASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             return node.end_point[0] - node.start_point[0] > 2
         return False
 
-    def get_node_context(self, node: Node, source: bytes) -> (str | None):
+    def get_node_context(self, node: Node, source: bytes) -> str | None:
         """Extract meaningful context for a node."""
-        name = self.get_node_name(node, source)
+        # Handle special label case first
         if node.type == "label":
-            if name and name.startswith("."):
-                return f".{name}" if name else "local label"
-            return f"{name}:" if name else "label"
-        if node.type in {"section", "segment"}:
-            return f"section {name}" if name else "section"
-        if node.type == "macro_definition":
-            return f"%macro {name}" if name else "%macro"
-        if node.type == "struc_definition":
-            return f"struc {name}" if name else "struc"
-        if node.type == "global_directive":
-            return f"global {name}" if name else "global"
-        if node.type == "extern_directive":
-            return f"extern {name}" if name else "extern"
-        return None
+            return self._get_label_context(node, source)
 
-    def process_node(self, node: Node, source: bytes, file_path: str,
-        parent_context: (str | None) = None):
+        # Map node types to their context format
+        node_context_map = {
+            "section": ("section", "section"),
+            "segment": ("section", "section"),
+            "macro_definition": ("%macro", "%macro"),
+            "struc_definition": ("struc", "struc"),
+            "global_directive": ("global", "global"),
+            "extern_directive": ("extern", "extern"),
+        }
+
+        context_info = node_context_map.get(node.type)
+        if not context_info:
+            return None
+
+        prefix, default = context_info
+        name = self.get_node_name(node, source)
+        return f"{prefix} {name}" if name else default
+
+    def _get_label_context(self, node: Node, source: bytes) -> str:
+        """Get context for label nodes."""
+        name = self.get_node_name(node, source)
+        if name and name.startswith("."):
+            return f".{name}" if name else "local label"
+        return f"{name}:" if name else "label"
+
+    def process_node(
+        self,
+        node: Node,
+        source: bytes,
+        file_path: str,
+        parent_context: str | None = None,
+    ):
         """Process NASM nodes with special handling for assembly constructs."""
         if node.type == "label":
             chunk = self.create_chunk(node, source, file_path, parent_context)
@@ -196,8 +279,7 @@ class NASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     chunk.metadata = {"label_type": "local"}
                 else:
                     chunk.metadata = {"label_type": "global"}
-                next_instructions = self._get_following_instructions(node,
-                    source, 5)
+                next_instructions = self._get_following_instructions(node, source, 5)
                 if self._is_procedure_prologue(next_instructions):
                     chunk.node_type = "procedure"
                     chunk.metadata["is_procedure"] = True
@@ -224,8 +306,11 @@ class NASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         return super().process_node(node, source, file_path, parent_context)
 
     @staticmethod
-    def _get_following_instructions(_node: Node, _source: bytes, _count: int,
-        ) -> list[str]:
+    def _get_following_instructions(
+        _node: Node,
+        _source: bytes,
+        _count: int,
+    ) -> list[str]:
         """Get the next N instructions after a node."""
         instructions = []
         return instructions
@@ -242,7 +327,8 @@ class NASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         for i, child in enumerate(node.children):
             if child.type == "number" and i > 1:
                 with contextlib.suppress(ValueError):
-                    param_count = int(source[child.start_byte:child.
-                        end_byte].decode("utf-8"))
+                    param_count = int(
+                        source[child.start_byte : child.end_byte].decode("utf-8"),
+                    )
                 break
         return param_count

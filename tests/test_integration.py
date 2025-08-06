@@ -18,9 +18,7 @@ from chunker import (
 from chunker._internal.factory import ParserFactory
 from chunker._internal.registry import LanguageRegistry
 from chunker.exceptions import ParserConfigError
-from chunker.factory import ParserFactory
 from chunker.parser import _factory
-from chunker.registry import LanguageRegistry
 
 
 class TestAllLanguages:

@@ -1,4 +1,5 @@
 """Example script for managing Tree-sitter grammars."""
+
 import argparse
 import logging
 import sys
@@ -59,7 +60,6 @@ def manage_grammars(action: str, languages: list):
         if action == "add":
             info = repo.get_grammar_info(lang)
             if not info:
-
 
                 logger.error("Grammar '%s' not found in repository", lang)
                 continue
@@ -129,8 +129,10 @@ def check_file_support(filepath: str):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Manage Tree-sitter grammars", formatter_class=argparse.
-        RawDescriptionHelpFormatter, epilog="""
+    parser = argparse.ArgumentParser(
+        description="Manage Tree-sitter grammars",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
 Examples:
   # List all available grammars
   %(prog)s list
@@ -151,7 +153,7 @@ Examples:
   # Check file support
   %(prog)s check example.py
 """,
-        )
+    )
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
     subparsers.add_parser("list", help="List available grammars")
     search_parser = subparsers.add_parser("search", help="Search for grammars")
@@ -159,11 +161,17 @@ Examples:
     add_parser = subparsers.add_parser("add", help="Add grammars")
     add_parser.add_argument("languages", nargs="+", help="Languages to add")
     fetch_parser = subparsers.add_parser("fetch", help="Fetch grammar sources")
-    fetch_parser.add_argument("languages", nargs="+", help="Languages to fetch",
-        )
+    fetch_parser.add_argument(
+        "languages",
+        nargs="+",
+        help="Languages to fetch",
+    )
     build_parser = subparsers.add_parser("build", help="Build grammars")
-    build_parser.add_argument("languages", nargs="+", help="Languages to build",
-        )
+    build_parser.add_argument(
+        "languages",
+        nargs="+",
+        help="Languages to build",
+    )
     remove_parser = subparsers.add_parser("remove", help="Remove grammars")
     remove_parser.add_argument("languages", nargs="+", help="Languages to remove")
     subparsers.add_parser("status", help="Show grammar status")

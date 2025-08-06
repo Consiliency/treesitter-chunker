@@ -7,6 +7,7 @@ This script automates the entire packaging process including:
 - Generating checksums
 - Preparing release artifacts
 """
+
 import argparse
 import hashlib
 import os
@@ -28,7 +29,7 @@ except ImportError:
 class PackageAutomation:
     """Handles automated packaging tasks."""
 
-    def __init__(self, project_dir: Path, version: (str | None) = None):
+    def __init__(self, project_dir: Path, version: str | None = None):
         self.project_dir = project_dir
         self.version = version or self._get_version()
         self.dist_dir = project_dir / "dist"
@@ -62,22 +63,34 @@ class PackageAutomation:
         """Ensure grammars are fetched and built."""
         scripts_dir = self.project_dir / "scripts"
         print("Building tree-sitter grammars...")
-        subprocess.run([sys.executable, str(scripts_dir /
-            "fetch_grammars.py")], cwd=self.project_dir, check=True)
-        subprocess.run([sys.executable, str(scripts_dir / "build_lib.py")],
-            cwd=self.project_dir, check=True)
+        subprocess.run(
+            [sys.executable, str(scripts_dir / "fetch_grammars.py")],
+            cwd=self.project_dir,
+            check=True,
+        )
+        subprocess.run(
+            [sys.executable, str(scripts_dir / "build_lib.py")],
+            cwd=self.project_dir,
+            check=True,
+        )
 
     def _build_sdist(self):
         """Build source distribution."""
         print("\nBuilding source distribution...")
-        subprocess.run([sys.executable, "-m", "build", "--sdist",
-            "--outdir", str(self.dist_dir)], cwd=self.project_dir, check=True)
+        subprocess.run(
+            [sys.executable, "-m", "build", "--sdist", "--outdir", str(self.dist_dir)],
+            cwd=self.project_dir,
+            check=True,
+        )
 
     def _build_wheels(self):
         """Build platform wheels."""
         print("\nBuilding wheels...")
-        subprocess.run([sys.executable, "-m", "build", "--wheel",
-            "--outdir", str(self.dist_dir)], cwd=self.project_dir, check=True)
+        subprocess.run(
+            [sys.executable, "-m", "build", "--wheel", "--outdir", str(self.dist_dir)],
+            cwd=self.project_dir,
+            check=True,
+        )
         if shutil.which("cibuildwheel"):
             self._build_platform_wheels()
 
@@ -86,14 +99,26 @@ class PackageAutomation:
         print("\nBuilding platform-specific wheels...")
         system = platform.system().lower()
         if system == "linux":
-            subprocess.run(["cibuildwheel", "--platform", "linux"], check=False, cwd=self.project_dir, env={**os.environ,
-                "CIBW_OUTPUT_DIR": str(self.dist_dir)})
+            subprocess.run(
+                ["cibuildwheel", "--platform", "linux"],
+                check=False,
+                cwd=self.project_dir,
+                env={**os.environ, "CIBW_OUTPUT_DIR": str(self.dist_dir)},
+            )
         elif system == "darwin":
-            subprocess.run(["cibuildwheel", "--platform", "macos"], check=False, cwd=self.project_dir, env={**os.environ,
-                "CIBW_OUTPUT_DIR": str(self.dist_dir)})
+            subprocess.run(
+                ["cibuildwheel", "--platform", "macos"],
+                check=False,
+                cwd=self.project_dir,
+                env={**os.environ, "CIBW_OUTPUT_DIR": str(self.dist_dir)},
+            )
         elif system == "windows":
-            subprocess.run(["cibuildwheel", "--platform", "windows"], check=False, cwd=self.project_dir, env={**os.environ,
-                "CIBW_OUTPUT_DIR": str(self.dist_dir)})
+            subprocess.run(
+                ["cibuildwheel", "--platform", "windows"],
+                check=False,
+                cwd=self.project_dir,
+                env={**os.environ, "CIBW_OUTPUT_DIR": str(self.dist_dir)},
+            )
 
     def _generate_checksums(self):
         """Generate checksums for all artifacts."""
@@ -103,11 +128,15 @@ class PackageAutomation:
             if file_path.is_file() and not file_path.name.endswith(".sha256"):
                 sha256 = self._calculate_sha256(file_path)
                 checksums[file_path.name] = sha256
-                with Path(f"{file_path}.sha256").open("w", encoding="utf-8",
-                    ) as f:
+                with Path(f"{file_path}.sha256").open(
+                    "w",
+                    encoding="utf-8",
+                ) as f:
                     f.write(f"{sha256}  {file_path.name}\n")
-        with Path(self.dist_dir / "checksums.txt").open("w", encoding="utf-8",
-            ) as f:
+        with Path(self.dist_dir / "checksums.txt").open(
+            "w",
+            encoding="utf-8",
+        ) as f:
             for filename, checksum in sorted(checksums.items()):
                 f.write(f"{checksum}  {filename}\n")
         print(f"Generated checksums for {len(checksums)} files")
@@ -121,7 +150,7 @@ class PackageAutomation:
                 sha256_hash.update(byte_block)
         return sha256_hash.hexdigest()
 
-    def prepare_release(self, output_dir: (Path | None) = None):
+    def prepare_release(self, output_dir: Path | None = None):
         """Prepare release artifacts."""
         output_dir = output_dir or self.project_dir / "release"
         output_dir.mkdir(exist_ok=True)
@@ -277,7 +306,7 @@ docker tag treesitter-chunker:{self.version}-alpine treesitter-chunker:alpine
 echo "Done! Images built:"
 docker images | grep treesitter-chunker
 """,
-                )
+            )
         build_script.chmod(493)
         print(f"Created Docker build script: {build_script}")
 
@@ -294,20 +323,48 @@ docker images | grep treesitter-chunker
         if not shutil.which("twine"):
             print("Error: twine not installed. Run: pip install twine")
             return False
-        cmd = ["twine", "upload", "--repository", repository,
-            "--repository-url", repo_url, str(self.dist_dir / "*")]
+        cmd = [
+            "twine",
+            "upload",
+            "--repository",
+            repository,
+            "--repository-url",
+            repo_url,
+            str(self.dist_dir / "*"),
+        ]
         result = subprocess.run(cmd, check=False)
         return result.returncode == 0
 
 
 def main():
     """Main entry point."""
-    parser = argparse.ArgumentParser(description="Automate packaging for treesitter-chunker")
-    parser.add_argument("--version", help="Version to build (default: from pyproject.toml)")
-    parser.add_argument("--clean", action="store_true", help="Clean dist directory before building")
-    parser.add_argument("--release", action="store_true", help="Prepare full release artifacts")
-    parser.add_argument("--upload", action="store_true", help="Upload to PyPI after building")
-    parser.add_argument("--test-upload", action="store_true", help="Upload to Test PyPI after building")
+    parser = argparse.ArgumentParser(
+        description="Automate packaging for treesitter-chunker",
+    )
+    parser.add_argument(
+        "--version",
+        help="Version to build (default: from pyproject.toml)",
+    )
+    parser.add_argument(
+        "--clean",
+        action="store_true",
+        help="Clean dist directory before building",
+    )
+    parser.add_argument(
+        "--release",
+        action="store_true",
+        help="Prepare full release artifacts",
+    )
+    parser.add_argument(
+        "--upload",
+        action="store_true",
+        help="Upload to PyPI after building",
+    )
+    parser.add_argument(
+        "--test-upload",
+        action="store_true",
+        help="Upload to Test PyPI after building",
+    )
     args = parser.parse_args()
     project_dir = Path(__file__).parent.parent.absolute()
     automation = PackageAutomation(project_dir, args.version)

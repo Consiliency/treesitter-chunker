@@ -2,6 +2,7 @@
 
 This module tracks performance metrics over time and detects regressions.
 """
+
 import argparse
 import json
 import statistics
@@ -19,6 +20,7 @@ from benchmark import run_benchmarks
 @dataclass
 class PerformanceBaseline:
     """Performance baseline for a specific metric."""
+
     name: str
     mean: float
     std_dev: float
@@ -33,6 +35,7 @@ class PerformanceBaseline:
 @dataclass
 class RegressionResult:
     """Result of regression detection."""
+
     metric: str
     baseline_mean: float
     current_mean: float
@@ -45,7 +48,7 @@ class RegressionResult:
 class PerformanceRegressionTracker:
     """Track performance over time and detect regressions."""
 
-    def __init__(self, baseline_file: (Path | None) = None):
+    def __init__(self, baseline_file: Path | None = None):
         """Initialize tracker with optional baseline file."""
         if baseline_file is None:
             baseline_file = Path(__file__).parent / "baselines.json"
@@ -67,14 +70,17 @@ class PerformanceRegressionTracker:
     def save_baselines(self):
         """Save performance baselines to file."""
         self.baseline_file.parent.mkdir(parents=True, exist_ok=True)
-        data = {key: asdict(baseline) for key, baseline in self.baselines.
-            items()}
+        data = {key: asdict(baseline) for key, baseline in self.baselines.items()}
         with Path(self.baseline_file).open("w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
 
-    def record_baseline(self, name: str, measurements: list[float],
-        commit_hash: (str | None) = None, metadata: (dict[str, Any] | None) = None,
-        ) -> PerformanceBaseline:
+    def record_baseline(
+        self,
+        name: str,
+        measurements: list[float],
+        commit_hash: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> PerformanceBaseline:
         """Record a new performance baseline.
 
         Args:
@@ -88,17 +94,28 @@ class PerformanceRegressionTracker:
         """
         if not measurements:
             raise ValueError("No measurements provided")
-        baseline = PerformanceBaseline(name=name, mean=statistics.mean(
-            measurements), std_dev=statistics.stdev(measurements) if len(
-            measurements) > 1 else 0.0, min_val=min(measurements), max_val=max(measurements), samples=len(measurements), timestamp=datetime.now().isoformat(), commit_hash=commit_hash or self.
-            _get_git_hash(), metadata=metadata or {})
+        baseline = PerformanceBaseline(
+            name=name,
+            mean=statistics.mean(measurements),
+            std_dev=statistics.stdev(measurements) if len(measurements) > 1 else 0.0,
+            min_val=min(measurements),
+            max_val=max(measurements),
+            samples=len(measurements),
+            timestamp=datetime.now().isoformat(),
+            commit_hash=commit_hash or self._get_git_hash(),
+            metadata=metadata or {},
+        )
         self.baselines[name] = baseline
         self.save_baselines()
         return baseline
 
-    def check_regression(self, name: str, current_measurements: list[float],
-        threshold: float = 0.1, _confidence_level: float = 0.95) -> (
-        RegressionResult | None):
+    def check_regression(
+        self,
+        name: str,
+        current_measurements: list[float],
+        threshold: float = 0.1,
+        _confidence_level: float = 0.95,
+    ) -> RegressionResult | None:
         """Check if current measurements indicate a performance regression.
 
         Args:
@@ -129,16 +146,24 @@ class PerformanceRegressionTracker:
         details = []
         if is_regression:
             details.append(f"Performance degraded by {degradation * 100:.1f}%")
-            details.append(
-                f"Baseline: {baseline.mean:.3f}s (±{baseline.std_dev:.3f}s)")
+            details.append(f"Baseline: {baseline.mean:.3f}s (±{baseline.std_dev:.3f}s)")
             details.append(f"Current: {current_mean:.3f}s")
-        return RegressionResult(metric=name, baseline_mean=baseline.mean,
-            current_mean=current_mean, degradation_percent=degradation *
-            100, is_regression=is_regression, confidence=min(1.0, max(0.0,
-            confidence)), details="\n".join(details))
+        return RegressionResult(
+            metric=name,
+            baseline_mean=baseline.mean,
+            current_mean=current_mean,
+            degradation_percent=degradation * 100,
+            is_regression=is_regression,
+            confidence=min(1.0, max(0.0, confidence)),
+            details="\n".join(details),
+        )
 
-    def run_regression_tests(self, test_directory: Path, language: str =
-        "python", iterations: int = 5) -> list[RegressionResult]:
+    def run_regression_tests(
+        self,
+        test_directory: Path,
+        language: str = "python",
+        iterations: int = 5,
+    ) -> list[RegressionResult]:
         """Run benchmark suite and check for regressions.
 
         Args:
@@ -164,8 +189,12 @@ class PerformanceRegressionTracker:
                 results.append(regression)
         return results
 
-    def update_baseline(self, name: str, measurements: list[float], force:
-        bool = False) -> bool:
+    def update_baseline(
+        self,
+        name: str,
+        measurements: list[float],
+        force: bool = False,
+    ) -> bool:
         """Update baseline if performance improved or force=True.
 
         Args:
@@ -187,11 +216,15 @@ class PerformanceRegressionTracker:
         return True
 
     @staticmethod
-    def _get_git_hash() -> (str | None):
+    def _get_git_hash() -> str | None:
         """Get current git commit hash."""
         try:
-            result = subprocess.run(["git", "rev-parse", "HEAD"],
-                capture_output=True, text=True, check=True)
+            result = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
             return result.stdout.strip()[:8]
         except (subprocess.SubprocessError, OSError):
             return None
@@ -201,10 +234,8 @@ class PerformanceRegressionTracker:
         lines = ["Performance Baseline Report", "=" * 50, ""]
         for name, baseline in sorted(self.baselines.items()):
             lines.append(f"{name}:")
-            lines.append(
-                f"  Mean: {baseline.mean:.3f}s (±{baseline.std_dev:.3f}s)")
-            lines.append(
-                f"  Range: {baseline.min_val:.3f}s - {baseline.max_val:.3f}s")
+            lines.append(f"  Mean: {baseline.mean:.3f}s (±{baseline.std_dev:.3f}s)")
+            lines.append(f"  Range: {baseline.min_val:.3f}s - {baseline.max_val:.3f}s")
             lines.append(f"  Samples: {baseline.samples}")
             lines.append(f"  Updated: {baseline.timestamp}")
             if baseline.commit_hash:
@@ -213,8 +244,9 @@ class PerformanceRegressionTracker:
         return "\n".join(lines)
 
 
-def track_performance_history(history_file: (Path | None) = None,
-    ) -> "PerformanceHistory":
+def track_performance_history(
+    history_file: Path | None = None,
+) -> "PerformanceHistory":
     """Track performance metrics over time."""
     if history_file is None:
         history_file = Path(__file__).parent / "performance_history.json"
@@ -244,17 +276,25 @@ class PerformanceHistory:
         with Path(self.history_file).open("w", encoding="utf-8") as f:
             json.dump(self.history, f, indent=2)
 
-    def add_measurement(self, metric: str, value: float, timestamp: (str |
-        None) = None, metadata: (dict[str, Any] | None) = None):
+    def add_measurement(
+        self,
+        metric: str,
+        value: float,
+        timestamp: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ):
         """Add a measurement to history."""
         if metric not in self.history:
             self.history[metric] = []
-        entry = {"value": value, "timestamp": timestamp or datetime.now().
-            isoformat(), "metadata": metadata or {}}
+        entry = {
+            "value": value,
+            "timestamp": timestamp or datetime.now().isoformat(),
+            "metadata": metadata or {},
+        }
         self.history[metric].append(entry)
         self.save_history()
 
-    def get_trend(self, metric: str, window: int = 10) -> (str | None):
+    def get_trend(self, metric: str, window: int = 10) -> str | None:
         """Get performance trend for a metric.
 
         Returns: 'improving', 'degrading', 'stable', or None
@@ -268,8 +308,7 @@ class PerformanceHistory:
         n = len(values)
         x_mean = (n - 1) / 2
         y_mean = sum(values) / n
-        numerator = sum((i - x_mean) * (v - y_mean) for i, v in enumerate(
-            values))
+        numerator = sum((i - x_mean) * (v - y_mean) for i, v in enumerate(values))
         denominator = sum((i - x_mean) ** 2 for i in range(n))
         if denominator == 0:
             return "stable"
@@ -280,13 +319,12 @@ class PerformanceHistory:
             return "degrading"
         return "stable"
 
-    def plot_history(self, metric: str, output_file: (Path | None) = None):
+    def plot_history(self, metric: str, output_file: Path | None = None):
         """Plot performance history for a metric (requires matplotlib)."""
         try:
             import matplotlib.pyplot as plt
         except ImportError:
-            warnings.warn("matplotlib not installed, cannot plot history",
-                stacklevel=2)
+            warnings.warn("matplotlib not installed, cannot plot history", stacklevel=2)
             return
         if metric not in self.history:
             return
@@ -309,8 +347,10 @@ class PerformanceHistory:
         plt.close()
 
 
-def check_for_regressions(test_dir: (Path | None) = None, _threshold: float = 0.1,
-    ) -> bool:
+def check_for_regressions(
+    test_dir: Path | None = None,
+    _threshold: float = 0.1,
+) -> bool:
     """Check for performance regressions and return True if any found."""
     if test_dir is None:
         test_dir = Path.cwd()
@@ -328,7 +368,7 @@ def check_for_regressions(test_dir: (Path | None) = None, _threshold: float = 0.
     return False
 
 
-def update_baselines(test_dir: (Path | None) = None, force: bool = False):
+def update_baselines(test_dir: Path | None = None, force: bool = False):
     """Update performance baselines."""
     if test_dir is None:
         test_dir = Path.cwd()
@@ -353,10 +393,23 @@ def update_baselines(test_dir: (Path | None) = None, force: bool = False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Performance regression tracking")
-    parser.add_argument("command", choices=["check", "update", "report",
-        "history"], help="Command to run")
-    parser.add_argument("--directory", type=Path, default=Path.cwd(), help="Test directory")
-    parser.add_argument("--threshold", type=float, default=0.1, help="Regression threshold (default: 0.1 = 10%)")
+    parser.add_argument(
+        "command",
+        choices=["check", "update", "report", "history"],
+        help="Command to run",
+    )
+    parser.add_argument(
+        "--directory",
+        type=Path,
+        default=Path.cwd(),
+        help="Test directory",
+    )
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=0.1,
+        help="Regression threshold (default: 0.1 = 10%)",
+    )
     parser.add_argument("--force", action="store_true", help="Force baseline update")
     parser.add_argument("--metric", help="Specific metric for history command")
     args = parser.parse_args()

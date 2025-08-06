@@ -1,6 +1,7 @@
 """
 Integration tests for Phase 13 debug tools using actual implementations
 """
+
 import tempfile
 from pathlib import Path
 
@@ -14,7 +15,7 @@ class TestDebugToolsIntegration:
     """Test debug tools integrate with core chunker"""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def test_file(cls):
         """Create a test Python file"""
         content = """def hello():
@@ -24,7 +25,12 @@ class Example:
     def method(self):
         pass
 """
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
             f.write(content)
             f.flush()
             yield f.name
@@ -48,15 +54,33 @@ class Example:
         chunks = chunk_file(test_file, "python")
         if chunks:
             chunk_id = chunks[0].chunk_id
-            result = debug_tools.inspect_chunk(test_file, chunk_id,
-                include_context=True)
+            result = debug_tools.inspect_chunk(
+                test_file,
+                chunk_id,
+                include_context=True,
+            )
         else:
-            result = {"id": "test", "type": "module", "start_line": 1,
-                "end_line": 1, "content": "", "metadata": {},
-                "relationships": {}, "context": {}}
+            result = {
+                "id": "test",
+                "type": "module",
+                "start_line": 1,
+                "end_line": 1,
+                "content": "",
+                "metadata": {},
+                "relationships": {},
+                "context": {},
+            }
         assert isinstance(result, dict)
-        required_fields = ["id", "type", "start_line", "end_line",
-            "content", "metadata", "relationships", "context"]
+        required_fields = [
+            "id",
+            "type",
+            "start_line",
+            "end_line",
+            "content",
+            "metadata",
+            "relationships",
+            "context",
+        ]
         for field in required_fields:
             assert field in result
 

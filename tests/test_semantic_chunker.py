@@ -1,4 +1,5 @@
 """Tests for the semantic chunking strategy."""
+
 import pytest
 
 from chunker.parser import get_parser
@@ -9,13 +10,13 @@ class TestSemanticChunker:
     """Test suite for SemanticChunker."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def semantic_chunker(cls):
         """Create a semantic chunker instance."""
         return SemanticChunker()
 
     @staticmethod
-    @pytest.fixture
+    @pytest.fixture()
     def sample_python_code():
         """Sample Python code with various semantic patterns."""
         return """
@@ -125,8 +126,12 @@ if __name__ == "__main__":
         """Test basic semantic chunking."""
         parser = get_parser("python")
         tree = parser.parse(sample_python_code.encode())
-        chunks = semantic_chunker.chunk(tree.root_node, sample_python_code.
-            encode(), "test.py", "python")
+        chunks = semantic_chunker.chunk(
+            tree.root_node,
+            sample_python_code.encode(),
+            "test.py",
+            "python",
+        )
         assert len(chunks) > 0
         chunk_types = {chunk.node_type for chunk in chunks}
         assert "class_definition" in chunk_types or "merged_chunk" in chunk_types
@@ -143,12 +148,18 @@ if __name__ == "__main__":
         """Test that semantically related code stays together."""
         parser = get_parser("python")
         tree = parser.parse(sample_python_code.encode())
-        semantic_chunker.configure({"merge_related": True,
-            "cohesion_threshold": 0.6})
-        chunks = semantic_chunker.chunk(tree.root_node, sample_python_code.
-            encode(), "test.py", "python")
-        [c for c in chunks if any(pattern in c.content for pattern in [
-            "_transform_", "transform"])]
+        semantic_chunker.configure({"merge_related": True, "cohesion_threshold": 0.6})
+        chunks = semantic_chunker.chunk(
+            tree.root_node,
+            sample_python_code.encode(),
+            "test.py",
+            "python",
+        )
+        [
+            c
+            for c in chunks
+            if any(pattern in c.content for pattern in ["_transform_", "transform"])
+        ]
         for chunk in chunks:
             if hasattr(chunk, "metadata") and chunk.metadata:
                 semantic = chunk.metadata.get("semantic", {})
@@ -194,10 +205,15 @@ def complex_function(data):
 """
         parser = get_parser("python")
         tree = parser.parse(complex_code.encode())
-        semantic_chunker.configure({"split_complex": True,
-            "complexity_threshold": 10.0})
-        chunks = semantic_chunker.chunk(tree.root_node, complex_code.encode
-            (), "test.py", "python")
+        semantic_chunker.configure(
+            {"split_complex": True, "complexity_threshold": 10.0},
+        )
+        chunks = semantic_chunker.chunk(
+            tree.root_node,
+            complex_code.encode(),
+            "test.py",
+            "python",
+        )
         for chunk in chunks:
             if hasattr(chunk, "metadata") and chunk.metadata:
                 complexity = chunk.metadata.get("complexity", {})
@@ -209,8 +225,12 @@ def complex_function(data):
         """Test that dependencies are properly tracked."""
         parser = get_parser("python")
         tree = parser.parse(sample_python_code.encode())
-        chunks = semantic_chunker.chunk(tree.root_node, sample_python_code.
-            encode(), "test.py", "python")
+        chunks = semantic_chunker.chunk(
+            tree.root_node,
+            sample_python_code.encode(),
+            "test.py",
+            "python",
+        )
         for chunk in chunks:
             if "import" in chunk.content:
                 assert len(chunk.dependencies) > 0
@@ -221,8 +241,12 @@ def complex_function(data):
     def test_configuration(semantic_chunker):
         """Test configuration updates."""
         semantic_chunker.config.copy()
-        new_config = {"min_chunk_size": 20, "max_chunk_size": 300,
-            "complexity_threshold": 20.0, "merge_related": False}
+        new_config = {
+            "min_chunk_size": 20,
+            "max_chunk_size": 300,
+            "complexity_threshold": 20.0,
+            "merge_related": False,
+        }
         semantic_chunker.configure(new_config)
         assert semantic_chunker.config["min_chunk_size"] == 20
         assert semantic_chunker.config["max_chunk_size"] == 300
@@ -268,12 +292,18 @@ async def get_product(product_id):
 """
         parser = get_parser("python")
         tree = parser.parse(code_with_boundaries.encode())
-        chunks = semantic_chunker.chunk(tree.root_node,
-            code_with_boundaries.encode(), "test.py", "python")
+        chunks = semantic_chunker.chunk(
+            tree.root_node,
+            code_with_boundaries.encode(),
+            "test.py",
+            "python",
+        )
         assert len(chunks) >= 3
         chunk_contents = [chunk.content for chunk in chunks]
         [c for c in chunk_contents if "DEBUG" in c or "API_KEY" in c]
-        [c for c in chunk_contents if "class User" in c or "class Product" in c
-            ]
-        [c for c in chunk_contents if "def calculate_discount" in c or
-            "def apply_discount" in c]
+        [c for c in chunk_contents if "class User" in c or "class Product" in c]
+        [
+            c
+            for c in chunk_contents
+            if "def calculate_discount" in c or "def apply_discount" in c
+        ]

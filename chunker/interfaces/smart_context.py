@@ -1,4 +1,5 @@
 """Smart context interface for intelligent chunk context selection."""
+
 import builtins
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -9,6 +10,7 @@ from chunker.types import CodeChunk
 @dataclass
 class ContextMetadata:
     """Metadata about selected context."""
+
     relevance_score: float
     relationship_type: str
     distance: int
@@ -20,8 +22,10 @@ class SmartContextProvider(ABC):
 
     @staticmethod
     @abstractmethod
-    def get_semantic_context(chunk: CodeChunk, max_tokens: int = 2000) -> tuple[
-        str, ContextMetadata]:
+    def get_semantic_context(
+        chunk: CodeChunk,
+        max_tokens: int = 2000,
+    ) -> tuple[str, ContextMetadata]:
         """
         Get semantically relevant context for a chunk.
 
@@ -38,8 +42,10 @@ class SmartContextProvider(ABC):
 
     @staticmethod
     @abstractmethod
-    def get_dependency_context(chunk: CodeChunk, chunks: list[CodeChunk],
-        ) -> list[tuple[CodeChunk, ContextMetadata]]:
+    def get_dependency_context(
+        chunk: CodeChunk,
+        chunks: list[CodeChunk],
+    ) -> list[tuple[CodeChunk, ContextMetadata]]:
         """
         Get chunks that this chunk depends on.
 
@@ -55,8 +61,10 @@ class SmartContextProvider(ABC):
 
     @staticmethod
     @abstractmethod
-    def get_usage_context(chunk: CodeChunk, chunks: list[CodeChunk]) -> list[
-        tuple[CodeChunk, ContextMetadata]]:
+    def get_usage_context(
+        chunk: CodeChunk,
+        chunks: list[CodeChunk],
+    ) -> list[tuple[CodeChunk, ContextMetadata]]:
         """
         Get chunks that use this chunk.
 
@@ -72,8 +80,10 @@ class SmartContextProvider(ABC):
 
     @staticmethod
     @abstractmethod
-    def get_structural_context(chunk: CodeChunk, chunks: list[CodeChunk],
-        ) -> list[tuple[CodeChunk, ContextMetadata]]:
+    def get_structural_context(
+        chunk: CodeChunk,
+        chunks: list[CodeChunk],
+    ) -> list[tuple[CodeChunk, ContextMetadata]]:
         """
         Get structurally related chunks.
 
@@ -93,8 +103,11 @@ class ContextStrategy(ABC):
 
     @staticmethod
     @abstractmethod
-    def select_context(chunk: CodeChunk, candidates: list[tuple[CodeChunk,
-        ContextMetadata]], max_tokens: int) -> list[CodeChunk]:
+    def select_context(
+        chunk: CodeChunk,
+        candidates: list[tuple[CodeChunk, ContextMetadata]],
+        max_tokens: int,
+    ) -> list[CodeChunk]:
         """
         Select the most relevant context chunks.
 
@@ -109,8 +122,10 @@ class ContextStrategy(ABC):
 
     @staticmethod
     @abstractmethod
-    def rank_candidates(chunk: CodeChunk, candidates: list[tuple[CodeChunk,
-        ContextMetadata]]) -> list[tuple[CodeChunk, float]]:
+    def rank_candidates(
+        chunk: CodeChunk,
+        candidates: list[tuple[CodeChunk, ContextMetadata]],
+    ) -> list[tuple[CodeChunk, float]]:
         """
         Rank candidate chunks by relevance.
 
@@ -128,17 +143,22 @@ class ContextCache(ABC):
 
     @staticmethod
     @abstractmethod
-    def get(chunk_id: str, context_type: str) -> (list[tuple[CodeChunk,
-        ContextMetadata]] | None):
+    def get(
+        chunk_id: str,
+        context_type: str,
+    ) -> list[tuple[CodeChunk, ContextMetadata]] | None:
         """Get cached context if available."""
 
     @staticmethod
     @abstractmethod
-    def set(chunk_id: str, context_type: str, context: list[tuple[CodeChunk,
-        ContextMetadata]]) -> None:
+    def set(
+        chunk_id: str,
+        context_type: str,
+        context: list[tuple[CodeChunk, ContextMetadata]],
+    ) -> None:
         """Cache context for a chunk."""
 
     @staticmethod
     @abstractmethod
-    def invalidate(chunk_ids: (builtins.set[str] | None) = None) -> None:
+    def invalidate(chunk_ids: builtins.set[str] | None = None) -> None:
         """Invalidate cache entries."""

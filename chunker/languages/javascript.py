@@ -14,10 +14,17 @@ class JavaScriptConfig(LanguageConfig):
     @property
     def chunk_types(self) -> set[str]:
         """JavaScript-specific chunk types."""
-        return {"function_declaration", "function_expression",
-            "arrow_function", "generator_function_declaration",
-            "class_declaration", "method_definition", "export_statement",
-            "import_statement", "variable_declarator"}
+        return {
+            "function_declaration",
+            "function_expression",
+            "arrow_function",
+            "generator_function_declaration",
+            "class_declaration",
+            "method_definition",
+            "export_statement",
+            "import_statement",
+            "variable_declarator",
+        }
 
     @property
     def file_extensions(self) -> set[str]:
@@ -55,27 +62,31 @@ class JavaScriptPlugin(LanguagePlugin):
 
     @property
     def default_chunk_types(self) -> set[str]:
-        return {"function_declaration", "function_expression",
-            "arrow_function", "generator_function_declaration",
-            "class_declaration", "method_definition", "export_statement",
-            "variable_declarator"}
+        return {
+            "function_declaration",
+            "function_expression",
+            "arrow_function",
+            "generator_function_declaration",
+            "class_declaration",
+            "method_definition",
+            "export_statement",
+            "variable_declarator",
+        }
 
     @staticmethod
-    def get_node_name(node: Node, source: bytes) -> (str | None):
+    def get_node_name(node: Node, source: bytes) -> str | None:
         """Extract name from JavaScript nodes."""
         for child in node.children:
             if child.type == "identifier":
-                return source[child.start_byte:child.end_byte].decode("utf-8")
+                return source[child.start_byte : child.end_byte].decode("utf-8")
         if node.type == "method_definition":
             for child in node.children:
                 if child.type == "property_identifier":
-                    return source[child.start_byte:child.end_byte].decode(
-                        "utf-8")
+                    return source[child.start_byte : child.end_byte].decode("utf-8")
         if node.type == "variable_declarator":
             for child in node.children:
                 if child.type == "identifier":
-                    return source[child.start_byte:child.end_byte].decode(
-                        "utf-8")
+                    return source[child.start_byte : child.end_byte].decode("utf-8")
         return None
 
     def get_context_for_children(self, node: Node, chunk) -> str:
@@ -84,15 +95,23 @@ class JavaScriptPlugin(LanguagePlugin):
         if name:
             if node.type == "class_declaration":
                 return f"class {name}"
-            if node.type in {"function_declaration", "function_expression",
-                "arrow_function"}:
+            if node.type in {
+                "function_declaration",
+                "function_expression",
+                "arrow_function",
+            }:
                 return f"function {name}"
             if node.type == "method_definition":
                 return f"method {name}"
         return node.type
 
-    def process_node(self, node: Node, source: bytes, file_path: str,
-        parent_context: (str | None) = None) -> (CodeChunk | None):
+    def process_node(
+        self,
+        node: Node,
+        source: bytes,
+        file_path: str,
+        parent_context: str | None = None,
+    ) -> CodeChunk | None:
         """Process JavaScript nodes with special handling."""
         if node.type == "variable_declarator":
             has_function = False
@@ -105,6 +124,5 @@ class JavaScriptPlugin(LanguagePlugin):
         if node.type == "export_statement":
             for child in node.children:
                 if child.type in self.chunk_node_types:
-                    return self.process_node(child, source, file_path,
-                        parent_context)
+                    return self.process_node(child, source, file_path, parent_context)
         return super().process_node(node, source, file_path, parent_context)

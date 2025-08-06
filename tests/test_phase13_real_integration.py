@@ -1,6 +1,7 @@
 """
 Real integration tests for Phase 13 using actual implementations
 """
+
 import json
 import sys
 from pathlib import Path

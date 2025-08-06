@@ -1,0 +1,9 @@
+[
+  {
+    "session_id": "14b5bf6e-384f-47c7-afdb-fbc6c94d7857",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/14b5bf6e-384f-47c7-afdb-fbc6c94d7857.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "continue"
+  }
+]

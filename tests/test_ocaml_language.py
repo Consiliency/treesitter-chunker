@@ -1,4 +1,5 @@
 """Comprehensive tests for OCaml language support."""
+
 from chunker import chunk_file, get_parser
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from chunker.languages.ocaml import OCamlPlugin
@@ -29,7 +30,7 @@ let rec length lst =
   | [] -> 0
   | _ :: tail -> 1 + length tail
 """,
-            )
+        )
         chunks = chunk_file(src, "ocaml")
         assert len(chunks) >= 4
         let_chunks = [c for c in chunks if "let" in c.content]
@@ -77,15 +78,16 @@ and value =
   | VClosure of string * expr * env
 and env = (string * value) list
 """,
-            )
+        )
         chunks = chunk_file(src, "ocaml")
-        type_chunks = [c for c in chunks if c.node_type in {
-            "type_definition", "type_binding"}]
+        type_chunks = [
+            c for c in chunks if c.node_type in {"type_definition", "type_binding"}
+        ]
         assert len(type_chunks) >= 5
-        assert any("color" in c.content and "RGB" in c.content for c in
-            type_chunks)
-        assert any("person" in c.content and "record" in str(c.content) for
-            c in type_chunks)
+        assert any("color" in c.content and "RGB" in c.content for c in type_chunks)
+        assert any(
+            "person" in c.content and "record" in str(c.content) for c in type_chunks
+        )
         assert any("'a tree" in c.content for c in type_chunks)
 
     @staticmethod
@@ -134,7 +136,7 @@ module Outer = struct
   let get_value () = Inner.value
 end
 """,
-            )
+        )
         chunks = chunk_file(src, "ocaml")
         module_chunks = [c for c in chunks if "module" in c.node_type]
         assert len(module_chunks) >= 4
@@ -173,10 +175,9 @@ let try_divide x y =
     Printf.printf "Error: %s\\n" msg;
     None
 """,
-            )
+        )
         chunks = chunk_file(src, "ocaml")
-        exception_chunks = [c for c in chunks if c.node_type ==
-            "exception_definition"]
+        exception_chunks = [c for c in chunks if c.node_type == "exception_definition"]
         assert len(exception_chunks) >= 3
         assert any("Not_found" in c.content for c in exception_chunks)
         assert any("Invalid_argument" in c.content for c in exception_chunks)
@@ -221,14 +222,17 @@ class virtual shape =
     method virtual perimeter : float
   end
 """,
-            )
+        )
         chunks = chunk_file(src, "ocaml")
         class_chunks = [c for c in chunks if "class" in c.node_type]
         assert len(class_chunks) >= 3
-        assert any("point" in c.content and "distance" in c.content for c in
-            class_chunks)
-        assert any("colored_point" in c.content and "inherit" in c.content for
-            c in class_chunks)
+        assert any(
+            "point" in c.content and "distance" in c.content for c in class_chunks
+        )
+        assert any(
+            "colored_point" in c.content and "inherit" in c.content
+            for c in class_chunks
+        )
         assert any("virtual shape" in c.content for c in class_chunks)
 
 
@@ -275,6 +279,7 @@ class TestOCamlContractCompliance:
 
             def __init__(self, node_type):
                 self.type = node_type
+
         assert plugin.should_chunk_node(MockNode("value_definition"))
         assert plugin.should_chunk_node(MockNode("let_binding"))
         assert plugin.should_chunk_node(MockNode("type_definition"))
@@ -295,6 +300,7 @@ class TestOCamlContractCompliance:
             def __init__(self, node_type):
                 self.type = node_type
                 self.children = []
+
         node = MockNode("let_binding")
         context = plugin.get_node_context(node, b"let add x y = x + y")
         assert context is not None
@@ -327,7 +333,7 @@ class TestOCamlEdgeCases:
 (** Documentation comment *)
 (*** Special comment ***)
 """,
-            )
+        )
         chunks = chunk_file(src, "ocaml")
         comment_chunks = [c for c in chunks if c.node_type == "comment"]
         assert len(comment_chunks) >= 1
@@ -367,7 +373,7 @@ let pipeline_example x =
   |> ( * ) 2
   |> string_of_int
 """,
-            )
+        )
         chunks = chunk_file(src, "ocaml")
         let_chunks = [c for c in chunks if "let" in c.content]
         assert any("|>" in c.content for c in let_chunks)
@@ -399,7 +405,7 @@ type (_, _) format =
   | Lit : string * ('a, 'b) format -> ('a, 'b) format
   | End : ('a, 'a) format
 """,
-            )
+        )
         chunks = chunk_file(src, "ocaml")
         type_chunks = [c for c in chunks if "type" in c.node_type]
         assert any("expr" in c.content and "GADT" in c.content for c in chunks)
@@ -436,9 +442,8 @@ module Make (E : ELEMENT) : sig
   val pop : t -> element option
 end
 """,
-            )
+        )
         chunks = chunk_file(src, "ocaml")
         assert any("'a t" in c.content for c in chunks)
         assert any("ELEMENT" in c.content for c in chunks)
-        assert any("Make" in c.content and "Functor" in c.content for c in
-            chunks)
+        assert any("Make" in c.content and "Functor" in c.content for c in chunks)

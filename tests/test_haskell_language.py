@@ -1,4 +1,5 @@
 """Comprehensive tests for Haskell language support."""
+
 from chunker import chunk_file
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from chunker.languages.haskell import HaskellPlugin
@@ -23,7 +24,7 @@ fibonacci n
   | n <= 1    = n
   | otherwise = fibonacci (n - 1) + fibonacci (n - 2)
 """,
-            )
+        )
         chunks = chunk_file(src, "haskell")
         assert len(chunks) >= 2
         function_chunks = [c for c in chunks if "function" in c.node_type]
@@ -50,7 +51,7 @@ type Age = Int
 -- Newtype
 newtype Email = Email String deriving (Show)
 """,
-            )
+        )
         chunks = chunk_file(src, "haskell")
         chunk_types = {chunk.node_type for chunk in chunks}
         assert "data_type" in chunk_types or "data" in chunk_types
@@ -76,7 +77,7 @@ instance Printable Bool where
 instance Printable Int where
     toString = show
 """,
-            )
+        )
         chunks = chunk_file(src, "haskell")
         chunk_types = {chunk.node_type for chunk in chunks}
         assert "class_declaration" in chunk_types
@@ -108,11 +109,10 @@ fibonacci = fib 0 1
     fib a b 0 = a
     fib a b n = fib b (a + b) (n - 1)
 """,
-            )
+        )
         chunks = chunk_file(src, "haskell")
         assert any("module_declaration" in c.node_type for c in chunks)
-        module_chunk = next(c for c in chunks if "module_declaration" in c.
-            node_type)
+        module_chunk = next(c for c in chunks if "module_declaration" in c.node_type)
         assert "MyModule" in module_chunk.content
         assert any("factorial" in c.content for c in chunks)
         assert any("fibonacci" in c.content for c in chunks)
@@ -141,6 +141,7 @@ class TestHaskellContractCompliance:
                 self.start_point = 0, 0
                 self.end_point = 0, end
                 self.children = []
+
         root = MockNode("module")
         func_node = MockNode("function", 0, 50)
         root.children.append(func_node)
@@ -169,6 +170,7 @@ class TestHaskellContractCompliance:
             def __init__(self, node_type):
                 self.type = node_type
                 self.children = []
+
         assert plugin.should_chunk_node(MockNode("function"))
         assert plugin.should_chunk_node(MockNode("data_type"))
         assert plugin.should_chunk_node(MockNode("class_declaration"))
@@ -185,6 +187,7 @@ class TestHaskellContractCompliance:
             def __init__(self, node_type):
                 self.type = node_type
                 self.children = []
+
         node = MockNode("function")
         context = plugin.get_node_context(node, b"factorial n = n!")
         assert context is not None
@@ -212,7 +215,7 @@ class TestHaskellEdgeCases:
    multi-line comment -}
 -- Another comment
 """,
-            )
+        )
         chunks = chunk_file(src, "haskell")
         assert len(chunks) == 0
 
@@ -241,7 +244,7 @@ describe x = case x of
     Nothing -> "No value"
     Just n  -> "Value: " ++ show n
 """,
-            )
+        )
         chunks = chunk_file(src, "haskell")
         function_chunks = [c for c in chunks if "function" in c.node_type]
         assert len(function_chunks) >= 3
@@ -272,10 +275,9 @@ complexCalc n = result
       where
         adjusted = x * 2
 """,
-            )
+        )
         chunks = chunk_file(src, "haskell")
-        assert any("quadratic" in c.content and "where" in c.content for c in
-            chunks)
+        assert any("quadratic" in c.content and "where" in c.content for c in chunks)
         assert any("complexCalc" in c.content for c in chunks)
 
     @staticmethod
@@ -295,7 +297,7 @@ sumSquares xs = sum (map (\\x -> x * x) xs)
 double :: Num a => a -> a
 double = (*2)
 """,
-            )
+        )
         chunks = chunk_file(src, "haskell")
         assert any("map'" in c.content for c in chunks)
         assert any("sumSquares" in c.content for c in chunks)

@@ -1,4 +1,5 @@
 """Tests for Go language support."""
+
 import pytest
 
 from chunker.core import chunk_text
@@ -38,8 +39,9 @@ func main() {
 """
         chunks = chunk_text(code, "go", "main.go")
         assert len(chunks) == 3
-        func_names = [c.parent_context for c in chunks if c.node_type ==
-            "function_declaration"]
+        func_names = [
+            c.parent_context for c in chunks if c.node_type == "function_declaration"
+        ]
         assert "greet" in func_names
         assert "divide" in func_names
         assert "main" in func_names
@@ -149,8 +151,7 @@ var (
 )
 """
         chunks = chunk_text(code, "go", "config.go")
-        const_chunks = [c for c in chunks if c.node_type == "const_declaration"
-            ]
+        const_chunks = [c for c in chunks if c.node_type == "const_declaration"]
         var_chunks = [c for c in chunks if c.node_type == "var_declaration"]
         assert len(const_chunks) >= 1
         assert len(var_chunks) >= 1

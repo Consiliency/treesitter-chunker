@@ -1,4 +1,5 @@
 """Define the boundary for grammar download and compilation - Team: Grammar Download"""
+
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -8,6 +9,7 @@ from pathlib import Path
 @dataclass
 class DownloadProgress:
     """Progress information for downloads"""
+
     bytes_downloaded: int
     total_bytes: int
     percent_complete: float
@@ -17,6 +19,7 @@ class DownloadProgress:
 @dataclass
 class CompilationResult:
     """Result of grammar compilation"""
+
     success: bool
     output_path: Path | None
     error_message: str | None
@@ -28,9 +31,11 @@ class GrammarDownloadContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def download_grammar(language: str, version: (str | None) = None,
-        progress_callback: (Callable[[DownloadProgress], None] | None) = None,
-        ) -> Path:
+    def download_grammar(
+        language: str,
+        version: str | None = None,
+        progress_callback: Callable[[DownloadProgress], None] | None = None,
+    ) -> Path:
         """Download a grammar repository
 
         Args:
@@ -53,8 +58,10 @@ class GrammarDownloadContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def compile_grammar(grammar_path: Path, output_dir: Path,
-        ) -> CompilationResult:
+    def compile_grammar(
+        grammar_path: Path,
+        output_dir: Path,
+    ) -> CompilationResult:
         """Compile a grammar into a shared library
 
         Args:
@@ -76,8 +83,10 @@ class GrammarDownloadContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def download_and_compile(language: str, version: (str | None) = None,
-        ) -> tuple[bool, str]:
+    def download_and_compile(
+        language: str,
+        version: str | None = None,
+    ) -> tuple[bool, str]:
         """Download and compile a grammar in one step
 
         Args:
@@ -111,7 +120,7 @@ class GrammarDownloadContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def is_grammar_cached(language: str, version: (str | None) = None) -> bool:
+    def is_grammar_cached(language: str, version: str | None = None) -> bool:
         """Check if a grammar is already cached
 
         Args:

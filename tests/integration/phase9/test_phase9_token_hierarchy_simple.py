@@ -1,4 +1,5 @@
 """Simplified integration tests for token counting with hierarchy building."""
+
 import pytest
 
 from chunker import chunk_file
@@ -10,29 +11,29 @@ class TestTokenHierarchyIntegrationSimple:
     """Test token counting integrated with hierarchy building."""
 
     @staticmethod
-    @pytest.fixture
+    @pytest.fixture()
     def sample_python_file(tmp_path):
         """Create a sample Python file for testing."""
         file_path = tmp_path / "sample.py"
         file_path.write_text(
             """
 class DataProcessor:
-    ""\"Process data with various operations.""\"
+    \"\"\"Process data with various operations.\"\"\"
 
     def __init__(self, name: str):
         self.name = name
         self._data = []
 
     def add_data(self, item: Any) -> None:
-        ""\"Add data item.""\"
+        \"\"\"Add data item.\"\"\"
         self._data.append(item)
 
     def get_data(self) -> List[Any]:
-        ""\"Get all data.""\"
+        \"\"\"Get all data.\"\"\"
         return self._data.copy()
 
     def process(self) -> Dict[str, Any]:
-        ""\"Process all data.""\"
+        \"\"\"Process all data.\"\"\"
         return {
             "name": self.name,
             "count": len(self._data),
@@ -40,22 +41,22 @@ class DataProcessor:
         }
 
     def clear(self) -> None:
-        ""\"Clear all data.""\"
+        \"\"\"Clear all data.\"\"\"
         self._data.clear()
 
 # Helper functions
 def create_processor(name: str) -> DataProcessor:
-    ""\"Create a new data processor.""\"
+    \"\"\"Create a new data processor.\"\"\"
     return DataProcessor(name)
 
 def merge_processors(p1: DataProcessor, p2: DataProcessor) -> DataProcessor:
-    ""\"Merge two processors.""\"
+    \"\"\"Merge two processors.\"\"\"
     merged = DataProcessor(f"{p1.name}_{p2.name}")
     for item in p1.get_data() + p2.get_data():
         merged.add_data(item)
     return merged
 """,
-            )
+        )
         return file_path
 
     @classmethod
@@ -82,21 +83,25 @@ def merge_processors(p1: DataProcessor, p2: DataProcessor) -> DataProcessor:
         chunks = chunk_file(sample_python_file, "python")
         for i, chunk in enumerate(chunks):
             chunk.metadata = chunk.metadata or {}
-            chunk.metadata["tokens"] = token_counter.count_tokens(chunk.content,
-                )
+            chunk.metadata["tokens"] = token_counter.count_tokens(
+                chunk.content,
+            )
             chunk.metadata["chunk_id"] = f"chunk_{i}"
         hierarchy = hierarchy_builder.build_hierarchy(chunks)
-        assert len(hierarchy.root_chunks,
-            ) > 0, "Should have root chunks in hierarchy"
+        assert (
+            len(
+                hierarchy.root_chunks,
+            )
+            > 0
+        ), "Should have root chunks in hierarchy"
         assert len(hierarchy.chunk_map) > 0, "Should have chunks in hierarchy"
-
-
 
         # Check that chunks in hierarchy have token metadata
         for chunk in hierarchy.chunk_map.values():
             assert hasattr(chunk, "metadata")
             assert "tokens" in chunk.metadata
             assert chunk.metadata["tokens"] > 0
+
     @classmethod
     def test_token_aware_chunking(cls, tmp_path):
         """Test token-aware chunking that respects token limits."""
@@ -104,7 +109,7 @@ def merge_processors(p1: DataProcessor, p2: DataProcessor) -> DataProcessor:
         large_file.write_text(
             """
 def process_data(items):
-    ""\"Process a list of items with detailed documentation.
+    \"\"\"Process a list of items with detailed documentation.
 
     This function processes each item in the list and performs various
     transformations and validations. It handles errors gracefully and
@@ -115,7 +120,7 @@ def process_data(items):
 
     Returns:
         Dict containing processed results and statistics
-    ""\"
+    \"\"\"
     results = []
     errors = []
 
@@ -148,7 +153,7 @@ def process_data(items):
         'success': len(results),
         'failed': len(errors)
     }
-''',
+""",
         )
 
         # Parse file
@@ -158,8 +163,11 @@ def process_data(items):
         from chunker.token.chunker import TreeSitterTokenAwareChunker
 
         token_chunker = TreeSitterTokenAwareChunker()
-        token_limited_chunks = token_chunker.chunk_with_token_limit(str(
-            large_file), "python", max_tokens=100)
+        token_limited_chunks = token_chunker.chunk_with_token_limit(
+            str(large_file),
+            "python",
+            max_tokens=100,
+        )
         for chunk in token_limited_chunks:
             assert hasattr(chunk, "metadata")
             assert "token_count" in chunk.metadata
@@ -174,31 +182,32 @@ def process_data(items):
         nested_file.write_text(
             """
 class OuterClass:
-    ""\"Outer class with nested elements.""\"
+    \"\"\"Outer class with nested elements.\"\"\"
 
     class InnerClass:
-        ""\"Inner class.""\"
+        \"\"\"Inner class.\"\"\"
 
         def inner_method(self):
-            ""\"Method in inner class.""\"
+            \"\"\"Method in inner class.\"\"\"
             return "inner"
 
     def outer_method(self):
-        ""\"Method in outer class.""\"
+        \"\"\"Method in outer class.\"\"\"
 
         def nested_function():
-            ""\"Nested function.""\"
+            \"\"\"Nested function.\"\"\"
             return "nested"
 
         return nested_function()
 """,
-            )
+        )
         chunks = chunk_file(nested_file, "python")
         token_counter = TiktokenCounter()
         for chunk in chunks:
             chunk.metadata = chunk.metadata or {}
-            chunk.metadata["tokens"] = token_counter.count_tokens(chunk.content,
-                )
+            chunk.metadata["tokens"] = token_counter.count_tokens(
+                chunk.content,
+            )
         hierarchy_builder = ChunkHierarchyBuilder()
         hierarchy = hierarchy_builder.build_hierarchy(chunks)
 
@@ -228,7 +237,10 @@ class OuterClass:
             if node.children:
                 for child in node.children:
                     child_tokens = child.chunk.metadata.get("tokens", 0)
-                    assert parent_tokens >= child_tokens * 0.5, f"Parent tokens ({parent_tokens}) too small compared to child ({child_tokens})"
+                    assert (
+                        parent_tokens >= child_tokens * 0.5
+                    ), f"Parent tokens ({parent_tokens}) too small compared to child ({child_tokens})"
                     check_parent_child_tokens(child)
+
         for root in root_nodes:
             check_parent_child_tokens(root)

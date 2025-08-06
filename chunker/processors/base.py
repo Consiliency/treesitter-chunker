@@ -3,6 +3,7 @@
 This module defines the SpecializedProcessor interface that all
 file-type-specific processors must implement.
 """
+
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -18,6 +19,7 @@ class TextChunk:
 
     Used by processors that handle non-code text formats.
     """
+
     content: str
     start_line: int
     end_line: int
@@ -48,6 +50,7 @@ class ProcessorConfig:
         group_related: Whether to group related items
         format_specific: Format-specific configuration
     """
+
     chunk_size: int = 50
     preserve_structure: bool = True
     include_comments: bool = True
@@ -74,7 +77,7 @@ class SpecializedProcessor(ABC):
     Processors should implement one of these approaches.
     """
 
-    def __init__(self, config: (ProcessorConfig | dict[str, Any] | None) = None):
+    def __init__(self, config: ProcessorConfig | dict[str, Any] | None = None):
         """Initialize processor with configuration.
 
         Args:
@@ -87,7 +90,7 @@ class SpecializedProcessor(ABC):
 
     @staticmethod
     @abstractmethod
-    def can_handle(file_path: str, content: (str | None) = None) -> bool:
+    def can_handle(file_path: str, content: str | None = None) -> bool:
         """Check if this processor can handle the given file.
 
         Args:
@@ -98,13 +101,16 @@ class SpecializedProcessor(ABC):
             True if this processor can handle the file
         """
 
-    def can_process(self, file_path: (str | Path), content: (str | None) = None,
-        ) -> bool:
+    def can_process(
+        self,
+        file_path: str | Path,
+        content: str | None = None,
+    ) -> bool:
         """Alias for can_handle to support different interfaces."""
         return self.can_handle(str(file_path), content)
 
     @staticmethod
-    def detect_format(_file_path: str, _content: str) -> (str | None):
+    def detect_format(_file_path: str, _content: str) -> str | None:
         """Detect the specific fmt of the file.
 
         Args:
@@ -130,8 +136,11 @@ class SpecializedProcessor(ABC):
         return {}
 
     @staticmethod
-    def chunk_content(_content: str, _structure: dict[str, Any], _file_path:
-        str) -> list[CodeChunk]:
+    def chunk_content(
+        _content: str,
+        _structure: dict[str, Any],
+        _file_path: str,
+    ) -> list[CodeChunk]:
         """Chunk the content based on its structure.
 
         Args:
@@ -144,8 +153,7 @@ class SpecializedProcessor(ABC):
         """
         return []
 
-    def process(self, file_path: str, content: str) -> list[CodeChunk |
-        TextChunk]:
+    def process(self, file_path: str, content: str) -> list[CodeChunk | TextChunk]:
         """Process a file and return chunks.
 
         This is the main entry point that orchestrates the processing.
@@ -165,10 +173,13 @@ class SpecializedProcessor(ABC):
             return chunks
         raise NotImplementedError(
             f"{self.__class__.__name__} must implement either the structured approach (detect_format, parse_structure, chunk_content) or override the process method",
-            )
+        )
 
-    def process_file(self, file_path: (str | Path), config: (dict[str, Any] |
-        None) = None) -> list[TextChunk]:
+    def process_file(
+        self,
+        file_path: str | Path,
+        config: dict[str, Any] | None = None,
+    ) -> list[TextChunk]:
         """Process a file and return text chunks.
 
         This method supports the LogProcessor interface.
@@ -190,9 +201,15 @@ class SpecializedProcessor(ABC):
             text_chunks = []
             for chunk in chunks:
                 if isinstance(chunk, CodeChunk):
-                    text_chunk = TextChunk(content=chunk.content,
-                        start_line=chunk.start_line, end_line=chunk.
-                        end_line, start_byte=chunk.byte_start, end_byte=chunk.byte_end, metadata=chunk.metadata, chunk_type=chunk.node_type)
+                    text_chunk = TextChunk(
+                        content=chunk.content,
+                        start_line=chunk.start_line,
+                        end_line=chunk.end_line,
+                        start_byte=chunk.byte_start,
+                        end_byte=chunk.byte_end,
+                        metadata=chunk.metadata,
+                        chunk_type=chunk.node_type,
+                    )
                     text_chunks.append(text_chunk)
                 else:
                     text_chunks.append(chunk)
@@ -201,8 +218,11 @@ class SpecializedProcessor(ABC):
             if config:
                 self.config.format_specific = old_config
 
-    def process_stream(self, stream: Iterator[str], file_path: (Path | None
-        ) = None) -> Iterator[TextChunk]:
+    def process_stream(
+        self,
+        stream: Iterator[str],
+        file_path: Path | None = None,
+    ) -> Iterator[TextChunk]:
         """Process content from a stream.
 
         Args:
@@ -242,5 +262,8 @@ class SpecializedProcessor(ABC):
         Returns:
             Dictionary with processor information
         """
-        return {"name": self.__class__.__name__, "supported_formats": self.
-            get_supported_formats(), "config": self.config}
+        return {
+            "name": self.__class__.__name__,
+            "supported_formats": self.get_supported_formats(),
+            "config": self.config,
+        }

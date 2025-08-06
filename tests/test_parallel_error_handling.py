@@ -1,4 +1,5 @@
 """Integration tests for parallel processing error handling."""
+
 import gc
 import multiprocessing
 import os
@@ -33,11 +34,18 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
     """Test error handling in parallel processing scenarios."""
 
     @classmethod
-    def test_worker_process_crash_recovery(cls, error_tracking_context,
-        resource_monitor, parallel_test_environment):
+    def test_worker_process_crash_recovery(
+        cls,
+        error_tracking_context,
+        resource_monitor,
+        parallel_test_environment,
+    ):
         """Test worker process crash recovery in parallel processing."""
-        resource_monitor.track_resource(module="chunker.parallel",
-            resource_type="process", resource_id="worker_1")
+        resource_monitor.track_resource(
+            module="chunker.parallel",
+            resource_type="process",
+            resource_id="worker_1",
+        )
         mock_process = MagicMock()
         mock_process.is_alive.return_value = False
         mock_process.exitcode = -11
@@ -45,7 +53,11 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
         with patch("multiprocessing.Process") as MockProcess:
             MockProcess.return_value = mock_process
             error = RuntimeError("Worker process crashed with signal -11")
-            error_context = error_tracking_context.capture_and_propagate(source="chunker.parallel.WorkerProcess", target="chunker.parallel.ParallelChunker", error=error)
+            error_context = error_tracking_context.capture_and_propagate(
+                source="chunker.parallel.WorkerProcess",
+                target="chunker.parallel.ParallelChunker",
+                error=error,
+            )
             error_context["context_data"]["worker_id"] = 1
             error_context["context_data"]["pid"] = mock_process.pid
             error_context["context_data"]["exit_code"] = mock_process.exitcode
@@ -54,19 +66,24 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
             assert error_context["context_data"]["worker_id"] == 1
             assert error_context["context_data"]["exit_code"] == -11
             cli_error = RuntimeError(f"Parallel processing failed: {error}")
-            error_tracking_context.capture_and_propagate(source="chunker.parallel.ParallelChunker", target="cli.main",
-                error=cli_error)
+            error_tracking_context.capture_and_propagate(
+                source="chunker.parallel.ParallelChunker",
+                target="cli.main",
+                error=cli_error,
+            )
             error_chain = error_tracking_context.get_error_chain()
             assert len(error_chain) >= 2
-            assert error_chain[0]["source_module"
-                ] == "chunker.parallel.WorkerProcess"
+            assert error_chain[0]["source_module"] == "chunker.parallel.WorkerProcess"
             assert error_chain[-1]["target_module"] == "cli.main"
         resource_monitor.release_resource("worker_1")
         leaked = resource_monitor.verify_cleanup("chunker.parallel")
         assert len(leaked) == 0, f"Found leaked resources: {leaked}"
 
-    def test_worker_timeout_handling(self, error_tracking_context,
-        parallel_test_environment):
+    def test_worker_timeout_handling(
+        self,
+        error_tracking_context,
+        parallel_test_environment,
+    ):
         """Test worker timeout handling."""
         with ProcessPoolExecutor(max_workers=1) as executor:
             future = executor.submit(slow_worker_func, 2.0)
@@ -74,10 +91,12 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
                 future.result(timeout=0.5)
                 raise AssertionError("Should have timed out")
             except FutureTimeoutError:
-                error = TimeoutError(
-                    "Worker process timed out after 0.5 seconds")
+                error = TimeoutError("Worker process timed out after 0.5 seconds")
                 error_context = error_tracking_context.capture_and_propagate(
-                    source="chunker.parallel.ProcessPool", target="chunker.parallel.ParallelChunker", error=error)
+                    source="chunker.parallel.ProcessPool",
+                    target="chunker.parallel.ParallelChunker",
+                    error=error,
+                )
                 error_context["context_data"]["timeout_seconds"] = 0.5
                 error_context["context_data"]["worker_state"] = "running"
                 assert error_context["error_type"] == "TimeoutError"
@@ -90,7 +109,11 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
                 raise AssertionError("Should have timed out")
             except FutureTimeoutError:
                 error = TimeoutError("Worker thread timed out")
-                error_context = self.capture_cross_module_error(source_module="chunker.parallel", target_module="cli.main", error=error)
+                error_context = self.capture_cross_module_error(
+                    source_module="chunker.parallel",
+                    target_module="cli.main",
+                    error=error,
+                )
                 assert error_context["error_type"] == "TimeoutError"
                 future.cancel()
 
@@ -110,53 +133,88 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
             filename = file_path.name
             file_num = int(filename.split("_")[1].split(".")[0])
             if file_num in {2, 6, 8}:
-                raise RuntimeError(
-                    f"Failed to chunk {filename}: Simulated error")
-            return {"file": str(file_path), "chunks": [{"type": "function",
-                "name": f"func_{file_num}", "start_line": 1, "end_line": 2},
-                ], "language": "python"}
+                raise RuntimeError(f"Failed to chunk {filename}: Simulated error")
+            return {
+                "file": str(file_path),
+                "chunks": [
+                    {
+                        "type": "function",
+                        "name": f"func_{file_num}",
+                        "start_line": 1,
+                        "end_line": 2,
+                    },
+                ],
+                "language": "python",
+            }
+
         for file_path in files:
             try:
                 result = mock_chunk_file(file_path)
                 successful_results.append(result)
             except RuntimeError as e:
-                failed_results.append({"file": str(file_path), "error": str(e)},
-                    )
+                failed_results.append(
+                    {"file": str(file_path), "error": str(e)},
+                )
         assert len(successful_results) == 7
         assert len(failed_results) == 3
-        successful_nums = [int(Path(r["file"]).name.split("_")[1].split(".",
-            )[0]) for r in successful_results]
+        successful_nums = [
+            int(
+                Path(r["file"])
+                .name.split("_")[1]
+                .split(
+                    ".",
+                )[0],
+            )
+            for r in successful_results
+        ]
         assert 2 not in successful_nums
         assert 6 not in successful_nums
         assert 8 not in successful_nums
         for failed in failed_results:
             assert "Failed to chunk" in failed["error"]
             assert "Simulated error" in failed["error"]
-        export_data = {"successful": successful_results, "failed":
-            failed_results, "summary": {"total_files": len(files),
-            "successful": len(successful_results), "failed": len(
-            failed_results), "success_rate": len(successful_results) / len(
-            files) * 100}}
+        export_data = {
+            "successful": successful_results,
+            "failed": failed_results,
+            "summary": {
+                "total_files": len(files),
+                "successful": len(successful_results),
+                "failed": len(failed_results),
+                "success_rate": len(successful_results) / len(files) * 100,
+            },
+        }
         assert export_data["summary"]["success_rate"] == 70.0
 
     @classmethod
-    def test_resource_cleanup_after_errors(cls, resource_monitor,
-        parallel_test_environment):
+    def test_resource_cleanup_after_errors(
+        cls,
+        resource_monitor,
+        parallel_test_environment,
+    ):
         """Test resource cleanup after errors."""
         resources_to_track = []
         with parallel_test_environment:
             for i in range(5):
                 process_id = f"worker_process_{i}"
-                resource_monitor.track_resource(module="chunker.parallel",
-                    resource_type="process", resource_id=process_id)
+                resource_monitor.track_resource(
+                    module="chunker.parallel",
+                    resource_type="process",
+                    resource_id=process_id,
+                )
                 resources_to_track.append(process_id)
                 file_handle_id = f"output_file_{i}"
-                resource_monitor.track_resource(module="chunker.parallel",
-                    resource_type="file_handle", resource_id=file_handle_id)
+                resource_monitor.track_resource(
+                    module="chunker.parallel",
+                    resource_type="file_handle",
+                    resource_id=file_handle_id,
+                )
                 resources_to_track.append(file_handle_id)
                 queue_id = f"result_queue_{i}"
-                resource_monitor.track_resource(module="chunker.parallel",
-                    resource_type="queue", resource_id=queue_id)
+                resource_monitor.track_resource(
+                    module="chunker.parallel",
+                    resource_type="queue",
+                    resource_id=queue_id,
+                )
                 resources_to_track.append(queue_id)
             try:
                 raise RuntimeError("Critical error in parallel processing")
@@ -165,11 +223,14 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
                     resource_monitor.release_resource(resource_id)
             leaked = resource_monitor.verify_cleanup("chunker.parallel")
             assert len(leaked) == 0, f"Found {len(leaked)} leaked resources"
-            active_processes = resource_monitor.get_all_resources(module="chunker.parallel", state="active")
+            active_processes = resource_monitor.get_all_resources(
+                module="chunker.parallel",
+                state="active",
+            )
             assert len(active_processes) == 0
 
     @staticmethod
-    def test_progress_tracking_with_failures(temp_workspace):
+    def test_progress_tracking_with_failures(_temp_workspace):
         """Test progress tracking accurately reflects failures."""
         total_files = 20
         processed = 0
@@ -178,13 +239,19 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
 
         def progress_callback(current, total, status, filename=None):
             nonlocal processed, failed
-            update = {"current": current, "total": total, "status": status,
-                "filename": filename, "timestamp": time.time()}
+            update = {
+                "current": current,
+                "total": total,
+                "status": status,
+                "filename": filename,
+                "timestamp": time.time(),
+            }
             progress_updates.append(update)
             if status == "completed":
                 processed += 1
             elif status == "failed":
                 failed += 1
+
         for i in range(total_files):
             filename = f"file_{i}.py"
             if i in {3, 7, 11, 15, 19}:
@@ -197,14 +264,19 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
         assert len(progress_updates) == total_files
         assert progress_updates[0]["current"] == 1
         assert progress_updates[-1]["current"] == total_files
-        failed_files = [u["filename"] for u in progress_updates if u[
-            "status"] == "failed"]
+        failed_files = [
+            u["filename"] for u in progress_updates if u["status"] == "failed"
+        ]
         assert len(failed_files) == 5
         assert "file_3.py" in failed_files
         assert "file_19.py" in failed_files
-        stats = {"total": total_files, "processed": processed, "failed":
-            failed, "success_rate": processed / total_files * 100,
-            "failure_rate": failed / total_files * 100}
+        stats = {
+            "total": total_files,
+            "processed": processed,
+            "failed": failed,
+            "success_rate": processed / total_files * 100,
+            "failure_rate": failed / total_files * 100,
+        }
         assert stats["success_rate"] == 75.0
         assert stats["failure_rate"] == 25.0
 
@@ -218,7 +290,10 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
                     raise RuntimeError(f"Error at index {i}")
             except RuntimeError as e:
                 error_context = error_tracking_context.capture_and_propagate(
-                    source="chunker.parallel.Worker", target="chunker.parallel.Aggregator", error=e)
+                    source="chunker.parallel.Worker",
+                    target="chunker.parallel.Aggregator",
+                    error=e,
+                )
                 errors_fail_fast.append(error_context)
                 break
         assert len(errors_fail_fast) == 1
@@ -230,7 +305,10 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
                     raise RuntimeError(f"Error at index {i}")
             except RuntimeError as e:
                 error_context = error_tracking_context.capture_and_propagate(
-                    source="chunker.parallel.Worker", target="chunker.parallel.Aggregator", error=e)
+                    source="chunker.parallel.Worker",
+                    target="chunker.parallel.Aggregator",
+                    error=e,
+                )
                 errors_collect_all.append(error_context)
         assert len(errors_collect_all) == 3
         assert "Error at index 2" in errors_collect_all[0]["error_message"]
@@ -239,24 +317,40 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
         if errors_collect_all:
             aggregate_error = RuntimeError(
                 f"Multiple errors occurred: {len(errors_collect_all)} failures",
-                )
+            )
             aggregate_context = error_tracking_context.capture_and_propagate(
-                source="chunker.parallel.Aggregator", target="cli.main",
-                error=aggregate_error)
-            aggregate_context["context_data"]["individual_errors"] = [{
-                "index": i, "type": err["error_type"], "message": err[
-                "error_message"]} for i, err in enumerate(errors_collect_all)]
-            assert len(aggregate_context["context_data"]["individual_errors"],
-                ) == 3
+                source="chunker.parallel.Aggregator",
+                target="cli.main",
+                error=aggregate_error,
+            )
+            aggregate_context["context_data"]["individual_errors"] = [
+                {"index": i, "type": err["error_type"], "message": err["error_message"]}
+                for i, err in enumerate(errors_collect_all)
+            ]
+            assert (
+                len(
+                    aggregate_context["context_data"]["individual_errors"],
+                )
+                == 3
+            )
 
     @classmethod
-    def test_deadlock_prevention(cls, resource_monitor, error_tracking_context,
-        ):
+    def test_deadlock_prevention(
+        cls,
+        resource_monitor,
+        error_tracking_context,
+    ):
         """Test deadlock prevention mechanisms."""
-        resource_monitor.track_resource(module="chunker.parallel",
-            resource_type="lock", resource_id="deadlock_test_lock1")
-        resource_monitor.track_resource(module="chunker.parallel",
-            resource_type="lock", resource_id="deadlock_test_lock2")
+        resource_monitor.track_resource(
+            module="chunker.parallel",
+            resource_type="lock",
+            resource_id="deadlock_test_lock1",
+        )
+        resource_monitor.track_resource(
+            module="chunker.parallel",
+            resource_type="lock",
+            resource_id="deadlock_test_lock2",
+        )
         manager = multiprocessing.Manager()
         lock1 = manager.Lock()
         lock2 = manager.Lock()
@@ -296,6 +390,7 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
                         deadlock_detected.value = True
             except (RuntimeError, ValueError) as e:
                 result_queue.put(f"worker2_error: {e}")
+
         p1 = multiprocessing.Process(target=worker1)
         p2 = multiprocessing.Process(target=worker2)
         p1.start()
@@ -319,14 +414,15 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
         assert not p1.is_alive(), "Process 1 should be terminated"
         assert not p2.is_alive(), "Process 2 should be terminated"
         if deadlock_detected.value:
-            deadlock_error = RuntimeError(
-                "Deadlock detected between worker processes")
-            error_context = error_tracking_context.capture_and_propagate(source="chunker.parallel.DeadlockDetector", target="chunker.parallel.ParallelChunker", error=deadlock_error)
+            deadlock_error = RuntimeError("Deadlock detected between worker processes")
+            error_context = error_tracking_context.capture_and_propagate(
+                source="chunker.parallel.DeadlockDetector",
+                target="chunker.parallel.ParallelChunker",
+                error=deadlock_error,
+            )
             error_context["context_data"]["timeout_seconds"] = 1.0
-            error_context["context_data"]["workers_involved"] = ["worker1",
-                "worker2"]
-            error_context["context_data"]["recovery_action"
-                ] = "terminated_workers"
+            error_context["context_data"]["workers_involved"] = ["worker1", "worker2"]
+            error_context["context_data"]["recovery_action"] = "terminated_workers"
         resource_monitor.release_resource("deadlock_test_lock1")
         resource_monitor.release_resource("deadlock_test_lock2")
         leaked = resource_monitor.verify_cleanup("chunker.parallel")
@@ -350,13 +446,18 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
             test_files.append(file_path)
         for iteration in range(10):
             iter_resource_id = f"iteration_{iteration}_resources"
-            resource_monitor.track_resource(module="chunker.parallel",
-                resource_type="memory_test", resource_id=iter_resource_id)
+            resource_monitor.track_resource(
+                module="chunker.parallel",
+                resource_type="memory_test",
+                resource_id=iter_resource_id,
+            )
             with ProcessPoolExecutor(max_workers=2) as executor:
                 futures = []
                 for test_file in test_files:
-                    future = executor.submit(process_file_with_memory, (
-                        test_file, iteration))
+                    future = executor.submit(
+                        process_file_with_memory,
+                        (test_file, iteration),
+                    )
                     futures.append(future)
                 for i, future in enumerate(futures):
                     try:
@@ -366,7 +467,8 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
                             pass
                         else:
                             leaked_objects.append(
-                                f"iteration_{iteration}_file_{i}_error")
+                                f"iteration_{iteration}_file_{i}_error",
+                            )
             resource_monitor.release_resource(iter_resource_id)
             gc.collect()
             time.sleep(0.1)
@@ -376,18 +478,30 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
         average_growth_per_iteration = memory_growth / len(memory_samples)
         current_handles = len(process.open_files())
         current_children = len(process.children())
-        assert memory_growth < 10.0, f"Memory grew by {memory_growth:.2f}MB, possible leak"
-        assert average_growth_per_iteration < 1.0, f"Average memory growth {average_growth_per_iteration:.2f}MB per iteration"
-        assert current_handles <= initial_handles + 1, f"File handles leaked: {current_handles - initial_handles}"
-        assert current_children == initial_children, f"Child processes leaked: {current_children - initial_children}"
+        assert (
+            memory_growth < 10.0
+        ), f"Memory grew by {memory_growth:.2f}MB, possible leak"
+        assert (
+            average_growth_per_iteration < 1.0
+        ), f"Average memory growth {average_growth_per_iteration:.2f}MB per iteration"
+        assert (
+            current_handles <= initial_handles + 1
+        ), f"File handles leaked: {current_handles - initial_handles}"
+        assert (
+            current_children == initial_children
+        ), f"Child processes leaked: {current_children - initial_children}"
         leaked = resource_monitor.verify_cleanup("chunker.parallel")
         assert len(leaked) == 0, f"Found leaked resources: {leaked}"
-        memory_profile = {"initial_memory_mb": memory_samples[0],
-            "final_memory_mb": memory_samples[-1], "total_growth_mb":
-            memory_growth, "avg_growth_per_iteration_mb":
-            average_growth_per_iteration, "peak_memory_mb": max(
-            memory_samples), "iterations": len(memory_samples) - 1,
-            "leaked_objects": len(leaked_objects)}
+        memory_profile = {
+            "initial_memory_mb": memory_samples[0],
+            "final_memory_mb": memory_samples[-1],
+            "total_growth_mb": memory_growth,
+            "avg_growth_per_iteration_mb": average_growth_per_iteration,
+            "peak_memory_mb": max(memory_samples),
+            "iterations": len(memory_samples) - 1,
+            "leaked_objects": len(leaked_objects),
+        }
         print(f"\nMemory Profile: {memory_profile}")
-        assert memory_profile["leaked_objects"
-            ] == 0, f"Unexpected leaked objects detected: {memory_profile['leaked_objects']}"
+        assert (
+            memory_profile["leaked_objects"] == 0
+        ), f"Unexpected leaked objects detected: {memory_profile['leaked_objects']}"

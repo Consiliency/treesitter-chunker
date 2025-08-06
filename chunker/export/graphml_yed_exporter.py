@@ -1,4 +1,5 @@
 """Extended GraphML exporter with yEd support for enhanced visualization."""
+
 import xml.etree.ElementTree as ET
 from typing import Any
 from xml.dom import minidom
@@ -11,17 +12,37 @@ class GraphMLyEdExporter(GraphMLExporter):
 
     def __init__(self):
         super().__init__()
-        self.default_node_styles = {"function": {"shape": "roundrectangle",
-            "fill": "#4287f5", "border": "#2e5db8", "text": "#ffffff"},
-            "class": {"shape": "rectangle", "fill": "#42f554", "border":
-            "#2eb83a", "text": "#000000"}, "method": {"shape": "ellipse",
-            "fill": "#f5a442", "border": "#b87a2e", "text": "#000000"},
-            "module": {"shape": "hexagon", "fill": "#f542d7", "border":
-            "#b82ea1", "text": "#ffffff"}}
-        self.default_edge_styles = {"CALLS": {"color": "#ff0000", "style":
-            "line", "width": "2.0"}, "IMPORTS": {"color": "#0000ff",
-            "style": "dashed", "width": "1.5"}, "CONTAINS": {"color":
-            "#00ff00", "style": "dotted", "width": "1.0"}}
+        self.default_node_styles = {
+            "function": {
+                "shape": "roundrectangle",
+                "fill": "#4287f5",
+                "border": "#2e5db8",
+                "text": "#ffffff",
+            },
+            "class": {
+                "shape": "rectangle",
+                "fill": "#42f554",
+                "border": "#2eb83a",
+                "text": "#000000",
+            },
+            "method": {
+                "shape": "ellipse",
+                "fill": "#f5a442",
+                "border": "#b87a2e",
+                "text": "#000000",
+            },
+            "module": {
+                "shape": "hexagon",
+                "fill": "#f542d7",
+                "border": "#b82ea1",
+                "text": "#ffffff",
+            },
+        }
+        self.default_edge_styles = {
+            "CALLS": {"color": "#ff0000", "style": "line", "width": "2.0"},
+            "IMPORTS": {"color": "#0000ff", "style": "dashed", "width": "1.5"},
+            "CONTAINS": {"color": "#00ff00", "style": "dotted", "width": "1.0"},
+        }
 
     @staticmethod
     def _create_key_elements(root: ET.Element) -> None:
@@ -36,8 +57,12 @@ class GraphMLyEdExporter(GraphMLExporter):
         key.set("id", "d10")
         key.set("yfiles.type", "edgegraphics")
 
-    def _create_node_element(self, graph: ET.Element, node_id: str, node: Any,
-        ) -> None:
+    def _create_node_element(
+        self,
+        graph: ET.Element,
+        node_id: str,
+        node: Any,
+    ) -> None:
         """Create a node element with yEd graphics."""
         node_elem = ET.SubElement(graph, "node")
         node_elem.set("id", node_id)
@@ -51,8 +76,10 @@ class GraphMLyEdExporter(GraphMLExporter):
         geometry.set("x", "0.0")
         geometry.set("y", "0.0")
         chunk_type = node.properties.get("chunk_type", "unknown")
-        style = self.default_node_styles.get(chunk_type, self.
-            default_node_styles.get("function"))
+        style = self.default_node_styles.get(
+            chunk_type,
+            self.default_node_styles.get("function"),
+        )
         fill = ET.SubElement(shape_node, "y:Fill")
         fill.set("color", style["fill"])
         fill.set("transparent", "false")
@@ -70,8 +97,12 @@ class GraphMLyEdExporter(GraphMLExporter):
         shape = ET.SubElement(shape_node, "y:Shape")
         shape.set("type", style["shape"])
 
-    def _create_edge_element(self, graph: ET.Element, edge: Any, edge_id: int,
-        ) -> None:
+    def _create_edge_element(
+        self,
+        graph: ET.Element,
+        edge: Any,
+        edge_id: int,
+    ) -> None:
         """Create an edge element with yEd graphics."""
         edge_elem = ET.SubElement(graph, "edge")
         edge_elem.set("id", f"e{edge_id}")
@@ -81,8 +112,10 @@ class GraphMLyEdExporter(GraphMLExporter):
         data = ET.SubElement(edge_elem, "data")
         data.set("key", "d10")
         poly_edge = ET.SubElement(data, "y:PolyLineEdge")
-        style = self.default_edge_styles.get(edge.relationship_type, self.
-            default_edge_styles.get("CALLS"))
+        style = self.default_edge_styles.get(
+            edge.relationship_type,
+            self.default_edge_styles.get("CALLS"),
+        )
         line_style = ET.SubElement(poly_edge, "y:LineStyle")
         line_style.set("color", style["color"])
         line_style.set("type", style["style"])
@@ -96,8 +129,12 @@ class GraphMLyEdExporter(GraphMLExporter):
         label.set("fontSize", "10")
         label.text = edge.relationship_type
 
-    def export_string(self, pretty_print: bool = True, use_yed: bool = True, **
-        options) -> str:
+    def export_string(
+        self,
+        pretty_print: bool = True,
+        use_yed: bool = True,
+        **options,
+    ) -> str:
         """Export with optional yEd extensions.
 
         Args:
@@ -114,9 +151,10 @@ class GraphMLyEdExporter(GraphMLExporter):
             root.set("xmlns", "http://graphml.graphdrawing.org/xmlns")
             root.set("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
             root.set("xmlns:y", "http://www.yworks.com/xml/graphml")
-            root.set("xsi:schemaLocation",
+            root.set(
+                "xsi:schemaLocation",
                 "http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd",
-                )
+            )
             self._create_key_elements(root)
             graph = ET.SubElement(root, "graph")
             for attr, value in self.graph_attrs.items():

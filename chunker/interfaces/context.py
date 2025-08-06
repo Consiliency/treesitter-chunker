@@ -3,6 +3,7 @@
 Interfaces for extracting and preserving context from the AST,
 such as imports, type definitions, and parent scopes.
 """
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
@@ -14,6 +15,7 @@ from .base import ASTProcessor
 
 class ContextType(Enum):
     """Types of context that can be extracted."""
+
     IMPORT = "import"
     TYPE_DEF = "type_definition"
     DECORATOR = "decorator"
@@ -35,6 +37,7 @@ class ContextItem:
         line_number: Line number in source file
         importance: Priority for inclusion (0-100)
     """
+
     type: ContextType
     content: str
     node: Node
@@ -79,8 +82,7 @@ class ContextExtractor(ASTProcessor):
 
     @staticmethod
     @abstractmethod
-    def extract_dependencies(node: Node, ast: Node, source: bytes) -> list[
-        ContextItem]:
+    def extract_dependencies(node: Node, ast: Node, source: bytes) -> list[ContextItem]:
         """Extract dependencies for a specific node.
 
         This includes any symbols, types, or functions that the node
@@ -97,8 +99,11 @@ class ContextExtractor(ASTProcessor):
 
     @staticmethod
     @abstractmethod
-    def extract_parent_context(node: Node, ast: Node, source: bytes) -> list[
-        ContextItem]:
+    def extract_parent_context(
+        node: Node,
+        ast: Node,
+        source: bytes,
+    ) -> list[ContextItem]:
         """Extract parent scope context (enclosing class, function, etc).
 
         Args:
@@ -125,8 +130,10 @@ class ContextExtractor(ASTProcessor):
 
     @staticmethod
     @abstractmethod
-    def build_context_prefix(context_items: list[ContextItem], max_size: (
-        int | None) = None) -> str:
+    def build_context_prefix(
+        context_items: list[ContextItem],
+        max_size: int | None = None,
+    ) -> str:
         """Build a context string to prepend to a chunk.
 
         Args:
@@ -143,8 +150,11 @@ class SymbolResolver(ABC):
 
     @staticmethod
     @abstractmethod
-    def find_symbol_definition(symbol_name: str, scope_node: Node, ast: Node,
-        ) -> (Node | None):
+    def find_symbol_definition(
+        symbol_name: str,
+        scope_node: Node,
+        ast: Node,
+    ) -> Node | None:
         """Find where a symbol is defined.
 
         Args:
@@ -187,7 +197,7 @@ class ScopeAnalyzer(ABC):
 
     @staticmethod
     @abstractmethod
-    def get_enclosing_scope(node: Node) -> (Node | None):
+    def get_enclosing_scope(node: Node) -> Node | None:
         """Get the enclosing scope for a node.
 
         Args:

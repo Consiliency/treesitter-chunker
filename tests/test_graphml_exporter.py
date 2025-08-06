@@ -1,4 +1,5 @@
 """Unit tests for GraphML exporter."""
+
 import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -13,16 +14,25 @@ class TestGraphMLExporter:
     """Test GraphML export functionality."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def sample_chunk(cls):
         """Create a sample code chunk."""
-        return CodeChunk(file_path="test.py", start_line=1, end_line=5,
-            byte_start=0, byte_end=50, content="""def test():
+        return CodeChunk(
+            file_path="test.py",
+            start_line=1,
+            end_line=5,
+            byte_start=0,
+            byte_end=50,
+            content="""def test():
     pass""",
-            node_type="function", language="python", parent_context="module", metadata={"name": "test", "chunk_type": "function"})
+            node_type="function",
+            language="python",
+            parent_context="module",
+            metadata={"name": "test", "chunk_type": "function"},
+        )
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def exporter(cls):
         """Create a GraphMLExporter instance."""
         return GraphMLExporter()
@@ -32,17 +42,23 @@ class TestGraphMLExporter:
         """Test that proper XML namespace is used."""
         exporter.add_chunks([sample_chunk])
         xml_str = exporter.export_string()
-        root = ET.fromstring(xml_str)  # noqa: S314 - Parsing test-generated XML  # noqa: S314 - Parsing test-generated XML
+        root = ET.fromstring(
+            xml_str,
+        )
         assert root.tag == "{http://graphml.graphdrawing.org/xmlns}graphml"
         assert "http://graphml.graphdrawing.org/xmlns" in root.attrib.get(
-            "{http://www.w3.org/2001/XMLSchema-instance}schemaLocation", "")
+            "{http://www.w3.org/2001/XMLSchema-instance}schemaLocation",
+            "",
+        )
 
     @staticmethod
     def test_graph_attributes(exporter, sample_chunk):
         """Test graph element attributes."""
         exporter.add_chunks([sample_chunk])
         xml_str = exporter.export_string()
-        root = ET.fromstring(xml_str)  # noqa: S314 - Parsing test-generated XML  # noqa: S314 - Parsing test-generated XML
+        root = ET.fromstring(
+            xml_str,
+        )
         graph = root.find(".//{http://graphml.graphdrawing.org/xmlns}graph")
         assert graph is not None
         assert graph.get("edgedefault") == "directed"
@@ -53,7 +69,9 @@ class TestGraphMLExporter:
         """Test that key elements are properly defined."""
         exporter.add_chunks([sample_chunk])
         xml_str = exporter.export_string()
-        root = ET.fromstring(xml_str)  # noqa: S314 - Parsing test-generated XML  # noqa: S314 - Parsing test-generated XML
+        root = ET.fromstring(
+            xml_str,
+        )
         keys = root.findall(".//{http://graphml.graphdrawing.org/xmlns}key")
         key_ids = {key.get("id") for key in keys}
         assert "n_label" in key_ids
@@ -68,13 +86,14 @@ class TestGraphMLExporter:
         """Test node data elements."""
         exporter.add_chunks([sample_chunk])
         xml_str = exporter.export_string()
-        root = ET.fromstring(xml_str)  # noqa: S314 - Parsing test-generated XML  # noqa: S314 - Parsing test-generated XML
+        root = ET.fromstring(
+            xml_str,
+        )
         nodes = root.findall(".//{http://graphml.graphdrawing.org/xmlns}node")
         assert len(nodes) == 1
         node = nodes[0]
         assert node.get("id") == "test.py:1:5"
-        data_elements = node.findall(
-            ".//{http://graphml.graphdrawing.org/xmlns}data")
+        data_elements = node.findall(".//{http://graphml.graphdrawing.org/xmlns}data")
         data_dict = {d.get("key"): d.text for d in data_elements}
         assert data_dict["n_label"] == "function"
         assert data_dict["n_file_path"] == "test.py"
@@ -84,23 +103,42 @@ class TestGraphMLExporter:
     @classmethod
     def test_edge_creation(cls, exporter):
         """Test edge creation and data."""
-        chunk1 = CodeChunk(file_path="a.py", start_line=1, end_line=5,
-            byte_start=0, byte_end=50, content="def a(): pass", node_type="function", language="python", parent_context="module",
-            metadata={"chunk_type": "function"})
-        chunk2 = CodeChunk(file_path="b.py", start_line=1, end_line=5,
-            byte_start=0, byte_end=50, content="def b(): pass", node_type="function", language="python", parent_context="module",
-            metadata={"chunk_type": "function"})
+        chunk1 = CodeChunk(
+            file_path="a.py",
+            start_line=1,
+            end_line=5,
+            byte_start=0,
+            byte_end=50,
+            content="def a(): pass",
+            node_type="function",
+            language="python",
+            parent_context="module",
+            metadata={"chunk_type": "function"},
+        )
+        chunk2 = CodeChunk(
+            file_path="b.py",
+            start_line=1,
+            end_line=5,
+            byte_start=0,
+            byte_end=50,
+            content="def b(): pass",
+            node_type="function",
+            language="python",
+            parent_context="module",
+            metadata={"chunk_type": "function"},
+        )
         exporter.add_chunks([chunk1, chunk2])
         exporter.add_relationship(chunk1, chunk2, "CALLS", {"line": 3})
         xml_str = exporter.export_string()
-        root = ET.fromstring(xml_str)  # noqa: S314 - Parsing test-generated XML  # noqa: S314 - Parsing test-generated XML
+        root = ET.fromstring(
+            xml_str,
+        )
         edges = root.findall(".//{http://graphml.graphdrawing.org/xmlns}edge")
         assert len(edges) == 1
         edge = edges[0]
         assert edge.get("source") == "a.py:1:5"
         assert edge.get("target") == "b.py:1:5"
-        data_elements = edge.findall(
-            ".//{http://graphml.graphdrawing.org/xmlns}data")
+        data_elements = edge.findall(".//{http://graphml.graphdrawing.org/xmlns}data")
         data_dict = {d.get("key"): d.text for d in data_elements}
         assert data_dict["e_label"] == "CALLS"
         assert data_dict["e_line"] == "3"
@@ -108,12 +146,24 @@ class TestGraphMLExporter:
     @classmethod
     def test_special_character_escaping(cls, exporter):
         """Test that special XML characters are properly escaped."""
-        chunk = CodeChunk(file_path="test.py", start_line=1, end_line=5,
-            byte_start=0, byte_end=100, content="""def test():
+        chunk = CodeChunk(
+            file_path="test.py",
+            start_line=1,
+            end_line=5,
+            byte_start=0,
+            byte_end=100,
+            content="""def test():
     ""\"Test <tag> & "quotes".""\"
-    return x > 5 & y < 10"""
-            , node_type="function", language="python", parent_context="module", metadata={"name": "test", "chunk_type": "function",
-            "description": "Test <tag> & special chars"})
+    return x > 5 & y < 10""",
+            node_type="function",
+            language="python",
+            parent_context="module",
+            metadata={
+                "name": "test",
+                "chunk_type": "function",
+                "description": "Test <tag> & special chars",
+            },
+        )
         exporter.add_chunks([chunk])
         xml_str = exporter.export_string()
         ET.fromstring(xml_str)  # noqa: S314 - Parsing test-generated XML
@@ -137,17 +187,43 @@ class TestGraphMLExporter:
     @classmethod
     def test_visualization_hints_integration(cls, exporter):
         """Test visualization hints are properly added."""
-        chunks = [CodeChunk(file_path="test.py", start_line=1, end_line=5,
-            byte_start=0, byte_end=50, content="def f(): pass", node_type="function", language="python", parent_context="module",
-            metadata={"chunk_type": "function"}), CodeChunk(file_path="test.py", start_line=10, end_line=20, byte_start=100, byte_end=200, content="class C: pass", node_type="class", language="python", parent_context="module", metadata={"chunk_type":
-            "class"})]
+        chunks = [
+            CodeChunk(
+                file_path="test.py",
+                start_line=1,
+                end_line=5,
+                byte_start=0,
+                byte_end=50,
+                content="def f(): pass",
+                node_type="function",
+                language="python",
+                parent_context="module",
+                metadata={"chunk_type": "function"},
+            ),
+            CodeChunk(
+                file_path="test.py",
+                start_line=10,
+                end_line=20,
+                byte_start=100,
+                byte_end=200,
+                content="class C: pass",
+                node_type="class",
+                language="python",
+                parent_context="module",
+                metadata={"chunk_type": "class"},
+            ),
+        ]
         exporter.add_chunks(chunks)
         exporter.add_relationship(chunks[0], chunks[1], "USED_BY", {})
-        exporter.add_visualization_hints(node_colors={"function": "#FF0000",
-            "class": "#00FF00"}, edge_colors={"USED_BY": "#0000FF"},
-            node_shapes={"function": "ellipse", "class": "rectangle"})
+        exporter.add_visualization_hints(
+            node_colors={"function": "#FF0000", "class": "#00FF00"},
+            edge_colors={"USED_BY": "#0000FF"},
+            node_shapes={"function": "ellipse", "class": "rectangle"},
+        )
         xml_str = exporter.export_string()
-        root = ET.fromstring(xml_str)  # noqa: S314 - Parsing test-generated XML  # noqa: S314 - Parsing test-generated XML
+        root = ET.fromstring(
+            xml_str,
+        )
         keys = root.findall(".//{http://graphml.graphdrawing.org/xmlns}key")
         key_names = {k.get("attr.name") for k in keys}
         assert "color" in key_names
@@ -155,7 +231,8 @@ class TestGraphMLExporter:
         nodes = root.findall(".//{http://graphml.graphdrawing.org/xmlns}node")
         for node in nodes:
             data_elements = node.findall(
-                ".//{http://graphml.graphdrawing.org/xmlns}data")
+                ".//{http://graphml.graphdrawing.org/xmlns}data",
+            )
             data_dict = {d.get("key"): d.text for d in data_elements}
             if data_dict.get("n_chunk_type") == "function":
                 assert data_dict.get("n_color") == "#FF0000"
@@ -178,7 +255,9 @@ class TestGraphMLExporter:
     def test_empty_graph(exporter):
         """Test exporting an empty graph."""
         xml_str = exporter.export_string()
-        root = ET.fromstring(xml_str)  # noqa: S314 - Parsing test-generated XML  # noqa: S314 - Parsing test-generated XML
+        root = ET.fromstring(
+            xml_str,
+        )
         graph = root.find(".//{http://graphml.graphdrawing.org/xmlns}graph")
         nodes = graph.findall(".//{http://graphml.graphdrawing.org/xmlns}node")
         edges = graph.findall(".//{http://graphml.graphdrawing.org/xmlns}edge")

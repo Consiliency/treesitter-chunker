@@ -3,6 +3,7 @@ Homebrew Formula Generator
 
 Creates Homebrew formulas for macOS distribution
 """
+
 import hashlib
 import subprocess
 import urllib.request
@@ -15,8 +16,12 @@ import tomllib
 class HomebrewFormulaGenerator:
     """Generates Homebrew formulas for package distribution"""
 
-    def generate_formula(self, version: str, output_path: Path,
-        package_info: (dict[str, Any] | None) = None) -> tuple[bool, Path]:
+    def generate_formula(
+        self,
+        version: str,
+        output_path: Path,
+        package_info: dict[str, Any] | None = None,
+    ) -> tuple[bool, Path]:
         """
         Generate Homebrew formula for macOS distribution
 
@@ -60,30 +65,38 @@ class HomebrewFormulaGenerator:
     @classmethod
     def _get_package_info(cls) -> dict[str, Any]:
         """Get package metadata from pyproject.toml or setup.py"""
-        info = {"name": "treesitter-chunker", "description":
-            "Language-agnostic code chunking using tree-sitter", "homepage":
-            "https://github.com/aorwall/treesitter-chunker", "license":
-            "MIT", "dependencies": ["python@3.9", "tree-sitter"]}
+        info = {
+            "name": "treesitter-chunker",
+            "description": "Language-agnostic code chunking using tree-sitter",
+            "homepage": "https://github.com/aorwall/treesitter-chunker",
+            "license": "MIT",
+            "dependencies": ["python@3.9", "tree-sitter"],
+        }
         pyproject_path = Path("pyproject.toml")
         if pyproject_path.exists():
             try:
                 with Path(pyproject_path).open("rb") as f:
                     data = tomllib.load(f)
                     project = data.get("project", {})
-                    info["description"] = project.get("description", info[
-                        "description"])
-                    info["license"] = project.get("license", {}).get("text",
-                        info["license"])
+                    info["description"] = project.get(
+                        "description",
+                        info["description"],
+                    )
+                    info["license"] = project.get("license", {}).get(
+                        "text",
+                        info["license"],
+                    )
             except (AttributeError, IndexError, KeyError):
                 pass
         return info
 
     @staticmethod
-    def _generate_formula_content(version: str, package_info: dict[str, Any],
-        ) -> str:
+    def _generate_formula_content(
+        version: str,
+        package_info: dict[str, Any],
+    ) -> str:
         """Generate the Homebrew formula content"""
-        formula = (
-            """class TreesitterChunker < Formula
+        formula = """class TreesitterChunker < Formula
   desc "{description}"
   homepage "{homepage}"
   url "https://files.pythonhosted.org/packages/source/t/treesitter-chunker/treesitter-chunker-{version}.tar.gz"
@@ -115,16 +128,21 @@ class HomebrewFormulaGenerator:
     assert_match "hello", output
   end
 end
-"""
-            .format(description=package_info["description"], homepage=package_info["homepage"], version=version, license=package_info
-            ["license"]))
+""".format(
+            description=package_info["description"],
+            homepage=package_info["homepage"],
+            version=version,
+            license=package_info["license"],
+        )
         return formula
 
     @classmethod
     def update_sha256(cls, formula_path: Path, package_url: str) -> bool:
         """Update the SHA256 hash in the formula"""
         try:
-            with urllib.request.urlopen(package_url) as response:  # noqa: S310 - Downloading package to calculate SHA256
+            with urllib.request.urlopen(
+                package_url,
+            ) as response:
                 data = response.read()
                 sha256 = hashlib.sha256(data).hexdigest()
             with Path(formula_path).open("r", encoding="utf-8") as f:
@@ -143,11 +161,18 @@ end
         if not formula_path.exists():
             issues.append("Formula file does not exist")
             return False, issues
-        brew_cmd = subprocess.run(["brew", "--version"], capture_output=True, check=False)
+        brew_cmd = subprocess.run(
+            ["brew", "--version"],
+            capture_output=True,
+            check=False,
+        )
         if brew_cmd.returncode == 0:
-            audit_result = subprocess.run(["brew", "audit", "--new-formula",
-                str(formula_path)], capture_output=True, text=True, check=False,
-                )
+            audit_result = subprocess.run(
+                ["brew", "audit", "--new-formula", str(formula_path)],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
             if audit_result.returncode != 0:
                 issues.extend(audit_result.stderr.strip().split("\n"))
         else:
@@ -158,6 +183,9 @@ end
             if "class TreesitterChunker" not in content:
                 issues.append("Missing class definition")
             required_fields = ["desc", "homepage", "url", "license"]
-            issues.extend(f"Missing required field: {field}" for field in
-                required_fields if f'{field} "' not in content)
+            issues.extend(
+                f"Missing required field: {field}"
+                for field in required_fields
+                if f'{field} "' not in content
+            )
         return len(issues) == 0, issues

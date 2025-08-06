@@ -3,6 +3,7 @@
 Interfaces for exporting chunks with relationships, metadata,
 and hierarchical structure intact.
 """
+
 import io
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -15,6 +16,7 @@ from chunker.types import CodeChunk
 
 class ExportFormat(Enum):
     """Supported export formats."""
+
     JSON = "json"
     JSONL = "jsonl"
     PARQUET = "parquet"
@@ -27,6 +29,7 @@ class ExportFormat(Enum):
 
 class RelationshipType(Enum):
     """Types of relationships between chunks."""
+
     PARENT_CHILD = "parent_child"
     CALLS = "calls"
     IMPORTS = "imports"
@@ -48,6 +51,7 @@ class ChunkRelationship:
         relationship_type: Type of relationship
         metadata: Additional relationship metadata
     """
+
     source_chunk_id: str
     target_chunk_id: str
     relationship_type: RelationshipType
@@ -67,6 +71,7 @@ class ExportMetadata:
         relationship_count: Total number of relationships
         options: Export options used
     """
+
     fmt: ExportFormat
     version: str
     created_at: str
@@ -81,9 +86,12 @@ class StructuredExporter(ABC):
 
     @staticmethod
     @abstractmethod
-    def export(chunks: list[CodeChunk], relationships: list[
-        ChunkRelationship], output: (Path | io.IOBase), metadata: (
-        ExportMetadata | None) = None) -> None:
+    def export(
+        chunks: list[CodeChunk],
+        relationships: list[ChunkRelationship],
+        output: Path | io.IOBase,
+        metadata: ExportMetadata | None = None,
+    ) -> None:
         """Export chunks with relationships.
 
         Args:
@@ -95,8 +103,11 @@ class StructuredExporter(ABC):
 
     @staticmethod
     @abstractmethod
-    def export_streaming(chunk_iterator: Any, relationship_iterator: Any,
-        output: (Path | io.IOBase)) -> None:
+    def export_streaming(
+        chunk_iterator: Any,
+        relationship_iterator: Any,
+        output: Path | io.IOBase,
+    ) -> None:
         """Export using iterators for large datasets.
 
         Args:
@@ -132,9 +143,12 @@ class RelationshipTracker(ABC):
 
     @staticmethod
     @abstractmethod
-    def track_relationship(source: CodeChunk, target: CodeChunk,
-        relationship_type: RelationshipType, metadata: (dict[str, Any] |
-        None) = None) -> None:
+    def track_relationship(
+        source: CodeChunk,
+        target: CodeChunk,
+        relationship_type: RelationshipType,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
         """Track a relationship between chunks.
 
         Args:
@@ -146,8 +160,10 @@ class RelationshipTracker(ABC):
 
     @staticmethod
     @abstractmethod
-    def get_relationships(chunk: (CodeChunk | None) = None, relationship_type:
-        (RelationshipType | None) = None) -> list[ChunkRelationship]:
+    def get_relationships(
+        chunk: CodeChunk | None = None,
+        relationship_type: RelationshipType | None = None,
+    ) -> list[ChunkRelationship]:
         """Get tracked relationships.
 
         Args:
@@ -244,8 +260,10 @@ class HierarchicalExporter(StructuredExporter):
 
     @staticmethod
     @abstractmethod
-    def export_tree(root_chunks: list[CodeChunk], output: (Path | io.IOBase),
-        ) -> None:
+    def export_tree(
+        root_chunks: list[CodeChunk],
+        output: Path | io.IOBase,
+    ) -> None:
         """Export chunks as a tree structure.
 
         Args:
@@ -308,8 +326,10 @@ class ExportTransformer(ABC):
 
     @staticmethod
     @abstractmethod
-    def transform_relationship(relationship: ChunkRelationship) -> dict[str, Any,
-        ]:
+    def transform_relationship(relationship: ChunkRelationship) -> dict[
+        str,
+        Any,
+    ]:
         """Transform a relationship for export.
 
         Args:

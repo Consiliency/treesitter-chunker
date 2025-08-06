@@ -57,7 +57,8 @@ class TestLanguageDetector:
             for filename, expected_lang in test_cases:
                 file_path = Path(tmpdir) / filename
                 with Path(file_path).open(
-                    "w", encoding="utf-8",
+                    "w",
+                    encoding="utf-8",
                 ) as f:
                     f.write("// test content")
 
@@ -81,7 +82,8 @@ class TestLanguageDetector:
             for content, expected_lang in test_cases:
                 file_path = Path(tmpdir) / "script"
                 with Path(file_path).open(
-                    "w", encoding="utf-8",
+                    "w",
+                    encoding="utf-8",
                 ) as f:
                     f.write(content)
 
@@ -596,7 +598,12 @@ function Component() {
 }
 """
 
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".jsx", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".jsx",
+            delete=False,
+        ) as f:
             f.write(content)
             f.flush()
 

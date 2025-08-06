@@ -15,7 +15,7 @@ import sys
 import tempfile
 
 try:
-    from dotenv import load_dotenv  # noqa: E402,PLC0415
+    from dotenv import load_dotenv
 
     load_dotenv()
 except ImportError:
@@ -48,7 +48,7 @@ def main():
         sys.exit(1)
 
     try:
-        import openai  # noqa: E402,PLC0415
+        import openai  # noqa: PLC0415
 
         # Initialize OpenAI client
         client = openai.OpenAI(api_key=api_key)

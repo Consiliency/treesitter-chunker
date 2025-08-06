@@ -32,7 +32,11 @@ def fix_xml_parsing_in_file(file_path: Path) -> list[str]:
     new_content = content
 
     # Count changes for each pattern
-    for pattern, replacement in [(pattern1, replacement1), (pattern2, replacement2), (pattern3, replacement3)]:
+    for pattern, replacement in [
+        (pattern1, replacement1),
+        (pattern2, replacement2),
+        (pattern3, replacement3),
+    ]:
         matches = re.findall(pattern, new_content)
         if matches:
             new_content = re.sub(pattern, replacement, new_content)

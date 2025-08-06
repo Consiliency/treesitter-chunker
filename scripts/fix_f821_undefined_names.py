@@ -25,9 +25,14 @@ class UndefinedNameFixer(ast.NodeTransformer):
         # Collect method names and their decorators
         for item in node.body:
             if isinstance(item, ast.FunctionDef):
-                decorators = [d.id if isinstance(d, ast.Name) else
-                             d.attr if isinstance(d, ast.Attribute) else None
-                             for d in item.decorator_list]
+                decorators = [
+                    (
+                        d.id
+                        if isinstance(d, ast.Name)
+                        else d.attr if isinstance(d, ast.Attribute) else None
+                    )
+                    for d in item.decorator_list
+                ]
                 self.class_methods[item.name] = {
                     "is_static": "staticmethod" in decorators,
                     "is_class": "classmethod" in decorators,
@@ -40,22 +45,29 @@ class UndefinedNameFixer(ast.NodeTransformer):
     def visit_FunctionDef(self, node):
         """Check if function is static method and fix accordingly."""
         # Check if this is a static method using self
-        is_static = any(isinstance(d, ast.Name) and d.id == "staticmethod"
-                       for d in node.decorator_list)
+        is_static = any(
+            isinstance(d, ast.Name) and d.id == "staticmethod"
+            for d in node.decorator_list
+        )
 
         old_static = self.in_static_method
         self.in_static_method = is_static
 
         if is_static and self._function_uses_self(node):
             # Remove @staticmethod decorator
-            node.decorator_list = [d for d in node.decorator_list
-                                 if not (isinstance(d, ast.Name) and d.id == "staticmethod")]
+            node.decorator_list = [
+                d
+                for d in node.decorator_list
+                if not (isinstance(d, ast.Name) and d.id == "staticmethod")
+            ]
 
             # Add self parameter if not present
             if not node.args.args or node.args.args[0].arg != "self":
                 self_arg = ast.arg(arg="self", annotation=None)
                 node.args.args.insert(0, self_arg)
-                self.changes_made.append(f"Converted {node.name} from @staticmethod to instance method")
+                self.changes_made.append(
+                    f"Converted {node.name} from @staticmethod to instance method",
+                )
 
         self.generic_visit(node)
         self.in_static_method = old_static
@@ -83,16 +95,28 @@ class UndefinedNameFixer(ast.NodeTransformer):
 def get_undefined_names_from_file(file_path: Path) -> list[tuple[int, str]]:
     """Get undefined names in a file using ruff."""
     result = subprocess.run(
-        ["ruff", "check", "--select", "F821", "--output-format", "json", str(file_path)],
-        check=False, capture_output=True,
+        [
+            "ruff",
+            "check",
+            "--select",
+            "F821",
+            "--output-format",
+            "json",
+            str(file_path),
+        ],
+        check=False,
+        capture_output=True,
         text=True,
     )
 
     if result.stdout:
         try:
             errors = json.loads(result.stdout)
-            return [(err["location"]["row"], err["message"].split("'")[1])
-                    for err in errors if err["code"] == "F821"]
+            return [
+                (err["location"]["row"], err["message"].split("'")[1])
+                for err in errors
+                if err["code"] == "F821"
+            ]
         except (json.JSONDecodeError, KeyError, IndexError):
             pass
     return []
@@ -112,7 +136,7 @@ def fix_file(file_path: Path) -> list[str]:
         return []
 
     # Extract unique undefined names
-    unique_names = set(name for _, name in undefined_names)
+    unique_names = {name for _, name in undefined_names}
 
     fixer = UndefinedNameFixer(unique_names)
     new_tree = fixer.visit(tree)
@@ -129,6 +153,7 @@ def fix_file(file_path: Path) -> list[str]:
         # Convert AST back to code
         try:
             import astor
+
             new_code = astor.to_source(new_tree)
         except ImportError:
             new_code = ast.unparse(new_tree)
@@ -139,7 +164,11 @@ def fix_file(file_path: Path) -> list[str]:
             # Find where to insert imports
             insert_pos = 0
             for i, line in enumerate(lines):
-                if line.strip() and not line.startswith("#") and not line.startswith('"""'):
+                if (
+                    line.strip()
+                    and not line.startswith("#")
+                    and not line.startswith('"""')
+                ):
                     insert_pos = i
                     break
 
@@ -162,7 +191,8 @@ def fix_simple_static_method_issues():
     # Get all files with F821 errors
     result = subprocess.run(
         ["ruff", "check", "--select", "F821", "--output-format", "json"],
-        check=False, capture_output=True,
+        check=False,
+        capture_output=True,
         text=True,
         cwd=project_root,
     )
@@ -204,7 +234,9 @@ def fix_simple_static_method_issues():
                                     lines[j] = lines[j].replace("(", "(self, ", 1)
                                     if "()" in lines[j]:
                                         lines[j] = lines[j].replace("()", "(self)")
-                                print(f"Fixed @staticmethod using self in {file_path}:{func_line}")
+                                print(
+                                    f"Fixed @staticmethod using self in {file_path}:{func_line}",
+                                )
                             break
 
             file_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -226,7 +258,8 @@ def main():
     # Get remaining F821 errors
     result = subprocess.run(
         ["ruff", "check", "--select", "F821", "--output-format", "json"],
-        check=False, capture_output=True,
+        check=False,
+        capture_output=True,
         text=True,
         cwd=project_root,
     )
@@ -234,7 +267,7 @@ def main():
     if result.stdout:
         try:
             errors = json.loads(result.stdout)
-            remaining_files = set(Path(err["filename"]) for err in errors)
+            remaining_files = {Path(err["filename"]) for err in errors}
 
             for file_path in remaining_files:
                 if file_path.exists():
@@ -249,7 +282,8 @@ def main():
     # Check remaining errors
     result = subprocess.run(
         ["ruff", "check", "--select", "F821", "--statistics"],
-        check=False, capture_output=True,
+        check=False,
+        capture_output=True,
         text=True,
         cwd=project_root,
     )

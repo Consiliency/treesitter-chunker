@@ -1,4 +1,5 @@
 """Comprehensive tests for the ASTCache caching system."""
+
 import shutil
 import sqlite3
 import tempfile
@@ -6,17 +7,14 @@ import threading
 import time
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from pathlib import Path
 
 import pytest
 
 from chunker import chunk_file
-from chunker.cache import ASTCache
-
 from chunker._internal.cache import ASTCache
 from chunker._internal.file_utils import get_file_metadata
-
 from chunker.types import CodeChunk
 
 SAMPLE_PYTHON_CODE = """
@@ -66,7 +64,7 @@ const main = () => {
 """
 
 
-@pytest.fixture
+@pytest.fixture()
 def temp_cache_dir():
     """Create a temporary cache directory."""
     cache_dir = Path(tempfile.mkdtemp()) / "cache"
@@ -75,43 +73,73 @@ def temp_cache_dir():
         shutil.rmtree(cache_dir.parent)
 
 
-@pytest.fixture
+@pytest.fixture()
 def cache(temp_cache_dir):
     """Create a cache instance with temporary directory."""
     return ASTCache(cache_dir=temp_cache_dir)
 
 
-@pytest.fixture
+@pytest.fixture()
 def temp_python_file():
     """Create a temporary Python file."""
-    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        encoding="utf-8",
+        mode="w",
+        suffix=".py",
+        delete=False,
+    ) as f:
         f.write(SAMPLE_PYTHON_CODE)
         temp_path = Path(f.name)
     yield temp_path
     temp_path.unlink()
 
 
-@pytest.fixture
+@pytest.fixture()
 def temp_js_file():
     """Create a temporary JavaScript file."""
-    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".js", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        encoding="utf-8",
+        mode="w",
+        suffix=".js",
+        delete=False,
+    ) as f:
         f.write(SAMPLE_JAVASCRIPT_CODE)
         temp_path = Path(f.name)
     yield temp_path
     temp_path.unlink()
 
 
-@pytest.fixture
+@pytest.fixture()
 def sample_chunks():
     """Create sample code chunks for testing."""
-    return [CodeChunk(language="python", file_path="/test/file1.py",
-        node_type="function_definition", start_line=1, end_line=3,
-        byte_start=0, byte_end=50, parent_context="", content="""def test():
-    pass""", chunk_id="chunk1"), CodeChunk(language="python", file_path="/test/file1.py", node_type="class_definition",
-        start_line=5, end_line=10, byte_start=52, byte_end=150,
-        parent_context="", content="""class TestClass:
+    return [
+        CodeChunk(
+            language="python",
+            file_path="/test/file1.py",
+            node_type="function_definition",
+            start_line=1,
+            end_line=3,
+            byte_start=0,
+            byte_end=50,
+            parent_context="",
+            content="""def test():
     pass""",
-        chunk_id="chunk2")]
+            chunk_id="chunk1",
+        ),
+        CodeChunk(
+            language="python",
+            file_path="/test/file1.py",
+            node_type="class_definition",
+            start_line=5,
+            end_line=10,
+            byte_start=52,
+            byte_end=150,
+            parent_context="",
+            content="""class TestClass:
+    pass""",
+            chunk_id="chunk2",
+        ),
+    ]
 
 
 class TestCacheBasics:
@@ -126,7 +154,7 @@ class TestCacheBasics:
         with sqlite3.connect(cache.db_path) as conn:
             cursor = conn.execute(
                 "SELECT sql FROM sqlite_master WHERE type='table' AND name='file_cache'",
-                )
+            )
             schema = cursor.fetchone()[0]
             assert "file_path" in schema
             assert "file_hash" in schema
@@ -140,10 +168,14 @@ class TestCacheBasics:
         cached_chunks = cache.get_cached_chunks(temp_python_file, "python")
         assert cached_chunks is not None
         assert len(cached_chunks) == len(chunks)
-        assert all(c1.chunk_id == c2.chunk_id for c1, c2 in zip(chunks,
-            cached_chunks, strict=False))
-        assert all(c1.content == c2.content for c1, c2 in zip(chunks,
-            cached_chunks, strict=False))
+        assert all(
+            c1.chunk_id == c2.chunk_id
+            for c1, c2 in zip(chunks, cached_chunks, strict=False)
+        )
+        assert all(
+            c1.content == c2.content
+            for c1, c2 in zip(chunks, cached_chunks, strict=False)
+        )
 
     @classmethod
     def test_cache_miss_on_file_change(cls, cache, temp_python_file):
@@ -159,10 +191,34 @@ class TestCacheBasics:
     @classmethod
     def test_cache_multiple_languages(cls, cache, temp_python_file):
         """Test caching same file with different languages."""
-        py_chunks = [CodeChunk(language="python", file_path=str(
-            temp_python_file), node_type="function", start_line=1, end_line=3, byte_start=0, byte_end=50, parent_context="", content="def test(): pass", chunk_id="py1")]
-        js_chunks = [CodeChunk(language="javascript", file_path=str(
-            temp_python_file), node_type="function", start_line=1, end_line=3, byte_start=0, byte_end=50, parent_context="", content="function test() {}", chunk_id="js1")]
+        py_chunks = [
+            CodeChunk(
+                language="python",
+                file_path=str(temp_python_file),
+                node_type="function",
+                start_line=1,
+                end_line=3,
+                byte_start=0,
+                byte_end=50,
+                parent_context="",
+                content="def test(): pass",
+                chunk_id="py1",
+            ),
+        ]
+        js_chunks = [
+            CodeChunk(
+                language="javascript",
+                file_path=str(temp_python_file),
+                node_type="function",
+                start_line=1,
+                end_line=3,
+                byte_start=0,
+                byte_end=50,
+                parent_context="",
+                content="function test() {}",
+                chunk_id="js1",
+            ),
+        ]
         cache.cache_chunks(temp_python_file, "python", py_chunks)
         cache.cache_chunks(temp_python_file, "javascript", js_chunks)
         cached_py = cache.get_cached_chunks(temp_python_file, "python")
@@ -190,10 +246,16 @@ class TestCacheInvalidation:
     @staticmethod
     def test_invalidate_all_cache(cache, temp_python_file, temp_js_file):
         """Test invalidating entire cache."""
-        cache.cache_chunks(temp_python_file, "python", chunk_file(
-            temp_python_file, "python"))
-        cache.cache_chunks(temp_js_file, "javascript", chunk_file(
-            temp_js_file, "javascript"))
+        cache.cache_chunks(
+            temp_python_file,
+            "python",
+            chunk_file(temp_python_file, "python"),
+        )
+        cache.cache_chunks(
+            temp_js_file,
+            "javascript",
+            chunk_file(temp_js_file, "javascript"),
+        )
         cache.invalidate_cache()
         assert cache.get_cached_chunks(temp_python_file, "python") is None
         assert cache.get_cached_chunks(temp_js_file, "javascript") is None
@@ -214,6 +276,7 @@ class TestCacheConcurrency:
         def read_cache():
             cached = cache.get_cached_chunks(temp_python_file, "python")
             results.append(len(cached) if cached else 0)
+
         threads = []
         for _ in range(10):
             t = threading.Thread(target=read_cache)
@@ -235,6 +298,7 @@ class TestCacheConcurrency:
             cached = cache.get_cached_chunks(file_path, "python")
             assert cached is not None
             assert len(cached) == len(chunks)
+
         with ThreadPoolExecutor(max_workers=5) as executor:
             futures = [executor.submit(write_cache, i) for i in range(10)]
             for future in futures:
@@ -263,10 +327,10 @@ class TestCacheConcurrency:
                 cache.invalidate_cache(temp_python_file)
                 with lock:
                     operations_completed["invalidates"] += 1
+
         operations = ["read"] * 10 + ["write"] * 5 + ["invalidate"] * 2
         with ThreadPoolExecutor(max_workers=8) as executor:
-            futures = [executor.submit(mixed_operations, op) for op in
-                operations]
+            futures = [executor.submit(mixed_operations, op) for op in operations]
             for future in futures:
                 future.result()
         assert operations_completed["reads"] == 10
@@ -287,8 +351,13 @@ class TestCacheCorruptionRecovery:
         new_cache = ASTCache(cache_dir=cache.db_path.parent)
         assert new_cache.get_cached_chunks(temp_python_file, "python") is None
         new_cache.cache_chunks(temp_python_file, "python", chunks)
-        assert new_cache.get_cached_chunks(temp_python_file, "python",
-            ) is not None
+        assert (
+            new_cache.get_cached_chunks(
+                temp_python_file,
+                "python",
+            )
+            is not None
+        )
 
     @staticmethod
     def test_recover_from_corrupted_pickle_data(cache, temp_python_file):
@@ -301,9 +370,16 @@ class TestCacheCorruptionRecovery:
                 INSERT OR REPLACE INTO file_cache
                 (file_path, file_hash, file_size, mtime, language, chunks_data)
                 VALUES (?, ?, ?, ?, ?, ?)
-            """
-                , (str(temp_python_file), metadata.hash, metadata.size,
-                metadata.mtime, "python", b"corrupted pickle data"))
+            """,
+                (
+                    str(temp_python_file),
+                    metadata.hash,
+                    metadata.size,
+                    metadata.mtime,
+                    "python",
+                    b"corrupted pickle data",
+                ),
+            )
         result = cache.get_cached_chunks(temp_python_file, "python")
         assert result is None
 
@@ -362,6 +438,7 @@ class TestCachePerformance:
             chunks = chunk_file(file_path, "python")
             cache.cache_chunks(file_path, "python", chunks)
             return len(chunks)
+
         start_time = time.time()
         with ThreadPoolExecutor(max_workers=num_workers) as executor:
             results = list(executor.map(process_file, files))
@@ -388,8 +465,9 @@ class TestCacheEviction:
                 UPDATE file_cache
                 SET created_at = datetime('now', '-7 days')
                 WHERE file_path = ?
-            """
-                , (str(old_file),))
+            """,
+                (str(old_file),),
+            )
         cache.cache_chunks(new_file, "python", chunk_file(new_file, "python"))
         with cache._get_connection() as conn:
             conn.execute(
@@ -397,7 +475,7 @@ class TestCacheEviction:
                 DELETE FROM file_cache
                 WHERE created_at < datetime('now', '-1 day')
             """,
-                )
+            )
         assert cache.get_cached_chunks(old_file, "python") is None
         assert cache.get_cached_chunks(new_file, "python") is not None
 
@@ -445,6 +523,7 @@ class TestMemoryVsDiskCache:
                 self.memory_cache[key] = chunks
                 if len(self.memory_cache) > self.max_items:
                     self.memory_cache.popitem(last=False)
+
         hybrid = HybridCache(cache, max_memory_items=2)
         chunks = chunk_file(temp_python_file, "python")
         cache.cache_chunks(temp_python_file, "python", chunks)
@@ -467,8 +546,7 @@ class TestCacheIntegration:
         chunks_v1 = chunk_file(file_path, "python")
         cache.cache_chunks(file_path, "python", chunks_v1)
         time.sleep(0.01)
-        modified_code = SAMPLE_PYTHON_CODE.replace("calculate_sum",
-            "compute_sum")
+        modified_code = SAMPLE_PYTHON_CODE.replace("calculate_sum", "compute_sum")
         file_path.write_text(modified_code)
         assert cache.get_cached_chunks(file_path, "python") is None
         chunks_v2 = chunk_file(file_path, "python")
@@ -507,10 +585,8 @@ class TestCacheErrorHandling:
             test_file = Path("/tmp/test.py")
             test_file.write_text(SAMPLE_PYTHON_CODE, encoding="utf-8")
             chunks = chunk_file(test_file, "python")
-            try:
+            with suppress(OSError, sqlite3.OperationalError):
                 cache.cache_chunks(test_file, "python", chunks)
-            except (OSError, sqlite3.OperationalError):
-                pass
         finally:
             restricted_dir.chmod(493)
 
@@ -546,7 +622,9 @@ class TestCacheErrorHandling:
                     mock_conn.commit()
                 finally:
                     mock_conn.close()
+
             return connection_context()
+
         monkeypatch.setattr(cache, "_get_connection", mock_get_connection)
         with pytest.raises(sqlite3.OperationalError):
             cache.cache_chunks(temp_python_file, "python", chunks)

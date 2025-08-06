@@ -1,4 +1,5 @@
 """Unit tests for scope analyzers."""
+
 import pytest
 
 from chunker.context import BaseScopeAnalyzer, ContextFactory
@@ -28,8 +29,7 @@ class TestBaseScopeAnalyzer:
     def test_get_scope_type_unknown(cls):
         """Test getting scope type for unknown node."""
         analyzer = BaseScopeAnalyzer("python")
-        mock_node = type("MockNode", (), {"type": "unknown_scope", "parent":
-            None})()
+        mock_node = type("MockNode", (), {"type": "unknown_scope", "parent": None})()
         result = analyzer.get_scope_type(mock_node)
         assert result == "unknown"
 
@@ -38,8 +38,11 @@ class TestBaseScopeAnalyzer:
         """Test getting scope chain for root node."""
         analyzer = BaseScopeAnalyzer("python")
         analyzer._is_scope_node = lambda node: False
-        mock_node = type("MockNode", (), {"type": "identifier", "parent": None},
-            )()
+        mock_node = type(
+            "MockNode",
+            (),
+            {"type": "identifier", "parent": None},
+        )()
         analyzer.get_enclosing_scope = lambda node: None
         result = analyzer.get_scope_chain(mock_node)
         assert result == []
@@ -49,11 +52,10 @@ class TestPythonScopeAnalyzer:
     """Test Python-specific scope analysis."""
 
     @staticmethod
-    @pytest.fixture
+    @pytest.fixture()
     def python_code():
         """Sample Python code for testing."""
-        return (
-            """
+        return """
 def outer_function():
     outer_var = 1
 
@@ -76,8 +78,7 @@ class TopLevel:
 
     def __init__(self):
         self.instance_var = 0
-"""
-            .strip())
+""".strip()
 
     @staticmethod
     def test_get_enclosing_scope(python_code):
@@ -89,14 +90,14 @@ class TopLevel:
         def find_function(node, name):
             if node.type == "function_definition":
                 for child in node.children:
-                    if (child.type == "identifier" and child.text == name.
-                        encode()):
+                    if child.type == "identifier" and child.text == name.encode():
                         return node
             for child in node.children:
                 result = find_function(child, name)
                 if result:
                     return result
             return None
+
         deeply_nested = find_function(tree.root_node, "deeply_nested")
         assert deeply_nested is not None
         enclosing = analyzer.get_enclosing_scope(deeply_nested)
@@ -113,14 +114,14 @@ class TopLevel:
         def find_function(node, name):
             if node.type == "function_definition":
                 for child in node.children:
-                    if (child.type == "identifier" and child.text == name.
-                        encode()):
+                    if child.type == "identifier" and child.text == name.encode():
                         return node
             for child in node.children:
                 result = find_function(child, name)
                 if result:
                     return result
             return None
+
         deeply_nested = find_function(tree.root_node, "deeply_nested")
         assert deeply_nested is not None
         chain = analyzer.get_scope_chain(deeply_nested)
@@ -155,11 +156,10 @@ class TestJavaScriptScopeAnalyzer:
     """Test JavaScript-specific scope analysis."""
 
     @staticmethod
-    @pytest.fixture
+    @pytest.fixture()
     def javascript_code():
         """Sample JavaScript code for testing."""
-        return (
-            """
+        return """
 function outerFunction() {
     const outerVar = 1;
 
@@ -198,8 +198,7 @@ for (let i = 0; i < 10; i++) {
     // Block scope
     const blockVar = i * 2;
 }
-"""
-            .strip())
+""".strip()
 
     @staticmethod
     def test_get_enclosing_scope(javascript_code):
@@ -216,6 +215,7 @@ for (let i = 0; i < 10; i++) {
                 if result:
                     return result
             return None
+
         arrow_func = find_arrow_function(tree.root_node)
         assert arrow_func is not None
         enclosing = analyzer.get_enclosing_scope(arrow_func)
@@ -237,6 +237,7 @@ for (let i = 0; i < 10; i++) {
                 if result:
                     return result
             return None
+
         for_stmt = find_for_statement(tree.root_node)
         assert for_stmt is not None
         assert analyzer._is_scope_node(for_stmt)

@@ -1,4 +1,5 @@
 """Parser module for tree-sitter chunker with dynamic language discovery."""
+
 from __future__ import annotations
 
 import logging
@@ -19,11 +20,16 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 _registry: LanguageRegistry | None = None
 _factory: ParserFactory | None = None
-_DEFAULT_LIBRARY_PATH = Path(__file__,
-    ).parent.parent / "build" / "my-languages.so"
+_DEFAULT_LIBRARY_PATH = (
+    Path(
+        __file__,
+    ).parent.parent
+    / "build"
+    / "my-languages.so"
+)
 
 
-def _initialize(library_path: (Path | None) = None) -> None:
+def _initialize(library_path: Path | None = None) -> None:
     """Lazy initialization of registry and factory.
 
     Args:
@@ -38,7 +44,6 @@ def _initialize(library_path: (Path | None) = None) -> None:
         _factory = ParserFactory(_registry)
         languages = _registry.list_languages()
 
-
         logger.info(
             "Initialized parser with %d languages: %s",
             len(languages),
@@ -46,7 +51,7 @@ def _initialize(library_path: (Path | None) = None) -> None:
         )
 
 
-def get_parser(language: str, config: (ParserConfig | None) = None) -> Parser:
+def get_parser(language: str, config: ParserConfig | None = None) -> Parser:
     """Get a parser for the specified language with optional configuration.
 
     Args:
@@ -121,5 +126,12 @@ def clear_cache() -> None:
     _factory.clear_cache()
 
 
-__all__ = ["LanguageMetadata", "ParserConfig", "clear_cache",
-    "get_language_info", "get_parser", "list_languages", "return_parser"]
+__all__ = [
+    "LanguageMetadata",
+    "ParserConfig",
+    "clear_cache",
+    "get_language_info",
+    "get_parser",
+    "list_languages",
+    "return_parser",
+]

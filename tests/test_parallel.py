@@ -11,8 +11,9 @@ This test module covers:
 The tests use a variety of Python code templates to simulate different scenarios
 and stress test the parallel processing system.
 """
+
+import contextlib
 import multiprocessing as mp
-import os
 import shutil
 import tempfile
 import time
@@ -95,14 +96,17 @@ class TestWorkerPoolSizing:
     def test_single_worker(cls, temp_directory_with_files):
         """Test processing with single worker (sequential)."""
         chunker = ParallelChunker("python", num_workers=1)
-        results = chunker.chunk_files_parallel(list(
-            temp_directory_with_files.glob("*.py")))
+        results = chunker.chunk_files_parallel(
+            list(temp_directory_with_files.glob("*.py")),
+        )
         assert len(results) > 0
         assert all(isinstance(chunks, list) for chunks in results.values())
 
     @classmethod
-    def test_optimal_workers_for_small_workload(cls, temp_directory_with_files,
-        ):
+    def test_optimal_workers_for_small_workload(
+        cls,
+        temp_directory_with_files,
+    ):
         """Test that we don't spawn more workers than files."""
         files = list(temp_directory_with_files.glob("*.py"))[:2]
         chunker = ParallelChunker("python", num_workers=8)
@@ -118,13 +122,15 @@ class TestWorkerPoolSizing:
         try:
             for i in range(20):
                 file_path = temp_dir / f"complex_{i}.py"
-                content = PYTHON_FUNCTION_TEMPLATE.format(idx=i, complexity=100 + i * 50)
+                content = PYTHON_FUNCTION_TEMPLATE.format(
+                    idx=i,
+                    complexity=100 + i * 50,
+                )
                 file_path.write_text(content * 10)
             for num_workers in [1, 2, 4, mp.cpu_count()]:
                 chunker = ParallelChunker("python", num_workers=num_workers)
                 start_time = time.time()
-                results = chunker.chunk_files_parallel(list(temp_dir.glob(
-                    "*.py")))
+                results = chunker.chunk_files_parallel(list(temp_dir.glob("*.py")))
                 duration = time.time() - start_time
                 assert len(results) == 20
                 assert all(len(chunks) > 0 for chunks in results.values())
@@ -135,13 +141,18 @@ class TestWorkerPoolSizing:
     @classmethod
     def test_io_bound_sizing(cls, temp_directory_with_files):
         """Test worker sizing for I/O-bound workloads with cache."""
-        chunker = ParallelChunker("python", num_workers=mp.cpu_count() * 2,
-            use_cache=True)
-        results1 = chunker.chunk_files_parallel(list(
-            temp_directory_with_files.glob("*.py")))
+        chunker = ParallelChunker(
+            "python",
+            num_workers=mp.cpu_count() * 2,
+            use_cache=True,
+        )
+        results1 = chunker.chunk_files_parallel(
+            list(temp_directory_with_files.glob("*.py")),
+        )
         start_time = time.time()
-        results2 = chunker.chunk_files_parallel(list(
-            temp_directory_with_files.glob("*.py")))
+        results2 = chunker.chunk_files_parallel(
+            list(temp_directory_with_files.glob("*.py")),
+        )
         cached_duration = time.time() - start_time
         assert len(results1) == len(results2)
         assert cached_duration < 1.0
@@ -156,8 +167,7 @@ class TestFailureHandling:
         temp_dir = Path(tempfile.mkdtemp())
         try:
             valid_file = temp_dir / "valid.py"
-            valid_file.write_text(PYTHON_FUNCTION_TEMPLATE.format(idx=1,
-                complexity=10))
+            valid_file.write_text(PYTHON_FUNCTION_TEMPLATE.format(idx=1, complexity=10))
             invalid_file = temp_dir / "invalid.py"
             invalid_file.write_text(PYTHON_ERROR_CODE)
             chunker = ParallelChunker("python")
@@ -183,26 +193,29 @@ class TestFailureHandling:
         temp_dir = Path(tempfile.mkdtemp())
         try:
             restricted_file = temp_dir / "restricted.py"
-            restricted_file.write_text(PYTHON_FUNCTION_TEMPLATE.format(idx=1, complexity=10))
-            os.chmod(restricted_file, 0)
+            restricted_file.write_text(
+                PYTHON_FUNCTION_TEMPLATE.format(idx=1, complexity=10),
+            )
+            Path(restricted_file).chmod(0)
             chunker = ParallelChunker("python")
             results = chunker.chunk_files_parallel([restricted_file])
             assert restricted_file in results
             assert results[restricted_file] == []
         finally:
-            try:
-                os.chmod(restricted_file, 420)
-            except (FileNotFoundError, IndexError, KeyError):
-                pass
+            with contextlib.suppress(FileNotFoundError, IndexError, KeyError):
+                Path(restricted_file).chmod(0o644)
             shutil.rmtree(temp_dir)
 
     @classmethod
     def test_worker_crash_handling(cls):
         """Test handling of worker process crashes."""
-        with patch("chunker.parallel.ParallelChunker._process_single_file",
-            ) as mock_process:
+        with patch(
+            "chunker.parallel.ParallelChunker._process_single_file",
+        ) as mock_process:
             mock_process.side_effect = Exception("Worker crashed")
-            temp_file = Path(tempfile.NamedTemporaryFile(suffix=".py", delete=False).name)
+            temp_file = Path(
+                tempfile.NamedTemporaryFile(suffix=".py", delete=False).name,
+            )
             temp_file.write_text("def test(): pass", encoding="utf-8")
             try:
                 chunker = ParallelChunker("python")
@@ -222,10 +235,12 @@ class TestFailureHandling:
                 file_path = temp_dir / f"file_{i}.py"
                 if i % 3 == 0:
                     file_path.write_text(
-                        "This is not valid Python code at all! @#$%^&*()")
+                        "This is not valid Python code at all! @#$%^&*()",
+                    )
                 else:
-                    file_path.write_text(PYTHON_FUNCTION_TEMPLATE.format(
-                        idx=i, complexity=10))
+                    file_path.write_text(
+                        PYTHON_FUNCTION_TEMPLATE.format(idx=i, complexity=10),
+                    )
                 files.append(file_path)
             chunker = ParallelChunker("python")
             results = chunker.chunk_files_parallel(files)
@@ -251,10 +266,10 @@ class TestResourceContention:
                 file_path = temp_dir / f"large_{i}.py"
                 content = []
                 for j in range(1000):
-                    content.append(PYTHON_FUNCTION_TEMPLATE.format(idx=j,
-                        complexity=10))
-                    content.append(PYTHON_CLASS_TEMPLATE.format(idx=j,
-                        complexity=10))
+                    content.append(
+                        PYTHON_FUNCTION_TEMPLATE.format(idx=j, complexity=10),
+                    )
+                    content.append(PYTHON_CLASS_TEMPLATE.format(idx=j, complexity=10))
                 file_path.write_text("\n".join(content))
             chunker = ParallelChunker("python", num_workers=4)
             results = chunker.chunk_files_parallel(list(temp_dir.glob("*.py")))
@@ -272,8 +287,9 @@ class TestResourceContention:
             files = []
             for i in range(10):
                 file_path = temp_dir / f"cache_test_{i}.py"
-                file_path.write_text(PYTHON_FUNCTION_TEMPLATE.format(idx=i,
-                    complexity=10))
+                file_path.write_text(
+                    PYTHON_FUNCTION_TEMPLATE.format(idx=i, complexity=10),
+                )
                 files.append(file_path)
             chunker = ParallelChunker("python", num_workers=4, use_cache=True)
             results1 = chunker.chunk_files_parallel(files)
@@ -283,8 +299,10 @@ class TestResourceContention:
                 chunks1 = results1[path]
                 chunks2 = results2[path]
                 assert len(chunks1) == len(chunks2)
-                assert all(c1.chunk_id == c2.chunk_id for c1, c2 in zip(
-                    chunks1, chunks2, strict=False))
+                assert all(
+                    c1.chunk_id == c2.chunk_id
+                    for c1, c2 in zip(chunks1, chunks2, strict=False)
+                )
         finally:
             shutil.rmtree(temp_dir)
 
@@ -317,8 +335,10 @@ class TestProgressTracking:
             files = []
             for i in range(10):
                 file_path = temp_dir / f"sized_{i}.py"
-                content = PYTHON_FUNCTION_TEMPLATE.format(idx=i, complexity=10,
-                    ) * (i + 1)
+                content = PYTHON_FUNCTION_TEMPLATE.format(
+                    idx=i,
+                    complexity=10,
+                ) * (i + 1)
                 file_path.write_text(content)
                 files.append(file_path)
             chunker = ParallelChunker("python", num_workers=4)
@@ -340,15 +360,16 @@ class TestProgressTracking:
             files = []
             for i in range(20):
                 file_path = temp_dir / f"counted_{i}.py"
-                content = [PYTHON_FUNCTION_TEMPLATE.format(idx=j,
-                    complexity=5) for j in range(i + 1)]
+                content = [
+                    PYTHON_FUNCTION_TEMPLATE.format(idx=j, complexity=5)
+                    for j in range(i + 1)
+                ]
                 file_path.write_text("\n".join(content))
                 files.append(file_path)
                 expected_total_chunks += i + 1
             chunker = ParallelChunker("python", num_workers=4)
             results = chunker.chunk_files_parallel(files)
-            actual_total_chunks = sum(len(chunks) for chunks in results.
-                values())
+            actual_total_chunks = sum(len(chunks) for chunks in results.values())
             assert actual_total_chunks == expected_total_chunks
         finally:
             shutil.rmtree(temp_dir)
@@ -363,18 +384,27 @@ class TestMemoryUsage:
         temp_dir = Path(tempfile.mkdtemp())
         try:
             large_file = temp_dir / "large.py"
-            content = [PYTHON_FUNCTION_TEMPLATE.format(idx=i, complexity=10,
-                ) for i in range(5000)]
+            content = [
+                PYTHON_FUNCTION_TEMPLATE.format(
+                    idx=i,
+                    complexity=10,
+                )
+                for i in range(5000)
+            ]
             large_file.write_text("\n".join(content))
-            chunker_streaming = ParallelChunker("python", num_workers=1,
-                use_streaming=True)
-            results_streaming = chunker_streaming.chunk_files_parallel([
-                large_file])
-            chunker_normal = ParallelChunker("python", num_workers=1,
-                use_streaming=False)
+            chunker_streaming = ParallelChunker(
+                "python",
+                num_workers=1,
+                use_streaming=True,
+            )
+            results_streaming = chunker_streaming.chunk_files_parallel([large_file])
+            chunker_normal = ParallelChunker(
+                "python",
+                num_workers=1,
+                use_streaming=False,
+            )
             results_normal = chunker_normal.chunk_files_parallel([large_file])
-            assert len(results_streaming[large_file]) == len(results_normal
-                [large_file])
+            assert len(results_streaming[large_file]) == len(results_normal[large_file])
         finally:
             shutil.rmtree(temp_dir)
 
@@ -391,7 +421,7 @@ class TestMemoryUsage:
                 files.append(file_path)
             chunker = ParallelChunker("python", num_workers=2, use_cache=True)
             for i in range(0, 100, 10):
-                batch = files[i:i + 10]
+                batch = files[i : i + 10]
                 chunker.chunk_files_parallel(batch)
             if chunker.cache:
                 stats = chunker.cache.get_cache_stats()
@@ -410,8 +440,7 @@ class TestCancellationAndTimeout:
         temp_file = Path(tempfile.NamedTemporaryFile(suffix=".py", delete=False).name)
         content = []
         for i in range(50000):
-            content.append(PYTHON_FUNCTION_TEMPLATE.format(idx=i,
-                complexity=100))
+            content.append(PYTHON_FUNCTION_TEMPLATE.format(idx=i, complexity=100))
             content.append(PYTHON_CLASS_TEMPLATE.format(idx=i, complexity=100))
         temp_file.write_text("\n".join(content), encoding="utf-8")
         try:
@@ -430,8 +459,9 @@ class TestCancellationAndTimeout:
             files = []
             for i in range(10):
                 file_path = temp_dir / f"shutdown_{i}.py"
-                file_path.write_text(PYTHON_FUNCTION_TEMPLATE.format(idx=i,
-                    complexity=10))
+                file_path.write_text(
+                    PYTHON_FUNCTION_TEMPLATE.format(idx=i, complexity=10),
+                )
                 files.append(file_path)
             chunker = ParallelChunker("python", num_workers=4)
             results = chunker.chunk_files_parallel(files)
@@ -473,8 +503,7 @@ class TestEdgeCases:
         temp_file.write_text("def test(): pass", encoding="utf-8")
         try:
             chunker = ParallelChunker("python", num_workers=2)
-            results = chunker.chunk_files_parallel([temp_file, temp_file,
-                temp_file])
+            results = chunker.chunk_files_parallel([temp_file, temp_file, temp_file])
             assert len(results) == 1
             assert temp_file in results
             assert len(results[temp_file]) == 1
@@ -523,8 +552,7 @@ class TestDirectoryProcessing:
             test_file = temp_dir / "tests" / "test_app.py"
             test_file.write_text("def test_app(): pass")
             files_created.append(test_file)
-            results = chunk_directory_parallel(temp_dir, "python",
-                num_workers=2)
+            results = chunk_directory_parallel(temp_dir, "python", num_workers=2)
             assert len(results) == 4
             for file_path in files_created:
                 assert file_path in results
@@ -548,15 +576,18 @@ class TestDirectoryProcessing:
             assert py_file in results
             assert txt_file not in results
             assert md_file not in results
-            results_custom = chunk_directory_parallel(temp_dir, "python",
-                extensions=[".py", ".txt", ".md"])
+            results_custom = chunk_directory_parallel(
+                temp_dir,
+                "python",
+                extensions=[".py", ".txt", ".md"],
+            )
             assert len(results_custom) >= 1
             assert py_file in results_custom
         finally:
             shutil.rmtree(temp_dir)
 
 
-@pytest.fixture
+@pytest.fixture()
 def temp_directory_with_files():
     """Create a temporary directory with multiple Python files."""
     temp_dir = Path(tempfile.mkdtemp())

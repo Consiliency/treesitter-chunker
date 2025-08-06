@@ -1,4 +1,5 @@
 """Unit tests for symbol resolvers."""
+
 import pytest
 
 from chunker.context import BaseSymbolResolver, ContextFactory
@@ -20,8 +21,7 @@ class TestBaseSymbolResolver:
     def test_get_symbol_type_unknown(cls):
         """Test getting symbol type for unknown node."""
         resolver = BaseSymbolResolver("python")
-        mock_node = type("MockNode", (), {"type": "unknown_node", "parent":
-            None})()
+        mock_node = type("MockNode", (), {"type": "unknown_node", "parent": None})()
         result = resolver.get_symbol_type(mock_node)
         assert result == "unknown"
 
@@ -29,10 +29,16 @@ class TestBaseSymbolResolver:
     def test_get_symbol_type_with_parent(cls):
         """Test getting symbol type based on parent."""
         resolver = BaseSymbolResolver("python")
-        parent_node = type("MockNode", (), {"type": "function_definition",
-            "parent": None})()
-        child_node = type("MockNode", (), {"type": "identifier", "parent":
-            parent_node})()
+        parent_node = type(
+            "MockNode",
+            (),
+            {"type": "function_definition", "parent": None},
+        )()
+        child_node = type(
+            "MockNode",
+            (),
+            {"type": "identifier", "parent": parent_node},
+        )()
         result = resolver.get_symbol_type(child_node)
         assert result == "function"
 
@@ -41,11 +47,10 @@ class TestPythonSymbolResolver:
     """Test Python-specific symbol resolution."""
 
     @staticmethod
-    @pytest.fixture
+    @pytest.fixture()
     def python_code():
         """Sample Python code for testing."""
-        return (
-            """
+        return """
 class Calculator:
     def __init__(self):
         self.result = 0
@@ -61,8 +66,7 @@ def calculate(a, b):
 
 PI = 3.14159
 result = calculate(5, PI)
-"""
-            .strip())
+""".strip()
 
     @staticmethod
     def test_get_symbol_type_class(python_code):
@@ -79,6 +83,7 @@ result = calculate(5, PI)
                 if result:
                     return result
             return None
+
         for node in tree.root_node.children:
             if node.type == "class_definition":
                 calc_id = find_identifier(node, "Calculator")
@@ -97,14 +102,14 @@ result = calculate(5, PI)
         def find_function_name(node, name):
             if node.type == "function_definition":
                 for child in node.children:
-                    if (child.type == "identifier" and child.text == name.
-                        encode()):
+                    if child.type == "identifier" and child.text == name.encode():
                         return child
             for child in node.children:
                 result = find_function_name(child, name)
                 if result:
                     return result
             return None
+
         calc_func = find_function_name(tree.root_node, "calculate")
         assert calc_func is not None
         symbol_type = resolver.get_symbol_type(calc_func)
@@ -124,11 +129,10 @@ class TestJavaScriptSymbolResolver:
     """Test JavaScript-specific symbol resolution."""
 
     @staticmethod
-    @pytest.fixture
+    @pytest.fixture()
     def javascript_code():
         """Sample JavaScript code for testing."""
-        return (
-            """
+        return """
 class Calculator {
     constructor() {
         this.result = 0;
@@ -150,8 +154,7 @@ const PI = 3.14159;
 let result = calculate(5, PI);
 
 export { Calculator, calculate };
-"""
-            .strip())
+""".strip()
 
     @staticmethod
     def test_get_symbol_type_class(javascript_code):
@@ -170,6 +173,7 @@ export { Calculator, calculate };
                 if result:
                     return result
             return None
+
         calc_id = find_class_identifier(tree.root_node)
         assert calc_id is not None
         symbol_type = resolver.get_symbol_type(calc_id)
@@ -185,8 +189,7 @@ export { Calculator, calculate };
         def find_const_identifier(node, name):
             if node.type == "variable_declarator":
                 for child in node.children:
-                    if (child.type == "identifier" and child.text == name.
-                        encode()):
+                    if child.type == "identifier" and child.text == name.encode():
                         parent = node.parent
                         if parent and "const" in parent.text.decode():
                             return child
@@ -195,6 +198,7 @@ export { Calculator, calculate };
                 if result:
                     return result
             return None
+
         pi_id = find_const_identifier(tree.root_node, "PI")
         if pi_id:
             symbol_type = resolver.get_symbol_type(pi_id)

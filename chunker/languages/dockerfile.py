@@ -1,12 +1,18 @@
 """
 Support for Dockerfile language.
 """
+
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
+
+if TYPE_CHECKING:
+    from tree_sitter import Node
 
 
 class DockerfileConfig(LanguageConfig):
@@ -19,13 +25,26 @@ class DockerfileConfig(LanguageConfig):
     @property
     def chunk_types(self) -> set[str]:
         """Dockerfile-specific chunk types."""
-        return {"from_instruction", "run_instruction", "cmd_instruction",
-            "entrypoint_instruction", "copy_instruction", "add_instruction",
-            "workdir_instruction", "expose_instruction", "env_instruction",
-            "arg_instruction", "label_instruction", "user_instruction",
-            "volume_instruction", "shell_instruction",
-            "healthcheck_instruction", "stopsignal_instruction",
-            "onbuild_instruction", "comment"}
+        return {
+            "from_instruction",
+            "run_instruction",
+            "cmd_instruction",
+            "entrypoint_instruction",
+            "copy_instruction",
+            "add_instruction",
+            "workdir_instruction",
+            "expose_instruction",
+            "env_instruction",
+            "arg_instruction",
+            "label_instruction",
+            "user_instruction",
+            "volume_instruction",
+            "shell_instruction",
+            "healthcheck_instruction",
+            "stopsignal_instruction",
+            "onbuild_instruction",
+            "comment",
+        }
 
     @property
     def file_extensions(self) -> set[str]:
@@ -33,10 +52,14 @@ class DockerfileConfig(LanguageConfig):
 
     def __init__(self):
         super().__init__()
-        self.add_chunk_rule(ChunkRule(node_types={"instruction"},
-            include_children=True, priority=5, metadata={"type":
-            "multi_line_instruction"}))
-
+        self.add_chunk_rule(
+            ChunkRule(
+                node_types={"instruction"},
+                include_children=True,
+                priority=5,
+                metadata={"type": "multi_line_instruction"},
+            ),
+        )
 
         # Add rules for multi-line instructions
         self.add_chunk_rule(
@@ -65,42 +88,63 @@ class DockerfilePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
 
     @property
     def default_chunk_types(self) -> set[str]:
-        return {"from_instruction", "run_instruction", "cmd_instruction",
-            "entrypoint_instruction", "copy_instruction", "add_instruction",
-            "workdir_instruction", "expose_instruction", "env_instruction",
-            "arg_instruction", "label_instruction", "user_instruction",
-            "volume_instruction", "shell_instruction",
-            "healthcheck_instruction", "stopsignal_instruction",
-            "onbuild_instruction", "comment"}
+        return {
+            "from_instruction",
+            "run_instruction",
+            "cmd_instruction",
+            "entrypoint_instruction",
+            "copy_instruction",
+            "add_instruction",
+            "workdir_instruction",
+            "expose_instruction",
+            "env_instruction",
+            "arg_instruction",
+            "label_instruction",
+            "user_instruction",
+            "volume_instruction",
+            "shell_instruction",
+            "healthcheck_instruction",
+            "stopsignal_instruction",
+            "onbuild_instruction",
+            "comment",
+        }
 
     @staticmethod
-    def get_node_name(node: Node, source: bytes) -> (str | None):
+    def get_node_name(node: Node, source: bytes) -> str | None:
         """Extract the instruction name from a Dockerfile node."""
         if node.type.endswith("_instruction"):
             for child in node.children:
-                if child.type in {"from", "run", "cmd", "copy", "add",
-                    "env", "arg"}:
-                    return source[child.start_byte:child.end_byte].decode(
-                        "utf-8").upper()
+                if child.type in {"from", "run", "cmd", "copy", "add", "env", "arg"}:
+                    return (
+                        source[child.start_byte : child.end_byte]
+                        .decode("utf-8")
+                        .upper()
+                    )
         elif node.type == "comment":
             return "COMMENT"
         return None
 
-    @staticmethod
-    def get_semantic_chunks(node: Node, source: bytes) -> list[dict[str, any]]:
+    def get_semantic_chunks(self, node: Node, source: bytes) -> list[dict[str, any]]:
         """Extract semantic chunks specific to Dockerfile."""
         chunks = []
 
-        def extract_chunks(n: Node, _parent_type: (str | None) = None):
+        def extract_chunks(n: Node, _parent_type: str | None = None):
             if n.type in self.default_chunk_types:
-                content = source[n.start_byte:n.end_byte].decode("utf-8",
-                    errors="replace")
-                chunk = {"type": n.type, "start_line": n.start_point[0] + 1,
-                    "end_line": n.end_point[0] + 1, "content": content,
-                    "instruction": self.get_node_name(n, source)}
+                content = source[n.start_byte : n.end_byte].decode(
+                    "utf-8",
+                    errors="replace",
+                )
+                chunk = {
+                    "type": n.type,
+                    "start_line": n.start_point[0] + 1,
+                    "end_line": n.end_point[0] + 1,
+                    "content": content,
+                    "instruction": self.get_node_name(n, source),
+                }
                 chunks.append(chunk)
             for child in n.children:
                 extract_chunks(child, n.type)
+
         extract_chunks(node)
         return chunks
 
@@ -115,14 +159,12 @@ class DockerfilePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             return True
         return node.type == "comment"
 
-    def get_node_context(self, node: Node, source: bytes) -> (str | None):
+    def get_node_context(self, node: Node, source: bytes) -> str | None:
         """Extract meaningful context for a node."""
         if node.type == "from_instruction":
             for child in node.children:
                 if child.type == "image_spec":
-                    return (
-                        f"FROM {source[child.start_byte:child.end_byte].decode('utf-8')}"
-                        )
+                    return f"FROM {source[child.start_byte:child.end_byte].decode('utf-8')}"
         elif node.type.endswith("_instruction"):
             instruction = self.get_node_name(node, source)
             return f"{instruction} instruction"

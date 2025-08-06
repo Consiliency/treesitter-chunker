@@ -1,4 +1,5 @@
 """Test PHP language support."""
+
 import pytest
 
 from chunker import chunk_text
@@ -245,8 +246,10 @@ class PostController extends Controller
         chunks = chunk_text(code, language="php")
         assert len(chunks) >= 1
 
-    @pytest.mark.parametrize("file_extension", [".php", ".php3", ".php4",
-        ".php5", ".phtml"])
+    @pytest.mark.parametrize(
+        "file_extension",
+        [".php", ".php3", ".php4", ".php5", ".phtml"],
+    )
     @staticmethod
     def test_php_file_extensions(file_extension):
         """Test PHP file extension detection."""

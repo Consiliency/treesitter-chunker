@@ -6,6 +6,7 @@ This example shows how to use the SlidingWindowFallback system with:
 - Configuration support
 - Processor chaining for hybrid processing
 """
+
 import time
 from typing import Any
 
@@ -21,8 +22,11 @@ class SQLProcessor(TextProcessor):
     @staticmethod
     def can_process(content: str, file_path: str) -> bool:
         """Check if content is SQL."""
-        return file_path.endswith(".sql") or "SELECT" in content.upper(
-            ) or "CREATE TABLE" in content.upper()
+        return (
+            file_path.endswith(".sql")
+            or "SELECT" in content.upper()
+            or "CREATE TABLE" in content.upper()
+        )
 
     @classmethod
     def process(cls, content: str, file_path: str) -> list[CodeChunk]:
@@ -39,9 +43,17 @@ class SQLProcessor(TextProcessor):
             lines_before = content[:current_pos].count("\n")
             start_line = lines_before + 1
             end_line = start_line + statement.count("\n")
-            chunk = CodeChunk(language="sql", file_path=file_path,
-                node_type="sql_statement", start_line=start_line, end_line=end_line, byte_start=current_pos, byte_end=current_pos +
-                len(statement), parent_context=f"statement_{i}", content=statement)
+            chunk = CodeChunk(
+                language="sql",
+                file_path=file_path,
+                node_type="sql_statement",
+                start_line=start_line,
+                end_line=end_line,
+                byte_start=current_pos,
+                byte_end=current_pos + len(statement),
+                parent_context=f"statement_{i}",
+                content=statement,
+            )
             chunks.append(chunk)
             current_pos += len(statement)
         return chunks
@@ -50,7 +62,7 @@ class SQLProcessor(TextProcessor):
 class DataFileProcessor(TextProcessor):
     """Processor for structured data files (CSV, TSV)."""
 
-    def __init__(self, config: (dict[str, Any] | None) = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         super().__init__(config)
         self.rows_per_chunk = self.config.get("rows_per_chunk", 100)
         self.include_header = self.config.get("include_header", True)
@@ -58,8 +70,14 @@ class DataFileProcessor(TextProcessor):
     @staticmethod
     def can_process(content: str, file_path: str) -> bool:
         """Check if content is structured data."""
-        return file_path.endswith((".csv", ".tsv"),
-            ) or "\t" in content.splitlines()[0] if content else False
+        return (
+            file_path.endswith(
+                (".csv", ".tsv"),
+            )
+            or "\t" in content.splitlines()[0]
+            if content
+            else False
+        )
 
     def process(self, content: str, file_path: str) -> list[CodeChunk]:
         """Process data file by rows."""
@@ -69,14 +87,22 @@ class DataFileProcessor(TextProcessor):
         chunks = []
         header = lines[0] if self.include_header else ""
         for i in range(0, len(lines), self.rows_per_chunk):
-            chunk_lines = lines[i:i + self.rows_per_chunk]
+            chunk_lines = lines[i : i + self.rows_per_chunk]
             if i > 0 and self.include_header and header:
                 chunk_content = header + "".join(chunk_lines)
             else:
                 chunk_content = "".join(chunk_lines)
-            chunk = CodeChunk(language="data", file_path=file_path,
-                node_type="data_rows", start_line=i + 1, end_line=min(i +
-                self.rows_per_chunk, len(lines)), byte_start=0, byte_end=len(chunk_content), parent_context=f"rows_{i}_{i + self.rows_per_chunk}", content=chunk_content)
+            chunk = CodeChunk(
+                language="data",
+                file_path=file_path,
+                node_type="data_rows",
+                start_line=i + 1,
+                end_line=min(i + self.rows_per_chunk, len(lines)),
+                byte_start=0,
+                byte_end=len(chunk_content),
+                parent_context=f"rows_{i}_{i + self.rows_per_chunk}",
+                content=chunk_content,
+            )
             chunks.append(chunk)
         return chunks
 
@@ -87,27 +113,35 @@ def main():
     print("1. Basic Usage - Automatic Processor Selection")
     print("-" * 50)
     fallback = SlidingWindowFallback()
-    test_files = {"example.md":
-        "# Title\n\nSection 1\n\n## Subsection\n\nContent", "app.log":
-        """[INFO] Starting
+    test_files = {
+        "example.md": "# Title\n\nSection 1\n\n## Subsection\n\nContent",
+        "app.log": """[INFO] Starting
 [ERROR] Failed to connect
 [INFO] Retrying""",
-        "data.txt": "Just plain text without any special format.\n" * 10}
+        "data.txt": "Just plain text without any special format.\n" * 10,
+    }
     for filename, content in test_files.items():
         chunks = fallback.chunk_text(content, filename)
         print(f"\n{filename}: {len(chunks)} chunks")
         for i, chunk in enumerate(chunks):
             processor = chunk.metadata.get("processor", "unknown")
-            print(
-                f"  Chunk {i + 1}: {chunk.node_type} (processor: {processor})")
+            print(f"  Chunk {i + 1}: {chunk.node_type} (processor: {processor})")
     print("\n\n2. Custom Processor Registration")
     print("-" * 50)
-    fallback.register_custom_processor(name="sql_processor",
-        processor_class=SQLProcessor, file_types={FileType.TEXT},
-        extensions={".sql"}, priority=150)
-    fallback.register_custom_processor(name="data_processor",
-        processor_class=DataFileProcessor, file_types={FileType.CSV,
-        FileType.TEXT}, extensions={".csv", ".tsv"}, priority=120)
+    fallback.register_custom_processor(
+        name="sql_processor",
+        processor_class=SQLProcessor,
+        file_types={FileType.TEXT},
+        extensions={".sql"},
+        priority=150,
+    )
+    fallback.register_custom_processor(
+        name="data_processor",
+        processor_class=DataFileProcessor,
+        file_types={FileType.CSV, FileType.TEXT},
+        extensions={".csv", ".tsv"},
+        priority=120,
+    )
     sql_content = """
     CREATE TABLE users (
         id INTEGER PRIMARY KEY,
@@ -125,17 +159,28 @@ def main():
         print(f"  Chunk {i + 1}: {chunk.content.strip()[:50]}...")
     print("\n\n3. Configuration Support")
     print("-" * 50)
-    config_data = {"processors": {"data_processor": {"enabled": True,
-        "priority": 150, "config": {"rows_per_chunk": 50, "include_header":
-        True}}}}
+    config_data = {
+        "processors": {
+            "data_processor": {
+                "enabled": True,
+                "priority": 150,
+                "config": {"rows_per_chunk": 50, "include_header": True},
+            },
+        },
+    }
     chunker_config = ChunkerConfig()
     chunker_config.data = config_data
     configured_fallback = SlidingWindowFallback(chunker_config=chunker_config)
-    configured_fallback.register_custom_processor(name="data_processor",
-        processor_class=DataFileProcessor, file_types={FileType.CSV},
-        extensions={".csv"}, priority=120)
-    csv_content = "name,age,city\n" + "\n".join([
-        f"Person{i},{20 + i},City{i}" for i in range(200)])
+    configured_fallback.register_custom_processor(
+        name="data_processor",
+        processor_class=DataFileProcessor,
+        file_types={FileType.CSV},
+        extensions={".csv"},
+        priority=120,
+    )
+    csv_content = "name,age,city\n" + "\n".join(
+        [f"Person{i},{20 + i},City{i}" for i in range(200)],
+    )
     chunks = configured_fallback.chunk_text(csv_content, "data.csv")
     print(f"\nCSV file: {len(chunks)} chunks (configured for 50 rows/chunk)")
     print("\n\n4. Processor Information and Control")
@@ -180,8 +225,7 @@ def main():
     """
     chunks = fallback.chunk_text(mixed_content, "schema_doc.md")
     print(f"\nSingle processor: {len(chunks)} chunks")
-    chain = fallback.create_processor_chain(["markdown_processor",
-        "sql_processor"])
+    chain = fallback.create_processor_chain(["markdown_processor", "sql_processor"])
     if chain:
         print("\nProcessor chain created successfully")
     print("\n\n6. Performance and Caching")

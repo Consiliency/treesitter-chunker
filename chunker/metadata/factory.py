@@ -1,5 +1,7 @@
 """Factory for creating language-specific metadata extractors."""
 
+from typing import ClassVar
+
 from chunker.interfaces.metadata import ComplexityAnalyzer, MetadataExtractor
 
 from .languages import (
@@ -16,7 +18,7 @@ class MetadataExtractorFactory:
     """Factory for creating language-specific metadata extractors."""
 
     # Registry of language-specific extractors
-    _extractors: dict[str, type[MetadataExtractor]] = {
+    _extractors: ClassVar[dict[str, type[MetadataExtractor]]] = {
         "python": PythonMetadataExtractor,
         "javascript": JavaScriptMetadataExtractor,
         "typescript": TypeScriptMetadataExtractor,
@@ -24,7 +26,7 @@ class MetadataExtractorFactory:
         "jsx": JavaScriptMetadataExtractor,  # JSX uses same extractor
     }
 
-    _analyzers: dict[str, type[ComplexityAnalyzer]] = {
+    _analyzers: ClassVar[dict[str, type[ComplexityAnalyzer]]] = {
         "python": PythonComplexityAnalyzer,
         "javascript": JavaScriptComplexityAnalyzer,
         "typescript": TypeScriptComplexityAnalyzer,

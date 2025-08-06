@@ -1,6 +1,7 @@
 """
 Tests for debug and visualization tools.
 """
+
 import json
 import pathlib
 import tempfile
@@ -34,7 +35,12 @@ class TestASTVisualizer:
         """Test tree format visualization."""
         visualizer = ASTVisualizer("python")
         code = "def hello():\n    print('Hello')"
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
             f.write(code)
             temp_file = f.name
         try:
@@ -48,7 +54,12 @@ class TestASTVisualizer:
         """Test JSON format visualization."""
         visualizer = ASTVisualizer("python")
         code = "x = 42"
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
             f.write(code)
             temp_file = f.name
         try:
@@ -66,12 +77,20 @@ class TestASTVisualizer:
         """Test node highlighting."""
         visualizer = ASTVisualizer("python")
         code = "def func():\n    x = 1\n    return x"
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
             f.write(code)
             temp_file = f.name
         try:
-            result = visualizer.visualize_file(temp_file, output_format="json", highlight_nodes={"function_definition",
-                "return_statement"})
+            result = visualizer.visualize_file(
+                temp_file,
+                output_format="json",
+                highlight_nodes={"function_definition", "return_statement"},
+            )
             assert result is not None
         finally:
             pathlib.Path(temp_file).unlink()
@@ -160,12 +179,21 @@ class TestClass:
     def method(self):
         pass
 """
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
             f.write(code)
             temp_file = f.name
         try:
-            analysis = debugger.analyze_file(temp_file, show_decisions=True,
-                show_overlap=True, show_gaps=True)
+            analysis = debugger.analyze_file(
+                temp_file,
+                show_decisions=True,
+                show_overlap=True,
+                show_gaps=True,
+            )
             assert "total_chunks" in analysis
             assert "coverage_percent" in analysis
             assert "overlaps" in analysis
@@ -189,12 +217,20 @@ def medium_function():
     z = 3
     return x + y + z
 """
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
             f.write(code)
             temp_file = f.name
         try:
-            analysis = debugger.analyze_file(temp_file, min_chunk_size=3,
-                max_chunk_size=10)
+            analysis = debugger.analyze_file(
+                temp_file,
+                min_chunk_size=3,
+                max_chunk_size=10,
+            )
             assert "size_issues" in analysis
             assert len(analysis["size_issues"]) > 0
         finally:
@@ -208,7 +244,12 @@ class TestVisualizationFunctions:
     def test_print_ast_tree(capsys):
         """Test printing AST tree."""
         code = "x = 1"
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
             f.write(code)
             temp_file = f.name
         try:
@@ -222,7 +263,12 @@ class TestVisualizationFunctions:
     def test_highlight_chunk_boundaries(capsys):
         """Test highlighting chunk boundaries."""
         code = "\ndef func1():\n    return 1\n\ndef func2():\n    return 2\n"
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
             f.write(code)
             temp_file = f.name
         try:
@@ -232,12 +278,20 @@ class TestVisualizationFunctions:
         finally:
             pathlib.Path(temp_file).unlink()
 
-    @pytest.mark.skipif(not pytest.importorskip("graphviz", reason="graphviz not installed"), reason="graphviz required")
+    @pytest.mark.skipif(
+        not pytest.importorskip("graphviz", reason="graphviz not installed"),
+        reason="graphviz required",
+    )
     @staticmethod
     def test_render_ast_graph():
         """Test rendering AST graph."""
         code = "def hello():\n    print('world')"
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
             f.write(code)
             temp_file = f.name
         try:

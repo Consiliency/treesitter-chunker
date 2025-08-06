@@ -1,6 +1,7 @@
 """
 Comprehensive Phase 10 Integration Test - All features working together.
 """
+
 import os
 import shutil
 import tempfile
@@ -99,10 +100,12 @@ def status():
         'cache_size': len(processor.cache)
     })
 """,
-                )
-        self.frontend_file = Path(self.test_dir) / "frontend" / "client.js"
-        Path(Path(self.frontend_file).mkdir(parents=True).parent, exist_ok=True,
             )
+        self.frontend_file = Path(self.test_dir) / "frontend" / "client.js"
+        Path(
+            Path(self.frontend_file).mkdir(parents=True).parent,
+            exist_ok=True,
+        )
         with Path(self.frontend_file).open("w", encoding="utf-8") as f:
             f.write(
                 """
@@ -156,7 +159,7 @@ client.processData(testData).then(results => {
     console.log('Processed:', results);
 });
 """,
-                )
+            )
         self.sql_file = Path(self.test_dir) / "schema.sql"
         with Path(self.sql_file).open("w", encoding="utf-8") as f:
             f.write(
@@ -182,7 +185,7 @@ CREATE TABLE IF NOT EXISTS processing_log (
     FOREIGN KEY (item_id) REFERENCES processed_items(id)
 );
 """,
-                )
+            )
 
     def teardown_method(self):
         """Clean up test directory."""
@@ -193,8 +196,9 @@ CREATE TABLE IF NOT EXISTS processing_log (
         ml_processor = MultiLanguageProcessorImpl()
         lang_detector = LanguageDetectorImpl()
         project_analyzer = ProjectAnalyzerImpl()
-        project_languages = ml_processor.detect_project_languages(self.test_dir,
-            )
+        project_languages = ml_processor.detect_project_languages(
+            self.test_dir,
+        )
         assert "python" in project_languages
         assert "javascript" in project_languages
         project_analyzer.analyze_structure(self.test_dir)
@@ -213,17 +217,23 @@ CREATE TABLE IF NOT EXISTS processing_log (
                 all_chunks.extend(chunks)
                 chunk_map[file_path] = chunks
         assert len(all_chunks) > 0
-        context_provider = TreeSitterSmartContextProvider(cache=InMemoryContextCache(ttl=3600))
-        processor_chunk = next((c for c in all_chunks if
-            "class DataProcessor" in c.content), None)
+        context_provider = TreeSitterSmartContextProvider(
+            cache=InMemoryContextCache(ttl=3600),
+        )
+        processor_chunk = next(
+            (c for c in all_chunks if "class DataProcessor" in c.content),
+            None,
+        )
         assert processor_chunk is not None
-        context, metadata = context_provider.get_semantic_context(
-            processor_chunk)
-        assert metadata.relationship_type in {"semantic", "dependency",
-            "usage", "structural"}
+        context, metadata = context_provider.get_semantic_context(processor_chunk)
+        assert metadata.relationship_type in {
+            "semantic",
+            "dependency",
+            "usage",
+            "structural",
+        }
         assert "process" in context.lower()
-        deps = context_provider.get_dependency_context(processor_chunk,
-            all_chunks)
+        deps = context_provider.get_dependency_context(processor_chunk, all_chunks)
         assert len(deps) > 0
         query_index = AdvancedQueryIndex()
         for chunk in all_chunks:
@@ -241,9 +251,12 @@ CREATE TABLE IF NOT EXISTS processing_log (
         assert len(languages) >= 2
         chunk_optimizer = ChunkOptimizer()
         py_chunks = chunk_map.get(self.backend_file, [])
-        optimized, metrics = chunk_optimizer.optimize_for_llm(py_chunks,
-            model="gpt-4", max_tokens=2000, strategy=OptimizationStrategy.
-            BALANCED)
+        optimized, metrics = chunk_optimizer.optimize_for_llm(
+            py_chunks,
+            model="gpt-4",
+            max_tokens=2000,
+            strategy=OptimizationStrategy.BALANCED,
+        )
         assert metrics.optimized_count <= metrics.original_count
         assert metrics.coherence_score > 0.5
         incremental_processor = DefaultIncrementalProcessor()
@@ -261,31 +274,46 @@ def clear_cache():
     processor.cache.clear()
     return jsonify({'status': 'cache cleared'})
 """,
-                )
-        new_chunks = chunk_file(self.backend_file, language="python")
-        diff = incremental_processor.compute_diff(self.backend_file, new_chunks,
             )
+        new_chunks = chunk_file(self.backend_file, language="python")
+        diff = incremental_processor.compute_diff(
+            self.backend_file,
+            new_chunks,
+        )
         assert diff is not None
         assert len(diff.added) > 0
         assert any("clear-cache" in chunk.content for chunk in diff.added)
-        api_chunk = next((c for c in all_chunks if "@app.route" in c.
-            content and "process" in c.content), None)
+        api_chunk = next(
+            (
+                c
+                for c in all_chunks
+                if "@app.route" in c.content and "process" in c.content
+            ),
+            None,
+        )
         if api_chunk:
-            usage_context = context_provider.get_usage_context(api_chunk,
-                all_chunks)
-            js_usage = [(chunk, meta) for chunk, meta in usage_context if
-                chunk.language == "javascript"]
+            usage_context = context_provider.get_usage_context(api_chunk, all_chunks)
+            js_usage = [
+                (chunk, meta)
+                for chunk, meta in usage_context
+                if chunk.language == "javascript"
+            ]
             assert len(js_usage) > 0
         enhanced_results = []
         for result in results[:3]:
             context, _ = context_provider.get_semantic_context(result.chunk)
-            enhanced_results.append({"chunk": result.chunk, "score": result
-                .score, "context": context})
+            enhanced_results.append(
+                {"chunk": result.chunk, "score": result.score, "context": context},
+            )
         feature_groups = project_analyzer.suggest_chunk_grouping(all_chunks)
         for feature_chunks in feature_groups.values():
             if len(feature_chunks) > 1:
-                _optimized, _ = chunk_optimizer.optimize_for_llm(feature_chunks
-                    , model="gpt-4", max_tokens=4000, strategy=OptimizationStrategy.CONSERVATIVE)
+                _optimized, _ = chunk_optimizer.optimize_for_llm(
+                    feature_chunks,
+                    model="gpt-4",
+                    max_tokens=4000,
+                    strategy=OptimizationStrategy.CONSERVATIVE,
+                )
         assert all(hasattr(chunk, "content") for chunk in all_chunks)
         assert all(hasattr(chunk, "language") for chunk in all_chunks)
         stats = query_index.get_statistics()
@@ -293,7 +321,7 @@ def clear_cache():
         assert context_provider._cache.size() > 0
         print(
             f"✓ Processed {len(all_chunks)} chunks across {len(project_languages)} languages",
-            )
+        )
         print(f"✓ Query index contains {stats['total_chunks']} chunks")
         print(f"✓ Found {len(diff.added)} new chunks after modification")
         print("✓ All Phase 10 features working together successfully!")
@@ -311,12 +339,21 @@ def clear_cache():
         results = query_engine.search("anything")
         assert results == []
         optimizer = ChunkOptimizer()
-        optimized, metrics = optimizer.optimize_for_llm([], model="gpt-4",
-            max_tokens=2000)
+        optimized, metrics = optimizer.optimize_for_llm(
+            [],
+            model="gpt-4",
+            max_tokens=2000,
+        )
         assert optimized == []
         assert metrics.original_count == 0
         processor = DefaultIncrementalProcessor()
-        chunk = CodeChunk(id="test", content="def test(): pass", start_line=1, end_line=1, language="python")
+        chunk = CodeChunk(
+            id="test",
+            content="def test(): pass",
+            start_line=1,
+            end_line=1,
+            language="python",
+        )
         processor.update_chunks("test.py", [chunk])
         diff = processor.compute_diff("test.py", [chunk])
         assert len(diff.added) == 0
@@ -338,7 +375,13 @@ class Class_{i}:
     def method(self):
         return function_{i}(1, 2)
 """
-            chunk = CodeChunk(id=f"chunk_{i}", content=content, start_line=i * 10, end_line=i * 10 + 9, language="python")
+            chunk = CodeChunk(
+                id=f"chunk_{i}",
+                content=content,
+                start_line=i * 10,
+                end_line=i * 10 + 9,
+                language="python",
+            )
             large_chunks.append(chunk)
         index = AdvancedQueryIndex()
         start = time.time()
@@ -354,7 +397,11 @@ class Class_{i}:
         assert len(results) > 0
         optimizer = ChunkOptimizer()
         start = time.time()
-        _optimized, _ = optimizer.optimize_for_llm(large_chunks[:20], model="gpt-4", max_tokens=2000)
+        _optimized, _ = optimizer.optimize_for_llm(
+            large_chunks[:20],
+            model="gpt-4",
+            max_tokens=2000,
+        )
         opt_time = time.time() - start
         assert opt_time < 2.0
         print(f"✓ Indexed {len(large_chunks)} chunks in {index_time:.2f}s")

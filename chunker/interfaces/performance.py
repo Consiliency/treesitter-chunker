@@ -3,6 +3,7 @@
 Interfaces for caching, incremental parsing, and other
 performance optimizations.
 """
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
@@ -25,6 +26,7 @@ class CacheEntry:
         ttl_seconds: Time to live in seconds (None = no expiry)
         metadata: Additional metadata about the entry
     """
+
     key: str
     value: Any
     created_at: datetime
@@ -50,6 +52,7 @@ class ParseCache:
         language: Language that was parsed
         parse_time_ms: Time taken to parse in milliseconds
     """
+
     ast: Node
     source_hash: str
     language: str
@@ -61,7 +64,7 @@ class CacheManager(ABC):
 
     @staticmethod
     @abstractmethod
-    def get(key: str) -> (Any | None):
+    def get(key: str) -> Any | None:
         """Get a value from cache.
 
         Args:
@@ -73,7 +76,7 @@ class CacheManager(ABC):
 
     @staticmethod
     @abstractmethod
-    def put(key: str, value: Any, ttl_seconds: (int | None) = None) -> None:
+    def put(key: str, value: Any, ttl_seconds: int | None = None) -> None:
         """Put a value in cache.
 
         Args:
@@ -153,8 +156,11 @@ class IncrementalParser(ABC):
 
     @staticmethod
     @abstractmethod
-    def parse_incremental(old_tree: Node, source: bytes, changed_ranges:
-        list[tuple[int, int, int, int]]) -> Node:
+    def parse_incremental(
+        old_tree: Node,
+        source: bytes,
+        changed_ranges: list[tuple[int, int, int, int]],
+    ) -> Node:
         """Parse incrementally based on changes.
 
         Args:
@@ -168,8 +174,10 @@ class IncrementalParser(ABC):
 
     @staticmethod
     @abstractmethod
-    def detect_changes(old_source: bytes, new_source: bytes) -> list[tuple[
-        int, int, int, int]]:
+    def detect_changes(
+        old_source: bytes,
+        new_source: bytes,
+    ) -> list[tuple[int, int, int, int]]:
         """Detect changed ranges between sources.
 
         Args:
@@ -182,9 +190,12 @@ class IncrementalParser(ABC):
 
     @staticmethod
     @abstractmethod
-    def update_chunks(old_chunks: list[CodeChunk], old_tree: Node, new_tree:
-        Node, changed_ranges: list[tuple[int, int, int, int]]) -> list[CodeChunk
-        ]:
+    def update_chunks(
+        old_chunks: list[CodeChunk],
+        old_tree: Node,
+        new_tree: Node,
+        changed_ranges: list[tuple[int, int, int, int]],
+    ) -> list[CodeChunk]:
         """Update chunks based on incremental changes.
 
         Args:
@@ -236,7 +247,7 @@ class MemoryPool(ABC):
 
     @staticmethod
     @abstractmethod
-    def clear(resource_type: (str | None) = None) -> None:
+    def clear(resource_type: str | None = None) -> None:
         """Clear pooled resources.
 
         Args:
@@ -311,8 +322,10 @@ class BatchProcessor(ABC):
 
     @staticmethod
     @abstractmethod
-    def process_batch(batch_size: int = 10, parallel: bool = True) -> dict[str,
-        list[CodeChunk]]:
+    def process_batch(
+        batch_size: int = 10,
+        parallel: bool = True,
+    ) -> dict[str, list[CodeChunk]]:
         """Process a batch of files.
 
         Args:

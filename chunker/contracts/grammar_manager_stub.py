@@ -10,13 +10,15 @@ class GrammarManagerStub(GrammarManagerContract):
         return False
 
     @staticmethod
-    def fetch_grammars(_languages: (list[str] | None) = None) -> dict[str, bool]:
+    def fetch_grammars(_languages: list[str] | None = None) -> dict[str, bool]:
         """Stub returns empty dict"""
         return {}
 
     @staticmethod
-    def compile_grammars(_languages: (list[str] | None) = None) -> dict[str, bool,
-        ]:
+    def compile_grammars(_languages: list[str] | None = None) -> dict[
+        str,
+        bool,
+    ]:
         """Stub returns empty dict"""
         return {}
 

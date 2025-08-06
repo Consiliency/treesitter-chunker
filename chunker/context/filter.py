@@ -2,6 +2,7 @@
 
 Provides functionality to filter context items for relevance to chunks.
 """
+
 from tree_sitter import Node
 
 from chunker.interfaces.context import ContextFilter, ContextItem, ContextType
@@ -38,8 +39,11 @@ class BaseContextFilter(ContextFilter):
         score = self.score_relevance(context_item, chunk_node)
         return score > 0.5
 
-    def score_relevance(self, context_item: ContextItem, chunk_node: Node,
-        ) -> float:
+    def score_relevance(
+        self,
+        context_item: ContextItem,
+        chunk_node: Node,
+    ) -> float:
         """Score the relevance of a context item (0.0-1.0).
 
         Args:
@@ -53,18 +57,23 @@ class BaseContextFilter(ContextFilter):
         if cache_key in self._relevance_cache:
             return self._relevance_cache[cache_key]
         score = 0.0
-        type_scores = {ContextType.IMPORT: 0.9, ContextType.TYPE_DEF: 0.8,
-            ContextType.DECORATOR: 0.7, ContextType.PARENT_SCOPE: 0.9,
-            ContextType.DEPENDENCY: 0.6, ContextType.NAMESPACE: 0.5,
-            ContextType.CONSTANT: 0.4, ContextType.GLOBAL_VAR: 0.4}
+        type_scores = {
+            ContextType.IMPORT: 0.9,
+            ContextType.TYPE_DEF: 0.8,
+            ContextType.DECORATOR: 0.7,
+            ContextType.PARENT_SCOPE: 0.9,
+            ContextType.DEPENDENCY: 0.6,
+            ContextType.NAMESPACE: 0.5,
+            ContextType.CONSTANT: 0.4,
+            ContextType.GLOBAL_VAR: 0.4,
+        }
         base_score = type_scores.get(context_item.type, 0.3)
         score = base_score
         distance = self._calculate_ast_distance(context_item.node, chunk_node)
         if distance >= 0:
             distance_penalty = min(distance * 0.1, 0.5)
             score -= distance_penalty
-        line_distance = abs(context_item.line_number - self._get_node_line(
-            chunk_node))
+        line_distance = abs(context_item.line_number - self._get_node_line(chunk_node))
         if line_distance < 10:
             score += 0.1
         elif line_distance < 50:
@@ -95,8 +104,11 @@ class BaseContextFilter(ContextFilter):
             current = current.parent
         return False
 
-    def _is_decorator_for_node(self, decorator_node: Node, target_node: Node,
-        ) -> bool:
+    def _is_decorator_for_node(
+        self,
+        decorator_node: Node,
+        target_node: Node,
+    ) -> bool:
         """Check if a decorator applies to a specific node.
 
         Args:
@@ -116,8 +128,11 @@ class BaseContextFilter(ContextFilter):
                 decorator_index = i
             elif sibling == target_node:
                 target_index = i
-        if (decorator_index >= 0 and target_index >= 0 and decorator_index <
-            target_index):
+        if (
+            decorator_index >= 0
+            and target_index >= 0
+            and decorator_index < target_index
+        ):
             for i in range(decorator_index + 1, target_index):
                 if not self._is_decorator_node(siblings[i]):
                     return False
@@ -177,8 +192,10 @@ class BaseContextFilter(ContextFilter):
         return 0
 
     @staticmethod
-    def _chunk_references_context(_chunk_node: Node, _context_item: ContextItem,
-        ) -> bool:
+    def _chunk_references_context(
+        _chunk_node: Node,
+        _context_item: ContextItem,
+    ) -> bool:
         """Check if a chunk references symbols from a context item.
 
         Args:

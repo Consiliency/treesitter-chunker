@@ -1,4 +1,5 @@
 """Code complexity metrics implementation."""
+
 from abc import ABC
 
 from tree_sitter import Node
@@ -28,15 +29,35 @@ class BaseComplexityAnalyzer(ComplexityAnalyzer, ABC):
         Returns:
             Set of node type names
         """
-        return {"if_statement", "if_expression", "elif_clause",
-            "else_clause", "while_statement", "while_expression",
-            "for_statement", "for_expression", "for_in_statement",
-            "do_statement", "do_while_statement", "switch_statement",
-            "switch_expression", "case_statement", "case_clause",
-            "conditional_expression", "ternary_expression", "try_statement",
-            "catch_clause", "except_clause", "match_statement",
-            "match_expression", "and", "or", "binary_expression",
-            "logical_and", "logical_or"}
+        return {
+            "if_statement",
+            "if_expression",
+            "elif_clause",
+            "else_clause",
+            "while_statement",
+            "while_expression",
+            "for_statement",
+            "for_expression",
+            "for_in_statement",
+            "do_statement",
+            "do_while_statement",
+            "switch_statement",
+            "switch_expression",
+            "case_statement",
+            "case_clause",
+            "conditional_expression",
+            "ternary_expression",
+            "try_statement",
+            "catch_clause",
+            "except_clause",
+            "match_statement",
+            "match_expression",
+            "and",
+            "or",
+            "binary_expression",
+            "logical_and",
+            "logical_or",
+        }
 
     @staticmethod
     def _get_cognitive_complexity_factors() -> dict[str, int]:
@@ -46,16 +67,29 @@ class BaseComplexityAnalyzer(ComplexityAnalyzer, ABC):
         Returns:
             Mapping of node types to complexity weights
         """
-        return {"if_statement": 1, "elif_clause": 1, "else_clause": 0,
-            "while_statement": 1, "for_statement": 1, "do_statement": 1,
-            "switch_statement": 1, "case_statement": 0, "match_statement":
-            1, "try_statement": 1, "catch_clause": 1, "except_clause": 1,
-            "and": 1, "or": 1, "logical_and": 1, "logical_or": 1,
-            "conditional_expression": 1, "ternary_expression": 1,
-            "recursive_call": 1}
+        return {
+            "if_statement": 1,
+            "elif_clause": 1,
+            "else_clause": 0,
+            "while_statement": 1,
+            "for_statement": 1,
+            "do_statement": 1,
+            "switch_statement": 1,
+            "case_statement": 0,
+            "match_statement": 1,
+            "try_statement": 1,
+            "catch_clause": 1,
+            "except_clause": 1,
+            "and": 1,
+            "or": 1,
+            "logical_and": 1,
+            "logical_or": 1,
+            "conditional_expression": 1,
+            "ternary_expression": 1,
+            "recursive_call": 1,
+        }
 
-    @staticmethod
-    def calculate_cyclomatic_complexity(node: Node) -> int:
+    def calculate_cyclomatic_complexity(self, node: Node) -> int:
         """
         Calculate cyclomatic complexity (McCabe complexity).
 
@@ -77,18 +111,22 @@ class BaseComplexityAnalyzer(ComplexityAnalyzer, ABC):
                     pass
                 elif n.type in {"binary_expression", "logical_expression"}:
                     operator_node = self._find_operator_node(n)
-                    if operator_node and operator_node.type in {"and", "or",
-                        "&&", "||"}:
+                    if operator_node and operator_node.type in {
+                        "and",
+                        "or",
+                        "&&",
+                        "||",
+                    }:
                         complexity += 1
                 else:
                     complexity += 1
             for child in n.children:
                 count_decision_points(child)
+
         count_decision_points(node)
         return complexity
 
-    @staticmethod
-    def calculate_cognitive_complexity(node: Node) -> int:
+    def calculate_cognitive_complexity(self, node: Node) -> int:
         """
         Calculate cognitive complexity.
 
@@ -102,8 +140,7 @@ class BaseComplexityAnalyzer(ComplexityAnalyzer, ABC):
         """
         complexity = 0
 
-        def calculate_recursive(n: Node, nesting_level: int, parent_types:
-            set[str]):
+        def calculate_recursive(n: Node, nesting_level: int, parent_types: set[str]):
             nonlocal complexity
             current_nesting = nesting_level
             increment = 0
@@ -117,18 +154,21 @@ class BaseComplexityAnalyzer(ComplexityAnalyzer, ABC):
             if self._is_recursive_call(n, parent_types):
                 complexity += self._cognitive_factors.get("recursive_call", 1)
             current_types = parent_types.copy()
-            if n.type in {"function_definition", "method_definition",
-                "function_declaration"}:
+            if n.type in {
+                "function_definition",
+                "method_definition",
+                "function_declaration",
+            }:
                 name_node = self._find_name_node(n)
                 if name_node:
                     current_types.add(name_node.type)
             for child in n.children:
                 calculate_recursive(child, current_nesting, current_types)
+
         calculate_recursive(node, 0, set())
         return complexity
 
-    @staticmethod
-    def calculate_nesting_depth(node: Node) -> int:
+    def calculate_nesting_depth(self, node: Node) -> int:
         """
         Calculate maximum nesting depth.
 
@@ -147,8 +187,12 @@ class BaseComplexityAnalyzer(ComplexityAnalyzer, ABC):
                 max_depth = max(max_depth, current_depth)
             for child in n.children:
                 calculate_depth(child, current_depth, False)
-        is_root_node = node.type in {"function_definition",
-            "method_definition", "class_definition"}
+
+        is_root_node = node.type in {
+            "function_definition",
+            "method_definition",
+            "class_definition",
+        }
         calculate_depth(node, 0, is_root_node)
         return max_depth
 
@@ -163,34 +207,34 @@ class BaseComplexityAnalyzer(ComplexityAnalyzer, ABC):
         Returns:
             Number of logical lines
         """
-        text = source[node.start_byte:node.end_byte].decode("utf-8", errors="replace")
+        text = source[node.start_byte : node.end_byte].decode("utf-8", errors="replace")
         logical_lines = 0
         in_multiline_comment = False
         in_multiline_string = False
         string_delimiter = None
         for line in text.split("\n"):
-            line = line.strip()
-            if not line:
+            stripped_line = line.strip()
+            if not stripped_line:
                 continue
             if not in_multiline_string:
-                if line.startswith(('"""', "'''")) and len(line) > 3:
-                    string_delimiter = line[:3]
+                if stripped_line.startswith(('"""', "'''")) and len(stripped_line) > 3:
+                    string_delimiter = stripped_line[:3]
                     in_multiline_string = True
-                    if line.count(string_delimiter) >= 2:
+                    if stripped_line.count(string_delimiter) >= 2:
                         in_multiline_string = False
                         logical_lines += 1
                     continue
-                if line in {'"""', "'''"}:
-                    string_delimiter = line
+                if stripped_line in {'"""', "'''"}:
+                    string_delimiter = stripped_line
                     in_multiline_string = True
                     continue
             else:
-                if string_delimiter in line:
+                if string_delimiter in stripped_line:
                     in_multiline_string = False
                 continue
-            if "/*" in line and not in_multiline_string:
+            if "/*" in stripped_line and not in_multiline_string:
                 in_multiline_comment = True
-            if "*/" in line and in_multiline_comment:
+            if "*/" in stripped_line and in_multiline_comment:
                 in_multiline_comment = False
                 continue
             if in_multiline_comment:
@@ -200,8 +244,11 @@ class BaseComplexityAnalyzer(ComplexityAnalyzer, ABC):
             logical_lines += 1
         return logical_lines
 
-    def analyze_complexity(self, node: Node, source: bytes,
-        ) -> ComplexityMetrics:
+    def analyze_complexity(
+        self,
+        node: Node,
+        source: bytes,
+    ) -> ComplexityMetrics:
         """
         Perform complete complexity analysis.
 
@@ -212,16 +259,18 @@ class BaseComplexityAnalyzer(ComplexityAnalyzer, ABC):
         Returns:
             All complexity metrics
         """
-        text = source[node.start_byte:node.end_byte].decode("utf-8", errors="replace")
+        text = source[node.start_byte : node.end_byte].decode("utf-8", errors="replace")
         lines_of_code = len(text.split("\n"))
-        return ComplexityMetrics(cyclomatic=self.
-            calculate_cyclomatic_complexity(node), cognitive=self.
-            calculate_cognitive_complexity(node), nesting_depth=self.
-            calculate_nesting_depth(node), lines_of_code=lines_of_code,
-            logical_lines=self.count_logical_lines(node, source))
+        return ComplexityMetrics(
+            cyclomatic=self.calculate_cyclomatic_complexity(node),
+            cognitive=self.calculate_cognitive_complexity(node),
+            nesting_depth=self.calculate_nesting_depth(node),
+            lines_of_code=lines_of_code,
+            logical_lines=self.count_logical_lines(node, source),
+        )
 
     @staticmethod
-    def _find_operator_node(node: Node) -> (Node | None):
+    def _find_operator_node(node: Node) -> Node | None:
         """Find operator node in binary expression."""
         for child in node.children:
             if child.type in {"and", "or", "&&", "||", "operator"}:
@@ -231,23 +280,40 @@ class BaseComplexityAnalyzer(ComplexityAnalyzer, ABC):
     @staticmethod
     def _increases_nesting(node_type: str) -> bool:
         """Check if node type increases nesting level."""
-        return node_type in {"if_statement", "while_statement",
-            "for_statement", "do_statement", "switch_statement",
-            "try_statement", "function_definition", "method_definition",
-            "class_definition", "with_statement", "match_statement",
-            "block_statement", "lambda_expression", "arrow_function"}
+        return node_type in {
+            "if_statement",
+            "while_statement",
+            "for_statement",
+            "do_statement",
+            "switch_statement",
+            "try_statement",
+            "function_definition",
+            "method_definition",
+            "class_definition",
+            "with_statement",
+            "match_statement",
+            "block_statement",
+            "lambda_expression",
+            "arrow_function",
+        }
 
-    def _is_recursive_call(self, node: Node, parent_function_names: set[str],
-        ) -> bool:
+    def _is_recursive_call(
+        self,
+        node: Node,
+        parent_function_names: set[str],
+    ) -> bool:
         """Check if node is a recursive function call."""
-        if node.type not in {"call_expression", "function_call", "method_call",
-            }:
+        if node.type not in {
+            "call_expression",
+            "function_call",
+            "method_call",
+        }:
             return False
         name_node = self._find_name_node(node)
         return bool(name_node and name_node.type in parent_function_names)
 
     @staticmethod
-    def _find_name_node(node: Node) -> (Node | None):
+    def _find_name_node(node: Node) -> Node | None:
         """Find name/identifier node."""
         for child in node.children:
             if child.type in {"identifier", "function_name", "method_name"}:
@@ -258,5 +324,4 @@ class BaseComplexityAnalyzer(ComplexityAnalyzer, ABC):
     def _is_comment_line(line: str) -> bool:
         """Check if line is a comment."""
         line = line.strip()
-        return line.startswith(("//", "#", "--", "*", "/*", "*/", '"' * 3,
-            "'" * 3))
+        return line.startswith(("//", "#", "--", "*", "/*", "*/", '"' * 3, "'" * 3))

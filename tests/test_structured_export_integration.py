@@ -1,4 +1,5 @@
 """Integration tests for structured export functionality."""
+
 import json
 import sqlite3
 
@@ -20,7 +21,7 @@ from chunker.export import (
 from chunker.interfaces.export import ExportFormat
 
 
-@pytest.fixture
+@pytest.fixture()
 def sample_python_file(tmp_path):
     """Create a sample Python file with relationships."""
     file_path = tmp_path / "sample.py"
@@ -65,11 +66,11 @@ if __name__ == "__main__":
     dog = create_pet("dog", "Buddy")
     print(dog.speak())
 """,
-        )
+    )
     return file_path
 
 
-@pytest.fixture
+@pytest.fixture()
 def sample_javascript_file(tmp_path):
     """Create a sample JavaScript file with relationships."""
     file_path = tmp_path / "sample.js"
@@ -127,7 +128,7 @@ function createShape(type, color, ...dimensions) {
 const circle = createShape('circle', 'red', 5);
 console.log(circle.getArea());
 """,
-        )
+    )
     return file_path
 
 
@@ -158,16 +159,16 @@ class TestStructuredExportIntegration:
             content = chunk["content"]
             for line in content.split("\n"):
                 if line.strip().startswith("class "):
-                    name = line.split("class ")[1].split("(")[0].split(":")[0
-                        ].strip()
+                    name = line.split("class ")[1].split("(")[0].split(":")[0].strip()
                     class_names.append(name)
                     break
         assert "Animal" in class_names
         assert "Dog" in class_names
         assert "Cat" in class_names
         assert len(data["relationships"]) > 0
-        inheritance_rels = [r for r in data["relationships"] if r[
-            "relationship_type"] == "inherits"]
+        inheritance_rels = [
+            r for r in data["relationships"] if r["relationship_type"] == "inherits"
+        ]
         assert len(inheritance_rels) >= 2
 
     @classmethod
@@ -311,11 +312,11 @@ class TestStructuredExportIntegration:
         chunks = chunk_file(sample_python_file, "python")
         tracker = ASTRelationshipTracker()
         relationships = tracker.infer_relationships(chunks)
-        inheritance_rels = [r for r in relationships if r.relationship_type
-            .value == "inherits"]
+        inheritance_rels = [
+            r for r in relationships if r.relationship_type.value == "inherits"
+        ]
         assert len(inheritance_rels) >= 2
-        call_rels = [r for r in relationships if r.relationship_type.value ==
-            "calls"]
+        call_rels = [r for r in relationships if r.relationship_type.value == "calls"]
         assert len(call_rels) > 0
 
     @classmethod
@@ -324,11 +325,11 @@ class TestStructuredExportIntegration:
         chunks = chunk_file(sample_javascript_file, "javascript")
         tracker = ASTRelationshipTracker()
         relationships = tracker.infer_relationships(chunks)
-        inheritance_rels = [r for r in relationships if r.relationship_type
-            .value == "inherits"]
+        inheritance_rels = [
+            r for r in relationships if r.relationship_type.value == "inherits"
+        ]
         assert len(inheritance_rels) >= 2
-        call_rels = [r for r in relationships if r.relationship_type.value ==
-            "calls"]
+        call_rels = [r for r in relationships if r.relationship_type.value == "calls"]
         assert len(call_rels) > 0
 
     @classmethod
@@ -343,12 +344,12 @@ class TestStructuredExportIntegration:
 
         def rel_iterator():
             yield from relationships
+
         orchestrator = StructuredExportOrchestrator()
         jsonl_exporter = StructuredJSONLExporter()
         orchestrator.register_exporter(ExportFormat.JSONL, jsonl_exporter)
         output_path = tmp_path / "streaming.jsonl"
-        orchestrator.export_streaming(chunk_iterator(), rel_iterator(),
-            output_path)
+        orchestrator.export_streaming(chunk_iterator(), rel_iterator(), output_path)
         assert output_path.exists()
         lines = output_path.read_text().strip().split("\n")
         assert len(lines) > 0

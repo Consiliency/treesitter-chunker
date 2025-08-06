@@ -1,4 +1,5 @@
 """Comprehensive tests for Clojure language support."""
+
 from chunker import chunk_file
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from chunker.languages.clojure import ClojurePlugin
@@ -32,11 +33,12 @@ class TestClojureBasicChunking:
   [radius]
   (* pi (private-helper radius)))
 """,
-            )
+        )
         chunks = chunk_file(src, "clojure")
         assert len(chunks) >= 4
-        ns_chunks = [c for c in chunks if c.node_type == "namespace" or
-            "ns" in c.content]
+        ns_chunks = [
+            c for c in chunks if c.node_type == "namespace" or "ns" in c.content
+        ]
         assert len(ns_chunks) >= 1
         defn_chunks = [c for c in chunks if c.node_type == "defn"]
         defn_private_chunks = [c for c in chunks if c.node_type == "defn-"]
@@ -70,7 +72,7 @@ class TestClojureBasicChunking:
 
 (defonce initialized? (atom false))
 """,
-            )
+        )
         chunks = chunk_file(src, "clojure")
         macro_chunks = [c for c in chunks if c.node_type == "defmacro"]
         assert len(macro_chunks) >= 2
@@ -112,7 +114,7 @@ class TestClojureBasicChunking:
      :width (* 2 radius)
      :height (* 2 radius)}))
 """,
-            )
+        )
         chunks = chunk_file(src, "clojure")
         protocol_chunks = [c for c in chunks if c.node_type == "defprotocol"]
         assert len(protocol_chunks) >= 1
@@ -159,7 +161,7 @@ class TestClojureBasicChunking:
   [{:keys [width height]}]
   (* width height))
 """,
-            )
+        )
         chunks = chunk_file(src, "clojure")
         multi_chunks = [c for c in chunks if c.node_type == "defmulti"]
         assert len(multi_chunks) >= 2
@@ -192,6 +194,7 @@ class TestClojureContractCompliance:
                 self.start_point = 0, 0
                 self.end_point = 0, end
                 self.children = []
+
         root = MockNode("source")
         list_node = MockNode("list_lit", 0, 50)
         sym_node = MockNode("sym_lit", 1, 5)
@@ -223,6 +226,7 @@ class TestClojureContractCompliance:
             def __init__(self, node_type):
                 self.type = node_type
                 self.children = []
+
         assert plugin.should_chunk_node(MockNode("list_lit"))
         assert plugin.should_chunk_node(MockNode("defprotocol"))
         assert plugin.should_chunk_node(MockNode("deftype"))
@@ -240,6 +244,7 @@ class TestClojureContractCompliance:
             def __init__(self, node_type):
                 self.type = node_type
                 self.children = []
+
         node = MockNode("ns_form")
         context = plugin.get_node_context(node, b"(ns example.core)")
         assert context is not None
@@ -268,7 +273,7 @@ class TestClojureEdgeCases:
 
 #_"This is a discard form\"
 """,
-            )
+        )
         chunks = chunk_file(src, "clojure")
         assert len(chunks) == 0
 
@@ -298,13 +303,12 @@ class TestClojureEdgeCases:
     {:squares (process square coll)
      :cubes (process cube coll)}))
 """,
-            )
+        )
         chunks = chunk_file(src, "clojure")
         function_chunks = [c for c in chunks if c.node_type == "defn"]
         assert len(function_chunks) >= 2
         assert any("complex-calculation" in c.content for c in function_chunks)
-        assert any("with-local-functions" in c.content for c in function_chunks
-            )
+        assert any("with-local-functions" in c.content for c in function_chunks)
 
     @staticmethod
     def test_anonymous_functions(tmp_path):
@@ -325,7 +329,7 @@ class TestClojureEdgeCases:
   (fn [{:keys [x y] :as point}]
     (Math/sqrt (+ (* x x) (* y y)))))
 """,
-            )
+        )
         chunks = chunk_file(src, "clojure")
         def_chunks = [c for c in chunks if c.node_type == "def"]
         assert len(def_chunks) >= 3
@@ -362,7 +366,7 @@ class TestClojureEdgeCases:
    (defn js-only []
      (js/console.log "Running in JS")))
 """,
-            )
+        )
         chunks = chunk_file(src, "clojure")
         function_chunks = [c for c in chunks if c.node_type == "defn"]
         assert len(function_chunks) >= 1
@@ -402,13 +406,18 @@ class TestClojureEdgeCases:
     (< (count x) 5) (str "short: ")
     :always str/upper-case))
 """,
-            )
+        )
         chunks = chunk_file(src, "clojure")
         function_chunks = [c for c in chunks if c.node_type == "defn"]
         assert len(function_chunks) >= 3
-        assert any("process-data" in c.content and "->" in c.content for c in
-            function_chunks)
-        assert any("complex-pipeline" in c.content and "->>" in c.content for
-            c in function_chunks)
-        assert any("conditional-threading" in c.content and "cond->" in c.
-            content for c in function_chunks)
+        assert any(
+            "process-data" in c.content and "->" in c.content for c in function_chunks
+        )
+        assert any(
+            "complex-pipeline" in c.content and "->>" in c.content
+            for c in function_chunks
+        )
+        assert any(
+            "conditional-threading" in c.content and "cond->" in c.content
+            for c in function_chunks
+        )

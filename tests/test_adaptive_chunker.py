@@ -1,4 +1,5 @@
 """Tests for the adaptive chunking strategy."""
+
 import pytest
 
 from chunker.parser import get_parser
@@ -9,13 +10,13 @@ class TestAdaptiveChunker:
     """Test suite for AdaptiveChunker."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def adaptive_chunker(cls):
         """Create an adaptive chunker instance."""
         return AdaptiveChunker()
 
     @staticmethod
-    @pytest.fixture
+    @pytest.fixture()
     def variable_complexity_code():
         """Code with varying complexity levels."""
         return """
@@ -107,9 +108,14 @@ def dense_function():
     @classmethod
     def test_adaptive_metrics_calculation(cls, adaptive_chunker):
         """Test calculation of adaptive metrics."""
-        metrics = AdaptiveMetrics(complexity_score=15.0, coupling_score=8.0,
-            semantic_cohesion=0.7, line_count=50, token_density=12.0,
-            nesting_depth=3)
+        metrics = AdaptiveMetrics(
+            complexity_score=15.0,
+            coupling_score=8.0,
+            semantic_cohesion=0.7,
+            line_count=50,
+            token_density=12.0,
+            nesting_depth=3,
+        )
         score = metrics.overall_score
         assert score > 0
         assert score < 20
@@ -119,8 +125,12 @@ def dense_function():
         """Test that chunk sizes adapt to complexity."""
         parser = get_parser("python")
         tree = parser.parse(variable_complexity_code.encode())
-        chunks = adaptive_chunker.chunk(tree.root_node,
-            variable_complexity_code.encode(), "test.py", "python")
+        chunks = adaptive_chunker.chunk(
+            tree.root_node,
+            variable_complexity_code.encode(),
+            "test.py",
+            "python",
+        )
         assert len(chunks) > 3
         simple_chunks = []
         complex_chunks = []
@@ -133,25 +143,42 @@ def dense_function():
                 elif complexity > 10:
                     complex_chunks.append(chunk)
         if simple_chunks and complex_chunks:
-            avg_simple_size = sum(c.end_line - c.start_line + 1 for c in
-                simple_chunks) / len(simple_chunks)
-            avg_complex_size = sum(c.end_line - c.start_line + 1 for c in
-                complex_chunks) / len(complex_chunks)
+            avg_simple_size = sum(
+                c.end_line - c.start_line + 1 for c in simple_chunks
+            ) / len(simple_chunks)
+            avg_complex_size = sum(
+                c.end_line - c.start_line + 1 for c in complex_chunks
+            ) / len(complex_chunks)
             assert avg_simple_size >= avg_complex_size
 
     @classmethod
     def test_ideal_chunk_size_calculation(cls, adaptive_chunker):
         """Test ideal chunk size calculation for different metrics."""
-        low_metrics = AdaptiveMetrics(complexity_score=3.0, coupling_score=2.0, semantic_cohesion=0.9, line_count=30, token_density=8.0,
-            nesting_depth=1)
-        high_metrics = AdaptiveMetrics(complexity_score=20.0,
-            coupling_score=15.0, semantic_cohesion=0.3, line_count=100,
-            token_density=15.0, nesting_depth=5)
+        low_metrics = AdaptiveMetrics(
+            complexity_score=3.0,
+            coupling_score=2.0,
+            semantic_cohesion=0.9,
+            line_count=30,
+            token_density=8.0,
+            nesting_depth=1,
+        )
+        high_metrics = AdaptiveMetrics(
+            complexity_score=20.0,
+            coupling_score=15.0,
+            semantic_cohesion=0.3,
+            line_count=100,
+            token_density=15.0,
+            nesting_depth=5,
+        )
         file_metrics = {"avg_complexity": 10.0, "avg_coupling": 7.0}
-        low_ideal = adaptive_chunker._calculate_ideal_chunk_size(low_metrics,
-            file_metrics)
-        high_ideal = adaptive_chunker._calculate_ideal_chunk_size(high_metrics,
-            file_metrics)
+        low_ideal = adaptive_chunker._calculate_ideal_chunk_size(
+            low_metrics,
+            file_metrics,
+        )
+        high_ideal = adaptive_chunker._calculate_ideal_chunk_size(
+            high_metrics,
+            file_metrics,
+        )
         assert low_ideal > high_ideal
         assert low_ideal >= adaptive_chunker.config["min_chunk_size"]
         assert low_ideal <= adaptive_chunker.config["max_chunk_size"]
@@ -163,8 +190,6 @@ def dense_function():
         """Test that configuration changes affect chunking."""
         parser = get_parser("python")
         tree = parser.parse(variable_complexity_code.encode())
-
-
 
         # Default configuration
         default_chunks = adaptive_chunker.chunk(
@@ -279,10 +304,13 @@ def another_helper():
 """
         parser = get_parser("python")
         tree = parser.parse(code_with_boundaries.encode())
-        adaptive_chunker.configure({"preserve_boundaries": True,
-            "base_chunk_size": 5})
-        chunks = adaptive_chunker.chunk(tree.root_node,
-            code_with_boundaries.encode(), "test.py", "python")
+        adaptive_chunker.configure({"preserve_boundaries": True, "base_chunk_size": 5})
+        chunks = adaptive_chunker.chunk(
+            tree.root_node,
+            code_with_boundaries.encode(),
+            "test.py",
+            "python",
+        )
         for chunk in chunks:
             content = chunk.content
             def_count = content.count("def ")
@@ -293,10 +321,13 @@ def another_helper():
         """Test chunk size balancing."""
         parser = get_parser("python")
         tree = parser.parse(variable_complexity_code.encode())
-        adaptive_chunker.configure({"balance_sizes": True,
-            "base_chunk_size": 40})
-        chunks = adaptive_chunker.chunk(tree.root_node,
-            variable_complexity_code.encode(), "test.py", "python")
+        adaptive_chunker.configure({"balance_sizes": True, "base_chunk_size": 40})
+        chunks = adaptive_chunker.chunk(
+            tree.root_node,
+            variable_complexity_code.encode(),
+            "test.py",
+            "python",
+        )
         sizes = [(c.end_line - c.start_line + 1) for c in chunks]
         if len(sizes) > 1:
             avg_size = sum(sizes) / len(sizes)
@@ -312,11 +343,8 @@ def another_helper():
                 max_size < avg_size * 6
             )  # Allow larger variance due to complex function
             assert min_size > avg_size * 0.1  # Allow smaller chunks
+
     def test_density_adaptation(self, adaptive_chunker):
-=======
-    @staticmethod
-    def test_density_adaptation(adaptive_chunker):
->>>>>>> origin/main
         """Test adaptation to token density."""
         varied_density = """
 # Sparse code
@@ -342,8 +370,12 @@ def normal(data):
 """
         parser = get_parser("python")
         tree = parser.parse(varied_density.encode())
-        chunks = adaptive_chunker.chunk(tree.root_node, varied_density.
-            encode(), "test.py", "python")
+        chunks = adaptive_chunker.chunk(
+            tree.root_node,
+            varied_density.encode(),
+            "test.py",
+            "python",
+        )
         found_dense = False
         for chunk in chunks:
             if "dense()" in chunk.content:
@@ -370,10 +402,13 @@ def f5(): return 5
 """
         parser = get_parser("python")
         tree = parser.parse(small_functions.encode())
-        adaptive_chunker.configure({"base_chunk_size": 20, "min_chunk_size":
-            15})
-        chunks = adaptive_chunker.chunk(tree.root_node, small_functions.
-            encode(), "test.py", "python")
+        adaptive_chunker.configure({"base_chunk_size": 20, "min_chunk_size": 15})
+        chunks = adaptive_chunker.chunk(
+            tree.root_node,
+            small_functions.encode(),
+            "test.py",
+            "python",
+        )
         group_chunks = [c for c in chunks if c.node_type == "adaptive_group"]
         assert len(group_chunks) >= 1
         for group in group_chunks:

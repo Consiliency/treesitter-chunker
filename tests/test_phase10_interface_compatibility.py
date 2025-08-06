@@ -1,4 +1,5 @@
 """Integration tests to verify Phase 10 interfaces work together correctly."""
+
 import pytest
 
 from chunker import chunk_file
@@ -33,7 +34,7 @@ class TestPhase10InterfaceCompatibility:
     """Test that Phase 10 interfaces work together correctly."""
 
     @staticmethod
-    @pytest.fixture
+    @pytest.fixture()
     def sample_chunks(tmp_path) -> list[CodeChunk]:
         """Create sample chunks for testing."""
         test_file = tmp_path / "test.py"
@@ -66,7 +67,7 @@ class Statistics:
         ""\"Get mean of all data.""\"
         return calculate_average(self.data)
 """,
-            )
+        )
         chunks = chunk_file(test_file, "python")
         return chunks
 
@@ -77,55 +78,69 @@ class Statistics:
         class MockContextProvider(SmartContextProvider):
 
             @classmethod
-            def get_semantic_context(cls, chunk, max_tokens=2000):
-                return "# Related context", ContextMetadata(0.8, "semantic",
-                    1, 50)
+            def get_semantic_context(cls, _chunk, _max_tokens=2000):
+                return "# Related context", ContextMetadata(0.8, "semantic", 1, 50)
 
             @classmethod
-            def get_dependency_context(cls, chunk, chunks):
-                return [(chunks[0], ContextMetadata(0.9, "dependency", 0, 100)),
-                    ]
+            def get_dependency_context(cls, _chunk, chunks):
+                return [
+                    (chunks[0], ContextMetadata(0.9, "dependency", 0, 100)),
+                ]
 
             @staticmethod
-            def get_usage_context(chunk, chunks):
+            def get_usage_context(_chunk, _chunks):
                 return []
 
             @staticmethod
-            def get_structural_context(chunk, chunks):
+            def get_structural_context(_chunk, _chunks):
                 return []
 
         class MockOptimizer(ChunkOptimizer):
 
             @classmethod
-            def optimize_for_llm(cls, chunks, model, max_tokens, strategy=OptimizationStrategy.BALANCED):
-                metrics = OptimizationMetrics(len(chunks), len(chunks), 100,
-                    120, 0.85, 0.9)
+            def optimize_for_llm(
+                cls,
+                chunks,
+                _model,
+                _max_tokens,
+                _strategy=OptimizationStrategy.BALANCED,
+            ):
+                metrics = OptimizationMetrics(
+                    len(chunks),
+                    len(chunks),
+                    100,
+                    120,
+                    0.85,
+                    0.9,
+                )
                 return chunks, metrics
 
             @staticmethod
-            def merge_small_chunks(chunks, min_tokens, preserve_boundaries=True,
-                ):
+            def merge_small_chunks(
+                chunks,
+                _min_tokens,
+                _preserve_boundaries=True,
+            ):
                 return chunks
 
             @staticmethod
-            def split_large_chunks(chunks, max_tokens, split_points=None):
+            def split_large_chunks(chunks, _max_tokens, _split_points=None):
                 return chunks
 
             @staticmethod
-            def rebalance_chunks(chunks, target_tokens, variance=0.2):
+            def rebalance_chunks(chunks, _target_tokens, _variance=0.2):
                 return chunks
 
             @staticmethod
-            def optimize_for_embedding(chunks, model, max_tokens=512):
+            def optimize_for_embedding(chunks, _model, _max_tokens=512):
                 return chunks
+
         context_provider = MockContextProvider()
         optimizer = MockOptimizer()
-        context_str, metadata = context_provider.get_semantic_context(
-            sample_chunks[0])
+        context_str, metadata = context_provider.get_semantic_context(sample_chunks[0])
         assert context_str == "# Related context"
         assert metadata.relevance_score == 0.8
-        optimized, metrics = optimizer.optimize_for_llm(sample_chunks,
-            "gpt-4", 8000)
+        optimized, metrics = optimizer.optimize_for_llm(sample_chunks, "gpt-4", 8000)
         assert len(optimized) == len(sample_chunks)
         assert metrics.coherence_score == 0.85
 
@@ -147,7 +162,7 @@ def get_users():
     ""\"Get all users from database.""\"
     return jsonify({"users": ["alice", "bob"]})
 """,
-            )
+        )
         frontend_dir = project_dir / "frontend"
         frontend_dir.mkdir()
         (frontend_dir / "api.js").write_text(
@@ -158,24 +173,24 @@ async function fetchUsers() {
     return data.users;
 }
 """,
-            )
+        )
 
         class MockMultiLanguageProcessor(MultiLanguageProcessor):
 
             @staticmethod
-            def detect_project_languages(path):
+            def detect_project_languages(_path):
                 return {"python": 0.5, "javascript": 0.5}
 
             @classmethod
-            def identify_language_regions(cls, file_path, content):
+            def identify_language_regions(cls, _file_path, content):
                 return [LanguageRegion("python", 0, len(content), 1, 10)]
 
             @staticmethod
-            def process_mixed_file(file_path, primary_language, content=None):
+            def process_mixed_file(file_path, primary_language, _content=None):
                 return chunk_file(file_path, primary_language)
 
             @staticmethod
-            def extract_embedded_code(content, host_lang, target_lang):
+            def extract_embedded_code(_content, _host_lang, _target_lang):
                 return []
 
             @classmethod
@@ -185,8 +200,14 @@ async function fetchUsers() {
                     if "/api/users" in chunk.content:
                         for j, other in enumerate(chunks):
                             if i != j and "get_users" in other.content:
-                                refs.append(CrossLanguageReference(chunk,
-                                    other, "api_call", 0.9))
+                                refs.append(
+                                    CrossLanguageReference(
+                                        chunk,
+                                        other,
+                                        "api_call",
+                                        0.9,
+                                    ),
+                                )
                 return refs
 
             @staticmethod
@@ -196,19 +217,28 @@ async function fetchUsers() {
         class MockQuery(ChunkQueryAdvanced):
 
             @classmethod
-            def search(cls, query, chunks, query_type=QueryType.
-                NATURAL_LANGUAGE, limit=None):
-                results = [QueryResult(chunk, 0.9, [], {}) for chunk in
-                    chunks if query.lower() in chunk.content.lower()]
+            def search(
+                cls,
+                query,
+                chunks,
+                _query_type=QueryType.NATURAL_LANGUAGE,
+                _limit=None,
+            ):
+                results = [
+                    QueryResult(chunk, 0.9, [], {})
+                    for chunk in chunks
+                    if query.lower() in chunk.content.lower()
+                ]
                 return results
 
             @staticmethod
-            def filter(chunks, **kwargs):
+            def filter(chunks, **_kwargs):
                 return chunks
 
             @staticmethod
-            def find_similar(chunk, chunks, threshold=0.7, limit=None):
+            def find_similar(_chunk, _chunks, _threshold=0.7, _limit=None):
                 return []
+
         processor = MockMultiLanguageProcessor()
         query_engine = MockQuery()
         languages = processor.detect_project_languages(str(project_dir))
@@ -229,25 +259,38 @@ async function fetchUsers() {
         class MockIncrementalProcessor(IncrementalProcessor):
 
             @classmethod
-            def compute_diff(cls, old_chunks, new_content, language):
+            def compute_diff(cls, old_chunks, _new_content, _language):
                 changes = []
                 if old_chunks:
-                    changes.append(ChunkChange(old_chunks[0].chunk_id,
-                        ChangeType.MODIFIED, old_chunks[0], old_chunks[0],
-                        [(1, 5)], 0.95))
-                return ChunkDiff(changes, [], [], [(old_chunks[0],
-                    old_chunks[0])], old_chunks[1:], {"modified": 1})
+                    changes.append(
+                        ChunkChange(
+                            old_chunks[0].chunk_id,
+                            ChangeType.MODIFIED,
+                            old_chunks[0],
+                            old_chunks[0],
+                            [(1, 5)],
+                            0.95,
+                        ),
+                    )
+                return ChunkDiff(
+                    changes,
+                    [],
+                    [],
+                    [(old_chunks[0], old_chunks[0])],
+                    old_chunks[1:],
+                    {"modified": 1},
+                )
 
             @staticmethod
-            def update_chunks(old_chunks, diff):
+            def update_chunks(old_chunks, _diff):
                 return old_chunks
 
             @staticmethod
-            def detect_moved_chunks(old_chunks, new_chunks):
+            def detect_moved_chunks(_old_chunks, _new_chunks):
                 return []
 
             @staticmethod
-            def merge_incremental_results(full, incremental, regions):
+            def merge_incremental_results(full, _incremental, _regions):
                 return full
 
         class MockCache(ChunkCache):
@@ -255,13 +298,13 @@ async function fetchUsers() {
             def __init__(self):
                 self.cache = {}
 
-            def store(self, file_path, chunks, file_hash, metadata=None):
+            def store(self, file_path, chunks, file_hash, _metadata=None):
                 self.cache[file_path] = {"chunks": chunks, "hash": file_hash}
 
-            def retrieve(self, file_path, file_hash=None):
+            def retrieve(self, file_path, _file_hash=None):
                 return self.cache.get(file_path)
 
-            def invalidate(self, file_path=None, older_than=None):
+            def invalidate(self, file_path=None, _older_than=None):
                 if file_path:
                     self.cache.pop(file_path, None)
                     return 1
@@ -273,38 +316,54 @@ async function fetchUsers() {
                 return {"entries": len(self.cache)}
 
             @staticmethod
-            def export_cache(path):
+            def export_cache(_path):
                 pass
 
             @staticmethod
-            def import_cache(path):
+            def import_cache(_path):
                 pass
 
         class MockOptimizer(ChunkOptimizer):
 
             @classmethod
-            def optimize_for_llm(cls, chunks, model, max_tokens, strategy=OptimizationStrategy.BALANCED):
-                return chunks, OptimizationMetrics(len(chunks), len(chunks),
-                    100, 100, 0.9, 0.95)
+            def optimize_for_llm(
+                cls,
+                chunks,
+                _model,
+                _max_tokens,
+                _strategy=OptimizationStrategy.BALANCED,
+            ):
+                return chunks, OptimizationMetrics(
+                    len(chunks),
+                    len(chunks),
+                    100,
+                    100,
+                    0.9,
+                    0.95,
+                )
 
             @staticmethod
-            def merge_small_chunks(chunks, min_tokens, preserve_boundaries=True,
-                ):
+            def merge_small_chunks(
+                chunks,
+                _min_tokens,
+                _preserve_boundaries=True,
+            ):
                 if len(chunks) > 1:
                     return chunks[:-1]
                 return chunks
 
             @staticmethod
-            def split_large_chunks(chunks, max_tokens, split_points=None):
+            def split_large_chunks(chunks, _max_tokens, _split_points=None):
                 return chunks
 
             @staticmethod
-            def rebalance_chunks(chunks, target_tokens, variance=0.2):
+            def rebalance_chunks(chunks, _target_tokens, _variance=0.2):
                 return chunks
 
             @staticmethod
-            def optimize_for_embedding(chunks, model, max_tokens=512):
+            def optimize_for_embedding(chunks, _model, _max_tokens=512):
                 return chunks
+
         processor = MockIncrementalProcessor()
         cache = MockCache()
         optimizer = MockOptimizer()
@@ -323,27 +382,27 @@ async function fetchUsers() {
         class MockContextProvider(SmartContextProvider):
 
             @classmethod
-            def get_semantic_context(cls, chunk, max_tokens=2000):
-                return "# Semantic context", ContextMetadata(0.8,
-                    "semantic", 1, 50)
+            def get_semantic_context(cls, _chunk, _max_tokens=2000):
+                return "# Semantic context", ContextMetadata(0.8, "semantic", 1, 50)
 
             @classmethod
             def get_dependency_context(cls, chunk, chunks):
                 deps = []
                 for other in chunks:
                     if other.chunk_id != chunk.chunk_id:
-                        deps.extend((other, ContextMetadata(0.9,
-                            "dependency", 1, 80)) for name in [
-                            "calculate_sum", "calculate_average"] if name in
-                            chunk.content and name in other.content)
+                        deps.extend(
+                            (other, ContextMetadata(0.9, "dependency", 1, 80))
+                            for name in ["calculate_sum", "calculate_average"]
+                            if name in chunk.content and name in other.content
+                        )
                 return deps
 
             @staticmethod
-            def get_usage_context(chunk, chunks):
+            def get_usage_context(_chunk, _chunks):
                 return []
 
             @staticmethod
-            def get_structural_context(chunk, chunks):
+            def get_structural_context(_chunk, _chunks):
                 return []
 
         class MockQueryIndex(QueryIndexAdvanced):
@@ -358,22 +417,24 @@ async function fetchUsers() {
                 self.chunks.append(chunk)
 
             def remove_chunk(self, chunk_id):
-                self.chunks = [c for c in self.chunks if c.chunk_id != chunk_id
-                    ]
+                self.chunks = [c for c in self.chunks if c.chunk_id != chunk_id]
 
             def update_chunk(self, chunk):
                 for i, c in enumerate(self.chunks):
                     if c.chunk_id == chunk.chunk_id:
                         self.chunks[i] = chunk
 
-            def query(self, query, query_type=QueryType.NATURAL_LANGUAGE,
-                limit=10):
-                results = [QueryResult(chunk, 0.8, [], {}) for chunk in
-                    self.chunks if query.lower() in chunk.content.lower()]
+            def query(self, query, _query_type=QueryType.NATURAL_LANGUAGE, limit=10):
+                results = [
+                    QueryResult(chunk, 0.8, [], {})
+                    for chunk in self.chunks
+                    if query.lower() in chunk.content.lower()
+                ]
                 return results[:limit]
 
             def get_statistics(self):
                 return {"indexed_chunks": len(self.chunks)}
+
         context_provider = MockContextProvider()
         index = MockQueryIndex()
         index.build_index(sample_chunks)
@@ -381,8 +442,7 @@ async function fetchUsers() {
         assert len(results) > 0
         if results:
             first_result = results[0].chunk
-            deps = context_provider.get_dependency_context(first_result,
-                sample_chunks)
+            deps = context_provider.get_dependency_context(first_result, sample_chunks)
             if "calculate_average" in first_result.content:
                 assert len(deps) > 0
 
@@ -393,23 +453,23 @@ async function fetchUsers() {
         class MockMultiLang(MultiLanguageProcessor):
 
             @staticmethod
-            def detect_project_languages(path):
+            def detect_project_languages(_path):
                 return {"python": 1.0}
 
             @classmethod
-            def identify_language_regions(cls, file_path, content):
+            def identify_language_regions(cls, _file_path, content):
                 return [LanguageRegion("python", 0, len(content), 1, 50)]
 
             @staticmethod
-            def process_mixed_file(file_path, primary_language, content=None):
+            def process_mixed_file(_file_path, _primary_language, _content=None):
                 return sample_chunks
 
             @staticmethod
-            def extract_embedded_code(content, host, target):
+            def extract_embedded_code(_content, _host, _target):
                 return []
 
             @staticmethod
-            def cross_language_references(chunks):
+            def cross_language_references(_chunks):
                 return []
 
             @staticmethod
@@ -419,77 +479,98 @@ async function fetchUsers() {
         class MockContext(SmartContextProvider):
 
             @classmethod
-            def get_semantic_context(cls, chunk, max_tokens=2000):
+            def get_semantic_context(cls, _chunk, _max_tokens=2000):
                 return "# Context", ContextMetadata(0.8, "semantic", 1, 50)
 
             @staticmethod
-            def get_dependency_context(chunk, chunks):
+            def get_dependency_context(_chunk, _chunks):
                 return []
 
             @staticmethod
-            def get_usage_context(chunk, chunks):
+            def get_usage_context(_chunk, _chunks):
                 return []
 
             @staticmethod
-            def get_structural_context(chunk, chunks):
+            def get_structural_context(_chunk, _chunks):
                 return []
 
         class MockQuery(ChunkQueryAdvanced):
 
             @classmethod
-            def search(cls, query, chunks, query_type=QueryType.
-                NATURAL_LANGUAGE, limit=None):
+            def search(
+                cls,
+                query,
+                chunks,
+                _query_type=QueryType.NATURAL_LANGUAGE,
+                _limit=None,
+            ):
                 return [QueryResult(chunks[0], 0.9, [], {})] if chunks else []
 
             @staticmethod
-            def filter(chunks, **kwargs):
+            def filter(chunks, **_kwargs):
                 return chunks
 
             @staticmethod
-            def find_similar(chunk, chunks, threshold=0.7, limit=None):
+            def find_similar(_chunk, _chunks, _threshold=0.7, _limit=None):
                 return []
 
         class MockOptimizer(ChunkOptimizer):
 
             @classmethod
-            def optimize_for_llm(cls, chunks, model, max_tokens, strategy=OptimizationStrategy.BALANCED):
-                return chunks, OptimizationMetrics(len(chunks), len(chunks),
-                    100, 100, 0.9, 0.95)
+            def optimize_for_llm(
+                cls,
+                chunks,
+                _model,
+                _max_tokens,
+                _strategy=OptimizationStrategy.BALANCED,
+            ):
+                return chunks, OptimizationMetrics(
+                    len(chunks),
+                    len(chunks),
+                    100,
+                    100,
+                    0.9,
+                    0.95,
+                )
 
             @staticmethod
-            def merge_small_chunks(chunks, min_tokens, preserve_boundaries=True,
-                ):
+            def merge_small_chunks(
+                chunks,
+                _min_tokens,
+                _preserve_boundaries=True,
+            ):
                 return chunks
 
             @staticmethod
-            def split_large_chunks(chunks, max_tokens, split_points=None):
+            def split_large_chunks(chunks, _max_tokens, _split_points=None):
                 return chunks
 
             @staticmethod
-            def rebalance_chunks(chunks, target_tokens, variance=0.2):
+            def rebalance_chunks(chunks, _target_tokens, _variance=0.2):
                 return chunks
 
             @staticmethod
-            def optimize_for_embedding(chunks, model, max_tokens=512):
+            def optimize_for_embedding(chunks, _model, _max_tokens=512):
                 return chunks
 
         class MockIncremental(IncrementalProcessor):
 
             @classmethod
-            def compute_diff(cls, old_chunks, new_content, language):
+            def compute_diff(cls, old_chunks, _new_content, _language):
                 return ChunkDiff([], [], [], [], old_chunks, {})
 
             @staticmethod
-            def update_chunks(old_chunks, diff):
+            def update_chunks(old_chunks, _diff):
                 return old_chunks
 
             @staticmethod
-            def detect_moved_chunks(old, new):
+            def detect_moved_chunks(_old, _new):
                 return []
 
             @staticmethod
-            def merge_incremental_results(full, inc, regions):
+            def merge_incremental_results(full, _inc, _regions):
                 return full
+
         multi_lang = MockMultiLang()
         context = MockContext()
         query = MockQuery()

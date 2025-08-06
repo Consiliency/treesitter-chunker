@@ -6,6 +6,7 @@ Handles chunking of configuration files including:
 - YAML files with proper indentation awareness
 - JSON configuration files
 """
+
 import json
 import re
 from pathlib import Path
@@ -34,25 +35,35 @@ class ConfigProcessor(SpecializedProcessor):
     section-based chunking that preserves configuration structure.
     """
 
-    def __init__(self, config: (ProcessorConfig | None) = None):
+    def __init__(self, config: ProcessorConfig | None = None):
         """Initialize config processor.
 
         Args:
             config: Processor configuration
         """
         super().__init__(config)
-        self._ini_section_pattern = re.compile(r"^\\s*\\[([^\\]]+)\\]\\s*$",
-            re.MULTILINE)
-        self._yaml_key_pattern = re.compile(r"^(\\s*)(\\w+):\\s*(.*)$", re.
-            MULTILINE)
-        self._toml_table_pattern = re.compile(r"^\\s*\\[+([^\\]]+)\\]+\\s*$",
-            re.MULTILINE)
+        self._ini_section_pattern = re.compile(
+            r"^\\s*\\[([^\\]]+)\\]\\s*$",
+            re.MULTILINE,
+        )
+        self._yaml_key_pattern = re.compile(r"^(\\s*)(\\w+):\\s*(.*)$", re.MULTILINE)
+        self._toml_table_pattern = re.compile(
+            r"^\\s*\\[+([^\\]]+)\\]+\\s*$",
+            re.MULTILINE,
+        )
 
-    def can_handle(self, file_path: str, content: (str | None) = None) -> bool:
+    def can_handle(self, file_path: str, content: str | None = None) -> bool:
         """Check if this processor can handle the file."""
         path = Path(file_path)
-        if path.suffix.lower() in {".ini", ".cfg", ".conf", ".toml",
-            ".yaml", ".yml", ".json"}:
+        if path.suffix.lower() in {
+            ".ini",
+            ".cfg",
+            ".conf",
+            ".toml",
+            ".yaml",
+            ".yml",
+            ".json",
+        }:
             return True
         config_names = ["config", "settings", "configuration", "environment"]
         if path.stem.lower() in config_names:
@@ -63,27 +74,59 @@ class ConfigProcessor(SpecializedProcessor):
             return self.detect_format(file_path, content) is not None
         return False
 
-    def detect_format(self, file_path: str, content: str) -> (str | None):
+    def detect_format(self, file_path: str, content: str) -> str | None:
         """Detect configuration file fmt."""
-        path = Path(file_path)
-        ext = path.suffix.lower()
         content = content.strip()
         if not content:
             return None
-        if ext in {".ini", ".cfg", ".conf"}:
-            return "ini"
-        if ext == ".toml":
-            return "toml"
-        if ext in {".yaml", ".yml"}:
-            return "yaml"
-        if ext == ".json":
-            return "json"
+
+        # List of detection methods in priority order
+        detection_methods = [
+            ConfigProcessor._detect_by_extension,
+            ConfigProcessor._detect_json_by_content,
+            self._detect_yaml_by_content,
+            self._detect_toml_by_content,
+            ConfigProcessor._detect_ini_by_content,
+        ]
+
+        for method in detection_methods:
+            result = method(file_path, content)
+            if result:
+                return result
+
+        return None
+
+    @staticmethod
+    def _detect_by_extension(file_path: str, _content: str) -> str | None:
+        """Detect format by file extension."""
+        path = Path(file_path)
+        ext = path.suffix.lower()
+
+        extension_map = {
+            ".ini": "ini",
+            ".cfg": "ini",
+            ".conf": "ini",
+            ".toml": "toml",
+            ".yaml": "yaml",
+            ".yml": "yaml",
+            ".json": "json",
+        }
+
+        return extension_map.get(ext)
+
+    @staticmethod
+    def _detect_json_by_content(_file_path: str, content: str) -> str | None:
+        """Detect JSON format by content."""
         if content.startswith(("{", "[")):
             try:
                 json.loads(content)
                 return "json"
             except (IndexError, KeyError, ValueError):
                 pass
+        return None
+
+    def _detect_yaml_by_content(self, _file_path: str, content: str) -> str | None:
+        """Detect YAML format by content."""
         if yaml and ":" in content:
             try:
                 yaml.safe_load(content)
@@ -91,20 +134,27 @@ class ConfigProcessor(SpecializedProcessor):
                     return "yaml"
             except (IndexError, KeyError):
                 pass
-        if toml and ("[[" in content or self._toml_table_pattern.search(
-            content)):
+        return None
+
+    def _detect_toml_by_content(self, _file_path: str, content: str) -> str | None:
+        """Detect TOML format by content."""
+        if toml and ("[[" in content or self._toml_table_pattern.search(content)):
             try:
                 toml.loads(content)
                 return "toml"
             except (FileNotFoundError, IndexError, KeyError):
                 pass
+        return None
+
+    @staticmethod
+    def _detect_ini_by_content(_file_path: str, content: str) -> str | None:
+        """Detect INI format by content."""
         if "=" in content:
             lines = content.split("\n")
             key_value_count = 0
             for line in lines:
                 stripped = line.strip()
-                if stripped and not stripped.startswith(("#", ";"),
-                    ) and "=" in stripped:
+                if stripped and not stripped.startswith(("#", ";")) and "=" in stripped:
                     key_value_count += 1
             if key_value_count > 0:
                 return "ini"
@@ -125,8 +175,11 @@ class ConfigProcessor(SpecializedProcessor):
     def _parse_ini_structure(self, content: str) -> dict[str, Any]:
         """Parse INI file structure."""
         lines = content.split("\n")
-        structure = {"fmt": "ini", "sections": {}, "global_section": {
-            "start": 0, "end": 0, "keys": []}}
+        structure = {
+            "fmt": "ini",
+            "sections": {},
+            "global_section": {"start": 0, "end": 0, "keys": []},
+        }
         current_section = None
         first_section_line = None
         has_global_content = False
@@ -142,14 +195,16 @@ class ConfigProcessor(SpecializedProcessor):
                     structure["global_section"]["end"] = i - 1
                     first_section_line = i
                 current_section = section_match.group(1)
-                structure["sections"][current_section] = {"start": i, "end":
-                    len(lines) - 1, "keys": []}
+                structure["sections"][current_section] = {
+                    "start": i,
+                    "end": len(lines) - 1,
+                    "keys": [],
+                }
             elif "=" in line:
                 key = line.split("=", 1)[0].strip()
                 if key:
                     if current_section:
-                        structure["sections"][current_section]["keys"].append(
-                            key)
+                        structure["sections"][current_section]["keys"].append(key)
                     else:
                         structure["global_section"]["keys"].append(key)
                         has_global_content = True
@@ -172,16 +227,19 @@ class ConfigProcessor(SpecializedProcessor):
                 table_name = table_match.group(1).strip()
                 bracket_count = len(re.match(r"^(\\[+)", line.strip()).group(1))
                 is_array = bracket_count > 1
-                structure["tables"][table_name] = {"start": i, "end": len(
-                    lines) - 1, "is_array": is_array, "keys": []}
+                structure["tables"][table_name] = {
+                    "start": i,
+                    "end": len(lines) - 1,
+                    "is_array": is_array,
+                    "keys": [],
+                }
         table_names = list(structure["tables"].keys())
         for i, table in enumerate(table_names):
             if i < len(table_names) - 1:
                 next_start = structure["tables"][table_names[i + 1]]["start"]
                 structure["tables"][table]["end"] = next_start - 1
         for key in data:
-            if not isinstance(data[key], dict) or key not in structure["tables"
-                ]:
+            if not isinstance(data[key], dict) or key not in structure["tables"]:
                 structure["root_keys"].append(key)
         return structure
 
@@ -206,8 +264,12 @@ class ConfigProcessor(SpecializedProcessor):
                     if not value or value in {"|", ">"}:
                         current_section = key
                         section_indent = indent
-                        structure["sections"][key] = {"start": i, "end":
-                            len(lines) - 1, "indent": indent, "keys": []}
+                        structure["sections"][key] = {
+                            "start": i,
+                            "end": len(lines) - 1,
+                            "indent": indent,
+                            "keys": [],
+                        }
                     else:
                         structure["root_keys"].append(key)
                         current_section = None
@@ -223,9 +285,12 @@ class ConfigProcessor(SpecializedProcessor):
     def _parse_json_structure(content: str) -> dict[str, Any]:
         """Parse JSON file structure."""
         data = json.loads(content)
-        structure = {"fmt": "json", "type": "object" if isinstance(data,
-            dict) else "array", "keys": list(data.keys()) if isinstance(
-            data, dict) else [], "size": len(data)}
+        structure = {
+            "fmt": "json",
+            "type": "object" if isinstance(data, dict) else "array",
+            "keys": list(data.keys()) if isinstance(data, dict) else [],
+            "size": len(data),
+        }
         if isinstance(data, dict):
             structure["nested_objects"] = []
             for key, value in data.items():
@@ -233,8 +298,12 @@ class ConfigProcessor(SpecializedProcessor):
                     structure["nested_objects"].append(key)
         return structure
 
-    def chunk_content(self, content: str, structure: dict[str, Any],
-        file_path: str) -> list[CodeChunk]:
+    def chunk_content(
+        self,
+        content: str,
+        structure: dict[str, Any],
+        file_path: str,
+    ) -> list[CodeChunk]:
         """Chunk configuration content based on structure."""
         fmt = structure.get("fmt")
         if fmt == "ini":
@@ -247,103 +316,210 @@ class ConfigProcessor(SpecializedProcessor):
             return self._chunk_json(content, structure, file_path)
         raise ValueError(f"Unsupported fmt: {fmt}")
 
-    def _chunk_ini(self, content: str, structure: dict[str, Any], file_path:
-        str) -> list[CodeChunk]:
+    def _chunk_ini(
+        self,
+        content: str,
+        structure: dict[str, Any],
+        file_path: str,
+    ) -> list[CodeChunk]:
         """Chunk INI file by sections."""
         chunks = []
         lines = content.split("\n")
         global_section = structure["global_section"]
-        if global_section["keys"] or global_section["end"] >= global_section[
-            "start"]:
-            global_content = "\n".join(lines[global_section["start"]:
-                global_section["end"] + 1])
+        if global_section["keys"] or global_section["end"] >= global_section["start"]:
+            global_content = "\n".join(
+                lines[global_section["start"] : global_section["end"] + 1],
+            )
             if global_content.strip():
-                chunks.append(CodeChunk(content=global_content, start_line=global_section["start"] + 1, end_line=global_section[
-                    "end"] + 1, node_type="ini_global", parent_context="[global]", file_path=file_path, language="ini",
-                    byte_start=0, byte_end=len(global_content.encode()),
-                    metadata={"section": "global", "keys": global_section[
-                    "keys"], "fmt": "ini", "name": "[global]"}))
+                chunks.append(
+                    CodeChunk(
+                        content=global_content,
+                        start_line=global_section["start"] + 1,
+                        end_line=global_section["end"] + 1,
+                        node_type="ini_global",
+                        parent_context="[global]",
+                        file_path=file_path,
+                        language="ini",
+                        byte_start=0,
+                        byte_end=len(global_content.encode()),
+                        metadata={
+                            "section": "global",
+                            "keys": global_section["keys"],
+                            "fmt": "ini",
+                            "name": "[global]",
+                        },
+                    ),
+                )
         sections_to_process = list(structure["sections"].items())
         processed_sections = set()
         for section_name, section_info in sections_to_process:
             if section_name in processed_sections:
                 continue
-            section_content = "\n".join(lines[section_info["start"]:
-                section_info["end"] + 1])
-            if self.config.group_related and len(section_content.split("\n"),
-                ) < 10:
-                available_sections = {k: v for k, v in structure["sections"
-                    ].items() if k not in processed_sections}
-                related = self._find_related_sections(section_name,
-                    available_sections)
+            section_content = "\n".join(
+                lines[section_info["start"] : section_info["end"] + 1],
+            )
+            if (
+                self.config.group_related
+                and len(
+                    section_content.split("\n"),
+                )
+                < 10
+            ):
+                available_sections = {
+                    k: v
+                    for k, v in structure["sections"].items()
+                    if k not in processed_sections
+                }
+                related = self._find_related_sections(section_name, available_sections)
                 if related:
                     all_sections = [section_name, *related]
-                    start = min(structure["sections"][s]["start"] for s in
-                        all_sections)
-                    end = max(structure["sections"][s]["end"] for s in
-                        all_sections)
-                    grouped_content = "\n".join(lines[start:end + 1])
-                    chunks.append(CodeChunk(content=grouped_content,
-                        start_line=start + 1, end_line=end + 1, node_type="ini_section_group", parent_context=f"[{', '.join(all_sections)}]", file_path=file_path,
-                        language="ini", byte_start=sum(len(line.encode()) +
-                        1 for line in lines[:start]), byte_end=sum(len(line
-                        .encode()) + 1 for line in lines[:end + 1]),
-                        metadata={"sections": all_sections, "fmt": "ini",
-                        "grouped": True, "name":
-                        f"[{', '.join(all_sections)}]"}))
+                    start = min(structure["sections"][s]["start"] for s in all_sections)
+                    end = max(structure["sections"][s]["end"] for s in all_sections)
+                    grouped_content = "\n".join(lines[start : end + 1])
+                    chunks.append(
+                        CodeChunk(
+                            content=grouped_content,
+                            start_line=start + 1,
+                            end_line=end + 1,
+                            node_type="ini_section_group",
+                            parent_context=f"[{', '.join(all_sections)}]",
+                            file_path=file_path,
+                            language="ini",
+                            byte_start=sum(
+                                len(line.encode()) + 1 for line in lines[:start]
+                            ),
+                            byte_end=sum(
+                                len(line.encode()) + 1 for line in lines[: end + 1]
+                            ),
+                            metadata={
+                                "sections": all_sections,
+                                "fmt": "ini",
+                                "grouped": True,
+                                "name": f"[{', '.join(all_sections)}]",
+                            },
+                        ),
+                    )
                     processed_sections.add(section_name)
                     for s in related:
                         processed_sections.add(s)
                     continue
-            chunks.append(CodeChunk(content=section_content, start_line=section_info["start"] + 1, end_line=section_info["end"] + 1,
-                node_type="ini_section", parent_context=f"[{section_name}]",
-                file_path=file_path, language="ini", byte_start=sum(len(
-                line.encode()) + 1 for line in lines[:section_info["start"]
-                ]), byte_end=sum(len(line.encode()) + 1 for line in lines[:
-                section_info["end"] + 1]), metadata={"section":
-                section_name, "keys": section_info["keys"], "fmt": "ini",
-                "name": f"[{section_name}]"}))
+            chunks.append(
+                CodeChunk(
+                    content=section_content,
+                    start_line=section_info["start"] + 1,
+                    end_line=section_info["end"] + 1,
+                    node_type="ini_section",
+                    parent_context=f"[{section_name}]",
+                    file_path=file_path,
+                    language="ini",
+                    byte_start=sum(
+                        len(line.encode()) + 1
+                        for line in lines[: section_info["start"]]
+                    ),
+                    byte_end=sum(
+                        len(line.encode()) + 1
+                        for line in lines[: section_info["end"] + 1]
+                    ),
+                    metadata={
+                        "section": section_name,
+                        "keys": section_info["keys"],
+                        "fmt": "ini",
+                        "name": f"[{section_name}]",
+                    },
+                ),
+            )
         return chunks
 
     @classmethod
-    def _chunk_toml(cls, content: str, structure: dict[str, Any], file_path:
-        str) -> list[CodeChunk]:
+    def _chunk_toml(
+        cls,
+        content: str,
+        structure: dict[str, Any],
+        file_path: str,
+    ) -> list[CodeChunk]:
         """Chunk TOML file by tables."""
         chunks = []
         lines = content.split("\n")
         if structure["root_keys"]:
-            first_table_line = min((info["start"] for info in structure[
-                "tables"].values()), default=len(lines))
+            first_table_line = min(
+                (info["start"] for info in structure["tables"].values()),
+                default=len(lines),
+            )
             if first_table_line > 0:
                 root_content = "\n".join(lines[0:first_table_line])
                 if root_content.strip():
-                    chunks.append(CodeChunk(content=root_content,
-                        start_line=1, end_line=first_table_line, node_type="toml_root", parent_context="[root]", file_path=file_path, language="toml", byte_start=0, byte_end=len(root_content.encode()), metadata={"keys":
-                        structure["root_keys"], "fmt": "toml", "name":
-                        "[root]"}))
+                    chunks.append(
+                        CodeChunk(
+                            content=root_content,
+                            start_line=1,
+                            end_line=first_table_line,
+                            node_type="toml_root",
+                            parent_context="[root]",
+                            file_path=file_path,
+                            language="toml",
+                            byte_start=0,
+                            byte_end=len(root_content.encode()),
+                            metadata={
+                                "keys": structure["root_keys"],
+                                "fmt": "toml",
+                                "name": "[root]",
+                            },
+                        ),
+                    )
         for table_name, table_info in structure["tables"].items():
-            table_content = "\n".join(lines[table_info["start"]:table_info[
-                "end"] + 1])
-            chunks.append(CodeChunk(content=table_content, start_line=table_info["start"] + 1, end_line=table_info["end"] + 1,
-                node_type="toml_table" if not table_info["is_array"] else
-                "toml_array_table", parent_context=f"[{table_name}]" if not
-                table_info["is_array"] else f"[[{table_name}]]", file_path=file_path, language="toml", byte_start=sum(len(line.encode(
-                )) + 1 for line in lines[:table_info["start"]]), byte_end=sum(len(line.encode()) + 1 for line in lines[:table_info[
-                "end"] + 1]), metadata={"table": table_name, "is_array":
-                table_info["is_array"], "fmt": "toml", "name":
-                f"[{table_name}]" if not table_info["is_array"] else
-                f"[[{table_name}]]"}))
+            table_content = "\n".join(
+                lines[table_info["start"] : table_info["end"] + 1],
+            )
+            chunks.append(
+                CodeChunk(
+                    content=table_content,
+                    start_line=table_info["start"] + 1,
+                    end_line=table_info["end"] + 1,
+                    node_type=(
+                        "toml_table"
+                        if not table_info["is_array"]
+                        else "toml_array_table"
+                    ),
+                    parent_context=(
+                        f"[{table_name}]"
+                        if not table_info["is_array"]
+                        else f"[[{table_name}]]"
+                    ),
+                    file_path=file_path,
+                    language="toml",
+                    byte_start=sum(
+                        len(line.encode()) + 1 for line in lines[: table_info["start"]]
+                    ),
+                    byte_end=sum(
+                        len(line.encode()) + 1
+                        for line in lines[: table_info["end"] + 1]
+                    ),
+                    metadata={
+                        "table": table_name,
+                        "is_array": table_info["is_array"],
+                        "fmt": "toml",
+                        "name": (
+                            f"[{table_name}]"
+                            if not table_info["is_array"]
+                            else f"[[{table_name}]]"
+                        ),
+                    },
+                ),
+            )
         return chunks
 
-    def _chunk_yaml(self, content: str, structure: dict[str, Any],
-        file_path: str) -> list[CodeChunk]:
+    def _chunk_yaml(
+        self,
+        content: str,
+        structure: dict[str, Any],
+        file_path: str,
+    ) -> list[CodeChunk]:
         """Chunk YAML file by top-level sections."""
         chunks = []
         lines = content.split("\n")
         if structure["root_keys"]:
             root_lines = []
             for i, line in enumerate(lines):
-
 
                 if (
                     not line.strip()
@@ -358,79 +534,175 @@ class ConfigProcessor(SpecializedProcessor):
                     if key in structure["root_keys"]:
                         root_lines.append(i)
             if root_lines:
-                root_content = "\n".join(lines[i] for i in sorted(set(
-                    root_lines)))
-                chunks.append(CodeChunk(content=root_content, start_line=min(root_lines) + 1, end_line=max(root_lines) + 1,
-                    node_type="yaml_root", parent_context="root", file_path=file_path, language="yaml", byte_start=0, byte_end=len
-                    (root_content.encode()), metadata={"keys": structure[
-                    "root_keys"], "fmt": "yaml", "name": "root"}))
+                root_content = "\n".join(lines[i] for i in sorted(set(root_lines)))
+                chunks.append(
+                    CodeChunk(
+                        content=root_content,
+                        start_line=min(root_lines) + 1,
+                        end_line=max(root_lines) + 1,
+                        node_type="yaml_root",
+                        parent_context="root",
+                        file_path=file_path,
+                        language="yaml",
+                        byte_start=0,
+                        byte_end=len(root_content.encode()),
+                        metadata={
+                            "keys": structure["root_keys"],
+                            "fmt": "yaml",
+                            "name": "root",
+                        },
+                    ),
+                )
         for section_name, section_info in structure["sections"].items():
-            section_content = "\n".join(lines[section_info["start"]:
-                section_info["end"] + 1])
-            chunks.append(CodeChunk(content=section_content, start_line=section_info["start"] + 1, end_line=section_info["end"] + 1,
-                node_type="yaml_section", parent_context=section_name,
-                file_path=file_path, language="yaml", byte_start=sum(len(
-                line.encode()) + 1 for line in lines[:section_info["start"]
-                ]), byte_end=sum(len(line.encode()) + 1 for line in lines[:
-                section_info["end"] + 1]), metadata={"section":
-                section_name, "indent": section_info["indent"], "keys":
-                section_info["keys"], "fmt": "yaml", "name": section_name}))
+            section_content = "\n".join(
+                lines[section_info["start"] : section_info["end"] + 1],
+            )
+            chunks.append(
+                CodeChunk(
+                    content=section_content,
+                    start_line=section_info["start"] + 1,
+                    end_line=section_info["end"] + 1,
+                    node_type="yaml_section",
+                    parent_context=section_name,
+                    file_path=file_path,
+                    language="yaml",
+                    byte_start=sum(
+                        len(line.encode()) + 1
+                        for line in lines[: section_info["start"]]
+                    ),
+                    byte_end=sum(
+                        len(line.encode()) + 1
+                        for line in lines[: section_info["end"] + 1]
+                    ),
+                    metadata={
+                        "section": section_name,
+                        "indent": section_info["indent"],
+                        "keys": section_info["keys"],
+                        "fmt": "yaml",
+                        "name": section_name,
+                    },
+                ),
+            )
         return chunks
 
-    def _chunk_json(self, content: str, structure: dict[str, Any],
-        file_path: str) -> list[CodeChunk]:
+    def _chunk_json(
+        self,
+        content: str,
+        structure: dict[str, Any],
+        file_path: str,
+    ) -> list[CodeChunk]:
         """Chunk JSON file intelligently."""
         chunks = []
         data = json.loads(content)
         if structure["type"] == "object":
             if self.config.preserve_structure and len(structure["keys"]) <= 5:
-                chunks.append(CodeChunk(content=content, start_line=1,
-                    end_line=len(content.split("\n")), node_type="json_object", parent_context="root", file_path=file_path, language="json", byte_start=0, byte_end=len(
-                    content.encode()), metadata={"keys": structure["keys"],
-                    "fmt": "json", "name": "root"}))
+                chunks.append(
+                    CodeChunk(
+                        content=content,
+                        start_line=1,
+                        end_line=len(content.split("\n")),
+                        node_type="json_object",
+                        parent_context="root",
+                        file_path=file_path,
+                        language="json",
+                        byte_start=0,
+                        byte_end=len(content.encode()),
+                        metadata={
+                            "keys": structure["keys"],
+                            "fmt": "json",
+                            "name": "root",
+                        },
+                    ),
+                )
             else:
                 for key in structure["keys"]:
                     value = data[key]
                     key_content = json.dumps({key: value}, indent=2)
-                    chunks.append(CodeChunk(content=key_content, start_line=1, end_line=len(key_content.split("\n")),
-                        node_type="json_property", parent_context=key,
-                        file_path=file_path, language="json", byte_start=0,
-                        byte_end=len(key_content.encode()), metadata={"key":
-                        key, "value_type": type(value).__name__,
-                        "is_nested": isinstance(value, dict | list), "fmt":
-                        "json", "name": key}))
+                    chunks.append(
+                        CodeChunk(
+                            content=key_content,
+                            start_line=1,
+                            end_line=len(key_content.split("\n")),
+                            node_type="json_property",
+                            parent_context=key,
+                            file_path=file_path,
+                            language="json",
+                            byte_start=0,
+                            byte_end=len(key_content.encode()),
+                            metadata={
+                                "key": key,
+                                "value_type": type(value).__name__,
+                                "is_nested": isinstance(value, dict | list),
+                                "fmt": "json",
+                                "name": key,
+                            },
+                        ),
+                    )
         elif len(data) <= 10:
-            chunks.append(CodeChunk(content=content, start_line=1, end_line=len(content.split("\n")), node_type="json_array",
-                parent_context="root", file_path=file_path, language="json",
-                byte_start=0, byte_end=len(content.encode()), metadata={
-                "size": len(data), "fmt": "json", "name": "root"}))
+            chunks.append(
+                CodeChunk(
+                    content=content,
+                    start_line=1,
+                    end_line=len(content.split("\n")),
+                    node_type="json_array",
+                    parent_context="root",
+                    file_path=file_path,
+                    language="json",
+                    byte_start=0,
+                    byte_end=len(content.encode()),
+                    metadata={"size": len(data), "fmt": "json", "name": "root"},
+                ),
+            )
         else:
             chunk_size = self.config.chunk_size
             for i in range(0, len(data), chunk_size):
-                chunk_data = data[i:i + chunk_size]
+                chunk_data = data[i : i + chunk_size]
                 chunk_content = json.dumps(chunk_data, indent=2)
-                chunks.append(CodeChunk(content=chunk_content, start_line=1,
-                    end_line=len(chunk_content.split("\n")), node_type="json_array_chunk", parent_context=f"items[{i}:{i + len(chunk_data)}]", file_path=file_path, language="json", byte_start=0, byte_end=len(
-                    chunk_content.encode()), metadata={"start_index": i,
-                    "end_index": i + len(chunk_data), "fmt": "json", "name":
-                    f"items[{i}:{i + len(chunk_data)}]"}))
+                chunks.append(
+                    CodeChunk(
+                        content=chunk_content,
+                        start_line=1,
+                        end_line=len(chunk_content.split("\n")),
+                        node_type="json_array_chunk",
+                        parent_context=f"items[{i}:{i + len(chunk_data)}]",
+                        file_path=file_path,
+                        language="json",
+                        byte_start=0,
+                        byte_end=len(chunk_content.encode()),
+                        metadata={
+                            "start_index": i,
+                            "end_index": i + len(chunk_data),
+                            "fmt": "json",
+                            "name": f"items[{i}:{i + len(chunk_data)}]",
+                        },
+                    ),
+                )
         return chunks
 
     @staticmethod
-    def _find_related_sections(section_name: str, all_sections: dict[str, Any],
-        ) -> list[str]:
+    def _find_related_sections(
+        section_name: str,
+        all_sections: dict[str, Any],
+    ) -> list[str]:
         """Find sections related to the given section."""
         related = []
         base_name = section_name.lower()
         base_without_number = re.sub(r"\\d+$", "", base_name)
         if base_without_number != base_name:
-            related.extend(other for other in all_sections if other !=
-                section_name and other.lower().startswith(base_without_number))
+            related.extend(
+                other
+                for other in all_sections
+                if other != section_name
+                and other.lower().startswith(base_without_number)
+            )
         parts = base_name.split("_")
         if len(parts) > 1:
             prefix = parts[0]
-            related.extend(other for other in all_sections if other !=
-                section_name and other.lower().startswith(prefix))
+            related.extend(
+                other
+                for other in all_sections
+                if other != section_name and other.lower().startswith(prefix)
+            )
         return related[:3]
 
     @staticmethod
@@ -446,5 +718,9 @@ class ConfigProcessor(SpecializedProcessor):
     @staticmethod
     def get_format_extensions() -> dict[str, list[str]]:
         """Get file extensions for each fmt."""
-        return {"ini": [".ini", ".cfg", ".conf"], "toml": [".toml"], "yaml":
-            [".yaml", ".yml"], "json": [".json"]}
+        return {
+            "ini": [".ini", ".cfg", ".conf"],
+            "toml": [".toml"],
+            "yaml": [".yaml", ".yml"],
+            "json": [".json"],
+        }

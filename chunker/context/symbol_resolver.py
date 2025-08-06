@@ -2,6 +2,7 @@
 
 Provides functionality to find symbol definitions and references in the AST.
 """
+
 from tree_sitter import Node
 
 from chunker.interfaces.context import SymbolResolver
@@ -20,8 +21,12 @@ class BaseSymbolResolver(SymbolResolver):
         self._definition_cache: dict[str, Node | None] = {}
         self._reference_cache: dict[str, list[Node]] = {}
 
-    def find_symbol_definition(self, symbol_name: str, scope_node: Node,
-        ast: Node) -> (Node | None):
+    def find_symbol_definition(
+        self,
+        symbol_name: str,
+        scope_node: Node,
+        ast: Node,
+    ) -> Node | None:
         """Find where a symbol is defined.
 
         Args:
@@ -37,8 +42,7 @@ class BaseSymbolResolver(SymbolResolver):
             return self._definition_cache[cache_key]
         current_scope = scope_node
         while current_scope:
-            definition = self._search_scope_for_definition(symbol_name,
-                current_scope)
+            definition = self._search_scope_for_definition(symbol_name, current_scope)
             if definition:
                 self._definition_cache[cache_key] = definition
                 return definition
@@ -59,22 +63,43 @@ class BaseSymbolResolver(SymbolResolver):
         parent = symbol_node.parent
         if not parent:
             return "unknown"
+
+        # Check node type mapping
+        symbol_type = self._check_type_mapping(parent)
+        if symbol_type:
+            return symbol_type
+
+        # Check keyword patterns
+        return self._check_type_by_keyword(parent.type)
+
+    def _check_type_mapping(self, parent: Node) -> str | None:
+        """Check if parent matches known type mappings."""
         node_type_map = self._get_node_type_map()
         parent_type = parent.type
+
         if parent_type in node_type_map:
             return node_type_map[parent_type]
+
         if parent.parent and parent.parent.type in node_type_map:
             return node_type_map[parent.parent.type]
-        if "function" in parent_type or "method" in parent_type:
-            return "function"
-        if "class" in parent_type:
-            return "class"
-        if "variable" in parent_type or "assignment" in parent_type:
-            return "variable"
-        if "parameter" in parent_type:
-            return "parameter"
-        if "import" in parent_type:
-            return "import"
+
+        return None
+
+    @staticmethod
+    def _check_type_by_keyword(parent_type: str) -> str:
+        """Check symbol type by keyword patterns."""
+        keyword_patterns = [
+            (["function", "method"], "function"),
+            (["class"], "class"),
+            (["variable", "assignment"], "variable"),
+            (["parameter"], "parameter"),
+            (["import"], "import"),
+        ]
+
+        for keywords, symbol_type in keyword_patterns:
+            if any(keyword in parent_type for keyword in keywords):
+                return symbol_type
+
         return "unknown"
 
     def find_symbol_references(self, symbol_name: str, ast: Node) -> list[Node]:
@@ -95,17 +120,22 @@ class BaseSymbolResolver(SymbolResolver):
             """Recursively find references to the symbol."""
             if self._is_identifier_node(node):
                 name = self._get_node_text(node)
-                if name == symbol_name and not self._is_definition_context(node,
-                    ):
+                if name == symbol_name and not self._is_definition_context(
+                    node,
+                ):
                     references.append(node)
             for child in node.children:
                 find_references(child)
+
         find_references(ast)
         self._reference_cache[symbol_name] = references
         return references
 
-    def _search_scope_for_definition(self, symbol_name: str, scope_node: Node) -> (
-        Node | None):
+    def _search_scope_for_definition(
+        self,
+        symbol_name: str,
+        scope_node: Node,
+    ) -> Node | None:
         """Search within a scope for a symbol definition.
 
         Args:
@@ -116,7 +146,7 @@ class BaseSymbolResolver(SymbolResolver):
             Definition node or None
         """
 
-        def search_node(node: Node) -> (Node | None):
+        def search_node(node: Node) -> Node | None:
             if self._is_definition_node(node):
                 defined_name = self._get_defined_name(node)
                 if defined_name == symbol_name:
@@ -127,9 +157,10 @@ class BaseSymbolResolver(SymbolResolver):
                     if result:
                         return result
             return None
+
         return search_node(scope_node)
 
-    def _get_parent_scope(self, node: Node) -> (Node | None):
+    def _get_parent_scope(self, node: Node) -> Node | None:
         """Get the parent scope of a node.
 
         Args:
@@ -203,7 +234,7 @@ class BaseSymbolResolver(SymbolResolver):
         return False
 
     @staticmethod
-    def _get_defined_name(_node: Node) -> (str | None):
+    def _get_defined_name(_node: Node) -> str | None:
         """Get the name being defined by a definition node.
 
         Args:

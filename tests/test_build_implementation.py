@@ -1,6 +1,7 @@
 """
 Integration tests for actual Build System implementation
 """
+
 import tempfile
 from pathlib import Path
 
@@ -31,8 +32,11 @@ class TestBuildSystemImplementation:
             output_dir = Path(tmpdir)
             platform_info = build_sys.platform_support.detect_platform()
             current_platform = platform_info["os"]
-            success, build_info = build_sys.compile_grammars(["python"],
-                current_platform, output_dir)
+            success, build_info = build_sys.compile_grammars(
+                ["python"],
+                current_platform,
+                output_dir,
+            )
             assert isinstance(success, bool)
             assert isinstance(build_info, dict)
             assert "platform" in build_info
@@ -48,8 +52,11 @@ class TestBuildSystemImplementation:
         with tempfile.TemporaryDirectory() as tmpdir:
             output_dir = Path(tmpdir)
             platform_info = build_sys.platform_support.detect_platform()
-            success, wheel_path = build_sys.build_wheel(platform_info["os"],
-                platform_info["python_tag"], output_dir)
+            success, wheel_path = build_sys.build_wheel(
+                platform_info["os"],
+                platform_info["python_tag"],
+                output_dir,
+            )
             assert isinstance(success, bool)
             assert isinstance(wheel_path, Path)
 
@@ -57,8 +64,12 @@ class TestBuildSystemImplementation:
     def test_verify_build_with_missing_file(cls):
         """Verify should handle missing files properly"""
         build_sys = BuildSystem()
-        fake_path = Path(tempfile.gettempdir(),
-            ) / "nonexistent_test_artifact.whl"
+        fake_path = (
+            Path(
+                tempfile.gettempdir(),
+            )
+            / "nonexistent_test_artifact.whl"
+        )
         valid, report = build_sys.verify_build(fake_path, "linux")
         assert not valid
         assert isinstance(report, dict)
@@ -74,8 +85,7 @@ class TestBuildSystemImplementation:
         build_sys = BuildSystem()
         with tempfile.TemporaryDirectory() as tmpdir:
             output_dir = Path(tmpdir)
-            success, package_path = build_sys.create_conda_package("linux",
-                output_dir)
+            success, package_path = build_sys.create_conda_package("linux", output_dir)
             assert isinstance(success, bool)
             assert isinstance(package_path, Path)
             if not success:
@@ -90,6 +100,7 @@ def test_integration_with_mocked_build_system():
         BuildSystemContract,
         PlatformSupportContract,
     )
+
     mock_build = Mock(spec=BuildSystemContract)
     mock_platform = Mock(spec=PlatformSupportContract)
     mock_platform.detect_platform()

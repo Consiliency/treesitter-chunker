@@ -1,4 +1,5 @@
 """Integration tests for chunker with context extraction."""
+
 import pytest
 
 from chunker.context import ContextFactory
@@ -10,11 +11,10 @@ class TestChunkerWithContext:
     """Test integrating context extraction with chunking."""
 
     @staticmethod
-    @pytest.fixture
+    @pytest.fixture()
     def python_code_with_dependencies():
         """Python code with interdependencies."""
-        return (
-            """
+        return """
 from typing import List, Dict
 import math
 
@@ -57,8 +57,7 @@ def create_square(size: float) -> Polygon:
         Point(0, size)
     ]
     return Polygon(points)
-"""
-            .strip())
+""".strip()
 
     @staticmethod
     def test_chunk_with_context_preservation(python_code_with_dependencies):
@@ -71,8 +70,7 @@ def create_square(size: float) -> Polygon:
         filter_func = ContextFactory.create_context_filter("python")
         perimeter_chunk = None
         for chunk in chunks:
-            if ("perimeter" in chunk.content and "def perimeter" in chunk.
-                content):
+            if "perimeter" in chunk.content and "def perimeter" in chunk.content:
                 perimeter_chunk = chunk
                 break
         assert perimeter_chunk is not None
@@ -80,25 +78,37 @@ def create_square(size: float) -> Polygon:
         def find_method_node(node, method_name):
             if node.type == "function_definition":
                 for child in node.children:
-                    if (child.type == "identifier" and child.text ==
-                        method_name.encode()):
+                    if (
+                        child.type == "identifier"
+                        and child.text == method_name.encode()
+                    ):
                         return node
             for child in node.children:
                 result = find_method_node(child, method_name)
                 if result:
                     return result
             return None
+
         perimeter_node = find_method_node(tree.root_node, "perimeter")
         assert perimeter_node is not None
         imports = extractor.extract_imports(tree.root_node, source)
         type_defs = extractor.extract_type_definitions(tree.root_node, source)
-        parent_context = extractor.extract_parent_context(perimeter_node,
-            tree.root_node, source)
-        dependencies = extractor.extract_dependencies(perimeter_node, tree.
-            root_node, source)
+        parent_context = extractor.extract_parent_context(
+            perimeter_node,
+            tree.root_node,
+            source,
+        )
+        dependencies = extractor.extract_dependencies(
+            perimeter_node,
+            tree.root_node,
+            source,
+        )
         all_context = imports + type_defs + parent_context + dependencies
-        relevant_context = [item for item in all_context if filter_func.
-            is_relevant(item, perimeter_node)]
+        relevant_context = [
+            item
+            for item in all_context
+            if filter_func.is_relevant(item, perimeter_node)
+        ]
         context_prefix = extractor.build_context_prefix(relevant_context)
         assert "import math" in context_prefix
         assert "class Polygon" in context_prefix
@@ -115,28 +125,35 @@ def create_square(size: float) -> Polygon:
         parser = get_parser("python")
         tree = parser.parse(python_code_with_dependencies.encode())
         source = python_code_with_dependencies.encode()
-        extractor, _resolver, _analyzer, filter_func = (ContextFactory.
-            create_all("python"))
+        extractor, _resolver, _analyzer, filter_func = ContextFactory.create_all(
+            "python",
+        )
 
         def find_function(node, name):
             if node.type == "function_definition":
                 for child in node.children:
-                    if (child.type == "identifier" and child.text == name.
-                        encode()):
+                    if child.type == "identifier" and child.text == name.encode():
                         return node
             for child in node.children:
                 result = find_function(child, name)
                 if result:
                     return result
             return None
+
         create_square_node = find_function(tree.root_node, "create_square")
         assert create_square_node is not None
-        dependencies = extractor.extract_dependencies(create_square_node,
-            tree.root_node, source)
+        dependencies = extractor.extract_dependencies(
+            create_square_node,
+            tree.root_node,
+            source,
+        )
         type_defs = extractor.extract_type_definitions(tree.root_node, source)
         all_context = dependencies + type_defs
-        relevant_context = [item for item in all_context if filter_func.
-            is_relevant(item, create_square_node)]
+        relevant_context = [
+            item
+            for item in all_context
+            if filter_func.is_relevant(item, create_square_node)
+        ]
         context_prefix = extractor.build_context_prefix(relevant_context)
         assert "class Point" in context_prefix
         assert "class Polygon" in context_prefix
@@ -144,8 +161,7 @@ def create_square(size: float) -> Polygon:
     @staticmethod
     def test_javascript_react_component_context():
         """Test context extraction for React components."""
-        javascript_code = (
-            """
+        javascript_code = """
 import React, { useState } from 'react';
 import { Button } from './components';
 import { useAuth } from './hooks';
@@ -184,8 +200,7 @@ const LoginForm = () => {
 };
 
 export default LoginForm;
-"""
-            .strip())
+""".strip()
         parser = get_parser("javascript")
         tree = parser.parse(javascript_code.encode())
         source = javascript_code.encode()
@@ -196,8 +211,7 @@ export default LoginForm;
                 has_name = False
                 has_arrow = False
                 for child in node.children:
-                    if (child.type == "identifier" and child.text == name.
-                        encode()):
+                    if child.type == "identifier" and child.text == name.encode():
                         has_name = True
                     if child.type == "arrow_function":
                         has_arrow = True
@@ -210,11 +224,15 @@ export default LoginForm;
                 if result:
                     return result
             return None
+
         handle_submit = find_arrow_function(tree.root_node, "handleSubmit")
         assert handle_submit is not None
         imports = extractor.extract_imports(tree.root_node, source)
-        parent_context = extractor.extract_parent_context(handle_submit,
-            tree.root_node, source)
+        parent_context = extractor.extract_parent_context(
+            handle_submit,
+            tree.root_node,
+            source,
+        )
         all_context = imports + parent_context
         context_prefix = extractor.build_context_prefix(all_context)
         assert "import React" in context_prefix

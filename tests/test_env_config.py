@@ -1,4 +1,5 @@
 """Tests for environment variable support in configuration."""
+
 import json
 import os
 from pathlib import Path
@@ -35,8 +36,14 @@ class TestEnvironmentVariableExpansion:
         os.environ["DIR_PATH"] = "/custom/path"
         os.environ["LANG"] = "python"
         config = ChunkerConfig()
-        data = {"plugin_dirs": ["${DIR_PATH}/plugins", "~/.chunker/plugins",
-            ], "language": "${LANG}", "nested": {"value": "${DIR_PATH}/data"}}
+        data = {
+            "plugin_dirs": [
+                "${DIR_PATH}/plugins",
+                "~/.chunker/plugins",
+            ],
+            "language": "${LANG}",
+            "nested": {"value": "${DIR_PATH}/data"},
+        }
         result = config._expand_env_vars(data)
         assert result["plugin_dirs"][0] == "/custom/path/plugins"
         assert result["language"] == "python"
@@ -61,9 +68,12 @@ class TestEnvironmentVariableExpansion:
         """Test loading config file with environment variables."""
         os.environ["CUSTOM_PLUGIN_DIR"] = "/custom/plugins"
         os.environ["MIN_SIZE"] = "5"
-        config_data = {"chunker": {"plugin_dirs": ["${CUSTOM_PLUGIN_DIR}",
-            "${HOME}/.chunker/plugins"], "default_plugin_config": {
-            "min_chunk_size": "${MIN_SIZE:3}"}}}
+        config_data = {
+            "chunker": {
+                "plugin_dirs": ["${CUSTOM_PLUGIN_DIR}", "${HOME}/.chunker/plugins"],
+                "default_plugin_config": {"min_chunk_size": "${MIN_SIZE:3}"},
+            },
+        }
         config_file = tmp_path / "config.json"
         with Path(config_file).open("w", encoding="utf-8") as f:
             json.dump(config_data, f)
@@ -103,16 +113,16 @@ class TestEnvironmentVariableOverrides:
         os.environ["CHUNKER_LANGUAGES_PYTHON_ENABLED"] = "false"
         os.environ["CHUNKER_LANGUAGES_PYTHON_MIN_CHUNK_SIZE"] = "10"
         os.environ["CHUNKER_LANGUAGES_PYTHON_MAX_CHUNK_SIZE"] = "1000"
-        os.environ["CHUNKER_LANGUAGES_PYTHON_CHUNK_TYPES"
-            ] = "function_definition,class_definition"
+        os.environ["CHUNKER_LANGUAGES_PYTHON_CHUNK_TYPES"] = (
+            "function_definition,class_definition"
+        )
         config = ChunkerConfig()
         config._apply_env_overrides()
         python_config = config.plugin_configs["python"]
         assert python_config.enabled is False
         assert python_config.min_chunk_size == 10
         assert python_config.max_chunk_size == 1000
-        assert python_config.chunk_types == {"function_definition",
-            "class_definition"}
+        assert python_config.chunk_types == {"function_definition", "class_definition"}
         del os.environ["CHUNKER_LANGUAGES_PYTHON_ENABLED"]
         del os.environ["CHUNKER_LANGUAGES_PYTHON_MIN_CHUNK_SIZE"]
         del os.environ["CHUNKER_LANGUAGES_PYTHON_MAX_CHUNK_SIZE"]
@@ -125,10 +135,13 @@ class TestEnvironmentVariableOverrides:
         os.environ["CHUNKER_LANGUAGES_JAVASCRIPT_INCLUDE_JSX"] = "false"
         config = ChunkerConfig()
         config._apply_env_overrides()
-        assert config.plugin_configs["python"].custom_options[
-            "include_docstrings"] == "true"
-        assert config.plugin_configs["javascript"].custom_options["include_jsx"
-            ] == "false"
+        assert (
+            config.plugin_configs["python"].custom_options["include_docstrings"]
+            == "true"
+        )
+        assert (
+            config.plugin_configs["javascript"].custom_options["include_jsx"] == "false"
+        )
         del os.environ["CHUNKER_LANGUAGES_PYTHON_INCLUDE_DOCSTRINGS"]
         del os.environ["CHUNKER_LANGUAGES_JAVASCRIPT_INCLUDE_JSX"]
 
@@ -147,9 +160,13 @@ class TestEnvironmentVariableOverrides:
     @classmethod
     def test_env_override_with_config_file(cls, tmp_path):
         """Test that environment variables override config file values."""
-        config_data = {"chunker": {"enabled_languages": ["python", "rust"],
-            "default_plugin_config": {"min_chunk_size": 3}}, "languages": {
-            "python": {"enabled": True, "min_chunk_size": 5}}}
+        config_data = {
+            "chunker": {
+                "enabled_languages": ["python", "rust"],
+                "default_plugin_config": {"min_chunk_size": 3},
+            },
+            "languages": {"python": {"enabled": True, "min_chunk_size": 5}},
+        }
         config_file = tmp_path / "config.json"
         with Path(config_file).open("w", encoding="utf-8") as f:
             json.dump(config_data, f)
@@ -200,11 +217,14 @@ class TestIntegration:
         os.environ["CHUNKER_ENABLED_LANGUAGES"] = "python,rust,go"
         os.environ["CHUNKER_LANGUAGES_PYTHON_MIN_CHUNK_SIZE"] = "8"
         os.environ["CHUNKER_LANGUAGES_RUST_ENABLED"] = "false"
-        config_data = {"chunker": {"plugin_dirs": ["${BASE_DIR}/plugins",
-            "~/.chunker/plugins"], "enabled_languages": ["python",
-            "javascript"], "default_plugin_config": {"min_chunk_size":
-            "${MIN_SIZE:5}"}}, "languages": {"python": {"enabled": True,
-            "min_chunk_size": 3}}}
+        config_data = {
+            "chunker": {
+                "plugin_dirs": ["${BASE_DIR}/plugins", "~/.chunker/plugins"],
+                "enabled_languages": ["python", "javascript"],
+                "default_plugin_config": {"min_chunk_size": "${MIN_SIZE:5}"},
+            },
+            "languages": {"python": {"enabled": True, "min_chunk_size": 3}},
+        }
         config_file = tmp_path / "config.json"
         with Path(config_file).open("w", encoding="utf-8") as f:
             json.dump(config_data, f)

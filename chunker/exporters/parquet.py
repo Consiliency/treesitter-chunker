@@ -1,4 +1,5 @@
 """Parquet export functionality for code chunks."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -14,8 +15,12 @@ if TYPE_CHECKING:
 class ParquetExporter:
     """Export code chunks to Apache Parquet format with nested schema support."""
 
-    def __init__(self, columns: (list[str] | None) = None, partition_by: (
-        list[str] | None) = None, compression: str = "snappy"):
+    def __init__(
+        self,
+        columns: list[str] | None = None,
+        partition_by: list[str] | None = None,
+        compression: str = "snappy",
+    ):
         """
         Initialize the Parquet exporter.
 
@@ -32,28 +37,44 @@ class ParquetExporter:
     @staticmethod
     def _create_schema() -> pa.Schema:
         """Create the PyArrow schema with nested structure for metadata."""
-        fields = [pa.field("language", pa.string()), pa.field("file_path",
-            pa.string()), pa.field("node_type", pa.string()), pa.field(
-            "content", pa.string()), pa.field("parent_context", pa.string())]
-        metadata_fields = [pa.field("start_line", pa.int64()), pa.field(
-            "end_line", pa.int64()), pa.field("byte_start", pa.int64()), pa
-            .field("byte_end", pa.int64())]
+        fields = [
+            pa.field("language", pa.string()),
+            pa.field("file_path", pa.string()),
+            pa.field("node_type", pa.string()),
+            pa.field("content", pa.string()),
+            pa.field("parent_context", pa.string()),
+        ]
+        metadata_fields = [
+            pa.field("start_line", pa.int64()),
+            pa.field("end_line", pa.int64()),
+            pa.field("byte_start", pa.int64()),
+            pa.field("byte_end", pa.int64()),
+        ]
         metadata_struct = pa.struct(metadata_fields)
         fields.append(pa.field("metadata", metadata_struct))
-        fields.extend([pa.field("lines_of_code", pa.int64()), pa.field(
-            "byte_size", pa.int64())])
+        fields.extend(
+            [pa.field("lines_of_code", pa.int64()), pa.field("byte_size", pa.int64())],
+        )
         return pa.schema(fields)
 
     @staticmethod
     def _chunk_to_dict(chunk: CodeChunk) -> dict[str, Any]:
         """Convert a CodeChunk to a dictionary with nested metadata."""
-        return {"language": chunk.language, "file_path": chunk.file_path,
-            "node_type": chunk.node_type, "content": chunk.content,
-            "parent_context": chunk.parent_context, "metadata": {
-            "start_line": chunk.start_line, "end_line": chunk.end_line,
-            "byte_start": chunk.byte_start, "byte_end": chunk.byte_end},
+        return {
+            "language": chunk.language,
+            "file_path": chunk.file_path,
+            "node_type": chunk.node_type,
+            "content": chunk.content,
+            "parent_context": chunk.parent_context,
+            "metadata": {
+                "start_line": chunk.start_line,
+                "end_line": chunk.end_line,
+                "byte_start": chunk.byte_start,
+                "byte_end": chunk.byte_end,
+            },
             "lines_of_code": chunk.end_line - chunk.start_line + 1,
-            "byte_size": chunk.byte_end - chunk.byte_start}
+            "byte_size": chunk.byte_end - chunk.byte_start,
+        }
 
     def _filter_columns(self, data: dict[str, Any]) -> dict[str, Any]:
         """Filter data to include only selected columns."""
@@ -67,8 +88,11 @@ class ParquetExporter:
                 filtered[col] = data.get("metadata", {})
         return filtered
 
-    def export(self, chunks: list[CodeChunk], output_path: (Path | str),
-        ) -> None:
+    def export(
+        self,
+        chunks: list[CodeChunk],
+        output_path: Path | str,
+    ) -> None:
         """
         Export chunks to Parquet file(s).
 
@@ -86,14 +110,21 @@ class ParquetExporter:
             schema = self._schema
         table = pa.Table.from_pylist(records, schema=schema)
         if self.partition_by:
-            pq.write_to_dataset(table, root_path=str(output_path),
-                partition_cols=self.partition_by, compression=self.compression)
+            pq.write_to_dataset(
+                table,
+                root_path=str(output_path),
+                partition_cols=self.partition_by,
+                compression=self.compression,
+            )
         else:
-            pq.write_table(table, str(output_path), compression=self.
-                compression)
+            pq.write_table(table, str(output_path), compression=self.compression)
 
-    def export_streaming(self, chunks_iterator, output_path: (Path | str),
-        batch_size: int = 1000) -> None:
+    def export_streaming(
+        self,
+        chunks_iterator,
+        output_path: Path | str,
+        batch_size: int = 1000,
+    ) -> None:
         """
         Export chunks using streaming for large datasets.
 
@@ -110,11 +141,14 @@ class ParquetExporter:
                 batch.append(self._chunk_to_dict(chunk))
                 if len(batch) >= batch_size:
                     if self.columns:
-                        batch = [self._filter_columns(record) for record in
-                            batch]
+                        batch = [self._filter_columns(record) for record in batch]
                     table = pa.Table.from_pylist(batch, schema=self._schema)
                     if writer is None:
-                        writer = pq.ParquetWriter(str(output_path), schema=table.schema, compression=self.compression)
+                        writer = pq.ParquetWriter(
+                            str(output_path),
+                            schema=table.schema,
+                            compression=self.compression,
+                        )
                     writer.write_table(table)
                     batch = []
             if batch:
@@ -122,7 +156,11 @@ class ParquetExporter:
                     batch = [self._filter_columns(record) for record in batch]
                 table = pa.Table.from_pylist(batch, schema=self._schema)
                 if writer is None:
-                    writer = pq.ParquetWriter(str(output_path), schema=table.schema, compression=self.compression)
+                    writer = pq.ParquetWriter(
+                        str(output_path),
+                        schema=table.schema,
+                        compression=self.compression,
+                    )
                 writer.write_table(table)
         finally:
             if writer:

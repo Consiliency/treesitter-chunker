@@ -1,4 +1,5 @@
 """Token counting interfaces for enhancing Tree-sitter chunks with token information."""
+
 from abc import ABC, abstractmethod
 
 from chunker.interfaces.base import ChunkingStrategy
@@ -37,8 +38,11 @@ class TokenCounter(ABC):
 
     @staticmethod
     @abstractmethod
-    def split_text_by_tokens(text: str, max_tokens: int, model: str = "gpt-4",
-        ) -> list[str]:
+    def split_text_by_tokens(
+        text: str,
+        max_tokens: int,
+        model: str = "gpt-4",
+    ) -> list[str]:
         """
         Split text into chunks that don't exceed the token limit.
 
@@ -57,8 +61,12 @@ class TokenAwareChunker(ChunkingStrategy):
 
     @staticmethod
     @abstractmethod
-    def chunk_with_token_limit(file_path: str, language: str, max_tokens:
-        int, model: str = "gpt-4") -> list[CodeChunk]:
+    def chunk_with_token_limit(
+        file_path: str,
+        language: str,
+        max_tokens: int,
+        model: str = "gpt-4",
+    ) -> list[CodeChunk]:
         """
         Create chunks with token count information and optional splitting.
 
@@ -78,8 +86,10 @@ class TokenAwareChunker(ChunkingStrategy):
 
     @staticmethod
     @abstractmethod
-    def add_token_info(chunks: list[CodeChunk], model: str = "gpt-4") -> list[
-        CodeChunk]:
+    def add_token_info(
+        chunks: list[CodeChunk],
+        model: str = "gpt-4",
+    ) -> list[CodeChunk]:
         """
         Add token count information to existing chunks.
 

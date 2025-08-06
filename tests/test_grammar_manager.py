@@ -1,4 +1,5 @@
 """Unit tests for the GrammarManager implementation."""
+
 import json
 import tempfile
 import threading
@@ -10,26 +11,25 @@ import pytest
 from chunker.grammar_manager import GrammarManager, GrammarManagerError
 
 
-@pytest.fixture
+@pytest.fixture()
 def temp_dir():
     """Create a temporary directory for tests."""
     with tempfile.TemporaryDirectory() as tmpdir:
         yield Path(tmpdir)
 
 
-@pytest.fixture
+@pytest.fixture()
 def grammar_manager(temp_dir):
     """Create a GrammarManager instance with temporary directories."""
     config_file = temp_dir / "config" / "grammar_sources.json"
     config_file.parent.mkdir(parents=True)
-    test_sources = {"python":
-        "https://github.com/tree-sitter/tree-sitter-python.git",
-        "javascript":
-        "https://github.com/tree-sitter/tree-sitter-javascript.git"}
+    test_sources = {
+        "python": "https://github.com/tree-sitter/tree-sitter-python.git",
+        "javascript": "https://github.com/tree-sitter/tree-sitter-javascript.git",
+    }
     with config_file.open("w", "r") as f:
         json.dump(test_sources, f)
-    return GrammarManager(root_dir=temp_dir, config_file=config_file,
-        max_workers=2)
+    return GrammarManager(root_dir=temp_dir, config_file=config_file, max_workers=2)
 
 
 class TestGrammarManager:
@@ -48,8 +48,10 @@ class TestGrammarManager:
     @staticmethod
     def test_add_grammar_source_success(grammar_manager):
         """Test successfully adding a new grammar source."""
-        result = grammar_manager.add_grammar_source("rust",
-            "https://github.com/tree-sitter/tree-sitter-rust.git")
+        result = grammar_manager.add_grammar_source(
+            "rust",
+            "https://github.com/tree-sitter/tree-sitter-rust.git",
+        )
         assert result is True
         assert "rust" in grammar_manager._grammar_sources
         with grammar_manager._config_file.open() as f:
@@ -59,11 +61,15 @@ class TestGrammarManager:
     @staticmethod
     def test_add_grammar_source_duplicate(grammar_manager):
         """Test adding a duplicate grammar source."""
-        result = grammar_manager.add_grammar_source("python",
-            "https://github.com/other/tree-sitter-python.git")
+        result = grammar_manager.add_grammar_source(
+            "python",
+            "https://github.com/other/tree-sitter-python.git",
+        )
         assert result is False
-        assert grammar_manager._grammar_sources["python"
-            ] == "https://github.com/tree-sitter/tree-sitter-python.git"
+        assert (
+            grammar_manager._grammar_sources["python"]
+            == "https://github.com/tree-sitter/tree-sitter-python.git"
+        )
 
     @staticmethod
     def test_add_grammar_source_invalid_url(grammar_manager):
@@ -71,14 +77,17 @@ class TestGrammarManager:
         with pytest.raises(GrammarManagerError, match="Invalid GitHub URL"):
             grammar_manager.add_grammar_source("test", "not-a-url")
         with pytest.raises(GrammarManagerError, match="Invalid GitHub URL"):
-            grammar_manager.add_grammar_source("test",
-                "https://example.com/repo.git")
+            grammar_manager.add_grammar_source("test", "https://example.com/repo.git")
 
     @classmethod
     @patch("subprocess.run")
     def test_fetch_grammars_success(cls, mock_run, grammar_manager):
         """Test successfully fetching grammars."""
-        mock_run.return_value = MagicMock(returncode=0, stdout="Cloning into...", stderr="")
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout="Cloning into...",
+            stderr="",
+        )
         results = grammar_manager.fetch_grammars()
         assert len(results) == 2
         assert results["python"] is True
@@ -89,8 +98,10 @@ class TestGrammarManager:
     @patch("subprocess.run")
     def test_fetch_grammars_partial_failure(cls, mock_run, grammar_manager):
         """Test fetching with some failures."""
-        mock_run.side_effect = [MagicMock(returncode=0, stdout="Success",
-            stderr=""), MagicMock(returncode=1, stdout="", stderr="Failed to clone", check=False)]
+        mock_run.side_effect = [
+            MagicMock(returncode=0, stdout="Success", stderr=""),
+            MagicMock(returncode=1, stdout="", stderr="Failed to clone", check=False),
+        ]
         mock_run.side_effect[1].side_effect = Exception("Clone failed")
         results = grammar_manager.fetch_grammars()
         assert len(results) == 2
@@ -122,7 +133,11 @@ class TestGrammarManager:
             src_dir.mkdir(parents=True)
             c_file = src_dir / "parser.c"
             c_file.write_text("/* dummy parser */")
-        mock_run.return_value = MagicMock(returncode=0, stdout="Compilation successful", stderr="")
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout="Compilation successful",
+            stderr="",
+        )
         results = grammar_manager.compile_grammars()
         assert len(results) == 2
         assert results["python"] is True
@@ -161,8 +176,7 @@ class TestGrammarManager:
 
     @classmethod
     @patch("ctypes.CDLL")
-    def test_get_available_languages_with_library(cls, mock_cdll,
-        grammar_manager):
+    def test_get_available_languages_with_library(cls, mock_cdll, grammar_manager):
         """Test getting languages from compiled library."""
         grammar_manager._lib_path.touch()
         mock_lib = MagicMock()
@@ -172,6 +186,7 @@ class TestGrammarManager:
             if name in {"tree_sitter_python", "tree_sitter_javascript"}:
                 return MagicMock()
             raise AttributeError(f"Symbol {name} not found")
+
         mock_lib.__getattr__ = mock_getattr
         languages = grammar_manager.get_available_languages()
         assert "python" in languages
@@ -182,8 +197,7 @@ class TestGrammarManager:
         """Test fallback language detection from directories."""
         grammar_manager._lib_path.touch()
         for lang in ["python", "rust"]:
-            (grammar_manager._grammars_dir / f"tree-sitter-{lang}").mkdir(
-                parents=True)
+            (grammar_manager._grammars_dir / f"tree-sitter-{lang}").mkdir(parents=True)
         with patch("ctypes.CDLL", side_effect=Exception("Load failed")):
             languages = grammar_manager.get_available_languages()
         assert "python" in languages
@@ -201,6 +215,7 @@ class TestGrammarManager:
                 results.append((lang, result))
             except (OSError, ImportError, IndexError) as e:
                 errors.append((lang, str(e)))
+
         threads = []
         for i in range(5):
             lang = f"lang{i}"
@@ -218,10 +233,14 @@ class TestGrammarManager:
     @classmethod
     def test_empty_config_handling(cls, temp_dir):
         """Test handling of missing config file."""
-        manager = GrammarManager(root_dir=temp_dir, config_file=temp_dir /
-            "nonexistent" / "config.json")
+        manager = GrammarManager(
+            root_dir=temp_dir,
+            config_file=temp_dir / "nonexistent" / "config.json",
+        )
         assert len(manager._grammar_sources) == 0
-        result = manager.add_grammar_source("test",
-            "https://github.com/test/tree-sitter-test.git")
+        result = manager.add_grammar_source(
+            "test",
+            "https://github.com/test/tree-sitter-test.git",
+        )
         assert result is True
         assert manager._config_file.exists()

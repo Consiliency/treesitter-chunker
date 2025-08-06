@@ -3,6 +3,7 @@ Cross-platform wheel building script for treesitter-chunker.
 
 This script handles building platform-specific wheels with compiled grammars.
 """
+
 import argparse
 import os
 import platform
@@ -10,9 +11,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from build.env import IsolatedEnvBuilder
-
 from build import ProjectBuilder
+from build.env import IsolatedEnvBuilder
 
 try:
     pass
@@ -58,11 +58,17 @@ class WheelBuilder:
         grammars_dir = self.project_dir / "grammars"
         if not grammars_dir.exists() or not any(grammars_dir.iterdir()):
             print("Fetching grammars...")
-            subprocess.run([sys.executable, str(scripts_dir /
-                "fetch_grammars.py")], cwd=self.project_dir, check=True)
+            subprocess.run(
+                [sys.executable, str(scripts_dir / "fetch_grammars.py")],
+                cwd=self.project_dir,
+                check=True,
+            )
         print("Building tree-sitter grammars...")
-        subprocess.run([sys.executable, str(scripts_dir / "build_lib.py")],
-            cwd=self.project_dir, check=True)
+        subprocess.run(
+            [sys.executable, str(scripts_dir / "build_lib.py")],
+            cwd=self.project_dir,
+            check=True,
+        )
 
     def build_sdist(self):
         """Build source distribution."""
@@ -80,7 +86,7 @@ class WheelBuilder:
         self.ensure_grammars_built()
         print(
             f"Building {'universal' if universal else 'platform-specific'} wheel...",
-            )
+        )
         builder = ProjectBuilder(str(self.project_dir))
         with IsolatedEnvBuilder() as env:
             builder.python_executable = env.executable
@@ -90,8 +96,11 @@ class WheelBuilder:
             if not universal:
                 platform_tag = self.detect_platform()
                 config_settings["--plat-name"] = platform_tag
-            wheel_path = builder.build("wheel", str(self.output_dir),
-                config_settings=config_settings)
+            wheel_path = builder.build(
+                "wheel",
+                str(self.output_dir),
+                config_settings=config_settings,
+            )
             print(f"Built wheel: {wheel_path}")
             return wheel_path
 
@@ -114,10 +123,14 @@ class WheelBuilder:
         env["CIBW_MANYLINUX_X86_64_IMAGE"] = "manylinux2014"
         env["CIBW_MANYLINUX_AARCH64_IMAGE"] = "manylinux2014"
         env["CIBW_OUTPUT_DIR"] = str(self.output_dir)
-        subprocess.run(["cibuildwheel", "--platform", "linux"], cwd=self.
-            project_dir, env=env, check=True)
+        subprocess.run(
+            ["cibuildwheel", "--platform", "linux"],
+            cwd=self.project_dir,
+            env=env,
+            check=True,
+        )
 
-    def build_all(self, platforms: (list[str] | None) = None):
+    def build_all(self, platforms: list[str] | None = None):
         """Build wheels for all specified platforms."""
         if platforms is None:
             platforms = [self.detect_platform()]
@@ -132,12 +145,30 @@ class WheelBuilder:
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(description="Build wheels for treesitter-chunker")
-    parser.add_argument("--output", "-o", type=Path, default=Path("dist"),
-        help="Output directory for wheels")
-    parser.add_argument("--platform", "-p", choices=["auto", "manylinux",
-        "macos", "windows", "universal"], default="auto", help="Target platform")
-    parser.add_argument("--sdist-only", action="store_true", help="Only build source distribution")
-    parser.add_argument("--wheel-only", action="store_true", help="Only build wheel (no sdist)")
+    parser.add_argument(
+        "--output",
+        "-o",
+        type=Path,
+        default=Path("dist"),
+        help="Output directory for wheels",
+    )
+    parser.add_argument(
+        "--platform",
+        "-p",
+        choices=["auto", "manylinux", "macos", "windows", "universal"],
+        default="auto",
+        help="Target platform",
+    )
+    parser.add_argument(
+        "--sdist-only",
+        action="store_true",
+        help="Only build source distribution",
+    )
+    parser.add_argument(
+        "--wheel-only",
+        action="store_true",
+        help="Only build wheel (no sdist)",
+    )
     args = parser.parse_args()
     project_dir = Path(__file__).parent.parent.absolute()
     builder = WheelBuilder(project_dir, args.output)

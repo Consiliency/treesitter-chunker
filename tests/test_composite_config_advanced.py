@@ -1,12 +1,17 @@
 """Advanced tests for CompositeLanguageConfig."""
+
 from chunker.languages.base import ChunkRule, CompositeLanguageConfig, LanguageConfig
 
 
 class MockLanguageConfig(LanguageConfig):
     """Mock language configuration for testing."""
 
-    def __init__(self, language_id: str, chunk_types: set[str],
-        ignore_types: (set[str] | None) = None):
+    def __init__(
+        self,
+        language_id: str,
+        chunk_types: set[str],
+        ignore_types: set[str] | None = None,
+    ):
         self._language_id = language_id
         self._chunk_types = chunk_types
         self._ignore_types = ignore_types or set()
@@ -40,23 +45,46 @@ class TestCompositeConfigAdvanced:
     @classmethod
     def test_diamond_inheritance(cls):
         """Test diamond inheritance pattern resolution."""
-        base = MockLanguageConfig(language_id="base", chunk_types={
-            "base_function"}, ignore_types={"base_ignore"})
-        base.add_chunk_rule(ChunkRule(node_types={"base_rule"}, priority=5,
-            metadata={"source": "base"}))
+        base = MockLanguageConfig(
+            language_id="base",
+            chunk_types={"base_function"},
+            ignore_types={"base_ignore"},
+        )
+        base.add_chunk_rule(
+            ChunkRule(
+                node_types={"base_rule"},
+                priority=5,
+                metadata={"source": "base"},
+            ),
+        )
         left = MockCompositeConfig("left", base)
         left.add_chunk_type("left_function")
         left.add_ignore_type("left_ignore")
-        left.add_chunk_rule(ChunkRule(node_types={"left_rule"}, priority=10,
-            metadata={"source": "left"}))
+        left.add_chunk_rule(
+            ChunkRule(
+                node_types={"left_rule"},
+                priority=10,
+                metadata={"source": "left"},
+            ),
+        )
         right = MockCompositeConfig("right", base)
         right.add_chunk_type("right_function")
         right.add_ignore_type("right_ignore")
-        right.add_chunk_rule(ChunkRule(node_types={"right_rule"}, priority=8, metadata={"source": "right"}))
+        right.add_chunk_rule(
+            ChunkRule(
+                node_types={"right_rule"},
+                priority=8,
+                metadata={"source": "right"},
+            ),
+        )
         diamond = MockCompositeConfig("diamond", left, right)
         diamond.add_chunk_type("diamond_function")
-        expected_chunks = {"base_function", "left_function",
-            "right_function", "diamond_function"}
+        expected_chunks = {
+            "base_function",
+            "left_function",
+            "right_function",
+            "diamond_function",
+        }
         assert diamond.chunk_types == expected_chunks
         expected_ignores = {"base_ignore", "left_ignore", "right_ignore"}
         assert diamond.ignore_types == expected_ignores
@@ -84,16 +112,18 @@ class TestCompositeConfigAdvanced:
         """Test performance and correctness with deep inheritance."""
         configs = []
         base = MockLanguageConfig("level_0", {"func_0"})
-        base.add_chunk_rule(ChunkRule(node_types={"rule_0"}, priority=0,
-            metadata={"level": 0}))
+        base.add_chunk_rule(
+            ChunkRule(node_types={"rule_0"}, priority=0, metadata={"level": 0}),
+        )
         configs.append(base)
         for i in range(1, 20):
             parent = configs[i - 1]
             config = MockCompositeConfig(f"level_{i}", parent)
             config.add_chunk_type(f"func_{i}")
             config.add_ignore_type(f"ignore_{i}")
-            config.add_chunk_rule(ChunkRule(node_types={f"rule_{i}"},
-                priority=i, metadata={"level": i}))
+            config.add_chunk_rule(
+                ChunkRule(node_types={f"rule_{i}"}, priority=i, metadata={"level": i}),
+            )
             configs.append(config)
         deepest = configs[-1]
         assert len(deepest.chunk_types) == 20
@@ -111,11 +141,21 @@ class TestCompositeConfigAdvanced:
     def test_multiple_inheritance_order(cls):
         """Test that parent order matters in multiple inheritance."""
         config1 = MockLanguageConfig("config1", {"shared_func"})
-        config1.add_chunk_rule(ChunkRule(node_types={"shared_rule"},
-            priority=5, metadata={"from": "config1", "value": 1}))
+        config1.add_chunk_rule(
+            ChunkRule(
+                node_types={"shared_rule"},
+                priority=5,
+                metadata={"from": "config1", "value": 1},
+            ),
+        )
         config2 = MockLanguageConfig("config2", {"shared_func"})
-        config2.add_chunk_rule(ChunkRule(node_types={"shared_rule"},
-            priority=5, metadata={"from": "config2", "value": 2}))
+        config2.add_chunk_rule(
+            ChunkRule(
+                node_types={"shared_rule"},
+                priority=5,
+                metadata={"from": "config2", "value": 2},
+            ),
+        )
         child1 = MockCompositeConfig("child1", config1, config2)
         child2 = MockCompositeConfig("child2", config2, config1)
         assert child1.chunk_types == child2.chunk_types

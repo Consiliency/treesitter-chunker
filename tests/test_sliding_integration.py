@@ -1,4 +1,5 @@
 """Integration tests for sliding window fallback system."""
+
 import tempfile
 from pathlib import Path
 
@@ -35,10 +36,19 @@ class MockMarkdownProcessor(TextProcessor):
         for i, line in enumerate(lines):
             if line.startswith("#") and current_section:
                 chunk_content = "".join(current_section)
-                chunk = CodeChunk(language="markdown", file_path=file_path,
-                    node_type="markdown_section", start_line=current_start +
-                    1, end_line=i, byte_start=0, byte_end=len(chunk_content,
-                    ), parent_context=f"section_{current_start}", content=chunk_content)
+                chunk = CodeChunk(
+                    language="markdown",
+                    file_path=file_path,
+                    node_type="markdown_section",
+                    start_line=current_start + 1,
+                    end_line=i,
+                    byte_start=0,
+                    byte_end=len(
+                        chunk_content,
+                    ),
+                    parent_context=f"section_{current_start}",
+                    content=chunk_content,
+                )
                 chunks.append(chunk)
                 current_section = [line]
                 current_start = i
@@ -46,11 +56,17 @@ class MockMarkdownProcessor(TextProcessor):
                 current_section.append(line)
         if current_section:
             chunk_content = "".join(current_section)
-            chunk = CodeChunk(language="markdown", file_path=file_path,
-                node_type="markdown_section", start_line=current_start + 1,
-                end_line=len(lines), byte_start=0, byte_end=len(
-                chunk_content), parent_context=f"section_{current_start}",
-                content=chunk_content)
+            chunk = CodeChunk(
+                language="markdown",
+                file_path=file_path,
+                node_type="markdown_section",
+                start_line=current_start + 1,
+                end_line=len(lines),
+                byte_start=0,
+                byte_end=len(chunk_content),
+                parent_context=f"section_{current_start}",
+                content=chunk_content,
+            )
             chunks.append(chunk)
         return chunks
 
@@ -60,8 +76,13 @@ class MockLogProcessor(TextProcessor):
 
     @staticmethod
     def can_process(content: str, file_path: str) -> bool:
-        return file_path.endswith(".log",
-            ) or "[ERROR]" in content or "[INFO]" in content
+        return (
+            file_path.endswith(
+                ".log",
+            )
+            or "[ERROR]" in content
+            or "[INFO]" in content
+        )
 
     @classmethod
     def process(cls, content: str, file_path: str) -> list[CodeChunk]:
@@ -80,10 +101,17 @@ class MockLogProcessor(TextProcessor):
                 level = "DEBUG"
             if level and level != current_level and current_chunk:
                 chunk_content = "".join(current_chunk)
-                chunk = CodeChunk(language="log", file_path=file_path,
+                chunk = CodeChunk(
+                    language="log",
+                    file_path=file_path,
                     node_type=f"log_{current_level or 'unknown'}",
-                    start_line=current_start + 1, end_line=i, byte_start=0,
-                    byte_end=len(chunk_content), parent_context=f"log_group_{current_start}", content=chunk_content)
+                    start_line=current_start + 1,
+                    end_line=i,
+                    byte_start=0,
+                    byte_end=len(chunk_content),
+                    parent_context=f"log_group_{current_start}",
+                    content=chunk_content,
+                )
                 chunks.append(chunk)
                 current_chunk = [line]
                 current_start = i
@@ -94,9 +122,17 @@ class MockLogProcessor(TextProcessor):
                     current_level = level
         if current_chunk:
             chunk_content = "".join(current_chunk)
-            chunk = CodeChunk(language="log", file_path=file_path,
-                node_type=f"log_{current_level or 'unknown'}", start_line=current_start + 1, end_line=len(lines), byte_start=0,
-                byte_end=len(chunk_content), parent_context=f"log_group_{current_start}", content=chunk_content)
+            chunk = CodeChunk(
+                language="log",
+                file_path=file_path,
+                node_type=f"log_{current_level or 'unknown'}",
+                start_line=current_start + 1,
+                end_line=len(lines),
+                byte_start=0,
+                byte_end=len(chunk_content),
+                parent_context=f"log_group_{current_start}",
+                content=chunk_content,
+            )
             chunks.append(chunk)
         return chunks
 
@@ -105,13 +141,13 @@ class TestSlidingWindowIntegration:
     """Test sliding window fallback integration."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def fallback(cls):
         """Create sliding window fallback instance."""
         return SlidingWindowFallback()
 
     @staticmethod
-    @pytest.fixture
+    @pytest.fixture()
     def temp_dir():
         """Create temporary directory for test files."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -121,8 +157,14 @@ class TestSlidingWindowIntegration:
     def test_processor_registry(cls):
         """Test processor registry functionality."""
         registry = ProcessorRegistry()
-        proc_info = ProcessorInfo(name="test_processor", processor_type=ProcessorType.CUSTOM, processor_class=MockMarkdownProcessor,
-            supported_file_types={FileType.MARKDOWN}, supported_extensions={".md", ".markdown"}, priority=100)
+        proc_info = ProcessorInfo(
+            name="test_processor",
+            processor_type=ProcessorType.CUSTOM,
+            processor_class=MockMarkdownProcessor,
+            supported_file_types={FileType.MARKDOWN},
+            supported_extensions={".md", ".markdown"},
+            priority=100,
+        )
         registry.register(proc_info)
         processor = registry.get_processor("test_processor")
         assert processor is not None
@@ -138,8 +180,9 @@ class TestSlidingWindowIntegration:
     @classmethod
     def test_generic_sliding_window_processor(cls):
         """Test generic sliding window processor."""
-        processor = GenericSlidingWindowProcessor({"window_size": 100,
-            "overlap": 20, "preserve_words": True})
+        processor = GenericSlidingWindowProcessor(
+            {"window_size": 100, "overlap": 20, "preserve_words": True},
+        )
         assert processor.can_process("any content", "any_file.txt")
         small_content = "This is a small text file."
         chunks = processor.process(small_content, "test.txt")
@@ -154,10 +197,20 @@ class TestSlidingWindowIntegration:
     @classmethod
     def test_processor_selection(cls, fallback, temp_dir):
         """Test automatic processor selection."""
-        fallback.register_custom_processor("test_markdown",
-            MockMarkdownProcessor, {FileType.MARKDOWN}, {".md"}, priority=100)
-        fallback.register_custom_processor("test_log", MockLogProcessor, {
-            FileType.LOG}, {".log"}, priority=100)
+        fallback.register_custom_processor(
+            "test_markdown",
+            MockMarkdownProcessor,
+            {FileType.MARKDOWN},
+            {".md"},
+            priority=100,
+        )
+        fallback.register_custom_processor(
+            "test_log",
+            MockLogProcessor,
+            {FileType.LOG},
+            {".log"},
+            priority=100,
+        )
         md_file = Path(temp_dir) / "test.md"
         md_content = "# Header 1\nContent 1\n\n# Header 2\nContent 2"
         chunks = fallback.chunk_text(md_content, md_file)
@@ -166,22 +219,25 @@ class TestSlidingWindowIntegration:
         assert chunks[0].content.startswith("# Header 1")
         assert chunks[1].content.startswith("# Header 2")
         log_file = Path(temp_dir) / "test.log"
-        log_content = (
-            "[INFO] Starting\n[ERROR] Failed\n[ERROR] Retry\n[INFO] Done")
+        log_content = "[INFO] Starting\n[ERROR] Failed\n[ERROR] Retry\n[INFO] Done"
         chunks = fallback.chunk_text(log_content, log_file)
         assert len(chunks) > 0
         assert chunks[0].metadata["processor"] == "test_log"
         txt_file = Path(temp_dir) / "test.txt"
-        txt_content = (
-            "Just some plain text content that doesn't match any pattern.")
+        txt_content = "Just some plain text content that doesn't match any pattern."
         chunks = fallback.chunk_text(txt_content, txt_file)
         assert len(chunks) >= 1
 
     @staticmethod
     def test_processor_enabling_disabling(fallback):
         """Test enabling and disabling processors."""
-        fallback.register_custom_processor("test_proc",
-            MockMarkdownProcessor, {FileType.MARKDOWN}, {".md"}, priority=100)
+        fallback.register_custom_processor(
+            "test_proc",
+            MockMarkdownProcessor,
+            {FileType.MARKDOWN},
+            {".md"},
+            priority=100,
+        )
         info = fallback.get_processor_info("test.md")
         procs = [p for p in info["processors"] if p["name"] == "test_proc"]
         assert len(procs) == 1
@@ -196,12 +252,21 @@ class TestSlidingWindowIntegration:
     @staticmethod
     def test_processor_chain(fallback):
         """Test processor chaining for hybrid processing."""
-        fallback.register_custom_processor("markdown_proc",
-            MockMarkdownProcessor, {FileType.MARKDOWN}, {".md"}, priority=100)
-        fallback.register_custom_processor("generic_proc",
-            GenericSlidingWindowProcessor, set(FileType), set(), priority=10)
-        chain = fallback.create_processor_chain(["markdown_proc",
-            "generic_proc"])
+        fallback.register_custom_processor(
+            "markdown_proc",
+            MockMarkdownProcessor,
+            {FileType.MARKDOWN},
+            {".md"},
+            priority=100,
+        )
+        fallback.register_custom_processor(
+            "generic_proc",
+            GenericSlidingWindowProcessor,
+            set(FileType),
+            set(),
+            priority=10,
+        )
+        chain = fallback.create_processor_chain(["markdown_proc", "generic_proc"])
         assert chain is not None
         assert len(chain.processors) == 2
         content = "# Header\nSome content\n\n# Another Header\nMore content"
@@ -211,16 +276,28 @@ class TestSlidingWindowIntegration:
     @classmethod
     def test_configuration_integration(cls, temp_dir):
         """Test integration with ChunkerConfig."""
-        config_data = {"chunker": {"plugin_dirs": [temp_dir]}, "processors":
-            {"test_markdown": {"enabled": True, "priority": 150, "config":
-            {"max_chunk_size": 500}}}}
+        config_data = {
+            "chunker": {"plugin_dirs": [temp_dir]},
+            "processors": {
+                "test_markdown": {
+                    "enabled": True,
+                    "priority": 150,
+                    "config": {"max_chunk_size": 500},
+                },
+            },
+        }
         config_path = Path(temp_dir) / "chunker.config.yaml"
         with Path(config_path).open("w", encoding="utf-8") as f:
             yaml.dump(config_data, f)
         chunker_config = ChunkerConfig(config_path)
         fallback = SlidingWindowFallback(chunker_config=chunker_config)
-        fallback.register_custom_processor("test_markdown",
-            MockMarkdownProcessor, {FileType.MARKDOWN}, {".md"}, priority=100)
+        fallback.register_custom_processor(
+            "test_markdown",
+            MockMarkdownProcessor,
+            {FileType.MARKDOWN},
+            {".md"},
+            priority=100,
+        )
         proc_info = fallback.registry._processors.get("test_markdown")
         assert proc_info is not None
         assert proc_info.priority == 100
@@ -232,14 +309,20 @@ class TestSlidingWindowIntegration:
         class ErrorProcessor(TextProcessor):
 
             @staticmethod
-            def can_process(content: str, file_path: str) -> bool:
+            def can_process(_content: str, _file_path: str) -> bool:
                 return True
 
             @classmethod
             def process(cls, content: str, file_path: str) -> list[CodeChunk]:
                 raise RuntimeError("Processing failed")
-        fallback.register_custom_processor("error_proc", ErrorProcessor, {
-            FileType.TEXT}, {".txt"}, priority=200)
+
+        fallback.register_custom_processor(
+            "error_proc",
+            ErrorProcessor,
+            {FileType.TEXT},
+            {".txt"},
+            priority=200,
+        )
         content = "Some text content"
         chunks = fallback.chunk_text(content, "test.txt")
         assert len(chunks) > 0
@@ -248,15 +331,24 @@ class TestSlidingWindowIntegration:
     @staticmethod
     def test_processor_info_api(fallback):
         """Test processor info API."""
-        fallback.register_custom_processor("md_proc", MockMarkdownProcessor,
-            {FileType.MARKDOWN}, {".md"}, priority=100)
-        fallback.register_custom_processor("log_proc", MockLogProcessor, {
-            FileType.LOG}, {".log"}, priority=90)
+        fallback.register_custom_processor(
+            "md_proc",
+            MockMarkdownProcessor,
+            {FileType.MARKDOWN},
+            {".md"},
+            priority=100,
+        )
+        fallback.register_custom_processor(
+            "log_proc",
+            MockLogProcessor,
+            {FileType.LOG},
+            {".log"},
+            priority=90,
+        )
         info = fallback.get_processor_info("test.md")
         assert info["file_type"] == FileType.MARKDOWN.value
         assert "md_proc" in info["available_processors"]
-        md_proc_info = next(p for p in info["processors"] if p["name"] ==
-            "md_proc")
+        md_proc_info = next(p for p in info["processors"] if p["name"] == "md_proc")
         assert md_proc_info["type"] == ProcessorType.CUSTOM.value
         assert md_proc_info["priority"] == 100
         assert md_proc_info["enabled"]
@@ -286,8 +378,14 @@ class TestProcessorPerformance:
     def test_processor_caching(cls):
         """Test that processors are cached properly."""
         registry = ProcessorRegistry()
-        proc_info = ProcessorInfo(name="cached_proc", processor_type=ProcessorType.CUSTOM, processor_class=MockMarkdownProcessor,
-            supported_file_types={FileType.MARKDOWN}, supported_extensions={".md"}, priority=50)
+        proc_info = ProcessorInfo(
+            name="cached_proc",
+            processor_type=ProcessorType.CUSTOM,
+            processor_class=MockMarkdownProcessor,
+            supported_file_types={FileType.MARKDOWN},
+            supported_extensions={".md"},
+            priority=50,
+        )
         registry.register(proc_info)
         proc1 = registry.get_processor("cached_proc")
         proc2 = registry.get_processor("cached_proc")
@@ -296,10 +394,8 @@ class TestProcessorPerformance:
     @classmethod
     def test_large_file_processing(cls, fallback):
         """Test processing of large files."""
-        large_content = "\n".join([(f"Line {i}: " + "x" * 100) for i in
-            range(1000)])
-        processor = GenericSlidingWindowProcessor({"window_size": 1000,
-            "overlap": 100})
+        large_content = "\n".join([(f"Line {i}: " + "x" * 100) for i in range(1000)])
+        processor = GenericSlidingWindowProcessor({"window_size": 1000, "overlap": 100})
         chunks = processor.process(large_content, "large.txt")
         total_coverage = set()
         for chunk in chunks:
@@ -317,12 +413,22 @@ class TestIntegrationScenarios:
     def test_mixed_content_repository(cls, temp_dir):
         """Test processing a repository with mixed file types."""
         fallback = SlidingWindowFallback()
-        fallback.register_custom_processor("md_processor",
-            MockMarkdownProcessor, {FileType.MARKDOWN}, {".md"}, priority=100)
-        fallback.register_custom_processor("log_processor",
-            MockLogProcessor, {FileType.LOG}, {".log"}, priority=100)
-        files = {"README.md":
-            "# Project\n\nDescription\n\n## Installation\n\nSteps...",
+        fallback.register_custom_processor(
+            "md_processor",
+            MockMarkdownProcessor,
+            {FileType.MARKDOWN},
+            {".md"},
+            priority=100,
+        )
+        fallback.register_custom_processor(
+            "log_processor",
+            MockLogProcessor,
+            {FileType.LOG},
+            {".log"},
+            priority=100,
+        )
+        files = {
+            "README.md": "# Project\n\nDescription\n\n## Installation\n\nSteps...",
             "app.log": """[INFO] Started
 [ERROR] Failed
 [INFO] Recovered""",
@@ -332,7 +438,8 @@ key=value
 key2=value2""",
             "data.txt": """Plain text data
 Multiple lines
-No special format"""}
+No special format""",
+        }
         results = {}
         for filename, content in files.items():
             file_path = Path(temp_dir) / filename

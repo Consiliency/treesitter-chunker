@@ -1,4 +1,5 @@
 """Unit tests for DeveloperToolingImpl."""
+
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
@@ -79,7 +80,12 @@ class TestDeveloperToolingImpl:
     @pytest.mark.parametrize("fix", [True, False])
     def test_format_code_with_valid_file(cls, fix):
         """Test format_code with a valid Python file"""
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
             f.write("def hello(  ):   print( 'hello'  )")
             f.flush()
             test_file = Path(f.name)
@@ -104,7 +110,12 @@ class TestDeveloperToolingImpl:
     @classmethod
     def test_run_linting_with_valid_file(cls):
         """Test run_linting with a valid Python file"""
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
             f.write("import os\nimport sys\n\nx = 1")
             f.flush()
             test_file = Path(f.name)
@@ -118,9 +129,13 @@ class TestDeveloperToolingImpl:
     @classmethod
     def test_run_type_checking_with_valid_file(cls):
         """Test run_type_checking with a valid Python file"""
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
-            f.write(
-                "def add(a: int, b: int) -> int:\n    return a + b + 'string'")
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
+            f.write("def add(a: int, b: int) -> int:\n    return a + b + 'string'")
             f.flush()
             test_file = Path(f.name)
         try:
@@ -133,7 +148,12 @@ class TestDeveloperToolingImpl:
     @classmethod
     def test_run_pre_commit_checks_integration(cls):
         """Test full pre-commit check flow"""
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
             f.write(
                 """
 def hello(name: str) -> str:
@@ -143,7 +163,7 @@ def hello(name: str) -> str:
 if __name__ == "__main__":
     print(hello("World"))
 """,
-                )
+            )
             f.flush()
             test_file = Path(f.name)
         try:
@@ -173,7 +193,12 @@ if __name__ == "__main__":
     def test_format_code_handles_subprocess_error(cls, mock_run):
         """Test format_code handles subprocess errors gracefully"""
         mock_run.side_effect = Exception("Command failed")
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
             f.write("print('test')")
             f.flush()
             test_file = Path(f.name)
@@ -191,7 +216,12 @@ if __name__ == "__main__":
     def test_run_linting_handles_subprocess_error(cls, mock_run):
         """Test run_linting handles subprocess errors gracefully"""
         mock_run.side_effect = Exception("Command failed")
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
             f.write("print('test')")
             f.flush()
             test_file = Path(f.name)
@@ -207,7 +237,12 @@ if __name__ == "__main__":
     def test_run_type_checking_handles_subprocess_error(cls, mock_run):
         """Test run_type_checking handles subprocess errors gracefully"""
         mock_run.side_effect = Exception("Command failed")
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
             f.write("print('test')")
             f.flush()
             test_file = Path(f.name)

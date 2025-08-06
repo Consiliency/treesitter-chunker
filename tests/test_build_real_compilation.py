@@ -1,6 +1,7 @@
 """
 Test actual grammar compilation
 """
+
 import tempfile
 from pathlib import Path
 
@@ -20,8 +21,11 @@ class TestRealCompilation:
         platform_info = platform_support.detect_platform()
         with tempfile.TemporaryDirectory() as tmpdir:
             output_dir = Path(tmpdir)
-            success, build_info = build_system.compile_grammars(languages=[
-                "python"], platform=platform_info["os"], output_dir=output_dir)
+            success, build_info = build_system.compile_grammars(
+                languages=["python"],
+                platform=platform_info["os"],
+                output_dir=output_dir,
+            )
             if success:
                 assert "libraries" in build_info
                 assert "combined" in build_info["libraries"]
@@ -44,9 +48,11 @@ class TestRealCompilation:
         platform_info = platform_support.detect_platform()
         with tempfile.TemporaryDirectory() as tmpdir:
             output_dir = Path(tmpdir)
-            success, build_info = build_system.compile_grammars(languages=[
-                "python", "javascript", "rust"], platform=platform_info[
-                "os"], output_dir=output_dir)
+            success, build_info = build_system.compile_grammars(
+                languages=["python", "javascript", "rust"],
+                platform=platform_info["os"],
+                output_dir=output_dir,
+            )
             assert isinstance(success, bool)
             assert isinstance(build_info, dict)
             if success:
@@ -63,11 +69,16 @@ class TestRealCompilation:
         platform_info = platform_support.detect_platform()
         with tempfile.TemporaryDirectory() as tmpdir:
             output_dir = Path(tmpdir)
-            success, wheel_path = build_system.build_wheel(platform=platform_info["os"], python_version=platform_info[
-                "python_tag"], output_dir=output_dir)
+            success, wheel_path = build_system.build_wheel(
+                platform=platform_info["os"],
+                python_version=platform_info["python_tag"],
+                output_dir=output_dir,
+            )
             if success and wheel_path.exists():
                 verify_success, verify_info = build_system.verify_build(
-                    artifact_path=wheel_path, platform=platform_info["os"])
+                    artifact_path=wheel_path,
+                    platform=platform_info["os"],
+                )
                 assert isinstance(verify_success, bool)
                 assert isinstance(verify_info, dict)
                 if verify_success:
@@ -84,7 +95,11 @@ class TestRealCompilation:
         current_os = platform_info["os"]
         with tempfile.TemporaryDirectory() as tmpdir:
             output_dir = Path(tmpdir)
-            _success, build_info = build_system.compile_grammars(languages=["python"], platform=current_os, output_dir=output_dir)
+            _success, build_info = build_system.compile_grammars(
+                languages=["python"],
+                platform=current_os,
+                output_dir=output_dir,
+            )
             assert build_info["platform"] == current_os
             assert build_info["compiler"] != "unknown"
             assert build_info["compiler"] == platform_info["compiler"]

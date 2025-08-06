@@ -43,8 +43,8 @@ def main():
         sys.exit(1)
 
     try:
-        from elevenlabs import play  # noqa: E402,PLC0415
-        from elevenlabs.client import ElevenLabs  # noqa: E402,PLC0415
+        from elevenlabs import play  # noqa: PLC0415
+        from elevenlabs.client import ElevenLabs  # noqa: PLC0415
 
         # Initialize client
         elevenlabs = ElevenLabs(api_key=api_key)
@@ -80,7 +80,7 @@ def main():
             print(f"❌ Error: {e}")
             # Try with a different approach using voice name
             try:
-                from elevenlabs import generate, play  # noqa: E402,PLC0415
+                from elevenlabs import generate, play  # noqa: PLC0415
 
                 audio = generate(text=text, voice="Rachel", model="eleven_turbo_v2")
                 play(audio)

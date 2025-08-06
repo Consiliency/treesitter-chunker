@@ -3,6 +3,7 @@
 Interfaces for managing Tree-sitter language grammars,
 including fetching, building, and versioning.
 """
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
@@ -11,6 +12,7 @@ from pathlib import Path
 
 class GrammarStatus(Enum):
     """Status of a grammar."""
+
     NOT_FOUND = "not_found"
     NOT_BUILT = "not_built"
     BUILDING = "building"
@@ -32,6 +34,7 @@ class GrammarInfo:
         path: Path to compiled grammar file
         error: Error message if status is ERROR
     """
+
     name: str
     repository_url: str
     commit_hash: str | None = None
@@ -57,6 +60,7 @@ class NodeTypeInfo:
         fields: List of field names this node type has
         supertypes: Parent types in the grammar hierarchy
     """
+
     name: str
     is_named: bool
     has_children: bool
@@ -69,8 +73,11 @@ class GrammarManager(ABC):
 
     @staticmethod
     @abstractmethod
-    def add_grammar(name: str, repository_url: str, commit_hash: (str |
-        None) = None) -> GrammarInfo:
+    def add_grammar(
+        name: str,
+        repository_url: str,
+        commit_hash: str | None = None,
+    ) -> GrammarInfo:
         """Add a new grammar to manage.
 
         Args:
@@ -108,7 +115,7 @@ class GrammarManager(ABC):
 
     @staticmethod
     @abstractmethod
-    def get_grammar_info(name: str) -> (GrammarInfo | None):
+    def get_grammar_info(name: str) -> GrammarInfo | None:
         """Get information about a grammar.
 
         Args:
@@ -120,7 +127,7 @@ class GrammarManager(ABC):
 
     @staticmethod
     @abstractmethod
-    def list_grammars(status: (GrammarStatus | None) = None) -> list[GrammarInfo]:
+    def list_grammars(status: GrammarStatus | None = None) -> list[GrammarInfo]:
         """List all managed grammars.
 
         Args:
@@ -214,7 +221,7 @@ class GrammarBuilder(ABC):
 
     @staticmethod
     @abstractmethod
-    def clean(language: (str | None) = None) -> None:
+    def clean(language: str | None = None) -> None:
         """Clean build artifacts.
 
         Args:
@@ -223,7 +230,7 @@ class GrammarBuilder(ABC):
 
     @staticmethod
     @abstractmethod
-    def get_build_log(language: str) -> (str | None):
+    def get_build_log(language: str) -> str | None:
         """Get build log for a language.
 
         Args:
@@ -263,7 +270,7 @@ class GrammarRepository(ABC):
 
     @staticmethod
     @abstractmethod
-    def get_grammar_by_extension(extension: str) -> (GrammarInfo | None):
+    def get_grammar_by_extension(extension: str) -> GrammarInfo | None:
         """Find grammar for a file extension.
 
         Args:
@@ -300,8 +307,7 @@ class GrammarValidator(ABC):
 
     @staticmethod
     @abstractmethod
-    def validate_node_types(language: str, expected_types: set[str]) -> list[str
-        ]:
+    def validate_node_types(language: str, expected_types: set[str]) -> list[str]:
         """Validate expected node types exist.
 
         Args:

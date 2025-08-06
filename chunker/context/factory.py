@@ -1,5 +1,7 @@
 """Factory for creating language-specific context extractors."""
 
+from typing import ClassVar
+
 from chunker.interfaces.context import (
     ContextExtractor,
     ContextFilter,
@@ -25,22 +27,22 @@ class ContextFactory:
     """Factory for creating language-specific context components."""
 
     # Registry of language implementations
-    _extractors: dict[str, type[ContextExtractor]] = {
+    _extractors: ClassVar[dict[str, type[ContextExtractor]]] = {
         "python": PythonContextExtractor,
         "javascript": JavaScriptContextExtractor,
     }
 
-    _symbol_resolvers: dict[str, type[SymbolResolver]] = {
+    _symbol_resolvers: ClassVar[dict[str, type[SymbolResolver]]] = {
         "python": PythonSymbolResolver,
         "javascript": JavaScriptSymbolResolver,
     }
 
-    _scope_analyzers: dict[str, type[ScopeAnalyzer]] = {
+    _scope_analyzers: ClassVar[dict[str, type[ScopeAnalyzer]]] = {
         "python": PythonScopeAnalyzer,
         "javascript": JavaScriptScopeAnalyzer,
     }
 
-    _context_filters: dict[str, type[ContextFilter]] = {
+    _context_filters: ClassVar[dict[str, type[ContextFilter]]] = {
         "python": PythonContextFilter,
         "javascript": JavaScriptContextFilter,
     }

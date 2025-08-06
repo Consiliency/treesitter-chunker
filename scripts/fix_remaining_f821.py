@@ -14,7 +14,8 @@ def fix_static_method_with_self():
     # Get all F821 errors
     result = subprocess.run(
         ["ruff", "check", "--select", "F821", "--output-format", "json"],
-        check=False, capture_output=True,
+        check=False,
+        capture_output=True,
         text=True,
     )
 
@@ -63,19 +64,36 @@ def fix_static_method_with_self():
                             if "def " in method_def and "(self" not in method_def:
                                 # Handle various cases
                                 if "()" in method_def:
-                                    lines[method_line] = method_def.replace("()", "(self)")
+                                    lines[method_line] = method_def.replace(
+                                        "()",
+                                        "(self)",
+                                    )
                                 else:
                                     # Insert self as first parameter
-                                    match = re.match(r"(\s*def\s+\w+\s*\()(.*)(\)\s*.*:.*)", method_def)
+                                    match = re.match(
+                                        r"(\s*def\s+\w+\s*\()(.*)(\)\s*.*:.*)",
+                                        method_def,
+                                    )
                                     if match:
-                                        lines[method_line] = match.group(1) + "self, " + match.group(2) + match.group(3)
+                                        lines[method_line] = (
+                                            match.group(1)
+                                            + "self, "
+                                            + match.group(2)
+                                            + match.group(3)
+                                        )
                                     else:
                                         # Fallback
-                                        lines[method_line] = method_def.replace("(", "(self, ", 1)
+                                        lines[method_line] = method_def.replace(
+                                            "(",
+                                            "(self, ",
+                                            1,
+                                        )
 
                             modified = True
                             fixes_made += 1
-                            print(f"Fixed @staticmethod in {file_path}:{method_line + 1}")
+                            print(
+                                f"Fixed @staticmethod in {file_path}:{method_line + 1}",
+                            )
                             break
 
             if modified:
@@ -94,7 +112,8 @@ def fix_undefined_variables():
     # Get remaining F821 errors
     result = subprocess.run(
         ["ruff", "check", "--select", "F821", "--output-format", "json"],
-        check=False, capture_output=True,
+        check=False,
+        capture_output=True,
         text=True,
     )
 
@@ -118,11 +137,13 @@ def fix_undefined_variables():
             match = re.search(r"Undefined name `(\w+)`", error["message"])
             if match:
                 undefined_name = match.group(1)
-                files_to_fix[file_path].append({
-                    "line": error["location"]["row"],
-                    "name": undefined_name,
-                    "message": error["message"],
-                })
+                files_to_fix[file_path].append(
+                    {
+                        "line": error["location"]["row"],
+                        "name": undefined_name,
+                        "message": error["message"],
+                    },
+                )
 
     # Common fixes
     common_imports = {
@@ -210,10 +231,14 @@ def fix_undefined_variables():
                     if line.startswith("from __future__ import"):
                         has_future_import = True
                         insert_pos = i + 1
-                    elif line.startswith("import ") or line.startswith("from "):
+                    elif line.startswith(("import ", "from ")):
                         if not has_future_import:
                             insert_pos = i + 1
-                    elif line.strip() and not line.strip().startswith("#") and not line.strip().startswith('"""'):
+                    elif (
+                        line.strip()
+                        and not line.strip().startswith("#")
+                        and not line.strip().startswith('"""')
+                    ):
                         if insert_pos == 0:
                             insert_pos = i
                         break
@@ -258,7 +283,8 @@ def main():
     # Check remaining errors
     result = subprocess.run(
         ["ruff", "check", "--select", "F821", "--statistics"],
-        check=False, capture_output=True,
+        check=False,
+        capture_output=True,
         text=True,
     )
 

@@ -6,6 +6,7 @@ This module tests:
 3. Memory usage with large config hierarchies
 4. Circular dependency detection edge cases
 """
+
 import gc
 import json
 import os
@@ -47,8 +48,11 @@ class TestPerformanceImpactOfConfigLookups:
                 self.lookup_count = 0
                 self.parse_time = 0
 
-            def parse_with_config_lookups(self, text: str, lookup_frequency:
-                int) -> list[dict]:
+            def parse_with_config_lookups(
+                self,
+                text: str,
+                lookup_frequency: int,
+            ) -> list[dict]:
                 """Parse text with config lookups every N tokens."""
                 start_time = time.time()
                 tokens = text.split()
@@ -60,8 +64,13 @@ class TestPerformanceImpactOfConfigLookups:
                         self._lookup_config("parser.enabled", True)
                         self._lookup_config("parser.language", "python")
                     if i % 50 == 0:
-                        chunks.append({"start": i, "end": min(i + 50, len(
-                            tokens)), "type": "function"})
+                        chunks.append(
+                            {
+                                "start": i,
+                                "end": min(i + 50, len(tokens)),
+                                "type": "function",
+                            },
+                        )
                 self.parse_time = time.time() - start_time
                 return chunks
 
@@ -75,32 +84,51 @@ class TestPerformanceImpactOfConfigLookups:
                     else:
                         return default
                 return value
+
         test_text = " ".join([f"token_{i}" for i in range(10000)])
-        config = {"parser": {"chunk_size": 500, "enabled": True, "language":
-            "python", "optimizations": {"cache_enabled": True, "parallel":
-            False}}, "languages": {"python": {"indent_size": 4,
-            "max_line_length": 120}}}
+        config = {
+            "parser": {
+                "chunk_size": 500,
+                "enabled": True,
+                "language": "python",
+                "optimizations": {"cache_enabled": True, "parallel": False},
+            },
+            "languages": {"python": {"indent_size": 4, "max_line_length": 120}},
+        }
         frequencies = [1, 10, 50, 100, 500]
         results = {}
         for freq in frequencies:
             parser = MockParser(config)
             chunks = parser.parse_with_config_lookups(test_text, freq)
-            results[freq] = {"parse_time": parser.parse_time,
-                "lookup_count": parser.lookup_count, "chunks_created": len(
-                chunks), "lookups_per_second": parser.lookup_count / parser
-                .parse_time if parser.parse_time > 0 else 0}
+            results[freq] = {
+                "parse_time": parser.parse_time,
+                "lookup_count": parser.lookup_count,
+                "chunks_created": len(chunks),
+                "lookups_per_second": (
+                    parser.lookup_count / parser.parse_time
+                    if parser.parse_time > 0
+                    else 0
+                ),
+            }
         baseline = results[500]
         for freq in frequencies:
             if freq != 500:
-                overhead = (results[freq]["parse_time"] - baseline[
-                    "parse_time"]) / baseline["parse_time"] * 100
+                overhead = (
+                    (results[freq]["parse_time"] - baseline["parse_time"])
+                    / baseline["parse_time"]
+                    * 100
+                )
                 print(
                     f"Lookup every {freq} tokens: {overhead:.1f}% overhead, {results[freq]['lookups_per_second']:.0f} lookups/sec",
-                    )
+                )
                 if freq == 1:
-                    assert overhead < 3000, f"Excessive overhead with frequent lookups: {overhead:.1f}%"
+                    assert (
+                        overhead < 3000
+                    ), f"Excessive overhead with frequent lookups: {overhead:.1f}%"
                 elif freq == 10:
-                    assert overhead < 500, f"High overhead with moderate lookups: {overhead:.1f}%"
+                    assert (
+                        overhead < 500
+                    ), f"High overhead with moderate lookups: {overhead:.1f}%"
 
     @staticmethod
     def test_config_caching_effectiveness():
@@ -137,28 +165,51 @@ class TestPerformanceImpactOfConfigLookups:
             def clear_cache(self):
                 """Clear the config cache."""
                 self.cache.clear()
-        config = {"parser": {"defaults": {"chunk_size": 1000, "timeout": 30,
-            }, "languages": {"python": {"chunk_types": ["function", "class",
-            ], "features": {"async": True, "type_hints": True}},
-            "javascript": {"chunk_types": ["function", "class", "arrow"],
-            "features": {"jsx": True, "typescript": False}}}}}
+
+        config = {
+            "parser": {
+                "defaults": {
+                    "chunk_size": 1000,
+                    "timeout": 30,
+                },
+                "languages": {
+                    "python": {
+                        "chunk_types": [
+                            "function",
+                            "class",
+                        ],
+                        "features": {"async": True, "type_hints": True},
+                    },
+                    "javascript": {
+                        "chunk_types": ["function", "class", "arrow"],
+                        "features": {"jsx": True, "typescript": False},
+                    },
+                },
+            },
+        }
         parser = CachedConfigParser(config)
-        common_keys = ["parser.defaults.chunk_size",
+        common_keys = [
+            "parser.defaults.chunk_size",
             "parser.languages.python.chunk_types",
-            "parser.languages.python.features.async", "parser.defaults.timeout",
-            ]
+            "parser.languages.python.features.async",
+            "parser.defaults.timeout",
+        ]
         for _ in range(100):
             for key in common_keys:
                 parser.lookup_with_cache(key)
-        first_pass_stats = {"hits": parser.cache_hits, "misses": parser.
-            cache_misses, "hit_rate": parser.cache_hits / parser.
-            total_lookups * 100}
+        first_pass_stats = {
+            "hits": parser.cache_hits,
+            "misses": parser.cache_misses,
+            "hit_rate": parser.cache_hits / parser.total_lookups * 100,
+        }
         for _ in range(1000):
             for key in common_keys:
                 parser.lookup_with_cache(key)
-        final_stats = {"hits": parser.cache_hits, "misses": parser.
-            cache_misses, "hit_rate": parser.cache_hits / parser.
-            total_lookups * 100}
+        final_stats = {
+            "hits": parser.cache_hits,
+            "misses": parser.cache_misses,
+            "hit_rate": parser.cache_hits / parser.total_lookups * 100,
+        }
         assert first_pass_stats["hit_rate"] > 70
         assert final_stats["hit_rate"] > 95
         assert parser.cache_misses == len(common_keys)
@@ -196,8 +247,10 @@ class TestPerformanceImpactOfConfigLookups:
                     return self.config.get(key, default)
                 finally:
                     self.lock.release()
-        config_store = ThreadSafeConfigStore({"chunk_size": 1000,
-            "parallel_threads": 4, "cache_enabled": True})
+
+        config_store = ThreadSafeConfigStore(
+            {"chunk_size": 1000, "parallel_threads": 4, "cache_enabled": True},
+        )
         results = queue.Queue()
         errors = queue.Queue()
 
@@ -211,11 +264,17 @@ class TestPerformanceImpactOfConfigLookups:
                     config_store.get("cache_enabled")
                     time.sleep(0.0001)
                     if i % 10 == 0:
-                        local_results.append({"segment": segment_id,
-                            "chunk": i // 10, "size": chunk_size})
+                        local_results.append(
+                            {
+                                "segment": segment_id,
+                                "chunk": i // 10,
+                                "size": chunk_size,
+                            },
+                        )
                 results.put(local_results)
             except (OSError, IndexError, KeyError) as e:
                 errors.put((segment_id, str(e)))
+
         thread_counts = [1, 2, 4, 8, 16]
         performance_results = {}
         for num_threads in thread_counts:
@@ -231,19 +290,22 @@ class TestPerformanceImpactOfConfigLookups:
             for t in threads:
                 t.join()
             elapsed = time.time() - start_time
-            performance_results[num_threads] = {"elapsed_time": elapsed,
+            performance_results[num_threads] = {
+                "elapsed_time": elapsed,
                 "total_accesses": config_store.access_count,
                 "contention_events": config_store.contention_events,
                 "max_wait_time": config_store.max_wait_time,
-                "accesses_per_second": config_store.access_count / elapsed}
+                "accesses_per_second": config_store.access_count / elapsed,
+            }
         single_thread_time = performance_results[1]["elapsed_time"]
         for num_threads in thread_counts[1:]:
-            speedup = single_thread_time / performance_results[num_threads][
-                "elapsed_time"]
+            speedup = (
+                single_thread_time / performance_results[num_threads]["elapsed_time"]
+            )
             efficiency = speedup / num_threads * 100
             print(
                 f"{num_threads} threads: {speedup:.2f}x speedup, {efficiency:.0f}% efficiency, {performance_results[num_threads]['contention_events']} contentions",
-                )
+            )
             if num_threads <= 4:
                 assert efficiency > 5, f"Poor scaling with {num_threads} threads"
             if num_threads <= 8:
@@ -257,9 +319,11 @@ class TestConfigHotReloadingDuringChunking:
     def test_hot_reload_during_chunking(tmp_path):
         """Test config reload while actively chunking files."""
         config_file = tmp_path / "chunker_config.json"
-        initial_config = {"chunk_size": 100, "chunk_types": ["function",
-            "class"], "languages": {"python": {"enabled": True,
-            "max_chunk_size": 200}}}
+        initial_config = {
+            "chunk_size": 100,
+            "chunk_types": ["function", "class"],
+            "languages": {"python": {"enabled": True, "max_chunk_size": 200}},
+        }
         config_file.write_text(json.dumps(initial_config))
 
         class ConfigAwareChunker:
@@ -285,11 +349,14 @@ class TestConfigHotReloadingDuringChunking:
                         old_config = self.config
                         self.config = new_config
                         self.config_version += 1
-                        self.config_reload_events.append({"timestamp": time
-                            .time(), "version": self.config_version,
-                            "active_chunking": self.active_chunking,
-                            "changes": self._diff_configs(old_config,
-                            new_config)})
+                        self.config_reload_events.append(
+                            {
+                                "timestamp": time.time(),
+                                "version": self.config_version,
+                                "active_chunking": self.active_chunking,
+                                "changes": self._diff_configs(old_config, new_config),
+                            },
+                        )
                         return True
                     return False
                 except (AttributeError, IndexError, KeyError):
@@ -298,13 +365,17 @@ class TestConfigHotReloadingDuringChunking:
             @staticmethod
             def _diff_configs(old: dict, new: dict) -> list[str]:
                 """Find differences between configs."""
-                changes = [f"{key}: {old.get(key)} -> {new.get(key)}" for
-                    key in set(old.keys()) | set(new.keys()) if old.get(key,
-                    ) != new.get(key)]
+                changes = [
+                    f"{key}: {old.get(key)} -> {new.get(key)}"
+                    for key in set(old.keys()) | set(new.keys())
+                    if old.get(
+                        key,
+                    )
+                    != new.get(key)
+                ]
                 return changes
 
-            def chunk_file(self, content: str, duration: float = 0.5) -> list[dict
-                ]:
+            def chunk_file(self, content: str, duration: float = 0.5) -> list[dict]:
                 """Chunk file content with config checks."""
                 self.active_chunking = True
                 start_time = time.time()
@@ -313,21 +384,26 @@ class TestConfigHotReloadingDuringChunking:
                     lines = content.split("\n")
                     chunk_size = self.config["chunk_size"]
                     i = 0
-                    while i < len(lines) and time.time(
-                        ) - start_time < duration:
+                    while i < len(lines) and time.time() - start_time < duration:
                         if i % 50 == 0 and self.reload_config():
                             chunk_size = self.config["chunk_size"]
                         chunk_end = min(i + chunk_size, len(lines))
-                        chunks.append({"start_line": i, "end_line":
-                            chunk_end, "size": chunk_end - i,
-                            "config_version": self.config_version, "type":
-                            "block"})
+                        chunks.append(
+                            {
+                                "start_line": i,
+                                "end_line": chunk_end,
+                                "size": chunk_end - i,
+                                "config_version": self.config_version,
+                                "type": "block",
+                            },
+                        )
                         i = chunk_end
                         self.chunks_processed += 1
                         time.sleep(0.01)
                 finally:
                     self.active_chunking = False
                 return chunks
+
         chunker = ConfigAwareChunker(config_file)
         test_content = "\n".join([f"line {i}" for i in range(1000)])
         chunking_done = threading.Event()
@@ -341,6 +417,7 @@ class TestConfigHotReloadingDuringChunking:
                 chunking_result["error"] = e
             finally:
                 chunking_done.set()
+
         chunk_thread = threading.Thread(target=chunk_async)
         chunk_thread.start()
         time.sleep(0.2)
@@ -363,7 +440,7 @@ class TestConfigHotReloadingDuringChunking:
         if len(chunker.config_reload_events) == 0:
             print(
                 "Warning: No config reload events detected - chunking may have been too fast",
-                )
+            )
         else:
             assert len(chunker.config_reload_events) >= 1
         for event in chunker.config_reload_events:
@@ -384,8 +461,7 @@ class TestConfigHotReloadingDuringChunking:
         class AtomicConfigManager:
 
             def __init__(self):
-                self.config = {"version": 1, "settings": {"a": 1, "b": 2,
-                    "c": 3}}
+                self.config = {"version": 1, "settings": {"a": 1, "b": 2, "c": 3}}
                 self.lock = threading.RLock()
                 self.reload_in_progress = False
                 self.access_during_reload = 0
@@ -406,6 +482,7 @@ class TestConfigHotReloadingDuringChunking:
                         self.config = new_config
                     finally:
                         self.reload_in_progress = False
+
         manager = AtomicConfigManager()
         inconsistencies = []
 
@@ -414,25 +491,31 @@ class TestConfigHotReloadingDuringChunking:
             for _i in range(iterations):
                 config = manager.get_config()
                 if "version" not in config or "settings" not in config:
-                    inconsistencies.append(
-                        f"Missing keys in thread {thread_id}")
+                    inconsistencies.append(f"Missing keys in thread {thread_id}")
                 version = config.get("version", 0)
                 expected_sum = version * 6
                 actual_sum = sum(config.get("settings", {}).values())
                 if actual_sum != expected_sum:
                     inconsistencies.append(
                         f"Thread {thread_id}: Version {version} has sum {actual_sum}, expected {expected_sum}",
-                        )
+                    )
                 time.sleep(0.001)
 
         def reloader_thread(iterations: int):
             """Reload config periodically."""
             for i in range(iterations):
                 new_version = i + 2
-                new_config = {"version": new_version, "settings": {"a":
-                    new_version, "b": new_version * 2, "c": new_version * 3}}
+                new_config = {
+                    "version": new_version,
+                    "settings": {
+                        "a": new_version,
+                        "b": new_version * 2,
+                        "c": new_version * 3,
+                    },
+                }
                 manager.reload_config(new_config)
                 time.sleep(0.05)
+
         threads = []
         for i in range(5):
             t = threading.Thread(target=reader_thread, args=(i, 100))
@@ -443,12 +526,16 @@ class TestConfigHotReloadingDuringChunking:
         t.start()
         for t in threads:
             t.join()
-        assert len(inconsistencies,
-            ) == 0, f"Config inconsistencies: {inconsistencies}"
+        assert (
+            len(
+                inconsistencies,
+            )
+            == 0
+        ), f"Config inconsistencies: {inconsistencies}"
         if manager.access_during_reload == 0:
             print(
                 "Warning: No accesses during reload detected - timing dependent",
-                )
+            )
 
 
 class TestMemoryUsageWithLargeConfigHierarchies:
@@ -469,9 +556,9 @@ class TestMemoryUsageWithLargeConfigHierarchies:
                 return {f"leaf_{i}": f"value_{i}" for i in range(breadth)}
             config = {}
             for i in range(breadth):
-                config[f"level_{depth}_{i}"] = create_deep_config(depth - 1,
-                    breadth)
+                config[f"level_{depth}_{i}"] = create_deep_config(depth - 1, breadth)
             return config
+
         gc.collect()
         baseline_memory = get_memory_usage()
         large_config = create_deep_config(depth=5, breadth=10)
@@ -485,13 +572,18 @@ class TestMemoryUsageWithLargeConfigHierarchies:
                 if isinstance(value, dict):
                     count += count_nodes(value)
             return count
+
         total_nodes = count_nodes(large_config)
         bytes_per_node = memory_increase * 1024 * 1024 / total_nodes
         print(
             f"Total nodes: {total_nodes}, Bytes per node: {bytes_per_node:.2f}",
-            )
-        assert memory_increase < 150, f"Excessive memory usage: {memory_increase:.2f} MB"
-        assert bytes_per_node < 1000, f"Excessive per-node memory: {bytes_per_node:.2f} bytes"
+        )
+        assert (
+            memory_increase < 150
+        ), f"Excessive memory usage: {memory_increase:.2f} MB"
+        assert (
+            bytes_per_node < 1000
+        ), f"Excessive per-node memory: {bytes_per_node:.2f} bytes"
 
         def traverse_config(config: dict, path: str = "") -> list[str]:
             """Traverse config and collect all paths."""
@@ -502,12 +594,13 @@ class TestMemoryUsageWithLargeConfigHierarchies:
                 if isinstance(value, dict):
                     paths.extend(traverse_config(value, current_path))
             return paths
+
         start_time = time.time()
         all_paths = traverse_config(large_config)
         traversal_time = time.time() - start_time
         print(
             f"Traversal time: {traversal_time:.3f}s for {len(all_paths)} paths",
-            )
+        )
         assert traversal_time < 1.0, f"Slow traversal: {traversal_time:.3f}s"
         del large_config
         gc.collect()
@@ -531,11 +624,17 @@ class TestMemoryUsageWithLargeConfigHierarchies:
                 """Add a base configuration."""
                 self.base_configs[name] = config
 
-            def add_inherited_config(self, name: str, parent: str,
-                overrides: dict[str, Any]):
+            def add_inherited_config(
+                self,
+                name: str,
+                parent: str,
+                overrides: dict[str, Any],
+            ):
                 """Add config that inherits from a parent."""
-                self.inherited_configs[name] = {"_parent": parent,
-                    "_overrides": overrides}
+                self.inherited_configs[name] = {
+                    "_parent": parent,
+                    "_overrides": overrides,
+                }
 
             def resolve_config(self, name: str) -> dict[str, Any]:
                 """Resolve inherited configuration."""
@@ -556,18 +655,26 @@ class TestMemoryUsageWithLargeConfigHierarchies:
             def _deep_merge(self, base: dict, overrides: dict):
                 """Deep merge overrides into base."""
                 for key, value in overrides.items():
-                    if key in base and isinstance(base[key], dict,
-                        ) and isinstance(value, dict):
+                    if (
+                        key in base
+                        and isinstance(
+                            base[key],
+                            dict,
+                        )
+                        and isinstance(value, dict)
+                    ):
                         self._deep_merge(base[key], value)
                     else:
                         base[key] = value
 
             def get_memory_stats(self) -> dict[str, int]:
                 """Get memory statistics."""
-                stats = {"base_configs": len(self.base_configs),
+                stats = {
+                    "base_configs": len(self.base_configs),
                     "inherited_configs": len(self.inherited_configs),
                     "cache_entries": len(self.resolved_cache),
-                    "estimated_memory": 0}
+                    "estimated_memory": 0,
+                }
                 for config in self.base_configs.values():
                     stats["estimated_memory"] += sys.getsizeof(config)
                 for config in self.inherited_configs.values():
@@ -575,33 +682,58 @@ class TestMemoryUsageWithLargeConfigHierarchies:
                 for config in self.resolved_cache.values():
                     stats["estimated_memory"] += sys.getsizeof(config)
                 return stats
+
         config_manager = InheritanceConfig()
-        base_config = {"common": {"timeout": 30, "retry_count": 3,
-            "buffer_size": 8192, "features": {"logging": True, "monitoring":
-            True, "caching": True, "compression": False}}, "parsing": {
-            "max_file_size": 10 * 1024 * 1024, "chunk_size": 1000,
-            "encoding": "utf-8"}}
+        base_config = {
+            "common": {
+                "timeout": 30,
+                "retry_count": 3,
+                "buffer_size": 8192,
+                "features": {
+                    "logging": True,
+                    "monitoring": True,
+                    "caching": True,
+                    "compression": False,
+                },
+            },
+            "parsing": {
+                "max_file_size": 10 * 1024 * 1024,
+                "chunk_size": 1000,
+                "encoding": "utf-8",
+            },
+        }
         config_manager.add_base_config("base", base_config)
         for i in range(100):
-            config_manager.add_inherited_config(f"lang_{i}", "base", {
-                "common": {"timeout": 30 + i, "features": {"compression": i %
-                2 == 0}}, "parsing": {"chunk_size": 1000 + i * 10}})
+            config_manager.add_inherited_config(
+                f"lang_{i}",
+                "base",
+                {
+                    "common": {
+                        "timeout": 30 + i,
+                        "features": {"compression": i % 2 == 0},
+                    },
+                    "parsing": {"chunk_size": 1000 + i * 10},
+                },
+            )
         stats_before = config_manager.get_memory_stats()
         for i in range(100):
             config = config_manager.resolve_config(f"lang_{i}")
             assert config["common"]["retry_count"] == 3
             assert config["common"]["timeout"] == 30 + i
         stats_after = config_manager.get_memory_stats()
-        memory_per_config = stats_after["estimated_memory"] / (stats_after[
-            "inherited_configs"] + 1)
+        memory_per_config = stats_after["estimated_memory"] / (
+            stats_after["inherited_configs"] + 1
+        )
         print(
             f"Memory before resolution: {stats_before['estimated_memory'] / 1024:.2f} KB",
-            )
+        )
         print(
             f"Memory after resolution: {stats_after['estimated_memory'] / 1024:.2f} KB",
-            )
+        )
         print(f"Memory per config: {memory_per_config:.2f} bytes")
-        assert memory_per_config < 10000, f"Excessive memory per config: {memory_per_config} bytes"
+        assert (
+            memory_per_config < 10000
+        ), f"Excessive memory per config: {memory_per_config} bytes"
 
     @staticmethod
     def test_weak_reference_config_cleanup():
@@ -619,22 +751,28 @@ class TestMemoryUsageWithLargeConfigHierarchies:
                 self.weak_refs = {}
                 self.access_count = {}
 
-            def add_config(self, name: str, config: ConfigObject, critical:
-                bool = False):
+            def add_config(
+                self,
+                name: str,
+                config: ConfigObject,
+                critical: bool = False,
+            ):
                 """Add config with strong or weak reference."""
                 self.access_count[name] = 0
                 if critical:
                     self.strong_refs[name] = config
                 else:
-                    self.weak_refs[name] = weakref.ref(config, lambda ref,
-                        n=name: self._on_config_deleted(n))
+                    self.weak_refs[name] = weakref.ref(
+                        config,
+                        lambda ref, n=name: self._on_config_deleted(n),
+                    )
 
             @staticmethod
             def _on_config_deleted(name: str):
                 """Callback when weak ref is deleted."""
                 print(f"Config {name} was garbage collected")
 
-            def get_config(self, name: str) -> (ConfigObject | None):
+            def get_config(self, name: str) -> ConfigObject | None:
                 """Get config by name."""
                 self.access_count[name] = self.access_count.get(name, 0) + 1
                 if name in self.strong_refs:
@@ -649,21 +787,30 @@ class TestMemoryUsageWithLargeConfigHierarchies:
 
             def get_stats(self) -> dict[str, Any]:
                 """Get manager statistics."""
-                alive_weak = sum(1 for ref in self.weak_refs.values() if
-                    ref() is not None)
-                return {"strong_refs": len(self.strong_refs),
+                alive_weak = sum(
+                    1 for ref in self.weak_refs.values() if ref() is not None
+                )
+                return {
+                    "strong_refs": len(self.strong_refs),
                     "weak_refs_total": len(self.weak_refs),
-                    "weak_refs_alive": alive_weak, "access_counts": self.
-                    access_count.copy()}
+                    "weak_refs_alive": alive_weak,
+                    "access_counts": self.access_count.copy(),
+                }
+
         manager = WeakConfigManager()
-        manager.add_config("core", ConfigObject({"type": "core", "data":
-            "x" * 1000}), critical=True)
-        manager.add_config("security", ConfigObject({"type": "security",
-            "data": "y" * 1000}), critical=True)
+        manager.add_config(
+            "core",
+            ConfigObject({"type": "core", "data": "x" * 1000}),
+            critical=True,
+        )
+        manager.add_config(
+            "security",
+            ConfigObject({"type": "security", "data": "y" * 1000}),
+            critical=True,
+        )
         cached_configs = []
         for i in range(20):
-            config = ConfigObject({"type": f"cached_{i}", "data": "z" *
-                1000 * (i + 1)})
+            config = ConfigObject({"type": f"cached_{i}", "data": "z" * 1000 * (i + 1)})
             cached_configs.append(config)
             manager.add_config(f"cached_{i}", config, critical=False)
         for i in range(5):
@@ -704,15 +851,19 @@ class TestCircularDependencyDetectionEdgeCases:
                 """Add a configuration."""
                 self.configs[name] = config
 
-            def resolve(self, name: str, path: (list[str] | None) = None) -> dict[
-                str, Any]:
+            def resolve(
+                self,
+                name: str,
+                path: list[str] | None = None,
+            ) -> dict[str, Any]:
                 """Resolve config with circular dependency detection."""
                 if path is None:
                     path = []
                 if name in self.resolving:
-                    cycle = [*path[path.index(name):], name]
+                    cycle = [*path[path.index(name) :], name]
                     raise ConfigurationError(
-                        f"Circular dependency detected: {' -> '.join(cycle)}")
+                        f"Circular dependency detected: {' -> '.join(cycle)}",
+                    )
                 if name not in self.configs:
                     raise KeyError(f"Config '{name}' not found")
                 self.resolving.add(name)
@@ -730,6 +881,7 @@ class TestCircularDependencyDetectionEdgeCases:
                 finally:
                     self.resolving.remove(name)
                     path.pop()
+
         resolver = ConfigResolver()
         resolver.add_config("config_a", {"_extends": "config_b", "value": 1})
         resolver.add_config("config_b", {"_extends": "config_a", "value": 2})
@@ -773,7 +925,8 @@ class TestCircularDependencyDetectionEdgeCases:
                     cycle_start = self.resolution_stack.index(name)
                     cycle = [*self.resolution_stack[cycle_start:], name]
                     raise ConfigurationError(
-                        f"Circular dependency: {' -> '.join(cycle)}")
+                        f"Circular dependency: {' -> '.join(cycle)}",
+                    )
                 if name not in self.configs:
                     raise KeyError(f"Config '{name}' not found")
                 self.resolution_stack.append(name)
@@ -806,12 +959,15 @@ class TestCircularDependencyDetectionEdgeCases:
                     return config
                 finally:
                     self.resolution_stack.pop()
+
         resolver = AdvancedConfigResolver()
         resolver.add_config("base", {"timeout": 30, "retry": 3})
         resolver.add_config("left", {"_extends": "base", "left_value": 1})
         resolver.add_config("right", {"_extends": "base", "right_value": 2})
-        resolver.add_config("diamond", {"_extends": ["left", "right"],
-            "diamond_value": 3})
+        resolver.add_config(
+            "diamond",
+            {"_extends": ["left", "right"], "diamond_value": 3},
+        )
         result = resolver.resolve("diamond")
         assert result["timeout"] == 30
         assert result["left_value"] == 1
@@ -827,8 +983,7 @@ class TestCircularDependencyDetectionEdgeCases:
         resolver.configs.clear()
         resolver.resolved_cache.clear()
         resolver.add_config("level1", {"_extends": "level2", "l1": 1})
-        resolver.add_config("level2", {"_extends": ["level3", "level4"],
-            "l2": 2})
+        resolver.add_config("level2", {"_extends": ["level3", "level4"], "l2": 2})
         resolver.add_config("level3", {"_extends": "level5", "l3": 3})
         resolver.add_config("level4", {"l4": 4})
         resolver.add_config("level5", {"_extends": "level1", "l5": 5})
@@ -868,8 +1023,13 @@ class TestCircularDependencyDetectionEdgeCases:
                     else:
                         refs.add(includes)
                 for value in config.values():
-                    if isinstance(value, str) and value.startswith("${",
-                        ) and value.endswith("}"):
+                    if (
+                        isinstance(value, str)
+                        and value.startswith(
+                            "${",
+                        )
+                        and value.endswith("}")
+                    ):
                         ref_name = value[2:-1].split(".")[0]
                         refs.add(ref_name)
                 self.reference_graph[name] = refs
@@ -894,6 +1054,7 @@ class TestCircularDependencyDetectionEdgeCases:
                             cycles.append(cycle)
                     rec_stack.remove(node)
                     return False
+
                 for node in self.reference_graph:
                     if node not in visited:
                         dfs(node, [])
@@ -912,7 +1073,9 @@ class TestCircularDependencyDetectionEdgeCases:
                     self.configs[name] = old_config
                     self.reference_graph[name] = old_refs
                     raise ConfigurationError(
-                        f"Update would create circular dependencies: {cycles}")
+                        f"Update would create circular dependencies: {cycles}",
+                    )
+
         system = DynamicConfigSystem()
         system.add_config("base", {"timeout": 30})
         system.add_config("service_a", {"_extends": "base", "port": 8080})
@@ -971,8 +1134,10 @@ class TestCircularDependencyDetectionEdgeCases:
                             continue
                         visited.add(node)
                         new_path = [*path, node]
-                        stack.extend((neighbor, new_path) for neighbor in
-                            self.graph.get(node, []))
+                        stack.extend(
+                            (neighbor, new_path)
+                            for neighbor in self.graph.get(node, [])
+                        )
                     return False
 
                 def find_all_cycles(self) -> list[list[str]]:
@@ -992,10 +1157,12 @@ class TestCircularDependencyDetectionEdgeCases:
                                 cycle = [*path[cycle_start:], neighbor]
                                 if cycle not in cycles:
                                     cycles.append(cycle)
+
                     for node in self.graph:
                         if node not in visited:
                             dfs(node, [], set())
                     return cycles
+
             detector = PerformantCycleDetector()
             num_nodes = 1000
             for i in range(num_nodes - 1):

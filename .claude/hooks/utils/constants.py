@@ -7,8 +7,8 @@
 Constants for Claude Code Hooks.
 """
 
-import os  # noqa: E402,PLC0415
-from pathlib import Path  # noqa: E402,PLC0415
+import os
+from pathlib import Path
 
 # Base directory for all logs
 # Default is 'logs' in the current working directory

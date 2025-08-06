@@ -3,6 +3,7 @@
 This module provides the foundational classes and interfaces for defining
 language-specific chunking configurations.
 """
+
 from __future__ import annotations
 
 import logging
@@ -23,6 +24,7 @@ class ChunkRule:
         priority: Priority when multiple rules match (higher = higher priority)
         metadata: Additional metadata for the rule
     """
+
     node_types: set[str]
     include_children: bool = True
     priority: int = 0
@@ -32,6 +34,7 @@ class ChunkRule:
 @dataclass
 class PluginConfig:
     """Configuration for a language plugin."""
+
     enabled: bool = True
     chunk_types: set[str] | None = None
     min_chunk_size: int = 1
@@ -89,8 +92,11 @@ class LanguageConfig(ABC):
         """Return advanced chunking rules for more complex scenarios."""
         return self._chunk_rules
 
-    def should_chunk_node(self, node_type: str, _parent_type: (str | None) = None,
-        ) -> bool:
+    def should_chunk_node(
+        self,
+        node_type: str,
+        _parent_type: str | None = None,
+    ) -> bool:
         """Determine if a node should be treated as a chunk.
 
         Args:
@@ -159,13 +165,11 @@ class LanguageConfig(ABC):
         if overlap:
             raise ValueError(
                 f"Configuration error: Node types cannot be both chunk types and ignore types: {overlap}",
-                )
+            )
 
     def __repr__(self) -> str:
         """Return a string representation of the configuration."""
-        return (
-            f"{self.__class__.__name__}(language_id={self.language_id!r}, chunk_types={len(self.chunk_types)}, ignore_types={len(self.ignore_types)}, rules={len(self.chunk_rules)})"
-            )
+        return f"{self.__class__.__name__}(language_id={self.language_id!r}, chunk_types={len(self.chunk_types)}, ignore_types={len(self.ignore_types)}, rules={len(self.chunk_rules)})"
 
 
 class CompositeLanguageConfig(LanguageConfig):
@@ -206,8 +210,7 @@ class CompositeLanguageConfig(LanguageConfig):
     @property
     def chunk_rules(self) -> list[ChunkRule]:
         """Return merged chunk rules from all parent configs plus own rules."""
-        rules = [item for parent in self._parent_configs for item in parent
-            .chunk_rules]
+        rules = [item for parent in self._parent_configs for item in parent.chunk_rules]
         rules.extend(self._chunk_rules)
         rules.sort(key=lambda r: r.priority, reverse=True)
         return rules
@@ -252,21 +255,19 @@ def validate_language_config(config: LanguageConfig) -> list[str]:
         errors.append("Language ID cannot be empty")
     if not config.chunk_types:
         errors.append("Configuration must define at least one chunk type")
-    for node_type in (config.chunk_types | config.ignore_types):
+    for node_type in config.chunk_types | config.ignore_types:
         if not node_type or not isinstance(node_type, str):
             errors.append(f"Invalid node type: {node_type!r}")
         elif " " in node_type:
             errors.append(f"Node type cannot contain spaces: {node_type!r}")
     overlap = config.chunk_types & config.ignore_types
     if overlap:
-        errors.append(
-            f"Node types cannot be both chunk and ignore types: {overlap}")
+        errors.append(f"Node types cannot be both chunk and ignore types: {overlap}")
     for i, rule in enumerate(config.chunk_rules):
         if not rule.node_types:
             errors.append(f"Chunk rule {i} has no node types defined")
         if rule.priority < 0:
-            errors.append(
-                f"Chunk rule {i} has negative priority: {rule.priority}")
+            errors.append(f"Chunk rule {i} has negative priority: {rule.priority}")
     return errors
 
 
@@ -282,8 +283,11 @@ class LanguageConfigRegistry:
         self._configs: dict[str, LanguageConfig] = {}
         self._aliases: dict[str, str] = {}
 
-    def register(self, config: LanguageConfig, aliases: (list[str] | None) = None,
-        ) -> None:
+    def register(
+        self,
+        config: LanguageConfig,
+        aliases: list[str] | None = None,
+    ) -> None:
         """Register a language configuration.
 
         Args:
@@ -296,21 +300,22 @@ class LanguageConfigRegistry:
         errors = validate_language_config(config)
         if errors:
             raise ValueError(
-                f"Invalid configuration for {config.language_id}: " + "; ".
-                join(errors))
-        if config.language_id in self._configs:
-            raise ValueError(
-                f"Language {config.language_id} is already registered")
-        self._configs[config.language_id] = config
-        logger.info("Registered language configuration: %s", config.language_id,
+                f"Invalid configuration for {config.language_id}: " + "; ".join(errors),
             )
+        if config.language_id in self._configs:
+            raise ValueError(f"Language {config.language_id} is already registered")
+        self._configs[config.language_id] = config
+        logger.info(
+            "Registered language configuration: %s",
+            config.language_id,
+        )
         if aliases:
             for alias in aliases:
                 if alias in self._aliases:
                     raise ValueError(f"Alias {alias} is already registered")
                 self._aliases[alias] = config.language_id
 
-    def get(self, language_id: str) -> (LanguageConfig | None):
+    def get(self, language_id: str) -> LanguageConfig | None:
         """Get a language configuration by ID or alias.
 
         Args:

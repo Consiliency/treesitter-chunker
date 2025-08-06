@@ -1,4 +1,5 @@
 """Unit tests for Development Environment Component"""
+
 import json
 import tempfile
 from pathlib import Path
@@ -16,8 +17,14 @@ class TestDevelopmentEnvironment:
     def test_init_finds_executables(cls):
         """Should find executables in PATH"""
         dev_env = DevelopmentEnvironment()
-        assert any([dev_env._ruff_path, dev_env._black_path, dev_env.
-            _mypy_path, dev_env._pre_commit_path])
+        assert any(
+            [
+                dev_env._ruff_path,
+                dev_env._black_path,
+                dev_env._mypy_path,
+                dev_env._pre_commit_path,
+            ],
+        )
 
     @classmethod
     def test_setup_pre_commit_hooks_validates_preconditions(cls):
@@ -47,10 +54,12 @@ class TestDevelopmentEnvironment:
     def test_run_linting_combines_issues(cls):
         """Should combine issues from multiple tools"""
         dev_env = DevelopmentEnvironment()
-        ruff_issues = [{"tool": "ruff", "file": "test.py", "line": 1,
-            "message": "Issue 1"}]
-        mypy_issues = [{"tool": "mypy", "file": "test.py", "line": 2,
-            "message": "Issue 2"}]
+        ruff_issues = [
+            {"tool": "ruff", "file": "test.py", "line": 1, "message": "Issue 1"},
+        ]
+        mypy_issues = [
+            {"tool": "mypy", "file": "test.py", "line": 2, "message": "Issue 2"},
+        ]
         with patch.object(dev_env, "_run_ruff", return_value=ruff_issues):
             with patch.object(dev_env, "_run_mypy", return_value=mypy_issues):
                 success, issues = dev_env.run_linting(["test.py"])
@@ -95,11 +104,18 @@ class TestDevelopmentEnvironment:
         """Should parse ruff JSON output correctly"""
         dev_env = DevelopmentEnvironment()
         dev_env._ruff_path = "ruff"
-        ruff_output = json.dumps([{"filename": "test.py", "location": {
-            "row": 10, "column": 5}, "code": "F401", "message":
-            "imported but unused", "fix": None}])
-        mock_run.return_value = Mock(stdout=ruff_output, stderr="",
-            returncode=1)
+        ruff_output = json.dumps(
+            [
+                {
+                    "filename": "test.py",
+                    "location": {"row": 10, "column": 5},
+                    "code": "F401",
+                    "message": "imported but unused",
+                    "fix": None,
+                },
+            ],
+        )
+        mock_run.return_value = Mock(stdout=ruff_output, stderr="", returncode=1)
         issues = dev_env._run_ruff(["test.py"], False)
         assert len(issues) == 1
         assert issues[0]["file"] == "test.py"
@@ -113,7 +129,11 @@ class TestDevelopmentEnvironment:
         """Should parse mypy output correctly"""
         dev_env = DevelopmentEnvironment()
         dev_env._mypy_path = "mypy"
-        mock_run.return_value = Mock(stdout="test.py:5:10: error: Incompatible return value type", stderr="", returncode=1)
+        mock_run.return_value = Mock(
+            stdout="test.py:5:10: error: Incompatible return value type",
+            stderr="",
+            returncode=1,
+        )
         issues = dev_env._run_mypy(["test.py"])
         assert len(issues) == 1
         assert issues[0]["file"] == "test.py"
@@ -155,7 +175,11 @@ class TestQualityAssurance:
     def test_parse_mypy_linecount(cls):
         """Should parse mypy linecount report correctly"""
         qa = QualityAssurance()
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".txt") as tmp:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".txt",
+        ) as tmp:
             tmp.write("chunker/main.py 100 80 80%\n")
             tmp.write("chunker/utils.py 50 30 60%\n")
             tmp.write("Total 150 110 73%\n")
@@ -173,8 +197,7 @@ class TestQualityAssurance:
         output = "Success: no issues found in 1 source file"
         coverage, report = qa._estimate_type_coverage(output)
         assert coverage == 100.0
-        output = (
-            "test.py:1: error: Missing type\ntest.py:2: error: Missing type")
+        output = "test.py:1: error: Missing type\ntest.py:2: error: Missing type"
         coverage, report = qa._estimate_type_coverage(output)
         assert coverage == 80.0
         assert report["error_count"] == 2
@@ -202,16 +225,28 @@ TOTAL                      82     25    70%
     @patch("subprocess.run")
     @patch("builtins.open")
     @patch("json.load")
-    def test_check_test_coverage_json_parsing(cls, mock_json_load,
-        mock_open, mock_run):
+    def test_check_test_coverage_json_parsing(cls, mock_json_load, mock_open, mock_run):
         """Should parse coverage.json correctly"""
         qa = QualityAssurance()
         qa._pytest_path = "pytest"
-        coverage_data = {"totals": {"percent_covered": 85.5,
-            "covered_lines": 1000, "missing_lines": 150, "num_statements":
-            1150}, "files": {"chunker/main.py": {"summary": {
-            "percent_covered": 90.0, "covered_lines": 90, "missing_lines":
-            10}, "missing_lines": [15, 20, 25]}}}
+        coverage_data = {
+            "totals": {
+                "percent_covered": 85.5,
+                "covered_lines": 1000,
+                "missing_lines": 150,
+                "num_statements": 1150,
+            },
+            "files": {
+                "chunker/main.py": {
+                    "summary": {
+                        "percent_covered": 90.0,
+                        "covered_lines": 90,
+                        "missing_lines": 10,
+                    },
+                    "missing_lines": [15, 20, 25],
+                },
+            },
+        }
         mock_run.return_value = Mock(returncode=0)
         mock_json_load.return_value = coverage_data
         with patch("pathlib.Path.exists", return_value=True):

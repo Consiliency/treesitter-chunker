@@ -1,4 +1,5 @@
 """Tree-sitter grammar validator implementation."""
+
 import ctypes
 import logging
 import platform
@@ -46,14 +47,15 @@ class TreeSitterGrammarValidator(GrammarValidator):
                 language_name = language_name[3:]
             func_name = f"tree_sitter_{language_name}"
             if not hasattr(lib, func_name):
-                for variant in [language_name.replace("-", "_"),
-                    language_name.replace("_", "")]:
+                for variant in [
+                    language_name.replace("-", "_"),
+                    language_name.replace("_", ""),
+                ]:
                     func_name = f"tree_sitter_{variant}"
                     if hasattr(lib, func_name):
                         break
                 else:
-                    return (False,
-                        f"No tree_sitter function found in {grammar_path}")
+                    return (False, f"No tree_sitter function found in {grammar_path}")
             lang_func = getattr(lib, func_name)
             lang_func.restype = ctypes.c_void_p
             lang_ptr = lang_func()
@@ -63,8 +65,11 @@ class TreeSitterGrammarValidator(GrammarValidator):
         except (IndexError, KeyError) as e:
             return False, f"Failed to load grammar: {e!s}"
 
-    def validate_node_types(self, language: str, expected_types: set[str],
-        ) -> list[str]:
+    def validate_node_types(
+        self,
+        language: str,
+        expected_types: set[str],
+    ) -> list[str]:
         """Validate expected node types exist.
 
         Args:
@@ -83,23 +88,19 @@ class TreeSitterGrammarValidator(GrammarValidator):
             missing = []
             critical_types = self._get_critical_node_types(language)
             for node_type in critical_types:
-                if (node_type in expected_types and node_type not in
-                    found_types):
+                if node_type in expected_types and node_type not in found_types:
                     logger.warning(
                         "Expected node type '%s' not found in test parse",
                         node_type,
                     )
 
-
                     missing.append(node_type)
             return missing
         except (IndexError, KeyError, SyntaxError) as e:
-            logger.error("Failed to validate node types for %s: %s",
-                language, e)
+            logger.error("Failed to validate node types for %s: %s", language, e)
             return list(expected_types)
 
-    def test_parse(self, language: str, sample_code: str) -> tuple[bool, str |
-        None]:
+    def test_parse(self, language: str, sample_code: str) -> tuple[bool, str | None]:
         """Test parsing with sample code.
 
         Args:
@@ -116,8 +117,9 @@ class TreeSitterGrammarValidator(GrammarValidator):
                 return False, "Parse resulted in null root node"
             if self._has_errors(tree.root_node):
                 error_nodes = self._find_error_nodes(tree.root_node)
-                error_info = ", ".join(f"Error at {n.start_point}" for n in
-                    error_nodes[:3])
+                error_info = ", ".join(
+                    f"Error at {n.start_point}" for n in error_nodes[:3]
+                )
                 return False, f"Parse errors found: {error_info}"
             if tree.root_node.child_count == 0:
                 return False, "Parse resulted in empty tree"
@@ -188,38 +190,61 @@ class TreeSitterGrammarValidator(GrammarValidator):
     @staticmethod
     def _get_minimal_test_code(language: str) -> str:
         """Get minimal valid code for a language."""
-        minimal_code = {"python": "pass", "javascript": ";", "typescript":
-            ";", "rust": "", "go": "package main", "ruby": "", "java":
-            "class T{}", "c": "", "cpp": "", "csharp": "class T{}", "php":
-            "<?php", "swift": "", "kotlin": "", "scala": "", "haskell": "",
-            "lua": "", "bash": "", "json": "{}", "yaml": "---", "toml": "",
-            "html": "<html></html>", "css": "", "sql": "SELECT 1",
-            "markdown": "# Test"}
+        minimal_code = {
+            "python": "pass",
+            "javascript": ";",
+            "typescript": ";",
+            "rust": "",
+            "go": "package main",
+            "ruby": "",
+            "java": "class T{}",
+            "c": "",
+            "cpp": "",
+            "csharp": "class T{}",
+            "php": "<?php",
+            "swift": "",
+            "kotlin": "",
+            "scala": "",
+            "haskell": "",
+            "lua": "",
+            "bash": "",
+            "json": "{}",
+            "yaml": "---",
+            "toml": "",
+            "html": "<html></html>",
+            "css": "",
+            "sql": "SELECT 1",
+            "markdown": "# Test",
+        }
         return minimal_code.get(language, "")
 
     @staticmethod
-    def _get_unicode_test_code(language: str) -> (str | None):
+    def _get_unicode_test_code(language: str) -> str | None:
         """Get unicode test code for a language."""
-        unicode_tests = {"python": '# 你好\nx = "世界"', "javascript":
-            '// 你好\nlet x = "世界";', "rust": """// 你好
-let x = "世界";""", "go":
-            """// 你好
-var x = "世界\"""", "ruby": '# 你好\nx = "世界"', "java":
-            """// 你好
-String x = "世界";"""}
+        unicode_tests = {
+            "python": '# 你好\nx = "世界"',
+            "javascript": '// 你好\nlet x = "世界";',
+            "rust": """// 你好
+let x = "世界";""",
+            "go": """// 你好
+var x = "世界\"""",
+            "ruby": '# 你好\nx = "世界"',
+            "java": """// 你好
+String x = "世界";""",
+        }
         return unicode_tests.get(language)
 
     @staticmethod
     def _get_critical_node_types(language: str) -> set[str]:
         """Get critical node types for a language."""
-        critical_types = {"python": {"module", "function_definition",
-            "class_definition"}, "javascript": {"program",
-            "function_declaration", "class_declaration"}, "rust": {
-            "source_file", "function_item", "struct_item"}, "go": {
-            "source_file", "function_declaration", "type_declaration"},
-            "ruby": {"program", "method", "class"}, "java": {"program",
-            "method_declaration", "class_declaration"}, "c": {
-            "translation_unit", "function_definition", "struct_specifier"},
-            "cpp": {"translation_unit", "function_definition",
-            "class_specifier"}}
+        critical_types = {
+            "python": {"module", "function_definition", "class_definition"},
+            "javascript": {"program", "function_declaration", "class_declaration"},
+            "rust": {"source_file", "function_item", "struct_item"},
+            "go": {"source_file", "function_declaration", "type_declaration"},
+            "ruby": {"program", "method", "class"},
+            "java": {"program", "method_declaration", "class_declaration"},
+            "c": {"translation_unit", "function_definition", "struct_specifier"},
+            "cpp": {"translation_unit", "function_definition", "class_specifier"},
+        }
         return critical_types.get(language, set())

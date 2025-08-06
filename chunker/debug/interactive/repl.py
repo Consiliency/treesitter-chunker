@@ -288,7 +288,8 @@ Available commands:
             # Save to temp file
 
             with tempfile.NamedTemporaryFile(
-                encoding="utf-8", mode="w",
+                encoding="utf-8",
+                mode="w",
                 suffix=f".{self.current_language}",
                 delete=False,
             ) as f:
@@ -322,7 +323,8 @@ Available commands:
         # Save to temp file
 
         with tempfile.NamedTemporaryFile(
-            encoding="utf-8", mode="w",
+            encoding="utf-8",
+            mode="w",
             suffix=f".{self.current_language}",
             delete=False,
         ) as f:
@@ -357,7 +359,8 @@ Available commands:
 
         try:
             with Path(file_path).open(
-                "w", encoding="utf-8",
+                "w",
+                encoding="utf-8",
             ) as f:
                 f.write("# Tree-sitter Debug Session\n")
                 f.write(f"# Language: {self.current_language or 'none'}\n")

@@ -399,12 +399,12 @@ class TestErrorPropagation:
         if os.name != "nt":
             read_only_dir = tmp_path / "readonly"
             read_only_dir.mkdir()
-            os.chmod(read_only_dir, 292)
+            Path(read_only_dir).chmod(0o444)
             output_file = read_only_dir / "output.json"
             with pytest.raises(PermissionError):
                 json_exporter = JSONExporter(schema_type=SchemaType.FLAT)
                 json_exporter.export(chunks, output_file)
-            os.chmod(read_only_dir, 493)
+            Path(read_only_dir).chmod(0o755)
 
     @classmethod
     def test_partial_success_handling(cls, tmp_path):

@@ -308,7 +308,8 @@ class TreeSitterGrammarRepository(GrammarRepository):
         """
         try:
             with Path(repo_file).open(
-                "r", encoding="utf-8",
+                "r",
+                encoding="utf-8",
             ) as f:
                 custom_repos = json.load(f)
 

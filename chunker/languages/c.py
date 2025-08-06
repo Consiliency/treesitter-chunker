@@ -14,13 +14,17 @@ class CConfig(LanguageConfig):
     @property
     def chunk_types(self) -> set[str]:
         """C-specific chunk types."""
-        return {"function_definition", "struct_specifier",
-            "union_specifier", "enum_specifier", "type_definition"}
+        return {
+            "function_definition",
+            "struct_specifier",
+            "union_specifier",
+            "enum_specifier",
+            "type_definition",
+        }
 
     @property
     def file_extensions(self) -> set[str]:
         return {".c", ".h"}
-
 
 
 # Register the C configuration
@@ -49,22 +53,28 @@ class CPlugin(LanguagePlugin):
 
     @property
     def default_chunk_types(self) -> set[str]:
-        return {"function_definition", "struct_specifier",
-            "union_specifier", "enum_specifier", "type_definition"}
+        return {
+            "function_definition",
+            "struct_specifier",
+            "union_specifier",
+            "enum_specifier",
+            "type_definition",
+        }
 
     @staticmethod
-    def get_node_name(node: Node, source: bytes) -> (str | None):
+    def get_node_name(node: Node, source: bytes) -> str | None:
         """Extract name from C nodes."""
         if node.type == "function_definition":
             for child in node.children:
                 if child.type == "function_declarator":
                     for subchild in child.children:
                         if subchild.type == "identifier":
-                            return source[subchild.start_byte:subchild.end_byte
-                                ].decode("utf-8")
+                            return source[
+                                subchild.start_byte : subchild.end_byte
+                            ].decode("utf-8")
         for child in node.children:
             if child.type in {"identifier", "type_identifier"}:
-                return source[child.start_byte:child.end_byte].decode("utf-8")
+                return source[child.start_byte : child.end_byte].decode("utf-8")
         return None
 
     def get_context_for_children(self, node: Node, chunk: CodeChunk) -> str:

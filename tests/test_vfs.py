@@ -1,4 +1,5 @@
 """Tests for Virtual File System support."""
+
 import zipfile
 from unittest.mock import Mock, patch
 
@@ -194,7 +195,8 @@ class TestVFSChunker:
     def test_chunk_from_memory(cls):
         """Test chunking from in-memory file system."""
         vfs = InMemoryFileSystem()
-        vfs.add_file("test.py",
+        vfs.add_file(
+            "test.py",
             """
 def hello():
     return "world"
@@ -203,7 +205,7 @@ class Greeter:
     def greet(self, name):
         return f"Hello, {name}!\"
 """,
-            )
+        )
         chunker = VFSChunker(vfs)
         chunks = chunker.chunk_file("test.py", language="python")
         assert len(chunks) >= 2
@@ -216,7 +218,8 @@ class Greeter:
         """Test chunking from ZIP file."""
         zip_path = tmp_path / "code.zip"
         with zipfile.ZipFile(zip_path, "w") as zf:
-            zf.writestr("src/main.py",
+            zf.writestr(
+                "src/main.py",
                 """
 def main():
     print("Hello from ZIP!")
@@ -224,12 +227,14 @@ def main():
 def helper():
     return 42
 """,
-                )
-        chunks = chunk_from_zip(str(zip_path), "src/main.py", language="python",
             )
+        chunks = chunk_from_zip(
+            str(zip_path),
+            "src/main.py",
+            language="python",
+        )
         assert len(chunks) == 2
-        assert all(chunk.node_type == "function_definition" for chunk in chunks
-            )
+        assert all(chunk.node_type == "function_definition" for chunk in chunks)
         assert chunks[0].content.strip().startswith("def main()")
         assert chunks[1].content.strip().startswith("def helper()")
 
@@ -242,8 +247,9 @@ def helper():
         vfs.add_file("/src/data.txt", "Not code")
         vfs.add_file("/test/test_main.py", "def test_main():\n    pass")
         chunker = VFSChunker(vfs)
-        results = list(chunker.chunk_directory("/src", file_patterns=[
-            "*.py"], recursive=False))
+        results = list(
+            chunker.chunk_directory("/src", file_patterns=["*.py"], recursive=False),
+        )
         assert len(results) == 2
         for file_path, chunks in results:
             assert file_path.endswith(".py")

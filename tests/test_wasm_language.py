@@ -1,4 +1,5 @@
 """Tests for WebAssembly (WASM) language plugin."""
+
 import pytest
 
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
@@ -11,13 +12,13 @@ class TestWASMPlugin:
     """Test suite for WebAssembly language plugin."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def plugin(cls):
         """Create a WASM plugin instance."""
         return WASMPlugin()
 
     @staticmethod
-    @pytest.fixture
+    @pytest.fixture()
     def parser():
         """Get a WASM parser."""
         return get_parser("wat")
@@ -93,8 +94,7 @@ class TestWASMPlugin:
         func_names = [c["name"] for c in func_chunks if c.get("name")]
         assert "fibonacci" in func_names
         assert "main" in func_names
-        fib_func = next((c for c in func_chunks if c["name"] == "fibonacci"
-            ), None)
+        fib_func = next((c for c in func_chunks if c["name"] == "fibonacci"), None)
         if fib_func:
             assert fib_func.get("param_count", 0) == 1
             assert fib_func.get("result_count", 0) == 1
@@ -217,9 +217,7 @@ class TestWASMPlugin:
     @staticmethod
     def test_should_chunk_node(plugin, parser):
         """Test should_chunk_node method."""
-        code = (
-            "\n(module\n  (func $test)\n  (memory 1)\n  (global $g i32 (i32.const 0))\n)\n"
-            )
+        code = "\n(module\n  (func $test)\n  (memory 1)\n  (global $g i32 (i32.const 0))\n)\n"
         tree = parser.parse(code.encode())
 
         def find_nodes_by_type(node, node_type):
@@ -230,10 +228,13 @@ class TestWASMPlugin:
             for child in node.children:
                 results.extend(find_nodes_by_type(child, node_type))
             return results
+
         root = tree.root_node
         module_nodes = find_nodes_by_type(root, "module")
-        func_nodes = find_nodes_by_type(root, "func") + find_nodes_by_type(root
-            , "function")
+        func_nodes = find_nodes_by_type(root, "func") + find_nodes_by_type(
+            root,
+            "function",
+        )
         memory_nodes = find_nodes_by_type(root, "memory")
         global_nodes = find_nodes_by_type(root, "global")
         assert all(plugin.should_chunk_node(n) for n in module_nodes)
@@ -266,13 +267,16 @@ class TestWASMPlugin:
                 if result:
                     return result
             return None
+
         module_node = find_first_node_by_type(tree.root_node, "module")
         if module_node:
             context = plugin.get_node_context(module_node, source)
             assert context is not None
             assert "module" in context
-        func_node = find_first_node_by_type(tree.root_node, "func",
-            ) or find_first_node_by_type(tree.root_node, "function")
+        func_node = find_first_node_by_type(
+            tree.root_node,
+            "func",
+        ) or find_first_node_by_type(tree.root_node, "function")
         if func_node:
             context = plugin.get_node_context(func_node, source)
             assert context is not None
@@ -382,6 +386,7 @@ class TestWASMPlugin:
                 chunks.append(chunk)
             for child in node.children:
                 process_tree(child)
+
         process_tree(tree.root_node)
         func_chunks = [c for c in chunks if "func" in c.node_type]
         for chunk in func_chunks:

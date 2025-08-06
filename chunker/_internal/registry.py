@@ -1,4 +1,5 @@
 """Language registry for dynamic discovery and management of tree-sitter languages."""
+
 from __future__ import annotations
 
 import ctypes
@@ -24,6 +25,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class LanguageMetadata:
     """Metadata about a tree-sitter language."""
+
     name: str
     version: str = "unknown"
     node_types_count: int = 0
@@ -66,26 +68,32 @@ class LanguageRegistry:
         """
         symbols = []
         try:
-            result = subprocess.run(["nm", "-D", str(self._library_path)],
-                capture_output=True, text=True, check=False)
+            result = subprocess.run(
+                ["nm", "-D", str(self._library_path)],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
             if result.returncode == 0:
                 for line in result.stdout.splitlines():
-                    match = re.match(r".*\\s+T\\s+(tree_sitter_(\\w+))$", line)
+                    match = re.match(r".*\s+T\s+(tree_sitter_(\w+))$", line)
                     if match:
                         symbol_name = match.group(1)
                         lang_name = match.group(2)
-                        if not any(suffix in symbol_name for suffix in [
-                            "_external_scanner", "_serialization"]):
+                        if not any(
+                            suffix in symbol_name
+                            for suffix in ["_external_scanner", "_serialization"]
+                        ):
                             symbols.append((lang_name, symbol_name))
             else:
-                logger.warning(
-                    "nm command failed, using fallback language list")
+                logger.warning("nm command failed, using fallback language list")
                 for lang in ["python", "rust", "javascript", "c", "cpp"]:
                     symbol_name = f"tree_sitter_{lang}"
                     symbols.append((lang, symbol_name))
         except FileNotFoundError:
-            logger.warning("nm command not found, using fallback language list",
-                )
+            logger.warning(
+                "nm command not found, using fallback language list",
+            )
             for lang in ["python", "rust", "javascript", "c", "cpp"]:
                 symbol_name = f"tree_sitter_{lang}"
                 symbols.append((lang, symbol_name))
@@ -98,8 +106,7 @@ class LanguageRegistry:
             Dictionary mapping language name to metadata
         """
         if self._discovered:
-            return {lang_name: meta for lang_name, (_, meta) in self.
-                _languages.items()}
+            return {lang_name: meta for lang_name, (_, meta) in self._languages.items()}
         lib = self._load_library()
         discovered = {}
         symbols = self._discover_symbols()
@@ -110,8 +117,7 @@ class LanguageRegistry:
                 func.restype = ctypes.c_void_p
                 lang_ptr = func()
                 language = Language(lang_ptr)
-                has_scanner = hasattr(lib,
-                    f"{symbol_name}_external_scanner_create")
+                has_scanner = hasattr(lib, f"{symbol_name}_external_scanner_create")
                 try:
                     test_parser = Parser()
                     test_parser.language = language
@@ -121,13 +127,19 @@ class LanguageRegistry:
                     is_compatible = False
                     match = re.search(r"version (\\d+)", str(e))
                     language_version = match.group(1) if match else "unknown"
-                metadata = LanguageMetadata(name=lang_name, symbol_name=symbol_name, has_scanner=has_scanner, version=language_version, capabilities={"external_scanner":
-                    has_scanner, "compatible": is_compatible,
-                    "language_version": language_version})
+                metadata = LanguageMetadata(
+                    name=lang_name,
+                    symbol_name=symbol_name,
+                    has_scanner=has_scanner,
+                    version=language_version,
+                    capabilities={
+                        "external_scanner": has_scanner,
+                        "compatible": is_compatible,
+                        "language_version": language_version,
+                    },
+                )
                 self._languages[lang_name] = language, metadata
                 discovered[lang_name] = metadata
-
-
 
                 logger.debug(
                     "Loaded language '%s' from symbol '%s'",

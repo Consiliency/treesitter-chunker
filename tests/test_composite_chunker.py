@@ -1,4 +1,5 @@
 """Tests for the composite chunking strategy."""
+
 import pytest
 
 from chunker.parser import get_parser
@@ -15,13 +16,13 @@ class TestCompositeChunker:
     """Test suite for CompositeChunker."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def composite_chunker(cls):
         """Create a composite chunker instance."""
         return CompositeChunker()
 
     @staticmethod
-    @pytest.fixture
+    @pytest.fixture()
     def test_code():
         """Sample code for testing composite strategies."""
         return """
@@ -110,8 +111,12 @@ def process_files(file_list: List[str]) -> Dict[str, Dict]:
         results = {}
         for method in fusion_methods:
             composite_chunker.configure({"fusion_method": method})
-            chunks = composite_chunker.chunk(tree.root_node, test_code.
-                encode(), "test.py", "python")
+            chunks = composite_chunker.chunk(
+                tree.root_node,
+                test_code.encode(),
+                "test.py",
+                "python",
+            )
             results[method] = chunks
         assert len(results["union"]) >= len(results["intersection"])
         assert len(results["consensus"]) > 0
@@ -127,10 +132,19 @@ def process_files(file_list: List[str]) -> Dict[str, Dict]:
         """Test consensus-based filtering."""
         parser = get_parser("python")
         tree = parser.parse(test_code.encode())
-        composite_chunker.configure({"fusion_method": "consensus",
-            "min_consensus_strategies": 2, "consensus_threshold": 0.6})
-        chunks = composite_chunker.chunk(tree.root_node, test_code.encode(),
-            "test.py", "python")
+        composite_chunker.configure(
+            {
+                "fusion_method": "consensus",
+                "min_consensus_strategies": 2,
+                "consensus_threshold": 0.6,
+            },
+        )
+        chunks = composite_chunker.chunk(
+            tree.root_node,
+            test_code.encode(),
+            "test.py",
+            "python",
+        )
         for chunk in chunks:
             if hasattr(chunk, "candidate"):
                 candidate = chunk.candidate
@@ -142,12 +156,21 @@ def process_files(file_list: List[str]) -> Dict[str, Dict]:
         """Test handling of overlapping chunks."""
         parser = get_parser("python")
         tree = parser.parse(test_code.encode())
-        composite_chunker.configure({"fusion_method": "union",
-            "merge_overlaps": True, "overlap_threshold": 0.7})
-        chunks = composite_chunker.chunk(tree.root_node, test_code.encode(),
-            "test.py", "python")
+        composite_chunker.configure(
+            {
+                "fusion_method": "union",
+                "merge_overlaps": True,
+                "overlap_threshold": 0.7,
+            },
+        )
+        chunks = composite_chunker.chunk(
+            tree.root_node,
+            test_code.encode(),
+            "test.py",
+            "python",
+        )
         for i, chunk1 in enumerate(chunks):
-            for _j, chunk2 in enumerate(chunks[i + 1:], i + 1):
+            for _j, chunk2 in enumerate(chunks[i + 1 :], i + 1):
                 overlap_start = max(chunk1.start_line, chunk2.start_line)
                 overlap_end = min(chunk1.end_line, chunk2.end_line)
                 if overlap_start <= overlap_end:
@@ -162,20 +185,39 @@ def process_files(file_list: List[str]) -> Dict[str, Dict]:
         """Test that strategy weights affect results."""
         parser = get_parser("python")
         tree = parser.parse(test_code.encode())
-        composite_chunker.configure({"fusion_method": "weighted",
-            "strategy_weights": {"semantic": 1.0, "hierarchical": 1.0,
-            "adaptive": 1.0}})
-        composite_chunker.chunk(tree.root_node, test_code.encode(),
-            "test.py", "python")
-        composite_chunker.configure({"fusion_method": "weighted",
-            "strategy_weights": {"semantic": 3.0, "hierarchical": 0.5,
-            "adaptive": 0.5}})
-        semantic_weighted = composite_chunker.chunk(tree.root_node,
-            test_code.encode(), "test.py", "python")
+        composite_chunker.configure(
+            {
+                "fusion_method": "weighted",
+                "strategy_weights": {
+                    "semantic": 1.0,
+                    "hierarchical": 1.0,
+                    "adaptive": 1.0,
+                },
+            },
+        )
+        composite_chunker.chunk(tree.root_node, test_code.encode(), "test.py", "python")
+        composite_chunker.configure(
+            {
+                "fusion_method": "weighted",
+                "strategy_weights": {
+                    "semantic": 3.0,
+                    "hierarchical": 0.5,
+                    "adaptive": 0.5,
+                },
+            },
+        )
+        semantic_weighted = composite_chunker.chunk(
+            tree.root_node,
+            test_code.encode(),
+            "test.py",
+            "python",
+        )
         for chunk in semantic_weighted:
-            if (hasattr(chunk, "metadata") and "weight_score" in chunk.
-                metadata and "semantic" in chunk.metadata.get("strategies", [])
-                ):
+            if (
+                hasattr(chunk, "metadata")
+                and "weight_score" in chunk.metadata
+                and "semantic" in chunk.metadata.get("strategies", [])
+            ):
                 assert chunk.metadata["weight_score"] > 0
 
     @staticmethod
@@ -183,10 +225,13 @@ def process_files(file_list: List[str]) -> Dict[str, Dict]:
         """Test chunk quality filtering."""
         parser = get_parser("python")
         tree = parser.parse(test_code.encode())
-        composite_chunker.configure({"apply_filters": True,
-            "min_chunk_quality": 0.6})
-        chunks = composite_chunker.chunk(tree.root_node, test_code.encode(),
-            "test.py", "python")
+        composite_chunker.configure({"apply_filters": True, "min_chunk_quality": 0.6})
+        chunks = composite_chunker.chunk(
+            tree.root_node,
+            test_code.encode(),
+            "test.py",
+            "python",
+        )
         for chunk in chunks:
             assert hasattr(chunk, "metadata")
             assert "quality_score" in chunk.metadata
@@ -195,25 +240,60 @@ def process_files(file_list: List[str]) -> Dict[str, Dict]:
     @classmethod
     def test_chunk_candidate(cls):
         """Test ChunkCandidate functionality."""
-        chunk = CodeChunk(language="python", file_path="test.py", node_type="function_definition", start_line=1, end_line=10, byte_start=0,
-            byte_end=100, parent_context="module", content="def test(): pass")
-        candidate = ChunkCandidate(chunk=chunk, scores={"semantic": 0.8,
-            "complexity": 0.6}, strategies=["semantic", "adaptive"])
+        chunk = CodeChunk(
+            language="python",
+            file_path="test.py",
+            node_type="function_definition",
+            start_line=1,
+            end_line=10,
+            byte_start=0,
+            byte_end=100,
+            parent_context="module",
+            content="def test(): pass",
+        )
+        candidate = ChunkCandidate(
+            chunk=chunk,
+            scores={"semantic": 0.8, "complexity": 0.6},
+            strategies=["semantic", "adaptive"],
+        )
         assert candidate.combined_score == 0.7
 
     @classmethod
     def test_consensus_filter(cls):
         """Test ConsensusFilter."""
         filter_func = ConsensusFilter(min_strategies=2, min_score=0.5)
-        chunk1 = CodeChunk(language="python", file_path="test.py",
-            node_type="function", start_line=1, end_line=10, byte_start=0,
-            byte_end=100, parent_context="", content="")
-        chunk1.candidate = ChunkCandidate(chunk=chunk1, scores={"combined":
-            0.8}, strategies=["semantic", "adaptive", "hierarchical"])
-        chunk2 = CodeChunk(language="python", file_path="test.py",
-            node_type="function", start_line=20, end_line=30, byte_start=200, byte_end=300, parent_context="", content="")
-        chunk2.candidate = ChunkCandidate(chunk=chunk2, scores={"combined":
-            0.3}, strategies=["semantic"])
+        chunk1 = CodeChunk(
+            language="python",
+            file_path="test.py",
+            node_type="function",
+            start_line=1,
+            end_line=10,
+            byte_start=0,
+            byte_end=100,
+            parent_context="",
+            content="",
+        )
+        chunk1.candidate = ChunkCandidate(
+            chunk=chunk1,
+            scores={"combined": 0.8},
+            strategies=["semantic", "adaptive", "hierarchical"],
+        )
+        chunk2 = CodeChunk(
+            language="python",
+            file_path="test.py",
+            node_type="function",
+            start_line=20,
+            end_line=30,
+            byte_start=200,
+            byte_end=300,
+            parent_context="",
+            content="",
+        )
+        chunk2.candidate = ChunkCandidate(
+            chunk=chunk2,
+            scores={"combined": 0.3},
+            strategies=["semantic"],
+        )
         assert filter_func.should_include(chunk1)
         assert not filter_func.should_include(chunk2)
 
@@ -221,13 +301,39 @@ def process_files(file_list: List[str]) -> Dict[str, Dict]:
     def test_overlap_merger(cls):
         """Test OverlapMerger."""
         merger = OverlapMerger(overlap_threshold=0.7)
-        chunk1 = CodeChunk(language="python", file_path="test.py",
-            node_type="function", start_line=1, end_line=20, byte_start=0,
-            byte_end=200, parent_context="", content="chunk1")
-        chunk2 = CodeChunk(language="python", file_path="test.py",
-            node_type="function", start_line=15, end_line=25, byte_start=150, byte_end=250, parent_context="", content="chunk2")
-        chunk3 = CodeChunk(language="python", file_path="test.py",
-            node_type="function", start_line=30, end_line=40, byte_start=300, byte_end=400, parent_context="", content="chunk3")
+        chunk1 = CodeChunk(
+            language="python",
+            file_path="test.py",
+            node_type="function",
+            start_line=1,
+            end_line=20,
+            byte_start=0,
+            byte_end=200,
+            parent_context="",
+            content="chunk1",
+        )
+        chunk2 = CodeChunk(
+            language="python",
+            file_path="test.py",
+            node_type="function",
+            start_line=15,
+            end_line=25,
+            byte_start=150,
+            byte_end=250,
+            parent_context="",
+            content="chunk2",
+        )
+        chunk3 = CodeChunk(
+            language="python",
+            file_path="test.py",
+            node_type="function",
+            start_line=30,
+            end_line=40,
+            byte_start=300,
+            byte_end=400,
+            parent_context="",
+            content="chunk3",
+        )
         assert merger.should_merge(chunk1, chunk2)
         assert not merger.should_merge(chunk1, chunk3)
         merged = merger.merge([chunk1, chunk2])
@@ -239,13 +345,21 @@ def process_files(file_list: List[str]) -> Dict[str, Dict]:
         """Test configuring individual strategies through composite."""
         parser = get_parser("python")
         tree = parser.parse(test_code.encode())
-        composite_chunker.configure({"strategy_configs": {"semantic": {
-            "complexity_threshold": 5.0, "merge_related": False},
-            "hierarchical": {"granularity": "fine", "max_depth": 3},
-            "adaptive": {"base_chunk_size": 20, "adaptive_aggressiveness":
-            0.9}}})
-        chunks = composite_chunker.chunk(tree.root_node, test_code.encode(),
-            "test.py", "python")
+        composite_chunker.configure(
+            {
+                "strategy_configs": {
+                    "semantic": {"complexity_threshold": 5.0, "merge_related": False},
+                    "hierarchical": {"granularity": "fine", "max_depth": 3},
+                    "adaptive": {"base_chunk_size": 20, "adaptive_aggressiveness": 0.9},
+                },
+            },
+        )
+        chunks = composite_chunker.chunk(
+            tree.root_node,
+            test_code.encode(),
+            "test.py",
+            "python",
+        )
         assert len(chunks) > 0
 
     @staticmethod
@@ -254,6 +368,10 @@ def process_files(file_list: List[str]) -> Dict[str, Dict]:
         empty_code = ""
         parser = get_parser("python")
         tree = parser.parse(empty_code.encode())
-        chunks = composite_chunker.chunk(tree.root_node, empty_code.encode(
-            ), "test.py", "python")
+        chunks = composite_chunker.chunk(
+            tree.root_node,
+            empty_code.encode(),
+            "test.py",
+            "python",
+        )
         assert len(chunks) == 0

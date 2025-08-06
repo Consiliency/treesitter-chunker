@@ -8,6 +8,7 @@ formats (syslog, apache, custom) with features like:
 - Error context extraction
 - Multi-line log entry handling
 """
+
 import re
 from collections import OrderedDict, deque
 from collections.abc import Iterator
@@ -20,40 +21,55 @@ from dateutil import parser
 
 from .base import SpecializedProcessor, TextChunk
 
-LOG_PATTERNS = {"log4j": re.compile(
-    r"^(?P<timestamp>\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2}[,\\.]\\d{3})\\s+(?P<level>\\w+)\\s+\\[(?P<thread>[^\\]]+)\\]\\s+(?P<logger>\\S+)\\s*-\\s*(?P<message>.*?)$",
-    ), "syslog": re.compile(
-    r"^(?P<timestamp>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?P<hostname>\\S+)\\s+(?P<process>[^\\[\\s]+)(?:\\[(?P<pid>\\d+)\\])?\\s*:\\s*(?P<message>.*?)$",
-    ), "apache": re.compile(
-    '^(?P<ip>\\S+)\\s+\\S+\\s+\\S+\\s+\\[(?P<timestamp>[^\\]]+)\\]\\s+"(?P<request>[^"]+)r"\\s+(?P<status>\\d+)\\s+(?P<size>\\S+)(?:\\s+"(?P<referer>[^"]+)r"\\s+"(?P<agent>[^"]+)")?',
-    ), "iso_timestamp": re.compile(
-    r"^(?P<timestamp>\\d{4}-\\d{2}-\\d{2}[T\\s]\\d{2}:\\d{2}:\\d{2}(?:[,\\.]\\d{3})?(?:Z|[+-]\\d{2}:?\\d{2})?)\\s*(?:\\[(?P<level>\\w+)\\])?\\s*(?P<message>.*?)$",
-    ), "generic_timestamp": re.compile(
-    r"^(?P<timestamp>(?:\\d{4}[-/]\\d{2}[-/]\\d{2}|\\w{3}\\s+\\d{1,2})\\s+\\d{2}:\\d{2}:\\d{2}(?:[,\\.]\\d{3})?)\\s+",
-    )}
-LOG_LEVELS = {"CRITICAL": re.compile(
-    r"\\b(?:CRITICAL|FATAL|EMERG(?:ENCY)?)\\b", re.I), "ERROR": re.compile(
-    r"\\b(?:ERROR|ERR|SEVERE)\\b", re.I), "WARNING": re.compile(
-    r"\\b(?:WARNING|WARN)\\b", re.I), "INFO": re.compile(
-    r"\\b(?:INFO|INFORMATION|NOTICE)\\b", re.I), "DEBUG": re.compile(
-    r"\\b(?:DEBUG|TRACE|VERBOSE)\\b", re.I)}
-SESSION_PATTERNS = {"start": [re.compile(
-    r"session\\s+start|login|authentication\\s+success", re.I), re.compile(
-    r"connection\\s+established|connected\\s+from", re.I), re.compile(
-    r"starting\\s+service|server\\s+started", re.I)], "end": [re.compile(
-    r"session\\s+end|logout|disconnected", re.I), re.compile(
-    r"connection\\s+closed|connection\\s+terminated", re.I), re.compile(
-    r"stopping\\s+service|server\\s+stopped|shutdown", re.I)]}
-STACK_TRACE_PATTERNS = [re.compile(
-    r"^\\s*at\\s+[\\w\\.$]+\\([\\w\\.]+:\\d+\\)"), re.compile(
-    '^\\s*File\\s+"[^"]+",\\s+line\\s+\\d+'), re.compile(
-    r"^\\s*#\\d+\\s+0x[0-9a-fA-F]+\\s+in\\s+"), re.compile(r"^\\s*\\^\\s*~+"),
-    re.compile(r"^Caused by:|^Traceback|^Exception|^Stack trace:", re.I)]
+LOG_PATTERNS = {
+    "log4j": re.compile(
+        r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}[,\.]\d{3})\s+(?P<level>\w+)\s+\[(?P<thread>[^\]]+)\]\s+(?P<logger>\S+)\s*-\s*(?P<message>.*?)$",
+    ),
+    "syslog": re.compile(
+        r"^(?P<timestamp>\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})\s+(?P<hostname>\S+)\s+(?P<process>[^\[\s]+)(?:\[(?P<pid>\d+)\])?\s*:\s*(?P<message>.*?)$",
+    ),
+    "apache": re.compile(
+        r'^(?P<ip>\S+)\s+\S+\s+\S+\s+\[(?P<timestamp>[^\]]+)\]\s+"(?P<request>[^"]+)"\s+(?P<status>\d+)\s+(?P<size>\S+)(?:\s+"(?P<referer>[^"]+)"\s+"(?P<agent>[^"]+)")?',
+    ),
+    "iso_timestamp": re.compile(
+        r"^(?P<timestamp>\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}(?:[,\.]\d{3})?(?:Z|[+-]\d{2}:?\d{2})?)\s*(?:\[(?P<level>\w+)\])?\s*(?P<message>.*?)$",
+    ),
+    "generic_timestamp": re.compile(
+        r"^(?P<timestamp>(?:\d{4}[-/]\d{2}[-/]\d{2}|\w{3}\s+\d{1,2})\s+\d{2}:\d{2}:\d{2}(?:[,\.]\d{3})?)\s+",
+    ),
+}
+LOG_LEVELS = {
+    "CRITICAL": re.compile(r"\b(?:CRITICAL|FATAL|EMERG(?:ENCY)?)\b", re.I),
+    "ERROR": re.compile(r"\b(?:ERROR|ERR|SEVERE)\b", re.I),
+    "WARNING": re.compile(r"\b(?:WARNING|WARN)\b", re.I),
+    "INFO": re.compile(r"\b(?:INFO|INFORMATION|NOTICE)\b", re.I),
+    "DEBUG": re.compile(r"\b(?:DEBUG|TRACE|VERBOSE)\b", re.I),
+}
+SESSION_PATTERNS = {
+    "start": [
+        re.compile(r"session\s+start|login|authentication\s+success", re.I),
+        re.compile(r"connection\s+established|connected\s+from", re.I),
+        re.compile(r"starting\s+service|server\s+started", re.I),
+    ],
+    "end": [
+        re.compile(r"session\s+end|logout|disconnected", re.I),
+        re.compile(r"connection\s+closed|connection\s+terminated", re.I),
+        re.compile(r"stopping\s+service|server\s+stopped|shutdown", re.I),
+    ],
+}
+STACK_TRACE_PATTERNS = [
+    re.compile(r"^\s*at\s+[\w\.$]+\([\w\.]+:\d+\)"),
+    re.compile(r'^\s*File\s+"[^"]+",\s+line\s+\d+'),
+    re.compile(r"^\s*#\d+\s+0x[0-9a-fA-F]+\s+in\s+"),
+    re.compile(r"^\s*\^\s*~+"),
+    re.compile(r"^Caused by:|^Traceback|^Exception|^Stack trace:", re.I),
+]
 
 
 @dataclass
 class LogEntry:
     """Represents a single log entry with parsed metadata."""
+
     content: str
     timestamp: datetime | None = None
     level: str | None = None
@@ -66,7 +82,7 @@ class LogEntry:
 class LogProcessor(SpecializedProcessor):
     """Processor for log files with advanced chunking capabilities."""
 
-    def __init__(self, config: (dict[str, Any] | None) = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """Initialize log processor.
 
         Config options:
@@ -82,24 +98,26 @@ class LogProcessor(SpecializedProcessor):
         super().__init__(config)
         if isinstance(self.config, dict):
             self.chunk_by = self.config.get("chunk_by", "time")
-            self.time_window = timedelta(seconds=self.config.get(
-                "time_window", 300))
+            self.time_window = timedelta(seconds=self.config.get("time_window", 300))
             self.max_chunk_lines = self.config.get("max_chunk_lines", 1000)
             self.context_lines = self.config.get("context_lines", 5)
             self.detect_sessions = self.config.get("detect_sessions", True)
             self.group_errors = self.config.get("group_errors", True)
         else:
             self.chunk_by = self.config.format_specific.get("chunk_by", "time")
-            self.time_window = timedelta(seconds=self.config.
-                format_specific.get("time_window", 300))
+            self.time_window = timedelta(
+                seconds=self.config.format_specific.get("time_window", 300),
+            )
             self.max_chunk_lines = self.config.format_specific.get(
-                "max_chunk_lines", 1000)
-            self.context_lines = self.config.format_specific.get(
-                "context_lines", 5)
+                "max_chunk_lines",
+                1000,
+            )
+            self.context_lines = self.config.format_specific.get("context_lines", 5)
             self.detect_sessions = self.config.format_specific.get(
-                "detect_sessions", True)
-            self.group_errors = self.config.format_specific.get("group_errors",
-                True)
+                "detect_sessions",
+                True,
+            )
+            self.group_errors = self.config.format_specific.get("group_errors", True)
         self._init_patterns()
         self._buffer: deque[LogEntry] = deque()
         self._current_session_id: str | None = None
@@ -115,7 +133,7 @@ class LogProcessor(SpecializedProcessor):
         if self.chunk_by not in valid_chunk_by:
             raise ValueError(
                 f"Invalid chunk_by: {self.chunk_by}. Must be one of {valid_chunk_by}",
-                )
+            )
         if self.time_window.total_seconds() <= 0:
             raise ValueError("time_window must be positive")
         if self.max_chunk_lines <= 0:
@@ -134,11 +152,11 @@ class LogProcessor(SpecializedProcessor):
             else:
                 self.patterns[name] = pattern
 
-    def can_handle(self, file_path: str, content: (str | None) = None) -> bool:
+    def can_handle(self, file_path: str, content: str | None = None) -> bool:
         """Check if this processor can handle the file."""
         return self.can_process(Path(file_path), content)
 
-    def can_process(self, file_path: Path, content: (str | None) = None) -> bool:
+    def can_process(self, file_path: Path, content: str | None = None) -> bool:
         """Check if this processor can handle the given file."""
         log_extensions = {".log", ".txt", ".out"}
         if file_path.suffix.lower() in log_extensions:
@@ -153,15 +171,17 @@ class LogProcessor(SpecializedProcessor):
                     return True
         return False
 
-    def process_file(self, file_path: (str | Path), config: (dict[str, Any] |
-        None) = None) -> list[TextChunk]:
+    def process_file(
+        self,
+        file_path: str | Path,
+        _config: dict[str, Any] | None = None,
+    ) -> list[TextChunk]:
         """Process a log file and return text chunks."""
         with Path(file_path).open(encoding="utf-8") as f:
             content = f.read()
         return self.process(content, Path(file_path))
 
-    def process(self, content: str, _file_path: (Path | None) = None) -> list[
-        TextChunk]:
+    def process(self, content: str, _file_path: Path | None = None) -> list[TextChunk]:
         """Process log content and return chunks."""
         if not content or not content.strip():
             return []
@@ -180,8 +200,11 @@ class LogProcessor(SpecializedProcessor):
             chunks = self._group_error_contexts(chunks, entries)
         return chunks
 
-    def process_stream(self, stream: Iterator[str], file_path: (Path | None
-        ) = None) -> Iterator[TextChunk]:
+    def process_stream(
+        self,
+        stream: Iterator[str],
+        _file_path: Path | None = None,
+    ) -> Iterator[TextChunk]:
         """Process log content from a stream."""
         line_number = 0
         byte_offset = 0
@@ -213,31 +236,45 @@ class LogProcessor(SpecializedProcessor):
             elif current_entry:
                 current_entry.content += "\n" + line
                 current_entry.line_numbers.append(i + 1)
-                current_entry.byte_offsets = current_entry.byte_offsets[0
-                    ], byte_offset + line_bytes
+                current_entry.byte_offsets = (
+                    current_entry.byte_offsets[0],
+                    byte_offset + line_bytes,
+                )
             else:
-                current_entry = LogEntry(content=line, line_numbers=[i + 1],
+                current_entry = LogEntry(
+                    content=line,
+                    line_numbers=[i + 1],
                     byte_offsets=(byte_offset, byte_offset + line_bytes),
-                    is_continuation=True)
+                    is_continuation=True,
+                )
             byte_offset += line_bytes
         if current_entry:
             entries.append(current_entry)
         return entries
 
-    def _parse_line(self, line: str, line_number: int, byte_offset: int,
-        ) -> LogEntry:
+    def _parse_line(
+        self,
+        line: str,
+        line_number: int,
+        byte_offset: int,
+    ) -> LogEntry:
         """Parse a single log line into a LogEntry."""
         line_bytes = len(line.encode("utf-8"))
-        entry = LogEntry(content=line, line_numbers=[line_number],
-            byte_offsets=(byte_offset, byte_offset + line_bytes))
+        entry = LogEntry(
+            content=line,
+            line_numbers=[line_number],
+            byte_offsets=(byte_offset, byte_offset + line_bytes),
+        )
         for format_name, pattern in self.patterns.items():
             match = pattern.match(line)
             if match:
                 groups = match.groupdict()
                 entry.metadata["format"] = format_name
                 if "timestamp" in groups:
-                    entry.timestamp = self._parse_timestamp(groups[
-                        "timestamp"], format_name)
+                    entry.timestamp = self._parse_timestamp(
+                        groups["timestamp"],
+                        format_name,
+                    )
                 if groups.get("level"):
                     entry.level = groups["level"].upper()
                 else:
@@ -262,7 +299,7 @@ class LogProcessor(SpecializedProcessor):
                 return False
         return not line[0].isspace()
 
-    def _detect_log_format(self, line: str) -> (str | None):
+    def _detect_log_format(self, line: str) -> str | None:
         """Detect log format from a line."""
         for format_name, pattern in self.patterns.items():
             if pattern.match(line):
@@ -270,7 +307,7 @@ class LogProcessor(SpecializedProcessor):
         return None
 
     @staticmethod
-    def _detect_log_level(line: str) -> (str | None):
+    def _detect_log_level(line: str) -> str | None:
         """Detect log level from line content."""
         for level, pattern in LOG_LEVELS.items():
             if pattern.search(line):
@@ -278,28 +315,34 @@ class LogProcessor(SpecializedProcessor):
         return None
 
     @staticmethod
-    def _parse_timestamp(timestamp_str: str, format_name: str) -> (datetime |
-        None):
+    def _parse_timestamp(timestamp_str: str, format_name: str) -> datetime | None:
         """Parse timestamp string based on format."""
         try:
             if format_name == "syslog":
                 current_year = datetime.now().year
-                dt = datetime.strptime(f"{current_year} {timestamp_str}",
-                    "%Y %b %d %H:%M:%S")
+                dt = datetime.strptime(
+                    f"{current_year} {timestamp_str}",
+                    "%Y %b %d %H:%M:%S",
+                )
                 return dt.replace(tzinfo=timezone.utc)
             if format_name == "apache":
                 return datetime.strptime(timestamp_str, "%d/%b/%Y:%H:%M:%S %z")
             if format_name in {"iso_timestamp", "log4j"}:
-                formats = ["%Y-%m-%d %H:%M:%S,%f", "%Y-%m-%d %H:%M:%S.%f",
-                    "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%S.%f",
-                    "%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%S.%f%z"]
+                formats = [
+                    "%Y-%m-%d %H:%M:%S,%f",
+                    "%Y-%m-%d %H:%M:%S.%f",
+                    "%Y-%m-%dT%H:%M:%S",
+                    "%Y-%m-%dT%H:%M:%S.%f",
+                    "%Y-%m-%dT%H:%M:%S%z",
+                    "%Y-%m-%dT%H:%M:%S.%f%z",
+                ]
                 for fmt in formats:
                     try:
                         dt = datetime.strptime(timestamp_str, fmt)
                         if dt.tzinfo is None:
                             dt = dt.replace(tzinfo=timezone.utc)
                         return dt
-                    except ValueError:
+                    except ValueError:  # noqa: PERF203 - Trying multiple formats
                         continue
             else:
                 try:
@@ -324,8 +367,10 @@ class LogProcessor(SpecializedProcessor):
             if entry.timestamp:
                 if chunk_start_time is None:
                     chunk_start_time = entry.timestamp
-                if (chunk_start_time and entry.timestamp - chunk_start_time >
-                    self.time_window):
+                if (
+                    chunk_start_time
+                    and entry.timestamp - chunk_start_time > self.time_window
+                ):
                     if current_chunk_entries:
                         chunk = self._create_chunk(current_chunk_entries)
                         chunks.append(chunk)
@@ -349,7 +394,7 @@ class LogProcessor(SpecializedProcessor):
         """Create chunks based on line count."""
         chunks = []
         for i in range(0, len(entries), self.max_chunk_lines):
-            chunk_entries = entries[i:i + self.max_chunk_lines]
+            chunk_entries = entries[i : i + self.max_chunk_lines]
             chunk = self._create_chunk(chunk_entries)
             chunks.append(chunk)
         return chunks
@@ -398,15 +443,18 @@ class LogProcessor(SpecializedProcessor):
         chunks = []
         for level, level_entries in level_groups.items():
             for i in range(0, len(level_entries), self.max_chunk_lines):
-                chunk_entries = level_entries[i:i + self.max_chunk_lines]
+                chunk_entries = level_entries[i : i + self.max_chunk_lines]
                 chunk = self._create_chunk(chunk_entries)
                 chunk.metadata["log_level"] = level
                 chunks.append(chunk)
         chunks.sort(key=lambda c: c.start_line)
         return chunks
 
-    def _group_error_contexts(self, chunks: list[TextChunk], all_entries:
-        list[LogEntry]) -> list[TextChunk]:
+    def _group_error_contexts(
+        self,
+        chunks: list[TextChunk],
+        all_entries: list[LogEntry],
+    ) -> list[TextChunk]:
         """Group error messages with surrounding context."""
         if not self.group_errors:
             return chunks
@@ -451,8 +499,7 @@ class LogProcessor(SpecializedProcessor):
     @staticmethod
     def _is_session_end(entry: LogEntry) -> bool:
         """Check if entry indicates session end."""
-        return any(pattern.search(entry.content) for pattern in
-            SESSION_PATTERNS["end"])
+        return any(pattern.search(entry.content) for pattern in SESSION_PATTERNS["end"])
 
     def _get_session_id(self) -> str:
         """Get current session ID."""
@@ -469,22 +516,39 @@ class LogProcessor(SpecializedProcessor):
         end_line = max(all_lines)
         start_byte = entries[0].byte_offsets[0]
         end_byte = entries[-1].byte_offsets[1]
-        metadata = {"entry_count": len(entries), "formats": list({e.
-            metadata.get("format") for e in entries if e.metadata.get(
-            "format")}), "levels": list({e.level for e in entries if e.level})}
+        metadata = {
+            "entry_count": len(entries),
+            "formats": list(
+                {e.metadata.get("format") for e in entries if e.metadata.get("format")},
+            ),
+            "levels": list({e.level for e in entries if e.level}),
+        }
         timestamps = [e.timestamp for e in entries if e.timestamp]
         if timestamps:
             metadata["start_time"] = min(timestamps).isoformat()
             metadata["end_time"] = max(timestamps).isoformat()
-        return TextChunk(content=content, start_line=start_line, end_line=end_line, start_byte=start_byte, end_byte=end_byte, metadata=metadata, chunk_type="log")
+        return TextChunk(
+            content=content,
+            start_line=start_line,
+            end_line=end_line,
+            start_byte=start_byte,
+            end_byte=end_byte,
+            metadata=metadata,
+            chunk_type="log",
+        )
 
-    def _check_emit_chunk(self) -> (TextChunk | None):
+    def _check_emit_chunk(self) -> TextChunk | None:
         """Check if buffer should be emitted as a chunk."""
         if not self._buffer:
             return None
         should_emit = False
-        if self.chunk_by == "lines" and len(self._buffer,
-            ) >= self.max_chunk_lines:
+        if (
+            self.chunk_by == "lines"
+            and len(
+                self._buffer,
+            )
+            >= self.max_chunk_lines
+        ):
             should_emit = True
         elif self.chunk_by == "time" and len(self._buffer) > 1:
             first_ts = self._buffer[0].timestamp
@@ -500,7 +564,7 @@ class LogProcessor(SpecializedProcessor):
             return self._create_chunk_from_buffer()
         return None
 
-    def _create_chunk_from_buffer(self) -> (TextChunk | None):
+    def _create_chunk_from_buffer(self) -> TextChunk | None:
         """Create chunk from current buffer and clear it."""
         if not self._buffer:
             return None
@@ -516,9 +580,15 @@ class LogProcessor(SpecializedProcessor):
     def get_metadata(self) -> dict[str, Any]:
         """Get processor metadata."""
         metadata = super().get_metadata()
-        metadata.update({"chunk_by": self.chunk_by, "time_window": self.
-            time_window.total_seconds(), "max_chunk_lines": self.
-            max_chunk_lines, "context_lines": self.context_lines,
-            "detect_sessions": self.detect_sessions, "group_errors": self.
-            group_errors, "pattern_names": list(self.patterns.keys())})
+        metadata.update(
+            {
+                "chunk_by": self.chunk_by,
+                "time_window": self.time_window.total_seconds(),
+                "max_chunk_lines": self.max_chunk_lines,
+                "context_lines": self.context_lines,
+                "detect_sessions": self.detect_sessions,
+                "group_errors": self.group_errors,
+                "pattern_names": list(self.patterns.keys()),
+            },
+        )
         return metadata

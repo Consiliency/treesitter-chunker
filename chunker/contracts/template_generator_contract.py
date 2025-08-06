@@ -7,8 +7,10 @@ class TemplateGeneratorContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def generate_plugin(language_name: str, config: dict[str, any]) -> tuple[
-        bool, Path]:
+    def generate_plugin(
+        language_name: str,
+        config: dict[str, any],
+    ) -> tuple[bool, Path]:
         """Generate a language plugin file from template
 
         Args:
@@ -29,8 +31,10 @@ class TemplateGeneratorContract(ABC):
 
     @staticmethod
     @abstractmethod
-    def generate_test(language_name: str, test_cases: list[dict[str, str]],
-        ) -> tuple[bool, Path]:
+    def generate_test(
+        language_name: str,
+        test_cases: list[dict[str, str]],
+    ) -> tuple[bool, Path]:
         """Generate test file for a language plugin
 
         Args:

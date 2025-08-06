@@ -1,4 +1,5 @@
 """Metadata extraction interfaces for enriching chunks with additional information."""
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any
@@ -9,6 +10,7 @@ from tree_sitter import Node
 @dataclass
 class ComplexityMetrics:
     """Code complexity metrics."""
+
     cyclomatic: int
     cognitive: int
     nesting_depth: int
@@ -19,6 +21,7 @@ class ComplexityMetrics:
 @dataclass
 class SignatureInfo:
     """Function/method signature information."""
+
     name: str
     parameters: list[dict[str, Any]]
     return_type: str | None
@@ -31,7 +34,7 @@ class MetadataExtractor(ABC):
 
     @staticmethod
     @abstractmethod
-    def extract_signature(node: Node, source: bytes) -> (SignatureInfo | None):
+    def extract_signature(node: Node, source: bytes) -> SignatureInfo | None:
         """
         Extract function/method signature information.
 
@@ -45,7 +48,7 @@ class MetadataExtractor(ABC):
 
     @staticmethod
     @abstractmethod
-    def extract_docstring(node: Node, source: bytes) -> (str | None):
+    def extract_docstring(node: Node, source: bytes) -> str | None:
         """
         Extract docstring/comment from a node.
 

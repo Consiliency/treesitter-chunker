@@ -58,10 +58,16 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
         self.file_path = file_path
         if unit == "lines":
             return self._chunk_by_lines_with_overlap(
-                content, chunk_size, overlap_size, strategy,
+                content,
+                chunk_size,
+                overlap_size,
+                strategy,
             )
         return self._chunk_by_chars_with_overlap(
-            content, chunk_size, overlap_size, strategy,
+            content,
+            chunk_size,
+            overlap_size,
+            strategy,
         )
 
     def chunk_with_asymmetric_overlap(
@@ -82,10 +88,16 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
         self.file_path = file_path
         if unit == "lines":
             return self._chunk_by_lines_asymmetric(
-                content, chunk_size, overlap_before, overlap_after,
+                content,
+                chunk_size,
+                overlap_before,
+                overlap_after,
             )
         return self._chunk_by_chars_asymmetric(
-            content, chunk_size, overlap_before, overlap_after,
+            content,
+            chunk_size,
+            overlap_before,
+            overlap_after,
         )
 
     def chunk_with_dynamic_overlap(
@@ -106,15 +118,23 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
         self.file_path = file_path
         if unit == "lines":
             return self._chunk_by_lines_dynamic(
-                content, chunk_size, min_overlap, max_overlap,
+                content,
+                chunk_size,
+                min_overlap,
+                max_overlap,
             )
         return self._chunk_by_chars_dynamic(
-            content, chunk_size, min_overlap, max_overlap,
+            content,
+            chunk_size,
+            min_overlap,
+            max_overlap,
         )
 
     @staticmethod
     def find_natural_overlap_boundary(
-        content: str, desired_position: int, search_window: int = 100,
+        content: str,
+        desired_position: int,
+        search_window: int = 100,
     ) -> int:
         """
         Find a natural boundary for overlap near desired position.
@@ -170,7 +190,9 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
             if strategy == OverlapStrategy.DYNAMIC and i > 0:
                 desired_line = start_idx
                 start_idx = self._find_natural_line_boundary(
-                    lines, desired_line, overlap_size // 2,
+                    lines,
+                    desired_line,
+                    overlap_size // 2,
                 )
             chunk_lines = lines[start_idx:end_idx]
             chunk_content = "".join(chunk_lines)
@@ -214,11 +236,15 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
             if strategy == OverlapStrategy.DYNAMIC:
                 if i > 0:
                     start = self.find_natural_overlap_boundary(
-                        content, start, overlap_size // 2,
+                        content,
+                        start,
+                        overlap_size // 2,
                     )
                 if end < len(content):
                     end = self.find_natural_overlap_boundary(
-                        content, end, overlap_size // 2,
+                        content,
+                        end,
+                        overlap_size // 2,
                     )
             chunk_content = content[start:end]
             start_line = content[:start].count("\n") + 1
@@ -240,7 +266,11 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
         return chunks
 
     def _chunk_by_lines_asymmetric(
-        self, content: str, chunk_size: int, overlap_before: int, overlap_after: int,
+        self,
+        content: str,
+        chunk_size: int,
+        overlap_before: int,
+        overlap_after: int,
     ) -> list[CodeChunk]:
         """Chunk by lines with asymmetric overlap."""
         lines = content.splitlines(keepends=True)
@@ -277,7 +307,11 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
         return chunks
 
     def _chunk_by_chars_asymmetric(
-        self, content: str, chunk_size: int, overlap_before: int, overlap_after: int,
+        self,
+        content: str,
+        chunk_size: int,
+        overlap_before: int,
+        overlap_after: int,
     ) -> list[CodeChunk]:
         """Chunk by characters with asymmetric overlap."""
         chunks = []
@@ -312,7 +346,11 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
         return chunks
 
     def _chunk_by_lines_dynamic(
-        self, content: str, chunk_size: int, min_overlap: int, max_overlap: int,
+        self,
+        content: str,
+        chunk_size: int,
+        min_overlap: int,
+        max_overlap: int,
     ) -> list[CodeChunk]:
         """Chunk by lines with dynamic overlap based on content."""
         lines = content.splitlines(keepends=True)
@@ -324,7 +362,10 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
                 start_idx = 0
             else:
                 overlap = self._calculate_dynamic_overlap_lines(
-                    lines, i, min_overlap, max_overlap,
+                    lines,
+                    i,
+                    min_overlap,
+                    max_overlap,
                 )
                 start_idx = max(0, i - overlap)
             end_idx = min(i + chunk_size, len(lines))
@@ -349,7 +390,11 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
         return chunks
 
     def _chunk_by_chars_dynamic(
-        self, content: str, chunk_size: int, min_overlap: int, max_overlap: int,
+        self,
+        content: str,
+        chunk_size: int,
+        min_overlap: int,
+        max_overlap: int,
     ) -> list[CodeChunk]:
         """Chunk by characters with dynamic overlap based on content."""
         chunks = []
@@ -360,11 +405,16 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
                 start = 0
             else:
                 overlap = self._calculate_dynamic_overlap_chars(
-                    content, i, min_overlap, max_overlap,
+                    content,
+                    i,
+                    min_overlap,
+                    max_overlap,
                 )
                 desired_start = i - overlap
                 start = self.find_natural_overlap_boundary(
-                    content, desired_start, overlap // 2,
+                    content,
+                    desired_start,
+                    overlap // 2,
                 )
                 start = max(0, start)
             end = min(i + chunk_size, len(content))
@@ -389,7 +439,9 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
 
     @staticmethod
     def _find_natural_line_boundary(
-        lines: list[str], desired_line: int, search_window: int,
+        lines: list[str],
+        desired_line: int,
+        search_window: int,
     ) -> int:
         """Find a natural boundary in lines (empty lines, headers, etc)."""
         start = max(0, desired_line - search_window)
@@ -414,7 +466,10 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
 
     @staticmethod
     def _calculate_dynamic_overlap_lines(
-        lines: list[str], position: int, min_overlap: int, max_overlap: int,
+        lines: list[str],
+        position: int,
+        min_overlap: int,
+        max_overlap: int,
     ) -> int:
         """Calculate dynamic overlap size based on content density."""
         look_back = min(position, 50)
@@ -436,7 +491,10 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
 
     @staticmethod
     def _calculate_dynamic_overlap_chars(
-        content: str, position: int, min_overlap: int, max_overlap: int,
+        content: str,
+        position: int,
+        min_overlap: int,
+        max_overlap: int,
     ) -> int:
         """Calculate dynamic overlap size based on content characteristics."""
         look_back = min(position, 1000)

@@ -1,4 +1,5 @@
 """Tests for the LogProcessor module."""
+
 from pathlib import Path
 from textwrap import dedent
 
@@ -11,13 +12,13 @@ class TestLogProcessor:
     """Test suite for LogProcessor."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def processor(cls):
         """Create a default LogProcessor instance."""
         return LogProcessor()
 
     @staticmethod
-    @pytest.fixture
+    @pytest.fixture()
     def syslog_content():
         """Sample syslog format content."""
         return dedent(
@@ -28,10 +29,10 @@ class TestLogProcessor:
             Jan  1 00:05:01 server01 kernel: [123456.790] Killed process 5678 (apache2) total-vm:123456kB
             Jan  1 00:10:00 server01 sshd[1234]: pam_unix(sshd:session): session closed for user user
         """,
-            ).strip()
+        ).strip()
 
     @staticmethod
-    @pytest.fixture
+    @pytest.fixture()
     def apache_content():
         """Sample Apache log content."""
         return dedent(
@@ -42,10 +43,10 @@ class TestLogProcessor:
             192.168.1.101 - - [01/Jan/2024:00:00:03 +0000] "GET /favicon.ico HTTP/1.1" 404 0
             192.168.1.102 - - [01/Jan/2024:00:05:00 +0000] "POST /api/login HTTP/1.1" 200 456
         """,
-            ).strip()
+        ).strip()
 
     @staticmethod
-    @pytest.fixture
+    @pytest.fixture()
     def application_log_content():
         """Sample application log with ISO timestamps and levels."""
         return dedent(
@@ -62,10 +63,10 @@ class TestLogProcessor:
             2024-01-01 00:00:06,000 [CRITICAL] Application failed to start
             2024-01-01 00:00:07,000 [INFO] Shutting down
         """,
-            ).strip()
+        ).strip()
 
     @staticmethod
-    @pytest.fixture
+    @pytest.fixture()
     def java_log_content():
         """Sample Java/Log4j style log content."""
         return dedent(
@@ -80,7 +81,7 @@ class TestLogProcessor:
                 at com.mysql.jdbc.MysqlIO.checkErrorPacket(MysqlIO.java:4052)
             2024-01-01 00:00:04,000 FATAL [main] com.example.Application - Application startup failed
         """,
-            ).strip()
+        ).strip()
 
     @classmethod
     def test_can_process_log_files(cls, processor):
@@ -144,8 +145,7 @@ class TestLogProcessor:
     @classmethod
     def test_chunk_by_lines(cls, processor, application_log_content):
         """Test line-based chunking."""
-        processor = LogProcessor(config={"chunk_by": "lines",
-            "max_chunk_lines": 3})
+        processor = LogProcessor(config={"chunk_by": "lines", "max_chunk_lines": 3})
         chunks = processor.process(application_log_content)
         for chunk in chunks:
             assert chunk.metadata["entry_count"] <= 3
@@ -178,9 +178,10 @@ class TestLogProcessor:
             2024-01-01 00:01:00 [INFO] User login successful for user456
             2024-01-01 00:01:01 [INFO] Session started for user456
         """,
-            ).strip()
-        processor = LogProcessor(config={"chunk_by": "session",
-            "detect_sessions": True})
+        ).strip()
+        processor = LogProcessor(
+            config={"chunk_by": "session", "detect_sessions": True},
+        )
         chunks = processor.process(content)
         assert len(chunks) >= 2
         for chunk in chunks:
@@ -200,9 +201,15 @@ class TestLogProcessor:
             2024-01-01 00:00:10 [INFO] Processing request 124
             2024-01-01 00:00:11 [INFO] Request 124 successful
         """,
-            ).strip()
-        processor = LogProcessor(config={"chunk_by": "lines",
-            "max_chunk_lines": 100, "group_errors": True, "context_lines": 2})
+        ).strip()
+        processor = LogProcessor(
+            config={
+                "chunk_by": "lines",
+                "max_chunk_lines": 100,
+                "group_errors": True,
+                "context_lines": 2,
+            },
+        )
         chunks = processor.process(content)
         error_chunks = [c for c in chunks if c.metadata.get("has_errors")]
         assert len(error_chunks) > 0
@@ -220,8 +227,9 @@ class TestLogProcessor:
         assert "java.sql.SQLException" in chunk.content
         assert "at com.mysql.jdbc.SQLError" in chunk.content
         entries = chunk.content.split("\n")
-        error_idx = next(i for i, line in enumerate(entries) if
-            "Failed to connect" in line)
+        error_idx = next(
+            i for i, line in enumerate(entries) if "Failed to connect" in line
+        )
         assert "SQLException" in entries[error_idx + 1]
 
     @staticmethod
@@ -232,6 +240,7 @@ class TestLogProcessor:
         def line_generator():
             for line in lines:
                 yield line + "\n"
+
         chunks = list(processor.process_stream(line_generator()))
         assert len(chunks) > 0
         batch_chunks = processor.process(application_log_content)
@@ -241,17 +250,18 @@ class TestLogProcessor:
     def test_timestamp_parsing(cls):
         """Test various timestamp format parsing."""
         processor = LogProcessor()
-        test_cases = [("2024-01-01 12:00:00,000", "iso_timestamp"), (
-            "2024-01-01T12:00:00Z", "iso_timestamp"), (
-            "2024-01-01T12:00:00.123+00:00", "iso_timestamp"), (
-            "Jan  1 12:00:00", "syslog"), ("01/Jan/2024:12:00:00 +0000",
-            "apache")]
+        test_cases = [
+            ("2024-01-01 12:00:00,000", "iso_timestamp"),
+            ("2024-01-01T12:00:00Z", "iso_timestamp"),
+            ("2024-01-01T12:00:00.123+00:00", "iso_timestamp"),
+            ("Jan  1 12:00:00", "syslog"),
+            ("01/Jan/2024:12:00:00 +0000", "apache"),
+        ]
         for timestamp_str, expected_format in test_cases:
             if expected_format == "syslog":
                 line = f"{timestamp_str} hostname process: message"
             elif expected_format == "apache":
-                line = (
-                    f'127.0.0.1 - - [{timestamp_str}] "GET / HTTP/1.1" 200 0')
+                line = f'127.0.0.1 - - [{timestamp_str}] "GET / HTTP/1.1" 200 0'
             else:
                 line = f"{timestamp_str} [INFO] Test message"
             entry = processor._parse_line(line, 1, 0)
@@ -263,11 +273,14 @@ class TestLogProcessor:
     def test_log_level_detection(cls):
         """Test log level detection from various formats."""
         processor = LogProcessor()
-        test_cases = [("[ERROR] Something went wrong", "ERROR"), (
-            "CRITICAL: System failure", "CRITICAL"), ("Warning: Low memory",
-            "WARNING"), ("INFO - Application started", "INFO"), (
-            "DEBUG: Variable x = 42", "DEBUG"), ("Something bad happened",
-            None)]
+        test_cases = [
+            ("[ERROR] Something went wrong", "ERROR"),
+            ("CRITICAL: System failure", "CRITICAL"),
+            ("Warning: Low memory", "WARNING"),
+            ("INFO - Application started", "INFO"),
+            ("DEBUG: Variable x = 42", "DEBUG"),
+            ("Something bad happened", None),
+        ]
         for line, expected_level in test_cases:
             level = processor._detect_log_level(line)
             assert level == expected_level
@@ -275,18 +288,15 @@ class TestLogProcessor:
     @classmethod
     def test_custom_patterns(cls):
         """Test custom log pattern configuration."""
-        custom_pattern = (
-            "^(?P<timestamp>\\d{2}:\\d{2}:\\d{2})\\s+\\[(?P<component>\\w+)\\]\\s+(?P<message>.*)"
-            )
-        processor = LogProcessor(config={"patterns": {"custom":
-            custom_pattern}})
+        custom_pattern = "^(?P<timestamp>\\d{2}:\\d{2}:\\d{2})\\s+\\[(?P<component>\\w+)\\]\\s+(?P<message>.*)"
+        processor = LogProcessor(config={"patterns": {"custom": custom_pattern}})
         content = dedent(
             """
             12:00:00 [AUTH] User login attempt
             12:00:01 [AUTH] Login successful
             12:00:02 [API] Request received
         """,
-            ).strip()
+        ).strip()
         chunks = processor.process(content)
         assert len(chunks) > 0
         assert "custom" in chunks[0].metadata["formats"]
@@ -298,8 +308,10 @@ class TestLogProcessor:
             LogProcessor(config={"chunk_by": "invalid"})
         with pytest.raises(ValueError, match="time_window must be positive"):
             LogProcessor(config={"time_window": -1})
-        with pytest.raises(ValueError, match="max_chunk_lines must be positive",
-            ):
+        with pytest.raises(
+            ValueError,
+            match="max_chunk_lines must be positive",
+        ):
             LogProcessor(config={"max_chunk_lines": 0})
 
     @staticmethod

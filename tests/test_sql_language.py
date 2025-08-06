@@ -1,4 +1,5 @@
 """Comprehensive tests for SQL language support."""
+
 from chunker import chunk_file, get_parser
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from chunker.languages.sql import SQLPlugin
@@ -19,12 +20,11 @@ class TestSQLBasicChunking:
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 """,
-            )
+        )
         chunks = chunk_file(src, "sql")
         assert len(chunks) >= 1
         assert any(c.node_type == "create_table_statement" for c in chunks)
-        table_chunk = next(c for c in chunks if c.node_type ==
-            "create_table_statement")
+        table_chunk = next(c for c in chunks if c.node_type == "create_table_statement")
         assert "users" in table_chunk.content
         assert "id INTEGER PRIMARY KEY" in table_chunk.content
 
@@ -56,15 +56,16 @@ FROM users u
 LEFT JOIN posts p ON u.id = p.user_id
 GROUP BY u.name;
 """,
-            )
+        )
         chunks = chunk_file(src, "sql")
         chunk_types = {chunk.node_type for chunk in chunks}
         assert "create_table_statement" in chunk_types
         assert "create_index_statement" in chunk_types
         assert "select_statement" in chunk_types
         assert "comment" in chunk_types
-        create_table_chunks = [c for c in chunks if c.node_type ==
-            "create_table_statement"]
+        create_table_chunks = [
+            c for c in chunks if c.node_type == "create_table_statement"
+        ]
         assert len(create_table_chunks) == 2
 
     @staticmethod
@@ -79,7 +80,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 """,
-            )
+        )
         chunks = chunk_file(src, "sql")
         function_chunks = [c for c in chunks if "function" in c.node_type]
         assert len(function_chunks) >= 1
@@ -98,7 +99,7 @@ AS $$
     WHERE id = current_user_id();
 $$;
 """,
-            )
+        )
         chunks = chunk_file(src, "sql")
         procedure_chunks = [c for c in chunks if "procedure" in c.node_type]
         assert len(procedure_chunks) >= 1
@@ -126,11 +127,10 @@ INNER JOIN user_stats us ON u.id = us.user_id
 WHERE us.post_count > 10
 ORDER BY us.post_count DESC;
 """,
-            )
+        )
         chunks = chunk_file(src, "sql")
         assert any("WITH user_stats AS" in c.content for c in chunks)
-        select_chunks = [c for c in chunks if c.node_type == "select_statement"
-            ]
+        select_chunks = [c for c in chunks if c.node_type == "select_statement"]
         assert len(select_chunks) >= 1
 
 
@@ -177,6 +177,7 @@ class TestSQLContractCompliance:
 
             def __init__(self, node_type):
                 self.type = node_type
+
         assert plugin.should_chunk_node(MockNode("create_table_statement"))
         assert plugin.should_chunk_node(MockNode("select_statement"))
         assert plugin.should_chunk_node(MockNode("function_definition"))
@@ -194,6 +195,7 @@ class TestSQLContractCompliance:
             def __init__(self, node_type):
                 self.type = node_type
                 self.children = []
+
         node = MockNode("create_table_statement")
         context = plugin.get_node_context(node, b"CREATE TABLE users")
         assert context is not None
@@ -217,7 +219,7 @@ class TestSQLEdgeCases:
         src = tmp_path / "comments.sql"
         src.write_text(
             "-- This is a comment\n-- Another comment\n/* Multi-line\n   comment */\n",
-            )
+        )
         chunks = chunk_file(src, "sql")
         assert all(c.node_type == "comment" for c in chunks)
 
@@ -235,13 +237,11 @@ UPDATE users SET active = true WHERE name IN ('Alice', 'Bob');
 
 COMMIT;
 """,
-            )
+        )
         chunks = chunk_file(src, "sql")
-        insert_chunks = [c for c in chunks if c.node_type == "insert_statement"
-            ]
+        insert_chunks = [c for c in chunks if c.node_type == "insert_statement"]
         assert len(insert_chunks) == 2
-        update_chunks = [c for c in chunks if c.node_type == "update_statement"
-            ]
+        update_chunks = [c for c in chunks if c.node_type == "update_statement"]
         assert len(update_chunks) == 1
 
     @staticmethod
@@ -265,10 +265,9 @@ LEFT JOIN posts p ON u.id = p.user_id
 LEFT JOIN comments c ON u.id = c.user_id
 GROUP BY u.id, u.name;
 """,
-            )
+        )
         chunks = chunk_file(src, "sql")
-        view_chunks = [c for c in chunks if c.node_type ==
-            "create_view_statement"]
+        view_chunks = [c for c in chunks if c.node_type == "create_view_statement"]
         assert len(view_chunks) >= 2
         assert any("active_users" in c.content for c in view_chunks)
         assert any("user_statistics" in c.content for c in view_chunks)
@@ -288,7 +287,7 @@ AFTER INSERT OR UPDATE OR DELETE ON users
 FOR EACH ROW
 EXECUTE FUNCTION audit_user_changes();
 """,
-            )
+        )
         chunks = chunk_file(src, "sql")
         trigger_chunks = [c for c in chunks if "trigger" in c.node_type]
         assert len(trigger_chunks) >= 2

@@ -1,4 +1,5 @@
 """Tests for ParserFactory component."""
+
 import threading
 import time
 from pathlib import Path
@@ -7,14 +8,9 @@ from unittest.mock import Mock, patch
 import pytest
 from tree_sitter import Parser
 
-from chunker._internal.factory import LRUCache, ParserFactory, ParserPool
+from chunker._internal.factory import LRUCache, ParserConfig, ParserFactory, ParserPool
 from chunker._internal.registry import LanguageRegistry
 from chunker.exceptions import LanguageNotFoundError, ParserConfigError, ParserInitError
-from chunker.factory import LRUCache, ParserConfig, ParserFactory, ParserPool
-from chunker.registry import LanguageRegistry
-
-from chunker.parser import ParserConfig
-
 
 
 class TestParserConfig:
@@ -104,8 +100,8 @@ class TestLRUCache:
                     assert retrieved is parser
             except (OSError, AttributeError, IndexError) as e:
                 errors.append(e)
-        threads = [threading.Thread(target=worker, args=(i,)) for i in range(5)
-            ]
+
+        threads = [threading.Thread(target=worker, args=(i,)) for i in range(5)]
         for t in threads:
             t.start()
         for t in threads:
@@ -146,7 +142,7 @@ class TestParserFactory:
     """Test ParserFactory functionality."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def registry(cls):
         """Create a real registry for testing."""
         lib_path = Path(__file__).parent.parent / "build" / "my-languages.so"
@@ -244,6 +240,7 @@ class TestParserFactory:
                     time.sleep(0.001)
             except (OSError, IndexError, KeyError) as e:
                 errors.append(e)
+
         threads = []
         for i in range(3):
             for lang in ["python", "javascript"]:

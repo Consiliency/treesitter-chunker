@@ -1,4 +1,5 @@
 """Incremental parsing implementation using Tree-sitter's capabilities."""
+
 import difflib
 import logging
 
@@ -21,8 +22,12 @@ class IncrementalParser(IncrementalParserInterface):
         self._parser_cache = {}
         logger.info("Initialized IncrementalParser")
 
-    def parse_incremental(self, old_tree: Tree, source: bytes,
-        changed_ranges: list[tuple[int, int, int, int]]) -> Tree:
+    def parse_incremental(
+        self,
+        old_tree: Tree,
+        source: bytes,
+        changed_ranges: list[tuple[int, int, int, int]],
+    ) -> Tree:
         """Parse incrementally based on changes.
 
         Tree-sitter supports incremental parsing by providing edit information
@@ -40,18 +45,23 @@ class IncrementalParser(IncrementalParserInterface):
             raise ValueError("Invalid old_tree provided")
         parser = self._get_parser_for_tree(old_tree)
         for start_byte, old_end_byte, new_end_byte, start_point in changed_ranges:
-            old_tree.edit(start_byte=start_byte, old_end_byte=old_end_byte,
-                new_end_byte=new_end_byte, start_point=start_point,
-                old_end_point=self._calculate_point(old_tree.text,
-                old_end_byte), new_end_point=self._calculate_point(source,
-                new_end_byte))
+            old_tree.edit(
+                start_byte=start_byte,
+                old_end_byte=old_end_byte,
+                new_end_byte=new_end_byte,
+                start_point=start_point,
+                old_end_point=self._calculate_point(old_tree.text, old_end_byte),
+                new_end_point=self._calculate_point(source, new_end_byte),
+            )
         new_tree = parser.parse(source, old_tree)
-        logger.debug("Incremental parse completed. Changes: %s", len(
-            changed_ranges))
+        logger.debug("Incremental parse completed. Changes: %s", len(changed_ranges))
         return new_tree
 
-    def detect_changes(self, old_source: bytes, new_source: bytes) -> list[tuple
-        [int, int, int, int]]:
+    def detect_changes(
+        self,
+        old_source: bytes,
+        new_source: bytes,
+    ) -> list[tuple[int, int, int, int]]:
         """Detect changed ranges between sources.
 
         Uses difflib to find the differences and converts them to Tree-sitter
@@ -65,34 +75,39 @@ class IncrementalParser(IncrementalParserInterface):
             List of changed ranges in Tree-sitter format
         """
         old_lines = old_source.decode("utf-8", errors="replace").splitlines(
-            keepends=True)
+            keepends=True,
+        )
         new_lines = new_source.decode("utf-8", errors="replace").splitlines(
-            keepends=True)
+            keepends=True,
+        )
         matcher = difflib.SequenceMatcher(None, old_lines, new_lines)
         changes = []
-        for tag, old_start, old_end, new_start, new_end in matcher.get_opcodes(
-            ):
+        for tag, old_start, old_end, new_start, new_end in matcher.get_opcodes():
             if tag == "equal":
-                sum(len(line.encode("utf-8")) for line in old_lines[
-                    old_start:old_end])
-                sum(len(line.encode("utf-8")) for line in new_lines[
-                    new_start:new_end])
+                sum(len(line.encode("utf-8")) for line in old_lines[old_start:old_end])
+                sum(len(line.encode("utf-8")) for line in new_lines[new_start:new_end])
             else:
-                start_byte = sum(len(line.encode("utf-8")) for line in
-                    old_lines[:old_start])
-                old_end_byte = sum(len(line.encode("utf-8")) for line in
-                    old_lines[:old_end])
-                new_end_byte = start_byte + sum(len(line.encode("utf-8")) for
-                    line in new_lines[new_start:new_end])
+                start_byte = sum(
+                    len(line.encode("utf-8")) for line in old_lines[:old_start]
+                )
+                old_end_byte = sum(
+                    len(line.encode("utf-8")) for line in old_lines[:old_end]
+                )
+                new_end_byte = start_byte + sum(
+                    len(line.encode("utf-8")) for line in new_lines[new_start:new_end]
+                )
                 start_point = self._calculate_point(old_source, start_byte)
-                changes.append((start_byte, old_end_byte, new_end_byte,
-                    start_point))
+                changes.append((start_byte, old_end_byte, new_end_byte, start_point))
         logger.debug("Detected %s change ranges", len(changes))
         return changes
 
-    def update_chunks(self, old_chunks: list[CodeChunk], _old_tree: Tree,
-        _new_tree: Tree, changed_ranges: list[tuple[int, int, int, int]],
-        ) -> list[CodeChunk]:
+    def update_chunks(
+        self,
+        old_chunks: list[CodeChunk],
+        _old_tree: Tree,
+        _new_tree: Tree,
+        changed_ranges: list[tuple[int, int, int, int]],
+    ) -> list[CodeChunk]:
         """Update chunks based on incremental changes.
 
         This method efficiently updates only the chunks that were affected
@@ -115,12 +130,9 @@ class IncrementalParser(IncrementalParserInterface):
         affected_chunk_ids = set()
         for chunk in old_chunks:
             for start_byte, old_end_byte, _new_end_byte, _ in changed_ranges:
-                if (chunk.byte_start < old_end_byte and chunk.byte_end >
-                    start_byte):
+                if chunk.byte_start < old_end_byte and chunk.byte_end > start_byte:
                     affected_chunk_ids.add(chunk.chunk_id)
                     break
-
-
 
         logger.info(
             "Incremental update: %d chunks affected out of %d",
@@ -138,12 +150,12 @@ class IncrementalParser(IncrementalParserInterface):
         updated_chunks = []
         for chunk in old_chunks:
             if chunk.chunk_id not in affected_chunk_ids:
-                updated_chunk = self._adjust_chunk_offsets(chunk,
-                    changed_ranges)
+                updated_chunk = self._adjust_chunk_offsets(chunk, changed_ranges)
                 updated_chunks.append(updated_chunk)
             else:
                 logger.debug("Chunk %s needs re-parsing", chunk.chunk_id)
         return updated_chunks
+
     def _get_parser_for_tree(self, _tree: Tree) -> Parser:
         """Get or create a parser for the tree's language."""
         language = "python"
@@ -174,8 +186,11 @@ class IncrementalParser(IncrementalParserInterface):
         return row, column
 
     @classmethod
-    def _adjust_chunk_offsets(cls, chunk: CodeChunk, changed_ranges: list[
-        tuple[int, int, int, int]]) -> CodeChunk:
+    def _adjust_chunk_offsets(
+        cls,
+        chunk: CodeChunk,
+        changed_ranges: list[tuple[int, int, int, int]],
+    ) -> CodeChunk:
         """Adjust chunk byte offsets based on changes.
 
         Args:
@@ -190,12 +205,19 @@ class IncrementalParser(IncrementalParserInterface):
             if start_byte < chunk.byte_start:
                 byte_adjustment += new_end_byte - old_end_byte
         if byte_adjustment != 0:
-            return CodeChunk(language=chunk.language, file_path=chunk.
-                file_path, node_type=chunk.node_type, start_line=chunk.
-                start_line, end_line=chunk.end_line, byte_start=chunk.
-                byte_start + byte_adjustment, byte_end=chunk.byte_end +
-                byte_adjustment, parent_context=chunk.parent_context,
-                content=chunk.content, chunk_id=chunk.chunk_id,
-                parent_chunk_id=chunk.parent_chunk_id, references=chunk.
-                references, dependencies=chunk.dependencies)
+            return CodeChunk(
+                language=chunk.language,
+                file_path=chunk.file_path,
+                node_type=chunk.node_type,
+                start_line=chunk.start_line,
+                end_line=chunk.end_line,
+                byte_start=chunk.byte_start + byte_adjustment,
+                byte_end=chunk.byte_end + byte_adjustment,
+                parent_context=chunk.parent_context,
+                content=chunk.content,
+                chunk_id=chunk.chunk_id,
+                parent_chunk_id=chunk.parent_chunk_id,
+                references=chunk.references,
+                dependencies=chunk.dependencies,
+            )
         return chunk

@@ -3,6 +3,7 @@
 Provides a foundation for language-specific context extractors with
 common AST traversal and extraction logic.
 """
+
 from typing import Any
 
 from tree_sitter import Node
@@ -36,12 +37,20 @@ class BaseContextExtractor(ContextExtractor):
 
         def visit_imports(node: Node, depth: int = 0):
             if self._is_import_node(node):
-                content = source[node.start_byte:node.end_byte].decode("utf-8")
-                start_line = source[:node.start_byte].count(b"\n") + 1
-                imports.append(ContextItem(type=ContextType.IMPORT, content=content, node=node, line_number=start_line, importance=90),
-                    )
+                content = source[node.start_byte : node.end_byte].decode("utf-8")
+                start_line = source[: node.start_byte].count(b"\n") + 1
+                imports.append(
+                    ContextItem(
+                        type=ContextType.IMPORT,
+                        content=content,
+                        node=node,
+                        line_number=start_line,
+                        importance=90,
+                    ),
+                )
             for child in node.children:
                 visit_imports(child, depth + 1)
+
         visit_imports(ast)
         return sorted(imports)
 
@@ -61,16 +70,28 @@ class BaseContextExtractor(ContextExtractor):
             if self._is_type_definition_node(node):
                 declaration = self._extract_type_declaration(node, source)
                 if declaration:
-                    start_line = source[:node.start_byte].count(b"\n") + 1
-                    type_defs.append(ContextItem(type=ContextType.TYPE_DEF,
-                        content=declaration, node=node, line_number=start_line, importance=80))
+                    start_line = source[: node.start_byte].count(b"\n") + 1
+                    type_defs.append(
+                        ContextItem(
+                            type=ContextType.TYPE_DEF,
+                            content=declaration,
+                            node=node,
+                            line_number=start_line,
+                            importance=80,
+                        ),
+                    )
             for child in node.children:
                 visit_types(child, depth + 1)
+
         visit_types(ast)
         return sorted(type_defs)
 
-    def extract_dependencies(self, node: Node, ast: Node, source: bytes,
-        ) -> list[ContextItem]:
+    def extract_dependencies(
+        self,
+        node: Node,
+        ast: Node,
+        source: bytes,
+    ) -> list[ContextItem]:
         """Extract dependencies for a specific node.
 
         Args:
@@ -96,8 +117,12 @@ class BaseContextExtractor(ContextExtractor):
                 unique_deps.append(dep)
         return sorted(unique_deps)
 
-    def extract_parent_context(self, node: Node, _ast: Node, source: bytes,
-        ) -> list[ContextItem]:
+    def extract_parent_context(
+        self,
+        node: Node,
+        _ast: Node,
+        source: bytes,
+    ) -> list[ContextItem]:
         """Extract parent scope context (enclosing class, function, etc).
 
         Args:
@@ -114,10 +139,16 @@ class BaseContextExtractor(ContextExtractor):
             if self._is_scope_node(current):
                 declaration = self._extract_scope_declaration(current, source)
                 if declaration:
-                    start_line = source[:current.start_byte].count(b"\n") + 1
-                    parent_contexts.append(ContextItem(type=ContextType.
-                        PARENT_SCOPE, content=declaration, node=current,
-                        line_number=start_line, importance=70))
+                    start_line = source[: current.start_byte].count(b"\n") + 1
+                    parent_contexts.append(
+                        ContextItem(
+                            type=ContextType.PARENT_SCOPE,
+                            content=declaration,
+                            node=current,
+                            line_number=start_line,
+                            importance=70,
+                        ),
+                    )
             current = current.parent
         parent_contexts.reverse()
         return parent_contexts
@@ -139,13 +170,21 @@ class BaseContextExtractor(ContextExtractor):
                     for j in range(i - 1, -1, -1):
                         prev_sibling = node.parent.children[j]
                         if self._is_decorator_node(prev_sibling):
-                            content = source[prev_sibling.start_byte:
-                                prev_sibling.end_byte].decode("utf-8")
-                            start_line = source[:prev_sibling.start_byte
-                                ].count(b"\n") + 1
-                            decorators.append(ContextItem(type=ContextType.
-                                DECORATOR, content=content, node=prev_sibling, line_number=start_line,
-                                importance=60))
+                            content = source[
+                                prev_sibling.start_byte : prev_sibling.end_byte
+                            ].decode("utf-8")
+                            start_line = (
+                                source[: prev_sibling.start_byte].count(b"\n") + 1
+                            )
+                            decorators.append(
+                                ContextItem(
+                                    type=ContextType.DECORATOR,
+                                    content=content,
+                                    node=prev_sibling,
+                                    line_number=start_line,
+                                    importance=60,
+                                ),
+                            )
                         else:
                             break
                     break
@@ -153,8 +192,10 @@ class BaseContextExtractor(ContextExtractor):
         return decorators
 
     @staticmethod
-    def build_context_prefix(context_items: list[ContextItem], max_size: (
-        int | None) = None) -> str:
+    def build_context_prefix(
+        context_items: list[ContextItem],
+        max_size: int | None = None,
+    ) -> str:
         """Build a context string to prepend to a chunk.
 
         Args:
@@ -177,12 +218,16 @@ class BaseContextExtractor(ContextExtractor):
             lines.extend(item.content for item in grouped[ContextType.IMPORT])
             lines.append("")
         if ContextType.TYPE_DEF in grouped:
-            lines.extend(item.content for item in grouped[ContextType.TYPE_DEF]
-                )
+            lines.extend(item.content for item in grouped[ContextType.TYPE_DEF])
             lines.append("")
-        for context_type in [ContextType.DECORATOR, ContextType.
-            PARENT_SCOPE, ContextType.DEPENDENCY, ContextType.NAMESPACE,
-            ContextType.CONSTANT, ContextType.GLOBAL_VAR]:
+        for context_type in [
+            ContextType.DECORATOR,
+            ContextType.PARENT_SCOPE,
+            ContextType.DEPENDENCY,
+            ContextType.NAMESPACE,
+            ContextType.CONSTANT,
+            ContextType.GLOBAL_VAR,
+        ]:
             if context_type in grouped:
                 lines.extend(item.content for item in grouped[context_type])
         context_str = "\n".join(lines).strip()
@@ -240,7 +285,7 @@ class BaseContextExtractor(ContextExtractor):
         return False
 
     @staticmethod
-    def _extract_type_declaration(_node: Node, _source: bytes) -> (str | None):
+    def _extract_type_declaration(_node: Node, _source: bytes) -> str | None:
         """Extract just the declaration part of a type definition.
 
         Args:
@@ -253,7 +298,7 @@ class BaseContextExtractor(ContextExtractor):
         return None
 
     @staticmethod
-    def _extract_scope_declaration(_node: Node, _source: bytes) -> (str | None):
+    def _extract_scope_declaration(_node: Node, _source: bytes) -> str | None:
         """Extract just the declaration part of a scope.
 
         Args:
@@ -266,8 +311,7 @@ class BaseContextExtractor(ContextExtractor):
         return None
 
     @staticmethod
-    def _find_references_in_node(_node: Node, _source: bytes) -> list[tuple[
-        str, Node]]:
+    def _find_references_in_node(_node: Node, _source: bytes) -> list[tuple[str, Node]]:
         """Find all identifier references in a node.
 
         Args:
@@ -280,8 +324,12 @@ class BaseContextExtractor(ContextExtractor):
         return []
 
     @staticmethod
-    def _find_definition(_name: str, _scope_node: Node, _ast: Node, _source:
-        bytes) -> (ContextItem | None):
+    def _find_definition(
+        _name: str,
+        _scope_node: Node,
+        _ast: Node,
+        _source: bytes,
+    ) -> ContextItem | None:
         """Find the definition of a name.
 
         Args:
@@ -296,12 +344,12 @@ class BaseContextExtractor(ContextExtractor):
         return None
 
     @staticmethod
-    def process_node(node: Node, context: dict[str, Any]) -> Any:
+    def process_node(_node: Node, _context: dict[str, Any]) -> Any:
         """Process a single AST node.
 
         Args:
-            node: The AST node to process
-            context: Processing context
+            _node: The AST node to process
+            _context: Processing context
 
         Returns:
             Processing result

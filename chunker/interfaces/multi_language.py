@@ -1,4 +1,5 @@
 """Multi-language project processing interface."""
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
@@ -9,6 +10,7 @@ from chunker.types import CodeChunk
 
 class EmbeddedLanguageType(Enum):
     """Types of embedded languages."""
+
     TEMPLATE = "template"
     QUERY = "query"
     SCRIPT = "script"
@@ -20,6 +22,7 @@ class EmbeddedLanguageType(Enum):
 @dataclass
 class LanguageRegion:
     """A region of code in a specific language."""
+
     language: str
     start_pos: int
     end_pos: int
@@ -32,6 +35,7 @@ class LanguageRegion:
 @dataclass
 class CrossLanguageReference:
     """A reference between code in different languages."""
+
     source_chunk: CodeChunk
     target_chunk: CodeChunk
     reference_type: str
@@ -59,8 +63,7 @@ class MultiLanguageProcessor(ABC):
 
     @staticmethod
     @abstractmethod
-    def identify_language_regions(file_path: str, content: str) -> list[
-        LanguageRegion]:
+    def identify_language_regions(file_path: str, content: str) -> list[LanguageRegion]:
         """
         Identify regions of different languages within a file.
 
@@ -74,8 +77,11 @@ class MultiLanguageProcessor(ABC):
 
     @staticmethod
     @abstractmethod
-    def process_mixed_file(file_path: str, primary_language: str, content:
-        (str | None) = None) -> list[CodeChunk]:
+    def process_mixed_file(
+        file_path: str,
+        primary_language: str,
+        content: str | None = None,
+    ) -> list[CodeChunk]:
         """
         Process files with embedded languages.
 
@@ -96,8 +102,11 @@ class MultiLanguageProcessor(ABC):
 
     @staticmethod
     @abstractmethod
-    def extract_embedded_code(content: str, host_language: str,
-        target_language: str) -> list[tuple[str, int, int]]:
+    def extract_embedded_code(
+        content: str,
+        host_language: str,
+        target_language: str,
+    ) -> list[tuple[str, int, int]]:
         """
         Extract embedded code snippets.
 
@@ -112,8 +121,9 @@ class MultiLanguageProcessor(ABC):
 
     @staticmethod
     @abstractmethod
-    def cross_language_references(chunks: list[CodeChunk]) -> list[
-        CrossLanguageReference]:
+    def cross_language_references(
+        chunks: list[CodeChunk],
+    ) -> list[CrossLanguageReference]:
         """
         Find references across language boundaries.
 
@@ -164,8 +174,7 @@ class LanguageDetector(ABC):
 
     @staticmethod
     @abstractmethod
-    def detect_from_content(content: str, hint: (str | None) = None) -> tuple[
-        str, float]:
+    def detect_from_content(content: str, hint: str | None = None) -> tuple[str, float]:
         """
         Detect language from content alone.
 
@@ -228,8 +237,7 @@ class ProjectAnalyzer(ABC):
 
     @staticmethod
     @abstractmethod
-    def suggest_chunk_grouping(chunks: list[CodeChunk]) -> dict[str, list[
-        CodeChunk]]:
+    def suggest_chunk_grouping(chunks: list[CodeChunk]) -> dict[str, list[CodeChunk]]:
         """
         Suggest how to group chunks for processing.
 

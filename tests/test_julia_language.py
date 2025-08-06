@@ -1,4 +1,5 @@
 """Comprehensive tests for Julia language support."""
+
 from chunker import chunk_file, get_parser
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from chunker.languages.julia import JuliaPlugin
@@ -25,7 +26,7 @@ function typed_divide(x::Float64, y::Float64)::Float64
     return x / y
 end
 """,
-            )
+        )
         chunks = chunk_file(src, "julia")
         assert len(chunks) >= 3
         func_chunks = [c for c in chunks if "function" in c.node_type]
@@ -70,16 +71,19 @@ struct Circle
     end
 end
 """,
-            )
+        )
         chunks = chunk_file(src, "julia")
         struct_chunks = [c for c in chunks if "struct" in c.node_type]
         assert len(struct_chunks) >= 4
-        assert any("Point" in c.content and "mutable" not in c.content for
-            c in struct_chunks)
+        assert any(
+            "Point" in c.content and "mutable" not in c.content for c in struct_chunks
+        )
         assert any("MutablePoint" in c.content for c in struct_chunks)
         assert any("Point3D{T<:Real}" in c.content for c in struct_chunks)
-        assert any("Circle" in c.content and "inner constructor" in c.
-            content for c in struct_chunks)
+        assert any(
+            "Circle" in c.content and "inner constructor" in c.content
+            for c in struct_chunks
+        )
 
     @staticmethod
     def test_module_definition(tmp_path):
@@ -114,10 +118,9 @@ end
 
 end # MyModule
 """,
-            )
+        )
         chunks = chunk_file(src, "julia")
-        module_chunks = [c for c in chunks if c.node_type ==
-            "module_definition"]
+        module_chunks = [c for c in chunks if c.node_type == "module_definition"]
         assert len(module_chunks) >= 2
         assert any("MyModule" in c.content for c in module_chunks)
         assert any("SubModule" in c.content for c in module_chunks)
@@ -148,7 +151,7 @@ end
 @sayhello("World")
 @assert_positive(5, "Value must be positive")
 """,
-            )
+        )
         chunks = chunk_file(src, "julia")
         macro_chunks = [c for c in chunks if c.node_type == "macro_definition"]
         assert len(macro_chunks) >= 2
@@ -181,15 +184,17 @@ primitive type MyInt8 <: Integer 8 end
 # Type with type parameters
 abstract type AbstractArray{T,N} end
 """,
-            )
+        )
         chunks = chunk_file(src, "julia")
-        abstract_chunks = [c for c in chunks if c.node_type ==
-            "abstract_type_definition"]
+        abstract_chunks = [
+            c for c in chunks if c.node_type == "abstract_type_definition"
+        ]
         assert len(abstract_chunks) >= 4
         assert any("Animal" in c.content for c in abstract_chunks)
         assert any("Mammal <: Animal" in c.content for c in abstract_chunks)
-        primitive_chunks = [c for c in chunks if c.node_type ==
-            "primitive_type_definition"]
+        primitive_chunks = [
+            c for c in chunks if c.node_type == "primitive_type_definition"
+        ]
         assert len(primitive_chunks) >= 1
         assert any("MyInt8" in c.content for c in primitive_chunks)
 
@@ -237,6 +242,7 @@ class TestJuliaContractCompliance:
 
             def __init__(self, node_type):
                 self.type = node_type
+
         assert plugin.should_chunk_node(MockNode("function_definition"))
         assert plugin.should_chunk_node(MockNode("struct_definition"))
         assert plugin.should_chunk_node(MockNode("module_definition"))
@@ -257,6 +263,7 @@ class TestJuliaContractCompliance:
             def __init__(self, node_type):
                 self.type = node_type
                 self.children = []
+
         node = MockNode("function_definition")
         context = plugin.get_node_context(node, b"function test(x)")
         assert context is not None
@@ -289,7 +296,7 @@ class TestJuliaEdgeCases:
    block comment
    spanning multiple lines =#
 """,
-            )
+        )
         chunks = chunk_file(src, "julia")
         comment_chunks = [c for c in chunks if "comment" in c.node_type]
         assert len(comment_chunks) >= 1
@@ -318,7 +325,7 @@ function 🚀(speed)
     println("Launching at speed $speed!")
 end
 """,
-            )
+        )
         chunks = chunk_file(src, "julia")
         func_chunks = [c for c in chunks if "function" in c.node_type]
         assert any("Σ" in c.content for c in func_chunks)
@@ -357,7 +364,7 @@ for op in [:+, :-, :*, :/]
     end
 end
 """,
-            )
+        )
         chunks = chunk_file(src, "julia")
         assert any("make_function" in c.content for c in chunks)
         assert any("@generated" in c.content for c in chunks)
@@ -401,7 +408,7 @@ function combine(x::Vector, y::Vector)
     return vcat(x, y)
 end
 """,
-            )
+        )
         chunks = chunk_file(src, "julia")
         func_chunks = [c for c in chunks if "function" in c.node_type]
         process_chunks = [c for c in func_chunks if "process" in c.content]

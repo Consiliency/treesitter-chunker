@@ -1,4 +1,5 @@
 """Comprehensive tests for Python-specific language features."""
+
 from chunker import chunk_file
 
 
@@ -9,8 +10,7 @@ class TestPythonAsyncFunctions:
     def test_simple_async_function(tmp_path):
         """Test basic async function detection."""
         src = tmp_path / "async.py"
-        src.write_text(
-            "\nasync def fetch_data():\n    return await some_api_call()\n")
+        src.write_text("\nasync def fetch_data():\n    return await some_api_call()\n")
         chunks = chunk_file(src, "python")
         assert len(chunks) == 1
         assert chunks[0].node_type == "function_definition"
@@ -39,7 +39,7 @@ async def process_items(items):
         results.append(result)
     return results
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
         assert len(chunks) == 1
         assert chunks[0].node_type == "function_definition"
@@ -57,14 +57,20 @@ async def outer_async():
 
     return await inner_async()
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
         assert len(chunks) == 2
         assert all(c.node_type == "function_definition" for c in chunks)
-        next(c for c in chunks if "outer_async" in c.content and
-            "inner_async" in c.content)
-        inner = next(c for c in chunks if "inner_async" in c.content and
-            "outer_async" not in c.content)
+        next(
+            c
+            for c in chunks
+            if "outer_async" in c.content and "inner_async" in c.content
+        )
+        inner = next(
+            c
+            for c in chunks
+            if "inner_async" in c.content and "outer_async" not in c.content
+        )
         assert inner.parent_context == "function_definition"
 
 
@@ -83,11 +89,10 @@ def fibonacci(n):
         return n
     return fibonacci(n-1) + fibonacci(n-2)
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
         assert len(chunks) == 2
-        decorated = next(c for c in chunks if c.node_type ==
-            "decorated_definition")
+        decorated = next(c for c in chunks if c.node_type == "decorated_definition")
         assert "@lru_cache" in decorated.content
         assert decorated.start_line == 2
         func = next(c for c in chunks if c.node_type == "function_definition")
@@ -105,11 +110,10 @@ def fibonacci(n):
 def get_users(request):
     return {'users': User.query.all()}
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
         assert len(chunks) == 2
-        decorated = next(c for c in chunks if c.node_type ==
-            "decorated_definition")
+        decorated = next(c for c in chunks if c.node_type == "decorated_definition")
         assert "@app.route" in decorated.content
         assert "@require_auth" in decorated.content
         assert "@validate_params" in decorated.content
@@ -131,18 +135,19 @@ class Point:
     def distance(self, other):
         return ((self.x - other.x)**2 + (self.y - other.y)**2)**0.5
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
         assert len(chunks) == 3
-        decorated = next(c for c in chunks if c.node_type ==
-            "decorated_definition")
+        decorated = next(c for c in chunks if c.node_type == "decorated_definition")
         assert "@dataclass" in decorated.content
         assert "@frozen" in decorated.content
-        class_chunk = next(c for c in chunks if c.node_type ==
-            "class_definition")
+        class_chunk = next(c for c in chunks if c.node_type == "class_definition")
         assert class_chunk.parent_context == "decorated_definition"
-        method_chunk = next(c for c in chunks if c.node_type ==
-            "function_definition" and "def distance" in c.content)
+        method_chunk = next(
+            c
+            for c in chunks
+            if c.node_type == "function_definition" and "def distance" in c.content
+        )
         assert method_chunk.parent_context == "class_definition"
 
     @staticmethod
@@ -157,11 +162,10 @@ class Point:
 async def get_user(id: int):
     return await db.fetch_user(id)
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
         assert len(chunks) == 2
-        decorated = next(c for c in chunks if c.node_type ==
-            "decorated_definition")
+        decorated = next(c for c in chunks if c.node_type == "decorated_definition")
         assert "methods=['GET', 'POST']" in decorated.content
         assert "timeout=300" in decorated.content
         assert "max_attempts=3" in decorated.content
@@ -186,19 +190,33 @@ class Outer:
     def outer_method(self):
         return self.Inner()
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
         assert len(chunks) == 4
-        next(c for c in chunks if c.node_type == "class_definition" and c.
-            content.strip().startswith("class Outer:"))
-        inner = next(c for c in chunks if c.node_type == "class_definition" and
-            c.content.strip().startswith("class Inner:"))
-        inner_method = next(c for c in chunks if c.node_type ==
-            "function_definition" and c.content.strip().startswith(
-            "def inner_method"))
-        outer_method = next(c for c in chunks if c.node_type ==
-            "function_definition" and c.content.strip().startswith(
-            "def outer_method"))
+        next(
+            c
+            for c in chunks
+            if c.node_type == "class_definition"
+            and c.content.strip().startswith("class Outer:")
+        )
+        inner = next(
+            c
+            for c in chunks
+            if c.node_type == "class_definition"
+            and c.content.strip().startswith("class Inner:")
+        )
+        inner_method = next(
+            c
+            for c in chunks
+            if c.node_type == "function_definition"
+            and c.content.strip().startswith("def inner_method")
+        )
+        outer_method = next(
+            c
+            for c in chunks
+            if c.node_type == "function_definition"
+            and c.content.strip().startswith("def outer_method")
+        )
         assert inner.parent_context == "class_definition"
         assert inner_method.parent_context == "class_definition"
         assert outer_method.parent_context == "class_definition"
@@ -225,7 +243,7 @@ class Level1:
     def level1_method(self):
         return self.Level2()
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
         classes = [c for c in chunks if c.node_type == "class_definition"]
         methods = [c for c in chunks if c.node_type == "function_definition"]
@@ -247,8 +265,7 @@ class TestPythonLambdaExpressions:
     def test_simple_lambda(tmp_path):
         """Test standalone lambda expressions."""
         src = tmp_path / "lambda.py"
-        src.write_text(
-            "\nsquare = lambda x: x ** 2\nadd = lambda x, y: x + y\n")
+        src.write_text("\nsquare = lambda x: x ** 2\nadd = lambda x, y: x + y\n")
         chunks = chunk_file(src, "python")
         assert len(chunks) == 4
         lambda_chunks = [c for c in chunks if c.node_type == "lambda"]
@@ -265,14 +282,16 @@ def process_numbers(numbers):
     filtered = filter(lambda x: x > 10, squared)
     return list(filtered)
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
         assert len(chunks) == 5
-        func_chunk = next(c for c in chunks if c.node_type ==
-            "function_definition")
+        func_chunk = next(c for c in chunks if c.node_type == "function_definition")
         assert "lambda x: x ** 2" in func_chunk.content
-        lambda_chunks = [c for c in chunks if c.node_type == "lambda" and c
-            .parent_context == "function_definition"]
+        lambda_chunks = [
+            c
+            for c in chunks
+            if c.node_type == "lambda" and c.parent_context == "function_definition"
+        ]
         assert len(lambda_chunks) == 2
 
     @staticmethod
@@ -291,14 +310,14 @@ def sort_data(data):
         )
     )
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
         assert len(chunks) == 3
-        func_chunk = next(c for c in chunks if c.node_type ==
-            "function_definition")
+        func_chunk = next(c for c in chunks if c.node_type == "function_definition")
         assert "lambda item:" in func_chunk.content
-        lambda_chunk = next(c for c in chunks if c.node_type == "lambda" and
-            "lambda item:" in c.content)
+        lambda_chunk = next(
+            c for c in chunks if c.node_type == "lambda" and "lambda item:" in c.content
+        )
         assert lambda_chunk.parent_context == "function_definition"
 
 
@@ -323,7 +342,7 @@ def process_data(items):
 
     return squares, evens, matrix
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
         assert len(chunks) == 1
         assert "[x ** 2 for x in items]" in chunks[0].content
@@ -351,7 +370,7 @@ def create_mappings(keys, values):
 
     return transformed
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
         assert len(chunks) == 1
         assert "{k: v for k, v in zip(keys, values)}" in chunks[0].content
@@ -375,7 +394,7 @@ def lazy_processing(data):
     )
     return list(processed)
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
         assert len(chunks) == 2
         assert any("x ** 2 for x in range(n)" in c.content for c in chunks)
@@ -405,7 +424,7 @@ def complex_types(
             for idx, val in values:
                 yield (val, idx)
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
         assert len(chunks) == 3
         add_chunk = next(c for c in chunks if "def add" in c.content)
@@ -442,10 +461,9 @@ class User:
             'emails': self.emails
         }
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
-        class_chunk = next(c for c in chunks if c.node_type ==
-            "class_definition")
+        class_chunk = next(c for c in chunks if c.node_type == "class_definition")
         assert "name: str" in class_chunk.content
         assert "emails: list[str]" in class_chunk.content
         init_chunk = next(c for c in chunks if "__init__" in c.content)
@@ -480,13 +498,11 @@ class Comparable(Protocol):
 def sort_items(items: list[Comparable]) -> list[Comparable]:
     return sorted(items)
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
-        container_chunk = next(c for c in chunks if "class Container" in c.
-            content)
+        container_chunk = next(c for c in chunks if "class Container" in c.content)
         assert "Generic[T]" in container_chunk.content
-        transform_chunk = next(c for c in chunks if "def transform" in c.
-            content)
+        transform_chunk = next(c for c in chunks if "def transform" in c.content)
         assert "Callable[[T], K]" in transform_chunk.content
         assert "'Container[K]'" in transform_chunk.content
 
@@ -550,14 +566,12 @@ def numpy_style_doc(x, y):
     ""\"
     return x + y
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
         assert len(chunks) == 4
-        single_chunk = next(c for c in chunks if "single_line_doc" in c.content
-            )
+        single_chunk = next(c for c in chunks if "single_line_doc" in c.content)
         assert "This is a single line docstring." in single_chunk.content
-        google_chunk = next(c for c in chunks if "google_style_doc" in c.
-            content)
+        google_chunk = next(c for c in chunks if "google_style_doc" in c.content)
         assert "Args:" in google_chunk.content
         assert "Returns:" in google_chunk.content
         assert "Raises:" in google_chunk.content
@@ -609,14 +623,14 @@ class DocumentedClass:
         ""\"
         return self.value * factor
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
-        class_chunk = next(c for c in chunks if c.node_type ==
-            "class_definition")
+        class_chunk = next(c for c in chunks if c.node_type == "class_definition")
         assert "A well-documented class." in class_chunk.content
         assert "Attributes:" in class_chunk.content
-        calc_chunk = next(c for c in chunks if "calculate" in c.content and
-            "def" in c.content)
+        calc_chunk = next(
+            c for c in chunks if "calculate" in c.content and "def" in c.content
+        )
         assert "Example:" in calc_chunk.content
         assert ">>> obj.calculate(1.5)" in calc_chunk.content
 
@@ -649,7 +663,7 @@ def path_function():
     ""\"
     pass
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
         regex_chunk = next(c for c in chunks if "regex_function" in c.content)
         assert "\\d+ for digits" in regex_chunk.content
@@ -679,7 +693,7 @@ def process_with_walrus(items):
 
     return filtered
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
         assert len(chunks) == 1
         assert ":=" in chunks[0].content
@@ -705,7 +719,7 @@ def handle_command(command):
         case _:
             return "Unknown command\"
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
         assert len(chunks) == 1
         assert "match command.split():" in chunks[0].content
@@ -732,7 +746,7 @@ async def process_async_resource():
         ]
         return await process_files(files)
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
         assert len(chunks) == 1
         assert "async with" in chunks[0].content
@@ -769,10 +783,9 @@ def process(x):
         return str(x)
     return int(x)
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
-        property_chunk = next(c for c in chunks if "decorated_property" in
-            c.content)
+        property_chunk = next(c for c in chunks if "decorated_property" in c.content)
         assert "@property" in property_chunk.content
         assert "@decorator_factory" in property_chunk.content
 
@@ -802,10 +815,11 @@ class AbstractBase(metaclass=ABCMeta):
     def must_implement(self):
         pass
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
-        meta_chunk = next(c for c in chunks if "SingletonMeta" in c.content and
-            "class" in c.content)
+        meta_chunk = next(
+            c for c in chunks if "SingletonMeta" in c.content and "class" in c.content
+        )
         assert "type" in meta_chunk.content
         db_chunk = next(c for c in chunks if "class Database" in c.content)
         assert "metaclass=SingletonMeta" in db_chunk.content
@@ -837,17 +851,17 @@ def outer_function():
 
     return level1()
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
-        function_chunks = [c for c in chunks if c.node_type ==
-            "function_definition"]
+        function_chunks = [c for c in chunks if c.node_type == "function_definition"]
         class_chunks = [c for c in chunks if c.node_type == "class_definition"]
         assert len(function_chunks) >= 5
         assert len(class_chunks) == 1
         deepest = None
         for c in chunks:
-            if c.node_type == "function_definition" and c.content.strip(
-                ).startswith("def deepest"):
+            if c.node_type == "function_definition" and c.content.strip().startswith(
+                "def deepest",
+            ):
                 deepest = c
                 break
         assert deepest is not None, "Could not find deepest function chunk"
@@ -878,11 +892,12 @@ def all_types(a, /, b, c, *args, d, e, **kwargs):
         'kwargs': kwargs
     }
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
         assert len(chunks) == 3
-        pos_chunk = next(c for c in chunks if "positional_only" in c.
-            content and "def" in c.content)
+        pos_chunk = next(
+            c for c in chunks if "positional_only" in c.content and "def" in c.content
+        )
         assert "a, b, /" in pos_chunk.content
 
     @staticmethod
@@ -909,7 +924,7 @@ class FlexibleContainer:
     def set_value(self, v: int | str | list[int]) -> None:
         self.value = v
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
         process_chunk = next(c for c in chunks if "process_value" in c.content)
         assert "int | float | str" in process_chunk.content
@@ -947,14 +962,12 @@ class ConfigurableClass:
     def add_value(self, val: int) -> None:
         self.values.append(val)
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
-        immutable_chunk = next(c for c in chunks if "ImmutablePoint" in c.
-            content)
+        immutable_chunk = next(c for c in chunks if "ImmutablePoint" in c.content)
         assert "@dataclass(frozen=True, slots=True)" in immutable_chunk.content
         assert "ClassVar[int]" in immutable_chunk.content
-        config_chunk = next(c for c in chunks if "ConfigurableClass" in c.
-            content)
+        config_chunk = next(c for c in chunks if "ConfigurableClass" in c.content)
         assert "field(default_factory=list)" in config_chunk.content
         assert "InitVar[int]" in config_chunk.content
 
@@ -988,7 +1001,7 @@ def process_multiple_errors():
         for e in eg.exceptions:
             log_generic_error(e)
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
         assert len(chunks) == 1
         assert "ExceptionGroup" in chunks[0].content
@@ -1036,13 +1049,26 @@ class Vector:
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
-        assert len([c for c in chunks if c.node_type == "function_definition"],
-            ) >= 10
-        dunder_names = ["__init__", "__repr__", "__str__", "__add__",
-            "__mul__", "__eq__", "__len__", "__getitem__", "__enter__",
-            "__exit__"]
+        assert (
+            len(
+                [c for c in chunks if c.node_type == "function_definition"],
+            )
+            >= 10
+        )
+        dunder_names = [
+            "__init__",
+            "__repr__",
+            "__str__",
+            "__add__",
+            "__mul__",
+            "__eq__",
+            "__len__",
+            "__getitem__",
+            "__enter__",
+            "__exit__",
+        ]
         for name in dunder_names:
             assert any(name in c.content for c in chunks)
 
@@ -1073,7 +1099,7 @@ async def use_async_range():
     async for i in AsyncRange(0, 5):
         print(i)
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
         aiter_chunk = next(c for c in chunks if "__aiter__" in c.content)
         anext_chunk = next(c for c in chunks if "__anext__" in c.content)
@@ -1121,14 +1147,14 @@ class DataProcessor:
     def load_array(self, name: str) -> np.ndarray:
         return np.load(self.data_dir / f"{name}.npy")
 """,
-            )
+        )
         chunks = chunk_file(src, "python")
-        import_chunks = [c for c in chunks if c.node_type == "import_statement"
-            ]
+        import_chunks = [c for c in chunks if c.node_type == "import_statement"]
         assert len(import_chunks) == 0
         func_chunk = next(c for c in chunks if "process_data" in c.content)
-        class_chunk = next(c for c in chunks if "DataProcessor" in c.
-            content and "class" in c.content)
+        class_chunk = next(
+            c for c in chunks if "DataProcessor" in c.content and "class" in c.content
+        )
         assert func_chunk is not None
         assert class_chunk is not None
 
@@ -1155,7 +1181,7 @@ class IncompleteClass
     def method(self):
         return
 """,
-        )
+    )
     chunks = chunk_file(src, "python")
     assert len(chunks) >= 0
 
@@ -1183,7 +1209,7 @@ class 多语言类:
     def 获取信息(self):
         return "信息\"
 """,
-        )
+    )
     chunks = chunk_file(src, "python")
     assert any("🐍 Python rocks! 🚀" in c.content for c in chunks)
     assert any("你好世界" in c.content for c in chunks)

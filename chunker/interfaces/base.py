@@ -3,6 +3,7 @@
 These are the foundation interfaces that all chunking strategies
 and processors must implement.
 """
+
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -33,8 +34,12 @@ class ChunkingStrategy(ABC):
 
     @staticmethod
     @abstractmethod
-    def chunk(ast: Node, source: bytes, file_path: str, language: str) -> list[
-        CodeChunk]:
+    def chunk(
+        ast: Node,
+        source: bytes,
+        file_path: str,
+        language: str,
+    ) -> list[CodeChunk]:
         """Perform chunking on the AST.
 
         Args:
@@ -90,8 +95,11 @@ class ASTProcessor(ABC):
             True if children should be processed, False to skip
         """
 
-    def traverse(self, node: Node, context: (dict[str, Any] | None) = None,
-        ) -> Any:
+    def traverse(
+        self,
+        node: Node,
+        context: dict[str, Any] | None = None,
+    ) -> Any:
         """Traverse the AST starting from the given node.
 
         This is a template method that uses process_node and

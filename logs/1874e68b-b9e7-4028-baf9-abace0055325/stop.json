@@ -1,0 +1,30 @@
+[
+  {
+    "session_id": "1874e68b-b9e7-4028-baf9-abace0055325",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/1874e68b-b9e7-4028-baf9-abace0055325.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "Stop",
+    "stop_hook_active": false
+  },
+  {
+    "session_id": "1874e68b-b9e7-4028-baf9-abace0055325",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/1874e68b-b9e7-4028-baf9-abace0055325.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "Stop",
+    "stop_hook_active": false
+  },
+  {
+    "session_id": "1874e68b-b9e7-4028-baf9-abace0055325",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/1874e68b-b9e7-4028-baf9-abace0055325.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "Stop",
+    "stop_hook_active": false
+  },
+  {
+    "session_id": "1874e68b-b9e7-4028-baf9-abace0055325",
+    "transcript_path": "/home/jenner/.claude/projects/-home-jenner-code-treesitter-chunker/1874e68b-b9e7-4028-baf9-abace0055325.jsonl",
+    "cwd": "/home/jenner/code/treesitter-chunker",
+    "hook_event_name": "Stop",
+    "stop_hook_active": false
+  }
+]

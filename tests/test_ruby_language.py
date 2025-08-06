@@ -1,4 +1,5 @@
 """Tests for Ruby language support."""
+
 import pytest
 
 from chunker.core import chunk_text
@@ -9,7 +10,10 @@ from chunker.parser import list_languages
 class TestRubyLanguageSupport:
     """Test Ruby language chunking."""
 
-    @pytest.mark.skipif("ruby" not in list_languages(), reason="Ruby grammar not available")
+    @pytest.mark.skipif(
+        "ruby" not in list_languages(),
+        reason="Ruby grammar not available",
+    )
     @staticmethod
     def test_ruby_method_chunking():
         """Test chunking Ruby methods."""
@@ -46,7 +50,10 @@ end
         assert len(class_chunks) == 1
         assert class_chunks[0].parent_context == "User"
 
-    @pytest.mark.skipif("ruby" not in list_languages(), reason="Ruby grammar not available")
+    @pytest.mark.skipif(
+        "ruby" not in list_languages(),
+        reason="Ruby grammar not available",
+    )
     @staticmethod
     def test_ruby_module_chunking():
         """Test chunking Ruby modules."""
@@ -76,11 +83,15 @@ end
         chunks = chunk_text(code, "ruby", "authentication.rb")
         module_chunks = [c for c in chunks if c.node_type == "module"]
         assert len(module_chunks) >= 1
-        auth_modules = [c for c in module_chunks if c.parent_context ==
-            "Authentication"]
+        auth_modules = [
+            c for c in module_chunks if c.parent_context == "Authentication"
+        ]
         assert len(auth_modules) == 1
 
-    @pytest.mark.skipif("ruby" not in list_languages(), reason="Ruby grammar not available")
+    @pytest.mark.skipif(
+        "ruby" not in list_languages(),
+        reason="Ruby grammar not available",
+    )
     @staticmethod
     def test_ruby_dsl_blocks():
         """Test chunking Ruby DSL blocks."""
@@ -116,7 +127,10 @@ end
         block_chunks = [c for c in chunks if c.node_type == "block"]
         assert len(block_chunks) >= 5
 
-    @pytest.mark.skipif("ruby" not in list_languages(), reason="Ruby grammar not available")
+    @pytest.mark.skipif(
+        "ruby" not in list_languages(),
+        reason="Ruby grammar not available",
+    )
     @staticmethod
     def test_ruby_attr_methods():
         """Test chunking Ruby attr_* methods."""
@@ -142,7 +156,10 @@ end
         class_chunks = [c for c in chunks if c.node_type == "class"]
         assert len(class_chunks) == 1
 
-    @pytest.mark.skipif("ruby" not in list_languages(), reason="Ruby grammar not available")
+    @pytest.mark.skipif(
+        "ruby" not in list_languages(),
+        reason="Ruby grammar not available",
+    )
     @staticmethod
     def test_ruby_singleton_methods():
         """Test chunking Ruby singleton methods."""
@@ -171,7 +188,10 @@ end
         [c for c in chunks if c.node_type == "singleton_class"]
         assert len(chunks) >= 2
 
-    @pytest.mark.skipif("ruby" not in list_languages(), reason="Ruby grammar not available")
+    @pytest.mark.skipif(
+        "ruby" not in list_languages(),
+        reason="Ruby grammar not available",
+    )
     @staticmethod
     def test_ruby_language_config():
         """Test Ruby language configuration."""

@@ -94,19 +94,20 @@ class TestFileSystemEdgeCases:
         assert chunks[0].content == "def original(): pass"
 
     @pytest.mark.skipif(
-        os.name == "nt", reason="Permission test not reliable on Windows",
+        os.name == "nt",
+        reason="Permission test not reliable on Windows",
     )
     @staticmethod
     def test_permission_denied_file(tmp_path):
         """Test handling of files without read permission."""
         restricted_file = tmp_path / "restricted.py"
         restricted_file.write_text("def test(): pass")
-        os.chmod(restricted_file, 0)
+        Path(restricted_file).chmod(0)
         try:
             with pytest.raises((PermissionError, OSError)):
                 chunk_file(restricted_file, language="python")
         finally:
-            os.chmod(restricted_file, 420)
+            Path(restricted_file).chmod(0o644)
 
 
 class TestCodeContentEdgeCases:

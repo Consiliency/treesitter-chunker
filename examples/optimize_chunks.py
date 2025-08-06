@@ -194,7 +194,8 @@ if __name__ == '__main__':
 '''
 
     with Path("examples/sample_code.py").open(
-        "w", encoding="utf-8",
+        "w",
+        encoding="utf-8",
     ) as f:
         f.write(sample_code)
     print("Created examples/sample_code.py")

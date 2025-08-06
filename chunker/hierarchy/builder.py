@@ -54,7 +54,9 @@ class ChunkHierarchyBuilder(ChunkHierarchyBuilderInterface):
 
     @staticmethod
     def find_common_ancestor(
-        chunk1: CodeChunk, chunk2: CodeChunk, hierarchy: ChunkHierarchy,
+        chunk1: CodeChunk,
+        chunk2: CodeChunk,
+        hierarchy: ChunkHierarchy,
     ) -> str | None:
         """
         Find the common ancestor of two chunks.
@@ -132,7 +134,8 @@ class ChunkHierarchyBuilder(ChunkHierarchyBuilderInterface):
             path.add(chunk_id)
             visited.add(chunk_id)
             if chunk_id in hierarchy.parent_map and has_cycle(
-                hierarchy.parent_map[chunk_id], path,
+                hierarchy.parent_map[chunk_id],
+                path,
             ):
                 return True
             path.remove(chunk_id)

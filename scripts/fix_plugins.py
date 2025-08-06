@@ -8,7 +8,8 @@ from pathlib import Path
 def fix_plugin_file(filepath):
     """Fix a single plugin file."""
     with Path(filepath).open(
-        "r", encoding="utf-8",
+        "r",
+        encoding="utf-8",
     ) as f:
         content = f.read()
 
@@ -63,7 +64,8 @@ def fix_plugin_file(filepath):
 
     if new_content != content:
         with Path(filepath).open(
-            "w", encoding="utf-8",
+            "w",
+            encoding="utf-8",
         ) as f:
             f.write(new_content)
         return True

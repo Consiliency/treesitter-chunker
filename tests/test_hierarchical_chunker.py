@@ -1,4 +1,5 @@
 """Tests for the hierarchical chunking strategy."""
+
 import pytest
 
 from chunker.parser import get_parser
@@ -9,13 +10,13 @@ class TestHierarchicalChunker:
     """Test suite for HierarchicalChunker."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def hierarchical_chunker(cls):
         """Create a hierarchical chunker instance."""
         return HierarchicalChunker()
 
     @staticmethod
-    @pytest.fixture
+    @pytest.fixture()
     def nested_python_code():
         """Sample Python code with deep nesting."""
         return """
@@ -85,8 +86,12 @@ def standalone_function():
         """Test that hierarchical relationships are preserved."""
         parser = get_parser("python")
         tree = parser.parse(nested_python_code.encode())
-        chunks = hierarchical_chunker.chunk(tree.root_node,
-            nested_python_code.encode(), "test.py", "python")
+        chunks = hierarchical_chunker.chunk(
+            tree.root_node,
+            nested_python_code.encode(),
+            "test.py",
+            "python",
+        )
         assert len(chunks) > 0
         parent_chunks = [c for c in chunks if c.parent_chunk_id is None]
         child_chunks = [c for c in chunks if c.parent_chunk_id is not None]
@@ -103,11 +108,19 @@ def standalone_function():
         parser = get_parser("python")
         tree = parser.parse(nested_python_code.encode())
         hierarchical_chunker.configure({"granularity": "fine"})
-        fine_chunks = hierarchical_chunker.chunk(tree.root_node,
-            nested_python_code.encode(), "test.py", "python")
+        fine_chunks = hierarchical_chunker.chunk(
+            tree.root_node,
+            nested_python_code.encode(),
+            "test.py",
+            "python",
+        )
         hierarchical_chunker.configure({"granularity": "coarse"})
-        coarse_chunks = hierarchical_chunker.chunk(tree.root_node,
-            nested_python_code.encode(), "test.py", "python")
+        coarse_chunks = hierarchical_chunker.chunk(
+            tree.root_node,
+            nested_python_code.encode(),
+            "test.py",
+            "python",
+        )
         assert len(fine_chunks) > len(coarse_chunks)
         coarse_levels = [c.metadata["hierarchy_level"] for c in coarse_chunks]
         assert max(coarse_levels) <= 2
@@ -118,8 +131,12 @@ def standalone_function():
         parser = get_parser("python")
         tree = parser.parse(nested_python_code.encode())
         hierarchical_chunker.configure({"max_depth": 2})
-        chunks = hierarchical_chunker.chunk(tree.root_node,
-            nested_python_code.encode(), "test.py", "python")
+        chunks = hierarchical_chunker.chunk(
+            tree.root_node,
+            nested_python_code.encode(),
+            "test.py",
+            "python",
+        )
         for chunk in chunks:
             assert chunk.metadata["hierarchy_depth"] <= 2
 
@@ -140,12 +157,21 @@ z = x + y
         parser = get_parser("python")
         tree = parser.parse(simple_code.encode())
         hierarchical_chunker.configure({"preserve_leaf_nodes": True})
-        with_leaves = hierarchical_chunker.chunk(tree.root_node,
-            simple_code.encode(), "test.py", "python")
-        hierarchical_chunker.configure({"preserve_leaf_nodes": False,
-            "min_chunk_size": 3})
-        without_leaves = hierarchical_chunker.chunk(tree.root_node,
-            simple_code.encode(), "test.py", "python")
+        with_leaves = hierarchical_chunker.chunk(
+            tree.root_node,
+            simple_code.encode(),
+            "test.py",
+            "python",
+        )
+        hierarchical_chunker.configure(
+            {"preserve_leaf_nodes": False, "min_chunk_size": 3},
+        )
+        without_leaves = hierarchical_chunker.chunk(
+            tree.root_node,
+            simple_code.encode(),
+            "test.py",
+            "python",
+        )
         assert len(with_leaves) != len(without_leaves)
 
     @staticmethod
@@ -153,16 +179,23 @@ z = x + y
         """Test that parent context is properly tracked."""
         parser = get_parser("python")
         tree = parser.parse(nested_python_code.encode())
-        chunks = hierarchical_chunker.chunk(tree.root_node,
-            nested_python_code.encode(), "test.py", "python")
-        inner_chunks = [c for c in chunks if "inner" in c.content.lower() and
-            c.parent_chunk_id]
+        chunks = hierarchical_chunker.chunk(
+            tree.root_node,
+            nested_python_code.encode(),
+            "test.py",
+            "python",
+        )
+        inner_chunks = [
+            c for c in chunks if "inner" in c.content.lower() and c.parent_chunk_id
+        ]
         assert len(inner_chunks) > 0
         for inner in inner_chunks:
             assert inner.parent_context != "root"
             assert ":" in inner.parent_context
-            parent = next((c for c in chunks if c.chunk_id == inner.
-                parent_chunk_id), None)
+            parent = next(
+                (c for c in chunks if c.chunk_id == inner.parent_chunk_id),
+                None,
+            )
             assert parent is not None
 
     @staticmethod
@@ -171,11 +204,19 @@ z = x + y
         parser = get_parser("python")
         tree = parser.parse(nested_python_code.encode())
         hierarchical_chunker.configure({"include_intermediate": True})
-        with_intermediate = hierarchical_chunker.chunk(tree.root_node,
-            nested_python_code.encode(), "test.py", "python")
+        with_intermediate = hierarchical_chunker.chunk(
+            tree.root_node,
+            nested_python_code.encode(),
+            "test.py",
+            "python",
+        )
         hierarchical_chunker.configure({"include_intermediate": False})
-        without_intermediate = hierarchical_chunker.chunk(tree.root_node,
-            nested_python_code.encode(), "test.py", "python")
+        without_intermediate = hierarchical_chunker.chunk(
+            tree.root_node,
+            nested_python_code.encode(),
+            "test.py",
+            "python",
+        )
         assert len(with_intermediate) >= len(without_intermediate)
 
     @staticmethod
@@ -218,11 +259,20 @@ class LargeClass:
 """
         parser = get_parser("python")
         tree = parser.parse(code_with_imbalance.encode())
-        chunks = hierarchical_chunker.chunk(tree.root_node,
-            code_with_imbalance.encode(), "test.py", "python")
+        chunks = hierarchical_chunker.chunk(
+            tree.root_node,
+            code_with_imbalance.encode(),
+            "test.py",
+            "python",
+        )
         for chunk in chunks:
-            if hasattr(chunk, "metadata",
-                ) and "merged_children" in chunk.metadata:
+            if (
+                hasattr(
+                    chunk,
+                    "metadata",
+                )
+                and "merged_children" in chunk.metadata
+            ):
                 assert chunk.metadata["merged_children"] > 0
 
     @staticmethod
@@ -279,10 +329,13 @@ function createApp() {
 """
         parser = get_parser("javascript")
         tree = parser.parse(js_code.encode())
-        chunks = hierarchical_chunker.chunk(tree.root_node, js_code.encode(
-            ), "test.js", "javascript")
+        chunks = hierarchical_chunker.chunk(
+            tree.root_node,
+            js_code.encode(),
+            "test.js",
+            "javascript",
+        )
         assert len(chunks) > 0
         node_types = {chunk.node_type for chunk in chunks}
-        js_types = {"class_declaration", "method_definition",
-            "function_declaration"}
+        js_types = {"class_declaration", "method_definition", "function_declaration"}
         assert len(node_types & js_types) > 0

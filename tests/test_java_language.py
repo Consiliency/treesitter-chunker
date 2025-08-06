@@ -1,4 +1,5 @@
 """Tests for Java language support."""
+
 import pytest
 
 from chunker.core import chunk_text
@@ -9,7 +10,10 @@ from chunker.parser import list_languages
 class TestJavaLanguageSupport:
     """Test Java language chunking."""
 
-    @pytest.mark.skipif("java" not in list_languages(), reason="Java grammar not available")
+    @pytest.mark.skipif(
+        "java" not in list_languages(),
+        reason="Java grammar not available",
+    )
     @staticmethod
     def test_java_class_chunking():
         """Test chunking Java classes."""
@@ -54,18 +58,20 @@ public class User {
 """
         chunks = chunk_text(code, "java", "User.java")
         assert len(chunks) >= 7
-        class_chunks = [c for c in chunks if c.node_type == "class_declaration"
-            ]
+        class_chunks = [c for c in chunks if c.node_type == "class_declaration"]
         assert len(class_chunks) == 1
         assert "User" in class_chunks[0].parent_context
-        method_chunks = [c for c in chunks if c.node_type ==
-            "method_declaration"]
+        method_chunks = [c for c in chunks if c.node_type == "method_declaration"]
         assert len(method_chunks) >= 5
-        constructor_chunks = [c for c in chunks if c.node_type ==
-            "constructor_declaration"]
+        constructor_chunks = [
+            c for c in chunks if c.node_type == "constructor_declaration"
+        ]
         assert len(constructor_chunks) == 1
 
-    @pytest.mark.skipif("java" not in list_languages(), reason="Java grammar not available")
+    @pytest.mark.skipif(
+        "java" not in list_languages(),
+        reason="Java grammar not available",
+    )
     @staticmethod
     def test_java_interface_chunking():
         """Test chunking Java interfaces."""
@@ -92,14 +98,16 @@ public interface UserRepository {
 }
 """
         chunks = chunk_text(code, "java", "UserRepository.java")
-        interface_chunks = [c for c in chunks if c.node_type ==
-            "interface_declaration"]
+        interface_chunks = [c for c in chunks if c.node_type == "interface_declaration"]
         assert len(interface_chunks) == 1
         assert "UserRepository" in interface_chunks[0].parent_context
         method_chunks = [c for c in chunks if "method" in c.node_type]
         assert len(method_chunks) >= 1
 
-    @pytest.mark.skipif("java" not in list_languages(), reason="Java grammar not available")
+    @pytest.mark.skipif(
+        "java" not in list_languages(),
+        reason="Java grammar not available",
+    )
     @staticmethod
     def test_java_enum_chunking():
         """Test chunking Java enums."""
@@ -132,7 +140,10 @@ public enum UserRole {
         assert "UserRole" in enum_chunks[0].parent_context
         assert len(chunks) >= 4
 
-    @pytest.mark.skipif("java" not in list_languages(), reason="Java grammar not available")
+    @pytest.mark.skipif(
+        "java" not in list_languages(),
+        reason="Java grammar not available",
+    )
     @staticmethod
     def test_java_annotations():
         """Test chunking Java code with annotations."""
@@ -167,14 +178,15 @@ public class UserController {
 }
 """
         chunks = chunk_text(code, "java", "UserController.java")
-        class_chunks = [c for c in chunks if c.node_type == "class_declaration"
-            ]
+        class_chunks = [c for c in chunks if c.node_type == "class_declaration"]
         assert len(class_chunks) == 1
-        method_chunks = [c for c in chunks if c.node_type ==
-            "method_declaration"]
+        method_chunks = [c for c in chunks if c.node_type == "method_declaration"]
         assert len(method_chunks) >= 3
 
-    @pytest.mark.skipif("java" not in list_languages(), reason="Java grammar not available")
+    @pytest.mark.skipif(
+        "java" not in list_languages(),
+        reason="Java grammar not available",
+    )
     @staticmethod
     def test_java_inner_classes():
         """Test chunking Java inner classes."""
@@ -206,11 +218,13 @@ public class OuterClass {
 }
 """
         chunks = chunk_text(code, "java", "OuterClass.java")
-        class_chunks = [c for c in chunks if c.node_type == "class_declaration"
-            ]
+        class_chunks = [c for c in chunks if c.node_type == "class_declaration"]
         assert len(class_chunks) >= 3
 
-    @pytest.mark.skipif("java" not in list_languages(), reason="Java grammar not available")
+    @pytest.mark.skipif(
+        "java" not in list_languages(),
+        reason="Java grammar not available",
+    )
     @staticmethod
     def test_java_language_config():
         """Test Java language configuration."""

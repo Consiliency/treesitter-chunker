@@ -1,9 +1,11 @@
 """Data models module."""
+
 from .database import get_db
 
 
 class Model:
     """Base model class."""
+
     table_name = None
 
     def __init__(self, **kwargs):
@@ -27,6 +29,7 @@ class Model:
 
 class User(Model):
     """User model."""
+
     table_name = "users"
 
     @staticmethod
@@ -40,6 +43,7 @@ class User(Model):
 
 class Profile(Model):
     """User profile model."""
+
     table_name = "profiles"
 
     @staticmethod

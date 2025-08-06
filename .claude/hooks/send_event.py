@@ -13,18 +13,18 @@ Sends Claude Code hook events to the observability server.
 Multi-instance safe with file locking and instance identification.
 """
 
-import argparse  # noqa: E402,PLC0415
-import fcntl  # noqa: E402,PLC0415
-import json  # noqa: E402,PLC0415
-import os  # noqa: E402,PLC0415
-import sys  # noqa: E402,PLC0415
-import time  # noqa: E402,PLC0415
-import urllib.error  # noqa: E402,PLC0415
-import urllib.request  # noqa: E402,PLC0415
-from datetime import datetime  # noqa: E402,PLC0415
-from pathlib import Path  # noqa: E402,PLC0415
+import argparse
+import fcntl
+import json
+import os
+import sys
+import time
+import urllib.error
+import urllib.request
+from datetime import datetime
+from pathlib import Path
 
-from utils.summarizer import generate_event_summary  # noqa: E402,PLC0415
+from utils.summarizer import generate_event_summary
 
 
 def get_instance_id():
@@ -47,7 +47,7 @@ def acquire_file_lock(file_path, timeout=5):
                 try:
                     fcntl.flock(f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
                     return f  # Return file handle to keep lock active
-                except (IOError, OSError):
+                except OSError:
                     time.sleep(0.1)  # Wait 100ms before retry
             print(
                 f"Could not acquire lock for {file_path} within {timeout}s",
@@ -182,7 +182,7 @@ def main():
                         lock_handle.close()
                 else:
                     print(
-                        f"Could not acquire lock for transcript, skipping chat data",
+                        "Could not acquire lock for transcript, skipping chat data",
                         file=sys.stderr,
                     )
 

@@ -1,4 +1,5 @@
 """Export chunks to Neo4j graph database fmt."""
+
 from __future__ import annotations
 
 import json
@@ -32,9 +33,13 @@ class Neo4jExporter(StructuredExporter):
         self._use_merge = True
         self._include_content = True
 
-    def export(self, chunks: list[CodeChunk], relationships: list[
-        ChunkRelationship], output: (Path | io.IOBase), metadata: (
-        ExportMetadata | None) = None) -> None:
+    def export(
+        self,
+        chunks: list[CodeChunk],
+        relationships: list[ChunkRelationship],
+        output: Path | io.IOBase,
+        metadata: ExportMetadata | None = None,
+    ) -> None:
         """Export chunks with relationships as Neo4j Cypher queries.
 
         Args:
@@ -44,18 +49,20 @@ class Neo4jExporter(StructuredExporter):
             metadata: Export metadata
         """
         cypher_lines = []
-        cypher_lines.extend(["// TreeSitter Chunker Neo4j Export",
-            f"// Generated: {datetime.now(timezone.utc).isoformat()}",
-            f"// Chunks: {len(chunks)}, Relationships: {len(relationships)}",
-            "", "// Create constraints for better performance",
-            f"CREATE CONSTRAINT IF NOT EXISTS FOR (c:{self._node_label}) REQUIRE c.chunk_id IS UNIQUE;"
-            ,
-            f"CREATE INDEX IF NOT EXISTS FOR (c:{self._node_label}) ON (c.file_path);"
-            ,
-            f"CREATE INDEX IF NOT EXISTS FOR (c:{self._node_label}) ON (c.node_type);"
-            ,
-            f"CREATE INDEX IF NOT EXISTS FOR (c:{self._node_label}) ON (c.language);"
-            , ""])
+        cypher_lines.extend(
+            [
+                "// TreeSitter Chunker Neo4j Export",
+                f"// Generated: {datetime.now(timezone.utc).isoformat()}",
+                f"// Chunks: {len(chunks)}, Relationships: {len(relationships)}",
+                "",
+                "// Create constraints for better performance",
+                f"CREATE CONSTRAINT IF NOT EXISTS FOR (c:{self._node_label}) REQUIRE c.chunk_id IS UNIQUE;",
+                f"CREATE INDEX IF NOT EXISTS FOR (c:{self._node_label}) ON (c.file_path);",
+                f"CREATE INDEX IF NOT EXISTS FOR (c:{self._node_label}) ON (c.node_type);",
+                f"CREATE INDEX IF NOT EXISTS FOR (c:{self._node_label}) ON (c.language);",
+                "",
+            ],
+        )
         if metadata:
             cypher_lines.extend(self._generate_metadata_node(metadata))
             cypher_lines.append("")
@@ -70,9 +77,12 @@ class Neo4jExporter(StructuredExporter):
         else:
             output.write(cypher_content)
 
-    def export_streaming(self, chunk_iterator: Iterator[CodeChunk],
-        relationship_iterator: Iterator[ChunkRelationship], output: (Path |
-        io.IOBase)) -> None:
+    def export_streaming(
+        self,
+        chunk_iterator: Iterator[CodeChunk],
+        relationship_iterator: Iterator[ChunkRelationship],
+        output: Path | io.IOBase,
+    ) -> None:
         """Export using iterators for large datasets."""
         if isinstance(output, str | Path):
             with Path(output).open("w", encoding="utf-8") as f:
@@ -87,9 +97,14 @@ class Neo4jExporter(StructuredExporter):
 
     def get_schema(self) -> dict[str, Any]:
         """Get the export schema."""
-        return {"fmt": "neo4j", "version": "4.4+", "node_label": self.
-            _node_label, "batch_size": self._batch_size, "use_merge": self.
-            _use_merge, "include_content": self._include_content}
+        return {
+            "fmt": "neo4j",
+            "version": "4.4+",
+            "node_label": self._node_label,
+            "batch_size": self._batch_size,
+            "use_merge": self._use_merge,
+            "include_content": self._include_content,
+        }
 
     def set_node_label(self, label: str) -> None:
         """Set the label for chunk nodes."""
@@ -110,39 +125,51 @@ class Neo4jExporter(StructuredExporter):
     @staticmethod
     def _generate_metadata_node(metadata: ExportMetadata) -> list[str]:
         """Generate Cypher for metadata node."""
-        return ["// Create metadata node", "CREATE (m:ExportMetadata {",
+        return [
+            "// Create metadata node",
+            "CREATE (m:ExportMetadata {",
             f"  fmt: '{metadata.fmt.value}',",
             f"  version: '{metadata.version}',",
             f"  created_at: datetime('{metadata.created_at}'),",
             f"  source_files: {json.dumps(metadata.source_files)},",
             f"  chunk_count: {metadata.chunk_count},",
             f"  relationship_count: {metadata.relationship_count},",
-            f"  options: {json.dumps(metadata.options)}", "});"]
+            f"  options: {json.dumps(metadata.options)}",
+            "});",
+        ]
 
     def _generate_node_queries(self, chunks: list[CodeChunk]) -> list[str]:
         """Generate Cypher queries for creating nodes."""
         queries = []
         for i in range(0, len(chunks), self._batch_size):
-            batch = chunks[i:i + self._batch_size]
+            batch = chunks[i : i + self._batch_size]
             batch_data = []
             for chunk in batch:
-                node_data = {"chunk_id": chunk.chunk_id, "language": chunk.
-                    language, "file_path": chunk.file_path, "node_type":
-                    chunk.node_type, "start_line": chunk.start_line,
-                    "end_line": chunk.end_line, "byte_start": chunk.
-                    byte_start, "byte_end": chunk.byte_end,
+                node_data = {
+                    "chunk_id": chunk.chunk_id,
+                    "language": chunk.language,
+                    "file_path": chunk.file_path,
+                    "node_type": chunk.node_type,
+                    "start_line": chunk.start_line,
+                    "end_line": chunk.end_line,
+                    "byte_start": chunk.byte_start,
+                    "byte_end": chunk.byte_end,
                     "parent_context": chunk.parent_context or "",
                     "parent_chunk_id": chunk.parent_chunk_id or "",
-                    "references": chunk.references, "dependencies": chunk.
-                    dependencies}
+                    "references": chunk.references,
+                    "dependencies": chunk.dependencies,
+                }
                 if self._include_content:
-                    node_data["content"] = chunk.content.replace("\\", "\\\\",
-                        ).replace('"', '\\"')
+                    node_data["content"] = chunk.content.replace(
+                        "\\",
+                        "\\\\",
+                    ).replace('"', '\\"')
                 batch_data.append(node_data)
             operation = "MERGE" if self._use_merge else "CREATE"
-            query_lines = [f"UNWIND {json.dumps(batch_data)} AS chunk",
-                f"{operation} (c:{self._node_label} {{chunk_id: chunk.chunk_id}})"
-                , "SET c.language = chunk.language,",
+            query_lines = [
+                f"UNWIND {json.dumps(batch_data)} AS chunk",
+                f"{operation} (c:{self._node_label} {{chunk_id: chunk.chunk_id}})",
+                "SET c.language = chunk.language,",
                 "    c.file_path = chunk.file_path,",
                 "    c.node_type = chunk.node_type,",
                 "    c.start_line = chunk.start_line,",
@@ -152,7 +179,8 @@ class Neo4jExporter(StructuredExporter):
                 "    c.parent_context = chunk.parent_context,",
                 "    c.parent_chunk_id = chunk.parent_chunk_id,",
                 "    c.references = chunk.references,",
-                "    c.dependencies = chunk.dependencies"]
+                "    c.dependencies = chunk.dependencies",
+            ]
             if self._include_content:
                 query_lines.append("    c.content = chunk.content")
             else:
@@ -163,8 +191,10 @@ class Neo4jExporter(StructuredExporter):
             queries.append("")
         return queries
 
-    def _generate_relationship_queries(self, relationships: list[
-        ChunkRelationship]) -> list[str]:
+    def _generate_relationship_queries(
+        self,
+        relationships: list[ChunkRelationship],
+    ) -> list[str]:
         """Generate Cypher queries for creating relationships."""
         queries = []
         relationships_by_type = {}
@@ -177,23 +207,26 @@ class Neo4jExporter(StructuredExporter):
             queries.append(f"// {rel_type} relationships")
             neo4j_rel_type = self._to_neo4j_relationship_type(rel_type)
             for i in range(0, len(typed_relationships), self._batch_size):
-                batch = typed_relationships[i:i + self._batch_size]
+                batch = typed_relationships[i : i + self._batch_size]
                 batch_data = []
                 for rel in batch:
-                    rel_data = {"source_id": rel.source_chunk_id,
-                        "target_id": rel.target_chunk_id}
+                    rel_data = {
+                        "source_id": rel.source_chunk_id,
+                        "target_id": rel.target_chunk_id,
+                    }
                     if rel.metadata:
                         rel_data["metadata"] = rel.metadata
                     batch_data.append(rel_data)
-                query_lines = [f"UNWIND {json.dumps(batch_data)} AS rel",
-                    f"MATCH (source:{self._node_label} {{chunk_id: rel.source_id}})"
-                    ,
-                    f"MATCH (target:{self._node_label} {{chunk_id: rel.target_id}})"
-                    , f"MERGE (source)-[r:{neo4j_rel_type}]->(target)"]
+                query_lines = [
+                    f"UNWIND {json.dumps(batch_data)} AS rel",
+                    f"MATCH (source:{self._node_label} {{chunk_id: rel.source_id}})",
+                    f"MATCH (target:{self._node_label} {{chunk_id: rel.target_id}})",
+                    f"MERGE (source)-[r:{neo4j_rel_type}]->(target)",
+                ]
                 if any(r.get("metadata") for r in batch_data):
                     query_lines.append(
                         "SET r.metadata = CASE WHEN rel.metadata IS NOT NULL THEN rel.metadata ELSE null END",
-                        )
+                    )
                 query_lines.append(";")
                 queries.extend(query_lines)
                 queries.append("")
@@ -204,28 +237,30 @@ class Neo4jExporter(StructuredExporter):
         """Convert relationship type to Neo4j-friendly fmt."""
         return rel_type.upper()
 
-    def _stream_cypher(self, chunk_iterator: Iterator[CodeChunk],
-        relationship_iterator: Iterator[ChunkRelationship], output: io.IOBase,
-        ) -> None:
+    def _stream_cypher(
+        self,
+        chunk_iterator: Iterator[CodeChunk],
+        relationship_iterator: Iterator[ChunkRelationship],
+        output: io.IOBase,
+    ) -> None:
         """Stream Cypher queries to output."""
         output.write("// TreeSitter Chunker Neo4j Export\n")
-        output.write(
-            f"// Generated: {datetime.now(timezone.utc).isoformat()}\n")
+        output.write(f"// Generated: {datetime.now(timezone.utc).isoformat()}\n")
         output.write("\n")
         output.write("// Create constraints for better performance\n")
         output.write(
             f"""CREATE CONSTRAINT IF NOT EXISTS FOR (c:{self._node_label}) REQUIRE c.chunk_id IS UNIQUE;
 """,
-            )
+        )
         output.write(
             f"CREATE INDEX IF NOT EXISTS FOR (c:{self._node_label}) ON (c.file_path);\n",
-            )
+        )
         output.write(
             f"CREATE INDEX IF NOT EXISTS FOR (c:{self._node_label}) ON (c.node_type);\n",
-            )
+        )
         output.write(
             f"CREATE INDEX IF NOT EXISTS FOR (c:{self._node_label}) ON (c.language);\n",
-            )
+        )
         output.write("\n")
         output.write("// Create code chunk nodes\n")
         chunk_batch = []
@@ -248,35 +283,42 @@ class Neo4jExporter(StructuredExporter):
                 relationships_by_type[rel_type] = []
             relationships_by_type[rel_type].append(rel)
             if len(relationships_by_type[rel_type]) >= self._batch_size:
-                self._write_relationship_batch(output, rel_type,
-                    relationships_by_type[rel_type])
+                self._write_relationship_batch(
+                    output,
+                    rel_type,
+                    relationships_by_type[rel_type],
+                )
                 relationships_by_type[rel_type] = []
         for rel_type, rels in relationships_by_type.items():
             if rels:
                 self._write_relationship_batch(output, rel_type, rels)
 
-    def _write_relationship_batch(self, output: io.IOBase, rel_type: str,
-        relationships: list[ChunkRelationship]) -> None:
+    def _write_relationship_batch(
+        self,
+        output: io.IOBase,
+        rel_type: str,
+        relationships: list[ChunkRelationship],
+    ) -> None:
         """Write a batch of relationships to output."""
         output.write(f"// {rel_type} relationships\n")
         neo4j_rel_type = self._to_neo4j_relationship_type(rel_type)
         batch_data = []
         for rel in relationships:
-            rel_data = {"source_id": rel.source_chunk_id, "target_id": rel.
-                target_chunk_id}
+            rel_data = {
+                "source_id": rel.source_chunk_id,
+                "target_id": rel.target_chunk_id,
+            }
             if rel.metadata:
                 rel_data["metadata"] = rel.metadata
             batch_data.append(rel_data)
         output.write(f"UNWIND {json.dumps(batch_data)} AS rel\n")
-        output.write(
-            f"MATCH (source:{self._node_label} {{chunk_id: rel.source_id}})\n")
-        output.write(
-            f"MATCH (target:{self._node_label} {{chunk_id: rel.target_id}})\n")
+        output.write(f"MATCH (source:{self._node_label} {{chunk_id: rel.source_id}})\n")
+        output.write(f"MATCH (target:{self._node_label} {{chunk_id: rel.target_id}})\n")
         output.write(f"MERGE (source)-[r:{neo4j_rel_type}]->(target)\n")
         if any(r.get("metadata") for r in batch_data):
             output.write(
                 """SET r.metadata = CASE WHEN rel.metadata IS NOT NULL THEN rel.metadata ELSE null END
 """,
-                )
+            )
         output.write(";\n\n")
         output.flush()

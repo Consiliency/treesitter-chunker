@@ -3,6 +3,7 @@ Release Manager for version management and release automation
 
 Handles version bumping, changelog updates, and release preparation
 """
+
 import hashlib
 import re
 import subprocess
@@ -14,13 +15,15 @@ from typing import Any
 class ReleaseManager:
     """Manages release process and versioning"""
 
-    def __init__(self, project_root: (Path | None) = None):
+    def __init__(self, project_root: Path | None = None):
         self.project_root = project_root or Path.cwd()
-        self.version_files = ["pyproject.toml", "chunker/__init__.py",
-            "setup.py"]
+        self.version_files = ["pyproject.toml", "chunker/__init__.py", "setup.py"]
 
-    def prepare_release(self, version: str, changelog: str) -> tuple[bool,
-        dict[str, Any]]:
+    def prepare_release(
+        self,
+        version: str,
+        changelog: str,
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Prepare a new release with version bump and changelog
 
@@ -31,12 +34,12 @@ class ReleaseManager:
         Returns:
             Tuple of (success, release_info)
         """
-        info = {"version": version, "updated_files": [], "git_tag": None,
-            "errors": []}
+        info = {"version": version, "updated_files": [], "git_tag": None, "errors": []}
         current_version = self._get_current_version()
         if not self._validate_version_bump(current_version, version):
             info["errors"].append(
-                f"Invalid version bump: {current_version} -> {version}")
+                f"Invalid version bump: {current_version} -> {version}",
+            )
             return False, info
         for file_path in self.version_files:
             full_path = self.project_root / file_path
@@ -44,8 +47,7 @@ class ReleaseManager:
                 if self._update_version_in_file(full_path, version):
                     info["updated_files"].append(str(file_path))
                 else:
-                    info["errors"].append(
-                        f"Failed to update version in {file_path}")
+                    info["errors"].append(f"Failed to update version in {file_path}")
         changelog_path = self.project_root / "CHANGELOG.md"
         if self._update_changelog(changelog_path, version, changelog):
             info["updated_files"].append("CHANGELOG.md")
@@ -62,8 +64,7 @@ class ReleaseManager:
         success = len(info["errors"]) == 0
         return success, info
 
-    def create_release_artifacts(self, version: str, output_dir: Path) -> list[
-        Path]:
+    def create_release_artifacts(self, version: str, output_dir: Path) -> list[Path]:
         """
         Create all release artifacts for distribution
 
@@ -96,8 +97,7 @@ class ReleaseManager:
         if pyproject_path.exists():
             with Path(pyproject_path).open("r", encoding="utf-8") as f:
                 content = f.read()
-                match = re.search('version\\s*=\\s*["\\\']([^"\\\']+)["\\\']',
-                    content)
+                match = re.search(r"version\s*=\s*[\"']([^\"']+)[\"']", content)
                 if match:
                     return match.group(1)
         return "0.0.0"
@@ -108,6 +108,7 @@ class ReleaseManager:
 
         def parse_version(v: str) -> tuple[int, ...]:
             return tuple(int(x) for x in v.split("."))
+
         try:
             return parse_version(new) > parse_version(current)
         except ValueError:
@@ -120,14 +121,23 @@ class ReleaseManager:
             with Path(file_path).open("r", encoding="utf-8") as f:
                 content = f.read()
             if file_path.name == "pyproject.toml":
-                content = re.sub('version\\s*=\\s*["\\\'][^"\\\']+["\\\']',
-                    f'version = "{version}"', content)
+                content = re.sub(
+                    r"version\s*=\s*[\"'][^\"']+[\"']",
+                    f'version = "{version}"',
+                    content,
+                )
             elif file_path.name == "__init__.py":
-                content = re.sub('__version__\\s*=\\s*["\\\'][^"\\\']+["\\\']',
-                    f'__version__ = "{version}"', content)
+                content = re.sub(
+                    r"__version__\s*=\s*[\"'][^\"']+[\"']",
+                    f'__version__ = "{version}"',
+                    content,
+                )
             elif file_path.name == "setup.py":
-                content = re.sub('version\\s*=\\s*["\\\'][^"\\\']+["\\\']',
-                    f'version="{version}"', content)
+                content = re.sub(
+                    r"version\s*=\s*[\"'][^\"']+[\"']",
+                    f'version="{version}"',
+                    content,
+                )
             with Path(file_path).open("w", encoding="utf-8") as f:
                 f.write(content)
             return True
@@ -135,8 +145,12 @@ class ReleaseManager:
             return False
 
     @classmethod
-    def _update_changelog(cls, changelog_path: Path, version: str, notes: str,
-        ) -> bool:
+    def _update_changelog(
+        cls,
+        changelog_path: Path,
+        version: str,
+        notes: str,
+    ) -> bool:
         """Update CHANGELOG.md with new release notes"""
         try:
             if changelog_path.exists():
@@ -162,8 +176,12 @@ class ReleaseManager:
     def _run_tests(self) -> bool:
         """Run test suite to ensure release quality"""
         try:
-            result = subprocess.run(["python", "-m", "pytest", "-xvs"],
-                capture_output=True, cwd=self.project_root, check=False)
+            result = subprocess.run(
+                ["python", "-m", "pytest", "-xvs"],
+                capture_output=True,
+                cwd=self.project_root,
+                check=False,
+            )
             return result.returncode == 0
         except (OSError, IndexError, KeyError):
             return False
@@ -171,33 +189,46 @@ class ReleaseManager:
     def _create_git_tag(self, tag_name: str, message: str) -> bool:
         """Create annotated git tag"""
         try:
-            check_result = subprocess.run(["git", "tag", "-l", tag_name],
-                capture_output=True, text=True, cwd=self.project_root,
-                check=False)
+            check_result = subprocess.run(
+                ["git", "tag", "-l", tag_name],
+                capture_output=True,
+                text=True,
+                cwd=self.project_root,
+                check=False,
+            )
             if check_result.stdout.strip():
                 return False
-            subprocess.run(["git", "tag", "-a", tag_name, "-m", message],
-                check=True, cwd=self.project_root)
+            subprocess.run(
+                ["git", "tag", "-a", tag_name, "-m", message],
+                check=True,
+                cwd=self.project_root,
+            )
             return True
         except subprocess.CalledProcessError:
             return False
 
-    def _build_sdist(self, output_dir: Path) -> (Path | None):
+    def _build_sdist(self, output_dir: Path) -> Path | None:
         """Build source distribution"""
         try:
-            subprocess.run(["python", "-m", "build", "--sdist", "--outdir",
-                str(output_dir)], check=True, cwd=self.project_root)
+            subprocess.run(
+                ["python", "-m", "build", "--sdist", "--outdir", str(output_dir)],
+                check=True,
+                cwd=self.project_root,
+            )
             for file_path in output_dir.glob("*.tar.gz"):
                 return file_path
         except (FileNotFoundError, IndexError, KeyError):
             pass
         return None
 
-    def _build_wheel(self, output_dir: Path) -> (Path | None):
+    def _build_wheel(self, output_dir: Path) -> Path | None:
         """Build wheel distribution"""
         try:
-            subprocess.run(["python", "-m", "build", "--wheel", "--outdir",
-                str(output_dir)], check=True, cwd=self.project_root)
+            subprocess.run(
+                ["python", "-m", "build", "--wheel", "--outdir", str(output_dir)],
+                check=True,
+                cwd=self.project_root,
+            )
             for file_path in output_dir.glob("*.whl"):
                 return file_path
         except (FileNotFoundError, ImportError, IndexError):
@@ -205,17 +236,17 @@ class ReleaseManager:
         return None
 
     @classmethod
-    def _generate_checksums(cls, files: list[Path], output_dir: Path) -> (Path |
-        None):
+    def _generate_checksums(cls, files: list[Path], output_dir: Path) -> Path | None:
         """Generate SHA256 checksums for artifacts"""
         checksum_path = output_dir / "checksums.txt"
         try:
             with Path(checksum_path).open("w", encoding="utf-8") as f:
                 for file_path in files:
                     if file_path.exists():
-                        with Path(file_path).open("rb") as file_path:
-                            sha256 = hashlib.sha256(file_path.read(),
-                                ).hexdigest()
+                        with Path(file_path).open("rb") as fh:
+                            sha256 = hashlib.sha256(
+                                fh.read(),
+                            ).hexdigest()
                         f.write(f"{sha256}  {file_path.name}\n")
             return checksum_path
         except (FileNotFoundError, OSError):

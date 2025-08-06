@@ -1,4 +1,5 @@
 """Export chunks to database formats (SQLite, PostgreSQL)."""
+
 from __future__ import annotations
 
 import io
@@ -32,9 +33,13 @@ class SQLiteExporter(DatabaseExporter):
         self._batch_size = 1000
         self._indexes = ["chunk_id", "file_path", "node_type", "language"]
 
-    def export(self, chunks: list[CodeChunk], relationships: list[
-        ChunkRelationship], output: (Path | io.IOBase), metadata: (
-        ExportMetadata | None) = None) -> None:
+    def export(
+        self,
+        chunks: list[CodeChunk],
+        relationships: list[ChunkRelationship],
+        output: Path | io.IOBase,
+        metadata: ExportMetadata | None = None,
+    ) -> None:
         """Export chunks with relationships to SQLite.
 
         Args:
@@ -44,8 +49,7 @@ class SQLiteExporter(DatabaseExporter):
             metadata: Export metadata
         """
         if isinstance(output, io.IOBase):
-            raise ChunkerError(
-                "SQLite export requires a file path, not a stream")
+            raise ChunkerError("SQLite export requires a file path, not a stream")
         db_path = Path(output)
         conn = sqlite3.connect(str(db_path))
         try:
@@ -59,13 +63,15 @@ class SQLiteExporter(DatabaseExporter):
         finally:
             conn.close()
 
-    def export_streaming(self, chunk_iterator: Iterator[CodeChunk],
-        relationship_iterator: Iterator[ChunkRelationship], output: (Path |
-        io.IOBase)) -> None:
+    def export_streaming(
+        self,
+        chunk_iterator: Iterator[CodeChunk],
+        relationship_iterator: Iterator[ChunkRelationship],
+        output: Path | io.IOBase,
+    ) -> None:
         """Export using iterators for large datasets."""
         if isinstance(output, io.IOBase):
-            raise ChunkerError(
-                "SQLite export requires a file path, not a stream")
+            raise ChunkerError("SQLite export requires a file path, not a stream")
         db_path = Path(output)
         conn = sqlite3.connect(str(db_path))
         try:
@@ -91,8 +97,11 @@ class SQLiteExporter(DatabaseExporter):
         finally:
             conn.close()
 
-    def set_table_names(self, chunks_table: str, relationships_table: str,
-        ) -> None:
+    def set_table_names(
+        self,
+        chunks_table: str,
+        relationships_table: str,
+    ) -> None:
         """Set custom table names."""
         self._chunks_table = chunks_table
         self._relationships_table = relationships_table
@@ -112,10 +121,17 @@ class SQLiteExporter(DatabaseExporter):
 
     def get_schema(self) -> dict[str, Any]:
         """Get the export schema."""
-        return {"fmt": "sqlite", "version": "3", "tables": {"chunks": self.
-            _chunks_table, "relationships": self._relationships_table,
-            "metadata": self._metadata_table}, "indexes": self._indexes,
-            "batch_size": self._batch_size}
+        return {
+            "fmt": "sqlite",
+            "version": "3",
+            "tables": {
+                "chunks": self._chunks_table,
+                "relationships": self._relationships_table,
+                "metadata": self._metadata_table,
+            },
+            "indexes": self._indexes,
+            "batch_size": self._batch_size,
+        }
 
     def _create_tables(self, conn: sqlite3.Connection) -> None:
         """Create database tables."""
@@ -139,7 +155,7 @@ class SQLiteExporter(DatabaseExporter):
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """,
-            )
+        )
         cursor.execute(
             f"""
             CREATE TABLE IF NOT EXISTS {self._relationships_table} (
@@ -153,7 +169,7 @@ class SQLiteExporter(DatabaseExporter):
                 FOREIGN KEY (target_chunk_id) REFERENCES {self._chunks_table}(chunk_id)
             )
         """,
-            )
+        )
         cursor.execute(
             f"""
             CREATE TABLE IF NOT EXISTS {self._metadata_table} (
@@ -168,10 +184,13 @@ class SQLiteExporter(DatabaseExporter):
                 export_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """,
-            )
+        )
 
-    def _insert_metadata(self, conn: sqlite3.Connection, metadata:
-        ExportMetadata) -> None:
+    def _insert_metadata(
+        self,
+        conn: sqlite3.Connection,
+        metadata: ExportMetadata,
+    ) -> None:
         """Insert export metadata."""
         cursor = conn.cursor()
         cursor.execute(
@@ -179,20 +198,43 @@ class SQLiteExporter(DatabaseExporter):
             INSERT INTO {self._metadata_table}
             (fmt, version, created_at, source_files, chunk_count, relationship_count, options)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        """  # noqa: S608 - Table name is hardcoded in constructor
-            , (metadata.fmt.value, metadata.version, metadata.created_at,
-            json.dumps(metadata.source_files), metadata.chunk_count,
-            metadata.relationship_count, json.dumps(metadata.options)))
+        """,  # noqa: S608 - Table name is hardcoded in constructor
+            (
+                metadata.fmt.value,
+                metadata.version,
+                metadata.created_at,
+                json.dumps(metadata.source_files),
+                metadata.chunk_count,
+                metadata.relationship_count,
+                json.dumps(metadata.options),
+            ),
+        )
 
-    def _insert_chunks(self, conn: sqlite3.Connection, chunks: list[CodeChunk],
-        ) -> None:
+    def _insert_chunks(
+        self,
+        conn: sqlite3.Connection,
+        chunks: list[CodeChunk],
+    ) -> None:
         """Insert chunks in batch."""
         cursor = conn.cursor()
-        chunk_data = [(chunk.chunk_id, chunk.language, chunk.file_path,
-            chunk.node_type, chunk.start_line, chunk.end_line, chunk.
-            byte_start, chunk.byte_end, chunk.parent_context, chunk.content,
-            chunk.parent_chunk_id, json.dumps(chunk.references), json.dumps
-            (chunk.dependencies)) for chunk in chunks]
+        chunk_data = [
+            (
+                chunk.chunk_id,
+                chunk.language,
+                chunk.file_path,
+                chunk.node_type,
+                chunk.start_line,
+                chunk.end_line,
+                chunk.byte_start,
+                chunk.byte_end,
+                chunk.parent_context,
+                chunk.content,
+                chunk.parent_chunk_id,
+                json.dumps(chunk.references),
+                json.dumps(chunk.dependencies),
+            )
+            for chunk in chunks
+        ]
         cursor.executemany(
             f"""
             INSERT OR REPLACE INTO {self._chunks_table}
@@ -200,43 +242,59 @@ class SQLiteExporter(DatabaseExporter):
              byte_start, byte_end, parent_context, content, parent_chunk_id,
              chunk_references, chunk_dependencies)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """  # noqa: S608 - Table name is hardcoded in constructor
-            , chunk_data)
+        """,  # noqa: S608 - Table name is hardcoded in constructor
+            chunk_data,
+        )
 
-    def _insert_relationships(self, conn: sqlite3.Connection, relationships:
-        list[ChunkRelationship]) -> None:
+    def _insert_relationships(
+        self,
+        conn: sqlite3.Connection,
+        relationships: list[ChunkRelationship],
+    ) -> None:
         """Insert relationships in batch."""
         cursor = conn.cursor()
-        rel_data = [(rel.source_chunk_id, rel.target_chunk_id, rel.
-            relationship_type.value, json.dumps(rel.metadata) if rel.
-            metadata else None) for rel in relationships]
+        rel_data = [
+            (
+                rel.source_chunk_id,
+                rel.target_chunk_id,
+                rel.relationship_type.value,
+                json.dumps(rel.metadata) if rel.metadata else None,
+            )
+            for rel in relationships
+        ]
         cursor.executemany(
             f"""
             INSERT INTO {self._relationships_table}
             (source_chunk_id, target_chunk_id, relationship_type, metadata)
             VALUES (?, ?, ?, ?)
-        """  # noqa: S608 - Table name is hardcoded in constructor
-            , rel_data)
+        """,  # noqa: S608 - Table name is hardcoded in constructor
+            rel_data,
+        )
 
     def _create_indexes(self, conn: sqlite3.Connection) -> None:
         """Create database indexes."""
         cursor = conn.cursor()
         for column in self._indexes:
-            if column in {"chunk_id", "file_path", "node_type", "language",
-                "parent_chunk_id"}:
+            if column in {
+                "chunk_id",
+                "file_path",
+                "node_type",
+                "language",
+                "parent_chunk_id",
+            }:
                 index_name = f"idx_{self._chunks_table}_{column}"
                 cursor.execute(
                     f"CREATE INDEX IF NOT EXISTS {index_name} ON {self._chunks_table}({column})",
-                    )
+                )
         cursor.execute(
             f"CREATE INDEX IF NOT EXISTS idx_{self._relationships_table}_source ON {self._relationships_table}(source_chunk_id)",
-            )
+        )
         cursor.execute(
             f"CREATE INDEX IF NOT EXISTS idx_{self._relationships_table}_target ON {self._relationships_table}(target_chunk_id)",
-            )
+        )
         cursor.execute(
             f"CREATE INDEX IF NOT EXISTS idx_{self._relationships_table}_type ON {self._relationships_table}(relationship_type)",
-            )
+        )
 
 
 class PostgreSQLExporter(DatabaseExporter):
@@ -254,9 +312,13 @@ class PostgreSQLExporter(DatabaseExporter):
         self._indexes = ["chunk_id", "file_path", "node_type", "language"]
         self._schema = "public"
 
-    def export(self, chunks: list[CodeChunk], relationships: list[
-        ChunkRelationship], output: (Path | io.IOBase), metadata: (
-        ExportMetadata | None) = None) -> None:
+    def export(
+        self,
+        chunks: list[CodeChunk],
+        relationships: list[ChunkRelationship],
+        output: Path | io.IOBase,
+        metadata: ExportMetadata | None = None,
+    ) -> None:
         """Export chunks with relationships as PostgreSQL SQL script.
 
         Args:
@@ -266,10 +328,16 @@ class PostgreSQLExporter(DatabaseExporter):
             metadata: Export metadata
         """
         sql_lines = []
-        sql_lines.extend(["-- TreeSitter Chunker PostgreSQL Export",
-            f"-- Generated: {datetime.now(timezone.utc).isoformat()}",
-            f"-- Chunks: {len(chunks)}, Relationships: {len(relationships)}",
-            "", "BEGIN;", ""])
+        sql_lines.extend(
+            [
+                "-- TreeSitter Chunker PostgreSQL Export",
+                f"-- Generated: {datetime.now(timezone.utc).isoformat()}",
+                f"-- Chunks: {len(chunks)}, Relationships: {len(relationships)}",
+                "",
+                "BEGIN;",
+                "",
+            ],
+        )
         if self._schema != "public":
             sql_lines.append(f"CREATE SCHEMA IF NOT EXISTS {self._schema};")
             sql_lines.append(f"SET search_path TO {self._schema};")
@@ -292,9 +360,12 @@ class PostgreSQLExporter(DatabaseExporter):
         else:
             output.write(sql_content)
 
-    def export_streaming(self, chunk_iterator: Iterator[CodeChunk],
-        relationship_iterator: Iterator[ChunkRelationship], output: (Path |
-        io.IOBase)) -> None:
+    def export_streaming(
+        self,
+        chunk_iterator: Iterator[CodeChunk],
+        relationship_iterator: Iterator[ChunkRelationship],
+        output: Path | io.IOBase,
+    ) -> None:
         """Export using iterators for large datasets."""
         if isinstance(output, str | Path):
             with Path(output).open("w", encoding="utf-8") as f:
@@ -302,8 +373,11 @@ class PostgreSQLExporter(DatabaseExporter):
         else:
             self._stream_sql(chunk_iterator, relationship_iterator, output)
 
-    def set_table_names(self, chunks_table: str, relationships_table: str,
-        ) -> None:
+    def set_table_names(
+        self,
+        chunks_table: str,
+        relationships_table: str,
+    ) -> None:
         """Set custom table names."""
         self._chunks_table = chunks_table
         self._relationships_table = relationships_table
@@ -327,15 +401,23 @@ class PostgreSQLExporter(DatabaseExporter):
 
     def get_schema(self) -> dict[str, Any]:
         """Get the export schema."""
-        return {"fmt": "postgresql", "version": "13+", "schema": self.
-            _schema, "tables": {"chunks": self._chunks_table,
-            "relationships": self._relationships_table, "metadata": self.
-            _metadata_table}, "indexes": self._indexes, "batch_size": self.
-            _batch_size}
+        return {
+            "fmt": "postgresql",
+            "version": "13+",
+            "schema": self._schema,
+            "tables": {
+                "chunks": self._chunks_table,
+                "relationships": self._relationships_table,
+                "metadata": self._metadata_table,
+            },
+            "indexes": self._indexes,
+            "batch_size": self._batch_size,
+        }
 
     def _generate_create_tables(self) -> list[str]:
         """Generate CREATE TABLE statements."""
-        return [f"CREATE TABLE IF NOT EXISTS {self._chunks_table} (",
+        return [
+            f"CREATE TABLE IF NOT EXISTS {self._chunks_table} (",
             "    chunk_id VARCHAR(64) PRIMARY KEY,",
             "    language VARCHAR(32) NOT NULL,",
             "    file_path TEXT NOT NULL,",
@@ -343,12 +425,15 @@ class PostgreSQLExporter(DatabaseExporter):
             "    start_line INTEGER NOT NULL,",
             "    end_line INTEGER NOT NULL,",
             "    byte_start INTEGER NOT NULL,",
-            "    byte_end INTEGER NOT NULL,", "    parent_context TEXT,",
+            "    byte_end INTEGER NOT NULL,",
+            "    parent_context TEXT,",
             "    content TEXT NOT NULL,",
             "    parent_chunk_id VARCHAR(64),",
             "    chunk_references JSONB DEFAULT '[]'::jsonb,",
             "    chunk_dependencies JSONB DEFAULT '[]'::jsonb,",
-            "    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP", ");", "",
+            "    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+            ");",
+            "",
             f"CREATE TABLE IF NOT EXISTS {self._relationships_table} (",
             "    id SERIAL PRIMARY KEY,",
             "    source_chunk_id VARCHAR(64) NOT NULL,",
@@ -356,83 +441,96 @@ class PostgreSQLExporter(DatabaseExporter):
             "    relationship_type VARCHAR(32) NOT NULL,",
             "    metadata JSONB,",
             "    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,",
-            f"    FOREIGN KEY (source_chunk_id) REFERENCES {self._chunks_table}(chunk_id),"
-            ,
-            f"    FOREIGN KEY (target_chunk_id) REFERENCES {self._chunks_table}(chunk_id)"
-            , ");", "",
+            f"    FOREIGN KEY (source_chunk_id) REFERENCES {self._chunks_table}(chunk_id),",
+            f"    FOREIGN KEY (target_chunk_id) REFERENCES {self._chunks_table}(chunk_id)",
+            ");",
+            "",
             f"CREATE TABLE IF NOT EXISTS {self._metadata_table} (",
-            "    id SERIAL PRIMARY KEY,", "    fmt VARCHAR(32) NOT NULL,",
+            "    id SERIAL PRIMARY KEY,",
+            "    fmt VARCHAR(32) NOT NULL,",
             "    version VARCHAR(16) NOT NULL,",
             "    created_at TIMESTAMP NOT NULL,",
             "    source_files JSONB NOT NULL,",
             "    chunk_count INTEGER NOT NULL,",
             "    relationship_count INTEGER NOT NULL,",
             "    options JSONB,",
-            "    export_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP", ");"]
+            "    export_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+            ");",
+        ]
 
     def _generate_insert_metadata(self, metadata: ExportMetadata) -> list[str]:
         """Generate INSERT statement for metadata."""
-        return [f"INSERT INTO {self._metadata_table}",
-            "(fmt, version, created_at, source_files, chunk_count, relationship_count, options)"
-            , "VALUES (", f"    '{metadata.fmt.value}',",
-            f"    '{metadata.version}',", f"    '{metadata.created_at}',",
+        return [
+            f"INSERT INTO {self._metadata_table}",
+            "(fmt, version, created_at, source_files, chunk_count, relationship_count, options)",
+            "VALUES (",
+            f"    '{metadata.fmt.value}',",
+            f"    '{metadata.version}',",
+            f"    '{metadata.created_at}',",
             f"    '{json.dumps(metadata.source_files)}'::jsonb,",
             f"    {metadata.chunk_count},",
             f"    {metadata.relationship_count},",
-            f"    '{json.dumps(metadata.options)}'::jsonb", ");"]
+            f"    '{json.dumps(metadata.options)}'::jsonb",
+            ");",
+        ]
 
     def _generate_insert_chunks(self, chunks: list[CodeChunk]) -> list[str]:
         """Generate INSERT statements for chunks."""
         lines = []
         for i in range(0, len(chunks), self._batch_size):
-            batch = chunks[i:i + self._batch_size]
+            batch = chunks[i : i + self._batch_size]
             lines.append(f"INSERT INTO {self._chunks_table}")
             lines.append(
                 "(chunk_id, language, file_path, node_type, start_line, end_line,",
-                )
+            )
             lines.append(
                 " byte_start, byte_end, parent_context, content, parent_chunk_id,",
-                )
+            )
             lines.append(" chunk_references, chunk_dependencies)")
             lines.append("VALUES")
             values = []
             for chunk in batch:
                 content = chunk.content.replace("'", "''")
-                parent_context = chunk.parent_context.replace("'", "''",
-                    ) if chunk.parent_context else "NULL"
-                parent_chunk_id = (f"'{chunk.parent_chunk_id}'" if chunk.
-                    parent_chunk_id else "NULL")
-                value = (
-                    f"('{chunk.chunk_id}', '{chunk.language}', '{chunk.file_path}', '{chunk.node_type}', {chunk.start_line}, {chunk.end_line}, {chunk.byte_start}, {chunk.byte_end}, '{parent_context}', '{content}', {parent_chunk_id}, '{json.dumps(chunk.references)}'::jsonb, '{json.dumps(chunk.dependencies)}'::jsonb)"
+                parent_context = (
+                    chunk.parent_context.replace(
+                        "'",
+                        "''",
                     )
+                    if chunk.parent_context
+                    else "NULL"
+                )
+                parent_chunk_id = (
+                    f"'{chunk.parent_chunk_id}'" if chunk.parent_chunk_id else "NULL"
+                )
+                value = f"('{chunk.chunk_id}', '{chunk.language}', '{chunk.file_path}', '{chunk.node_type}', {chunk.start_line}, {chunk.end_line}, {chunk.byte_start}, {chunk.byte_end}, '{parent_context}', '{content}', {parent_chunk_id}, '{json.dumps(chunk.references)}'::jsonb, '{json.dumps(chunk.dependencies)}'::jsonb)"
                 values.append(value)
             lines.append(",\n".join(values))
             lines.append("ON CONFLICT (chunk_id) DO UPDATE SET")
             lines.append("    content = EXCLUDED.content,")
             lines.append("    chunk_references = EXCLUDED.chunk_references,")
-            lines.append(
-                "    chunk_dependencies = EXCLUDED.chunk_dependencies;")
+            lines.append("    chunk_dependencies = EXCLUDED.chunk_dependencies;")
             lines.append("")
         return lines
 
-    def _generate_insert_relationships(self, relationships: list[
-        ChunkRelationship]) -> list[str]:
+    def _generate_insert_relationships(
+        self,
+        relationships: list[ChunkRelationship],
+    ) -> list[str]:
         """Generate INSERT statements for relationships."""
         lines = []
         for i in range(0, len(relationships), self._batch_size):
-            batch = relationships[i:i + self._batch_size]
+            batch = relationships[i : i + self._batch_size]
             lines.append(f"INSERT INTO {self._relationships_table}")
             lines.append(
                 "(source_chunk_id, target_chunk_id, relationship_type, metadata)",
-                )
+            )
             lines.append("VALUES")
             values = []
             for rel in batch:
-                metadata = (f"'{json.dumps(rel.metadata)}'::jsonb" if rel.
-                    metadata else "NULL")
-                value = (
-                    f"('{rel.source_chunk_id}', '{rel.target_chunk_id}', '{rel.relationship_type.value}', {metadata})"
-                    )
+                metadata = (
+                    f"'{json.dumps(rel.metadata)}'::jsonb" if rel.metadata else "NULL"
+                )
+                value = f"('{rel.source_chunk_id}', '{rel.target_chunk_id}', '{rel.relationship_type.value}', {metadata})"
                 values.append(value)
             lines.append(",\n".join(values) + ";")
             lines.append("")
@@ -442,35 +540,42 @@ class PostgreSQLExporter(DatabaseExporter):
         """Generate CREATE INDEX statements."""
         lines = []
         for column in self._indexes:
-            if column in {"chunk_id", "file_path", "node_type", "language",
-                "parent_chunk_id"}:
+            if column in {
+                "chunk_id",
+                "file_path",
+                "node_type",
+                "language",
+                "parent_chunk_id",
+            }:
                 index_name = f"idx_{self._chunks_table}_{column}"
                 lines.append(
                     f"CREATE INDEX IF NOT EXISTS {index_name} ON {self._chunks_table}({column});",
-                    )
-        lines.extend([
-            f"CREATE INDEX IF NOT EXISTS idx_{self._relationships_table}_source ON {self._relationships_table}(source_chunk_id);"
-            ,
-            f"CREATE INDEX IF NOT EXISTS idx_{self._relationships_table}_target ON {self._relationships_table}(target_chunk_id);"
-            ,
-            f"CREATE INDEX IF NOT EXISTS idx_{self._relationships_table}_type ON {self._relationships_table}(relationship_type);",
-            ])
-        lines.extend([
-            f"CREATE INDEX IF NOT EXISTS idx_{self._chunks_table}_references_gin ON {self._chunks_table} USING GIN (chunk_references);"
-            ,
-            f"CREATE INDEX IF NOT EXISTS idx_{self._chunks_table}_dependencies_gin ON {self._chunks_table} USING GIN (chunk_dependencies);"
-            ,
-            f"CREATE INDEX IF NOT EXISTS idx_{self._relationships_table}_metadata_gin ON {self._relationships_table} USING GIN (metadata);",
-            ])
+                )
+        lines.extend(
+            [
+                f"CREATE INDEX IF NOT EXISTS idx_{self._relationships_table}_source ON {self._relationships_table}(source_chunk_id);",
+                f"CREATE INDEX IF NOT EXISTS idx_{self._relationships_table}_target ON {self._relationships_table}(target_chunk_id);",
+                f"CREATE INDEX IF NOT EXISTS idx_{self._relationships_table}_type ON {self._relationships_table}(relationship_type);",
+            ],
+        )
+        lines.extend(
+            [
+                f"CREATE INDEX IF NOT EXISTS idx_{self._chunks_table}_references_gin ON {self._chunks_table} USING GIN (chunk_references);",
+                f"CREATE INDEX IF NOT EXISTS idx_{self._chunks_table}_dependencies_gin ON {self._chunks_table} USING GIN (chunk_dependencies);",
+                f"CREATE INDEX IF NOT EXISTS idx_{self._relationships_table}_metadata_gin ON {self._relationships_table} USING GIN (metadata);",
+            ],
+        )
         return lines
 
-    def _stream_sql(self, chunk_iterator: Iterator[CodeChunk],
-        relationship_iterator: Iterator[ChunkRelationship], output: io.IOBase,
-        ) -> None:
+    def _stream_sql(
+        self,
+        chunk_iterator: Iterator[CodeChunk],
+        relationship_iterator: Iterator[ChunkRelationship],
+        output: io.IOBase,
+    ) -> None:
         """Stream SQL statements to output."""
         output.write("-- TreeSitter Chunker PostgreSQL Export\n")
-        output.write(
-            f"-- Generated: {datetime.now(timezone.utc).isoformat()}\n")
+        output.write(f"-- Generated: {datetime.now(timezone.utc).isoformat()}\n")
         output.write("\nBEGIN;\n\n")
         if self._schema != "public":
             output.write(f"CREATE SCHEMA IF NOT EXISTS {self._schema};\n")

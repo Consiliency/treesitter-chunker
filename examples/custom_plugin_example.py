@@ -7,6 +7,7 @@ This example demonstrates:
 3. Adding custom configuration options
 4. Plugin versioning and metadata
 """
+
 import sys
 from pathlib import Path
 
@@ -38,9 +39,15 @@ class GoPlugin(LanguagePlugin):
     @staticmethod
     @property
     def default_chunk_types() -> set[str]:
-        return {"function_declaration", "method_declaration",
-            "type_declaration", "interface_declaration",
-            "struct_declaration", "const_declaration", "var_declaration"}
+        return {
+            "function_declaration",
+            "method_declaration",
+            "type_declaration",
+            "interface_declaration",
+            "struct_declaration",
+            "const_declaration",
+            "var_declaration",
+        }
 
     @staticmethod
     @property
@@ -52,24 +59,36 @@ class GoPlugin(LanguagePlugin):
     def plugin_metadata() -> dict:
         """Add custom metadata."""
         metadata = super().plugin_metadata
-        metadata.update({"author": "Example Author", "description":
-            "Go language support for treesitter-chunker", "go_version":
-            "1.18+", "features": ["interfaces", "goroutines", "channels"]})
+        metadata.update(
+            {
+                "author": "Example Author",
+                "description": "Go language support for treesitter-chunker",
+                "go_version": "1.18+",
+                "features": ["interfaces", "goroutines", "channels"],
+            },
+        )
         return metadata
 
     @staticmethod
-    def get_node_name(node: Node, source: bytes) -> (str | None):
+    def get_node_name(node: Node, source: bytes) -> str | None:
         """Extract name from Go nodes."""
         for child in node.children:
             if child.type == "identifier":
-                return source[child.start_byte:child.end_byte].decode("utf-8")
+                return source[child.start_byte : child.end_byte].decode("utf-8")
         return None
 
-    def process_node(self, node: Node, source: bytes, file_path: str,
-        parent_context: (str | None) = None) -> (CodeChunk | None):
+    def process_node(
+        self,
+        node: Node,
+        source: bytes,
+        file_path: str,
+        parent_context: str | None = None,
+    ) -> CodeChunk | None:
         """Custom processing for Go nodes."""
-        if (node.type == "function_declaration" and not self.config.
-            custom_options.get("include_tests", True)):
+        if node.type == "function_declaration" and not self.config.custom_options.get(
+            "include_tests",
+            True,
+        ):
             name = self.get_node_name(node, source)
             if name and name.startswith(("Test", "Benchmark")):
                 return None
@@ -86,8 +105,9 @@ class GoPlugin(LanguagePlugin):
             if chunk:
                 for child in node.children:
                     if child.type == "parameter_list":
-                        receiver_info = source[child.start_byte:child.end_byte
-                            ].decode("utf-8")
+                        receiver_info = source[
+                            child.start_byte : child.end_byte
+                        ].decode("utf-8")
                         chunk.node_type = f"method{receiver_info}"
                         break
                 return chunk if self.should_include_chunk(chunk) else None
@@ -139,27 +159,29 @@ class MarkdownPlugin(LanguagePlugin):
         return "1.0"
 
     @staticmethod
-    def get_node_name(node: Node, source: bytes) -> (str | None):
+    def get_node_name(node: Node, source: bytes) -> str | None:
         """Extract heading text from markdown nodes."""
         if node.type in {"atx_heading", "setext_heading"}:
-            content = source[node.start_byte:node.end_byte].decode("utf-8")
+            content = source[node.start_byte : node.end_byte].decode("utf-8")
             return content.lstrip("#").strip()
         if node.type == "fenced_code_block":
             for child in node.children:
                 if child.type == "info_string":
-                    return (
-                        f"code:{source[child.start_byte:child.end_byte].decode('utf-8')}"
-                        )
+                    return f"code:{source[child.start_byte:child.end_byte].decode('utf-8')}"
             return "code:unknown"
         return None
 
     @staticmethod
-    def process_node(node: Node, source: bytes, file_path: str,
-        parent_context: (str | None) = None) -> (CodeChunk | None):
+    def process_node(
+        node: Node,
+        source: bytes,
+        file_path: str,
+        parent_context: str | None = None,
+    ) -> CodeChunk | None:
         """Custom processing for markdown nodes."""
         chunk = super().process_node(node, source, file_path, parent_context)
         if chunk and node.type in {"atx_heading", "setext_heading"}:
-            content = source[node.start_byte:node.end_byte].decode("utf-8")
+            content = source[node.start_byte : node.end_byte].decode("utf-8")
             if node.type == "atx_heading":
                 level = len(content) - len(content.lstrip("#"))
                 chunk.node_type = f"heading_level_{level}"
@@ -172,8 +194,7 @@ class MarkdownPlugin(LanguagePlugin):
         if chunk.node_type.startswith("heading"):
             return True
         if chunk.node_type.startswith("code:"):
-            min_code_lines = self.config.custom_options.get(
-                "min_code_block_lines", 3)
+            min_code_lines = self.config.custom_options.get("min_code_block_lines", 3)
             lines = chunk.end_line - chunk.start_line + 1
             return lines >= min_code_lines
         return super().should_include_chunk(chunk)
@@ -190,13 +211,20 @@ def demonstrate_custom_plugins():
     print("\nGo Plugin Metadata:")
     for key, value in go_plugin.plugin_metadata.items():
         print(f"  {key}: {value}")
-    PluginConfig(chunk_types={"function_declaration", "method_declaration",
-        "interface_declaration"}, min_chunk_size=2, custom_options={
-        "include_tests": False})
+    PluginConfig(
+        chunk_types={
+            "function_declaration",
+            "method_declaration",
+            "interface_declaration",
+        },
+        min_chunk_size=2,
+        custom_options={"include_tests": False},
+    )
     print("\n2. Processing Go code (hypothetical)...")
     print("  (Would process Go code if grammar was available)")
-    PluginConfig(custom_options={"min_code_block_lines": 5,
-        "include_yaml_frontmatter": True})
+    PluginConfig(
+        custom_options={"min_code_block_lines": 5, "include_yaml_frontmatter": True},
+    )
     print("\n3. Processing Markdown (hypothetical)...")
     print("  (Would process Markdown if grammar was available)")
     print("\n4. All registered languages:")
@@ -241,7 +269,7 @@ class GoPlugin(LanguagePlugin):
                 return source[child.start_byte:child.end_byte].decode('utf-8')
         return None
 """,
-        )
+    )
     manager = get_plugin_manager()
     loaded = manager.load_plugins_from_directory(custom_dir)
     print(f"Loaded {loaded} plugin(s) from {custom_dir}")

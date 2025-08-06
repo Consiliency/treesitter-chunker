@@ -296,14 +296,14 @@ class TestExportErrorHandling:
         ]
         readonly_dir = tmp_path / "readonly"
         readonly_dir.mkdir()
-        os.chmod(readonly_dir, 292)
+        Path(readonly_dir).chmod(0o444)
         try:
             output_file = readonly_dir / "export.json"
             exporter = JSONExporter()
             with pytest.raises(PermissionError):
                 exporter.export(chunks, output_file)
         finally:
-            os.chmod(readonly_dir, 493)
+            Path(readonly_dir).chmod(0o755)
 
     @classmethod
     def test_export_with_invalid_chunks(cls, tmp_path):

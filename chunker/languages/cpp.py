@@ -22,44 +22,60 @@ class CppPlugin(CPlugin):
     @property
     def default_chunk_types(self) -> set[str]:
         c_types = super().default_chunk_types
-        cpp_types = {"class_specifier", "namespace_definition",
-            "template_declaration", "constructor_definition",
-            "destructor_definition", "operator_cast_definition",
-            "function_definition", "field_declaration"}
+        cpp_types = {
+            "class_specifier",
+            "namespace_definition",
+            "template_declaration",
+            "constructor_definition",
+            "destructor_definition",
+            "operator_cast_definition",
+            "function_definition",
+            "field_declaration",
+        }
         return c_types | cpp_types
 
-    def get_node_name(self, node: Node, source: bytes) -> (str | None):
+    def get_node_name(self, node: Node, source: bytes) -> str | None:
         """Extract the name from a C++ node."""
         if node.type == "class_specifier":
             for child in node.children:
                 if child.type == "type_identifier":
-                    return source[child.start_byte:child.end_byte].decode(
-                        "utf-8")
+                    return source[child.start_byte : child.end_byte].decode("utf-8")
         elif node.type == "namespace_definition":
             for child in node.children:
                 if child.type == "identifier":
-                    return source[child.start_byte:child.end_byte].decode(
-                        "utf-8")
+                    return source[child.start_byte : child.end_byte].decode("utf-8")
         elif node.type == "template_declaration":
             for child in node.children:
-                if child.type in {"class_specifier", "function_definition",
-                    "struct_specifier"}:
+                if child.type in {
+                    "class_specifier",
+                    "function_definition",
+                    "struct_specifier",
+                }:
                     return self.get_node_name(child, source)
         elif node.type in {"constructor_definition", "destructor_definition"}:
             for child in node.children:
                 if child.type == "function_declarator":
                     for subchild in child.children:
                         if subchild.type == "qualified_identifier":
-                            parts = source[subchild.start_byte:subchild.
-                                end_byte].decode("utf-8").split("::")
+                            parts = (
+                                source[subchild.start_byte : subchild.end_byte]
+                                .decode("utf-8")
+                                .split("::")
+                            )
                             return parts[-1]
                         if subchild.type == "destructor_name":
-                            return source[subchild.start_byte:subchild.end_byte
-                                ].decode("utf-8")
+                            return source[
+                                subchild.start_byte : subchild.end_byte
+                            ].decode("utf-8")
         return super().get_node_name(node, source)
 
-    def process_node(self, node: Node, source: bytes, file_path: str,
-        parent_context: (str | None) = None):
+    def process_node(
+        self,
+        node: Node,
+        source: bytes,
+        file_path: str,
+        parent_context: str | None = None,
+    ):
         """Process C++ nodes with special handling."""
         if node.type == "field_declaration":
             has_function_declarator = False
@@ -76,12 +92,13 @@ class CppPlugin(CPlugin):
         elif node.type == "template_declaration":
             for child in node.children:
                 if child.type in self.chunk_node_types:
-                    chunk = self.process_node(child, source, file_path,
-                        parent_context)
+                    chunk = self.process_node(child, source, file_path, parent_context)
                     if chunk:
                         chunk.node_type = f"template_{chunk.node_type}"
-                        chunk.content = source[node.start_byte:node.end_byte
-                            ].decode("utf-8", errors="replace")
+                        chunk.content = source[node.start_byte : node.end_byte].decode(
+                            "utf-8",
+                            errors="replace",
+                        )
                         chunk.byte_start = node.start_byte
                         chunk.byte_end = node.end_byte
                         chunk.start_line = node.start_point[0] + 1

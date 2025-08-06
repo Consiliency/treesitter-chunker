@@ -1,6 +1,7 @@
 """
 Adapter to make phase13 integration tests work with real implementations
 """
+
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock
@@ -29,8 +30,11 @@ class TestBuildSystemIntegration:
                     available_langs.append(lang)
             if not available_langs:
                 pytest.skip("No grammars available for testing")
-            success, build_info = build_sys.compile_grammars(available_langs
-                [:1], current_platform, output_dir)
+            success, build_info = build_sys.compile_grammars(
+                available_langs[:1],
+                current_platform,
+                output_dir,
+            )
             assert isinstance(success, bool)
             assert "libraries" in build_info
             if success:
@@ -45,16 +49,20 @@ class TestBuildSystemIntegration:
         with tempfile.TemporaryDirectory() as tmpdir:
             output_dir = Path(tmpdir)
             platform_info = build_sys.platform_support.detect_platform()
-            success, wheel_path = build_sys.build_wheel(platform_info["os"],
-                platform_info["python_tag"], output_dir)
+            success, wheel_path = build_sys.build_wheel(
+                platform_info["os"],
+                platform_info["python_tag"],
+                output_dir,
+            )
             assert isinstance(success, bool)
             assert isinstance(wheel_path, Path)
             if success:
                 assert wheel_path.exists()
                 assert wheel_path.suffix == ".whl"
-                assert platform_info["platform_tag"
-                    ] in wheel_path.name or platform_info["os"
-                    ] in wheel_path.name
+                assert (
+                    platform_info["platform_tag"] in wheel_path.name
+                    or platform_info["os"] in wheel_path.name
+                )
                 assert platform_info["python_tag"] in wheel_path.name
 
     @classmethod
@@ -64,6 +72,7 @@ class TestBuildSystemIntegration:
         with tempfile.NamedTemporaryFile(suffix=".whl", delete=False) as tmp:
             artifact_path = Path(tmp.name)
             import zipfile
+
             with zipfile.ZipFile(artifact_path, "w") as zf:
                 zf.writestr("dummy.txt", "test")
         try:
@@ -92,6 +101,7 @@ def setup_module(module):
                 if "PlatformSupportContract" in str(args[0]):
                     return PlatformSupport()
         return original_mock(*args, **kwargs)
+
     tests.test_phase13_integration.Mock = mock_wrapper
 
 

@@ -2,6 +2,7 @@
 
 Handles pre-commit hooks, linting, formatting, and CI/CD configuration.
 """
+
 import json
 import shutil
 import subprocess
@@ -22,7 +23,7 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
         self._pre_commit_path = self._find_executable("pre-commit")
 
     @staticmethod
-    def _find_executable(name: str) -> (str | None):
+    def _find_executable(name: str) -> str | None:
         """Find executable in PATH"""
         return shutil.which(name)
 
@@ -36,28 +37,50 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
         Returns:
             True if setup successful, False otherwise
         """
+        # Validate prerequisites
+        if not self._validate_setup_prerequisites(project_root):
+            return False
+
+        # Run pre-commit install
+        return self._run_pre_commit_install(project_root)
+
+    def _validate_setup_prerequisites(self, project_root: Path) -> bool:
+        """Validate all prerequisites for pre-commit setup."""
         if not project_root.exists() or not project_root.is_dir():
             return False
+
         git_dir = project_root / ".git"
         if not git_dir.exists():
             return False
+
         pre_commit_config = project_root / ".pre-commit-config.yaml"
         if not pre_commit_config.exists():
             return False
-        if not self._pre_commit_path:
-            return False
+
+        return bool(self._pre_commit_path)
+
+    def _run_pre_commit_install(self, project_root: Path) -> bool:
+        """Run pre-commit install command."""
         try:
-            result = subprocess.run([self._pre_commit_path, "install"],
-                check=False, cwd=project_root, capture_output=True, text=True)
+            result = subprocess.run(
+                [self._pre_commit_path, "install"],
+                check=False,
+                cwd=project_root,
+                capture_output=True,
+                text=True,
+            )
             if result.returncode != 0:
                 return False
-            hooks_dir = git_dir / "hooks" / "pre-commit"
+            hooks_dir = project_root / ".git" / "hooks" / "pre-commit"
             return hooks_dir.exists()
         except (FileNotFoundError, IndexError, KeyError):
             return False
 
-    def run_linting(self, paths: (list[str] | None) = None, fix: bool = False,
-        ) -> tuple[bool, list[dict[str, Any]]]:
+    def run_linting(
+        self,
+        paths: list[str] | None = None,
+        fix: bool = False,
+    ) -> tuple[bool, list[dict[str, Any]]]:
         """
         Run linting tools (ruff, mypy) on specified paths
 
@@ -92,54 +115,93 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
             if fix:
                 cmd.append("--fix")
             cmd.extend(paths)
-            result = subprocess.run(cmd, check=False, capture_output=True,
-                text=True)
+            result = subprocess.run(cmd, check=False, capture_output=True, text=True)
             if result.stdout:
                 try:
                     ruff_output = json.loads(result.stdout)
-                    issues.extend({"tool": "ruff", "file": issue.get(
-                        "filename", ""), "line": issue.get("location", {}).
-                        get("row", 0), "column": issue.get("location", {}).
-                        get("column", 0), "code": issue.get("code", ""),
-                        "message": issue.get("message", ""), "fixable":
-                        issue.get("fix") is not None} for issue in ruff_output)
+                    issues.extend(
+                        {
+                            "tool": "ruff",
+                            "file": issue.get("filename", ""),
+                            "line": issue.get("location", {}).get("row", 0),
+                            "column": issue.get("location", {}).get("column", 0),
+                            "code": issue.get("code", ""),
+                            "message": issue.get("message", ""),
+                            "fixable": issue.get("fix") is not None,
+                        }
+                        for issue in ruff_output
+                    )
                 except json.JSONDecodeError:
                     if result.returncode != 0:
-                        issues.append({"tool": "ruff", "file": "", "line":
-                            0, "column": 0, "code": "ERROR", "message":
-                            result.stdout or result.stderr, "fixable": False})
+                        issues.append(
+                            {
+                                "tool": "ruff",
+                                "file": "",
+                                "line": 0,
+                                "column": 0,
+                                "code": "ERROR",
+                                "message": result.stdout or result.stderr,
+                                "fixable": False,
+                            },
+                        )
         except (FileNotFoundError, OSError, TypeError) as e:
-            issues.append({"tool": "ruff", "file": "", "line": 0, "column":
-                0, "code": "ERROR", "message": str(e), "fixable": False})
+            issues.append(
+                {
+                    "tool": "ruff",
+                    "file": "",
+                    "line": 0,
+                    "column": 0,
+                    "code": "ERROR",
+                    "message": str(e),
+                    "fixable": False,
+                },
+            )
         return issues
 
     def _run_mypy(self, paths: list[str]) -> list[dict[str, Any]]:
         """Run mypy type checker"""
         issues = []
         try:
-            cmd = [self._mypy_path, "--no-error-summary",
-                "--show-column-numbers"]
+            cmd = [self._mypy_path, "--no-error-summary", "--show-column-numbers"]
             cmd.extend(paths)
-            result = subprocess.run(cmd, check=False, capture_output=True,
-                text=True)
+            result = subprocess.run(cmd, check=False, capture_output=True, text=True)
             if result.stdout:
                 for line in result.stdout.strip().split("\n"):
                     if ": error:" in line or ": note:" in line:
                         parts = line.split(":", 4)
                         if len(parts) >= 5:
-                            issues.append({"tool": "mypy", "file": parts[0],
-                                "line": int(parts[1]) if parts[1].isdigit()
-                                 else 0, "column": int(parts[2]) if parts[2
-                                ].isdigit() else 0, "code": parts[3].strip(
-                                ), "message": parts[4].strip(), "fixable":
-                                False})
+                            issues.append(
+                                {
+                                    "tool": "mypy",
+                                    "file": parts[0],
+                                    "line": int(parts[1]) if parts[1].isdigit() else 0,
+                                    "column": (
+                                        int(parts[2]) if parts[2].isdigit() else 0
+                                    ),
+                                    "code": parts[3].strip(),
+                                    "message": parts[4].strip(),
+                                    "fixable": False,
+                                },
+                            )
         except (FileNotFoundError, IndexError, KeyError) as e:
-            issues.append({"tool": "mypy", "file": "", "line": 0, "column":
-                0, "code": "ERROR", "message": str(e), "fixable": False})
+            issues.append(
+                {
+                    "tool": "mypy",
+                    "file": "",
+                    "line": 0,
+                    "column": 0,
+                    "code": "ERROR",
+                    "message": str(e),
+                    "fixable": False,
+                },
+            )
         return issues
 
-    def format_code(self, paths: (list[str] | None) = None, check_only: bool =
-        False) -> tuple[bool, list[str]]:
+    def format_code(
+        self,
+        paths: list[str] | None = None,
+        check_only: bool = False,
+    ) -> tuple[bool, list[str]]:
         """
         Format code using configured formatter (black/ruff)
 
@@ -166,8 +228,11 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
             modified_files.extend(files)
         return formatted_correctly, modified_files
 
-    def _run_ruff_format(self, paths: list[str], check_only: bool) -> tuple[
-        bool, list[str]]:
+    def _run_ruff_format(
+        self,
+        paths: list[str],
+        check_only: bool,
+    ) -> tuple[bool, list[str]]:
         """Run ruff formatter"""
         modified_files = []
         try:
@@ -175,8 +240,7 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
             if check_only:
                 cmd.append("--check")
             cmd.extend(paths)
-            result = subprocess.run(cmd, check=False, capture_output=True,
-                text=True)
+            result = subprocess.run(cmd, check=False, capture_output=True, text=True)
             if result.stdout:
                 for line in result.stdout.strip().split("\n"):
                     if line and not line.startswith("Would"):
@@ -190,8 +254,7 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
         except (FileNotFoundError, IndexError, KeyError):
             return False, []
 
-    def _run_black(self, paths: list[str], check_only: bool) -> tuple[bool,
-        list[str]]:
+    def _run_black(self, paths: list[str], check_only: bool) -> tuple[bool, list[str]]:
         """Run black formatter"""
         modified_files = []
         try:
@@ -199,8 +262,7 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
             if check_only:
                 cmd.extend(["--check", "--diff"])
             cmd.extend(paths)
-            result = subprocess.run(cmd, check=False, capture_output=True,
-                text=True)
+            result = subprocess.run(cmd, check=False, capture_output=True, text=True)
             if result.stderr:
                 for line in result.stderr.strip().split("\n"):
                     if "would reformat" in line or "reformatted" in line:
@@ -214,8 +276,10 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
             return False, []
 
     @staticmethod
-    def generate_ci_config(platforms: list[str], python_versions: list[str],
-        ) -> dict[str, Any]:
+    def generate_ci_config(
+        platforms: list[str],
+        python_versions: list[str],
+    ) -> dict[str, Any]:
         """
         Generate CI/CD configuration for specified platforms
 
@@ -226,45 +290,108 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
         Returns:
             CI configuration as dictionary (convertible to YAML)
         """
-        config = {"name": "CI", "on": {"push": {"branches": ["main",
-            "develop"]}, "pull_request": {"branches": ["main"]}}, "jobs": {
-            "test": {"runs-on": "${{ matrix.os }}", "strategy": {"matrix":
-            {"os": platforms, "python-version": python_versions},
-            "fail-fast": False}, "steps": [{"uses": "actions/checkout@v4"},
-            {"name": "Set up Python ${{ matrix.python-version }}", "uses":
-            "actions/setup-python@v5", "with": {"python-version":
-            "${{ matrix.python-version }}"}}, {"name":
-            "Install dependencies", "run":
-            """|
+        config = {
+            "name": "CI",
+            "on": {
+                "push": {"branches": ["main", "develop"]},
+                "pull_request": {"branches": ["main"]},
+            },
+            "jobs": {
+                "test": {
+                    "runs-on": "${{ matrix.os }}",
+                    "strategy": {
+                        "matrix": {"os": platforms, "python-version": python_versions},
+                        "fail-fast": False,
+                    },
+                    "steps": [
+                        {"uses": "actions/checkout@v4"},
+                        {
+                            "name": "Set up Python ${{ matrix.python-version }}",
+                            "uses": "actions/setup-python@v5",
+                            "with": {"python-version": "${{ matrix.python-version }}"},
+                        },
+                        {
+                            "name": "Install dependencies",
+                            "run": """|
 python -m pip install --upgrade pip
 pip install uv
 uv pip install -e '.[dev]'""",
-            }, {"name": "Fetch grammars", "run":
-            "python scripts/fetch_grammars.py"}, {"name": "Build grammars",
-            "run": "python scripts/build_lib.py"}, {"name": "Run linting",
-            "run": """|
+                        },
+                        {
+                            "name": "Fetch grammars",
+                            "run": "python scripts/fetch_grammars.py",
+                        },
+                        {
+                            "name": "Build grammars",
+                            "run": "python scripts/build_lib.py",
+                        },
+                        {
+                            "name": "Run linting",
+                            "run": """|
 ruff check .
-mypy ."""}, {"name": "Run tests",
-            "run": "pytest --cov=chunker --cov-report=xml"}, {"name":
-            "Upload coverage", "uses": "codecov/codecov-action@v3", "with":
-            {"file": "./coverage.xml", "fail_ci_if_error": False}}]},
-            "build": {"needs": "test", "runs-on": "${{ matrix.os }}",
-            "strategy": {"matrix": {"os": platforms}}, "steps": [{"uses":
-            "actions/checkout@v4"}, {"name": "Set up Python", "uses":
-            "actions/setup-python@v5", "with": {"python-version": "3.11"}},
-            {"name": "Install build dependencies", "run":
-            """|
+mypy .""",
+                        },
+                        {
+                            "name": "Run tests",
+                            "run": "pytest --cov=chunker --cov-report=xml",
+                        },
+                        {
+                            "name": "Upload coverage",
+                            "uses": "codecov/codecov-action@v3",
+                            "with": {
+                                "file": "./coverage.xml",
+                                "fail_ci_if_error": False,
+                            },
+                        },
+                    ],
+                },
+                "build": {
+                    "needs": "test",
+                    "runs-on": "${{ matrix.os }}",
+                    "strategy": {"matrix": {"os": platforms}},
+                    "steps": [
+                        {"uses": "actions/checkout@v4"},
+                        {
+                            "name": "Set up Python",
+                            "uses": "actions/setup-python@v5",
+                            "with": {"python-version": "3.11"},
+                        },
+                        {
+                            "name": "Install build dependencies",
+                            "run": """|
 python -m pip install --upgrade pip
 pip install build wheel""",
-            }, {"name": "Build wheel", "run": "python -m build"}, {"name":
-            "Upload artifacts", "uses": "actions/upload-artifact@v4",
-            "with": {"name": "dist-${{ matrix.os }}", "path": "dist/*"}}]},
-            "deploy": {"if": "startsWith(github.ref, 'refs/tags/')",
-            "needs": "build", "runs-on": "ubuntu-latest", "steps": [{"uses":
-            "actions/checkout@v4"}, {"name": "Download artifacts", "uses":
-            "actions/download-artifact@v4", "with": {"pattern": "dist-*",
-            "path": "dist", "merge-multiple": True}}, {"name":
-            "Publish to PyPI", "uses":
-            "pypa/gh-action-pypi-publish@release/v1", "with": {"password":
-            "${{ secrets.PYPI_API_TOKEN }}"}}]}}}
+                        },
+                        {"name": "Build wheel", "run": "python -m build"},
+                        {
+                            "name": "Upload artifacts",
+                            "uses": "actions/upload-artifact@v4",
+                            "with": {"name": "dist-${{ matrix.os }}", "path": "dist/*"},
+                        },
+                    ],
+                },
+                "deploy": {
+                    "if": "startsWith(github.ref, 'refs/tags/')",
+                    "needs": "build",
+                    "runs-on": "ubuntu-latest",
+                    "steps": [
+                        {"uses": "actions/checkout@v4"},
+                        {
+                            "name": "Download artifacts",
+                            "uses": "actions/download-artifact@v4",
+                            "with": {
+                                "pattern": "dist-*",
+                                "path": "dist",
+                                "merge-multiple": True,
+                            },
+                        },
+                        {
+                            "name": "Publish to PyPI",
+                            "uses": "pypa/gh-action-pypi-publish@release/v1",
+                            "with": {"password": "${{ secrets.PYPI_API_TOKEN }}"},
+                        },
+                    ],
+                },
+            },
+        }
         return config
