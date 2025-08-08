@@ -12,13 +12,13 @@ class TestNASMPlugin:
     """Test suite for NASM language plugin."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def plugin(cls):
         """Create a NASM plugin instance."""
         return NASMPlugin()
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def parser():
         """Get a NASM parser."""
         return get_parser("nasm")

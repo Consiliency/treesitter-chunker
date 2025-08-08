@@ -15,7 +15,7 @@ class TestConfigLoading:
     """Test configuration loading from different formats."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def temp_config_dir(cls):
         """Create a temporary directory for config files."""
         temp_dir = Path(tempfile.mkdtemp())
@@ -152,7 +152,7 @@ class TestConfigSaving:
     """Test configuration saving to different formats."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def temp_config_dir(cls):
         """Create a temporary directory for config files."""
         temp_dir = Path(tempfile.mkdtemp())
@@ -276,7 +276,7 @@ class TestPathResolution:
     """Test path resolution in configuration."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def temp_config_dir(cls):
         """Create a temporary directory for config files."""
         temp_dir = Path(tempfile.mkdtemp())
@@ -331,7 +331,7 @@ class TestConfigFinding:
     """Test configuration file discovery."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def temp_project_dir(cls):
         """Create a temporary project directory structure."""
         temp_dir = Path(tempfile.mkdtemp())
@@ -394,7 +394,7 @@ class TestConfigValidation:
     """Test configuration validation and error handling."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def temp_config_dir(cls):
         """Create a temporary directory for config files."""
         temp_dir = Path(tempfile.mkdtemp())
@@ -527,7 +527,7 @@ class TestExampleConfig:
     """Test example configuration creation."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def temp_config_dir(cls):
         """Create a temporary directory for config files."""
         temp_dir = Path(tempfile.mkdtemp())
@@ -548,7 +548,7 @@ class TestEnvironmentVariables:
     """Test environment variable expansion in configuration."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def temp_config_dir(cls):
         """Create a temporary directory for config files."""
         temp_dir = Path(tempfile.mkdtemp())
@@ -573,7 +573,7 @@ class TestComplexScenarios:
     """Test complex configuration scenarios."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def temp_config_dir(cls):
         """Create a temporary directory for config files."""
         temp_dir = Path(tempfile.mkdtemp())

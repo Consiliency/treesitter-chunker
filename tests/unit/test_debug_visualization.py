@@ -16,13 +16,13 @@ class TestDebugVisualization:
     """Unit tests for DebugVisualization class"""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def visualizer(cls):
         """Create a DebugVisualization instance"""
         return DebugVisualization()
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def simple_python_file(cls):
         """Create a simple Python file for testing"""
         content = "print('hello')"

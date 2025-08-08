@@ -16,7 +16,7 @@ class TestDebugToolsIntegration:
     """Test debug tools integrate with core chunker"""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def sample_python_file(cls):
         """Create a sample Python file for testing"""
         content = """def hello(name):

@@ -10,13 +10,13 @@ class TestSemanticChunker:
     """Test suite for SemanticChunker."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def semantic_chunker(cls):
         """Create a semantic chunker instance."""
         return SemanticChunker()
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def sample_python_code():
         """Sample Python code with various semantic patterns."""
         return """

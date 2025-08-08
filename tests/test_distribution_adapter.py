@@ -16,7 +16,7 @@ class TestDistributionAdapter:
     """Adapter to make integration tests work with our implementation"""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def distributor(cls):
         """Provide a real distributor instance"""
         return Distributor()

@@ -142,7 +142,7 @@ class TestParserFactory:
     """Test ParserFactory functionality."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def registry(cls):
         """Create a real registry for testing."""
         lib_path = Path(__file__).parent.parent / "build" / "my-languages.so"

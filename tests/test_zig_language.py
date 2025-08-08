@@ -12,13 +12,13 @@ class TestZigPlugin:
     """Test suite for Zig language plugin."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def plugin(cls):
         """Create a Zig plugin instance."""
         return ZigPlugin()
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def parser():
         """Get a Zig parser."""
         return get_parser("zig")

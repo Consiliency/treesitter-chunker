@@ -141,13 +141,13 @@ class TestSlidingWindowIntegration:
     """Test sliding window fallback integration."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def fallback(cls):
         """Create sliding window fallback instance."""
         return SlidingWindowFallback()
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def temp_dir():
         """Create temporary directory for test files."""
         with tempfile.TemporaryDirectory() as tmpdir:

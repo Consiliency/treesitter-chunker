@@ -10,13 +10,13 @@ class TestAdaptiveChunker:
     """Test suite for AdaptiveChunker."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def adaptive_chunker(cls):
         """Create an adaptive chunker instance."""
         return AdaptiveChunker()
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def variable_complexity_code():
         """Code with varying complexity levels."""
         return """

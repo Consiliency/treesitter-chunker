@@ -11,7 +11,7 @@ class TestTokenHierarchyIntegrationSimple:
     """Test token counting integrated with hierarchy building."""
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def sample_python_file(tmp_path):
         """Create a sample Python file for testing."""
         file_path = tmp_path / "sample.py"

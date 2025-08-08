@@ -307,7 +307,7 @@ class TestLanguageConfigRegistry:
     """Test the language configuration registry."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def registry(cls):
         """Create a fresh registry for each test."""
         reg = LanguageConfigRegistry()

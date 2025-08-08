@@ -14,13 +14,13 @@ class TestChunkComparison:
     """Unit tests for ChunkComparison class"""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def comparison(cls):
         """Create a ChunkComparison instance"""
         return ChunkComparison()
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def test_file(cls):
         """Create a test Python file"""
         content = """def function1():

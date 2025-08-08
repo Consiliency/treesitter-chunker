@@ -12,13 +12,13 @@ class TestLogProcessor:
     """Test suite for LogProcessor."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def processor(cls):
         """Create a default LogProcessor instance."""
         return LogProcessor()
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def syslog_content():
         """Sample syslog format content."""
         return dedent(
@@ -32,7 +32,7 @@ class TestLogProcessor:
         ).strip()
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def apache_content():
         """Sample Apache log content."""
         return dedent(
@@ -46,7 +46,7 @@ class TestLogProcessor:
         ).strip()
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def application_log_content():
         """Sample application log with ISO timestamps and levels."""
         return dedent(
@@ -66,7 +66,7 @@ class TestLogProcessor:
         ).strip()
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def java_log_content():
         """Sample Java/Log4j style log content."""
         return dedent(

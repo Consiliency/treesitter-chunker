@@ -16,7 +16,7 @@ class TestGrammarDiscoveryService:
     """Test the real GrammarDiscoveryService implementation"""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def discovery_service(cls):
         """Create a discovery service with a temporary cache directory"""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -26,7 +26,7 @@ class TestGrammarDiscoveryService:
             yield service
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def mock_github_response():
         """Mock GitHub API response"""
         return [

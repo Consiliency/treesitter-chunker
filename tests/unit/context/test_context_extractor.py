@@ -130,7 +130,7 @@ class TestPythonContextExtractor:
     """Test Python-specific context extraction."""
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def python_code():
         """Sample Python code for testing."""
         return """
@@ -250,7 +250,7 @@ class TestJavaScriptContextExtractor:
     """Test JavaScript-specific context extraction."""
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def javascript_code():
         """Sample JavaScript code for testing."""
         return """

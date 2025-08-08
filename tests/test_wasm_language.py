@@ -12,13 +12,13 @@ class TestWASMPlugin:
     """Test suite for WebAssembly language plugin."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def plugin(cls):
         """Create a WASM plugin instance."""
         return WASMPlugin()
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def parser():
         """Get a WASM parser."""
         return get_parser("wat")

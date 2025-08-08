@@ -7,8 +7,9 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from chunker import chunk_file
 from chunker.cache import ASTCache
+
+from chunker import chunk_file
 from chunker.parallel import chunk_files_parallel
 from chunker.streaming import chunk_file_streaming
 

@@ -16,13 +16,13 @@ class TestCompositeChunker:
     """Test suite for CompositeChunker."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def composite_chunker(cls):
         """Create a composite chunker instance."""
         return CompositeChunker()
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def test_code():
         """Sample code for testing composite strategies."""
         return """

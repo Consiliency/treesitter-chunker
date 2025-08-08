@@ -14,13 +14,13 @@ class TestOverlappingFallbackChunker:
     """Test suite for overlapping fallback chunker."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def chunker(cls):
         """Create a chunker instance."""
         return OverlappingFallbackChunker()
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def sample_text():
         """Sample text content for testing."""
         return """Line 1: Introduction
@@ -44,7 +44,7 @@ Line 18: With concluding remarks
 Line 19: End of document"""
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def sample_markdown():
         """Sample markdown content."""
         return """# Main Title

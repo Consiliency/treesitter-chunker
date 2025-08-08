@@ -587,7 +587,7 @@ class TestDirectoryProcessing:
             shutil.rmtree(temp_dir)
 
 
-@pytest.fixture()
+@pytest.fixture
 def temp_directory_with_files():
     """Create a temporary directory with multiple Python files."""
     temp_dir = Path(tempfile.mkdtemp())

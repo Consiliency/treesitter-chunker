@@ -19,13 +19,13 @@ class TestMarkdownProcessor:
     """Test suite for MarkdownProcessor."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def processor(cls):
         """Create a default processor instance."""
         return MarkdownProcessor()
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def custom_processor(cls):
         """Create a processor with custom configuration."""
         config = ProcessorConfig(

@@ -17,7 +17,7 @@ class TestDistributionIntegrationReal:
     """Test actual distribution implementation"""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def distributor(cls):
         """Provide a real distributor instance"""
         with tempfile.TemporaryDirectory() as tmpdir:

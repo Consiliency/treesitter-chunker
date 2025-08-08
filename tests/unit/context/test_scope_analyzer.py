@@ -52,7 +52,7 @@ class TestPythonScopeAnalyzer:
     """Test Python-specific scope analysis."""
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def python_code():
         """Sample Python code for testing."""
         return """
@@ -156,7 +156,7 @@ class TestJavaScriptScopeAnalyzer:
     """Test JavaScript-specific scope analysis."""
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def javascript_code():
         """Sample JavaScript code for testing."""
         return """

@@ -18,13 +18,13 @@ class TestOverlappingFallbackChunker:
     """Test overlapping fallback chunker implementation."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def chunker(cls):
         """Create an overlapping fallback chunker instance."""
         return OverlappingFallbackChunker()
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def log_content():
         """Sample log file content."""
         return """2024-01-15 10:00:00 INFO Starting application
@@ -40,7 +40,7 @@ class TestOverlappingFallbackChunker:
 2024-01-15 10:00:10 INFO Application ready"""
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def markdown_content():
         """Sample markdown content."""
         return """# Project Documentation

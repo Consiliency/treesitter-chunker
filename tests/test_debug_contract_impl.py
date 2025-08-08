@@ -17,13 +17,13 @@ class TestDebugVisualizationImpl:
     """Test DebugVisualizationImpl contract implementation"""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def impl(cls):
         """Create implementation instance"""
         return DebugVisualizationImpl()
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def sample_file(cls):
         """Create a sample Python file"""
         content = """def hello():
@@ -113,13 +113,13 @@ class TestChunkComparisonImpl:
     """Test ChunkComparisonImpl contract implementation"""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def impl(cls):
         """Create implementation instance"""
         return ChunkComparisonImpl()
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def sample_file(cls):
         """Create a sample Python file"""
         content = """def process_data(data):

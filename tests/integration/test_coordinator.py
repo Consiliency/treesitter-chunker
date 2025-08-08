@@ -18,7 +18,7 @@ class TestIntegrationCoordinator:
     """Test the IntegrationCoordinator class."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def coordinator(cls, tmp_path):
         """Create a coordinator instance."""
         base_path = tmp_path / "worktrees"

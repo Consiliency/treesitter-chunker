@@ -47,7 +47,7 @@ class TestPythonSymbolResolver:
     """Test Python-specific symbol resolution."""
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def python_code():
         """Sample Python code for testing."""
         return """
@@ -129,7 +129,7 @@ class TestJavaScriptSymbolResolver:
     """Test JavaScript-specific symbol resolution."""
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def javascript_code():
         """Sample JavaScript code for testing."""
         return """

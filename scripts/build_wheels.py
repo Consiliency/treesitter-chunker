@@ -11,8 +11,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-from build import ProjectBuilder
 from build.env import IsolatedEnvBuilder
+
+from build import ProjectBuilder
 
 try:
     pass

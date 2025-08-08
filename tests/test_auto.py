@@ -88,7 +88,7 @@ class TestZeroConfigAPI:
     """Test cases for ZeroConfigAPI."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def api(cls):
         """Create a ZeroConfigAPI instance with mock registry."""
         registry = MockRegistry()

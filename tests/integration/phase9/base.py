@@ -18,7 +18,7 @@ class Phase9IntegrationTestBase:
     """Base class for Phase 9 integration tests."""
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def test_repo_path(tmp_path):
         """Create a test repository with various file types."""
         repo_path = tmp_path / "test_repo"
@@ -392,7 +392,7 @@ Thumbs.db
         return repo_path
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def sample_python_file(tmp_path):
         """Create a sample Python file for testing."""
         file_path = tmp_path / "sample.py"

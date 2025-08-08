@@ -18,7 +18,7 @@ class TestChunkOptimizer:
     """Test suite for ChunkOptimizer."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def sample_chunks(cls):
         """Create sample chunks for testing."""
         return [
@@ -72,13 +72,13 @@ class TestChunkOptimizer:
         ]
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def optimizer(cls):
         """Create a ChunkOptimizer instance."""
         return ChunkOptimizer()
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def mock_token_counter(cls):
         """Mock the token counter."""
         with patch("chunker.optimization.TiktokenCounter") as mock:
@@ -383,7 +383,7 @@ class TestChunkBoundaryAnalyzer:
     """Test suite for ChunkBoundaryAnalyzer."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def analyzer(cls):
         """Create a ChunkBoundaryAnalyzer instance."""
         return ChunkBoundaryAnalyzer()
@@ -532,7 +532,7 @@ class TestOptimizationIntegration:
     """Integration tests for optimization features."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def real_optimizer(cls):
         """Create optimizer with real token counter."""
         return ChunkOptimizer()
@@ -731,7 +731,7 @@ class TestOptimizationEdgeCases:
     """Test edge cases and error handling."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def optimizer(cls):
         return ChunkOptimizer()
 

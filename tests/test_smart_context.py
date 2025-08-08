@@ -18,13 +18,13 @@ class TestTreeSitterSmartContextProvider:
     """Test the TreeSitterSmartContextProvider implementation."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def provider(cls):
         """Create a smart context provider instance."""
         return TreeSitterSmartContextProvider()
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def sample_chunks(cls):
         """Create sample code chunks for testing."""
         chunks = [

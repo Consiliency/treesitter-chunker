@@ -17,7 +17,7 @@ from chunker.interfaces.incremental import ChangeType, ChunkChange, ChunkDiff
 from chunker.types import CodeChunk
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_chunks():
     """Create sample chunks for testing."""
     return [
@@ -68,7 +68,7 @@ def sample_chunks():
     ]
 
 
-@pytest.fixture()
+@pytest.fixture
 def temp_cache_dir():
     """Create temporary cache directory."""
     temp_dir = tempfile.mkdtemp()

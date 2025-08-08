@@ -10,13 +10,13 @@ class TestHierarchicalChunker:
     """Test suite for HierarchicalChunker."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def hierarchical_chunker(cls):
         """Create a hierarchical chunker instance."""
         return HierarchicalChunker()
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def nested_python_code():
         """Sample Python code with deep nesting."""
         return """

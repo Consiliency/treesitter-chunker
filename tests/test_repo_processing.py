@@ -15,12 +15,12 @@ except ImportError:
     git = None
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 class TestRepoProcessor:
     """Test basic repository processor."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def temp_repo(cls):
         """Create a temporary repository structure."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -71,7 +71,7 @@ def test_goodbye():
             yield repo_path
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def processor(cls):
         """Create a repository processor."""
         return RepoProcessor(show_progress=False)
@@ -208,13 +208,13 @@ def greeting():
             processor.process_repository("/non/existent/path")
 
 
-@pytest.mark.integration()
+@pytest.mark.integration
 @pytest.mark.skipif(git is None, reason="git package not installed")
 class TestGitAwareRepoProcessor:
     """Test Git-aware repository processor."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def git_repo(cls):
         """Create a temporary git repository."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -231,7 +231,7 @@ class TestGitAwareRepoProcessor:
             yield repo_path, repo
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def git_processor(cls):
         """Create a Git-aware repository processor."""
         return GitAwareRepoProcessor(show_progress=False)

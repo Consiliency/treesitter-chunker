@@ -12,13 +12,13 @@ class TestASTRelationshipTracker:
     """Test AST-based relationship tracking."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def tracker(cls):
         """Create a tracker instance."""
         return ASTRelationshipTracker()
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def python_chunks(tmp_path):
         """Create Python code chunks for testing."""
         file_path = tmp_path / "test.py"
@@ -48,7 +48,7 @@ dog.speak()
         return chunk_file(file_path, "python")
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def javascript_chunks(tmp_path):
         """Create JavaScript code chunks for testing."""
         file_path = tmp_path / "test.js"

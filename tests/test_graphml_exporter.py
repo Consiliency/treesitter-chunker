@@ -14,7 +14,7 @@ class TestGraphMLExporter:
     """Test GraphML export functionality."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def sample_chunk(cls):
         """Create a sample code chunk."""
         return CodeChunk(
@@ -32,7 +32,7 @@ class TestGraphMLExporter:
         )
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def exporter(cls):
         """Create a GraphMLExporter instance."""
         return GraphMLExporter()

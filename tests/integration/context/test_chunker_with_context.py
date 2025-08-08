@@ -11,7 +11,7 @@ class TestChunkerWithContext:
     """Test integrating context extraction with chunking."""
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def python_code_with_dependencies():
         """Python code with interdependencies."""
         return """

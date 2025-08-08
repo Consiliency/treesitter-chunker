@@ -10,7 +10,7 @@ class TestPythonContextExtraction:
     """Test full context extraction for Python code."""
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def complex_python_code():
         """Complex Python code with multiple contexts."""
         return """
@@ -205,7 +205,7 @@ class TestJavaScriptContextExtraction:
     """Test full context extraction for JavaScript code."""
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def complex_javascript_code():
         """Complex JavaScript code with multiple contexts."""
         return """

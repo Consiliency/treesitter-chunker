@@ -12,14 +12,14 @@ class TestTemplateGenerator:
     """Test suite for TemplateGenerator."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def temp_dir(cls):
         """Create a temporary directory for test outputs."""
         with tempfile.TemporaryDirectory() as tmpdir:
             yield Path(tmpdir)
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def generator(cls):
         """Create a TemplateGenerator instance."""
         return TemplateGenerator()
