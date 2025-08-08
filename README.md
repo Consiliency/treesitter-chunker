@@ -10,7 +10,7 @@ A high-performance semantic code chunker that leverages [Tree-sitter](https://tr
 - 🎯 **Semantic Understanding** - Extracts functions, classes, methods based on AST
 - 🚀 **Blazing Fast** - 11.9x speedup with intelligent AST caching
 - 🌍 **Universal Language Support** - Auto-download and support for 100+ Tree-sitter grammars
-- 🔌 **Plugin Architecture** - Built-in support for 36+ languages: Python, JavaScript, TypeScript, TSX, Rust, C, C++, Go, Ruby, Java, PHP, Kotlin, C#, Swift, CSS, HTML, JSON, YAML, TOML, XML, Dockerfile, SQL, MATLAB, R, Julia, OCaml, Haskell, Scala, Elixir, Clojure, Dart, Vue, Svelte, Zig, NASM, WebAssembly
+- 🔌 **Plugin Architecture** - Built-in plugins for 29 languages + auto-download support for 100+ more including all major programming languages
 - 🎛️ **Flexible Configuration** - TOML/YAML/JSON config files with per-language settings
 - 📊 **14 Export Formats** - JSON, JSONL, Parquet, CSV, XML, GraphML, Neo4j, DOT, SQLite, PostgreSQL, and more
 - ⚡ **Parallel Processing** - Process entire codebases with configurable workers
@@ -73,7 +73,7 @@ sudo rpm -i python-treesitter-chunker-1.0.0-1.noarch.rpm
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/treesitter-chunker.git
+git clone https://github.com/Consiliency/treesitter-chunker.git
 cd treesitter-chunker
 
 # Install with uv (recommended)
@@ -251,7 +251,8 @@ The Tree-sitter Chunker VS Code extension provides integrated chunking capabilit
 
 The chunker uses a flexible plugin system for language support:
 
-- **Built-in Plugins**: 36+ languages including Python, JavaScript, TypeScript, TSX, Rust, C, C++, Go, Ruby, Java, PHP, Kotlin, C#, Swift, CSS, HTML, JSON, YAML, TOML, XML, Dockerfile, SQL, MATLAB, R, Julia, OCaml, Haskell, Scala, Elixir, Clojure, Dart, Vue, Svelte, Zig, NASM, WebAssembly
+- **Built-in Plugins**: 29 languages with dedicated plugins: Python, JavaScript (includes TypeScript/TSX), Rust, C, C++, Go, Ruby, Java, Dockerfile, SQL, MATLAB, R, Julia, OCaml, Haskell, Scala, Elixir, Clojure, Dart, Vue, Svelte, Zig, NASM, WebAssembly, XML, YAML, TOML
+- **Auto-Download Support**: 100+ additional languages via automatic grammar download including PHP, Kotlin, C#, Swift, CSS, HTML, JSON, and many more
 - **Custom Plugins**: Easy to add new languages using the TemplateGenerator
 - **Configuration**: Per-language chunk types and rules
 - **Hot Loading**: Load plugins from directories
@@ -438,7 +439,7 @@ Contributions are welcome! Please see our [Contributing Guide](CONTRIBUTING.md) 
 
 ```bash
 # Clone and install in development mode
-git clone https://github.com/yourusername/treesitter-chunker.git
+git clone https://github.com/Consiliency/treesitter-chunker.git
 cd treesitter-chunker
 uv pip install -e ".[dev]"
 
