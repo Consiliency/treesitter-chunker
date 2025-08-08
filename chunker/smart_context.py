@@ -4,7 +4,6 @@ import builtins
 import re
 import time
 from collections import defaultdict
-from functools import lru_cache
 from typing import Any
 
 from .interfaces.smart_context import (
@@ -488,7 +487,6 @@ class TreeSitterSmartContextProvider(SmartContextProvider):
         """Get all chunks from a file."""
         return []
 
-    @lru_cache(maxsize=128)
     def _get_parser(self, language: str):
         """Get a cached parser for the language."""
         if language not in self._parsers:

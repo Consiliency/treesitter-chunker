@@ -261,10 +261,7 @@ def create_custom_profile(
     """Create a custom profile based on an existing one."""
     # Get base configuration
     base = get_profile(base_profile)
-    if not base:
-        base_config = get_default_config("balanced")
-    else:
-        base_config = base.config
+    base_config = get_default_config("balanced") if not base else base.config
 
     # Apply overrides
     config = StrategyConfig(**base_config.to_dict())

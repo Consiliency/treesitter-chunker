@@ -10,26 +10,25 @@ from typing import TYPE_CHECKING, Any
 
 import tomllib
 import typer
-from rich import print
 from rich.console import Console
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, TimeRemainingColumn
 from rich.table import Table
 
 # Ensure language configs are loaded
-from chunker import chunk_file
+from chunker import chunk_file, chunk_text
 from chunker.exceptions import ChunkerError
 from chunker.parser import list_languages
-
-app = typer.Typer(help="Tree‑sitter‑based code‑chunker CLI")
-console = Console()
 
 # Import debug commands
 from .debug import commands as debug_commands
 
-app.add_typer(debug_commands.app, name="debug", help="Debug and visualization tools")
-
 # Import repo commands
 from .repo_command import app as repo_app
+
+app = typer.Typer(help="Tree‑sitter‑based code‑chunker CLI")
+console = Console()
+
+app.add_typer(debug_commands.app, name="debug", help="Debug and visualization tools")
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -178,6 +177,7 @@ def process_file(
 @app.command()
 def chunk(
     file_path: Path | None = typer.Argument(None, exists=True, readable=True),
+    *,
     language: str | None = typer.Option(
         None,
         "--lang",
@@ -242,8 +242,6 @@ def chunk(
             sys.exit(1)
 
         # Use chunk_text from the simplified API
-        from chunker import chunk_text
-
         try:
             chunks = chunk_text(content, language)
             results = []
@@ -354,6 +352,7 @@ def batch(
         None,
         help="Files or directories to process",
     ),
+    *,
     pattern: str | None = typer.Option(
         None,
         "--pattern",

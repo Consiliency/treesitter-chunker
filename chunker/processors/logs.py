@@ -206,10 +206,8 @@ class LogProcessor(SpecializedProcessor):
         _file_path: Path | None = None,
     ) -> Iterator[TextChunk]:
         """Process log content from a stream."""
-        line_number = 0
         byte_offset = 0
-        for line in stream:
-            line_number += 1
+        for line_number, line in enumerate(stream, 1):
             line_bytes = len(line.encode("utf-8"))
             entry = self._parse_line(line, line_number, byte_offset)
             byte_offset += line_bytes

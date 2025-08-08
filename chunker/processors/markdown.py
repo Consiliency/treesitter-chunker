@@ -517,10 +517,7 @@ class MarkdownProcessor(SpecializedProcessor):
         words = content.split()
         if len(words) <= overlap_size:
             return content
-        if from_end:
-            overlap_words = words[-overlap_size:]
-        else:
-            overlap_words = words[:overlap_size]
+        overlap_words = words[-overlap_size:] if from_end else words[:overlap_size]
         return " ".join(overlap_words)
 
     def validate_chunk(self, chunk: CodeChunk) -> bool:

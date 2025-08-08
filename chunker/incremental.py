@@ -248,7 +248,7 @@ class DefaultChunkCache(ChunkCache):
 
     def _get_cache_path(self, file_path: str) -> Path:
         """Get cache file path for a source file."""
-        path_hash = hashlib.md5(file_path.encode()).hexdigest()
+        path_hash = hashlib.sha256(file_path.encode()).hexdigest()
         return self.cache_dir / f"{path_hash}.pkl"
 
     def store(

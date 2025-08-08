@@ -72,11 +72,7 @@ class GitignorePattern:
         )  # ? matches any single character except /
 
         # Add anchoring
-        if self.is_anchored:
-            pattern = "^" + pattern
-        else:
-            # Non-anchored patterns can match at any level
-            pattern = "(^|.*/)" + pattern
+        pattern = "^" + pattern if self.is_anchored else "(^|.*/)" + pattern
 
         # Add end anchor
         pattern += "(/.*)?$"
@@ -226,10 +222,7 @@ class GitignoreMatcher:
         ignored = False
         for pattern in self.patterns:
             if pattern.matches(path, is_dir):
-                if pattern.is_negation:
-                    ignored = False
-                else:
-                    ignored = True
+                ignored = not pattern.is_negation
 
         self._cache[cache_key] = ignored
         return ignored

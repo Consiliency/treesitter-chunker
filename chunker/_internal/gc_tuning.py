@@ -171,10 +171,7 @@ class GCTuner:
         """
         before = time.perf_counter()
         before_count = gc.get_count()
-        if generation is None:
-            collected = gc.collect()
-        else:
-            collected = gc.collect(generation)
+        collected = gc.collect() if generation is None else gc.collect(generation)
         elapsed = time.perf_counter() - before
         after_count = gc.get_count()
         return {
@@ -342,15 +339,25 @@ class ObjectPool:
         self._in_use.clear()
 
 
-_memory_optimizer = None
+class _OptimizerState:
+    """Singleton state holder for memory optimizer."""
+
+    def __init__(self) -> None:
+        self.memory_optimizer: MemoryOptimizer | None = None
+
+    def get_optimizer(self) -> MemoryOptimizer:
+        """Get or create the memory optimizer instance."""
+        if self.memory_optimizer is None:
+            self.memory_optimizer = MemoryOptimizer()
+        return self.memory_optimizer
+
+
+_state = _OptimizerState()
 
 
 def get_memory_optimizer() -> MemoryOptimizer:
     """Get the global memory optimizer instance."""
-    global _memory_optimizer
-    if _memory_optimizer is None:
-        _memory_optimizer = MemoryOptimizer()
-    return _memory_optimizer
+    return _state.get_optimizer()
 
 
 def tune_gc_for_batch(batch_size: int):

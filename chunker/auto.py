@@ -403,8 +403,8 @@ class ZeroConfigAPI(ZeroConfigContract):
             if lang not in language_extensions:
                 language_extensions[lang] = []
             language_extensions[lang].append(ext)
-        for lang in language_extensions:
-            language_extensions[lang].sort()
+        for exts in language_extensions.values():
+            exts.sort()
         return language_extensions
 
     def get_chunker_for_language(

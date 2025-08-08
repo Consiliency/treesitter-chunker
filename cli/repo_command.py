@@ -16,6 +16,7 @@ console = Console()
 @app.command()
 def process(
     repo_path: str = typer.Argument(help="Path to repository"),
+    *,
     incremental: bool = typer.Option(True, help="Only process changed files"),
     file_pattern: str | None = typer.Option(
         None,

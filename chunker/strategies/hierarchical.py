@@ -315,11 +315,14 @@ class HierarchicalChunker(ChunkingStrategy):
     def _optimize_hierarchy(self, chunks: list[CodeChunk]) -> list[CodeChunk]:
         """Optimize the hierarchical chunk structure."""
         optimized = []
+        merged_chunks = set()
         parent_map = defaultdict(list)
         for chunk in chunks:
             if chunk.parent_chunk_id:
                 parent_map[chunk.parent_chunk_id].append(chunk)
         for chunk in chunks:
+            if chunk in merged_chunks:
+                continue
             children = parent_map.get(chunk.chunk_id, [])
             if self._should_split_chunk(chunk, children):
                 split_chunks = self._split_hierarchical_chunk(chunk, children)
@@ -328,8 +331,7 @@ class HierarchicalChunker(ChunkingStrategy):
                 merged = self._merge_with_children(chunk, children)
                 optimized.append(merged)
                 for child in children:
-                    if child in chunks:
-                        chunks.remove(child)
+                    merged_chunks.add(child)
             else:
                 optimized.append(chunk)
         return optimized

@@ -881,9 +881,7 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
                 )
         string_pattern = "[\"\\'](\\{.*?\\}|\\[.*?\\])[\"\\']"
         # Collect potential JSON regions first
-        potential_json_regions = []
-        for match in re.finditer(string_pattern, content, re.DOTALL):
-            potential_json_regions.append(match)
+        potential_json_regions = list(re.finditer(string_pattern, content, re.DOTALL))
 
         # Process JSON validation outside the loop
         for match in potential_json_regions:
@@ -1211,7 +1209,7 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
         for base_name, name_chunks in name_patterns.items():
             if len(name_chunks) > 1:
                 merged = False
-                for _feature_name, feature_chunks in feature_groups.items():
+                for feature_chunks in feature_groups.values():
                     if any(chunk in feature_chunks for chunk in name_chunks):
                         for chunk in name_chunks:
                             if chunk not in feature_chunks:

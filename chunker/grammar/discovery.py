@@ -208,10 +208,7 @@ class GrammarDiscoveryService(GrammarDiscoveryContract):
         """Convert GitHub repo data to GrammarInfo"""
         try:
             name = repo["name"]
-            if name.startswith("tree-sitter-"):
-                language_name = name[12:]
-            else:
-                language_name = name
+            language_name = name[12:] if name.startswith("tree-sitter-") else name
             extensions = self._get_language_extensions(language_name)
             return GrammarInfo(
                 name=language_name,

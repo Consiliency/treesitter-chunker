@@ -325,8 +325,20 @@ class TreeSitterGrammarRepository(GrammarRepository):
             logger.error("Failed to load custom repositories: %s", e)
 
 
-# Singleton instance
-_repository_instance: TreeSitterGrammarRepository | None = None
+class _RepositoryState:
+    """Singleton state holder for grammar repository."""
+
+    def __init__(self) -> None:
+        self.repository_instance: TreeSitterGrammarRepository | None = None
+
+    def get_repository(self) -> GrammarRepository:
+        """Get or create the repository instance."""
+        if self.repository_instance is None:
+            self.repository_instance = TreeSitterGrammarRepository()
+        return self.repository_instance
+
+
+_state = _RepositoryState()
 
 
 def get_grammar_repository() -> GrammarRepository:
@@ -335,7 +347,4 @@ def get_grammar_repository() -> GrammarRepository:
     Returns:
         Grammar repository
     """
-    global _repository_instance
-    if _repository_instance is None:
-        _repository_instance = TreeSitterGrammarRepository()
-    return _repository_instance
+    return _state.get_repository()

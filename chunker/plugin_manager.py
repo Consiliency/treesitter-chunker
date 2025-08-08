@@ -146,10 +146,7 @@ class PluginManager:
     ) -> list[type[LanguagePlugin]]:
         """Discover plugin classes in a directory."""
         plugins: list[type[LanguagePlugin]] = []
-        if directory:
-            search_dirs = [Path(directory)]
-        else:
-            search_dirs = self._plugin_dirs
+        search_dirs = [Path(directory)] if directory else self._plugin_dirs
         for plugin_dir in search_dirs:
             if not plugin_dir.exists():
                 continue
@@ -320,13 +317,23 @@ class PluginManager:
         return plugin.chunk_file(file_path)
 
 
-_plugin_manager: PluginManager | None = None
+class _PluginManagerState:
+    """Singleton state holder for plugin manager module."""
+
+    def __init__(self) -> None:
+        self.manager: PluginManager | None = None
+
+    def get_manager(self) -> PluginManager:
+        """Get or create the plugin manager."""
+        if self.manager is None:
+            self.manager = PluginManager()
+            self.manager.load_builtin_plugins()
+        return self.manager
+
+
+_state = _PluginManagerState()
 
 
 def get_plugin_manager() -> PluginManager:
     """Get or create the global plugin manager."""
-    global _plugin_manager
-    if _plugin_manager is None:
-        _plugin_manager = PluginManager()
-        _plugin_manager.load_builtin_plugins()
-    return _plugin_manager
+    return _state.get_manager()

@@ -7,7 +7,9 @@ from typing import Literal
 from chunker.interfaces.fallback_overlap import (
     OverlappingFallbackChunker as IOverlappingFallbackChunker,
 )
-from chunker.interfaces.fallback_overlap import OverlapStrategy
+from chunker.interfaces.fallback_overlap import (
+    OverlapStrategy,
+)
 from chunker.types import CodeChunk
 
 __all__ = ["OverlapConfig", "OverlapStrategy", "OverlappingFallbackChunker"]
@@ -182,10 +184,7 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
         i = 0
         chunk_num = 0
         while i < len(lines):
-            if i == 0:
-                start_idx = 0
-            else:
-                start_idx = max(0, i - overlap_size)
+            start_idx = 0 if i == 0 else max(0, i - overlap_size)
             end_idx = min(i + chunk_size, len(lines))
             if strategy == OverlapStrategy.DYNAMIC and i > 0:
                 desired_line = start_idx
@@ -228,10 +227,7 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
         i = 0
         chunk_num = 0
         while i < len(content):
-            if i == 0:
-                start = 0
-            else:
-                start = max(0, i - overlap_size)
+            start = 0 if i == 0 else max(0, i - overlap_size)
             end = min(i + chunk_size, len(content))
             if strategy == OverlapStrategy.DYNAMIC:
                 if i > 0:
@@ -278,10 +274,7 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
         i = 0
         chunk_num = 0
         while i < len(lines):
-            if i == 0:
-                start_idx = 0
-            else:
-                start_idx = max(0, i - overlap_before)
+            start_idx = 0 if i == 0 else max(0, i - overlap_before)
             if i + chunk_size < len(lines):
                 end_idx = min(i + chunk_size + overlap_after, len(lines))
             else:
@@ -318,10 +311,7 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
         i = 0
         chunk_num = 0
         while i < len(content):
-            if i == 0:
-                start = 0
-            else:
-                start = max(0, i - overlap_before)
+            start = 0 if i == 0 else max(0, i - overlap_before)
             if i + chunk_size < len(content):
                 end = min(i + chunk_size + overlap_after, len(content))
             else:

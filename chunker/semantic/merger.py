@@ -98,14 +98,11 @@ class TreeSitterSemanticMerger(SemanticMerger):
         ):
             return True
 
-        if (
+        return (
             chunk1.language == "javascript"
             and lang_config.get("merge_event_handlers")
             and self._are_event_handlers(chunk1, chunk2)
-        ):
-            return True
-
-        return False
+        )
 
     def merge_chunks(self, chunks: list[CodeChunk]) -> list[CodeChunk]:
         """Merge related chunks to reduce fragmentation."""

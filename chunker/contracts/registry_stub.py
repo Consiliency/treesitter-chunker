@@ -1,5 +1,6 @@
 """Concrete stub implementation for testing - Grammar Registry"""
 
+import tempfile
 from typing import Any
 
 import tree_sitter
@@ -104,5 +105,5 @@ class UniversalRegistryStub(UniversalRegistryContract):
             "version": self._versions.get(language, "unknown"),
             "abi_version": 14,
             "file_extensions": extension_map.get(language, []),
-            "installed_path": f"/tmp/grammar_cache_stub/{language}.so",
+            "installed_path": f"{tempfile.gettempdir()}/grammar_cache_stub/{language}.so",
         }

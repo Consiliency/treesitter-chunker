@@ -467,15 +467,16 @@ class AdaptiveChunker(ChunkingStrategy):
         sizes = [(c.end_line - c.start_line + 1) for c in chunks]
         avg_size = sum(sizes) / len(sizes)
         balanced = []
+        merged_indices = set()
         for i, chunk in enumerate(chunks):
-            if chunk is None:
+            if i in merged_indices:
                 continue
             size = sizes[i]
             if size > avg_size * 2 and size > self.config["max_chunk_size"] * 0.8:
                 split_chunks = self._split_large_chunk(chunk, source, avg_size)
                 balanced.extend(split_chunks)
             elif size < avg_size * 0.3 and size < self.config["min_chunk_size"] * 2:
-                if i < len(chunks) - 1:
+                if i < len(chunks) - 1 and (i + 1) not in merged_indices:
                     next_chunk = chunks[i + 1]
                     next_size = sizes[i + 1]
                     if (
@@ -484,14 +485,14 @@ class AdaptiveChunker(ChunkingStrategy):
                     ):
                         merged = self._merge_chunks(chunk, next_chunk)
                         balanced.append(merged)
-                        chunks[i + 1] = None
+                        merged_indices.add(i + 1)
                     else:
                         balanced.append(chunk)
                 else:
                     balanced.append(chunk)
-            elif chunk is not None:
+            else:
                 balanced.append(chunk)
-        return [c for c in balanced if c is not None]
+        return balanced
 
     @staticmethod
     def _split_large_chunk(

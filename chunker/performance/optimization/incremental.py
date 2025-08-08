@@ -179,10 +179,7 @@ class IncrementalParser(IncrementalParserInterface):
         text = source[:byte_offset].decode("utf-8", errors="replace")
         lines = text.splitlines()
         row = len(lines) - 1
-        if lines:
-            column = len(lines[-1])
-        else:
-            column = 0
+        column = len(lines[-1]) if lines else 0
         return row, column
 
     @classmethod

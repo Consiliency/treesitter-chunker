@@ -104,8 +104,10 @@ class ASTCache:
                 if cached_hash == metadata.hash and cached_mtime == metadata.mtime:
                     try:
                         # Deserialize chunks
-                        chunks_dicts = pickle.loads(
-                            chunks_data,
+                        chunks_dicts = (
+                            pickle.loads(  # noqa: S301 - safe: internal cache only
+                                chunks_data,
+                            )
                         )
                         return [CodeChunk(**chunk_dict) for chunk_dict in chunks_dicts]
                     except (

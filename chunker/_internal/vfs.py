@@ -178,10 +178,7 @@ class InMemoryFileSystem(VirtualFileSystem):
         path = path.rstrip("/")
         if not path:
             path = "/"
-        if path == "/":
-            path_prefix = ""
-        else:
-            path_prefix = path + "/"
+        path_prefix = "" if path == "/" else path + "/"
         seen_dirs = set()
         for file_path in sorted(self.files.keys()):
             normalized_file_path = file_path.lstrip("/")
@@ -251,10 +248,7 @@ class ZipFileSystem(VirtualFileSystem):
     def list_dir(self, path: str = "/") -> Iterator[VirtualFile]:
         """List contents of a directory in the ZIP."""
         path = path.rstrip("/")
-        if not path:
-            path_prefix = ""
-        else:
-            path_prefix = path + "/"
+        path_prefix = "" if not path else path + "/"
         seen = set()
         for file_path, info in self.files.items():
             if file_path.startswith(path_prefix):
@@ -304,6 +298,10 @@ class HTTPFileSystem(VirtualFileSystem):
     def _make_url(self, path: str) -> str:
         """Construct full URL from path."""
         if path.startswith(("http://", "https://")):
+            # Validate URL scheme
+            parsed = urllib.parse.urlparse(path)
+            if parsed.scheme not in ("http", "https"):
+                raise ValueError(f"Unsupported URL scheme: {parsed.scheme}")
             return path
         path = path.lstrip("/")
         return f"{self.base_url}/{path}"
@@ -316,7 +314,7 @@ class HTTPFileSystem(VirtualFileSystem):
         if url in self._cache:
             content = self._cache[url]
         else:
-            with urllib.request.urlopen(
+            with urllib.request.urlopen(  # noqa: S310 - validated URL scheme
                 url,
             ) as response:
                 content = response.read()
@@ -329,11 +327,11 @@ class HTTPFileSystem(VirtualFileSystem):
         """Check if a URL is accessible."""
         url = self._make_url(path)
         try:
-            req = urllib.request.Request(
+            req = urllib.request.Request(  # noqa: S310 - validated URL scheme
                 url,
                 method="HEAD",
             )
-            with urllib.request.urlopen(
+            with urllib.request.urlopen(  # noqa: S310 - validated URL scheme
                 req,
             ) as response:
                 return response.status == 200
@@ -357,11 +355,11 @@ class HTTPFileSystem(VirtualFileSystem):
     def get_size(self, path: str) -> int:
         """Get the size of a file from HTTP headers."""
         url = self._make_url(path)
-        req = urllib.request.Request(
+        req = urllib.request.Request(  # noqa: S310 - validated URL scheme
             url,
             method="HEAD",
         )
-        with urllib.request.urlopen(
+        with urllib.request.urlopen(  # noqa: S310 - validated URL scheme
             req,
         ) as response:
             content_length = response.headers.get("Content-Length")

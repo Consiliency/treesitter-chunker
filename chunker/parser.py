@@ -18,15 +18,40 @@ from .exceptions import (
 if TYPE_CHECKING:
     from tree_sitter import Parser
 logger = logging.getLogger(__name__)
-_registry: LanguageRegistry | None = None
-_factory: ParserFactory | None = None
-_DEFAULT_LIBRARY_PATH = (
-    Path(
-        __file__,
-    ).parent.parent
-    / "build"
-    / "my-languages.so"
-)
+
+
+class _ParserState:
+    """Singleton state holder for parser module."""
+
+    def __init__(self) -> None:
+        self.registry: LanguageRegistry | None = None
+        self.factory: ParserFactory | None = None
+        self.default_library_path = (
+            Path(__file__).parent.parent / "build" / "my-languages.so"
+        )
+
+    def initialize(self, library_path: Path | None = None) -> None:
+        """Lazy initialization of registry and factory.
+
+        Args:
+            library_path: Optional path to the compiled library
+        """
+        if self.registry is None:
+            path = library_path or self.default_library_path
+            if not path.exists():
+                raise LibraryNotFoundError(path)
+            self.registry = LanguageRegistry(path)
+            self.factory = ParserFactory(self.registry)
+            languages = self.registry.list_languages()
+
+            logger.info(
+                "Initialized parser with %d languages: %s",
+                len(languages),
+                ", ".join(languages),
+            )
+
+
+_state = _ParserState()
 
 
 def _initialize(library_path: Path | None = None) -> None:
@@ -35,20 +60,7 @@ def _initialize(library_path: Path | None = None) -> None:
     Args:
         library_path: Optional path to the compiled library
     """
-    global _registry, _factory
-    if _registry is None:
-        path = library_path or _DEFAULT_LIBRARY_PATH
-        if not path.exists():
-            raise LibraryNotFoundError(path)
-        _registry = LanguageRegistry(path)
-        _factory = ParserFactory(_registry)
-        languages = _registry.list_languages()
-
-        logger.info(
-            "Initialized parser with %d languages: %s",
-            len(languages),
-            ", ".join(languages),
-        )
+    _state.initialize(library_path)
 
 
 def get_parser(language: str, config: ParserConfig | None = None) -> Parser:
@@ -66,10 +78,12 @@ def get_parser(language: str, config: ParserConfig | None = None) -> Parser:
         ParserError: If parser initialization fails
     """
     _initialize()
+    if _state.factory is None:
+        raise ParserError("Parser factory not initialized")
     try:
-        return _factory.get_parser(language, config)
+        return _state.factory.get_parser(language, config)
     except LanguageNotFoundError:
-        available = _registry.list_languages()
+        available = _state.registry.list_languages() if _state.registry else []
         raise LanguageNotFoundError(language, available) from None
     except ParserConfigError:
         raise
@@ -85,7 +99,9 @@ def list_languages() -> list[str]:
         Sorted list of language names
     """
     _initialize()
-    return _registry.list_languages()
+    if _state.registry is None:
+        raise ParserError("Language registry not initialized")
+    return _state.registry.list_languages()
 
 
 def get_language_info(language: str) -> LanguageMetadata:
@@ -101,7 +117,9 @@ def get_language_info(language: str) -> LanguageMetadata:
         LanguageNotFoundError: If language is not available
     """
     _initialize()
-    return _registry.get_metadata(language)
+    if _state.registry is None:
+        raise ParserError("Language registry not initialized")
+    return _state.registry.get_metadata(language)
 
 
 def return_parser(language: str, parser: Parser) -> None:
@@ -114,7 +132,9 @@ def return_parser(language: str, parser: Parser) -> None:
         parser: Parser instance to return
     """
     _initialize()
-    _factory.return_parser(language, parser)
+    if _state.factory is None:
+        raise ParserError("Parser factory not initialized")
+    _state.factory.return_parser(language, parser)
 
 
 def clear_cache() -> None:
@@ -123,7 +143,8 @@ def clear_cache() -> None:
     This forces recreation of parsers on next request.
     """
     _initialize()
-    _factory.clear_cache()
+    if _state.factory is not None:
+        _state.factory.clear_cache()
 
 
 __all__ = [

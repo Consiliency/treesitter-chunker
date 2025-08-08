@@ -1,6 +1,5 @@
 """Token counting implementation using tiktoken."""
 
-from functools import lru_cache
 from typing import ClassVar
 
 import tiktoken
@@ -38,7 +37,6 @@ class TiktokenCounter(TokenCounter):
         """Initialize the token counter with cached encodings."""
         self._encodings_cache: dict[str, tiktoken.Encoding] = {}
 
-    @lru_cache(maxsize=128)
     def _get_encoding(self, model: str) -> tiktoken.Encoding:
         """Get the appropriate encoding for a model."""
         encoding_name = self.MODEL_TO_ENCODING.get(model, "cl100k_base")

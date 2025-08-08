@@ -19,7 +19,7 @@ from chunker import (
 )
 from chunker._internal.registry import LanguageMetadata
 from chunker.exceptions import ParserConfigError
-from chunker.parser import _factory, _initialize
+from chunker.parser import _state
 
 
 class TestParserAPI:
@@ -134,13 +134,13 @@ class TestErrorHandling:
     """Test error handling scenarios."""
 
     @staticmethod
-    @patch("chunker.parser._DEFAULT_LIBRARY_PATH")
+    @patch("chunker.parser._state.default_library_path")
     def test_missing_library(mock_path):
         """Test error when library file is missing."""
         mock_path.exists.return_value = False
         mock_path.__str__.return_value = "/fake/path/lib.so"
-        chunker.parser._registry = None
-        chunker.parser._factory = None
+        chunker.parser._state.registry = None
+        chunker.parser._state.factory = None
         with pytest.raises(LibraryNotFoundError) as exc_info:
             get_parser("python")
         assert "/fake/path/lib.so" in str(exc_info.value)
@@ -159,9 +159,9 @@ class TestParserFactory:
     @staticmethod
     def test_factory_stats():
         """Test factory statistics."""
-        _initialize()
-        if _factory:
-            stats = _factory.get_stats()
+        chunker.parser._state.initialize()
+        if chunker.parser._state.factory:
+            stats = chunker.parser._state.factory.get_stats()
             assert "total_parsers_created" in stats
             assert "cache_size" in stats
             assert "pools" in stats
