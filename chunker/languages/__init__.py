@@ -2,7 +2,7 @@
 Per-language helpers live here (e.g. node-type mappings, heuristics).
 """
 
-# ruff: noqa: SIM105 F401
+# ruff: noqa: SIM105
 
 # Phase 2.1 exports (LanguageConfig system)
 
