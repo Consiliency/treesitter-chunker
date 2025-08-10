@@ -5,7 +5,7 @@ and deserialized when passed between processes in multiprocessing scenarios.
 """
 
 import multiprocessing
-import pickle  # noqa: S403 - Testing exception serialization
+import pickle
 import traceback
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path

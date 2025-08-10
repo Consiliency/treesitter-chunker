@@ -340,7 +340,7 @@ class LogProcessor(SpecializedProcessor):
                         if dt.tzinfo is None:
                             dt = dt.replace(tzinfo=timezone.utc)
                         return dt
-                    except ValueError:  # noqa: PERF203 - Trying multiple formats
+                    except ValueError:
                         continue
             else:
                 try:

@@ -314,7 +314,7 @@ class HTTPFileSystem(VirtualFileSystem):
         if url in self._cache:
             content = self._cache[url]
         else:
-            with urllib.request.urlopen(  # noqa: S310 - validated URL scheme
+            with urllib.request.urlopen(
                 url,
             ) as response:
                 content = response.read()
@@ -327,11 +327,11 @@ class HTTPFileSystem(VirtualFileSystem):
         """Check if a URL is accessible."""
         url = self._make_url(path)
         try:
-            req = urllib.request.Request(  # noqa: S310 - validated URL scheme
+            req = urllib.request.Request(
                 url,
                 method="HEAD",
             )
-            with urllib.request.urlopen(  # noqa: S310 - validated URL scheme
+            with urllib.request.urlopen(
                 req,
             ) as response:
                 return response.status == 200
@@ -355,11 +355,11 @@ class HTTPFileSystem(VirtualFileSystem):
     def get_size(self, path: str) -> int:
         """Get the size of a file from HTTP headers."""
         url = self._make_url(path)
-        req = urllib.request.Request(  # noqa: S310 - validated URL scheme
+        req = urllib.request.Request(
             url,
             method="HEAD",
         )
-        with urllib.request.urlopen(  # noqa: S310 - validated URL scheme
+        with urllib.request.urlopen(
             req,
         ) as response:
             content_length = response.headers.get("Content-Length")

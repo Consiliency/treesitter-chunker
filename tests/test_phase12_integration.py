@@ -94,7 +94,7 @@ class TestGraphMLExporter:
         output_file = tmp_path / "test.graphml"
         exporter.export(output_file)
         assert output_file.exists()
-        tree = ET.parse(output_file)  # noqa: S314 - Parsing test-generated XML
+        tree = ET.parse(output_file)
         root = tree.getroot()
         assert "graphml.graphdrawing.org" in root.tag
         graph = root.find(".//{http://graphml.graphdrawing.org/xmlns}graph")

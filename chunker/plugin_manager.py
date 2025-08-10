@@ -232,7 +232,7 @@ class PluginManager:
         for plugin_class in plugins:
             try:
                 self.registry.register(plugin_class)
-            except (FileNotFoundError, OSError) as e:  # noqa: PERF203
+            except (FileNotFoundError, OSError) as e:
                 logger.error("Failed to register %s: %s", plugin_class.__name__, e)
 
     def load_plugins_from_directory(self, directory: Path) -> int:
@@ -244,7 +244,7 @@ class PluginManager:
             try:
                 self.registry.register(plugin_class)
                 loaded += 1
-            except (FileNotFoundError, OSError) as e:  # noqa: PERF203
+            except (FileNotFoundError, OSError) as e:
                 logger.error("Failed to register %s: %s", plugin_class.__name__, e)
         return loaded
 

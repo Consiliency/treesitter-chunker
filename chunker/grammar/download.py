@@ -128,11 +128,11 @@ class GrammarDownloadManager(GrammarDownloadContract):
         try:
             if not url.startswith(("https://", "http://")):
                 raise ValueError(f"Invalid URL scheme: {url}")
-            req = Request(  # noqa: S310 - URL scheme validated above
+            req = Request(
                 url,
                 headers={"User-Agent": "treesitter-chunker/1.0"},
             )
-            with urlopen(req) as response:  # noqa: S310 - Downloading grammar files
+            with urlopen(req) as response:
                 total_size = int(response.headers.get("Content-Length", 0))
                 downloaded = 0
                 chunk_size = 8192

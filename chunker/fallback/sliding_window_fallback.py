@@ -505,7 +505,11 @@ class SlidingWindowFallback(FallbackChunker):
                     ):
                         info = obj.processor_info()
                         self.registry.register(info)
-            except (AttributeError, FileNotFoundError, IndexError) as e:  # noqa: PERF203
+            except (
+                AttributeError,
+                FileNotFoundError,
+                IndexError,
+            ) as e:
                 logger.error("Failed to load processor from %s: %s", file_path, e)
 
     def chunk_text(

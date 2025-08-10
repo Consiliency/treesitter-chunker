@@ -84,7 +84,7 @@ class ChunkComparison(ChunkComparisonContract):
                         for c in chunks
                     ],
                 }
-            except (IndexError, KeyError, TypeError) as e:  # noqa: PERF203
+            except (IndexError, KeyError, TypeError) as e:
                 errors.append((strategy, e))
 
         # Process errors after loop

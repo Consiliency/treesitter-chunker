@@ -479,7 +479,7 @@ class RepoProcessor(RepoProcessorInterface):
         for encoding in ["latin-1", "cp1252"]:
             try:
                 return file_path.read_text(encoding=encoding)
-            except (OSError, FileNotFoundError, IndexError):  # noqa: PERF203
+            except (OSError, FileNotFoundError, IndexError):
                 continue
 
         # Unable to decode file

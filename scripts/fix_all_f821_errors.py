@@ -101,7 +101,7 @@ def fix_static_method_self_errors():
             if modified:
                 file_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-        except Exception as e:  # noqa: PERF203
+        except Exception as e:
             print(f"Error fixing {file_path}: {e}")
 
     return fixes_made

@@ -22,7 +22,7 @@ class Model:
     def find(cls, id_):
         """Find model by ID."""
         db = get_db()
-        query = f"SELECT * FROM {cls.table_name} WHERE id_ = {id_}"  # noqa: S608 - Example of SQL injection vulnerability
+        query = f"SELECT * FROM {cls.table_name} WHERE id_ = {id_}"
         result = db.execute(query)
         return cls(**result[0]) if result else None
 
@@ -54,6 +54,6 @@ class Profile(Model):
     def find_by_user(cls, user_id):
         """Find profile by user ID."""
         db = get_db()
-        query = f"SELECT * FROM {cls.table_name} WHERE user_id = {user_id}"  # noqa: S608 - Example of SQL injection vulnerability
+        query = f"SELECT * FROM {cls.table_name} WHERE user_id = {user_id}"
         result = db.execute(query)
         return cls(**result[0]) if result else None

@@ -166,7 +166,7 @@ class TestGraphMLExporter:
         )
         exporter.add_chunks([chunk])
         xml_str = exporter.export_string()
-        ET.fromstring(xml_str)  # noqa: S314 - Parsing test-generated XML
+        ET.fromstring(xml_str)
         assert "&lt;" in xml_str
         assert "&gt;" in xml_str
         assert "&amp;" in xml_str
@@ -180,7 +180,7 @@ class TestGraphMLExporter:
             exporter.add_chunks([sample_chunk])
             exporter.export(output_path)
             assert output_path.exists()
-            tree = ET.parse(output_path)  # noqa: S314 - Parsing test-generated XML
+            tree = ET.parse(output_path)
             root = tree.getroot()
             assert root.tag == "{http://graphml.graphdrawing.org/xmlns}graphml"
 

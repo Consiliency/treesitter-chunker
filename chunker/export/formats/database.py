@@ -198,7 +198,7 @@ class SQLiteExporter(DatabaseExporter):
             INSERT INTO {self._metadata_table}
             (fmt, version, created_at, source_files, chunk_count, relationship_count, options)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        """,  # noqa: S608 - Table name is hardcoded in constructor
+        """,
             (
                 metadata.fmt.value,
                 metadata.version,
@@ -242,7 +242,7 @@ class SQLiteExporter(DatabaseExporter):
              byte_start, byte_end, parent_context, content, parent_chunk_id,
              chunk_references, chunk_dependencies)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,  # noqa: S608 - Table name is hardcoded in constructor
+        """,
             chunk_data,
         )
 
@@ -267,7 +267,7 @@ class SQLiteExporter(DatabaseExporter):
             INSERT INTO {self._relationships_table}
             (source_chunk_id, target_chunk_id, relationship_type, metadata)
             VALUES (?, ?, ?, ?)
-        """,  # noqa: S608 - Table name is hardcoded in constructor
+        """,
             rel_data,
         )
 

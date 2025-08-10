@@ -900,7 +900,7 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
                         parent_language=primary_language,
                     ),
                 )
-            except (json.JSONDecodeError, ValueError):  # noqa: PERF203
+            except (json.JSONDecodeError, ValueError):
                 # Not valid JSON, skip
                 pass
         return regions

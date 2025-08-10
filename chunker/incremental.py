@@ -3,7 +3,7 @@
 import difflib
 import hashlib
 import json
-import pickle  # noqa: S403 - Used only for internal trusted cache data
+import pickle
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -299,7 +299,7 @@ class DefaultChunkCache(ChunkCache):
             return None
         try:
             with Path(cache_path).open("rb") as f:
-                entry = pickle.load(f)  # noqa: S301 - Loading trusted cache data
+                entry = pickle.load(f)
             self.stats["hits"] += 1
             return entry
         except (OSError, FileNotFoundError, IndexError):

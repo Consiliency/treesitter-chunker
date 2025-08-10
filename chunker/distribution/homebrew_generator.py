@@ -140,7 +140,7 @@ end
     def update_sha256(cls, formula_path: Path, package_url: str) -> bool:
         """Update the SHA256 hash in the formula"""
         try:
-            with urllib.request.urlopen(  # noqa: S310
+            with urllib.request.urlopen(
                 package_url,
             ) as response:
                 data = response.read()
