@@ -2,7 +2,8 @@
 """
 REST API server for Tree-sitter Chunker.
 
-Provides a simple HTTP API for code chunking that can be called from any language.
+Provides a simple HTTP API for code chunking that can be called
+from any language.
 
 Usage:
     python api/server.py
@@ -12,6 +13,7 @@ Usage:
 """
 
 from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,11 +21,14 @@ from pydantic import BaseModel, Field
 
 # Import the simplified chunker API
 from chunker import __version__, chunk_file, chunk_text, list_languages
+from chunker.graph.xref import build_xref
 
 # Create FastAPI app
 app = FastAPI(
     title="Tree-sitter Chunker API",
-    description="HTTP API for semantic code chunking using Tree-sitter",
+    description=(
+        "HTTP API for semantic code chunking using Tree-sitter"
+    ),
     version=__version__,
     docs_url="/docs",
     redoc_url="/redoc",
@@ -46,11 +51,22 @@ class ChunkRequest(BaseModel):
     content: str = Field(..., description="Source code content to chunk")
     language: str = Field(
         ...,
-        description="Programming language (e.g., 'python', 'javascript')",
+        description=(
+            "Programming language (e.g., 'python', 'javascript')"
+        ),
     )
-    min_chunk_size: int | None = Field(None, description="Minimum chunk size in lines")
-    max_chunk_size: int | None = Field(None, description="Maximum chunk size in lines")
-    chunk_types: list[str] | None = Field(None, description="Filter by chunk types")
+    min_chunk_size: int | None = Field(
+        None,
+        description="Minimum chunk size in lines",
+    )
+    max_chunk_size: int | None = Field(
+        None,
+        description="Maximum chunk size in lines",
+    )
+    chunk_types: list[str] | None = Field(
+        None,
+        description="Filter by chunk types",
+    )
 
 
 class ChunkFileRequest(BaseModel):
@@ -61,9 +77,18 @@ class ChunkFileRequest(BaseModel):
         None,
         description="Programming language (auto-detect if not specified)",
     )
-    min_chunk_size: int | None = Field(None, description="Minimum chunk size in lines")
-    max_chunk_size: int | None = Field(None, description="Maximum chunk size in lines")
-    chunk_types: list[str] | None = Field(None, description="Filter by chunk types")
+    min_chunk_size: int | None = Field(
+        None,
+        description="Minimum chunk size in lines",
+    )
+    max_chunk_size: int | None = Field(
+        None,
+        description="Maximum chunk size in lines",
+    )
+    chunk_types: list[str] | None = Field(
+        None,
+        description="Filter by chunk types",
+    )
 
 
 class ChunkResponse(BaseModel):
@@ -99,6 +124,49 @@ class LanguageInfo(BaseModel):
     chunk_types: list[str]
 
 
+# New models for extended API
+class ExportPostgresRequest(BaseModel):
+    repo_root: str
+    config: dict[str, Any] | None = None
+
+
+class ExportPostgresResponse(BaseModel):
+    rows_written: int
+
+
+class GraphXrefRequest(BaseModel):
+    paths: list[str]
+
+
+class GraphResponse(BaseModel):
+    nodes: list[dict[str, Any]]
+    edges: list[dict[str, Any]]
+
+
+class GraphCutParams(BaseModel):
+    radius: int | None = 2
+    budget: int | None = 200
+    weights: dict[str, float] | None = None
+
+
+class GraphCutRequest(BaseModel):
+    seeds: list[str]
+    params: GraphCutParams | None = None
+
+
+class GraphCutResponse(BaseModel):
+    nodes: list[str]
+    edges: list[dict[str, Any]]
+
+
+class NearestTestsRequest(BaseModel):
+    symbols: list[str]
+
+
+class NearestTestsResponse(BaseModel):
+    tests: list[dict[str, Any]]
+
+
 # API Endpoints
 @app.get("/")
 async def root():
@@ -112,6 +180,10 @@ async def root():
             "chunk_file": "/chunk/file",
             "languages": "/languages",
             "health": "/health",
+            "export_postgres": "/export/postgres",
+            "graph_xref": "/graph/xref",
+            "graph_cut": "/graph/cut",
+            "nearest_tests": "/nearest-tests",
         },
     }
 
@@ -151,7 +223,10 @@ async def chunk_text_endpoint(request: ChunkRequest):
                 continue
 
             # Apply type filter
-            if request.chunk_types and chunk.node_type not in request.chunk_types:
+            if (
+                request.chunk_types
+                and chunk.node_type not in request.chunk_types
+            ):
                 continue
 
             filtered_chunks.append(
@@ -192,7 +267,10 @@ async def chunk_file_endpoint(request: ChunkFileRequest):
         )
 
     if not file_path.is_file():
-        raise HTTPException(status_code=400, detail=f"Not a file: {request.file_path}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Not a file: {request.file_path}",
+        )
 
     # Auto-detect language if not provided
     language = request.language
@@ -243,7 +321,10 @@ async def chunk_file_endpoint(request: ChunkFileRequest):
         if not language:
             raise HTTPException(
                 status_code=400,
-                detail=f"Cannot auto-detect language for {file_path.suffix}. Please specify --language",
+                detail=(
+                    f"Cannot auto-detect language for {file_path.suffix}. "
+                    "Please specify --language"
+                ),
             )
 
     try:
@@ -262,7 +343,10 @@ async def chunk_file_endpoint(request: ChunkFileRequest):
                 continue
 
             # Apply type filter
-            if request.chunk_types and chunk.node_type not in request.chunk_types:
+            if (
+                request.chunk_types
+                and chunk.node_type not in request.chunk_types
+            ):
                 continue
 
             filtered_chunks.append(
@@ -284,6 +368,49 @@ async def chunk_file_endpoint(request: ChunkFileRequest):
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+# New endpoints per spec (skeleton implementations that delegate to modules)
+@app.post("/export/postgres", response_model=ExportPostgresResponse)
+async def export_postgres_endpoint(request: ExportPostgresRequest):
+    # Placeholder: integrate with chunker/export/postgres_spec_exporter.py
+    # For now, return 0 to indicate no-op in this stepwise PR
+    return ExportPostgresResponse(rows_written=0)
+
+
+@app.post("/graph/xref", response_model=GraphResponse)
+async def graph_xref_endpoint(request: GraphXrefRequest):
+    paths = [Path(p) for p in request.paths]
+    chunks = []
+    for p in paths:
+        if p.exists() and p.is_file():
+            # naive language detection from extension
+            ext = p.suffix.lower()
+            lang_map = {
+                ".py": "python",
+                ".js": "javascript",
+                ".ts": "typescript",
+                ".java": "java",
+                ".go": "go",
+                ".rs": "rust",
+            }
+            language = lang_map.get(ext, "python")
+            chunks.extend(chunk_file(str(p), language))
+    nodes, edges = build_xref(chunks)
+    return GraphResponse(nodes=nodes, edges=edges)
+
+
+@app.post("/graph/cut", response_model=GraphCutResponse)
+async def graph_cut_endpoint(request: GraphCutRequest):
+    # Placeholder: implement in chunker/graph/cut.py and call here
+    # Return empty minimal cut for now
+    return GraphCutResponse(nodes=[], edges=[])
+
+
+@app.post("/nearest-tests", response_model=NearestTestsResponse)
+async def nearest_tests_endpoint(request: NearestTestsRequest):
+    # Placeholder: implement in chunker/helpers/nearest_tests.py and call here
+    return NearestTestsResponse(tests=[])
 
 
 # Main entry point

@@ -273,6 +273,7 @@ chunker/grammar/manager.py
 chunker/grammar/registry.py
 chunker/grammar/repository.py
 chunker/grammar/validator.py
+chunker/graph/xref.py
 chunker/hierarchy/__init__.py
 chunker/hierarchy/builder.py
 chunker/hierarchy/navigator.py
@@ -413,6 +414,7 @@ docs/overlapping-fallback.md
 docs/packaging.md
 docs/performance-guide.md
 docs/plugin-development.md
+docs/requested-changes-dfrom-chunger-lib.md
 docs/testing-methodology-complete.md
 docs/token_limits.md
 docs/troubleshooting.md
@@ -1794,6 +1796,7 @@ scripts/setup_codex.sh
 scripts/test_packaging.sh
 scripts/visualize_ast.py
 specs/ROADMAP.md
+specs/agent-platform-integration-spec.md
 templates/language_plugin.py.j2
 templates/language_test.py.j2
 tests/__init__.py

@@ -14,13 +14,42 @@ Simple usage:
     results = chunk_directory("src/", language="python")
 """
 
-__version__ = "1.0.0"
-
-# Core functionality - these are the main APIs users need
+from ._internal.cache import ASTCache
+from .chunker import chunk_text_with_token_limit, count_chunk_tokens
+from .chunker_config import ChunkerConfig
 from .core import chunk_file
+from .exceptions import (
+    LanguageNotFoundError,
+    LibraryNotFoundError,
+    ParserError,
+)
+from .fallback.intelligent_fallback import (
+    ChunkingDecision,
+    DecisionMetrics,
+    IntelligentFallbackChunker,
+)
+from .languages.base import PluginConfig
+from .optimization import (
+    ChunkBoundaryAnalyzer,
+    ChunkOptimizer,
+    OptimizationConfig,
+    OptimizationMetrics,
+    OptimizationStrategy,
+)
 from .parallel import chunk_directory_parallel as chunk_directory
+from .parser import (
+    ParserConfig,
+    clear_cache,
+    get_language_info,
+    get_parser,
+    list_languages,
+    return_parser,
+)
+from .plugin_manager import PluginManager, get_plugin_manager
 from .streaming import chunk_file_streaming
 from .types import CodeChunk
+
+__version__ = "1.0.0"
 
 
 # Simple text chunking
@@ -46,41 +75,16 @@ def chunk_text(text: str, language: str, **kwargs):
         Path(temp_path).unlink(missing_ok=True)
 
 
-# Export commonly used classes and functions
-from ._internal.cache import ASTCache
-from .chunker import chunk_text_with_token_limit, count_chunk_tokens
-from .chunker_config import ChunkerConfig
-from .exceptions import LanguageNotFoundError, LibraryNotFoundError, ParserError
-from .languages.base import PluginConfig
-from .optimization import (
-    ChunkBoundaryAnalyzer,
-    ChunkOptimizer,
-    OptimizationConfig,
-    OptimizationMetrics,
-    OptimizationStrategy,
-)
-from .parser import (
-    ParserConfig,
-    clear_cache,
-    get_language_info,
-    get_parser,
-    list_languages,
-    return_parser,
-)
-from .plugin_manager import PluginManager, get_plugin_manager
-
 # Convenient exports for common use cases
 __all__ = [
-    # Performance
     "ASTCache",
-    # Optimization
     "ChunkBoundaryAnalyzer",
     "ChunkOptimizer",
-    # Configuration
     "ChunkerConfig",
-    # Core types
+    "ChunkingDecision",
     "CodeChunk",
-    # Exceptions
+    "DecisionMetrics",
+    "IntelligentFallbackChunker",
     "LanguageNotFoundError",
     "LibraryNotFoundError",
     "OptimizationConfig",
@@ -88,24 +92,19 @@ __all__ = [
     "OptimizationStrategy",
     "ParserConfig",
     "ParserError",
-    # Version
+    "PluginConfig",
+    "PluginManager",
     "__version__",
     "chunk_directory",
-    # Main functions
     "chunk_file",
     "chunk_file_streaming",
     "chunk_text",
     "chunk_text_with_token_limit",
-    "count_chunk_tokens",
-    # Parser utilities
     "clear_cache",
+    "count_chunk_tokens",
     "get_language_info",
     "get_parser",
     "get_plugin_manager",
-    # Language support
     "list_languages",
     "return_parser",
-    # Plugin system
-    "PluginConfig",
-    "PluginManager",
 ]

@@ -8,7 +8,12 @@ from typing import TYPE_CHECKING
 from .languages import language_config_registry
 from .metadata import MetadataExtractorFactory
 from .parser import get_parser
-from .types import CodeChunk
+from .types import (
+    CodeChunk,
+    compute_file_id,
+    compute_node_id,
+    compute_symbol_id,
+)
 
 if TYPE_CHECKING:
     from tree_sitter import Node
@@ -22,13 +27,18 @@ def _walk(
     parent_chunk: CodeChunk | None = None,
     extractor=None,
     analyzer=None,
+    parent_route: list[str] | None = None,
 ) -> list[CodeChunk]:
     """Walk the AST and extract chunks based on language configuration."""
     # Get language configuration
     config = language_config_registry.get(language)
     if not config:
         # Fallback to hardcoded defaults for backward compatibility
-        chunk_types = {"function_definition", "class_definition", "method_definition"}
+        chunk_types = {
+            "function_definition",
+            "class_definition",
+            "method_definition",
+        }
 
         def should_chunk(node_type):
             return node_type in chunk_types
@@ -47,9 +57,13 @@ def _walk(
     if should_ignore(node.type):
         return chunks
 
+    # Ensure route list
+    parent_route = (parent_route or []).copy()
+
     # Check if this node should be a chunk
     if should_chunk(node.type):
-        text = source[node.start_byte : node.end_byte].decode()
+        text = source[node.start_byte:node.end_byte].decode()
+        current_route = [*parent_route, node.type]
         current_chunk = CodeChunk(
             language=language,
             file_path="",
@@ -60,7 +74,8 @@ def _walk(
             byte_end=node.end_byte,
             parent_context=parent_ctx or "",
             content=text,
-            parent_chunk_id=parent_chunk.chunk_id if parent_chunk else None,
+            parent_chunk_id=(parent_chunk.node_id if parent_chunk else None),
+            parent_route=current_route,
         )
 
         # Extract metadata if extractors are available
@@ -78,6 +93,13 @@ def _walk(
                         "decorators": signature.decorators,
                         "modifiers": signature.modifiers,
                     }
+                    # symbol id from signature name
+                    if signature.name and not current_chunk.symbol_id:
+                        current_chunk.symbol_id = compute_symbol_id(
+                            language,
+                            current_chunk.file_path,
+                            signature.name,
+                        )
 
                 # Extract docstring
                 docstring = extractor.extract_docstring(node, source)
@@ -86,7 +108,9 @@ def _walk(
 
                 # Extract dependencies
                 dependencies = extractor.extract_dependencies(node, source)
-                metadata["dependencies"] = sorted(dependencies) if dependencies else []
+                metadata["dependencies"] = (
+                    sorted(dependencies) if dependencies else []
+                )
                 current_chunk.dependencies = (
                     sorted(dependencies) if dependencies else []
                 )
@@ -116,6 +140,7 @@ def _walk(
 
         chunks.append(current_chunk)
         parent_ctx = node.type  # nested functions, etc.
+        parent_route = current_route
 
     # Walk children with current chunk as parent
     for child in node.children:
@@ -128,6 +153,7 @@ def _walk(
                 current_chunk or parent_chunk,
                 extractor,
                 analyzer,
+                parent_route=parent_route,
             ),
         )
 
@@ -169,8 +195,37 @@ def chunk_text(
         extractor=extractor,
         analyzer=analyzer,
     )
+
+    # Build mapping from temporary IDs (no path) to final IDs (with path)
+    tmp_to_final: dict[str, str] = {}
+    for c in chunks:
+        tmp_id = compute_node_id("", c.language, c.parent_route, c.content)
+        final_id = compute_node_id(
+            file_path,
+            c.language,
+            c.parent_route,
+            c.content,
+        )
+        tmp_to_final[tmp_id] = final_id
+
     for c in chunks:
         c.file_path = file_path
+        # update file/node ids now that path is known
+        c.file_id = compute_file_id(file_path)
+        c.node_id = compute_node_id(
+            file_path,
+            c.language,
+            c.parent_route,
+            c.content,
+        )
+        c.chunk_id = c.node_id
+        # fix parent id if it was set using temporary id
+        if c.parent_chunk_id and c.parent_chunk_id in tmp_to_final:
+            c.parent_chunk_id = tmp_to_final[c.parent_chunk_id]
+        # recompute symbol id if missing and signature present
+        sig = c.metadata.get("signature") if c.metadata else None
+        if sig and not c.symbol_id and sig.get("name"):
+            c.symbol_id = compute_symbol_id(language, file_path, sig["name"])
     return chunks
 
 
@@ -190,4 +245,9 @@ def chunk_file(
         List of CodeChunk objects with optional metadata
     """
     src = Path(path).read_text(encoding="utf-8")
-    return chunk_text(src, language, str(path), extract_metadata=extract_metadata)
+    return chunk_text(
+        src,
+        language,
+        str(path),
+        extract_metadata=extract_metadata,
+    )

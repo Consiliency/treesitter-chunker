@@ -38,7 +38,13 @@ class DatabaseExporterBase(ABC):
 
     @staticmethod
     def _get_chunk_id(chunk: CodeChunk) -> str:
-        """Generate a unique ID for a chunk."""
+        """Generate a unique ID for a chunk.
+
+        Prefer the stable node_id if present; otherwise, fall back to
+        an MD5 of file path and line range.
+        """
+        if getattr(chunk, "node_id", ""):
+            return chunk.node_id
         id_string = f"{chunk.file_path}:{chunk.start_line}:{chunk.end_line}"
         return hashlib.md5(id_string.encode()).hexdigest()
 
@@ -97,7 +103,9 @@ class DatabaseExporterBase(ABC):
         Returns:
             List of SQL INSERT statements
         """
-        raise NotImplementedError("Subclasses must implement get_insert_statements()")
+        raise NotImplementedError(
+            "Subclasses must implement get_insert_statements()",
+        )
 
     @staticmethod
     def get_index_statements() -> list[str]:
@@ -108,15 +116,42 @@ class DatabaseExporterBase(ABC):
         """
         return [
             "CREATE INDEX IF NOT EXISTS idx_file_path ON files(path);",
-            "CREATE INDEX IF NOT EXISTS idx_files_language ON files(language);",
-            "CREATE INDEX IF NOT EXISTS idx_chunks_file_id ON chunks(file_id);",
-            "CREATE INDEX IF NOT EXISTS idx_chunks_chunk_type ON chunks(chunk_type);",
-            "CREATE INDEX IF NOT EXISTS idx_chunks_position ON chunks(file_id, start_line, end_line);",
-            "CREATE INDEX IF NOT EXISTS idx_relationships_source ON relationships(source_id);",
-            "CREATE INDEX IF NOT EXISTS idx_relationships_target ON relationships(target_id);",
-            "CREATE INDEX IF NOT EXISTS idx_relationships_type ON relationships(relationship_type);",
-            "CREATE INDEX IF NOT EXISTS idx_chunks_file_type ON chunks(file_id, chunk_type);",
-            "CREATE INDEX IF NOT EXISTS idx_relationships_source_type ON relationships(source_id, relationship_type);",
+            (
+                "CREATE INDEX IF NOT EXISTS idx_files_language "
+                "ON files(language);"
+            ),
+            (
+                "CREATE INDEX IF NOT EXISTS idx_chunks_file_id "
+                "ON chunks(file_id);"
+            ),
+            (
+                "CREATE INDEX IF NOT EXISTS idx_chunks_chunk_type "
+                "ON chunks(chunk_type);"
+            ),
+            (
+                "CREATE INDEX IF NOT EXISTS idx_chunks_position "
+                "ON chunks(file_id, start_line, end_line);"
+            ),
+            (
+                "CREATE INDEX IF NOT EXISTS idx_relationships_source "
+                "ON relationships(source_id);"
+            ),
+            (
+                "CREATE INDEX IF NOT EXISTS idx_relationships_target "
+                "ON relationships(target_id);"
+            ),
+            (
+                "CREATE INDEX IF NOT EXISTS idx_relationships_type "
+                "ON relationships(relationship_type);"
+            ),
+            (
+                "CREATE INDEX IF NOT EXISTS idx_chunks_file_type "
+                "ON chunks(file_id, chunk_type);"
+            ),
+            (
+                "CREATE INDEX IF NOT EXISTS idx_relationships_source_type "
+                "ON relationships(source_id, relationship_type);"
+            ),
         ]
 
     @staticmethod
@@ -164,24 +199,29 @@ class DatabaseExporterBase(ABC):
                 ORDER BY (outgoing + incoming) DESC
                 LIMIT 20;
             """,
-            "find_dependencies": """
+            "find_dependencies": (
+                """
                 -- Find all chunks that a given chunk depends on
                 WITH RECURSIVE deps AS (
                     SELECT target_id as chunk_id, 1 as depth
                     FROM relationships
-                    WHERE source_id = ? AND relationship_type IN ('IMPORTS', 'CALLS')
-
+                    WHERE source_id = ? AND relationship_type IN """
+                 "('IMPORTS', 'CALLS')\n\n"
+                 """
                     UNION
 
                     SELECT r.target_id, d.depth + 1
                     FROM relationships r
                     JOIN deps d ON r.source_id = d.chunk_id
-                    WHERE r.relationship_type IN ('IMPORTS', 'CALLS')
-                    AND d.depth < 5  -- Limit depth to prevent infinite recursion
+                    WHERE r.relationship_type IN """
+                 "('IMPORTS', 'CALLS')\n"
+                 """
+                    AND d.depth < 5  -- Limit depth
                 )
                 SELECT DISTINCT c.*, d.depth
                 FROM deps d
                 JOIN chunks c ON d.chunk_id = c.id
                 ORDER BY d.depth, c.file_path, c.start_line;
-            """,
+                """
+            ),
         }

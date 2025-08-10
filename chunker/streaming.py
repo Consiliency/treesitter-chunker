@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import mmap
+from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING
 
 from .parser import get_parser
 from .types import CodeChunk
@@ -14,8 +15,8 @@ if TYPE_CHECKING:
     from tree_sitter import Node
 
 
-class FileMetadata(NamedTuple):
-    """File metadata for caching and validation."""
+@dataclass
+class FileMetadata:
     path: str
     size: int
     hash: str
@@ -24,7 +25,7 @@ class FileMetadata(NamedTuple):
 
 def compute_file_hash(file_path: Path | str, chunk_size: int = 8192) -> str:
     """Compute SHA256 hash of a file.
-    
+
     Args:
         file_path: Path to the file
         chunk_size: Size of chunks to read (default: 8192)
@@ -63,12 +64,18 @@ class StreamingChunker:
         file_path: str,
         parent_ctx: str | None = None,
     ) -> Iterator[CodeChunk]:
-        """Yield chunks as they're found without building full list in memory."""
-        chunk_types = {"function_definition", "class_definition", "method_definition"}
+        """
+        Yield chunks as they're found without building full list in memory.
+        """
+        chunk_types = {
+            "function_definition",
+            "class_definition",
+            "method_definition",
+        }
 
         if node.type in chunk_types:
             # Extract content from memory-mapped data
-            text = mmap_data[node.start_byte : node.end_byte].decode(
+            text = mmap_data[node.start_byte:node.end_byte].decode(
                 "utf-8",
                 errors="replace",
             )
@@ -86,7 +93,12 @@ class StreamingChunker:
             parent_ctx = node.type
 
         for child in node.children:
-            yield from self._walk_streaming(child, mmap_data, file_path, parent_ctx)
+            yield from self._walk_streaming(
+                child,
+                mmap_data,
+                file_path,
+                parent_ctx,
+            )
 
     def chunk_file_streaming(self, path: Path) -> Iterator[CodeChunk]:
         """Stream chunks from a file using memory-mapped I/O."""
@@ -94,17 +106,24 @@ class StreamingChunker:
         if path.stat().st_size == 0:
             return
 
-        with (
-            Path(path).open(
-                "rb",
-            ) as f,
-            mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mmap_data,
-        ):
+        with Path(path).open("rb") as f, mmap.mmap(
+            f.fileno(),
+            0,
+            access=mmap.ACCESS_READ,
+        ) as mmap_data:
             tree = self.parser.parse(mmap_data)
-            yield from self._walk_streaming(tree.root_node, mmap_data, str(path))
+            root = tree.root_node
+            yield from self._walk_streaming(
+                root,
+                mmap_data,
+                str(path),
+            )
 
 
-def chunk_file_streaming(path: str | Path, language: str) -> Iterator[CodeChunk]:
+def chunk_file_streaming(
+    path: str | Path,
+    language: str,
+) -> Iterator[CodeChunk]:
     """Stream chunks from a file without loading everything into memory."""
     chunker = StreamingChunker(language)
     yield from chunker.chunk_file_streaming(Path(path))

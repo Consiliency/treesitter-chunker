@@ -19,6 +19,7 @@ class TiktokenCounter(TokenCounter):
         "davinci": "r50k_base",
         "claude": "cl100k_base",
         "claude-3": "cl100k_base",
+        "claude-3.5": "cl100k_base",
         "llama": "cl100k_base",
     }
     MODEL_LIMITS: ClassVar[dict[str, int]] = {
@@ -30,6 +31,7 @@ class TiktokenCounter(TokenCounter):
         "davinci": 2049,
         "claude": 100000,
         "claude-3": 200000,
+        "claude-3.5": 200000,
         "llama": 4096,
     }
 
@@ -39,9 +41,14 @@ class TiktokenCounter(TokenCounter):
 
     def _get_encoding(self, model: str) -> tiktoken.Encoding:
         """Get the appropriate encoding for a model."""
-        encoding_name = self.MODEL_TO_ENCODING.get(model, "cl100k_base")
+        encoding_name = self.MODEL_TO_ENCODING.get(
+            model,
+            "cl100k_base",
+        )
         if encoding_name not in self._encodings_cache:
-            self._encodings_cache[encoding_name] = tiktoken.get_encoding(encoding_name)
+            self._encodings_cache[encoding_name] = tiktoken.get_encoding(
+                encoding_name,
+            )
         return self._encodings_cache[encoding_name]
 
     def count_tokens(self, text: str, model: str = "gpt-4") -> int:
@@ -50,7 +57,7 @@ class TiktokenCounter(TokenCounter):
 
         Args:
             text: The text to count tokens for
-            model: The tokenizer model to use (e.g., "gpt-4", "claude", "llama")
+            model: The tokenizer model (e.g., "gpt-4", "claude", "llama")
 
         Returns:
             Number of tokens in the text
@@ -81,8 +88,8 @@ class TiktokenCounter(TokenCounter):
         """
         Split text into chunks that don't exceed the token limit.
 
-        This implementation tries to split on natural boundaries (lines, sentences)
-        when possible to maintain readability.
+        This implementation tries to split on natural boundaries
+        (lines, sentences) when possible to maintain readability.
 
         Args:
             text: The text to split
@@ -109,7 +116,11 @@ class TiktokenCounter(TokenCounter):
                     chunks.append("\n".join(current_lines))
                     current_lines = []
                     current_chunk_tokens = []
-                line_chunks = self._split_long_line(line, max_tokens, encoding)
+                line_chunks = self._split_long_line(
+                    line,
+                    max_tokens,
+                    encoding,
+                )
                 chunks.extend(line_chunks[:-1])
                 current_lines = [line_chunks[-1]] if line_chunks[-1] else []
                 current_chunk_tokens = (
