@@ -28,10 +28,9 @@ jobs:
 
       - name: Ruff
         run: |
-          # Run ruff with specific error codes we care about for CI/CD
-          # Exclude complexity and some security warnings that need careful review
-          ruff check . --select=E,W,F,I,B,C4,UP,ARG,SIM,RUF,N,YTT,ASYNC,BLE,A,COM,ISC,ICN,G,INP,PIE,PT,Q,RSE,RET,SLOT,TID,TCH,PTH,ERA,PGH,FLY,PERF,LOG \
-            --ignore=PLR0912,PLR0913,PLR0914,PLR0915,PLR0917,PLR1702,S301,S310,S108,S602,S608,S324,S318,S405,S408
+          # Run ruff focusing on critical errors only
+          # Using project's pyproject.toml configuration for consistency
+          ruff check .
 
       - name: Black
         run: black --check .
