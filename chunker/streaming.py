@@ -22,12 +22,17 @@ class FileMetadata(NamedTuple):
     mtime: float
 
 
-def compute_file_hash(file_path: Path | str) -> str:
-    """Compute SHA256 hash of a file."""
+def compute_file_hash(file_path: Path | str, chunk_size: int = 8192) -> str:
+    """Compute SHA256 hash of a file.
+    
+    Args:
+        file_path: Path to the file
+        chunk_size: Size of chunks to read (default: 8192)
+    """
     file_path = Path(file_path)
     hash_obj = hashlib.sha256()
     with file_path.open("rb") as f:
-        for chunk in iter(lambda: f.read(8192), b""):
+        for chunk in iter(lambda: f.read(chunk_size), b""):
             hash_obj.update(chunk)
     return hash_obj.hexdigest()
 

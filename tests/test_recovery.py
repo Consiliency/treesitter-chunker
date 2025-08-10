@@ -564,6 +564,18 @@ def simple_function():
                         current_chunk = [line]
                     elif current_chunk:
                         current_chunk.append(line)
+                # Don't forget the last chunk!
+                if current_chunk:
+                    content = "".join(current_chunk)
+                    if content.strip():
+                        chunks.append(
+                            MagicMock(
+                                content=content,
+                                start_line=len(lines) - len(current_chunk) + 1,
+                                end_line=len(lines),
+                                node_type="function_definition",
+                            ),
+                        )
             assert any("simple_function" in str(chunk.content) for chunk in chunks)
 
     @staticmethod
