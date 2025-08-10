@@ -526,7 +526,7 @@ class TestFileMetadata:
     def test_get_file_metadata(medium_python_file):
         """Test file metadata extraction."""
         metadata = get_file_metadata(medium_python_file)
-        assert metadata.path == medium_python_file
+        assert metadata.path == str(medium_python_file)
         assert metadata.size > 0
         assert len(metadata.hash) == 64
         assert metadata.mtime > 0

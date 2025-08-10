@@ -45,7 +45,7 @@ def problematic_function():
     return "problem\"
 """,
         )
-        with patch("chunker.parser.get_parser") as mock_get_parser:
+        with patch("chunker.core.get_parser") as mock_get_parser:
             mock_parser = MagicMock()
             mock_tree = MagicMock()
             mock_tree.root_node = MagicMock()
@@ -528,7 +528,7 @@ def simple_function():
 """,
         )
         original_parser = get_parser("python")
-        with patch("chunker.parser.get_parser") as mock_get_parser:
+        with patch("chunker.core.get_parser") as mock_get_parser:
             call_count = 0
 
             def get_parser_with_fallback(language):
@@ -711,7 +711,7 @@ def dependent_function2():
                     raise RuntimeError("Processing failed")
                 chunk_file(file_path, language="python")
                 processing_order.append((filename, "success"))
-            except (FileNotFoundError, OSError, TypeError) as e:
+            except (FileNotFoundError, OSError, TypeError, RuntimeError) as e:
                 failures.append((filename, str(e)))
                 processing_order.append((filename, "failed"))
                 continue
@@ -774,7 +774,7 @@ def dependent_function2():
                         self.state = "closed"
                         self.failure_count = 0
                     return result
-                except OSError:
+                except (OSError, RuntimeError):
                     self.failure_count += 1
                     self.last_failure_time = time.time()
                     if self.failure_count >= self.failure_threshold:

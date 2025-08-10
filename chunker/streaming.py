@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import mmap
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 from .parser import get_parser
 from .types import CodeChunk
@@ -12,6 +12,14 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from tree_sitter import Node
+
+
+class FileMetadata(NamedTuple):
+    """File metadata for caching and validation."""
+    path: str
+    size: int
+    hash: str
+    mtime: float
 
 
 def compute_file_hash(file_path: Path | str) -> str:
@@ -24,16 +32,16 @@ def compute_file_hash(file_path: Path | str) -> str:
     return hash_obj.hexdigest()
 
 
-def get_file_metadata(file_path: Path | str) -> dict:
+def get_file_metadata(file_path: Path | str) -> FileMetadata:
     """Get metadata about a file."""
     file_path = Path(file_path)
     stat = file_path.stat()
-    return {
-        "path": str(file_path),
-        "size": stat.st_size,
-        "modified": stat.st_mtime,
-        "hash": compute_file_hash(file_path),
-    }
+    return FileMetadata(
+        path=str(file_path),
+        size=stat.st_size,
+        hash=compute_file_hash(file_path),
+        mtime=stat.st_mtime,
+    )
 
 
 class StreamingChunker:
