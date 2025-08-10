@@ -48,8 +48,10 @@ def chunk_text(text: str, language: str, **kwargs):
 
 # Export commonly used classes and functions
 from ._internal.cache import ASTCache
+from .chunker import chunk_text_with_token_limit, count_chunk_tokens
 from .chunker_config import ChunkerConfig
 from .exceptions import LanguageNotFoundError, LibraryNotFoundError, ParserError
+from .languages.base import PluginConfig
 from .optimization import (
     ChunkBoundaryAnalyzer,
     ChunkOptimizer,
@@ -65,7 +67,7 @@ from .parser import (
     list_languages,
     return_parser,
 )
-from .plugin_manager import get_plugin_manager
+from .plugin_manager import PluginManager, get_plugin_manager
 
 # Convenient exports for common use cases
 __all__ = [
@@ -93,6 +95,8 @@ __all__ = [
     "chunk_file",
     "chunk_file_streaming",
     "chunk_text",
+    "chunk_text_with_token_limit",
+    "count_chunk_tokens",
     # Parser utilities
     "clear_cache",
     "get_language_info",
@@ -101,4 +105,7 @@ __all__ = [
     # Language support
     "list_languages",
     "return_parser",
+    # Plugin system
+    "PluginConfig",
+    "PluginManager",
 ]

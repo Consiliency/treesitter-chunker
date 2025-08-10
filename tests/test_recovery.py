@@ -45,7 +45,7 @@ def problematic_function():
     return "problem\"
 """,
         )
-        with patch("chunker.chunker.get_parser") as mock_get_parser:
+        with patch("chunker.parser.get_parser") as mock_get_parser:
             mock_parser = MagicMock()
             mock_tree = MagicMock()
             mock_tree.root_node = MagicMock()
@@ -135,7 +135,7 @@ print("processed")
         assert len(failed) >= 1
 
     @staticmethod
-    def test_deadlock_detection_and_recovery(_tmp_path):
+    def test_deadlock_detection_and_recovery(tmp_path):
         """Test deadlock handling."""
         lock1 = threading.Lock()
         lock2 = threading.Lock()
