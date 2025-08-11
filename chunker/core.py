@@ -93,14 +93,6 @@ def _walk(
                         "decorators": signature.decorators,
                         "modifiers": signature.modifiers,
                     }
-                    # symbol id from signature name
-                    if signature.name and not current_chunk.symbol_id:
-                        current_chunk.symbol_id = compute_symbol_id(
-                            language,
-                            current_chunk.file_path,
-                            signature.name,
-                        )
-
                 # Extract docstring
                 docstring = extractor.extract_docstring(node, source)
                 if docstring:
@@ -222,9 +214,9 @@ def chunk_text(
         # fix parent id if it was set using temporary id
         if c.parent_chunk_id and c.parent_chunk_id in tmp_to_final:
             c.parent_chunk_id = tmp_to_final[c.parent_chunk_id]
-        # recompute symbol id if missing and signature present
+        # recompute symbol id if signature present
         sig = c.metadata.get("signature") if c.metadata else None
-        if sig and not c.symbol_id and sig.get("name"):
+        if sig and sig.get("name"):
             c.symbol_id = compute_symbol_id(language, file_path, sig["name"])
     return chunks
 

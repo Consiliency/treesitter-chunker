@@ -444,7 +444,7 @@ class TestBufferOptimization:
         """Test that streaming performance is consistent across runs."""
         # Warmup run (not timed) to initialize caches and JIT
         list(chunk_file_streaming(medium_python_file, "python"))
-        
+
         times = []
         for _ in range(3):
             start_time = time.time()

@@ -129,6 +129,7 @@ chunker/grammar_manager.py
 chunker/incremental.py
 chunker/multi_language.py
 chunker/optimization.py
+chunker/packing.py
 chunker/parallel.py
 chunker/parser.py
 chunker/plugin_manager.py
@@ -235,6 +236,7 @@ chunker/export/graphml_yed_exporter.py
 chunker/export/json_export.py
 chunker/export/neo4j_exporter.py
 chunker/export/postgres_exporter.py
+chunker/export/postgres_spec_exporter.py
 chunker/export/sqlite_exporter.py
 chunker/export/structured_exporter.py
 chunker/export/formats/__init__.py
@@ -273,7 +275,9 @@ chunker/grammar/manager.py
 chunker/grammar/registry.py
 chunker/grammar/repository.py
 chunker/grammar/validator.py
+chunker/graph/cut.py
 chunker/graph/xref.py
+chunker/helpers/nearest_tests.py
 chunker/hierarchy/__init__.py
 chunker/hierarchy/builder.py
 chunker/hierarchy/navigator.py

@@ -1,4 +1,5 @@
-"""Token-aware chunking that enhances Tree-sitter chunks with token information."""
+"""Token-aware chunking that enhances Tree-sitter chunks
+with token information."""
 
 import copy
 from typing import Any
@@ -7,6 +8,7 @@ import tree_sitter
 
 from chunker.core import _walk, chunk_file
 from chunker.interfaces.token import TokenAwareChunker, TokenCounter
+from chunker.packing import compute_pack_hint
 from chunker.types import CodeChunk
 
 from .counter import TiktokenCounter
@@ -14,7 +16,8 @@ from .counter import TiktokenCounter
 
 class TreeSitterTokenAwareChunker(TokenAwareChunker):
     """
-    Enhance Tree-sitter chunks with token information and handle oversized chunks.
+    Enhance Tree-sitter chunks with token information and handle
+    oversized chunks.
 
     This implementation:
     1. Uses Tree-sitter for semantic chunking
@@ -146,7 +149,13 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
             enhanced_chunk.metadata["tokenizer_model"] = model
             char_count = len(chunk.content)
             if char_count > 0:
-                enhanced_chunk.metadata["chars_per_token"] = char_count / token_count
+                enhanced_chunk.metadata["chars_per_token"] = (
+                    char_count / token_count if token_count else 0
+                )
+            # compute pack hint
+            enhanced_chunk.metadata["pack_hint"] = (
+                compute_pack_hint(enhanced_chunk)
+            )
             enhanced_chunks.append(enhanced_chunk)
         return enhanced_chunks
 
@@ -159,8 +168,9 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
         """
         Split a chunk that exceeds the token limit.
 
-        This method tries to preserve code structure by splitting at logical boundaries
-        like method boundaries within a class, or line boundaries for functions.
+        This method tries to preserve code structure by splitting at
+        logical boundaries like method boundaries within a class, or
+        line boundaries for functions.
 
         Args:
             chunk: The chunk to split
@@ -202,7 +212,10 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
                     "private ",
                     "protected ",
                 ]
-            ) and (line.startswith((" ", "\t")) and not line.startswith("        ")):
+            ) and (
+                line.startswith((" ", "\t"))
+                and not line.startswith("        ")
+            ):
                 method_starts.append(i)
         if not method_starts:
             return self._split_by_lines(chunk, max_tokens, model)
@@ -219,21 +232,25 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
         for i, start_idx in enumerate(method_starts):
             end_idx = (
                 method_starts[i + 1]
-                if i + 1
-                < len(
-                    method_starts,
-                )
+                if i + 1 < len(method_starts)
                 else len(lines)
             )
             method_lines = lines[start_idx:end_idx]
             method_content = "\n".join(method_lines)
-            method_tokens = self.token_counter.count_tokens(method_content, model)
+            method_tokens = self.token_counter.count_tokens(
+                method_content,
+                model,
+            )
             if (
                 current_tokens + method_tokens > max_tokens
                 and current_part != class_header_lines
             ):
                 chunk_content = "\n".join(current_part)
-                new_chunk = self._create_sub_chunk(chunk, chunk_content, len(chunks))
+                new_chunk = self._create_sub_chunk(
+                    chunk,
+                    chunk_content,
+                    len(chunks),
+                )
                 chunks.append(new_chunk)
                 current_part = class_header_lines.copy()
                 current_tokens = header_tokens
@@ -241,7 +258,11 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
             current_tokens += method_tokens
         if current_part and current_part != class_header_lines:
             chunk_content = "\n".join(current_part)
-            new_chunk = self._create_sub_chunk(chunk, chunk_content, len(chunks))
+            new_chunk = self._create_sub_chunk(
+                chunk,
+                chunk_content,
+                len(chunks),
+            )
             chunks.append(new_chunk)
         return chunks if chunks else [chunk]
 
@@ -282,7 +303,9 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
             file_path=original_chunk.file_path,
             node_type=f"{original_chunk.node_type}_part_{index + 1}",
             start_line=original_chunk.start_line + start_offset,
-            end_line=original_chunk.start_line + start_offset + len(new_lines) - 1,
+            end_line=(
+                original_chunk.start_line + start_offset + len(new_lines) - 1
+            ),
             byte_start=original_chunk.byte_start,
             byte_end=original_chunk.byte_start + len(content.encode()),
             parent_context=original_chunk.parent_context,
@@ -305,7 +328,10 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
                 "is_split": True,
                 "split_index": index + 1,
                 "original_chunk_id": original_chunk.chunk_id,
-                "original_token_count": original_chunk.metadata.get("token_count", 0),
+                "original_token_count": original_chunk.metadata.get(
+                    "token_count",
+                    0,
+                ),
             },
         )
         return new_chunk

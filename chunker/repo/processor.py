@@ -13,7 +13,11 @@ import pathspec
 from tqdm import tqdm
 
 from chunker.exceptions import ChunkerError
-from chunker.interfaces.repo import FileChunkResult, GitAwareProcessor, RepoChunkResult
+from chunker.interfaces.repo import (
+    FileChunkResult,
+    GitAwareProcessor,
+    RepoChunkResult,
+)
 from chunker.interfaces.repo import RepoProcessor as RepoProcessorInterface
 
 from .chunker_adapter import Chunker
@@ -723,3 +727,126 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
         except (FileNotFoundError, IndexError, KeyError):
             pass
         return files
+
+    def watch_repository(
+        self,
+        repo_path: str,
+        on_update,
+        poll_interval: float = 1.0,
+    ) -> None:
+        """
+        Watch a repository for changes and emit deltas via callback.
+
+        on_update signature: (deltas: dict) -> None
+        deltas keys: nodes_added, nodes_updated, nodes_removed, edges, spans
+        """
+        from time import sleep
+
+        repo_root = Path(repo_path).resolve()
+        if not repo_root.exists():
+            raise ChunkerError(f"Repository path does not exist: {repo_root}")
+
+        last_state = self.load_incremental_state(str(repo_root)) or {}
+        last_commit = last_state.get("last_commit")
+
+        try:
+            repo = self.git.Repo(repo_root)
+        except Exception:
+            repo = None
+
+        known_ids: set[str] = set()
+        while True:
+            changed_files: list[str] = []
+            if repo:
+                try:
+                    if last_commit:
+                        changed_files = self.get_changed_files(
+                            str(repo_root),
+                            since_commit=last_commit,
+                        )
+                    else:
+                        # first run, process all
+                        changed_files = [
+                            str(p.relative_to(repo_root))
+                            for p in self.get_processable_files(str(repo_root))
+                        ]
+                except Exception:
+                    changed_files = []
+            else:
+                # Fallback: process all files on first loop
+                changed_files = [
+                    str(p.relative_to(repo_root))
+                    for p in self.get_processable_files(str(repo_root))
+                ]
+
+            # Build deltas
+            nodes_added: list[dict] = []
+            nodes_updated: list[dict] = []
+            nodes_removed: list[str] = []
+            all_chunks = []
+            for rel in changed_files:
+                path = repo_root / rel
+                ext = path.suffix.lower()
+                language = self._language_extensions.get(ext)
+                if not language or not path.exists():
+                    continue
+                try:
+                    content = path.read_text(encoding="utf-8")
+                except Exception:
+                    continue
+                from chunker.core import chunk_text
+
+                chunks = chunk_text(content, language, str(path))
+                all_chunks.extend(chunks)
+                for c in chunks:
+                    node = {
+                        "id": c.node_id or c.chunk_id,
+                        "file": c.file_path,
+                        "lang": c.language,
+                        "symbol": c.symbol_id,
+                        "kind": c.node_type,
+                        "attrs": c.metadata or {},
+                    }
+                    if node["id"] in known_ids:
+                        nodes_updated.append(node)
+                    else:
+                        nodes_added.append(node)
+                        known_ids.add(node["id"])
+
+            from chunker.graph.xref import build_xref
+
+            nodes, edges = build_xref(all_chunks)
+            spans = [
+                {
+                    "file_id": getattr(c, "file_id", ""),
+                    "symbol_id": getattr(c, "symbol_id", None),
+                    "start_byte": getattr(c, "byte_start", 0),
+                    "end_byte": getattr(c, "byte_end", 0),
+                }
+                for c in all_chunks
+            ]
+
+            deltas = {
+                "nodes_added": nodes_added,
+                "nodes_updated": nodes_updated,
+                "nodes_removed": nodes_removed,
+                "edges": edges,
+                "spans": spans,
+            }
+            try:
+                on_update(deltas)
+            except Exception:
+                pass
+
+            # Update last_commit
+            try:
+                if repo and repo.head.is_valid():
+                    last_commit = repo.head.commit.hexsha
+                    self.save_incremental_state(
+                        str(repo_root),
+                        {"last_commit": last_commit},
+                    )
+            except Exception:
+                pass
+
+            sleep(poll_interval)

@@ -18,6 +18,7 @@ from chunker import (
 from chunker._internal.factory import ParserFactory
 from chunker._internal.registry import LanguageRegistry
 from chunker.exceptions import ParserConfigError
+
 # Note: _factory is no longer directly exposed, tests need updating
 # from chunker.parser import _factory
 _factory = None  # Tests that rely on this need refactoring

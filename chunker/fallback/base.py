@@ -144,8 +144,16 @@ class FallbackChunker(IFallbackChunker):
             return self.chunk_by_delimiter(content, self.config.delimiter)
         if self.config.method == ChunkingMethod.REGEX_BASED:
             if not self.config.pattern:
-                raise ValueError("Pattern required for regex-based chunking")
-            return self.chunk_by_pattern(content, self.config.pattern)
+                # Graceful fallback to line-based when no pattern provided
+                return self.chunk_by_lines(
+                    content,
+                    self.config.chunk_size,
+                    self.config.overlap,
+                )
+            return self.chunk_by_pattern(
+                content,
+                self.config.pattern,
+            )
         return self.chunk_by_lines(content, self.config.chunk_size)
 
     def chunk_by_lines(

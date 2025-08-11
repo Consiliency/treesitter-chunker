@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from .parser import get_parser
-from .types import CodeChunk
+from .types import CodeChunk, compute_node_id
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -63,6 +63,8 @@ class StreamingChunker:
         mmap_data: mmap.mmap,
         file_path: str,
         parent_ctx: str | None = None,
+        parent_chunk: CodeChunk | None = None,
+        parent_route: list[str] | None = None,
     ) -> Iterator[CodeChunk]:
         """
         Yield chunks as they're found without building full list in memory.
@@ -73,13 +75,16 @@ class StreamingChunker:
             "method_definition",
         }
 
+        parent_route = (parent_route or []).copy()
+
         if node.type in chunk_types:
             # Extract content from memory-mapped data
             text = mmap_data[node.start_byte:node.end_byte].decode(
                 "utf-8",
                 errors="replace",
             )
-            yield CodeChunk(
+            current_route = [*parent_route, node.type]
+            chunk = CodeChunk(
                 language=self.language,
                 file_path=file_path,
                 node_type=node.type,
@@ -89,8 +94,20 @@ class StreamingChunker:
                 byte_end=node.end_byte,
                 parent_context=parent_ctx or "",
                 content=text,
+                parent_chunk_id=(parent_chunk.node_id if parent_chunk else None),
+                parent_route=current_route,
             )
+            # Ensure node_id reflects file path
+            chunk.node_id = compute_node_id(
+                file_path,
+                chunk.language,
+                chunk.parent_route,
+                chunk.content,
+            )
+            yield chunk
             parent_ctx = node.type
+            parent_chunk = chunk
+            parent_route = current_route
 
         for child in node.children:
             yield from self._walk_streaming(
@@ -98,6 +115,8 @@ class StreamingChunker:
                 mmap_data,
                 file_path,
                 parent_ctx,
+                parent_chunk,
+                parent_route,
             )
 
     def chunk_file_streaming(self, path: Path) -> Iterator[CodeChunk]:

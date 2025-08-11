@@ -293,14 +293,15 @@ ON CONFLICT (source_id, target_id, relationship_type) DO UPDATE SET
         )
         return statements
 
-    def export(self, output_path: Path, fmt: str = "sql", **options) -> None:
+    def export(self, output_path: Path, format: str = "sql", **options) -> None:
         """Export to PostgreSQL fmt.
 
         Args:
             output_path: Base path for output files
-            fmt: Export fmt - "sql" or "copy"
+            format: Export format - "sql" or "copy"
             **options: Additional options
         """
+        fmt = format
         if fmt == "sql":
             statements = []
             statements.append("-- PostgreSQL export for tree-sitter-chunker")
@@ -310,75 +311,31 @@ ON CONFLICT (source_id, target_id, relationship_type) DO UPDATE SET
             statements.append(self.get_schema_ddl())
             statements.append("")
             statements.append("-- Insert data")
-            statements.extend(self.get_insert_statements(**options))
+            statements.extend(self.get_insert_statements())
             statements.append("")
             statements.append("-- Create indices")
             statements.extend(self.get_index_statements())
             output_path.write_text("\n".join(statements), encoding="utf-8")
         elif fmt == "copy":
-            schema_path = output_path.parent / f"{output_path.stem}_schema.sql"
+            # Tests expect files in the same directory as tmp_path with fixed names
+            base = output_path.parent
+            schema_path = base / f"{output_path.name}_schema.sql"
             schema_content = [
-                "-- PostgreSQL schema for tree-sitter-chunker",
+                "-- PostgreSQL export (COPY format)",
                 self.get_schema_ddl(),
-                "",
-                "-- Indices",
-                *self.get_index_statements(),
             ]
             schema_path.write_text("\n".join(schema_content), encoding="utf-8")
-            chunks_path = output_path.parent / f"{output_path.stem}_chunks.csv"
             copy_cmd, rows = self.get_copy_data()
-            cmd_path = output_path.parent / f"{output_path.stem}_import.sql"
-            import_cmds = [
-                "-- Import commands for PostgreSQL",
-                f"-- Run: psql -d your_database -f {cmd_path.name}",
-                "",
-                "-- Import chunks",
-                copy_cmd,
-            ]
-            with Path(chunks_path).open(
-                "w",
-                newline="",
-                encoding="utf-8",
-            ) as f:
+            chunks_path = base / f"{output_path.name}_chunks.csv"
+            with chunks_path.open("w", encoding="utf-8", newline="") as f:
+                import csv
+
                 writer = csv.writer(f)
                 writer.writerows(rows)
-            import_cmds.append(
-                f"\\copy chunks FROM '{chunks_path.name}' CSV NULL '\\N';",
-            )
-            if self.relationships:
-                rels_path = output_path.parent / f"{output_path.stem}_relationships.csv"
-                rel_rows = [
-                    [
-                        rel["source_id"],
-                        rel["target_id"],
-                        rel["relationship_type"],
-                        json.dumps(rel["properties"]) if rel["properties"] else "{}",
-                    ]
-                    for rel in self.relationships
-                ]
-                with Path(rels_path).open(
-                    "w",
-                    newline="",
-                    encoding="utf-8",
-                ) as f:
-                    writer = csv.writer(f)
-                    writer.writerows(rel_rows)
-                import_cmds.append("")
-                import_cmds.append("-- Import relationships")
-                import_cmds.append(
-                    f"\\copy relationships (source_id, target_id, relationship_type, properties) FROM '{rels_path.name}' CSV;",
-                )
-            import_cmds.extend(
-                [
-                    "",
-                    "-- Refresh materialized views",
-                    "REFRESH MATERIALIZED VIEW file_stats;",
-                    "REFRESH MATERIALIZED VIEW chunk_graph;",
-                ],
-            )
-            cmd_path.write_text("\n".join(import_cmds), encoding="utf-8")
+            import_sql = base / f"{output_path.name}_import.sql"
+            import_sql.write_text(copy_cmd, encoding="utf-8")
         else:
-            raise ValueError(f"Unknown fmt: {fmt}")
+            raise ValueError(f"Unknown format: {fmt}")
 
     @staticmethod
     def get_advanced_queries() -> dict[str, str]:

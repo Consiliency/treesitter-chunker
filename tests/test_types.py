@@ -32,6 +32,11 @@ class TestCodeChunkBasics:
             "references",
             "dependencies",
             "metadata",
+            # new identity & hierarchy
+            "node_id",
+            "file_id",
+            "symbol_id",
+            "parent_route",
         }
         assert field_names == expected_fields
 
@@ -126,7 +131,7 @@ class TestChunkIdGeneration:
     pass""",
         )
         generated_id = chunk.generate_id()
-        assert len(generated_id) == 16
+        assert len(generated_id) == 40
         assert all(c in "0123456789abcdef" for c in generated_id)
         assert chunk.generate_id() == generated_id
 
@@ -146,7 +151,7 @@ class TestChunkIdGeneration:
     pass""",
         )
         assert chunk.chunk_id
-        assert len(chunk.chunk_id) == 16
+        assert len(chunk.chunk_id) == 40
         assert chunk.chunk_id == chunk.generate_id()
 
     @classmethod
@@ -219,8 +224,16 @@ class TestChunkIdGeneration:
             content="""def test2():
     pass""",
         )
-        ids = {chunk1.chunk_id, chunk2.chunk_id, chunk3.chunk_id, chunk4.chunk_id}
-        assert len(ids) == 4
+        ids = {
+            chunk1.chunk_id,
+            chunk2.chunk_id,
+            chunk3.chunk_id,
+            chunk4.chunk_id,
+        }
+        # With stable IDs based on path/language/route/content,
+        # identical content under same route can collide intentionally
+        assert len(ids) >= 3
+        assert chunk1.chunk_id == chunk3.chunk_id
 
     @classmethod
     def test_id_generation_consistency(cls):

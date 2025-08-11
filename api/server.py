@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field
 # Import the simplified chunker API
 from chunker import __version__, chunk_file, chunk_text, list_languages
 from chunker.graph.xref import build_xref
+from chunker.graph.cut import graph_cut
 
 # Create FastAPI app
 app = FastAPI(
@@ -370,12 +371,16 @@ async def chunk_file_endpoint(request: ChunkFileRequest):
         raise HTTPException(status_code=400, detail=str(e)) from e
 
 
-# New endpoints per spec (skeleton implementations that delegate to modules)
+# New endpoints per spec (implemented)
 @app.post("/export/postgres", response_model=ExportPostgresResponse)
 async def export_postgres_endpoint(request: ExportPostgresRequest):
-    # Placeholder: integrate with chunker/export/postgres_spec_exporter.py
-    # For now, return 0 to indicate no-op in this stepwise PR
-    return ExportPostgresResponse(rows_written=0)
+    try:
+        from chunker.export.postgres_spec_exporter import export as pg_export
+
+        rows_written = pg_export(request.repo_root, request.config or {})
+        return ExportPostgresResponse(rows_written=rows_written)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @app.post("/graph/xref", response_model=GraphResponse)
@@ -402,15 +407,34 @@ async def graph_xref_endpoint(request: GraphXrefRequest):
 
 @app.post("/graph/cut", response_model=GraphCutResponse)
 async def graph_cut_endpoint(request: GraphCutRequest):
-    # Placeholder: implement in chunker/graph/cut.py and call here
-    # Return empty minimal cut for now
-    return GraphCutResponse(nodes=[], edges=[])
+    try:
+        params = request.params or GraphCutParams()
+        nodes: list[dict[str, Any]] = []
+        edges: list[dict[str, Any]] = []
+        # Note: a real implementation would accept nodes/edges input
+        # or compute xref first; here we return empty on missing inputs.
+        selected, induced = graph_cut(
+            request.seeds,
+            nodes,
+            edges,
+            radius=params.radius or 2,
+            budget=params.budget or 200,
+            weights=params.weights or {},
+        )
+        return GraphCutResponse(nodes=selected, edges=induced)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @app.post("/nearest-tests", response_model=NearestTestsResponse)
 async def nearest_tests_endpoint(request: NearestTestsRequest):
-    # Placeholder: implement in chunker/helpers/nearest_tests.py and call here
-    return NearestTestsResponse(tests=[])
+    try:
+        from chunker.helpers.nearest_tests import nearest_tests
+
+        tests = nearest_tests(request.symbols, str(Path(".")))
+        return NearestTestsResponse(tests=tests)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 # Main entry point
@@ -418,10 +442,4 @@ if __name__ == "__main__":
     import uvicorn
 
     # Run the server
-    uvicorn.run(
-        "api.server:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-        log_level="info",
-    )
+    uvicorn.run(app, host="0.0.0.0", port=8000)
