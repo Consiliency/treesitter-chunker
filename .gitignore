@@ -40,3 +40,14 @@ serde/
 __pycache__/
 *.log
 
+
+# Local envs and caches
+.toxenv/
+.fullenv/
+.venv/
+.pytest_cache/
+__pycache__/
+*.log
+wheel_build_verbose*.log
+pytest_*.log
+
