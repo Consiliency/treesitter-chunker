@@ -77,7 +77,8 @@ class DistributionImpl(DistributionContract):
             upload_info["status"] = "failed"
             return False, upload_info
         for dist_file in dist_files:
-            with dist_file.open("rb", "r") as f:
+            # Correct usage: single mode argument
+            with dist_file.open("rb") as f:
                 file_hash = hashlib.sha256(f.read()).hexdigest()
             file_info = {
                 "filename": dist_file.name,

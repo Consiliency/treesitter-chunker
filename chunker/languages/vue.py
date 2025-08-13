@@ -8,6 +8,7 @@ import re
 from typing import TYPE_CHECKING
 
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
+from chunker.types import CodeChunk
 
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
@@ -148,6 +149,27 @@ class VuePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                         chunk["language"] = "typescript"
                     else:
                         chunk["language"] = "javascript"
+                    # Heuristic: raw_text script contents are not parsed into JS AST.
+                    # Detect component definition directly from the script text.
+                    if ("export default" in content) or ("defineComponent" in content):
+                        comp = {
+                            "type": "component_definition",
+                            "start_line": n.start_point[0] + 1,
+                            "end_line": n.end_point[0] + 1,
+                            "content": content,
+                            "name": None,
+                        }
+                        # Try to extract a component name
+                        name_match = re.search(r"name:\s*['\"]([^'\"]+)['\"]", content)
+                        if not name_match:
+                            name_match = re.search(
+                                r"defineComponent\(\s*\{[^}]*name:\s*['\"]([^'\"]+)['\"]",
+                                content,
+                                re.DOTALL,
+                            )
+                        if name_match:
+                            comp["name"] = name_match.group(1)
+                        chunks.append(comp)
                 elif n.type == "style_element":
                     if "scoped" in content[:50]:
                         chunk["is_scoped"] = True
@@ -309,6 +331,57 @@ class VuePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     }
                     return chunk if self.should_include_chunk(chunk) else None
         return super().process_node(node, source, file_path, parent_context)
+
+    def walk_tree(
+        self,
+        node: Node,
+        source: bytes,
+        file_path: str,
+        parent_context: str | None = None,
+    ) -> list[CodeChunk]:
+        """Override to add semantic Vue chunks in addition to structural ones.
+
+        The Vue grammar often treats script/style contents as raw_text without
+        nested JavaScript/CSS nodes. We supplement structural chunks with
+        semantic ones like component_definition by scanning script contents.
+        """
+        # First, collect the default structural chunks
+        chunks = super().walk_tree(node, source, file_path, parent_context)
+
+        # Then, add semantic chunks derived from content
+        try:
+            semantic = self.get_semantic_chunks(node, source)
+        except Exception:
+            semantic = []
+
+        if semantic:
+            # Avoid duplicates by content and type
+            existing = {(c.node_type, c.content) for c in chunks}
+            for sc in semantic:
+                sc_type = sc.get("type")
+                if sc_type == "component_definition":
+                    content = sc.get("content", "")
+                    if (sc_type, content) in existing:
+                        continue
+                    start_line = int(sc.get("start_line", 1))
+                    end_line = int(sc.get("end_line", start_line))
+                    chunk = CodeChunk(
+                        language=self.language_name,
+                        file_path=file_path,
+                        node_type="component_definition",
+                        start_line=start_line,
+                        end_line=end_line,
+                        byte_start=0,
+                        byte_end=0,
+                        parent_context="script_element",
+                        content=content,
+                    )
+                    name = sc.get("name")
+                    if name:
+                        chunk.metadata["component_name"] = name
+                    chunks.append(chunk)
+
+        return chunks
 
     @staticmethod
     def _detect_style_preprocessor(content: str) -> str | None:

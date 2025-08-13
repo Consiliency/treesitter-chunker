@@ -229,8 +229,9 @@ class ProcessorChain:
         all_chunks = []
         remaining_content = content
         for processor in self.processors:
-            if processor.can_process(remaining_content, file_path):
-                chunks = processor.process(remaining_content, file_path)
+            path_str = str(file_path)
+            if processor.can_process(remaining_content, path_str):
+                chunks = processor.process(remaining_content, path_str)
                 all_chunks.extend(chunks)
         return all_chunks
 
@@ -421,10 +422,10 @@ class SlidingWindowFallback(FallbackChunker):
                 self.fallback = fallback_class()
 
             def can_process(self, _content: str, file_path: str) -> bool:
-                return self.fallback.can_handle(file_path, "")
+                return self.fallback.can_handle(str(file_path), "")
 
             def process(self, content: str, file_path: str) -> list[CodeChunk]:
-                return self.fallback.chunk_text(content, file_path)
+                return self.fallback.chunk_text(content, str(file_path))
 
         return ProcessorAdapter
 
@@ -441,10 +442,10 @@ class SlidingWindowFallback(FallbackChunker):
                 self.processor = processor_class(config)
 
             def can_process(self, content: str, file_path: str) -> bool:
-                return self.processor.can_handle(file_path, content)
+                return self.processor.can_handle(str(file_path), content)
 
             def process(self, content: str, file_path: str) -> list[CodeChunk]:
-                chunks = self.processor.process(content, file_path)
+                chunks = self.processor.process(content, str(file_path))
                 code_chunks = []
                 for chunk in chunks:
                     if hasattr(chunk, "content"):
@@ -529,15 +530,16 @@ class SlidingWindowFallback(FallbackChunker):
             List of chunks
         """
         file_type = self.detector.detect_file_type(file_path)
-        processor_names = self.registry.find_processors(file_path, file_type)
+        processor_names = self.registry.find_processors(str(file_path), file_type)
         for proc_name in processor_names:
             processor = self.registry.get_processor(proc_name)
-            if processor and processor.can_process(content, file_path):
+            path_str = str(file_path)
+            if processor and processor.can_process(content, path_str):
 
                 logger.info("Using processor '%s' for %s", proc_name, file_path)
 
                 try:
-                    chunks = processor.process(content, file_path)
+                    chunks = processor.process(content, path_str)
                     for chunk in chunks:
                         if not hasattr(chunk, "metadata"):
                             chunk.metadata = {}

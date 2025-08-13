@@ -79,10 +79,10 @@ class TestTemplateGenerator:
         assert template_vars["language_name"] == "css"
         assert template_vars["class_name"] == "Css"
         assert template_vars["node_types"] == ["function", "class"]
-        assert ".css" in vars["file_extensions"]
-        assert ".scss" in vars["file_extensions"]
+        assert ".css" in template_vars["file_extensions"]
+        assert ".scss" in template_vars["file_extensions"]
         assert template_vars["include_decorators"] is True
-        assert "function" in vars["custom_node_handling"]
+        assert "function" in template_vars["custom_node_handling"]
 
     @staticmethod
     def test_prepare_test_variables(generator):
@@ -99,7 +99,7 @@ class TestTemplateGenerator:
         template_vars = generator._prepare_test_variables("css", test_cases)
         assert template_vars["language_name"] == "css"
         assert template_vars["class_name"] == "Css"
-        assert len(vars["test_cases"]) == 2
+        assert len(template_vars["test_cases"]) == 2
         assert template_vars["test_cases"][0]["name"] == "test_functions"
         assert template_vars["test_cases"][0]["expected_chunks"] == 2
         assert template_vars["test_cases"][1]["expected_chunks"] == 1
@@ -243,7 +243,7 @@ class TestPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         assert "function" in content
 
     @staticmethod
-    def test_integration_scenario(generator, _temp_dir):
+    def test_integration_scenario(generator, temp_dir):
         """Test a full integration scenario."""
         config = {
             "node_types": ["style_rule", "media_rule", "keyframes_rule"],
@@ -254,7 +254,7 @@ class TestPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         assert generator._validate_config(config) is True
         template_vars = generator._prepare_plugin_variables("css", config)
         assert template_vars["class_name"] == "Css"
-        assert "style_rule" in vars["node_types"]
+        assert "style_rule" in template_vars["node_types"]
         template = generator._env.get_template("language_plugin.py.j2")
-        content = template.render(**vars)
+        content = template.render(**template_vars)
         assert "class CssPlugin" in content

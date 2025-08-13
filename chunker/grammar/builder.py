@@ -117,13 +117,97 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
         lib_path = self._build_dir / f"{language}{self._lib_extension}"
         try:
             logger.info("Building %s...", language)
-            c_files = []
-            src_dir = lang_path / "src"
+            # Multi-language repo subdir mapping (build from subdir when required)
+            subdir_map: dict[str, str] = {
+                # typescript repo provides typescript/ and tsx/
+                "typescript": "typescript",
+                "tsx": "tsx",
+                # wasm repo provides wat/ subdirectory
+                "wat": "wat",
+                # ocaml repo provides grammars/ocaml/ and grammars/interface/
+                # For now build ocaml core when requested
+                "ocaml": "grammars/ocaml",
+                # php repo provides php/ and php_only/ subdirectories
+                "php": "php",
+            }
+            lang_root = lang_path
+            if language in subdir_map:
+                lang_root = lang_path / subdir_map[language]
+                if not lang_root.exists():
+                    logger.error("Subdir for %s not found: %s", language, lang_root)
+                    self._build_logs[language] = f"Subdir not found: {lang_root}"
+                    return False
+            # Check if this grammar needs generation first
+            grammar_js = lang_root / "grammar.js"
+            parser_c = lang_root / "src" / "parser.c"
+            if grammar_js.exists() and not parser_c.exists():
+                logger.info("Grammar needs generation, running tree-sitter generate...")
+                result = subprocess.run(
+                    ["npx", "tree-sitter", "generate"],
+                    cwd=lang_root,
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
+                if result.returncode != 0:
+                    logger.warning(f"tree-sitter generate failed: {result.stderr}")
+                    # Continue anyway - maybe we can still find source files
+
+            # Collect C/C++ sources including external scanners from root and src/
+            c_files: list[str] = []
+            cc_files: list[str] = []
+            src_dir = lang_root / "src"
+            # Root-level sources
+            c_files.extend(str(p) for p in lang_root.glob("*.c"))
+            cc_files.extend(str(p) for p in lang_root.glob("*.cc"))
+            # src/ directory sources
             if src_dir.exists():
-                c_files.extend(str(src) for src in src_dir.glob("*.c"))
-            if not c_files:
-                raise BuildError(f"No C source files found in {src_dir}")
-            cmd = ["gcc", "-shared", "-fPIC", "-o", str(lib_path), *c_files]
+                c_files.extend(str(p) for p in src_dir.glob("*.c"))
+                cc_files.extend(str(p) for p in src_dir.glob("*.cc"))
+
+            if not c_files and not cc_files:
+                # No C/C++ source files found, this grammar might need different handling
+                logger.error(f"No C/C++ source files found in {lang_root}")
+                self._build_logs[language] = (
+                    f"No C/C++ source files found in {lang_root}"
+                )
+                return False
+
+            # Filter out binding.cc and other problematic files
+            cc_files = [f for f in cc_files if not f.endswith("binding.cc")]
+
+            # For some problematic grammars, use only parser.c and scanner.c
+            problematic_grammars = {"wat"}
+            if language in problematic_grammars:
+                # Only include essential files for problematic grammars
+                c_files = [
+                    f
+                    for f in c_files
+                    if f.endswith("parser.c") or f.endswith("scanner.c")
+                ]
+                cc_files = []
+
+            # Choose compiler - prefer clang for better C99 support
+            use_cxx = len(cc_files) > 0
+            if use_cxx:
+                compiler = "clang++" if shutil.which("clang++") else "g++"
+            else:
+                compiler = "clang" if shutil.which("clang") else "gcc"
+
+            sources = c_files + cc_files
+            cmd = [compiler, "-shared", "-fPIC", "-O2", "-o", str(lib_path), *sources]
+
+            # Language standards to support generated parsers
+            if use_cxx:
+                cmd.extend(["-std=c++17"])  # scanners often use modern C++
+            else:
+                # Use C99 with GNU extensions for better designated initializer support
+                cmd.extend(["-std=gnu99"])
+
+            # Link stdc++ if using C++
+            if use_cxx:
+                cmd.extend(["-lstdc++"])  # usually implied by g++, but explicit is fine
+
             result = subprocess.run(cmd, check=False, capture_output=True, text=True)
             if result.returncode != 0:
                 raise BuildError(f"Compilation failed: {result.stderr}")

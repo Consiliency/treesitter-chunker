@@ -118,7 +118,9 @@ class ContextFactory:
             ValueError: If language is not supported
         """
         if language not in cls._context_filters:
-            raise ValueError(f"No context filter available for language: {language}")
+            raise ValueError(
+                f"No context filter_func available for language: {language}"
+            )
 
         filter_class = cls._context_filters[language]
         return filter_class()

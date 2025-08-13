@@ -4,11 +4,11 @@ import fnmatch
 import json
 import os
 import sys
+import tomllib
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import tomllib
 import typer
 from rich.console import Console
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, TimeRemainingColumn
@@ -36,25 +36,47 @@ if TYPE_CHECKING:
 app.add_typer(repo_app, name="repo", help="Repository processing commands")
 
 
-def load_config(config_path: Path | None = None) -> dict[str, Any]:
-    """Load configuration from .chunkerrc file_path."""
-    config = {}
+def load_config(
+    config_path: Path | None = None,
+    *,
+    for_path: Path | None = None,
+) -> dict[str, Any]:
+    """Load configuration from a `.chunkerrc` file.
 
-    # Look for config file_path
+    Preference order:
+    1) Explicit `config_path` if provided
+    2) Nearest `.chunkerrc` found by walking up from `for_path` (file or directory)
+    3) Fallback to current working directory, then home directory
+    """
+    config: dict[str, Any] = {}
+
+    # 1) Explicit path always wins
     if config_path:
         config_files = [config_path]
     else:
-        config_files = [
-            Path.cwd() / ".chunkerrc",
+        # 2) Determine search roots
+        search_roots: list[Path] = []
+        if for_path is not None:
+            root = for_path if for_path.is_dir() else for_path.parent
+            # Walk up to filesystem root
+            current = root.resolve()
+            while True:
+                search_roots.append(current)
+                if current.parent == current:
+                    break
+                current = current.parent
+        # 3) Fallbacks
+        if not search_roots:
+            search_roots = [Path.cwd()]
+
+        config_files = [p / ".chunkerrc" for p in search_roots] + [
             Path.home() / ".chunkerrc",
         ]
 
     for config_file in config_files:
         if config_file.exists():
             try:
-                with Path(config_file).open(
-                    "rb",
-                ) as f:
+                with Path(config_file).open("rb") as f:
                     config = tomllib.load(f)
                 break
             except (
@@ -246,7 +268,7 @@ def chunk(
             chunks = chunk_text(content, language)
             results = []
             # Apply filters
-            cfg = load_config(config)
+            cfg = load_config(config, for_path=Path.cwd())
             types_list = None
             if chunk_types:
                 types_list = [t.strip() for t in chunk_types.split(",")]
@@ -293,7 +315,8 @@ def chunk(
             sys.exit(1)
 
         # Load config
-        cfg = load_config(config)
+        # Load config relative to the file being processed
+        cfg = load_config(config, for_path=file_path)
 
         # Parse chunk types
         types_list = None
@@ -341,9 +364,12 @@ def chunk(
         console.print(tbl)
 
     # Exit with appropriate code
+    # For machine-readable outputs (json/jsonl/minimal), do not treat
+    # empty results as an error to allow chaining
     if not results and not quiet:
-        console.print("[yellow]No chunks found[/yellow]")
-        sys.exit(1)
+        if not (json_out or output_format in {"json", "jsonl", "minimal"}):
+            console.print("[yellow]No chunks found[/yellow]")
+            sys.exit(1)
 
 
 @app.command()
@@ -432,7 +458,15 @@ def batch(
 ):
     """Process multiple files with batch operations."""
     # Load config
-    cfg = load_config(config)
+    # For batch, prefer configs relative to provided paths if any
+    prefer_path = None
+    if paths and len(paths) > 0:
+        # Use the first path as the reference for discovering config
+        prefer_path = paths[0]
+    elif pattern:
+        # Use the current working directory for pattern-based discovery
+        prefer_path = Path.cwd()
+    cfg = load_config(config, for_path=prefer_path)
 
     # Parse options
     types_list = None

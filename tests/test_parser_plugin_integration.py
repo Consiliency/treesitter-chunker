@@ -21,7 +21,7 @@ import time
 import weakref
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from queue import Queue
+from queue import Full, Queue
 from typing import Any
 from unittest.mock import Mock, patch
 
@@ -50,9 +50,9 @@ class MockDynamicParser:
         """Mock timeout setting."""
         self._timeout = timeout
 
-    @classmethod
-    def parse(cls, code: bytes, keep_text: bool = True):
-        """Mock parse method."""
+    def parse(self, source, old_tree=None, encoding="utf8"):
+        """Mock parse method with tree_sitter.Parser compatible signature."""
+        self.parse_count += 1
         return Mock(root_node=Mock())
 
 
@@ -117,7 +117,7 @@ class TestParserPoolManagement:
             try:
                 self.parser_factory._pools[dynamic_lang].put_nowait(parser)
                 parsers_added += 1
-            except (IndexError, KeyError, SyntaxError):
+            except (IndexError, KeyError, SyntaxError, Full):
                 pass
         assert parsers_added == max_pool_size
         assert self.parser_factory._pools[dynamic_lang].qsize() == max_pool_size
@@ -391,13 +391,11 @@ class TestIntegrationPatterns:
         parser_v1 = MockDynamicParser(lang)
         parser_v1.version = "1.0.0"
         parser_versions[lang] = parser_v1
-        parser_v1.parse_count += 1
         parser_v1.parse(b"test code v1")
         assert parser_v1.parse_count == 1
         parser_v2 = MockDynamicParser(lang)
         parser_v2.version = "2.0.0"
         parser_versions[lang] = parser_v2
-        parser_v2.parse_count += 1
         parser_v2.parse(b"test code v2")
         assert parser_v2.parse_count == 1
         assert parser_v2.version == "2.0.0"
@@ -412,12 +410,12 @@ class TestIntegrationPatterns:
                 super().__init__("failing_lang")
                 self.fail_after = 3
 
-            def parse(self, code: bytes, keep_text: bool = True):
+            def parse(self, source, old_tree=None, encoding="utf8"):
                 current_count = self.parse_count
-                self.parse_count += 1
                 if current_count >= self.fail_after:
                     raise RuntimeError("Parser failed")
-                return MockDynamicParser.parse(self, code, keep_text)
+                # Call parent parse method which will increment parse_count
+                return super().parse(source, old_tree, encoding)
 
         parser = FailingParser()
         successful_parses = 0

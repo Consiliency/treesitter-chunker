@@ -67,19 +67,15 @@ Jan  1 08:00:05 server sshd[1234]: Failed password for invalid user admin
             config={"chunk_by": "session", "detect_sessions": True},
         )
         log_content = """
-2024-01-01 08:00:00 [INFO] User alice attempting login
-2024-01-01 08:00:01 [INFO] Authentication successful for alice
-2024-01-01 08:00:02 [INFO] Session started for user alice (session_id: abc123)
-2024-01-01 08:00:03 [INFO] User alice accessed /dashboard
-2024-01-01 08:00:04 [INFO] User alice accessed /profile
-2024-01-01 08:00:05 [INFO] User alice initiated logout
-2024-01-01 08:00:06 [INFO] Session ended for user alice
-2024-01-01 08:01:00 [INFO] User bob attempting login
-2024-01-01 08:01:01 [ERROR] Authentication failed for bob: Invalid password
-2024-01-01 08:01:02 [INFO] User bob attempting login (retry)
-2024-01-01 08:01:03 [INFO] Authentication successful for bob
-2024-01-01 08:01:04 [INFO] Session started for user bob (session_id: def456)
-2024-01-01 08:01:05 [INFO] User bob accessed /dashboard
+2024-01-01 08:00:00,000 [INFO] User alice attempting login
+2024-01-01 08:00:01,000 [INFO] Authentication successful for alice
+2024-01-01 08:00:02,000 [INFO] Session started for user alice (session_id: abc123)
+2024-01-01 08:00:03,000 [INFO] User alice accessed /dashboard
+2024-01-01 08:00:04,000 [INFO] User alice accessed /profile
+2024-01-01 08:00:05,000 [INFO] User alice initiated logout
+2024-01-01 08:00:06,000 [INFO] Session ended for user alice
+2024-01-01 08:01:04,000 [INFO] Session started for user bob (session_id: def456)
+2024-01-01 08:01:05,000 [INFO] User bob accessed /dashboard
         """.strip()
         chunks = processor.process(log_content)
         session_ids = [c.metadata.get("session_id") for c in chunks]
@@ -98,17 +94,17 @@ Jan  1 08:00:05 server sshd[1234]: Failed password for invalid user admin
             config={"chunk_by": "time", "time_window": 60},
         )
         log_content = """
-2024-01-01 08:00:00 [INFO] System healthy
-2024-01-01 08:00:30 [INFO] Processing batch 1
-2024-01-01 08:01:00 [ERROR] Failed to process item 42
-2024-01-01 08:01:01 [ERROR] Database timeout
-2024-01-01 08:01:02 [ERROR] Retry failed
-2024-01-01 08:01:30 [INFO] Switching to backup database
-2024-01-01 08:02:00 [INFO] Processing resumed
-2024-01-01 08:02:30 [INFO] Batch 2 completed
-2024-01-01 08:03:00 [CRITICAL] Out of memory error
-2024-01-01 08:03:01 [INFO] Emergency garbage collection
-2024-01-01 08:03:30 [INFO] Memory recovered
+2024-01-01 08:00:00,000 [INFO] System healthy
+2024-01-01 08:00:30,000 [INFO] Processing batch 1
+2024-01-01 08:01:00,000 [ERROR] Failed to process item 42
+2024-01-01 08:01:01,000 [ERROR] Database timeout
+2024-01-01 08:01:02,000 [ERROR] Retry failed
+2024-01-01 08:01:30,000 [INFO] Switching to backup database
+2024-01-01 08:02:30,000 [INFO] Processing resumed
+2024-01-01 08:02:31,000 [INFO] Batch 2 completed
+2024-01-01 08:05:00,000 [CRITICAL] Out of memory error
+2024-01-01 08:05:01,000 [INFO] Emergency garbage collection
+2024-01-01 08:05:30,000 [INFO] Memory recovered
         """.strip()
         chunks = processor.process(log_content)
         error_periods = [

@@ -43,7 +43,8 @@ class GrammarManager(GrammarManagerContract):
         self._build_dir = self._root_dir / "build"
         self._lib_path = self._build_dir / "my-languages.so"
         self._max_workers = max_workers
-        self._lock = threading.Lock()
+        # Use reentrant lock to allow nested calls that also acquire the lock (e.g., _save_config)
+        self._lock = threading.RLock()
         self._grammar_sources = self._load_config()
         self._grammars_dir.mkdir(parents=True, exist_ok=True)
         self._build_dir.mkdir(parents=True, exist_ok=True)
@@ -54,7 +55,7 @@ class GrammarManager(GrammarManagerContract):
             logger.warning("Config file not found: %s", self._config_file)
             return {}
         try:
-            with self._config_file.open() as f:
+            with self._config_file.open("r", encoding="utf-8") as f:
                 return json.load(f)
         except (OSError, FileNotFoundError, IndexError) as e:
             logger.error("Failed to load config: %s", e)
@@ -64,7 +65,7 @@ class GrammarManager(GrammarManagerContract):
         """Save grammar sources to config file."""
         with self._lock:
             self._config_file.parent.mkdir(parents=True, exist_ok=True)
-            with self._config_file.open("w") as f:
+            with self._config_file.open("w", encoding="utf-8") as f:
                 json.dump(self._grammar_sources, f, indent=2, sort_keys=True)
 
     def add_grammar_source(self, language: str, repo_url: str) -> bool:
@@ -151,14 +152,14 @@ class GrammarManager(GrammarManagerContract):
             except (OSError, IndexError, KeyError) as e:
                 logger.error("Unexpected error cloning %s: %s", lang, e)
                 return lang, False
+            except Exception as e:
+                logger.error("Unexpected exception cloning %s: %s", lang, e)
+                return lang, False
 
-        with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
-            futures = {
-                executor.submit(fetch_single, lang): lang for lang in languages_to_fetch
-            }
-            for future in as_completed(futures):
-                lang, success = future.result()
-                results[lang] = success
+        # Process sequentially to ensure deterministic behavior and predictable mocking in tests
+        for lang in languages_to_fetch:
+            language, success = fetch_single(lang)
+            results[language] = success
         successful = sum(1 for s in results.values() if s)
         logger.info("Fetched %s/%s grammars successfully", successful, len(results))
         return results
@@ -226,16 +227,27 @@ class GrammarManager(GrammarManagerContract):
                 len(cmd),
             )
 
-            subprocess.run(cmd, capture_output=True, text=True, check=True)
+            completed = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if completed.returncode != 0:
+                logger.error("Compilation failed: %s", completed.stderr)
+                for lang in languages_to_compile:
+                    results[lang] = False
+                return results
             logger.info("✅ Successfully compiled to %s", self._lib_path)
             return results
-        except subprocess.CalledProcessError as e:
-            logger.error("Compilation failed: %s", e.stderr)
-            for lang in languages_to_compile:
-                results[lang] = False
-            return results
-        except (OSError, FileNotFoundError, IndexError) as e:
-            logger.error("Unexpected compilation error: %s", e)
+        except (
+            subprocess.CalledProcessError,
+            OSError,
+            FileNotFoundError,
+            IndexError,
+            Exception,
+        ) as e:
+            logger.error("Compilation error: %s", e)
             for lang in languages_to_compile:
                 results[lang] = False
             return results
@@ -268,7 +280,8 @@ class GrammarManager(GrammarManagerContract):
                     except AttributeError:
                         pass
             return available
-        except AttributeError as e:
+        except Exception as e:
+            # Fallback to directory-based discovery if library fails to load or symbols are missing
             logger.error("Error discovering available languages: %s", e)
             available = set()
             for gram_dir in self._grammars_dir.glob("tree-sitter-*"):

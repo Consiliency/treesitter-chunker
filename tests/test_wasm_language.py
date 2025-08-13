@@ -30,12 +30,12 @@ class TestWASMPlugin:
         assert ".wat" in plugin.supported_extensions
         assert ".wast" in plugin.supported_extensions
         assert "module" in plugin.default_chunk_types
-        assert "function" in plugin.default_chunk_types
-        assert "memory" in plugin.default_chunk_types
-        assert "table" in plugin.default_chunk_types
-        assert "global" in plugin.default_chunk_types
-        assert "export" in plugin.default_chunk_types
-        assert "import" in plugin.default_chunk_types
+        assert "module_field_func" in plugin.default_chunk_types
+        assert "module_field_memory" in plugin.default_chunk_types
+        assert "module_field_table" in plugin.default_chunk_types
+        assert "module_field_global" in plugin.default_chunk_types
+        assert "module_field_export" in plugin.default_chunk_types
+        assert "module_field_import" in plugin.default_chunk_types
 
     @staticmethod
     def test_implements_contracts(plugin):
@@ -231,12 +231,9 @@ class TestWASMPlugin:
 
         root = tree.root_node
         module_nodes = find_nodes_by_type(root, "module")
-        func_nodes = find_nodes_by_type(root, "func") + find_nodes_by_type(
-            root,
-            "function",
-        )
-        memory_nodes = find_nodes_by_type(root, "memory")
-        global_nodes = find_nodes_by_type(root, "global")
+        func_nodes = find_nodes_by_type(root, "module_field_func")
+        memory_nodes = find_nodes_by_type(root, "module_field_memory")
+        global_nodes = find_nodes_by_type(root, "module_field_global")
         assert all(plugin.should_chunk_node(n) for n in module_nodes)
         assert all(plugin.should_chunk_node(n) for n in func_nodes)
         assert all(plugin.should_chunk_node(n) for n in memory_nodes)
@@ -273,10 +270,7 @@ class TestWASMPlugin:
             context = plugin.get_node_context(module_node, source)
             assert context is not None
             assert "module" in context
-        func_node = find_first_node_by_type(
-            tree.root_node,
-            "func",
-        ) or find_first_node_by_type(tree.root_node, "function")
+        func_node = find_first_node_by_type(tree.root_node, "module_field_func")
         if func_node:
             context = plugin.get_node_context(func_node, source)
             assert context is not None

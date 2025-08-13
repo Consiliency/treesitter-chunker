@@ -40,7 +40,7 @@ def build_xref(
         rel_type: str,
         weight: float = 1.0,
     ) -> None:
-        if not src or not dst or src == dst:
+        if not src or not dst:
             return
         edges.append(
             {"src": src, "dst": dst, "type": rel_type, "weight": weight},
@@ -59,17 +59,22 @@ def build_xref(
 
     # Imports
     for c in chunks:
-        imports = []
+        imports: list[str] = []
         if c.metadata and isinstance(c.metadata, dict):
             imports = c.metadata.get("imports") or []
         if not imports:
             continue
-        # naive heuristic: match import name to any chunk whose content or
-        # metadata suggests a module/name
+        # Match import name to target exports or signature name
         for imp in imports:
+            if not imp:
+                continue
             for t in chunks:
-                # simple name match fallback
-                if imp and imp in (t.metadata.get("exports") or []):
+                t_exports = []
+                t_sig = (t.metadata or {}).get("signature") or {}
+                t_name = t_sig.get("name")
+                if imp in ((t.metadata or {}).get("exports") or []) or (
+                    t_name and imp == t_name
+                ):
                     add_edge(
                         c.node_id or c.chunk_id,
                         t.node_id or t.chunk_id,

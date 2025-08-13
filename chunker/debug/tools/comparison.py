@@ -8,6 +8,7 @@ from typing import Any
 from chunker.contracts.debug_contract import ChunkComparisonContract
 from chunker.core import chunk_file
 from chunker.fallback.fallback_manager import FallbackManager
+from chunker.parser import get_parser
 from chunker.strategies import (
     AdaptiveChunker,
     CompositeChunker,
@@ -159,25 +160,37 @@ class ChunkComparison(ChunkComparisonContract):
     def _chunk_adaptive(cls, file_path: str, language: str):
         """Use adaptive chunking strategy"""
         chunker = AdaptiveChunker()
-        return chunker.chunk_file(file_path, language)
+        with open(file_path, "rb") as f:
+            src = f.read()
+        ast = get_parser(language).parse(src).root_node
+        return chunker.chunk(ast, src, file_path, language)
 
     @classmethod
     def _chunk_composite(cls, file_path: str, language: str):
         """Use composite chunking strategy"""
         chunker = CompositeChunker()
-        return chunker.chunk_file(file_path, language)
+        with open(file_path, "rb") as f:
+            src = f.read()
+        ast = get_parser(language).parse(src).root_node
+        return chunker.chunk(ast, src, file_path, language)
 
     @classmethod
     def _chunk_hierarchical(cls, file_path: str, language: str):
         """Use hierarchical chunking strategy"""
         chunker = HierarchicalChunker()
-        return chunker.chunk_file(file_path, language)
+        with open(file_path, "rb") as f:
+            src = f.read()
+        ast = get_parser(language).parse(src).root_node
+        return chunker.chunk(ast, src, file_path, language)
 
     @classmethod
     def _chunk_semantic(cls, file_path: str, language: str):
         """Use semantic chunking strategy"""
         chunker = SemanticChunker()
-        return chunker.chunk_file(file_path, language)
+        with open(file_path, "rb") as f:
+            src = f.read()
+        ast = get_parser(language).parse(src).root_node
+        return chunker.chunk(ast, src, file_path, language)
 
     @classmethod
     def _chunk_token_aware(cls, file_path: str, language: str):

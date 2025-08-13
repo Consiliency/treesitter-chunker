@@ -3,6 +3,7 @@
 import json
 import sqlite3
 
+import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
@@ -19,6 +20,16 @@ from chunker.export import (
     StructuredParquetExporter,
 )
 from chunker.interfaces.export import ExportFormat
+
+
+def read_parquet_table(path):
+    """Read parquet table with compatibility for older pyarrow versions."""
+    # For pyarrow < 16, use OSFile to avoid path conversion issues
+    if int(pa.__version__.split(".")[0]) < 16:
+        with pa.OSFile(str(path), "rb") as source:
+            return pq.read_table(source)
+    else:
+        return pq.read_table(str(path))
 
 
 @pytest.fixture
@@ -217,11 +228,11 @@ class TestStructuredExportIntegration:
         relationships_file = tmp_path / "export_relationships.parquet"
         assert chunks_file.exists()
         assert relationships_file.exists()
-        chunks_table = pq.read_table(chunks_file)
+        chunks_table = read_parquet_table(chunks_file)
         assert len(chunks_table) > 0
         assert "chunk_id" in chunks_table.column_names
         assert "content" in chunks_table.column_names
-        rel_table = pq.read_table(relationships_file)
+        rel_table = read_parquet_table(relationships_file)
         assert len(rel_table) > 0
         assert "source_chunk_id" in rel_table.column_names
         assert "relationship_type" in rel_table.column_names

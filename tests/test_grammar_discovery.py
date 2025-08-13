@@ -118,7 +118,7 @@ class TestGrammarDiscoveryService:
             ],
         }
         discovery_service.cache_file.parent.mkdir(parents=True, exist_ok=True)
-        with discovery_service.cache_file.open("w", "r") as f:
+        with discovery_service.cache_file.open("w", encoding="utf-8") as f:
             json.dump(cache_data, f)
         with patch.object(discovery_service._session, "get") as mock_get:
             mock_response = MagicMock()
@@ -168,7 +168,7 @@ class TestGrammarDiscoveryService:
             ],
         }
         discovery_service.cache_file.parent.mkdir(parents=True, exist_ok=True)
-        with discovery_service.cache_file.open("w", "r") as f:
+        with discovery_service.cache_file.open("w", encoding="utf-8") as f:
             json.dump(cache_data, f)
         python_info = discovery_service.get_grammar_info("python")
         assert python_info is not None
@@ -209,7 +209,7 @@ class TestGrammarDiscoveryService:
             ],
         }
         discovery_service.cache_file.parent.mkdir(parents=True, exist_ok=True)
-        with discovery_service.cache_file.open("w", "r") as f:
+        with discovery_service.cache_file.open("w", encoding="utf-8") as f:
             json.dump(cache_data, f)
         installed = {"python": "0.20.0", "rust": "0.20.0", "go": "0.19.0"}
         updates = discovery_service.check_grammar_updates(installed)
@@ -256,7 +256,7 @@ class TestGrammarDiscoveryService:
             ],
         }
         discovery_service.cache_file.parent.mkdir(parents=True, exist_ok=True)
-        with discovery_service.cache_file.open("w", "r") as f:
+        with discovery_service.cache_file.open("w", encoding="utf-8") as f:
             json.dump(cache_data, f)
         results = discovery_service.search_grammars("rust")
         assert len(results) == 1

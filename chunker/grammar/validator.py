@@ -8,7 +8,6 @@ from pathlib import Path
 from chunker._internal.registry import LanguageRegistry
 from chunker.exceptions import ChunkerError
 from chunker.interfaces.grammar import GrammarValidator
-from chunker.parser import get_parser
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +79,8 @@ class TreeSitterGrammarValidator(GrammarValidator):
             List of missing node types
         """
         try:
+            from chunker.parser import get_parser  # local import to avoid cycle
+
             parser = get_parser(language)
             test_code = self._get_minimal_test_code(language)
             tree = parser.parse(test_code.encode())
@@ -111,6 +112,8 @@ class TreeSitterGrammarValidator(GrammarValidator):
             Tuple of (success, error_message)
         """
         try:
+            from chunker.parser import get_parser  # local import to avoid cycle
+
             parser = get_parser(language)
             tree = parser.parse(sample_code.encode())
             if tree.root_node is None:
@@ -138,6 +141,8 @@ class TreeSitterGrammarValidator(GrammarValidator):
         """
         features = {}
         try:
+            from chunker.parser import get_parser  # local import to avoid cycle
+
             parser = get_parser(language)
             test_code = self._get_minimal_test_code(language)
             tree = parser.parse(test_code.encode())

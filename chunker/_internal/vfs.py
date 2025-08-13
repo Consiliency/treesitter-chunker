@@ -84,6 +84,8 @@ class LocalFileSystem(VirtualFileSystem):
     def __init__(self, root_path: Path | None = None):
         """Initialize with optional root path for sandboxing."""
         self.root = Path(root_path) if root_path else Path("/")
+        # Expose Path for tests that access LocalFileSystem.Path, rooted to self.root
+        self.Path = lambda p: self._resolve_path(p)
 
     def _resolve_path(self, path: str) -> Path:
         """Resolve a virtual path to actual path."""
@@ -136,8 +138,10 @@ class InMemoryFileSystem(VirtualFileSystem):
         """Initialize empty in-memory file system."""
         self.files: dict[str, bytes | str] = {}
         self.metadata: dict[str, VirtualFile] = {}
+        # Provide Path-like factory for tests
+        self.Path = lambda p: _InMemoryPath(self, p)
 
-    def add_file(self, path: str, content: str | bytes, _is_text: bool = True):
+    def add_file(self, path: str, content: str | bytes, is_text: bool = True):
         """Add a file to the in-memory file system."""
         self.files[path] = content
         size = len(content) if isinstance(content, bytes) else len(content.encode())
@@ -201,6 +205,17 @@ class InMemoryFileSystem(VirtualFileSystem):
         if path in self.metadata:
             return self.metadata[path].size
         raise FileNotFoundError(f"File not found: {path}")
+
+
+class _InMemoryPath:
+    """Simple Path-like wrapper to support .open() for InMemoryFileSystem tests."""
+
+    def __init__(self, vfs: InMemoryFileSystem, path: str):
+        self._vfs = vfs
+        self._path = path
+
+    def open(self, mode: str = "r"):
+        return self._vfs.open(self._path, mode)
 
 
 class ZipFileSystem(VirtualFileSystem):

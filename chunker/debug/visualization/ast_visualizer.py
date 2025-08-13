@@ -16,6 +16,7 @@ from rich.console import Console
 from rich.tree import Tree
 from tree_sitter import Node
 
+from chunker._internal.registry import LibraryLoadError
 from chunker.parser import get_parser
 from chunker.types import CodeChunk
 
@@ -26,7 +27,14 @@ class ASTVisualizer:
     def __init__(self, language: str):
         """Initialize visualizer for a specific language."""
         self.language = language
-        self.parser = get_parser(language)
+        try:
+            self.parser = get_parser(language)
+        except LibraryLoadError:
+            # Fallback: attempt to load per-language parser via factory after reinit without shared lib
+            from chunker import parser as _parser
+
+            _parser.clear_cache()
+            self.parser = get_parser(language)
         self.console = Console()
 
     def visualize_file(
@@ -197,7 +205,8 @@ class ASTVisualizer:
         """Render AST as a graphviz graph."""
         if not HAS_GRAPHVIZ:
             raise ImportError("graphviz package required for graph output")
-        dot = graphviz.Digraph(comment="AST", fmt="svg")
+        # 'format' is the correct argument name for output format in graphviz
+        dot = graphviz.Digraph(comment="AST", format="svg")
         dot.attr(rankdir="TB")
         self._add_graph_node(dot, node, content, chunks, max_depth, highlight_nodes, 0)
         return dot.source

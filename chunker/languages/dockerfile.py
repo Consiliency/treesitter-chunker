@@ -73,6 +73,10 @@ class DockerfileConfig(LanguageConfig):
 
 
 # Register the Dockerfile configuration
+from .base import language_config_registry
+
+dockerfile_config = DockerfileConfig()
+language_config_registry.register(dockerfile_config)
 
 
 class DockerfilePlugin(LanguagePlugin, ExtendedLanguagePluginContract):

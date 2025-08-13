@@ -9,9 +9,9 @@ class BuildSystemStub(BuildSystemContract):
 
     @staticmethod
     def compile_grammars(
-        _languages: list[str],
-        _platform: str,
-        _output_dir: Path,
+        languages: list[str],
+        platform: str,
+        output_dir: Path,
     ) -> tuple[bool, dict[str, Any]]:
         """Stub that returns valid default values"""
         return False, {
@@ -42,8 +42,8 @@ class BuildSystemStub(BuildSystemContract):
 
     @staticmethod
     def verify_build(
-        _artifact_path: Path,
-        _platform: str,
+        artifact_path: Path,
+        platform: str,
     ) -> tuple[bool, dict[str, Any]]:
         """Stub that returns valid default values"""
         return False, {

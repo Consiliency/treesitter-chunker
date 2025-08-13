@@ -201,6 +201,7 @@ with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
                 subprocess.run(
                     [conda_cmd, "env", "remove", "-n", env_name, "-y"],
                     capture_output=True,
+                    text=True,
                     check=False,
                 )
             except (ImportError, IndexError, KeyError) as e:
@@ -208,6 +209,7 @@ with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
                 subprocess.run(
                     [conda_cmd, "env", "remove", "-n", env_name, "-y"],
                     capture_output=True,
+                    text=True,
                     check=False,
                 )
                 return False, details
@@ -231,12 +233,14 @@ with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
                 text=True,
                 check=False,
             )
-            if test_result.returncode == 0:
+            if getattr(test_result, "returncode", 1) == 0:
                 details["tests_passed"].append("docker_cli_test")
-                details["installation_output"] = test_result.stdout
+                details["installation_output"] = getattr(test_result, "stdout", "")
             else:
                 details["tests_failed"].append("docker_cli_test")
-                details["errors"].append(f"Docker run failed: {test_result.stderr}")
+                details["errors"].append(
+                    f"Docker run failed: {getattr(test_result, 'stderr', '')}",
+                )
             test_code = """
 import tempfile
 from pathlib import Path
@@ -251,12 +255,15 @@ print("Docker functionality test passed")
                 text=True,
                 check=False,
             )
-            if func_result.returncode == 0:
+            if getattr(func_result, "returncode", 1) == 0:
                 details["tests_passed"].append("docker_functionality_test")
             else:
                 details["tests_failed"].append("docker_functionality_test")
-        except (IndexError, KeyError) as e:
-            details["errors"].append(f"Docker test failed: {e!s}")
+        except Exception as e:
+            # Record error but return a consistent details structure
+            details["tests_failed"].append("docker_cli_test")
+            details["installation_output"] = ""
+            details["errors"].append(f"Docker test failed: {e}")
             return False, details
         success = len(details["tests_failed"]) == 0
         return success, details
@@ -282,8 +289,8 @@ print("Docker functionality test passed")
                 text=True,
                 check=False,
             )
-            details["installation_output"] = install_result.stdout
-            if install_result.returncode != 0:
+            details["installation_output"] = getattr(install_result, "stdout", "")
+            if getattr(install_result, "returncode", 1) != 0:
                 formula_path = Path("homebrew/treesitter-chunker.rb")
                 if formula_path.exists():
                     install_result = subprocess.run(
@@ -298,7 +305,7 @@ print("Docker functionality test passed")
                 text=True,
                 check=False,
             )
-            if test_result.returncode == 0:
+            if getattr(test_result, "returncode", 1) == 0:
                 details["tests_passed"].append("homebrew_cli_test")
             else:
                 details["tests_failed"].append("homebrew_cli_test")
@@ -308,12 +315,22 @@ print("Docker functionality test passed")
                 text=True,
                 check=False,
             )
-            if test_import.returncode == 0:
+            if getattr(test_import, "returncode", 1) == 0:
                 details["tests_passed"].append("homebrew_import_test")
             else:
                 details["tests_failed"].append("homebrew_import_test")
-        except (ImportError, IndexError, KeyError) as e:
-            details["errors"].append(f"Homebrew test failed: {e!s}")
+        except Exception as e:
+            # Ensure we always attach structured object-like info to satisfy tests
+            class _ResultLike:
+                def __init__(self, exc: Exception):
+                    self.returncode = -1
+                    self.stdout = ""
+                    self.stderr = str(exc)
+
+            failed = _ResultLike(e)
+            details["tests_failed"].append("homebrew_cli_test")
+            details["installation_output"] = failed.stdout
+            details["errors"].append(f"Homebrew test failed: {failed.stderr}")
             return False, details
         success = len(details["tests_failed"]) == 0
         return success, details

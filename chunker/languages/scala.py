@@ -86,13 +86,9 @@ class ScalaPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
     def default_chunk_types(self) -> set[str]:
         return {
             "function_definition",
-            "function_declaration",
-            "method_definition",
-            "method_declaration",
             "class_definition",
             "object_definition",
             "trait_definition",
-            "case_class_definition",
             "val_definition",
             "var_definition",
             "type_definition",

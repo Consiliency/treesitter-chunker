@@ -15,7 +15,8 @@ class PyPIPublisher:
     """Handles PyPI package publishing"""
 
     def __init__(self):
-        self.twine_cmd = shutil.which("twine")
+        # Avoid caching twine path; tests may monkeypatch shutil.which
+        self.twine_cmd: str | None = None
 
     def publish(
         self,
@@ -69,18 +70,32 @@ class PyPIPublisher:
         package_dir: Path,
         info: dict[str, Any],
     ) -> list[Path] | None:
-        """Validate twine availability and distribution files existence."""
-        if not self.twine_cmd:
-            info["error"] = "twine not found. Install with: pip install twine"
-            return None
+        """Validate distribution files existence and twine availability."""
+        # Determine twine availability (tests often monkeypatch this)
+        self.twine_cmd = shutil.which("twine")
 
+        # Check for distribution files first
         dist_files = list(package_dir.glob("*.whl")) + list(
             package_dir.glob("*.tar.gz"),
         )
-        if not dist_files:
-            info["error"] = f"No distribution files found in {package_dir}"
-            return None
+        is_dry_run = bool(info.get("dry_run"))
 
+        if is_dry_run:
+            # In dry-run mode, prefer reporting missing artifacts first
+            if not dist_files:
+                info["error"] = "No distribution files found"
+                return None
+            if not self.twine_cmd:
+                info["error"] = "twine not found. Install with: pip install twine"
+                return None
+            return dist_files
+        # Non-dry-run: twine presence is required regardless of artifacts
+        if not self.twine_cmd:
+            info["error"] = "twine not found. Install with: pip install twine"
+            return None
+        if not dist_files:
+            info["error"] = "No distribution files found"
+            return None
         return dist_files
 
     def _check_package_validity(
@@ -91,7 +106,7 @@ class PyPIPublisher:
         """Check package validity using twine check."""
         try:
             check_result = subprocess.run(
-                [self.twine_cmd, "check"] + [str(f) for f in dist_files],
+                [self.twine_cmd or "twine", "check"] + [str(f) for f in dist_files],
                 capture_output=True,
                 text=True,
                 check=True,
@@ -124,7 +139,8 @@ class PyPIPublisher:
             return False, info
 
         # Check credentials
-        if not self._check_credentials(repository):
+        ok = self._check_credentials(repository)
+        if not ok:
             info["error"] = (
                 f"No credentials found for {repository}. "
                 "Set TWINE_USERNAME and TWINE_PASSWORD or use .pypirc"
@@ -133,6 +149,10 @@ class PyPIPublisher:
 
         # Upload
         try:
+            self.twine_cmd = shutil.which("twine")
+            if not self.twine_cmd:
+                info["error"] = "twine not found. Install with: pip install twine"
+                return False, info
             upload_cmd = [self.twine_cmd, "upload", "--repository-url", repo_url]
             upload_cmd.extend(str(f) for f in dist_files)
             upload_result = subprocess.run(

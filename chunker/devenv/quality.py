@@ -24,8 +24,28 @@ class QualityAssurance(QualityAssuranceContract):
 
     @staticmethod
     def _find_executable(name: str) -> str | None:
-        """Find executable in PATH"""
-        return shutil.which(name)
+        """Find executable in PATH with common virtualenv fallbacks."""
+        path = shutil.which(name)
+        if path:
+            return path
+        try:
+            import sys as _sys
+            from pathlib import Path as _P
+
+            candidates = []
+            here = _P(__file__).resolve()
+            project = here.parent.parent.parent
+            candidates.append(project / ".fullenv" / "bin" / name)
+            candidates.append(project / ".venv" / "bin" / name)
+            interp_bin = _P(_sys.executable).parent
+            candidates.append(interp_bin / name)
+            candidates.append(_P.home() / ".local" / "bin" / name)
+            for c in candidates:
+                if c.exists():
+                    return str(c)
+        except Exception:
+            return None
+        return None
 
     def check_type_coverage(
         self,
@@ -170,7 +190,8 @@ class QualityAssurance(QualityAssuranceContract):
             result = subprocess.run(cmd, check=False, capture_output=True, text=True)
             coverage_json = Path("coverage.json")
             if coverage_json.exists():
-                with Path(coverage_json).open("r", encoding="utf-8") as f:
+                # Use builtin open for better testability with patching
+                with open(coverage_json, encoding="utf-8") as f:
                     coverage_data = json.load(f)
                 totals = coverage_data.get("totals", {})
                 coverage_percentage = totals.get("percent_covered", 0.0)

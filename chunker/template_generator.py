@@ -69,7 +69,7 @@ class TemplateGenerator(TemplateGeneratorContract):
         )
         try:
             output_path.parent.mkdir(exist_ok=True)
-            output_path.write_text(content)
+            output_path.write_text(content, encoding="utf-8")
         except (FileNotFoundError, OSError, ValueError) as e:
             print(f"Error writing file: {e}")
             return False, Path()
@@ -119,7 +119,7 @@ class TemplateGenerator(TemplateGeneratorContract):
         )
         try:
             output_path.parent.mkdir(exist_ok=True)
-            output_path.write_text(content)
+            output_path.write_text(content, encoding="utf-8")
         except (FileNotFoundError, OSError, ValueError) as e:
             print(f"Error writing file: {e}")
             return False, Path()

@@ -58,7 +58,7 @@ class UniversalLanguageRegistry(UniversalRegistryContract):
         """Load metadata from cache."""
         if self._metadata_path.exists():
             try:
-                with self._metadata_path.open() as f:
+                with self._metadata_path.open("r", encoding="utf-8") as f:
                     return json.load(f)
             except (OSError, json.JSONDecodeError) as e:
                 logger.warning("Failed to load metadata: %s", e)
@@ -70,12 +70,9 @@ class UniversalLanguageRegistry(UniversalRegistryContract):
             # Update auto_downloaded list
             self._metadata["auto_downloaded"] = list(self._auto_downloaded)
 
-            with self._metadata_path.open(
-                "w",
-                "r",
-            ) as f:
+            with self._metadata_path.open("w", encoding="utf-8") as f:
                 json.dump(self._metadata, f, indent=2)
-        except (OSError, json.JSONEncodeError) as e:
+        except (OSError, TypeError) as e:
             logger.error("Failed to save metadata: %s", e)
 
     def get_parser(

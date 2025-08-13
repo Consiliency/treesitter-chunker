@@ -10,27 +10,45 @@ from chunker.types import CodeChunk
 class TreeSitterRelationshipAnalyzer(RelationshipAnalyzer):
     """Analyze relationships between code chunks using Tree-sitter AST information."""
 
+    @staticmethod
+    def _safe_compile(pattern: str) -> re.Pattern | None:
+        """Safely compile a regex pattern with error handling."""
+        try:
+            return re.compile(pattern)
+        except re.error:
+            return None
+
+    @staticmethod
+    def _safe_search(pattern: str, text: str) -> re.Match | None:
+        """Safely search for a pattern in text with error handling."""
+        if not text or not pattern:
+            return None
+        try:
+            return re.search(pattern, text)
+        except re.error:
+            return None
+
     def __init__(self):
         """Initialize the analyzer with language-specific patterns."""
         self.getter_patterns = {
-            "python": re.compile(r"^(get_|get|is_|has_)(\\w+)$"),
-            "javascript": re.compile(r"^(get|is|has)([A-Z]\\w*)$"),
-            "typescript": re.compile(r"^(get|is|has)([A-Z]\\w*)$"),
-            "java": re.compile(r"^(get|is|has)([A-Z]\\w*)$"),
-            "csharp": re.compile(r"^(Get|Is|Has)([A-Z]\\w*)$"),
-            "cpp": re.compile(r"^(get|is|has)_?(\\w+)$"),
-            "c": re.compile(r"^(get|is|has)_(\\w+)$"),
-            "go": re.compile(r"^(Get|Is|Has)([A-Z]\\w*)$"),
+            "python": self._safe_compile(r"^(get_|get|is_|has_)(\w+)$"),
+            "javascript": self._safe_compile(r"^(get|is|has)([A-Z]\w*)$"),
+            "typescript": self._safe_compile(r"^(get|is|has)([A-Z]\w*)$"),
+            "java": self._safe_compile(r"^(get|is|has)([A-Z]\w*)$"),
+            "csharp": self._safe_compile(r"^(Get|Is|Has)([A-Z]\w*)$"),
+            "cpp": self._safe_compile(r"^(get|is|has)_?(\w+)$"),
+            "c": self._safe_compile(r"^(get|is|has)_(\w+)$"),
+            "go": self._safe_compile(r"^(Get|Is|Has)([A-Z]\w*)$"),
         }
         self.setter_patterns = {
-            "python": re.compile(r"^set_(\\w+)$"),
-            "javascript": re.compile(r"^set([A-Z]\\w*)$"),
-            "typescript": re.compile(r"^set([A-Z]\\w*)$"),
-            "java": re.compile(r"^set([A-Z]\\w*)$"),
-            "csharp": re.compile(r"^Set([A-Z]\\w*)$"),
-            "cpp": re.compile(r"^set_?(\\w+)$"),
-            "c": re.compile(r"^set_(\\w+)$"),
-            "go": re.compile(r"^Set([A-Z]\\w*)$"),
+            "python": self._safe_compile(r"^set_(\w+)$"),
+            "javascript": self._safe_compile(r"^set([A-Z]\w*)$"),
+            "typescript": self._safe_compile(r"^set([A-Z]\w*)$"),
+            "java": self._safe_compile(r"^set([A-Z]\w*)$"),
+            "csharp": self._safe_compile(r"^Set([A-Z]\w*)$"),
+            "cpp": self._safe_compile(r"^set_?(\w+)$"),
+            "c": self._safe_compile(r"^set_(\w+)$"),
+            "go": self._safe_compile(r"^Set([A-Z]\w*)$"),
         }
         self.interface_indicators = {
             "java": ["interface"],
@@ -179,23 +197,35 @@ class TreeSitterRelationshipAnalyzer(RelationshipAnalyzer):
     @staticmethod
     def _extract_method_name(chunk: CodeChunk) -> str | None:
         """Extract method name from chunk content."""
+        if not chunk.content or not chunk.content.strip():
+            return None
         lines = chunk.content.strip().split("\n")
         if not lines:
             return None
-        first_line = lines[0]
+        first_line = lines[0].strip()
+        if not first_line:
+            return None
         patterns = {
-            "python": re.compile(r"def\\s+(\\w+)\\s*\\("),
-            "javascript": re.compile(r"(?:function\\s+)?(\\w+)\\s*\\("),
-            "typescript": re.compile(r"(?:function\\s+)?(\\w+)\\s*\\("),
-            "java": re.compile(
-                r"(?:public|private|protected)?\\s*\\w+\\s+(\\w+)\\s*\\(",
+            "python": TreeSitterRelationshipAnalyzer._safe_compile(r"def\s+(\w+)\s*\("),
+            "javascript": TreeSitterRelationshipAnalyzer._safe_compile(
+                r"(?:function\s+)?(\w+)\s*\("
             ),
-            "csharp": re.compile(
-                r"(?:public|private|protected)?\\s*\\w+\\s+(\\w+)\\s*\\(",
+            "typescript": TreeSitterRelationshipAnalyzer._safe_compile(
+                r"(?:function\s+)?(\w+)\s*\("
             ),
-            "cpp": re.compile(r"(?:\\w+\\s+)?(\\w+)\\s*\\("),
-            "c": re.compile(r"(?:\\w+\\s+)?(\\w+)\\s*\\("),
-            "go": re.compile(r"func\\s+(?:\\([^)]+\\)\\s+)?(\\w+)\\s*\\("),
+            "java": TreeSitterRelationshipAnalyzer._safe_compile(
+                r"(?:public|private|protected)?\s*\w+\s+(\w+)\s*\(",
+            ),
+            "csharp": TreeSitterRelationshipAnalyzer._safe_compile(
+                r"(?:public|private|protected)?\s*\w+\s+(\w+)\s*\(",
+            ),
+            "cpp": TreeSitterRelationshipAnalyzer._safe_compile(
+                r"(?:\w+\s+)?(\w+)\s*\("
+            ),
+            "c": TreeSitterRelationshipAnalyzer._safe_compile(r"(?:\w+\s+)?(\w+)\s*\("),
+            "go": TreeSitterRelationshipAnalyzer._safe_compile(
+                r"func\s+(?:\([^)]+\)\s+)?(\w+)\s*\("
+            ),
         }
         pattern = patterns.get(chunk.language)
         if pattern:
@@ -216,18 +246,30 @@ class TreeSitterRelationshipAnalyzer(RelationshipAnalyzer):
     @staticmethod
     def _extract_class_name(chunk: CodeChunk) -> str | None:
         """Extract class/interface name from chunk content."""
+        if not chunk.content or not chunk.content.strip():
+            return None
         lines = chunk.content.strip().split("\n")
         if not lines:
             return None
-        first_line = lines[0]
+        first_line = lines[0].strip()
+        if not first_line:
+            return None
         patterns = {
-            "python": re.compile(r"class\\s+(\\w+)"),
-            "javascript": re.compile(r"class\\s+(\\w+)"),
-            "typescript": re.compile(r"(?:class|interface)\\s+(\\w+)"),
-            "java": re.compile(r"(?:class|interface)\\s+(\\w+)"),
-            "csharp": re.compile(r"(?:class|interface)\\s+(\\w+)"),
-            "cpp": re.compile(r"class\\s+(\\w+)"),
-            "c": re.compile(r"struct\\s+(\\w+)"),
+            "python": TreeSitterRelationshipAnalyzer._safe_compile(r"class\s+(\w+)"),
+            "javascript": TreeSitterRelationshipAnalyzer._safe_compile(
+                r"class\s+(\w+)"
+            ),
+            "typescript": TreeSitterRelationshipAnalyzer._safe_compile(
+                r"(?:class|interface)\s+(\w+)"
+            ),
+            "java": TreeSitterRelationshipAnalyzer._safe_compile(
+                r"(?:class|interface)\s+(\w+)"
+            ),
+            "csharp": TreeSitterRelationshipAnalyzer._safe_compile(
+                r"(?:class|interface)\s+(\w+)"
+            ),
+            "cpp": TreeSitterRelationshipAnalyzer._safe_compile(r"class\s+(\w+)"),
+            "c": TreeSitterRelationshipAnalyzer._safe_compile(r"struct\s+(\w+)"),
         }
         pattern = patterns.get(chunk.language)
         if pattern:
@@ -248,6 +290,8 @@ class TreeSitterRelationshipAnalyzer(RelationshipAnalyzer):
 
     def _match_getter_pattern(self, method_name: str, language: str) -> re.Match | None:
         """Check if method name matches getter pattern."""
+        if not method_name or not method_name.strip():
+            return None
         pattern = self.getter_patterns.get(language)
         if pattern:
             return pattern.match(method_name)
@@ -255,6 +299,8 @@ class TreeSitterRelationshipAnalyzer(RelationshipAnalyzer):
 
     def _match_setter_pattern(self, method_name: str, language: str) -> re.Match | None:
         """Check if method name matches setter pattern."""
+        if not method_name or not method_name.strip():
+            return None
         pattern = self.setter_patterns.get(language)
         if pattern:
             return pattern.match(method_name)
@@ -335,6 +381,8 @@ class TreeSitterRelationshipAnalyzer(RelationshipAnalyzer):
         """Check if a chunk represents an interface."""
         if chunk.node_type == "interface_definition":
             return True
+        if not chunk.content or not chunk.content.strip():
+            return False
         indicators = self.interface_indicators.get(chunk.language, [])
         content_lower = chunk.content.lower()
         return any(indicator.lower() in content_lower for indicator in indicators)
@@ -342,21 +390,23 @@ class TreeSitterRelationshipAnalyzer(RelationshipAnalyzer):
     def _extract_implemented_interfaces(self, chunk: CodeChunk) -> list[str]:
         """Extract names of interfaces implemented by a class."""
         interfaces = []
+        if not chunk.content or not chunk.content.strip():
+            return interfaces
         if chunk.language == "java":
-            match = re.search(r"implements\\s+([\\w\\s,]+)(?:\\{|$)", chunk.content)
+            match = self._safe_search(r"implements\s+([\w\s,]+)(?:\{|$)", chunk.content)
             if match:
                 interface_list = match.group(1)
                 interfaces = [i.strip() for i in interface_list.split(",")]
         elif chunk.language in {"csharp", "typescript"}:
-            match = re.search(
-                r"(?::|implements)\\s+([\\w\\s,]+)(?:\\{|$)",
+            match = self._safe_search(
+                r"(?::|implements)\s+([\w\s,]+)(?:\{|$)",
                 chunk.content,
             )
             if match:
                 interface_list = match.group(1)
                 interfaces = [i.strip() for i in interface_list.split(",")]
         elif chunk.language == "python":
-            match = re.search(r"class\\s+\\w+\\s*\\(([\\w\\s,\\.]+)\\)", chunk.content)
+            match = self._safe_search(r"class\s+\w+\s*\(([\w\s,\.]+)\)", chunk.content)
             if match:
                 parent_list = match.group(1)
                 parents = [p.strip() for p in parent_list.split(",")]

@@ -37,6 +37,7 @@ class RelationshipType(Enum):
     IMPLEMENTS = "implements"
     USES = "uses"
     DEFINES = "defines"
+    HAS_METHOD = "has_method"
     REFERENCES = "references"
     DEPENDS_ON = "depends_on"
 

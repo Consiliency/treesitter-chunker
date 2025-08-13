@@ -27,7 +27,7 @@ def grammar_manager(temp_dir):
         "python": "https://github.com/tree-sitter/tree-sitter-python.git",
         "javascript": "https://github.com/tree-sitter/tree-sitter-javascript.git",
     }
-    with config_file.open("w", "r") as f:
+    with config_file.open("w", encoding="utf-8") as f:
         json.dump(test_sources, f)
     return GrammarManager(root_dir=temp_dir, config_file=config_file, max_workers=2)
 
@@ -100,9 +100,8 @@ class TestGrammarManager:
         """Test fetching with some failures."""
         mock_run.side_effect = [
             MagicMock(returncode=0, stdout="Success", stderr=""),
-            MagicMock(returncode=1, stdout="", stderr="Failed to clone", check=False),
+            Exception("Clone failed"),
         ]
-        mock_run.side_effect[1].side_effect = Exception("Clone failed")
         results = grammar_manager.fetch_grammars()
         assert len(results) == 2
         assert any(v for v in results.values())
@@ -181,13 +180,9 @@ class TestGrammarManager:
         grammar_manager._lib_path.touch()
         mock_lib = MagicMock()
         mock_cdll.return_value = mock_lib
-
-        def mock_getattr(name):
-            if name in {"tree_sitter_python", "tree_sitter_javascript"}:
-                return MagicMock()
-            raise AttributeError(f"Symbol {name} not found")
-
-        mock_lib.__getattr__ = mock_getattr
+        # Expose only selected symbols on the mock library
+        mock_lib.tree_sitter_python = MagicMock()
+        mock_lib.tree_sitter_javascript = MagicMock()
         languages = grammar_manager.get_available_languages()
         assert "python" in languages
         assert "javascript" in languages

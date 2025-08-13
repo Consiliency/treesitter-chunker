@@ -22,7 +22,7 @@ def test_chunk_id_generation():
     )
 
     chunk_id = chunk.generate_id()
-    assert len(chunk_id) == 16  # SHA256 truncated to 16 chars
+    assert len(chunk_id) == 40  # full SHA-1 hex
     assert chunk_id.isalnum()
 
     # Same chunk should generate same ID
@@ -81,7 +81,7 @@ class OuterClass:
         # Check all chunks have IDs
         for chunk in chunks:
             assert chunk.chunk_id
-            assert len(chunk.chunk_id) == 16
+            assert len(chunk.chunk_id) == 40
 
     finally:
         temp_path.unlink()

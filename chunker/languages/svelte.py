@@ -8,6 +8,7 @@ import re
 from typing import TYPE_CHECKING
 
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
+from chunker.types import CodeChunk
 
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
@@ -132,7 +133,7 @@ class SveltePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         """Extract semantic chunks specific to Svelte."""
         chunks = []
 
-        def extract_chunks(n: Node, in_script: bool = False):
+        def extract_chunks(n: Node, in_script: bool = False, script_content: str = ""):
             if n.type == "script_element":
                 content = source[n.start_byte : n.end_byte].decode(
                     "utf-8",
@@ -152,7 +153,37 @@ class SveltePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 else:
                     chunk["language"] = "javascript"
                 chunks.append(chunk)
+
+                # Extract reactive statements from script content
+                script_text = content
+                # Find the actual script content (between <script> tags)
+                script_start = content.find(">") + 1 if ">" in content else 0
+                script_end = (
+                    content.rfind("</script>")
+                    if "</script>" in content
+                    else len(content)
+                )
+                script_body = (
+                    content[script_start:script_end]
+                    if script_start < script_end
+                    else content
+                )
+
+                # Look for reactive statements
+                lines = script_body.split("\n")
+                for i, line in enumerate(lines):
+                    stripped = line.strip()
+                    if stripped.startswith("$:"):
+                        reactive_chunk = {
+                            "type": "reactive_statement",
+                            "start_line": n.start_point[0] + 1 + i,
+                            "end_line": n.start_point[0] + 1 + i,
+                            "content": line,
+                        }
+                        chunks.append(reactive_chunk)
+
                 in_script = True
+                script_content = script_body
             elif n.type == "style_element":
                 content = source[n.start_byte : n.end_byte].decode(
                     "utf-8",
@@ -208,9 +239,55 @@ class SveltePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     }
                     chunks.append(chunk)
             for child in n.children:
-                extract_chunks(child, in_script and n.type != "script_element")
+                extract_chunks(
+                    child, in_script and n.type != "script_element", script_content
+                )
 
         extract_chunks(node)
+        # Fallback: scan raw source for control-flow markers when tree nodes aren't exposed
+        try:
+            text = source.decode("utf-8", errors="replace")
+            lines = text.splitlines()
+            for i, line in enumerate(lines, start=1):
+                stripped = line.strip()
+                if stripped.startswith("{#if"):
+                    chunks.append(
+                        {
+                            "type": "if_block",
+                            "start_line": i,
+                            "end_line": i,
+                            "content": line,
+                        }
+                    )
+                elif stripped.startswith("{#each"):
+                    chunks.append(
+                        {
+                            "type": "each_block",
+                            "start_line": i,
+                            "end_line": i,
+                            "content": line,
+                        }
+                    )
+                elif stripped.startswith("{#await"):
+                    chunks.append(
+                        {
+                            "type": "await_block",
+                            "start_line": i,
+                            "end_line": i,
+                            "content": line,
+                        }
+                    )
+                elif stripped.startswith("{#key"):
+                    chunks.append(
+                        {
+                            "type": "key_block",
+                            "start_line": i,
+                            "end_line": i,
+                            "content": line,
+                        }
+                    )
+        except Exception:
+            pass
         return chunks
 
     def get_chunk_node_types(self) -> set[str]:
@@ -235,6 +312,10 @@ class SveltePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
 
     def get_node_context(self, node: Node, source: bytes) -> str | None:
         """Extract meaningful context for a node."""
+        # Guard against MockNode without byte attributes
+        if not hasattr(node, "start_byte") or not hasattr(node, "end_byte"):
+            return f"{node.type} (mock node)"
+
         # Handle elements that need content inspection
         if node.type in {"script_element", "style_element"}:
             return SveltePlugin._get_element_context(node, source)
@@ -261,6 +342,10 @@ class SveltePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
     @staticmethod
     def _get_element_context(node: Node, source: bytes) -> str:
         """Get context for script/style elements based on attributes."""
+        # Guard against MockNode without byte attributes
+        if not hasattr(node, "start_byte") or not hasattr(node, "end_byte"):
+            return f"<{node.type}>"
+
         content = source[node.start_byte : node.end_byte].decode("utf-8")
 
         if node.type == "script_element":
@@ -332,3 +417,50 @@ class SveltePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 }
                 return chunk if self.should_include_chunk(chunk) else None
         return super().process_node(node, source, file_path, parent_context)
+
+    def walk_tree(
+        self,
+        node: Node,
+        source: bytes,
+        file_path: str,
+        parent_context: str | None = None,
+    ) -> list[CodeChunk]:
+        """Override to add semantic Svelte chunks alongside structural ones."""
+        chunks = super().walk_tree(node, source, file_path, parent_context)
+
+        # Merge in semantic chunks derived from content analysis
+        try:
+            semantic = self.get_semantic_chunks(node, source)
+        except Exception:
+            semantic = []
+
+        if semantic:
+            existing = {(c.node_type, c.content) for c in chunks}
+            for sc in semantic:
+                sc_type = sc.get("type")
+                if sc_type in {
+                    "reactive_statement",
+                    "if_block",
+                    "each_block",
+                    "await_block",
+                    "key_block",
+                }:
+                    content = sc.get("content", "")
+                    if (sc_type, content) in existing:
+                        continue
+                    start_line = int(sc.get("start_line", 1))
+                    end_line = int(sc.get("end_line", start_line))
+                    chunk = CodeChunk(
+                        language=self.language_name,
+                        file_path=file_path,
+                        node_type=sc_type,
+                        start_line=start_line,
+                        end_line=end_line,
+                        byte_start=0,
+                        byte_end=0,
+                        parent_context=sc.get("context") or parent_context or "",
+                        content=content,
+                    )
+                    chunks.append(chunk)
+
+        return chunks

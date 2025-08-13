@@ -1,0 +1,170 @@
+{
+  "clojure": {
+    "repository_url": "https://github.com/sogaiu/tree-sitter-clojure.git",
+    "commit_hash": null,
+    "abi_version": null,
+    "status": "ready",
+    "path": "grammars/tree-sitter-clojure",
+    "error": null
+  },
+  "dockerfile": {
+    "repository_url": "https://github.com/camdencheek/tree-sitter-dockerfile.git",
+    "commit_hash": null,
+    "abi_version": null,
+    "status": "ready",
+    "path": "grammars/tree-sitter-dockerfile",
+    "error": null
+  },
+  "elixir": {
+    "repository_url": "https://github.com/elixir-lang/tree-sitter-elixir.git",
+    "commit_hash": null,
+    "abi_version": null,
+    "status": "ready",
+    "path": "grammars/tree-sitter-elixir",
+    "error": null
+  },
+  "csharp": {
+    "repository_url": "https://github.com/tree-sitter/tree-sitter-c-sharp.git",
+    "commit_hash": null,
+    "abi_version": null,
+    "status": "ready",
+    "path": "grammars/tree-sitter-csharp",
+    "error": "[Errno 2] No such file or directory: PosixPath('grammars/tree-sitter-csharp')"
+  },
+  "zig": {
+    "repository_url": "https://github.com/GrayJack/tree-sitter-zig.git",
+    "commit_hash": null,
+    "abi_version": null,
+    "status": "ready",
+    "path": "grammars/tree-sitter-zig",
+    "error": null
+  },
+  "nasm": {
+    "repository_url": "https://github.com/naclsn/tree-sitter-nasm.git",
+    "commit_hash": null,
+    "abi_version": null,
+    "status": "ready",
+    "path": "grammars/tree-sitter-nasm",
+    "error": null
+  },
+  "php": {
+    "repository_url": "https://github.com/tree-sitter/tree-sitter-php.git",
+    "commit_hash": null,
+    "abi_version": null,
+    "status": "ready",
+    "path": "grammars/tree-sitter-php",
+    "error": null
+  },
+  "julia": {
+    "repository_url": "https://github.com/tree-sitter/tree-sitter-julia.git",
+    "commit_hash": null,
+    "abi_version": null,
+    "status": "ready",
+    "path": "grammars/tree-sitter-julia",
+    "error": null
+  },
+  "typescript": {
+    "repository_url": "https://github.com/tree-sitter/tree-sitter-typescript.git",
+    "commit_hash": null,
+    "abi_version": null,
+    "status": "ready",
+    "path": "grammars/tree-sitter-typescript",
+    "error": null
+  },
+  "ocaml": {
+    "repository_url": "https://github.com/tree-sitter/tree-sitter-ocaml.git",
+    "commit_hash": null,
+    "abi_version": null,
+    "status": "ready",
+    "path": "grammars/tree-sitter-ocaml",
+    "error": null
+  },
+  "swift": {
+    "repository_url": "https://github.com/alex-pinkus/tree-sitter-swift.git",
+    "commit_hash": null,
+    "abi_version": null,
+    "status": "ready",
+    "path": "grammars/tree-sitter-swift",
+    "error": null
+  },
+  "vue": {
+    "repository_url": "https://github.com/ikatyang/tree-sitter-vue.git",
+    "commit_hash": null,
+    "abi_version": null,
+    "status": "building",
+    "path": "grammars/tree-sitter-vue",
+    "error": null
+  },
+  "sql": {
+    "repository_url": "https://github.com/DerekStride/tree-sitter-sql.git",
+    "commit_hash": null,
+    "abi_version": null,
+    "status": "ready",
+    "path": "grammars/tree-sitter-sql",
+    "error": null
+  },
+  "c": {
+    "repository_url": "https://github.com/tree-sitter/tree-sitter-c.git",
+    "commit_hash": null,
+    "abi_version": null,
+    "status": "ready",
+    "path": "grammars/tree-sitter-c",
+    "error": null
+  },
+  "rust": {
+    "repository_url": "https://github.com/tree-sitter/tree-sitter-rust.git",
+    "commit_hash": null,
+    "abi_version": null,
+    "status": "ready",
+    "path": "grammars/tree-sitter-rust",
+    "error": null
+  },
+  "python": {
+    "repository_url": "https://github.com/tree-sitter/tree-sitter-python.git",
+    "commit_hash": null,
+    "abi_version": null,
+    "status": "ready",
+    "path": "grammars/tree-sitter-python",
+    "error": null
+  },
+  "javascript": {
+    "repository_url": "https://github.com/tree-sitter/tree-sitter-javascript.git",
+    "commit_hash": null,
+    "abi_version": null,
+    "status": "ready",
+    "path": "grammars/tree-sitter-javascript",
+    "error": null
+  },
+  "cpp": {
+    "repository_url": "https://github.com/tree-sitter/tree-sitter-cpp.git",
+    "commit_hash": null,
+    "abi_version": null,
+    "status": "ready",
+    "path": "grammars/tree-sitter-cpp",
+    "error": null
+  },
+  "kotlin": {
+    "repository_url": "https://github.com/fwcd/tree-sitter-kotlin.git",
+    "commit_hash": null,
+    "abi_version": null,
+    "status": "ready",
+    "path": "grammars/tree-sitter-kotlin",
+    "error": null
+  },
+  "wat": {
+    "repository_url": "https://github.com/wasm-lsp/tree-sitter-wasm.git",
+    "commit_hash": null,
+    "abi_version": null,
+    "status": "ready",
+    "path": "grammars/tree-sitter-wat",
+    "error": null
+  },
+  "tsx": {
+    "repository_url": "https://github.com/tree-sitter/tree-sitter-typescript.git",
+    "commit_hash": null,
+    "abi_version": null,
+    "status": "ready",
+    "path": "grammars/tree-sitter-tsx",
+    "error": null
+  }
+}

@@ -42,14 +42,12 @@ class ConfigProcessor(SpecializedProcessor):
             config: Processor configuration
         """
         super().__init__(config)
-        self._ini_section_pattern = re.compile(
-            r"^\\s*\\[([^\\]]+)\\]\\s*$",
-            re.MULTILINE,
-        )
-        self._yaml_key_pattern = re.compile(r"^(\\s*)(\\w+):\\s*(.*)$", re.MULTILINE)
+        # Section headers like [section]
+        self._ini_section_pattern = re.compile(r"^\s*\[([^\]]+)\]\s*$", re.MULTILINE)
+        self._yaml_key_pattern = re.compile(r"^(\s*)(\w+):\s*(.*)$", re.MULTILINE)
+        # TOML table headers like [table] or [[array_table]]
         self._toml_table_pattern = re.compile(
-            r"^\\s*\\[+([^\\]]+)\\]+\\s*$",
-            re.MULTILINE,
+            r"^\s*\[(\[)?([^\]]+)(\])?\]\s*$", re.MULTILINE
         )
 
     def can_handle(self, file_path: str, content: str | None = None) -> bool:
@@ -84,6 +82,7 @@ class ConfigProcessor(SpecializedProcessor):
         detection_methods = [
             ConfigProcessor._detect_by_extension,
             ConfigProcessor._detect_json_by_content,
+            # Try YAML then TOML; both parsers validate. If they fail, fall through to INI.
             self._detect_yaml_by_content,
             self._detect_toml_by_content,
             ConfigProcessor._detect_ini_by_content,
@@ -142,8 +141,9 @@ class ConfigProcessor(SpecializedProcessor):
             try:
                 toml.loads(content)
                 return "toml"
-            except (FileNotFoundError, IndexError, KeyError):
-                pass
+            except Exception:
+                # If TOML parsing fails, do not classify as TOML; allow INI/YAML detection
+                return None
         return None
 
     @staticmethod
@@ -224,8 +224,9 @@ class ConfigProcessor(SpecializedProcessor):
         for i, line in enumerate(lines):
             table_match = self._toml_table_pattern.match(line)
             if table_match:
-                table_name = table_match.group(1).strip()
-                bracket_count = len(re.match(r"^(\\[+)", line.strip()).group(1))
+                # Per pattern, group(2) holds the table name
+                table_name = table_match.group(2).strip()
+                bracket_count = len(re.match(r"^(\[+)", line.strip()).group(1))
                 is_array = bracket_count > 1
                 structure["tables"][table_name] = {
                     "start": i,
@@ -358,13 +359,7 @@ class ConfigProcessor(SpecializedProcessor):
             section_content = "\n".join(
                 lines[section_info["start"] : section_info["end"] + 1],
             )
-            if (
-                self.config.group_related
-                and len(
-                    section_content.split("\n"),
-                )
-                < 10
-            ):
+            if self.config.group_related:
                 available_sections = {
                     k: v
                     for k, v in structure["sections"].items()
@@ -685,9 +680,10 @@ class ConfigProcessor(SpecializedProcessor):
         all_sections: dict[str, Any],
     ) -> list[str]:
         """Find sections related to the given section."""
-        related = []
+        related: list[str] = []
         base_name = section_name.lower()
-        base_without_number = re.sub(r"\\d+$", "", base_name)
+        # 1) Numeric suffix pattern: server1, server2, ...
+        base_without_number = re.sub(r"\d+$", "", base_name)
         if base_without_number != base_name:
             related.extend(
                 other
@@ -695,6 +691,7 @@ class ConfigProcessor(SpecializedProcessor):
                 if other != section_name
                 and other.lower().startswith(base_without_number)
             )
+        # 2) Underscore prefix pattern: server_a, server_b
         parts = base_name.split("_")
         if len(parts) > 1:
             prefix = parts[0]
@@ -703,7 +700,21 @@ class ConfigProcessor(SpecializedProcessor):
                 for other in all_sections
                 if other != section_name and other.lower().startswith(prefix)
             )
-        return related[:3]
+        # 3) Hyphen prefix pattern: server-1, server-2
+        hyphen_prefix = base_name.split("-")[0]
+        related.extend(
+            other
+            for other in all_sections
+            if other != section_name and other.lower().startswith(hyphen_prefix)
+        )
+        # Deduplicate while preserving order
+        seen: set[str] = set()
+        unique_related: list[str] = []
+        for r in related:
+            if r not in seen:
+                unique_related.append(r)
+                seen.add(r)
+        return unique_related[:3]
 
     @staticmethod
     def get_supported_formats() -> list[str]:

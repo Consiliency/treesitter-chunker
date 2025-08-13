@@ -310,7 +310,7 @@ class TestLanguageConfigRegistry:
     @pytest.fixture
     def registry(cls):
         """Create a fresh registry for each test."""
-        reg = LanguageConfigRegistry()
+        reg = LanguageConfigRegistry(enable_lazy_loading=False)
         yield reg
         reg.clear()
 

@@ -100,6 +100,7 @@ class ParquetExporter:
             chunks: List of CodeChunk objects to export
             output_path: Path to output file or directory (if partitioned)
         """
+        # Normalize output path
         output_path = Path(output_path)
         records = [self._chunk_to_dict(chunk) for chunk in chunks]
         if self.columns:
@@ -110,14 +111,50 @@ class ParquetExporter:
             schema = self._schema
         table = pa.Table.from_pylist(records, schema=schema)
         if self.partition_by:
-            pq.write_to_dataset(
-                table,
-                root_path=str(output_path),
-                partition_cols=self.partition_by,
-                compression=self.compression,
-            )
+            # For partitioned writes, manually create partitions
+            if output_path.suffix:  # If it has a file extension, use parent directory
+                root_path = output_path.parent
+            else:
+                root_path = output_path
+            # Ensure the root directory exists
+            root_path.mkdir(parents=True, exist_ok=True)
+
+            # Group records by partition columns
+            partitions = {}
+            for i in range(len(table)):
+                # Get partition key values for this row
+                partition_key = tuple(
+                    table.column(col)[i].as_py()
+                    for col in self.partition_by
+                    if col in table.schema.names
+                )
+                if partition_key not in partitions:
+                    partitions[partition_key] = []
+                partitions[partition_key].append(i)
+
+            # Write each partition to its own file
+            for partition_values, row_indices in partitions.items():
+                # Create partition directory path
+                partition_dir = root_path
+                for i, col in enumerate(self.partition_by):
+                    if col in table.schema.names:
+                        partition_dir = partition_dir / f"{col}={partition_values[i]}"
+
+                partition_dir.mkdir(parents=True, exist_ok=True)
+
+                # Create subset table for this partition
+                subset_table = table.take(row_indices)
+
+                # Write to parquet file in partition directory
+                partition_file = partition_dir / "data.parquet"
+                with pa.OSFile(str(partition_file), "wb") as sink:
+                    pq.write_table(subset_table, sink, compression=self.compression)
         else:
-            pq.write_table(table, str(output_path), compression=self.compression)
+            # Ensure parent directory exists before writing file
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            # Use file sink for compatibility
+            with pa.OSFile(str(output_path), "wb") as sink:
+                pq.write_table(table, sink, compression=self.compression)
 
     def export_streaming(
         self,
@@ -133,6 +170,7 @@ class ParquetExporter:
             output_path: Path to output file
             batch_size: Number of chunks to process in each batch
         """
+        # Normalize output path
         output_path = Path(output_path)
         writer = None
         batch = []
@@ -144,8 +182,10 @@ class ParquetExporter:
                         batch = [self._filter_columns(record) for record in batch]
                     table = pa.Table.from_pylist(batch, schema=self._schema)
                     if writer is None:
+                        output_path.parent.mkdir(parents=True, exist_ok=True)
+                        sink = pa.OSFile(str(output_path), "wb")
                         writer = pq.ParquetWriter(
-                            str(output_path),
+                            sink,
                             schema=table.schema,
                             compression=self.compression,
                         )
@@ -156,8 +196,10 @@ class ParquetExporter:
                     batch = [self._filter_columns(record) for record in batch]
                 table = pa.Table.from_pylist(batch, schema=self._schema)
                 if writer is None:
+                    output_path.parent.mkdir(parents=True, exist_ok=True)
+                    sink = pa.OSFile(str(output_path), "wb")
                     writer = pq.ParquetWriter(
-                        str(output_path),
+                        sink,
                         schema=table.schema,
                         compression=self.compression,
                     )

@@ -21,6 +21,7 @@ class DartConfig(LanguageConfig):
     def chunk_types(self) -> set[str]:
         """Dart-specific chunk types."""
         return {
+            "type_alias",  # typedef alias in grammar
             "function_declaration",
             "method_declaration",
             "getter_declaration",
@@ -55,10 +56,10 @@ class DartConfig(LanguageConfig):
         )
         self.add_chunk_rule(
             ChunkRule(
-                node_types={"factory_constructor"},
+                node_types={"factory_constructor", "type_alias"},
                 include_children=False,
                 priority=5,
-                metadata={"type": "factory"},
+                metadata={"type": "factory_or_typedef"},
             ),
         )
         self.add_ignore_type("comment")
@@ -67,6 +68,10 @@ class DartConfig(LanguageConfig):
 
 
 # Register the Dart configuration
+from .base import language_config_registry
+
+dart_config = DartConfig()
+language_config_registry.register(dart_config)
 
 from typing import TYPE_CHECKING
 

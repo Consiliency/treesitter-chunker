@@ -238,10 +238,15 @@ class LanguageDetectorImpl(LanguageDetector):
         if not content.strip():
             return [("text", 1.0)]
         language_blocks = []
-        markdown_blocks = re.findall(r"```(\\w+)?\\n(.*?)```", content, re.DOTALL)
-        for lang, block in markdown_blocks:
+        # Detect fenced code blocks and include both language and content size
+        markdown_blocks = list(
+            re.finditer(r"```([a-zA-Z0-9_+-]*)\n([\s\S]*?)```", content)
+        )
+        for m in markdown_blocks:
+            lang = m.group(1) or None
+            block = m.group(2)
             if lang:
-                language_blocks.append((lang, len(block)))
+                language_blocks.append((lang.lower(), len(block)))
             else:
                 detected_lang, _ = self.detect_from_content(block)
                 language_blocks.append((detected_lang, len(block)))
@@ -350,9 +355,15 @@ class ProjectAnalyzerImpl(ProjectAnalyzer):
             for filename in files:
                 file_path = Path(root) / filename
                 analysis["file_count"] += 1
-                if file_path in framework_files:
-                    for indicator in framework_files[file_path]:
+                if filename in framework_files:
+                    for indicator in framework_files[filename]:
                         analysis["framework_indicators"][indicator] = True
+                    # Heuristic: presence of JS build files implies frontend
+                    if any(
+                        k in framework_files[filename]
+                        for k in ["javascript", "node", "npm", "typescript"]
+                    ):
+                        analysis["structure"]["has_frontend"] = True
                 try:
                     lang, confidence = self.detector.detect_from_file(str(file_path))
                     if confidence > 0.5:
@@ -368,7 +379,7 @@ class ProjectAnalyzerImpl(ProjectAnalyzer):
                     path_parts = str(rel_path).lower()
                     if any(
                         part in path_parts
-                        for part in ["src", "lib", "app", "backend", "server", "api"]
+                        for part in ["backend", "server", "api", "src/main"]
                     ):
                         analysis["structure"]["has_backend"] = True
                     if any(
@@ -393,7 +404,7 @@ class ProjectAnalyzerImpl(ProjectAnalyzer):
                         for part in ["docs", "documentation", "README"]
                     ):
                         analysis["structure"]["has_docs"] = True
-                    if file_path in framework_files or file_path.endswith(
+                    if filename in framework_files or str(file_path).endswith(
                         (".json", ".yaml", ".yml", ".toml", ".ini"),
                     ):
                         analysis["structure"]["has_config"] = True
@@ -412,26 +423,28 @@ class ProjectAnalyzerImpl(ProjectAnalyzer):
 
         # Check project types in priority order
         type_checks = [
+            # Fullstack first
             (
                 lambda: structure["has_frontend"] and structure["has_backend"],
                 "fullstack_webapp",
             ),
-            (
-                lambda: structure["has_frontend"]
-                and MultiLanguageProcessor._is_node_app(indicators),
-                "node_application",
-            ),
-            (lambda: structure["has_frontend"], "frontend_webapp"),
+            # Prefer backend classification before frontend-only and node app
             (
                 lambda: structure["has_backend"] and not structure["has_frontend"],
                 "backend_api",
             ),
             (
-                lambda: MultiLanguageProcessor._is_library(indicators, analysis),
+                lambda: structure["has_frontend"]
+                and ProjectAnalyzerImpl._is_node_app(indicators),
+                "node_application",
+            ),
+            (lambda: structure["has_frontend"], "frontend_webapp"),
+            (
+                lambda: ProjectAnalyzerImpl._is_library(indicators, analysis),
                 "library",
             ),
             (
-                lambda: MultiLanguageProcessor._is_mobile_app(languages, analysis),
+                lambda: ProjectAnalyzerImpl._is_mobile_app(languages, analysis),
                 "mobile_app",
             ),
             (
@@ -678,7 +691,7 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
                 parent_language=None,
             ),
         )
-        style_pattern = r"style\\s*=\\s*\\{\\{([^}]+)\\}\\}"
+        style_pattern = r"style\s*=\s*\{\{([\s\S]*?)\}\}"
         for match in re.finditer(style_pattern, content):
             start_line = content[: match.start()].count("\n") + 1
             end_line = content[: match.end()].count("\n") + 1
@@ -760,9 +773,9 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
                 parent_language=None,
             ),
         )
-        code_block_pattern = r"```(\\w+)?\\n(.*?)```"
-        for match in re.finditer(code_block_pattern, content, re.DOTALL):
-            language = match.group(1) or "text"
+        code_block_pattern = r"```([a-zA-Z0-9_+-]*)\n([\s\S]*?)```"
+        for match in re.finditer(code_block_pattern, content):
+            language = (match.group(1) or "text").lower()
             start_line = content[: match.start(2)].count("\n") + 1
             end_line = content[: match.end(2)].count("\n") + 1
             regions.append(

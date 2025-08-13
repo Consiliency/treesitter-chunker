@@ -27,18 +27,16 @@ class WASMConfig(LanguageConfig):
         """WASM-specific chunk types."""
         return {
             "module",
-            "function",
-            "func",
-            "memory",
-            "table",
-            "global",
-            "export",
-            "import",
-            "type",
-            "type_def",
-            "data",
-            "elem",
-            "start",
+            "module_field_func",
+            "module_field_memory",
+            "module_field_table",
+            "module_field_global",
+            "module_field_import",
+            "module_field_export",
+            "module_field_type",
+            "module_field_data",
+            "module_field_elem",
+            "module_field_start",
         }
 
     @property
@@ -85,55 +83,67 @@ class WASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
     def default_chunk_types(self) -> set[str]:
         return {
             "module",
-            "function",
-            "func",
-            "memory",
-            "table",
-            "global",
-            "export",
-            "import",
-            "type",
-            "type_def",
-            "data",
-            "elem",
-            "start",
+            "module_field_func",
+            "module_field_memory",
+            "module_field_table",
+            "module_field_global",
+            "module_field_import",
+            "module_field_export",
+            "module_field_type",
+            "module_field_data",
+            "module_field_elem",
+            "module_field_start",
         }
 
     @staticmethod
     def get_node_name(node: Node, source: bytes) -> str | None:
         """Extract the name from a WASM node."""
-        if node.type in {"function", "func"}:
-            found_func = False
-            for child in node.children:
-                if child.type == "func" or (
-                    child.type == "keyword"
-                    and source[child.start_byte : child.end_byte] == b"func"
-                ):
-                    found_func = True
-                elif found_func and child.type == "identifier":
-                    name = source[child.start_byte : child.end_byte].decode("utf-8")
-                    return name.lstrip("$")
-        elif node.type == "export":
-            for child in node.children:
-                if child.type == "string":
-                    name = source[child.start_byte : child.end_byte].decode("utf-8")
-                    return name.strip('"')
-        elif node.type == "import":
-            strings = []
-            for child in node.children:
-                if child.type == "string":
-                    s = source[child.start_byte : child.end_byte].decode("utf-8")
-                    strings.append(s.strip('"'))
-            if len(strings) >= 2:
-                return f"{strings[0]}.{strings[1]}"
-        elif node.type in {"global", "memory", "table"} or node.type in {
-            "type",
-            "type_def",
-        }:
+        if node.type == "module":
+            # Look for an identifier child in the module node
             for child in node.children:
                 if child.type == "identifier":
                     name = source[child.start_byte : child.end_byte].decode("utf-8")
                     return name.lstrip("$")
+        elif node.type == "module_field_func":
+            # Look for the identifier child in function
+            for child in node.children:
+                if child.type == "identifier":
+                    name = source[child.start_byte : child.end_byte].decode("utf-8")
+                    return name.lstrip("$")
+        elif node.type in {
+            "module_field_memory",
+            "module_field_table",
+            "module_field_global",
+            "module_field_type",
+        }:
+            # Look for identifier child in these module fields
+            for child in node.children:
+                if child.type == "identifier":
+                    name = source[child.start_byte : child.end_byte].decode("utf-8")
+                    return name.lstrip("$")
+        elif node.type == "module_field_export":
+            # Look for the name field which contains a string
+            for child in node.children:
+                if child.type == "name":
+                    for name_child in child.children:
+                        if name_child.type == "string":
+                            name = source[
+                                name_child.start_byte : name_child.end_byte
+                            ].decode("utf-8")
+                            return name.strip('"')
+        elif node.type == "module_field_import":
+            # Look for name fields (module and name)
+            names = []
+            for child in node.children:
+                if child.type == "name":
+                    for name_child in child.children:
+                        if name_child.type == "string":
+                            name = source[
+                                name_child.start_byte : name_child.end_byte
+                            ].decode("utf-8")
+                            names.append(name.strip('"'))
+            if len(names) >= 2:
+                return f"{names[0]}.{names[1]}"
         return None
 
     def get_semantic_chunks(self, node: Node, source: bytes) -> list[dict[str, any]]:
@@ -158,10 +168,13 @@ class WASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     "name": name,
                 }
                 chunks.append(chunk)
+                # Process child module fields directly
                 for child in n.children:
-                    extract_chunks(child, True)
+                    if child.type == "module_field":
+                        for field_child in child.children:
+                            extract_chunks(field_child, True)
                 return
-            if n.type in {"function", "func"} and in_module:
+            if n.type == "module_field_func" and in_module:
                 content = source[n.start_byte : n.end_byte].decode(
                     "utf-8",
                     errors="replace",
@@ -182,7 +195,7 @@ class WASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 if module_name:
                     chunk["module"] = module_name
                 chunks.append(chunk)
-            elif n.type == "memory" and in_module:
+            elif n.type == "module_field_memory" and in_module:
                 content = source[n.start_byte : n.end_byte].decode(
                     "utf-8",
                     errors="replace",
@@ -198,7 +211,20 @@ class WASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 if limits:
                     chunk["limits"] = limits
                 chunks.append(chunk)
-            elif n.type == "table" and in_module:
+
+                # Check for inline export
+                inline_export = self._extract_inline_export(n, source)
+                if inline_export:
+                    export_chunk = {
+                        "type": "export",
+                        "start_line": n.start_point[0] + 1,
+                        "end_line": n.end_point[0] + 1,
+                        "content": content,
+                        "name": inline_export,
+                        "export_kind": "memory",
+                    }
+                    chunks.append(export_chunk)
+            elif n.type == "module_field_table" and in_module:
                 content = source[n.start_byte : n.end_byte].decode(
                     "utf-8",
                     errors="replace",
@@ -211,7 +237,7 @@ class WASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     "name": self.get_node_name(n, source),
                 }
                 chunks.append(chunk)
-            elif n.type == "global" and in_module:
+            elif n.type == "module_field_global" and in_module:
                 content = source[n.start_byte : n.end_byte].decode(
                     "utf-8",
                     errors="replace",
@@ -226,7 +252,7 @@ class WASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 if self._is_mutable_global(n, source):
                     chunk["mutable"] = True
                 chunks.append(chunk)
-            elif n.type == "export" and in_module:
+            elif n.type == "module_field_export" and in_module:
                 content = source[n.start_byte : n.end_byte].decode(
                     "utf-8",
                     errors="replace",
@@ -243,7 +269,7 @@ class WASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 if export_kind:
                     chunk["export_kind"] = export_kind
                 chunks.append(chunk)
-            elif n.type == "import" and in_module:
+            elif n.type == "module_field_import" and in_module:
                 content = source[n.start_byte : n.end_byte].decode(
                     "utf-8",
                     errors="replace",
@@ -259,7 +285,7 @@ class WASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 if import_kind:
                     chunk["import_kind"] = import_kind
                 chunks.append(chunk)
-            elif n.type in {"type", "type_def"} and in_module:
+            elif n.type == "module_field_type" and in_module:
                 content = source[n.start_byte : n.end_byte].decode(
                     "utf-8",
                     errors="replace",
@@ -272,7 +298,7 @@ class WASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     "name": self.get_node_name(n, source),
                 }
                 chunks.append(chunk)
-            elif n.type == "data" and in_module:
+            elif n.type == "module_field_data" and in_module:
                 content = source[n.start_byte : n.end_byte].decode(
                     "utf-8",
                     errors="replace",
@@ -298,26 +324,21 @@ class WASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
 
     def should_chunk_node(self, node: Node) -> bool:
         """Determine if a specific node should be chunked."""
-        if node.type in self.default_chunk_types:
-            return True
-        if node.type == "inline_func":
-            return True
-        return node.type == "custom"
+        return node.type in self.default_chunk_types
 
     def get_node_context(self, node: Node, source: bytes) -> str | None:
         """Extract meaningful context for a node."""
         # Map node types to their context format
         node_context_map = {
             "module": ("(module", ")"),
-            "function": ("(func", ")"),
-            "func": ("(func", ")"),
-            "memory": ("(memory", ")"),
-            "table": ("(table", ")"),
-            "global": ("(global", ")"),
-            "export": ('(export "', '")'),
-            "import": ("(import", ")"),
-            "type": ("(type", ")"),
-            "type_def": ("(type", ")"),
+            "module_field_func": ("(func", ")"),
+            "module_field_memory": ("(memory", ")"),
+            "module_field_table": ("(table", ")"),
+            "module_field_global": ("(global", ")"),
+            "module_field_export": ('(export "', '")'),
+            "module_field_import": ("(import", ")"),
+            "module_field_type": ("(type", ")"),
+            "module_field_data": ("(data", ")"),
         }
 
         context_info = node_context_map.get(node.type)
@@ -346,7 +367,7 @@ class WASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     chunk.metadata = {"module_name": name}
                 if self.should_include_chunk(chunk):
                     return chunk
-        elif node.type in {"function", "func"}:
+        elif node.type == "module_field_func":
             chunk = self.create_chunk(node, source, file_path, parent_context)
             if chunk:
                 params, results = self._extract_function_signature(
@@ -360,14 +381,14 @@ class WASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 if self._is_exported_function(node, source):
                     chunk.metadata["exported"] = True
                 return chunk if self.should_include_chunk(chunk) else None
-        elif node.type == "import":
+        elif node.type == "module_field_import":
             chunk = self.create_chunk(node, source, file_path, parent_context)
             if chunk:
                 import_kind = self._get_import_kind(node, source)
                 if import_kind:
                     chunk.metadata = {"import_kind": import_kind}
                 return chunk if self.should_include_chunk(chunk) else None
-        elif node.type == "export":
+        elif node.type == "module_field_export":
             chunk = self.create_chunk(node, source, file_path, parent_context)
             if chunk:
                 export_kind = self._get_export_kind(node, source)
@@ -384,11 +405,14 @@ class WASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         """Extract parameter and result counts from function."""
         param_count = 0
         result_count = 0
+
+        # Count direct children of func_type_params and func_type_results
         for child in node.children:
-            if child.type == "param":
+            if child.type == "func_type_params":
                 param_count += 1
-            elif child.type == "result":
+            elif child.type == "func_type_results":
                 result_count += 1
+
         return param_count, result_count
 
     @staticmethod
@@ -413,28 +437,59 @@ class WASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
     def _is_mutable_global(node: Node, source: bytes) -> bool:
         """Check if a global is mutable."""
         for child in node.children:
-            if child.type == "mut" or (
-                child.type == "keyword"
-                and source[child.start_byte : child.end_byte] == b"mut"
-            ):
-                return True
+            if child.type == "global_type":
+                for global_type_child in child.children:
+                    if global_type_child.type == "global_type_mut":
+                        return True
         return False
 
     @staticmethod
     def _get_export_kind(node: Node, source: bytes) -> str | None:
         """Determine what kind of export this is."""
         for child in node.children:
-            if child.type in {"func", "memory", "table", "global"}:
-                return child.type
-            if child.type == "keyword":
-                keyword = source[child.start_byte : child.end_byte].decode("utf-8")
-                if keyword in {"func", "memory", "table", "global"}:
-                    return keyword
+            if child.type == "export_desc":
+                for desc_child in child.children:
+                    if desc_child.type == "export_desc_func":
+                        return "func"
+                    if desc_child.type == "export_desc_memory":
+                        return "memory"
+                    if desc_child.type == "export_desc_table":
+                        return "table"
+                    if desc_child.type == "export_desc_global":
+                        return "global"
         return None
 
     def _get_import_kind(self, node: Node, source: bytes) -> str | None:
         """Determine what kind of import this is."""
-        return self._get_export_kind(node, source)
+        for child in node.children:
+            if child.type == "import_desc":
+                for desc_child in child.children:
+                    if desc_child.type == "import_desc_func_type":
+                        return "func"
+                    if desc_child.type == "import_desc_memory_type":
+                        return "memory"
+                    if desc_child.type == "import_desc_table_type":
+                        return "table"
+                    if desc_child.type == "import_desc_global_type":
+                        return "global"
+                    if desc_child.type == "import_desc_type_use":
+                        return "func"  # type_use typically refers to function types
+        return None
+
+    @staticmethod
+    def _extract_inline_export(node: Node, source: bytes) -> str | None:
+        """Extract inline export name if present."""
+        for child in node.children:
+            if child.type == "export":
+                for export_child in child.children:
+                    if export_child.type == "name":
+                        for name_child in export_child.children:
+                            if name_child.type == "string":
+                                name = source[
+                                    name_child.start_byte : name_child.end_byte
+                                ].decode("utf-8")
+                                return name.strip('"')
+        return None
 
     @staticmethod
     def _is_exported_function(_node: Node, _source: bytes) -> bool:

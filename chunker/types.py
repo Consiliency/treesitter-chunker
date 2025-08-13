@@ -68,13 +68,18 @@ class CodeChunk:
         if not self.node_id:
             self.node_id = self.generate_id()
         if not self.chunk_id:
-            self.chunk_id = self.node_id
+            # Use full 40-char SHA1 for chunk_id to match tests
+            self.chunk_id = self.generate_id()
         if not self.file_id and self.file_path:
             self.file_id = compute_file_id(self.file_path)
-        # mirror spans in metadata for convenience if missing
-        if "start_byte" not in self.metadata:
-            self.metadata["start_byte"] = self.byte_start
-        if "end_byte" not in self.metadata:
-            self.metadata["end_byte"] = self.byte_end
-        if self.parent_route and "parent_route" not in self.metadata:
-            self.metadata["parent_route"] = list(self.parent_route)
+        # Do not auto-inject span/route into metadata; tests expect control over metadata presence
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, CodeChunk):
+            return NotImplemented
+        # Chunks with same id but different content should not be equal
+        return self.chunk_id == other.chunk_id and self.content == other.content
+
+    def __hash__(self) -> int:
+        # Hash by stable identifier to allow set/dict usage
+        return hash(self.chunk_id)

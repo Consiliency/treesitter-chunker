@@ -14,12 +14,8 @@ from .download_contract import (
 class GrammarDownloadStub(GrammarDownloadContract):
     """Stub implementation that can be instantiated and tested"""
 
-    def __init__(self):
-        self._cache_dir = Path(tempfile.gettempdir()) / "grammar_cache_stub"
-        self._cache_dir.mkdir(exist_ok=True)
-
+    @staticmethod
     def download_grammar(
-        self,
         language: str,
         version: str | None = None,
         progress_callback: Callable[[DownloadProgress], None] | None = None,
@@ -34,14 +30,14 @@ class GrammarDownloadStub(GrammarDownloadContract):
                     current_file=f"{language}-grammar.tar.gz",
                 )
                 progress_callback(progress)
-        download_path = self._cache_dir / f"{language}-{version or 'latest'}"
+        cache_dir = GrammarDownloadStub.get_grammar_cache_dir()
+        download_path = cache_dir / f"{language}-{version or 'latest'}"
         download_path.mkdir(exist_ok=True)
         (download_path / "grammar.js").touch()
         return download_path
 
-    @classmethod
+    @staticmethod
     def compile_grammar(
-        cls,
         grammar_path: Path,
         output_dir: Path,
     ) -> CompilationResult:
@@ -62,38 +58,45 @@ class GrammarDownloadStub(GrammarDownloadContract):
             abi_version=14,
         )
 
+    @staticmethod
     def download_and_compile(
-        self,
         language: str,
         version: str | None = None,
     ) -> tuple[bool, str]:
         """Stub that simulates download and compile"""
         try:
-            grammar_path = self.download_grammar(language, version)
-            result = self.compile_grammar(grammar_path, self._cache_dir)
+            grammar_path = GrammarDownloadStub.download_grammar(language, version)
+            cache_dir = GrammarDownloadStub.get_grammar_cache_dir()
+            result = GrammarDownloadStub.compile_grammar(grammar_path, cache_dir)
             if result.success:
                 return True, str(result.output_path)
             return False, result.error_message or "Compilation failed"
         except (FileNotFoundError, IndexError, KeyError) as e:
             return False, str(e)
 
-    def get_grammar_cache_dir(self) -> Path:
+    @staticmethod
+    def get_grammar_cache_dir() -> Path:
         """Stub that returns test cache directory"""
-        return self._cache_dir
+        cache_dir = Path(tempfile.gettempdir()) / "grammar_cache_stub"
+        cache_dir.mkdir(exist_ok=True)
+        return cache_dir
 
+    @staticmethod
     def is_grammar_cached(
-        self,
         language: str,
         version: str | None = None,
     ) -> bool:
         """Stub that checks for cached grammar"""
-        cached_file = self._cache_dir / f"{language}-{version or 'latest'}.so"
+        cache_dir = GrammarDownloadStub.get_grammar_cache_dir()
+        cached_file = cache_dir / f"{language}-{version or 'latest'}.so"
         return cached_file.exists()
 
-    def clean_cache(self, _keep_recent: int = 5) -> int:
+    @staticmethod
+    def clean_cache(keep_recent: int = 5) -> int:
         """Stub that simulates cache cleaning"""
         removed = 0
-        for file_path in self._cache_dir.glob("*.so"):
+        cache_dir = GrammarDownloadStub.get_grammar_cache_dir()
+        for file_path in cache_dir.glob("*.so"):
             if removed >= 2:
                 break
             file_path.unlink()

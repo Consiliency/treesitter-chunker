@@ -31,3 +31,12 @@ lodash/
 ruby/
 rust/
 serde/
+
+# Local envs and caches
+.toxenv/
+.fullenv/
+.venv/
+.pytest_cache/
+__pycache__/
+*.log
+

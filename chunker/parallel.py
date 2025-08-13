@@ -69,8 +69,12 @@ class ParallelChunker:
                 try:
                     file_path, chunks = future.result()
                     results[file_path] = chunks
-                except (FileNotFoundError, IndexError, KeyError) as e:
+                except (FileNotFoundError, IndexError, KeyError, PermissionError) as e:
                     print(f"Error processing {path}: {e}")
+                    results[path] = []
+                except Exception as e:
+                    # Handle any other worker crashes or unexpected exceptions
+                    print(f"Unexpected error processing {path}: {e}")
                     results[path] = []
 
         return results

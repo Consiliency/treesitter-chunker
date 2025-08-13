@@ -398,9 +398,19 @@ class TreeSitterSmartContextProvider(SmartContextProvider):
             exports["functions"].update(
                 re.findall(func_pattern, chunk.content),
             )
-            arrow_pattern = "(?:const|let|var)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\s*=\\s*(?:\\([^)]*\\)|[^=])\\s*=>"
+            # Arrow function declarations: const Name = (...) => { ... }
+            arrow_pattern = (
+                r"(?:export\\s+)?(?:const|let|var)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\s*=\\s*"
+                r"(?:\\([^)]*\\)|[a-zA-Z_][a-zA-Z0-9_]*|\\(.*?\\))\\s*=>"
+            )
             exports["functions"].update(re.findall(arrow_pattern, chunk.content))
-            class_pattern = "class\\s+([a-zA-Z_][a-zA-Z0-9_]*)"
+            # React component declarations: function Name(...) { ... }
+            react_fn_component = (
+                r"(?:export\\s+)?function\\s+([A-Z][A-Za-z0-9_]*)\\s*\\("
+            )
+            exports["functions"].update(re.findall(react_fn_component, chunk.content))
+            # React component as class
+            class_pattern = "class\\s+([A-Z][A-Za-z0-9_]*)"
             exports["classes"].update(re.findall(class_pattern, chunk.content))
         return exports
 
@@ -483,9 +493,17 @@ class TreeSitterSmartContextProvider(SmartContextProvider):
         return 10000
 
     @staticmethod
-    def _get_file_chunks(_file_path: str, _language: str) -> list[CodeChunk]:
-        """Get all chunks from a file."""
-        return []
+    def _get_file_chunks(file_path: str, language: str) -> list[CodeChunk]:
+        """Get all chunks from a file using the core chunker.
+
+        Falls back to empty list on any parsing error to avoid breaking context.
+        """
+        try:
+            from .core import chunk_file as core_chunk_file
+
+            return core_chunk_file(file_path, language)
+        except Exception:
+            return []
 
     def _get_parser(self, language: str):
         """Get a cached parser for the language."""

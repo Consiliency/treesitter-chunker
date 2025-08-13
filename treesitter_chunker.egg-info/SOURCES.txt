@@ -308,6 +308,8 @@ chunker/languages/base.py
 chunker/languages/c.py
 chunker/languages/clojure.py
 chunker/languages/cpp.py
+chunker/languages/cs.py
+chunker/languages/cs_plugin.py
 chunker/languages/dart.py
 chunker/languages/dockerfile.py
 chunker/languages/elixir.py
@@ -318,9 +320,11 @@ chunker/languages/java.py
 chunker/languages/java_plugin.py
 chunker/languages/javascript.py
 chunker/languages/julia.py
+chunker/languages/kotlin.py
 chunker/languages/matlab.py
 chunker/languages/nasm.py
 chunker/languages/ocaml.py
+chunker/languages/php.py
 chunker/languages/plugin_base.py
 chunker/languages/python.py
 chunker/languages/r.py
@@ -330,7 +334,9 @@ chunker/languages/rust.py
 chunker/languages/scala.py
 chunker/languages/sql.py
 chunker/languages/svelte.py
+chunker/languages/swift.py
 chunker/languages/toml.py
+chunker/languages/typescript.py
 chunker/languages/vue.py
 chunker/languages/wasm.py
 chunker/languages/xml.py
@@ -1807,6 +1813,7 @@ tests/__init__.py
 tests/conftest.py
 tests/phase13_debug_tools_integration.py
 tests/test_adaptive_chunker.py
+tests/test_api_endpoints_extended.py
 tests/test_auto.py
 tests/test_build_implementation.py
 tests/test_build_real_compilation.py
@@ -1819,6 +1826,7 @@ tests/test_cicd_pipeline.py
 tests/test_cli.py
 tests/test_cli_integration_advanced.py
 tests/test_clojure_language.py
+tests/test_codechunk_ids_backcompat.py
 tests/test_composite_chunker.py
 tests/test_composite_config_advanced.py
 tests/test_config.py
@@ -1853,6 +1861,7 @@ tests/test_go_language.py
 tests/test_grammar_discovery.py
 tests/test_grammar_download.py
 tests/test_grammar_manager.py
+tests/test_graph_cut.py
 tests/test_graphml_exporter.py
 tests/test_haskell_language.py
 tests/test_hierarchical_chunker.py
@@ -1875,10 +1884,13 @@ tests/test_matlab_language.py
 tests/test_metadata_extraction.py
 tests/test_multi_language.py
 tests/test_nasm_language.py
+tests/test_nearest_tests.py
+tests/test_node_id_stability.py
 tests/test_ocaml_language.py
 tests/test_optimization.py
 tests/test_overlapping_fallback.py
 tests/test_overlapping_fallback_isolated.py
+tests/test_packing_hint.py
 tests/test_parallel.py
 tests/test_parallel_error_handling.py
 tests/test_parquet_export.py
@@ -1908,6 +1920,7 @@ tests/test_php_language.py
 tests/test_plugin_custom_directory_scanning.py
 tests/test_plugin_initialization_failures.py
 tests/test_plugin_system.py
+tests/test_postgres_spec_exporter.py
 tests/test_python_language.py
 tests/test_query_advanced.py
 tests/test_r_language.py
@@ -1924,6 +1937,7 @@ tests/test_semantic_chunker.py
 tests/test_semantic_merging.py
 tests/test_sliding_integration.py
 tests/test_smart_context.py
+tests/test_spans_roundtrip.py
 tests/test_sql_language.py
 tests/test_streaming.py
 tests/test_structured_export_integration.py
@@ -1942,6 +1956,7 @@ tests/test_visualize_ast_script.py
 tests/test_vue_language.py
 tests/test_wasm_language.py
 tests/test_workflow_validator.py
+tests/test_xref_graph.py
 tests/test_zig_language.py
 tests/integration/COORDINATOR_USAGE.md
 tests/integration/README.md

@@ -8,7 +8,7 @@ class DeveloperToolingStub(DeveloperToolingContract):
     """Stub implementation that can be instantiated and tested"""
 
     @staticmethod
-    def run_pre_commit_checks(_files: list[Path]) -> tuple[
+    def run_pre_commit_checks(files: list[Path]) -> tuple[
         bool,
         dict[str, Any],
     ]:
@@ -24,7 +24,7 @@ class DeveloperToolingStub(DeveloperToolingContract):
         }
 
     @staticmethod
-    def format_code(_files: list[Path], _fix: bool = False) -> dict[str, Any]:
+    def format_code(files: list[Path], fix: bool = False) -> dict[str, Any]:
         """Stub that returns valid default values"""
         return {
             "status": "not_implemented",
@@ -36,14 +36,14 @@ class DeveloperToolingStub(DeveloperToolingContract):
 
     @staticmethod
     def run_linting(
-        _files: list[Path],
-        _fix: bool = False,
+        files: list[Path],
+        fix: bool = False,
     ) -> dict[str, list[dict[str, Any]]]:
         """Stub that returns valid default values"""
         return {}
 
     @staticmethod
-    def run_type_checking(_files: list[Path]) -> dict[
+    def run_type_checking(files: list[Path]) -> dict[
         str,
         list[dict[str, Any]],
     ]:

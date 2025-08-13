@@ -9,7 +9,7 @@ class DistributionStub(DistributionContract):
 
     @staticmethod
     def publish_to_pypi(
-        _package_dir: Path,
+        package_dir: Path,
         repository: str = "pypi",
         dry_run: bool = False,
     ) -> tuple[bool, dict[str, Any]]:
@@ -26,7 +26,7 @@ class DistributionStub(DistributionContract):
     @staticmethod
     def build_docker_image(
         tag: str,
-        _platforms: list[str] | None = None,
+        platforms: list[str] | None = None,
     ) -> tuple[bool, str]:
         """Stub that returns valid default values"""
         return False, f"not-implemented-{tag}"
@@ -55,7 +55,7 @@ class ReleaseManagementStub(ReleaseManagementContract):
     """Stub implementation for release management"""
 
     @staticmethod
-    def prepare_release(version: str, _changelog: str) -> tuple[bool, dict[str, Any]]:
+    def prepare_release(version: str, changelog: str) -> tuple[bool, dict[str, Any]]:
         """Stub that returns valid default values"""
         return False, {
             "status": "not_implemented",
@@ -67,6 +67,6 @@ class ReleaseManagementStub(ReleaseManagementContract):
         }
 
     @staticmethod
-    def create_release_artifacts(_version: str, _output_dir: Path) -> list[Path]:
+    def create_release_artifacts(version: str, output_dir: Path) -> list[Path]:
         """Stub that returns valid default values"""
         return []

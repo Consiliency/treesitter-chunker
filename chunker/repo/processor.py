@@ -5,6 +5,7 @@ import os
 import time
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from configparser import NoOptionError
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -13,11 +14,7 @@ import pathspec
 from tqdm import tqdm
 
 from chunker.exceptions import ChunkerError
-from chunker.interfaces.repo import (
-    FileChunkResult,
-    GitAwareProcessor,
-    RepoChunkResult,
-)
+from chunker.interfaces.repo import FileChunkResult, GitAwareProcessor, RepoChunkResult
 from chunker.interfaces.repo import RepoProcessor as RepoProcessorInterface
 
 from .chunker_adapter import Chunker
@@ -87,6 +84,7 @@ class RepoProcessor(RepoProcessorInterface):
         incremental: bool = True,
         file_pattern: str | None = None,
         exclude_patterns: list[str] | None = None,
+        max_workers: int | None = None,
     ) -> RepoChunkResult:
         """
         Process all files in a repository.
@@ -96,6 +94,7 @@ class RepoProcessor(RepoProcessorInterface):
             incremental: Only process changed files since last run
             file_pattern: Glob pattern for files to include
             exclude_patterns: List of glob patterns to exclude
+            max_workers: Maximum number of parallel workers (overrides instance setting)
 
         Returns:
             Repository processing result
@@ -122,6 +121,7 @@ class RepoProcessor(RepoProcessorInterface):
         processing_result = self._process_files_parallel(
             files_to_process,
             repo_path,
+            max_workers,
         )
 
         file_results = processing_result["file_results"]
@@ -269,6 +269,7 @@ class RepoProcessor(RepoProcessorInterface):
         self,
         files_to_process: list[Path],
         repo_path: Path,
+        max_workers: int | None = None,
     ) -> dict[str, Any]:
         """Process files in parallel and return results."""
         file_results = []
@@ -279,7 +280,10 @@ class RepoProcessor(RepoProcessorInterface):
         if self.show_progress:
             pbar = tqdm(total=len(files_to_process), desc="Processing files")
 
-        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+        effective_max_workers = (
+            max_workers if max_workers is not None else self.max_workers
+        )
+        with ThreadPoolExecutor(max_workers=effective_max_workers) as executor:
             futures = {
                 executor.submit(
                     self._process_single_file,
@@ -494,6 +498,20 @@ class RepoProcessor(RepoProcessorInterface):
             processing_time=time.time() - start_time,
         )
 
+    @staticmethod
+    def read_ignore_patterns(file_path: Path) -> list[str]:
+        """Read ignore patterns from a file."""
+        patterns = []
+        try:
+            with file_path.open("r", encoding="utf-8") as f:
+                for line in f:
+                    stripped_line = line.strip()
+                    if stripped_line and not stripped_line.startswith("#"):
+                        patterns.append(stripped_line)
+        except (OSError, FileNotFoundError, IndexError):
+            pass
+        return patterns
+
 
 class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
     """Repository processor with Git awareness."""
@@ -527,7 +545,13 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
             elif since_commit:
                 diff = repo.commit(since_commit).diff(repo.head.commit)
             elif repo.head.is_valid():
-                diff = repo.head.commit.diff("HEAD~1")
+                try:
+                    # Check if HEAD~1 exists
+                    repo.commit("HEAD~1")
+                    diff = repo.head.commit.diff("HEAD~1")
+                except (self.git.BadName, self.git.GitCommandError):
+                    # No previous commit (initial commit scenario)
+                    return []
             else:
                 return []
             changed_files = []
@@ -536,10 +560,9 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
                 if path and Path(repo_path, path).exists():
                     changed_files.append(path)
             return changed_files
-        except self.git.InvalidGitRepositoryError as e:
-            raise ChunkerError(
-                f"Not a valid git repository: {repo_path}",
-            ) from e
+        except self.git.InvalidGitRepositoryError:
+            # Not a git repository, return empty list
+            return []
         except self.git.GitCommandError as e:
             raise ChunkerError(f"Git error: {e}") from e
 
@@ -562,7 +585,8 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
             except self.git.GitCommandError:
                 pass
             rel_path = Path(file_path).relative_to(repo_path)
-            if str(rel_path) not in [item.path for item in repo.index.entries]:
+            tracked_files = {path for path, stage in repo.index.entries.keys()}
+            if str(rel_path) not in tracked_files:
                 untracked = repo.untracked_files
                 return str(rel_path) in untracked
             return True
@@ -618,37 +642,36 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
         # Load patterns from .gitignore file
         gitignore_path = Path(repo_path) / ".gitignore"
         if gitignore_path.exists():
-            patterns.extend(RepoProcessor._read_ignore_patterns(gitignore_path))
+            patterns.extend(RepoProcessor.read_ignore_patterns(gitignore_path))
 
         # Load patterns from global excludes file
         excludes_path = self._get_global_excludes_path(repo_path)
         if excludes_path and excludes_path.exists():
-            patterns.extend(RepoProcessor._read_ignore_patterns(excludes_path))
+            patterns.extend(RepoProcessor.read_ignore_patterns(excludes_path))
 
-        return patterns
-
-    @staticmethod
-    def _read_ignore_patterns(file_path: Path) -> list[str]:
-        """Read ignore patterns from a file."""
-        patterns = []
-        try:
-            with file_path.open("r", encoding="utf-8") as f:
-                for line in f:
-                    stripped_line = line.strip()
-                    if stripped_line and not stripped_line.startswith("#"):
-                        patterns.append(stripped_line)
-        except (OSError, FileNotFoundError, IndexError):
-            pass
         return patterns
 
     def _get_global_excludes_path(self, repo_path: str) -> Path | None:
         """Get the path to the global excludes file."""
         try:
             repo = self.git.Repo(repo_path)
-            excludes_file = repo.config_reader().get_value("core", "excludesfile", None)
-            if excludes_file:
-                return Path(excludes_file).expanduser()
-        except (OSError, FileNotFoundError, IndexError):
+            # Check if repository is bare
+            if repo.bare:
+                return None
+            config_reader = repo.config_reader()
+            try:
+                excludes_file = config_reader.get_value("core", "excludesfile")
+                if excludes_file:
+                    return Path(excludes_file).expanduser()
+            except (KeyError, AttributeError, NoOptionError):
+                # No excludesfile configured, which is normal
+                pass
+        except (
+            OSError,
+            FileNotFoundError,
+            IndexError,
+            self.git.InvalidGitRepositoryError,
+        ):
             pass
         return None
 
@@ -709,7 +732,15 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
         """
         files = super().get_processable_files(repo_path, file_pattern, exclude_patterns)
         try:
-            self.git.Repo(repo_path)
+            repo = self.git.Repo(repo_path)
+            # Check if repository is bare
+            if repo.bare:
+                from chunker.exceptions import ChunkerError
+
+                raise ChunkerError(
+                    f"Cannot process bare repository: {repo_path}. "
+                    "Bare repositories have no working tree to process.",
+                )
             gitignore_patterns = self.load_gitignore_patterns(repo_path)
             if gitignore_patterns:
                 gitignore_spec = pathspec.PathSpec.from_lines(
@@ -724,7 +755,12 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
                     ) and self.should_process_file(str(file_path), repo_path):
                         filtered_files.append(file_path)
                 return filtered_files
-        except (FileNotFoundError, IndexError, KeyError):
+        except (
+            FileNotFoundError,
+            IndexError,
+            KeyError,
+            self.git.InvalidGitRepositoryError,
+        ):
             pass
         return files
 

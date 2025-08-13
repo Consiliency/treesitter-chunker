@@ -3,11 +3,22 @@
 import tempfile
 from pathlib import Path
 
+import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
 from chunker.exporters import ParquetExporter
 from chunker.types import CodeChunk
+
+
+def read_parquet_table(path):
+    """Read parquet table with compatibility for older pyarrow versions."""
+    # For pyarrow < 16, use OSFile to avoid path conversion issues
+    if int(pa.__version__.split(".")[0]) < 16:
+        with pa.OSFile(str(path), "rb") as source:
+            return pq.read_table(source)
+    else:
+        return pq.read_table(str(path))
 
 
 @pytest.fixture
@@ -59,7 +70,7 @@ def test_basic_export(sample_chunks):
         exporter.export(sample_chunks, output_path)
 
         # Read back and verify
-        table = pq.read_table(str(output_path))
+        table = read_parquet_table(output_path)
         assert len(table) == 3
 
         # Check schema
@@ -88,7 +99,7 @@ def test_column_selection(sample_chunks):
         exporter.export(sample_chunks, output_path)
 
         # Read back and verify
-        table = pq.read_table(str(output_path))
+        table = read_parquet_table(output_path)
         assert len(table) == 3
 
         # Check only selected columns are present
@@ -110,9 +121,18 @@ def test_partitioned_export(sample_chunks):
         assert (output_path / "language=python").exists()
         assert (output_path / "language=rust").exists()
 
-        # Read back partitioned dataset
-        dataset = pq.ParquetDataset(str(output_path))
-        table = dataset.read()
+        # Read back partitioned dataset - use compatibility approach
+        if int(pa.__version__.split(".")[0]) < 16:
+            # For older pyarrow, read partitions directly
+            tables = []
+            for lang_dir in output_path.glob("language=*"):
+                for parquet_file in lang_dir.glob("*.parquet"):
+                    with pa.OSFile(str(parquet_file), "rb") as source:
+                        tables.append(pq.read_table(source))
+            table = pa.concat_tables(tables) if tables else pa.table({})
+        else:
+            dataset = pq.ParquetDataset(str(output_path))
+            table = dataset.read()
         assert len(table) == 3
 
 
@@ -129,7 +149,7 @@ def test_compression_options(sample_chunks):
 
             # Verify file was created and can be read
             assert output_path.exists()
-            table = pq.read_table(str(output_path))
+            table = read_parquet_table(output_path)
             assert len(table) == 3
 
             # Cleanup
@@ -150,7 +170,7 @@ def test_streaming_export(sample_chunks):
         exporter.export_streaming(chunks_iterator(), output_path, batch_size=2)
 
         # Read back and verify
-        table = pq.read_table(str(output_path))
+        table = read_parquet_table(output_path)
         assert len(table) == 3
 
         # Cleanup
@@ -166,7 +186,7 @@ def test_empty_chunks():
         exporter.export([], output_path)
 
         # Read back and verify
-        table = pq.read_table(str(output_path))
+        table = read_parquet_table(output_path)
         assert len(table) == 0
 
         # Cleanup
@@ -182,7 +202,7 @@ def test_metadata_structure(sample_chunks):
         exporter.export(sample_chunks, output_path)
 
         # Read back
-        table = pq.read_table(str(output_path))
+        table = read_parquet_table(output_path)
 
         # Check metadata is a struct type
         metadata_col = table.column("metadata")

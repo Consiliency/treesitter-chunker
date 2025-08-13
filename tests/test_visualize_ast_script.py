@@ -1,4 +1,5 @@
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -14,7 +15,7 @@ def test_visualize_ast_script(tmp_path: Path) -> None:
     output = tmp_path / "out.svg"
     subprocess.run(
         [
-            "python",
+            sys.executable,
             "scripts/visualize_ast.py",
             str(sample),
             "--lang",

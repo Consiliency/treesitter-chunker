@@ -3,6 +3,7 @@ Build System implementation for cross-platform grammar compilation
 """
 
 import json
+import os
 import shutil
 import subprocess
 import tempfile
@@ -123,7 +124,21 @@ class BuildSystem(BuildSystemContract):
             grammar_dir = package_dir / "grammars" / platform
             grammar_dir.mkdir(parents=True, exist_ok=True)
 
-            languages = self._get_available_languages()
+            # Determine languages to include in wheel; allow env override
+            env_langs = os.environ.get("CHUNKER_WHEEL_LANGS")
+            if env_langs:
+                requested = [l.strip() for l in env_langs.split(",") if l.strip()]
+                available = set(self._get_available_languages())
+                languages = [l for l in requested if l in available]
+            else:
+                preferred = ["python", "javascript", "rust"]
+                available = set(self._get_available_languages())
+                languages = [l for l in preferred if l in available] or list(available)[
+                    :3
+                ]
+
+            if os.environ.get("CHUNKER_BUILD_VERBOSE"):
+                print(f"Building wheel grammars for languages: {languages}")
             success, build_info = self.compile_grammars(
                 languages,
                 platform,
@@ -131,6 +146,8 @@ class BuildSystem(BuildSystemContract):
             )
 
             if not success:
+                if os.environ.get("CHUNKER_BUILD_VERBOSE"):
+                    print(f"Grammar compilation failed: {build_info.get('errors')}")
                 return False, Path()
 
             # Build wheel manually using wheel package
@@ -351,7 +368,12 @@ Summary: Tree-sitter based code chunking library""",
                 build_info["errors"].append(f"Grammar not found: {lang}")
                 continue
 
+            # Include both root-level and src/ C sources (to pick up scanners)
             src_dir = grammar_dir / "src"
+            root_c = list(grammar_dir.glob("*.c"))
+            if root_c:
+                include_dirs.add(str(grammar_dir))
+                all_c_files.extend(str(f) for f in root_c)
             if src_dir.exists():
                 include_dirs.add(str(src_dir))
                 c_files = list(src_dir.glob("*.c"))
@@ -380,13 +402,29 @@ Summary: Tree-sitter based code chunking library""",
         cmd.extend(["-o", str(lib_path)] + all_c_files)
 
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+            timeout_s = None
+            try:
+                timeout_env = os.environ.get("CHUNKER_BUILD_TIMEOUT")
+                if timeout_env:
+                    timeout_s = int(timeout_env)
+            except Exception:
+                timeout_s = None
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=timeout_s,
+            )
             if result.returncode == 0:
                 build_info["libraries"]["combined"] = str(lib_path)
                 return True
             else:
                 build_info["errors"].append(f"Compilation failed: {result.stderr}")
                 return False
+        except subprocess.TimeoutExpired as e:
+            build_info["errors"].append(f"Compilation timed out after {e.timeout}s")
+            return False
         except Exception as e:
             build_info["errors"].append(f"Compilation error: {e}")
             return False

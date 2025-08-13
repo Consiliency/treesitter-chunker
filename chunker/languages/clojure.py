@@ -62,6 +62,10 @@ class ClojureConfig(LanguageConfig):
 
 
 # Register the Clojure configuration
+from .base import language_config_registry
+
+clojure_config = ClojureConfig()
+language_config_registry.register(clojure_config)
 
 from typing import TYPE_CHECKING
 

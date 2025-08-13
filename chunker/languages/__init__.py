@@ -8,6 +8,7 @@ Per-language helpers live here (e.g. node-type mappings, heuristics).
 
 from . import (
     clojure,
+    cs,
     dart,
     dockerfile,
     elixir,
@@ -25,24 +26,26 @@ from . import (
     sql,
     svelte,
     toml,
+    typescript,
     vue,
     wasm,
     xml,
     yaml,
     zig,
 )
+from .base import PluginConfig  # For backward compatibility
 from .base import (
     ChunkRule,
     CompositeLanguageConfig,
     LanguageConfig,
     LanguageConfigRegistry,
-    PluginConfig,  # For backward compatibility
     language_config_registry,
     validate_language_config,
 )
 from .c import CPlugin
 from .clojure import ClojurePlugin
 from .cpp import CppPlugin
+from .cs_plugin import CSharpPlugin
 from .dart import DartPlugin
 
 # Import Tier 2 language plugins
@@ -57,11 +60,13 @@ from .haskell import HaskellPlugin
 from .java_plugin import JavaPlugin
 from .javascript import JavaScriptPlugin
 from .julia import JuliaPlugin
-from .matlab import MATLABPlugin
 
 # Import Tier 4 language plugins
+from .kotlin import KotlinPlugin
+from .matlab import MATLABPlugin
 from .nasm import NASMPlugin
 from .ocaml import OCamlPlugin
+from .php import PHPPlugin
 
 # Phase 1.2 exports (Plugin system)
 from .plugin_base import LanguagePlugin
@@ -74,7 +79,9 @@ from .rust import RustPlugin
 from .scala import ScalaPlugin
 from .sql import SQLPlugin
 from .svelte import SveltePlugin
+from .swift import SwiftPlugin
 from .toml import TOMLPlugin
+from .typescript import TypeScriptPlugin
 from .vue import VuePlugin
 from .wasm import WASMPlugin
 from .xml import XMLPlugin
@@ -85,9 +92,11 @@ _plugin_exports = [
     "PythonPlugin",
     "RustPlugin",
     "JavaScriptPlugin",
+    "TypeScriptPlugin",
     "CPlugin",
     "CppPlugin",
     "GoPlugin",
+    "CSharpPlugin",
     "RubyPlugin",
     "JavaPlugin",
     # Tier 1 languages
@@ -113,6 +122,9 @@ _plugin_exports = [
     "ZigPlugin",
     "NASMPlugin",
     "WASMPlugin",
+    "KotlinPlugin",
+    "PHPPlugin",
+    "SwiftPlugin",
 ]
 
 __all__ = [

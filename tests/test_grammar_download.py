@@ -223,7 +223,7 @@ class TestGrammarDownloadManager:
             import tarfile
 
             archive_path = cache_dir / "test.tar.gz"
-            with tarfile.Path(archive_path).open("w:gz") as tar:
+            with tarfile.open(archive_path, "w:gz") as tar:
                 tar.add(inner_dir, arcname="tree-sitter-python-master")
             dest_dir = cache_dir / "extracted"
             dest_dir.mkdir()

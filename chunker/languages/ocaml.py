@@ -81,18 +81,12 @@ class OCamlPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         return {
             "value_definition",
             "let_binding",
-            "let_rec_binding",
-            "function_definition",
-            "fun_expression",
             "type_definition",
-            "type_binding",
             "module_definition",
-            "module_binding",
-            "signature",
-            "structure",
             "exception_definition",
             "class_definition",
-            "class_binding",
+            "signature",
+            "structure",
             "comment",
         }
 

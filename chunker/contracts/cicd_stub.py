@@ -8,7 +8,7 @@ class CICDPipelineStub(CICDPipelineContract):
     """Stub implementation that can be instantiated and tested"""
 
     @staticmethod
-    def validate_workflow_syntax(_workflow_path: Path) -> tuple[
+    def validate_workflow_syntax(workflow_path: Path) -> tuple[
         bool,
         list[str],
     ]:
@@ -36,7 +36,7 @@ class CICDPipelineStub(CICDPipelineContract):
         return result
 
     @staticmethod
-    def build_distribution(_version: str, _platforms: list[str]) -> dict[str, Any]:
+    def build_distribution(version: str, platforms: list[str]) -> dict[str, Any]:
         """Stub that returns valid default values"""
         return {
             "status": "not_implemented",
@@ -49,9 +49,9 @@ class CICDPipelineStub(CICDPipelineContract):
 
     @staticmethod
     def create_release(
-        _version: str,
-        _artifacts: list[Path],
-        _changelog: str,
+        version: str,
+        artifacts: list[Path],
+        changelog: str,
     ) -> dict[str, Any]:
         """Stub that returns valid default values"""
         return {

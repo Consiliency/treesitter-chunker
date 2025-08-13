@@ -1,0 +1,77 @@
+
+==================================== ERRORS ====================================
+________________ ERROR collecting tests/test_parquet_export.py _________________
+ImportError while importing test module '/home/jenner/code/treesitter-chunker/tests/test_parquet_export.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_parquet_export.py:6: in <module>
+    import pyarrow.parquet as pq
+.fullenv/lib/python3.12/site-packages/pyarrow/__init__.py:65: in <module>
+    import pyarrow.lib as _lib
+pyarrow/lib.pyx:24: in init pyarrow.lib
+    ???
+.fullenv/lib/python3.12/site-packages/numpy/__init__.py:155: in <module>
+    from . import (
+.fullenv/lib/python3.12/site-packages/numpy/ctypeslib.py:64: in <module>
+    from numpy import asarray, frombuffer, integer, ndarray
+E   ImportError: cannot import name 'asarray' from partially initialized module 'numpy' (most likely due to a circular import) (/home/jenner/code/treesitter-chunker/.fullenv/lib/python3.12/site-packages/numpy/__init__.py)
+________________ ERROR collecting tests/test_query_advanced.py _________________
+ImportError while importing test module '/home/jenner/code/treesitter-chunker/tests/test_query_advanced.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_query_advanced.py:3: in <module>
+    import numpy as np
+.fullenv/lib/python3.12/site-packages/numpy/__init__.py:155: in <module>
+    from . import (
+.fullenv/lib/python3.12/site-packages/numpy/ctypeslib.py:64: in <module>
+    from numpy import asarray, frombuffer, integer, ndarray
+E   ImportError: cannot import name 'asarray' from partially initialized module 'numpy' (most likely due to a circular import) (/home/jenner/code/treesitter-chunker/.fullenv/lib/python3.12/site-packages/numpy/__init__.py)
+_________ ERROR collecting tests/test_structured_export_integration.py _________
+ImportError while importing test module '/home/jenner/code/treesitter-chunker/tests/test_structured_export_integration.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_structured_export_integration.py:6: in <module>
+    import pyarrow.parquet as pq
+.fullenv/lib/python3.12/site-packages/pyarrow/__init__.py:65: in <module>
+    import pyarrow.lib as _lib
+pyarrow/lib.pyx:24: in init pyarrow.lib
+    ???
+.fullenv/lib/python3.12/site-packages/numpy/__init__.py:155: in <module>
+    from . import (
+.fullenv/lib/python3.12/site-packages/numpy/ctypeslib.py:64: in <module>
+    from numpy import asarray, frombuffer, integer, ndarray
+E   ImportError: cannot import name 'asarray' from partially initialized module 'numpy' (most likely due to a circular import) (/home/jenner/code/treesitter-chunker/.fullenv/lib/python3.12/site-packages/numpy/__init__.py)
+=============================== warnings summary ===============================
+tests/integration/coordinator.py:30
+  /home/jenner/code/treesitter-chunker/tests/integration/coordinator.py:30: PytestCollectionWarning: cannot collect test class 'TestResult' because it has a __init__ constructor (from: tests/integration/test_coordinator.py)
+    @dataclass
+
+tests/integration/coordinator.py:16
+  /home/jenner/code/treesitter-chunker/tests/integration/coordinator.py:16: PytestCollectionWarning: cannot collect test class 'TestScenario' because it has a __init__ constructor (from: tests/integration/test_coordinator.py)
+    @dataclass
+
+chunker/_internal/registry.py:224
+chunker/_internal/registry.py:224
+  /home/jenner/code/treesitter-chunker/chunker/_internal/registry.py:224: DeprecationWarning: int argument support is deprecated
+    language = Language(lang_ptr)
+
+chunker/rules/builtin.py:200
+  /home/jenner/code/treesitter-chunker/chunker/rules/builtin.py:200: PytestCollectionWarning: cannot collect test class 'TestAnnotationRule' because it has a __init__ constructor (from: tests/test_custom_rules.py)
+    class TestAnnotationRule(BaseRegexRule):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+ERROR tests/test_parquet_export.py
+ERROR tests/test_query_advanced.py
+ERROR tests/test_structured_export_integration.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 3 errors during collection !!!!!!!!!!!!!!!!!!!!
+36 deselected, 5 warnings, 3 errors in 0.80s

@@ -22,7 +22,7 @@ class TestBaseContextExtractor:
         """Test building context prefix with no items."""
         extractor = BaseContextExtractor("python")
         result = extractor.build_context_prefix([])
-        assert not result @ classmethod
+        assert not result
 
     def test_build_context_prefix_basic(self):
         """Test building context prefix with basic items."""

@@ -12,10 +12,9 @@ from .discovery_contract import (
 class GrammarDiscoveryStub(GrammarDiscoveryContract):
     """Stub implementation that can be instantiated and tested"""
 
-    @classmethod
+    @staticmethod
     def list_available_grammars(
-        cls,
-        _include_community: bool = False,
+        include_community: bool = False,
     ) -> list[GrammarInfo]:
         """Stub that returns valid default values"""
         return [
@@ -41,8 +40,8 @@ class GrammarDiscoveryStub(GrammarDiscoveryContract):
             ),
         ]
 
-    @classmethod
-    def get_grammar_info(cls, language: str) -> GrammarInfo | None:
+    @staticmethod
+    def get_grammar_info(language: str) -> GrammarInfo | None:
         """Stub that returns info for known languages"""
         if language == "python":
             return GrammarInfo(
@@ -81,11 +80,10 @@ class GrammarDiscoveryStub(GrammarDiscoveryContract):
                 updates[lang] = version, "0.20.0"
         return updates
 
-    @classmethod
+    @staticmethod
     def get_grammar_compatibility(
-        cls,
-        _language: str,
-        _version: str,
+        language: str,
+        version: str,
     ) -> GrammarCompatibility:
         """Stub that returns valid compatibility info"""
         return GrammarCompatibility(
@@ -95,10 +93,13 @@ class GrammarDiscoveryStub(GrammarDiscoveryContract):
             tested_python_versions=["3.8", "3.9", "3.10", "3.11"],
         )
 
-    def search_grammars(self, query: str) -> list[GrammarInfo]:
+    @staticmethod
+    def search_grammars(query: str) -> list[GrammarInfo]:
         """Stub that searches through minimal grammar list"""
         query_lower = query.lower()
-        all_grammars = self.list_available_grammars(include_community=True)
+        all_grammars = GrammarDiscoveryStub.list_available_grammars(
+            include_community=True
+        )
         return [
             g
             for g in all_grammars

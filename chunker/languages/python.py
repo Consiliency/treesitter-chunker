@@ -44,6 +44,10 @@ class PythonConfig(LanguageConfig):
 
 
 # Register the Python configuration
+from .base import language_config_registry
+
+python_config = PythonConfig()
+language_config_registry.register(python_config, aliases=["py", "python3"])
 
 
 class PythonPlugin(LanguagePlugin):

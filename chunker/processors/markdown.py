@@ -44,10 +44,8 @@ class MarkdownProcessor(SpecializedProcessor):
     PATTERNS: ClassVar[dict[str, Pattern]] = {
         "front_matter": re.compile(r"^---\n(.*?)\n---\n", re.DOTALL | re.MULTILINE),
         "header": re.compile(r"^(#{1,6})\s+(.+)$", re.MULTILINE),
-        "code_block": re.compile(
-            r"^```(?:\w+)?\n(.*?)\n```$",
-            re.DOTALL | re.MULTILINE,
-        ),
+        # Match fenced blocks; allow language id and tolerate missing trailing newline
+        "code_block": re.compile(r"```[a-zA-Z0-9_+-]*\n[\s\S]*?\n```", re.MULTILINE),
         "table": re.compile(r"^\|(.+)\|\n\|(?:-+\|)+\n(?:\|.+\|\n)*", re.MULTILINE),
         "list_item": re.compile(r"^(\s*)([-*+]|\d+\.)\s+(.+)$", re.MULTILINE),
         "blockquote": re.compile(r"^(>+)\s+(.+)$", re.MULTILINE),
@@ -56,7 +54,7 @@ class MarkdownProcessor(SpecializedProcessor):
     }
     ATOMIC_ELEMENTS: ClassVar[set[str]] = {"code_block", "table", "front_matter"}
 
-    def __init__(self, config: ProcessorConfig | None = None):
+    def __init__(self, config: ProcessorConfig | dict[str, Any] | None = None):
         """Initialize Markdown processor.
 
         Args:
@@ -107,7 +105,13 @@ class MarkdownProcessor(SpecializedProcessor):
         self.extract_structure(content)
         boundaries = self.find_boundaries(content)
         chunks = self._create_chunks(content, boundaries, file_path)
-        overlap_size = getattr(self.config, "overlap_size", 0)
+        # Accept either direct attr or format_specific key
+        overlap_val = getattr(self.config, "overlap_size", None)
+        overlap_size = int(overlap_val or 0)
+        if not overlap_size and isinstance(
+            getattr(self.config, "format_specific", None), dict
+        ):
+            overlap_size = int(self.config.format_specific.get("overlap_size", 0) or 0)
         if overlap_size > 0:
             chunks = self._apply_overlap(chunks, content)
         return chunks
@@ -170,7 +174,12 @@ class MarkdownProcessor(SpecializedProcessor):
                 start=match.start(),
                 end=match.end(),
                 content=match.group(0),
-                metadata={"code": match.group(1)},
+                metadata={
+                    # Extract inner code by stripping the fences
+                    "code": match.group(0)
+                    .split("\n", 1)[1]
+                    .rsplit("\n", 1)[0],
+                },
             )
             self.elements.append(element)
             structure["code_blocks"].append(element)
@@ -242,16 +251,32 @@ class MarkdownProcessor(SpecializedProcessor):
                 atomic_regions,
             )
             for seg_start, seg_end, is_atomic in segments:
+                seg_type = boundary_type
                 if is_atomic:
                     for element in self.elements:
                         if (
                             element.type in self.ATOMIC_ELEMENTS
                             and element.start <= seg_start < element.end
                         ):
-                            boundary_type = element.type
+                            seg_type = element.type
+                            # Clamp atomic segment to exact atomic element end
+                            seg_end = min(seg_end, element.end)
                             break
-                boundaries.append((seg_start, seg_end, boundary_type))
-        return boundaries
+                boundaries.append((seg_start, seg_end, seg_type))
+        # Merge adjacent atomic regions that were split by paragraph/header boundaries
+        merged: list[tuple[int, int, str]] = []
+        for seg in sorted(boundaries, key=lambda x: (x[0], x[1])):
+            if (
+                merged
+                and seg[2] in self.ATOMIC_ELEMENTS
+                and merged[-1][2] == seg[2]
+                and merged[-1][1] == seg[0]
+            ):
+                last = merged.pop()
+                merged.append((last[0], seg[1], seg[2]))
+            else:
+                merged.append(seg)
+        return merged
 
     @staticmethod
     def _merge_overlapping_regions(
@@ -534,9 +559,16 @@ class MarkdownProcessor(SpecializedProcessor):
         content = chunk.content.strip()
         if not content or content in {"---", "```", "|||"}:
             return False
+
+        # Reject trivial/two-character paragraphs
+        if len(content) <= 2:
+            return False
+
         if chunk.node_type in self.ATOMIC_ELEMENTS:
             if chunk.node_type == "code_block":
-                if not (content.startswith("```") and content.endswith("```")):
+                # Allow trailing whitespace; ensure both fences exist in chunk
+                stripped = content.strip()
+                if not (stripped.startswith("```") and stripped.endswith("```")):
                     logger.warning("Invalid code block chunk: missing delimiters")
                     logger.debug("Content starts with: %s", content[:20])
                     logger.debug("Content ends with: %s", content[-20:])

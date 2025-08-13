@@ -52,6 +52,10 @@ class ProcessorConfig:
     """
 
     chunk_size: int = 50
+    # Optional constraints used by some processors/tests
+    min_chunk_size: int | None = None
+    max_chunk_size: int | None = None
+    overlap_size: int | None = None
     preserve_structure: bool = True
     include_comments: bool = True
     group_related: bool = True
@@ -84,7 +88,17 @@ class SpecializedProcessor(ABC):
             config: Processor configuration (ProcessorConfig or dict)
         """
         if isinstance(config, dict):
-            self.config = ProcessorConfig(format_specific=config)
+            # Allow dict to map directly onto ProcessorConfig fields when present
+            cfg = ProcessorConfig()
+            for key, value in config.items():
+                if hasattr(cfg, key):
+                    setattr(cfg, key, value)
+                else:
+                    # Unknown keys go into format_specific
+                    if cfg.format_specific is None:
+                        cfg.format_specific = {}
+                    cfg.format_specific[key] = value
+            self.config = cfg
         else:
             self.config = config or ProcessorConfig()
 

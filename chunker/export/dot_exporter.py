@@ -47,6 +47,8 @@ class DotExporter(GraphExporterBase):
             "IMPORTS": {"style": "dashed", "color": "blue"},
             "CALLS": {"style": "dotted", "color": "red"},
             "INHERITS": {"style": "solid", "color": "green", "arrowhead": "empty"},
+            "DEFINES": {"style": "solid", "color": "purple", "penwidth": "2"},
+            "HAS_METHOD": {"style": "solid", "color": "orange", "arrowhead": "diamond"},
         }
 
     @staticmethod

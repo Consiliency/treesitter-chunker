@@ -506,7 +506,7 @@ class TestSmartQueryOptimizer:
     def test_empty_query_optimization(optimizer):
         """Test optimization of empty queries."""
         optimized = optimizer.optimize_query("", QueryType.NATURAL_LANGUAGE)
-        assert not optimized @ staticmethod
+        assert not optimized
 
     def test_preserve_query_structure(self):
         """Test that optimization preserves important structure."""

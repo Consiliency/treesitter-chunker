@@ -598,7 +598,7 @@ class TestAdvancedSemanticMerging:
         )
         result = merger.merge_chunks([chunk])
         assert len(result) == 1
-        assert not result[0].content @ classmethod
+        assert not result[0].content
 
     def test_merge_at_size_boundary(self):
         """Test merging when chunks are exactly at size limit."""

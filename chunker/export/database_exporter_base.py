@@ -40,13 +40,13 @@ class DatabaseExporterBase(ABC):
     def _get_chunk_id(chunk: CodeChunk) -> str:
         """Generate a unique ID for a chunk.
 
-        Prefer the stable node_id if present; otherwise, fall back to
+        Use chunk_id (16-char) if present; otherwise, fall back to
         an MD5 of file path and line range.
         """
-        if getattr(chunk, "node_id", ""):
-            return chunk.node_id
+        if getattr(chunk, "chunk_id", ""):
+            return chunk.chunk_id
         id_string = f"{chunk.file_path}:{chunk.start_line}:{chunk.end_line}"
-        return hashlib.md5(id_string.encode()).hexdigest()
+        return hashlib.md5(id_string.encode()).hexdigest()[:16]
 
     def _get_chunk_data(self, chunk: CodeChunk) -> dict[str, Any]:
         """Convert chunk to database-friendly format."""
@@ -116,14 +116,8 @@ class DatabaseExporterBase(ABC):
         """
         return [
             "CREATE INDEX IF NOT EXISTS idx_file_path ON files(path);",
-            (
-                "CREATE INDEX IF NOT EXISTS idx_files_language "
-                "ON files(language);"
-            ),
-            (
-                "CREATE INDEX IF NOT EXISTS idx_chunks_file_id "
-                "ON chunks(file_id);"
-            ),
+            ("CREATE INDEX IF NOT EXISTS idx_files_language " "ON files(language);"),
+            ("CREATE INDEX IF NOT EXISTS idx_chunks_file_id " "ON chunks(file_id);"),
             (
                 "CREATE INDEX IF NOT EXISTS idx_chunks_chunk_type "
                 "ON chunks(chunk_type);"
@@ -206,16 +200,16 @@ class DatabaseExporterBase(ABC):
                     SELECT target_id as chunk_id, 1 as depth
                     FROM relationships
                     WHERE source_id = ? AND relationship_type IN """
-                 "('IMPORTS', 'CALLS')\n\n"
-                 """
+                "('IMPORTS', 'CALLS')\n\n"
+                """
                     UNION
 
                     SELECT r.target_id, d.depth + 1
                     FROM relationships r
                     JOIN deps d ON r.source_id = d.chunk_id
                     WHERE r.relationship_type IN """
-                 "('IMPORTS', 'CALLS')\n"
-                 """
+                "('IMPORTS', 'CALLS')\n"
+                """
                     AND d.depth < 5  -- Limit depth
                 )
                 SELECT DISTINCT c.*, d.depth

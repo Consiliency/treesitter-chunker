@@ -214,7 +214,7 @@ class TestExceptionSerialization:
         def worker_with_queue(q):
             try:
                 raise SimpleChunkerError("Queue test error", {"language": "python"})
-            except (AttributeError, KeyError) as e:
+            except SimpleChunkerError as e:
                 q.put(("error", e, traceback.format_exc()))
 
         process = multiprocessing.Process(target=worker_with_queue, args=(queue,))
@@ -257,7 +257,7 @@ class TestExceptionSerialization:
                 try:
                     result = future.result()
                     results.append((worker_id, result))
-                except (IndexError, KeyError, TypeError) as e:
+                except Exception as e:
                     errors.append((worker_id, type(e).__name__, str(e)))
             assert len(results) == 6
             assert len(errors) == 4

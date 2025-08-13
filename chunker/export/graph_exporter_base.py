@@ -80,14 +80,19 @@ class GraphExporterBase(ABC):
         """Extract relationships between chunks based on their metadata and structure.
 
         This base implementation extracts:
-        - Parent-child relationships from hierarchy metadata
+        - Parent-child relationships from hierarchy metadata and parent_chunk_id
         - Import/dependency relationships
         - Call relationships
+        - DEFINES edges from parent to child
+        - HAS_METHOD edges from class to method (language-aware)
 
         Subclasses can override to add more relationship types.
         """
         chunk_map = {self._get_chunk_id(chunk): chunk for chunk in chunks}
+        chunk_id_map = {chunk.chunk_id: chunk for chunk in chunks if chunk.chunk_id}
+
         for chunk in chunks:
+            # Handle legacy parent_id in metadata
             if chunk.metadata and "parent_id" in chunk.metadata:
                 parent_id = chunk.metadata["parent_id"]
                 if parent_id in chunk_map:
@@ -97,6 +102,26 @@ class GraphExporterBase(ABC):
                         "CONTAINS",
                         {"relationship_source": "hierarchy"},
                     )
+
+            # Handle parent_chunk_id for DEFINES relationship
+            if chunk.parent_chunk_id and chunk.parent_chunk_id in chunk_id_map:
+                parent_chunk = chunk_id_map[chunk.parent_chunk_id]
+                self.add_relationship(
+                    parent_chunk,
+                    chunk,
+                    "DEFINES",
+                    {"relationship_source": "parent_chunk_id"},
+                )
+
+                # Add language-aware HAS_METHOD edge if parent is class and child is method
+                if self._is_class_method_relationship(parent_chunk, chunk):
+                    self.add_relationship(
+                        parent_chunk,
+                        chunk,
+                        "HAS_METHOD",
+                        {"relationship_source": "class_method_detection"},
+                    )
+
             if chunk.metadata and "imports" in chunk.metadata:
                 for import_info in chunk.metadata["imports"]:
                     for target_chunk in chunks:
@@ -136,6 +161,38 @@ class GraphExporterBase(ABC):
         if chunk.metadata and "name" in chunk.metadata:
             return chunk.metadata["name"] == call_name
         return False
+
+    @staticmethod
+    def _is_class_method_relationship(
+        parent_chunk: CodeChunk, child_chunk: CodeChunk
+    ) -> bool:
+        """Check if parent is a class and child is a method (language-aware)."""
+        # Define class types for different languages
+        class_types = {
+            "class_declaration",  # JavaScript, Python, Java, C#, etc.
+            "class_definition",  # Python alternative
+            "interface_declaration",  # TypeScript, Java, C#
+            "struct_item",  # Rust
+            "impl_item",  # Rust
+            "type_declaration",  # Go
+        }
+
+        # Define method types for different languages
+        method_types = {
+            "method_definition",  # JavaScript, Python, Java, C#
+            "function_definition",  # Python alternative
+            "function_item",  # Rust
+            "method_declaration",  # Java, C#
+            "function_declaration",  # When inside a class context
+            "arrow_function",  # JavaScript class properties
+            "function_expression",  # JavaScript class properties
+        }
+
+        parent_type = parent_chunk.node_type
+        child_type = child_chunk.node_type
+
+        # Check if parent is a class-like structure and child is a method-like structure
+        return parent_type in class_types and child_type in method_types
 
     def get_subgraph_clusters(self) -> dict[str, list[str]]:
         """Group nodes into clusters (e.g., by file or module).

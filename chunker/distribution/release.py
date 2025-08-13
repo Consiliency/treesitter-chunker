@@ -44,7 +44,8 @@ class ReleaseManagementImpl(ReleaseManagementContract):
             "errors": [],
             "status": "pending",
         }
-        if not re.match(r"^\\d+\\.\\d+\\.\\d+(-\\w+)?$", version):
+        # Accept semantic versions like 1.2.3 or 1.2.3-alpha
+        if not re.match(r"^\d+\.\d+\.\d+(-\w+)?$", version):
             release_info["errors"].append(f"Invalid version format: {version}")
             release_info["status"] = "failed"
             return False, release_info
@@ -223,9 +224,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
                 pass
         if artifacts:
             checksum_file = output_dir / f"treesitter-chunker-{version}.sha256"
-            with checksum_file.open("w", "r") as f:
+            with checksum_file.open("w") as f:
                 for artifact in artifacts:
-                    with artifact.open("rb", "r") as af:
+                    with artifact.open("rb") as af:
                         sha256 = hashlib.sha256(af.read()).hexdigest()
                     f.write(f"{sha256}  {artifact.name}\n")
             artifacts.append(checksum_file)
@@ -274,7 +275,7 @@ See `treesitter-chunker-{version}.sha256` for file checksums.
         """Check if new version is higher than current"""
 
         def parse_version(v):
-            parts = re.match(r"(\\d+)\\.(\\d+)\\.(\\d+)", v)
+            parts = re.match(r"(\d+)\.(\d+)\.(\d+)", v)
             if parts:
                 return tuple(int(p) for p in parts.groups())
             return 0, 0, 0

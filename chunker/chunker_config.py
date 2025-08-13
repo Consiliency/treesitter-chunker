@@ -26,7 +26,8 @@ class ChunkerConfig:
     DEFAULT_CONFIG_FILENAME = "chunker.config"
     SUPPORTED_FORMATS: ClassVar[set[str]] = {".toml", ".yaml", ".yml", ".json"}
     ENV_PREFIX = "CHUNKER_"
-    ENV_VAR_PATTERN = re.compile(r"\\$\\{([^}]+)\\}")
+    # Match ${VAR} or ${VAR:default}
+    ENV_VAR_PATTERN = re.compile(r"\$\{([^}]+)\}")
 
     def __init__(
         self,

@@ -135,6 +135,47 @@ class JavaScriptContextExtractor(BaseContextExtractor):
     @staticmethod
     def _extract_function_expression(node: Node, source: bytes) -> str:
         """Extract function expression or arrow function."""
+        # For variable_declarator with arrow function, include the identifier name
+        parent = node.parent
+        if parent and parent.type == "variable_declarator":
+            ident = None
+            arrow_child = None
+            for ch in parent.children:
+                if ch.type == "identifier":
+                    ident = ch
+                if ch.type == "arrow_function":
+                    arrow_child = ch
+            if ident and arrow_child:
+                # Build a declaration like: const Name = (...) => ...
+                # Find the preceding const/let/var declaration if available
+                decl_parent = parent.parent
+                prefix = ""
+                if decl_parent and decl_parent.type in {
+                    "lexical_declaration",
+                    "variable_declaration",
+                }:
+                    # Use the keyword from source
+                    kw = (
+                        source[decl_parent.start_byte : decl_parent.start_byte + 5]
+                        .decode("utf-8")
+                        .strip()
+                    )
+                    if kw.startswith("const"):
+                        prefix = "const "
+                    elif kw.startswith("let"):
+                        prefix = "let "
+                    elif kw.startswith("var"):
+                        prefix = "var "
+                name = source[ident.start_byte : ident.end_byte].decode("utf-8")
+                # Parameters up to '=>' for arrow function
+                end = None
+                for ch in arrow_child.children:
+                    if ch.type == "=>":
+                        end = ch.end_byte
+                        break
+                end = end or arrow_child.end_byte
+                params = source[arrow_child.start_byte : end].decode("utf-8").strip()
+                return f"{prefix}{name} = {params} ..."
         for child in node.children:
             if child.type in {"statement_block", "=>"}:
                 end_byte = (

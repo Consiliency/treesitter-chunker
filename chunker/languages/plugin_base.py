@@ -91,13 +91,39 @@ class LanguagePlugin(ABC):
     @property
     def plugin_metadata(self) -> dict[str, Any]:
         """Return plugin metadata. Override to add custom metadata."""
+
+        def _resolve(value: Any) -> Any:
+            # Handle @staticmethod @property patterns gracefully
+            try:
+                if isinstance(value, (set, list, tuple)):
+                    return value
+                if isinstance(value, str):
+                    return value
+                if callable(value):
+                    return value()
+            except Exception:
+                return value
+            return value
+
+        extensions = _resolve(self.supported_extensions)
+        if isinstance(extensions, property):
+            try:
+                extensions = extensions.fget(self) if extensions.fget else []
+            except Exception:
+                extensions = []
+        chunk_types = _resolve(self.default_chunk_types)
+        if isinstance(chunk_types, property):
+            try:
+                chunk_types = chunk_types.fget(self) if chunk_types.fget else []
+            except Exception:
+                chunk_types = []
         return {
             "name": self.__class__.__name__,
-            "language": self.language_name,
+            "language": _resolve(self.language_name),
             "version": self.plugin_version,
             "api_version": self.minimum_api_version,
-            "extensions": list(self.supported_extensions),
-            "chunk_types": list(self.default_chunk_types),
+            "extensions": list(extensions) if extensions is not None else [],
+            "chunk_types": list(chunk_types) if chunk_types is not None else [],
         }
 
     def set_parser(self, parser: Parser) -> None:

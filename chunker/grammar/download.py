@@ -78,7 +78,7 @@ class GrammarDownloadManager(GrammarDownloadContract):
 
     def _save_metadata(self):
         """Save cache metadata"""
-        with self._metadata_file.open("w", "r") as f:
+        with self._metadata_file.open("w") as f:
             json.dump(self._metadata, f, indent=2)
 
     def download_grammar(
@@ -136,7 +136,7 @@ class GrammarDownloadManager(GrammarDownloadContract):
                 total_size = int(response.headers.get("Content-Length", 0))
                 downloaded = 0
                 chunk_size = 8192
-                with Path(dest).open("wb", "r") as f:
+                with Path(dest).open("wb") as f:
                     while True:
                         chunk = response.read(chunk_size)
                         if not chunk:
@@ -158,9 +158,7 @@ class GrammarDownloadManager(GrammarDownloadContract):
     def _extract_archive(cls, archive_path: str, dest_dir: Path):
         """Extract tar.gz archive"""
         with (
-            tarfile.Path(archive_path).open(
-                "r:gz",
-            ) as tar,
+            tarfile.open(archive_path, "r:gz") as tar,
             tempfile.TemporaryDirectory() as tmpdir,
         ):
             try:
@@ -272,13 +270,15 @@ class GrammarDownloadManager(GrammarDownloadContract):
     def _get_abi_version() -> int:
         """Get current tree-sitter ABI version"""
         try:
-            version = tree_sitter.__version__
-            if version.startswith("0.20"):
+            version = getattr(tree_sitter, "__version__", "0.21.0")
+            if isinstance(version, tuple):
+                version = ".".join(str(v) for v in version)
+            if str(version).startswith("0.20"):
                 return 14
-            if version.startswith("0.21"):
+            if str(version).startswith("0.21"):
                 return 15
             return 15
-        except (ImportError, IndexError, KeyError):
+        except Exception:
             return 15
 
     def download_and_compile(

@@ -71,6 +71,10 @@ class ElixirConfig(LanguageConfig):
 
 
 # Register the Elixir configuration
+from .base import language_config_registry
+
+elixir_config = ElixirConfig()
+language_config_registry.register(elixir_config)
 
 
 class ElixirPlugin(LanguagePlugin, ExtendedLanguagePluginContract):

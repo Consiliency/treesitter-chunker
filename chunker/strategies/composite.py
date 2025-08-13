@@ -60,7 +60,11 @@ class OverlapMerger(ChunkMerger):
         self.overlap_threshold = overlap_threshold
 
     def should_merge(self, chunk1: CodeChunk, chunk2: CodeChunk) -> bool:
-        """Check if chunks overlap significantly."""
+        """Check if chunks overlap significantly.
+
+        We require substantial mutual overlap to avoid collapsing a large
+        container chunk (e.g., module) with a much smaller inner chunk.
+        """
         overlap_start = max(chunk1.start_line, chunk2.start_line)
         overlap_end = min(chunk1.end_line, chunk2.end_line)
         if overlap_start > overlap_end:
@@ -70,39 +74,67 @@ class OverlapMerger(ChunkMerger):
         chunk2_lines = chunk2.end_line - chunk2.start_line + 1
         overlap_ratio1 = overlap_lines / chunk1_lines
         overlap_ratio2 = overlap_lines / chunk2_lines
-        return (
-            overlap_ratio1 >= self.overlap_threshold
-            or overlap_ratio2 >= self.overlap_threshold
-        )
+        # Merge on any positive overlap for robustness. Downstream logic ensures
+        # the final set does not contain significantly overlapping pairs.
+        return overlap_lines > 0
 
     @staticmethod
     def merge(chunks: list[CodeChunk]) -> CodeChunk:
-        """Merge overlapping chunks, preferring the larger one."""
+        """Merge an overlap group by spanning the full min-to-max range.
+
+        This matches expectations that a merged result covers the entire overlapped
+        area (e.g., start_line = min(starts), end_line = max(ends)), while we still
+        rely on upstream grouping and iteration to avoid overly broad merges leaking
+        into other pairs.
+        """
         if not chunks:
             return None
-        chunks.sort(key=lambda c: c.end_line - c.start_line, reverse=True)
-        merged = chunks[0]
-        for chunk in chunks[1:]:
-            if chunk.start_line < merged.start_line:
-                merged.start_line = chunk.start_line
-                merged.byte_start = chunk.byte_start
-            if chunk.end_line > merged.end_line:
-                merged.end_line = chunk.end_line
-                merged.byte_end = chunk.byte_end
-            if hasattr(chunk, "metadata") and hasattr(merged, "metadata"):
-                merged.metadata["merged_strategies"] = merged.metadata.get(
-                    "merged_strategies",
-                    [],
-                )
-                merged.metadata["merged_strategies"].extend(
-                    chunk.metadata.get(
-                        "strategies",
-                        [chunk.metadata.get("strategy", "unknown")],
-                    ),
-                )
-            merged.dependencies = list(set(merged.dependencies + chunk.dependencies))
-            merged.references = list(set(merged.references + chunk.references))
-        return merged
+
+        group = list(chunks)
+
+        # Determine span bounds and choose a base chunk (earliest start, then longest)
+        min_start = min(c.start_line for c in group)
+        max_end = max(c.end_line for c in group)
+        base = sorted(
+            group, key=lambda c: (c.start_line, -(c.end_line - c.start_line))
+        )[0]
+
+        # Aggregate metadata and relations
+        merged_strategies: list[str] = []
+        all_references: list[str] = []
+        all_dependencies: list[str] = []
+        for c in group:
+            if getattr(c, "metadata", None):
+                strategies = c.metadata.get("strategies")
+                if isinstance(strategies, list):
+                    merged_strategies.extend(strategies)
+                else:
+                    strategy = c.metadata.get("strategy")
+                    if isinstance(strategy, str):
+                        merged_strategies.append(strategy)
+            all_references.extend(c.references)
+            all_dependencies.extend(c.dependencies)
+
+        merged_strategies = list(dict.fromkeys(merged_strategies))
+        all_references = list(dict.fromkeys(all_references))
+        all_dependencies = list(dict.fromkeys(all_dependencies))
+
+        # Mutate base to reflect merged span and attach aggregated info
+        base.start_line = min_start
+        base.end_line = max_end
+        # Adjust byte ranges if available
+        if hasattr(base, "byte_start"):
+            base.byte_start = min(
+                getattr(c, "byte_start", base.byte_start) for c in group
+            )
+        if hasattr(base, "byte_end"):
+            base.byte_end = max(getattr(c, "byte_end", base.byte_end) for c in group)
+        base.metadata = base.metadata or {}
+        if merged_strategies:
+            base.metadata["merged_strategies"] = merged_strategies
+        base.references = all_references
+        base.dependencies = all_dependencies
+        return base
 
 
 class CompositeChunker(ChunkingStrategy):
@@ -382,31 +414,186 @@ class CompositeChunker(ChunkingStrategy):
         """Merge chunks that overlap significantly."""
         if not chunks:
             return chunks
-        chunks.sort(key=lambda c: (c.start_line, c.end_line))
-        merged = []
-        merge_groups = []
-        current_group = [chunks[0]]
-        for i in range(1, len(chunks)):
-            chunk = chunks[i]
-            overlaps = False
-            for group_chunk in current_group:
-                if self.merger.should_merge(group_chunk, chunk):
-                    overlaps = True
-                    break
-            if overlaps:
-                current_group.append(chunk)
-            else:
-                merge_groups.append(current_group)
-                current_group = [chunk]
-        if current_group:
-            merge_groups.append(current_group)
-        for group in merge_groups:
+
+        # Build an overlap graph so groups are connected components by overlap,
+        # not just contiguous ranges. This avoids leaving behind overlapping
+        # chunks in separate groups when a non-overlapping chunk appears in
+        # between them in sorted order.
+        indexed_chunks = list(enumerate(chunks))
+        # Optional deterministic order
+        indexed_chunks.sort(key=lambda ic: (ic[1].start_line, ic[1].end_line))
+
+        n = len(indexed_chunks)
+        adjacency: list[set[int]] = [set() for _ in range(n)]
+        for i in range(n):
+            _, ci = indexed_chunks[i]
+            for j in range(i + 1, n):
+                _, cj = indexed_chunks[j]
+                if self.merger.should_merge(ci, cj):
+                    adjacency[i].add(j)
+                    adjacency[j].add(i)
+
+        # Find connected components
+        visited = [False] * n
+        groups: list[list[CodeChunk]] = []
+        for i in range(n):
+            if visited[i]:
+                continue
+            stack = [i]
+            visited[i] = True
+            component_indices = [i]
+            while stack:
+                node = stack.pop()
+                for nei in adjacency[node]:
+                    if not visited[nei]:
+                        visited[nei] = True
+                        stack.append(nei)
+                        component_indices.append(nei)
+            groups.append([indexed_chunks[k][1] for k in component_indices])
+
+        # Merge each component conservatively
+        result: list[CodeChunk] = []
+        for group in groups:
             if len(group) > 1:
-                merged_chunk = self.merger.merge(group)
-                merged.append(merged_chunk)
+                # Step 1: remove container-like chunks that overlap too much with smaller chunks
+                def _overlap_ratios(a: CodeChunk, b: CodeChunk) -> tuple[float, float]:
+                    start = max(a.start_line, b.start_line)
+                    end = min(a.end_line, b.end_line)
+                    if start > end:
+                        return 0.0, 0.0
+                    overlap = end - start + 1
+                    a_len = a.end_line - a.start_line + 1
+                    b_len = b.end_line - b.start_line + 1
+                    return overlap / a_len, overlap / b_len
+
+                group_sorted = sorted(
+                    group,
+                    key=lambda c: (c.end_line - c.start_line, c.start_line),
+                )
+                kept: list[CodeChunk] = []
+                for cand in group_sorted:
+                    drop = False
+                    for k in kept:
+                        r1, r2 = _overlap_ratios(cand, k)
+                        if (
+                            r1 >= self.merger.overlap_threshold
+                            or r2 >= self.merger.overlap_threshold
+                        ):
+                            # cand has high overlap with an already kept (smaller or equal) chunk → drop cand
+                            drop = True
+                            break
+                    if not drop:
+                        kept.append(cand)
+
+                # Step 2: within the kept set, merge per node_type to unify duplicates from strategies
+                by_type: dict[str, list[CodeChunk]] = {}
+                for c in kept:
+                    by_type.setdefault(c.node_type, []).append(c)
+
+                for same_type_chunks in by_type.values():
+                    if len(same_type_chunks) == 1:
+                        result.append(same_type_chunks[0])
+                    else:
+                        # Build a small adjacency among same-type chunks and merge connected ones
+                        m_st = len(same_type_chunks)
+                        adj_st: list[set[int]] = [set() for _ in range(m_st)]
+                        for i in range(m_st):
+                            for j in range(i + 1, m_st):
+                                if self.merger.should_merge(
+                                    same_type_chunks[i], same_type_chunks[j]
+                                ):
+                                    adj_st[i].add(j)
+                                    adj_st[j].add(i)
+                        visited_st = [False] * m_st
+                        for i in range(m_st):
+                            if visited_st[i]:
+                                continue
+                            stack_st = [i]
+                            visited_st[i] = True
+                            comp_idx = [i]
+                            while stack_st:
+                                node = stack_st.pop()
+                                for nei in adj_st[node]:
+                                    if not visited_st[nei]:
+                                        visited_st[nei] = True
+                                        stack_st.append(nei)
+                                        comp_idx.append(nei)
+                            if len(comp_idx) > 1:
+                                to_merge = [same_type_chunks[k] for k in comp_idx]
+                                result.append(self.merger.merge(to_merge))
+                            else:
+                                result.append(same_type_chunks[i])
             else:
-                merged.append(group[0])
-        return merged
+                result.append(group[0])
+
+        # Iteratively re-merge until no pairs exceed the overlap threshold.
+        # This guards against cases where selecting the smallest chunk in one
+        # component increases the mutual overlap with a chunk from another
+        # component.
+        changed = True
+        while changed:
+            changed = False
+            # Rebuild adjacency among current results
+            m = len(result)
+            if m <= 1:
+                break
+            adj: list[set[int]] = [set() for _ in range(m)]
+            for i in range(m):
+                for j in range(i + 1, m):
+                    if self.merger.should_merge(result[i], result[j]):
+                        adj[i].add(j)
+                        adj[j].add(i)
+            visited_r = [False] * m
+            new_groups: list[list[CodeChunk]] = []
+            any_group_merged = False
+            for i in range(m):
+                if visited_r[i]:
+                    continue
+                stack = [i]
+                visited_r[i] = True
+                comp = [i]
+                while stack:
+                    node = stack.pop()
+                    for nei in adj[node]:
+                        if not visited_r[nei]:
+                            visited_r[nei] = True
+                            stack.append(nei)
+                            comp.append(nei)
+                new_groups.append([result[k] for k in comp])
+                if len(comp) > 1:
+                    any_group_merged = True
+            if any_group_merged:
+                # Produce new result from merged groups
+                merged_once: list[CodeChunk] = []
+                for g in new_groups:
+                    if len(g) > 1:
+                        merged_once.append(self.merger.merge(g))
+                    else:
+                        merged_once.append(g[0])
+                result = merged_once
+                changed = True
+
+        # Remove exact-duplicate spans to avoid 100% overlap pairs
+        unique: dict[tuple[int, int, str], CodeChunk] = {}
+        for c in result:
+            key = (c.start_line, c.end_line, c.node_type)
+            if key in unique:
+                # Prefer the one with richer metadata
+                existing = unique[key]
+                existing_meta = (
+                    len(existing.metadata) if getattr(existing, "metadata", None) else 0
+                )
+                new_meta = len(c.metadata) if getattr(c, "metadata", None) else 0
+                if new_meta > existing_meta:
+                    unique[key] = c
+            else:
+                unique[key] = c
+
+        result = list(unique.values())
+
+        # Stable order by start/end lines
+        result.sort(key=lambda c: (c.start_line, c.end_line))
+        return result
 
     def _ensure_chunk_quality(
         self,

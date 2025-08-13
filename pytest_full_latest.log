@@ -1,0 +1,1095 @@
+..........F............................................................. [  3%]
+........................................................................ [  6%]
+.........................................................s.............. [ 10%]
+........................................................................ [ 13%]
+........................................................................ [ 17%]
+........................................................................ [ 20%]
+................F.......F............................................... [ 24%]
+........................................................................ [ 27%]
+........................................................................ [ 30%]
+..........................sssss......................................... [ 34%]
+............F.........F....F.........................F.................. [ 37%]
+...F........................F..................ssssss.............FF..F. [ 41%]
+.......F................................................................ [ 44%]
+....................F...........................FF.......FFF............ [ 48%]
+..............ss.FF...................F.....FFFFF..F.....FFFF.......FFFF [ 51%]
+..........F............................................................. [ 55%]
+.................................EE.EE.EE............................... [ 58%]
+...............................................EEE..F.....FF....s.F..... [ 61%]
+..............................................F.......F................. [ 65%]
+...................EEE.........FFFFFFFFFFF.............................. [ 68%]
+.........................................F............F.F......F.F..F.FF [ 72%]
+...FF...FFF.......................................FF.................... [ 75%]
+.....ssssss...........F.............F.F..F.............................. [ 79%]
+........F....EEE................FFFFF.......FFF......................... [ 82%]
+F..F...F.........................................................F...... [ 86%]
+.....................................FFFFFFFFF...........F.............. [ 89%]
+........................................................................ [ 92%]
+........................................................................ [ 96%]
+........................................................................ [ 99%]
+...                                                                      [100%]
+==================================== ERRORS ====================================
+_ ERROR at setup of TestParallelErrorHandling.test_worker_process_crash_recovery _
+file /home/jenner/code/treesitter-chunker/tests/test_parallel_error_handling.py, line 36
+      @classmethod
+      def test_worker_process_crash_recovery(
+E       fixture 'resource_monitor' not found
+>       available fixtures: build_system, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, doctest_namespace, error_tracking_context, monkeypatch, platform_support, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, temp_workspace, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/home/jenner/code/treesitter-chunker/tests/test_parallel_error_handling.py:36
+___ ERROR at setup of TestParallelErrorHandling.test_worker_timeout_handling ___
+file /home/jenner/code/treesitter-chunker/tests/test_parallel_error_handling.py, line 82
+      def test_worker_timeout_handling(
+E       fixture 'parallel_test_environment' not found
+>       available fixtures: build_system, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, doctest_namespace, error_tracking_context, monkeypatch, platform_support, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, temp_workspace, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/home/jenner/code/treesitter-chunker/tests/test_parallel_error_handling.py:82
+_ ERROR at setup of TestParallelErrorHandling.test_resource_cleanup_after_errors _
+file /home/jenner/code/treesitter-chunker/tests/test_parallel_error_handling.py, line 188
+      @classmethod
+      def test_resource_cleanup_after_errors(
+E       fixture 'resource_monitor' not found
+>       available fixtures: build_system, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, doctest_namespace, error_tracking_context, monkeypatch, platform_support, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, temp_workspace, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/home/jenner/code/treesitter-chunker/tests/test_parallel_error_handling.py:188
+_ ERROR at setup of TestParallelErrorHandling.test_progress_tracking_with_failures _
+file /home/jenner/code/treesitter-chunker/tests/test_parallel_error_handling.py, line 232
+      @staticmethod
+      def test_progress_tracking_with_failures(_temp_workspace):
+E       fixture '_temp_workspace' not found
+>       available fixtures: build_system, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, doctest_namespace, error_tracking_context, monkeypatch, platform_support, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, temp_workspace, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/home/jenner/code/treesitter-chunker/tests/test_parallel_error_handling.py:232
+_____ ERROR at setup of TestParallelErrorHandling.test_deadlock_prevention _____
+file /home/jenner/code/treesitter-chunker/tests/test_parallel_error_handling.py, line 337
+      @classmethod
+      def test_deadlock_prevention(
+E       fixture 'resource_monitor' not found
+>       available fixtures: build_system, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, doctest_namespace, error_tracking_context, monkeypatch, platform_support, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, temp_workspace, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/home/jenner/code/treesitter-chunker/tests/test_parallel_error_handling.py:337
+____ ERROR at setup of TestParallelErrorHandling.test_memory_leak_detection ____
+file /home/jenner/code/treesitter-chunker/tests/test_parallel_error_handling.py, line 431
+      @classmethod
+      def test_memory_leak_detection(cls, resource_monitor, temp_workspace):
+E       fixture 'resource_monitor' not found
+>       available fixtures: build_system, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, doctest_namespace, error_tracking_context, monkeypatch, platform_support, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, temp_workspace, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/home/jenner/code/treesitter-chunker/tests/test_parallel_error_handling.py:431
+_ ERROR at setup of TestPhase10FullIntegration.test_complete_phase10_workflow __
+tests/test_phase10_full_integration.py:37: in setup_method
+    Path(Path(self.backend_file).mkdir(parents=True).parent, exist_ok=True)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'NoneType' object has no attribute 'parent'
+_ ERROR at setup of TestPhase10FullIntegration.test_error_handling_and_edge_cases _
+tests/test_phase10_full_integration.py:37: in setup_method
+    Path(Path(self.backend_file).mkdir(parents=True).parent, exist_ok=True)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'NoneType' object has no attribute 'parent'
+_ ERROR at setup of TestPhase10FullIntegration.test_performance_with_large_codebase _
+tests/test_phase10_full_integration.py:37: in setup_method
+    Path(Path(self.backend_file).mkdir(parents=True).parent, exist_ok=True)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'NoneType' object has no attribute 'parent'
+________ ERROR at setup of test_template_generator_contract_compliance _________
+file /home/jenner/code/treesitter-chunker/tests/test_phase19_contract_compliance.py, line 11
+  def test_template_generator_contract_compliance(implementation_class):
+E       fixture 'implementation_class' not found
+>       available fixtures: build_system, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, doctest_namespace, error_tracking_context, monkeypatch, platform_support, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, temp_workspace, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/home/jenner/code/treesitter-chunker/tests/test_phase19_contract_compliance.py:11
+__________ ERROR at setup of test_grammar_manager_contract_compliance __________
+file /home/jenner/code/treesitter-chunker/tests/test_phase19_contract_compliance.py, line 42
+  def test_grammar_manager_contract_compliance(implementation_class):
+E       fixture 'implementation_class' not found
+>       available fixtures: build_system, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, doctest_namespace, error_tracking_context, monkeypatch, platform_support, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, temp_workspace, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/home/jenner/code/treesitter-chunker/tests/test_phase19_contract_compliance.py:42
+__________ ERROR at setup of test_language_plugin_contract_compliance __________
+file /home/jenner/code/treesitter-chunker/tests/test_phase19_contract_compliance.py, line 69
+  def test_language_plugin_contract_compliance(implementation_class):
+E       fixture 'implementation_class' not found
+>       available fixtures: build_system, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, doctest_namespace, error_tracking_context, monkeypatch, platform_support, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, temp_workspace, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/home/jenner/code/treesitter-chunker/tests/test_phase19_contract_compliance.py:69
+____ ERROR at setup of TestProcessorPerformance.test_large_file_processing _____
+file /home/jenner/code/treesitter-chunker/tests/test_sliding_integration.py, line 394
+      @classmethod
+      def test_large_file_processing(cls, fallback):
+E       fixture 'fallback' not found
+>       available fixtures: build_system, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, doctest_namespace, error_tracking_context, monkeypatch, platform_support, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, temp_workspace, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/home/jenner/code/treesitter-chunker/tests/test_sliding_integration.py:394
+___ ERROR at setup of TestIntegrationScenarios.test_mixed_content_repository ___
+file /home/jenner/code/treesitter-chunker/tests/test_sliding_integration.py, line 412
+      @classmethod
+      def test_mixed_content_repository(cls, temp_dir):
+E       fixture 'temp_dir' not found
+>       available fixtures: build_system, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, doctest_namespace, error_tracking_context, monkeypatch, platform_support, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, temp_workspace, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/home/jenner/code/treesitter-chunker/tests/test_sliding_integration.py:412
+____ ERROR at setup of TestIntegrationScenarios.test_custom_plugin_loading _____
+file /home/jenner/code/treesitter-chunker/tests/test_sliding_integration.py, line 454
+      @classmethod
+      def test_custom_plugin_loading(cls, temp_dir):
+E       fixture 'temp_dir' not found
+>       available fixtures: build_system, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, doctest_namespace, error_tracking_context, monkeypatch, platform_support, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, temp_workspace, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/home/jenner/code/treesitter-chunker/tests/test_sliding_integration.py:454
+=================================== FAILURES ===================================
+______________ TestGrammarIntegration.test_full_grammar_workflow _______________
+tests/integration/grammar/test_grammar_integration.py:77: in test_full_grammar_workflow
+    valid, error = self.manager.validate_grammar("python")
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+chunker/grammar/manager.py:328: in validate_grammar
+    parser = get_parser(name)
+             ^^^^^^^^^^^^^^^^
+E   TypeError: 'NoneType' object is not callable
+_______ TestDeveloperToolingImpl.test_format_code_with_valid_file[True] ________
+tests/test_developer_tooling.py:106: in test_format_code_with_valid_file
+    assert content != "def hello(  ):   print( 'hello'  )"
+E   assert "def hello(  ):   print( 'hello'  )" != "def hello(  ):   print( 'hello'  )"
+__________ TestDevEnvironmentIntegration.test_pre_commit_hooks_setup ___________
+tests/test_devenv_integration.py:53: in test_pre_commit_hooks_setup
+    assert not success
+E   assert not True
+________________ TestHaskellBasicChunking.test_module_structure ________________
+tests/test_haskell_language.py:114: in test_module_structure
+    assert any("module_declaration" in c.node_type for c in chunks)
+E   assert False
+E    +  where False = any(<generator object TestHaskellBasicChunking.test_module_structure.<locals>.<genexpr> at 0x76f04b423c60>)
+_________________ TestHaskellEdgeCases.test_lambda_expressions _________________
+tests/test_haskell_language.py:304: in test_lambda_expressions
+    assert any("double" in c.content for c in chunks)
+E   assert False
+E    +  where False = any(<generator object TestHaskellEdgeCases.test_lambda_expressions.<locals>.<genexpr> at 0x76f01c1c20c0>)
+_____________ TestHierarchicalChunker.test_leaf_node_preservation ______________
+tests/test_hierarchical_chunker.py:175: in test_leaf_node_preservation
+    assert len(with_leaves) != len(without_leaves)
+E   AssertionError: assert 2 != 2
+E    +  where 2 = len([CodeChunk(language='python', file_path='test.py', node_type='function_definition', start_line=2, end_line=3, byte_sta...cbdeda528ed528759a6a055408b5333', file_id='c01476dc52ec07aad08831f20e0c17f3c97b7037', symbol_id=None, parent_route=[])])
+E    +  and   2 = len([CodeChunk(language='python', file_path='test.py', node_type='function_definition', start_line=2, end_line=3, byte_sta...cbdeda528ed528759a6a055408b5333', file_id='c01476dc52ec07aad08831f20e0c17f3c97b7037', symbol_id=None, parent_route=[])])
+___________ TestHierarchyIntegration.test_javascript_code_hierarchy ____________
+tests/test_hierarchy.py:479: in test_javascript_code_hierarchy
+    assert len(root_funcs) >= 1
+E   assert 0 >= 1
+E    +  where 0 = len([])
+_____________ TestIncrementalIntegration.test_incremental_workflow _____________
+/usr/lib/python3.12/unittest/mock.py:1387: in patched
+    with self.decoration_helper(patched,
+/usr/lib/python3.12/contextlib.py:137: in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+/usr/lib/python3.12/unittest/mock.py:1369: in decoration_helper
+    arg = exit_stack.enter_context(patching)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/contextlib.py:526: in enter_context
+    result = _enter(cm)
+             ^^^^^^^^^^
+/usr/lib/python3.12/unittest/mock.py:1458: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/unittest/mock.py:1431: in get_original
+    raise AttributeError(
+E   AttributeError: <module 'chunker.chunker' from '/home/jenner/code/treesitter-chunker/chunker/chunker.py'> does not have the attribute 'get_parser'
+_____________ TestAllLanguages.test_language_metadata_consistency ______________
+tests/test_integration.py:180: in test_language_metadata_consistency
+    assert "language_version" in info.capabilities
+E   AssertionError: assert 'language_version' in {'compatible': True, 'external_scanner': False}
+E    +  where {'compatible': True, 'external_scanner': False} = LanguageMetadata(name='c', version='unknown', node_types_count=0, has_scanner=False, symbol_name='tree_sitter_c', capabilities={'external_scanner': False, 'compatible': True}).capabilities
+_________________ TestJuliaBasicChunking.test_simple_function __________________
+tests/test_julia_language.py:33: in test_simple_function
+    assert len(func_chunks) == 3
+E   AssertionError: assert 2 == 3
+E    +  where 2 = len([CodeChunk(language='julia', file_path='/tmp/pytest-of-jenner/pytest-148/test_simple_function1/simple.jl', node_type='...da1ffc01c3', file_id='68fc149c8f633a9057341f77db848de05f00e115', symbol_id=None, parent_route=['function_definition'])])
+________________ TestJuliaBasicChunking.test_struct_definitions ________________
+tests/test_julia_language.py:83: in test_struct_definitions
+    assert any(
+E   assert False
+E    +  where False = any(<generator object TestJuliaBasicChunking.test_struct_definitions.<locals>.<genexpr> at 0x76f04b56b1d0>)
+___________ TestJuliaBasicChunking.test_abstract_and_primitive_types ___________
+tests/test_julia_language.py:192: in test_abstract_and_primitive_types
+    assert len(abstract_chunks) >= 4
+E   assert 0 >= 4
+E    +  where 0 = len([])
+______________ TestJuliaEdgeCases.test_julia_with_metaprogramming ______________
+tests/test_julia_language.py:370: in test_julia_with_metaprogramming
+    assert any("@generated" in c.content for c in chunks)
+E   assert False
+E    +  where False = any(<generator object TestJuliaEdgeCases.test_julia_with_metaprogramming.<locals>.<genexpr> at 0x76f04b569e50>)
+_________________ TestLogProcessor.test_invalid_configuration __________________
+tests/test_log_processor.py:307: in test_invalid_configuration
+    with pytest.raises(ValueError, match="Invalid chunk_by"):
+E   Failed: DID NOT RAISE <class 'ValueError'>
+__________________ TestMATLABBasicChunking.test_matlab_script __________________
+tests/test_matlab_language.py:72: in test_matlab_script
+    assert len(chunks) >= 1
+E   assert 0 >= 1
+E    +  where 0 = len([])
+_________________ TestMATLABBasicChunking.test_matlab_classdef _________________
+tests/test_matlab_language.py:116: in test_matlab_classdef
+    assert any("properties" in t for t in chunk_types)
+E   assert False
+E    +  where False = any(<generator object TestMATLABBasicChunking.test_matlab_classdef.<locals>.<genexpr> at 0x76f04b54ef60>)
+______________ TestMATLABEdgeCases.test_matlab_with_only_comments ______________
+tests/test_matlab_language.py:264: in test_matlab_with_only_comments
+    assert len(comment_chunks) >= 1
+E   assert 0 >= 1
+E    +  where 0 = len([])
+___________ TestMATLABEdgeCases.test_matlab_with_anonymous_functions ___________
+tests/test_matlab_language.py:281: in test_matlab_with_anonymous_functions
+    assert len(chunks) >= 1
+E   assert 0 >= 1
+E    +  where 0 = len([])
+___________ TestMATLABEdgeCases.test_matlab_with_events_enumeration ____________
+tests/test_matlab_language.py:315: in test_matlab_with_events_enumeration
+    assert any("events" in t for t in chunk_types)
+E   assert False
+E    +  where False = any(<generator object TestMATLABEdgeCases.test_matlab_with_events_enumeration.<locals>.<genexpr> at 0x76f04b52f030>)
+____________ TestIntegrationWithChunker.test_chunk_without_metadata ____________
+tests/test_metadata_extraction.py:523: in test_chunk_without_metadata
+    assert chunks[0].metadata == {}
+E   AssertionError: assert {'type': 'fun...n_definition'} == {}
+E     
+E     Left contains 1 more item:
+E     {'type': 'function_definition'}
+E     Use -v to get more diff
+________ TestIntegrationWithChunker.test_chunk_with_metadata_javascript ________
+tests/test_metadata_extraction.py:545: in test_chunk_with_metadata_javascript
+    greet_chunk = next(c for c in chunks if c.node_type == "function_declaration")
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   StopIteration
+_______________ TestMultiLanguageProcessor.test_group_by_feature _______________
+tests/test_multi_language.py:743: in test_group_by_feature
+    assert len(groups["users"]) == 2  # UserService and UserController
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError: assert 1 == 2
+E    +  where 1 = len([CodeChunk(language='python', file_path='features/users/backend/user_service.py', node_type='class_definition', start_...cb165f42b4493347c05ebebafd63571', file_id='87ee3b9aeea3903ca28fee817158dd2d78590413', symbol_id=None, parent_route=[])])
+______________________ TestNASMPlugin.test_label_chunking ______________________
+tests/test_nasm_language.py:67: in test_label_chunking
+    assert len(global_labels) >= 1
+E   assert 0 >= 1
+E    +  where 0 = len([])
+_____________________ TestNASMPlugin.test_section_chunking _____________________
+tests/test_nasm_language.py:89: in test_section_chunking
+    assert len(section_chunks) >= 3
+E   assert 0 >= 3
+E    +  where 0 = len([])
+______________________ TestNASMPlugin.test_macro_chunking ______________________
+tests/test_nasm_language.py:116: in test_macro_chunking
+    assert len(macro_chunks) >= 2
+E   assert 0 >= 2
+E    +  where 0 = len([])
+______________________ TestNASMPlugin.test_struc_chunking ______________________
+tests/test_nasm_language.py:140: in test_struc_chunking
+    assert len(struct_chunks) >= 2
+E   assert 0 >= 2
+E    +  where 0 = len([])
+_________________ TestNASMPlugin.test_global_extern_directives _________________
+tests/test_nasm_language.py:154: in test_global_extern_directives
+    assert len(global_chunks) >= 2
+E   assert 0 >= 2
+E    +  where 0 = len([])
+__________________ TestNASMPlugin.test_complex_assembly_file ___________________
+tests/test_nasm_language.py:281: in test_complex_assembly_file
+    assert len(section_chunks) >= 3
+E   assert 0 >= 3
+E    +  where 0 = len([])
+_________________ TestOCamlBasicChunking.test_simple_functions _________________
+tests/test_ocaml_language.py:35: in test_simple_functions
+    assert len(chunks) >= 4
+E   assert 0 >= 4
+E    +  where 0 = len([])
+_________________ TestOCamlBasicChunking.test_type_definitions _________________
+tests/test_ocaml_language.py:86: in test_type_definitions
+    assert len(type_chunks) >= 5
+E   assert 0 >= 5
+E    +  where 0 = len([])
+________________ TestOCamlBasicChunking.test_module_definitions ________________
+tests/test_ocaml_language.py:142: in test_module_definitions
+    assert len(module_chunks) >= 4
+E   assert 0 >= 4
+E    +  where 0 = len([])
+______________ TestOCamlBasicChunking.test_exception_definitions _______________
+tests/test_ocaml_language.py:181: in test_exception_definitions
+    assert len(exception_chunks) >= 3
+E   assert 0 >= 3
+E    +  where 0 = len([])
+_______________ TestOCamlEdgeCases.test_ocaml_with_only_comments _______________
+tests/test_ocaml_language.py:339: in test_ocaml_with_only_comments
+    assert len(comment_chunks) >= 1
+E   assert 0 >= 1
+E    +  where 0 = len([])
+_________________ TestOCamlEdgeCases.test_ocaml_with_operators _________________
+tests/test_ocaml_language.py:379: in test_ocaml_with_operators
+    assert any("|>" in c.content for c in let_chunks)
+E   assert False
+E    +  where False = any(<generator object TestOCamlEdgeCases.test_ocaml_with_operators.<locals>.<genexpr> at 0x76f04b55a0c0>)
+___________________ TestOCamlEdgeCases.test_ocaml_with_gadt ____________________
+tests/test_ocaml_language.py:411: in test_ocaml_with_gadt
+    assert any("expr" in c.content and "GADT" in c.content for c in chunks)
+E   assert False
+E    +  where False = any(<generator object TestOCamlEdgeCases.test_ocaml_with_gadt.<locals>.<genexpr> at 0x76f04b3fa810>)
+_________________ TestOCamlEdgeCases.test_ocaml_interface_file _________________
+tests/test_ocaml_language.py:447: in test_ocaml_interface_file
+    assert any("'a t" in c.content for c in chunks)
+E   assert False
+E    +  where False = any(<generator object TestOCamlEdgeCases.test_ocaml_interface_file.<locals>.<genexpr> at 0x76f04b3897d0>)
+_____________ TestChunkOptimizer.test_coherence_score_calculation ______________
+tests/test_optimization.py:367: in test_coherence_score_calculation
+    assert 0 < metrics.coherence_score < 1
+E   assert 1.0 < 1
+E    +  where 1.0 = OptimizationMetrics(original_count=2, optimized_count=2, avg_tokens_before=13.5, avg_tokens_after=13.5, coherence_score=1.0, token_efficiency=0.135).coherence_score
+_____ TestPhase10InterfaceCompatibility.test_incremental_with_optimization _____
+tests/test_phase10_interface_compatibility.py:375: in test_incremental_with_optimization
+    optimized = optimizer.merge_small_chunks(updated, min_tokens=50)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: TestPhase10InterfaceCompatibility.test_incremental_with_optimization.<locals>.MockOptimizer.merge_small_chunks() got an unexpected keyword argument 'min_tokens'
+_______ TestPhase11ComprehensiveIntegration.test_config_file_processing ________
+tests/test_phase11_comprehensive_integration.py:168: in test_config_file_processing
+    chunks = fallback.chunk_text(toml_content, str(toml_file))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+chunker/fallback/intelligent_fallback.py:321: in chunk_text
+    chunks = self.sliding_window.chunk_text(content, file_path, language)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+chunker/fallback/sliding_window_fallback.py:542: in chunk_text
+    chunks = processor.process(content, path_str)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+chunker/fallback/sliding_window_fallback.py:448: in process
+    chunks = self.processor.process(content, str(file_path))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+chunker/processors/base.py:188: in process
+    raise NotImplementedError(
+E   NotImplementedError: ConfigProcessor must implement either the structured approach (detect_format, parse_structure, chunk_content) or override the process method
+------------------------------ Captured log call -------------------------------
+WARNING  chunker.fallback.sliding_window_fallback:sliding_window_fallback.py:115 Overwriting existing processor: markdown_processor
+WARNING  chunker.fallback.sliding_window_fallback:sliding_window_fallback.py:115 Overwriting existing processor: log_processor
+______ TestPhase11ComprehensiveIntegration.test_mixed_content_repository _______
+tests/test_phase11_comprehensive_integration.py:241: in test_mixed_content_repository
+    chunks = fallback.chunk_text(file_path.read_text(), str(file_path))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+chunker/fallback/intelligent_fallback.py:321: in chunk_text
+    chunks = self.sliding_window.chunk_text(content, file_path, language)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+chunker/fallback/sliding_window_fallback.py:542: in chunk_text
+    chunks = processor.process(content, path_str)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+chunker/fallback/sliding_window_fallback.py:448: in process
+    chunks = self.processor.process(content, str(file_path))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+chunker/processors/base.py:188: in process
+    raise NotImplementedError(
+E   NotImplementedError: ConfigProcessor must implement either the structured approach (detect_format, parse_structure, chunk_content) or override the process method
+------------------------------ Captured log call -------------------------------
+WARNING  chunker.fallback.sliding_window_fallback:sliding_window_fallback.py:115 Overwriting existing processor: markdown_processor
+WARNING  chunker.fallback.sliding_window_fallback:sliding_window_fallback.py:115 Overwriting existing processor: log_processor
+WARNING  chunker.fallback.base:base.py:133 
+WARNING: Using fallback chunking for /tmp/tmp_h_bd5ax/docs/metrics.md
+Reason: unknown
+
+Tree-sitter provides deterministic, AST-based chunking that preserves code structure.
+Fallback methods may split code at inappropriate boundaries.
+
+To improve chunking for this file type:
+1. Check if a Tree-sitter grammar exists: https://github.com/tree-sitter-grammars/tree-sitter-markdown
+2. Request grammar support: https://github.com/tree-sitter
+3. Use the 'more-grammars' feature to add support
+
+Current fallback method: regex_based
+____ TestPhase11ComprehensiveIntegration.test_performance_with_large_files _____
+tests/test_phase11_comprehensive_integration.py:364: in test_performance_with_large_files
+    with large_py.open("w", "r") as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: 'str' object cannot be interpreted as an integer
+------------------------------ Captured log call -------------------------------
+WARNING  chunker.fallback.sliding_window_fallback:sliding_window_fallback.py:115 Overwriting existing processor: markdown_processor
+WARNING  chunker.fallback.sliding_window_fallback:sliding_window_fallback.py:115 Overwriting existing processor: log_processor
+____ TestDistributionIntegration.test_release_process_updates_all_locations ____
+tests/test_phase13_integration.py:272: in test_release_process_updates_all_locations
+    assert any("CHANGELOG.md" in str(f) for f in info["updated_files"])
+E   assert False
+E    +  where False = any(<generator object TestDistributionIntegration.test_release_process_updates_all_locations.<locals>.<genexpr> at 0x76f04b0033e0>)
+_________ TestPhase13RealIntegration.test_cross_component_integration __________
+tests/test_phase13_real_integration.py:90: in test_cross_component_integration
+    platform_info = build.detect_platform()
+                    ^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'BuildSystem' object has no attribute 'detect_platform'
+___________________ TestPHPLanguage.test_php_basic_chunking ____________________
+tests/test_php_language.py:53: in test_php_basic_chunking
+    assert len(chunks) >= 5
+E   AssertionError: assert 1 >= 5
+E    +  where 1 = len([CodeChunk(language='php', file_path='/tmp/tmptk00m46l.tmp', node_type='function_definition', start_line=27, end_line=...64e1f7a2e4', file_id='a7c0476d10f5d444f8a98aa745d00cd9d5ab5feb', symbol_id=None, parent_route=['function_definition'])])
+_________________ TestPHPLanguage.test_php_interface_abstract __________________
+tests/test_php_language.py:86: in test_php_interface_abstract
+    assert len(chunks) >= 2
+E   assert 0 >= 2
+E    +  where 0 = len([])
+_________________ TestPHPLanguage.test_php_anonymous_functions _________________
+tests/test_php_language.py:121: in test_php_anonymous_functions
+    assert len(chunks) >= 1
+E   assert 0 >= 1
+E    +  where 0 = len([])
+____________________ TestPHPLanguage.test_php_modern_syntax ____________________
+tests/test_php_language.py:170: in test_php_modern_syntax
+    assert len(chunks) >= 3
+E   assert 0 >= 3
+E    +  where 0 = len([])
+____________________ TestPHPLanguage.test_php_mixed_content ____________________
+tests/test_php_language.py:208: in test_php_mixed_content
+    assert len(chunks) >= 2
+E   AssertionError: assert 1 >= 2
+E    +  where 1 = len([CodeChunk(language='php', file_path='/tmp/tmpiothrj6p.tmp', node_type='function_definition', start_line=21, end_line=...988696f45a', file_id='00ab4009955af30305e7900caa2085fa96e348a9', symbol_id=None, parent_route=['function_definition'])])
+____________________ TestPHPLanguage.test_php_namespace_use ____________________
+tests/test_php_language.py:247: in test_php_namespace_use
+    assert len(chunks) >= 1
+E   assert 0 >= 1
+E    +  where 0 = len([])
+________________ TestPHPLanguage.test_php_file_extensions[.php] ________________
+tests/test_php_language.py:257: in test_php_file_extensions
+    assert config is not None
+E   assert None is not None
+_______________ TestPHPLanguage.test_php_file_extensions[.php3] ________________
+tests/test_php_language.py:257: in test_php_file_extensions
+    assert config is not None
+E   assert None is not None
+_______________ TestPHPLanguage.test_php_file_extensions[.php4] ________________
+tests/test_php_language.py:257: in test_php_file_extensions
+    assert config is not None
+E   assert None is not None
+_______________ TestPHPLanguage.test_php_file_extensions[.php5] ________________
+tests/test_php_language.py:257: in test_php_file_extensions
+    assert config is not None
+E   assert None is not None
+_______________ TestPHPLanguage.test_php_file_extensions[.phtml] _______________
+tests/test_php_language.py:257: in test_php_file_extensions
+    assert config is not None
+E   assert None is not None
+____________ TestNaturalLanguageQueryEngine.test_structured_search _____________
+tests/test_query_advanced.py:163: in test_structured_search
+    assert len(results) == 3
+E   assert 0 == 3
+E    +  where 0 = len([])
+___________________ TestAdvancedQueryIndex.test_tokenization ___________________
+tests/test_query_advanced.py:361: in test_tokenization
+    assert "calculatesum" in tokens
+E   AssertionError: assert 'calculatesum' in set()
+____________________ TestAdvancedQueryIndex.test_statistics ____________________
+tests/test_query_advanced.py:391: in test_statistics
+    assert stats["unique_terms"] > 0
+E   assert 0 > 0
+________________ TestSmartQueryOptimizer.test_query_suggestions ________________
+tests/test_query_advanced.py:500: in test_query_suggestions
+    assert len(suggestions) > 0
+E   assert 0 > 0
+E    +  where 0 = len([])
+____________ TestSmartQueryOptimizer.test_preserve_query_structure _____________
+tests/test_query_advanced.py:514: in test_preserve_query_structure
+    optimized = self.optimize_query(query, QueryType.NATURAL_LANGUAGE)
+                ^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'TestSmartQueryOptimizer' object has no attribute 'optimize_query'
+___________________ TestRBasicChunking.test_simple_function ____________________
+tests/test_r_language.py:30: in test_simple_function
+    assert len(func_chunks) == 2
+E   AssertionError: assert 3 == 2
+E    +  where 3 = len([CodeChunk(language='r', file_path='/tmp/pytest-of-jenner/pytest-148/test_simple_function3/simple.R', node_type='comme...62581481e4', file_id='5e95aa978fe61826ee22b04fa4e4b4f9be0b481b', symbol_id=None, parent_route=['function_definition'])])
+___________________ TestRBasicChunking.test_nested_functions ___________________
+tests/test_r_language.py:97: in test_nested_functions
+    assert any("outer_function" in c.content for c in func_chunks)
+E   assert False
+E    +  where False = any(<generator object TestRBasicChunking.test_nested_functions.<locals>.<genexpr> at 0x76f01f2f9630>)
+______________________ TestRBasicChunking.test_s3_methods ______________________
+tests/test_r_language.py:130: in test_s3_methods
+    assert any("print.myclass" in c.content for c in func_chunks)
+E   assert False
+E    +  where False = any(<generator object TestRBasicChunking.test_s3_methods.<locals>.<genexpr> at 0x76f01f2f9be0>)
+______________ TestRContractCompliance.test_get_chunk_node_types _______________
+tests/test_r_language.py:200: in test_get_chunk_node_types
+    assert "assignment" in node_types or "left_assignment" in node_types
+E   AssertionError: assert ('assignment' in {'binary_operator', 'comment', 'for_statement', 'function_definition', 'if_statement', 'repeat_statement', ...} or 'left_assignment' in {'binary_operator', 'comment', 'for_statement', 'function_definition', 'if_statement', 'repeat_statement', ...})
+________________ TestRContractCompliance.test_should_chunk_node ________________
+tests/test_r_language.py:218: in test_should_chunk_node
+    assert plugin.should_chunk_node(MockNode("assignment", has_function_child=True))
+E   AssertionError: assert False
+E    +  where False = <function RPlugin.should_chunk_node at 0x76f05c2c8ea0>(<tests.test_r_language.TestRContractCompliance.test_should_chunk_node.<locals>.MockNode object at 0x76f04a0a0560>)
+E    +    where <function RPlugin.should_chunk_node at 0x76f05c2c8ea0> = <chunker.languages.r.RPlugin object at 0x76f04a0a24b0>.should_chunk_node
+E    +    and   <tests.test_r_language.TestRContractCompliance.test_should_chunk_node.<locals>.MockNode object at 0x76f04a0a0560> = <class 'tests.test_r_language.TestRContractCompliance.test_should_chunk_node.<locals>.MockNode'>('assignment', has_function_child=True)
+________________ TestREdgeCases.test_r_with_complex_assignments ________________
+tests/test_r_language.py:304: in test_r_with_complex_assignments
+    assert len(func_chunks) == 1
+E   assert 0 == 1
+E    +  where 0 = len([])
+____________________ TestREdgeCases.test_r_markdown_chunks _____________________
+tests/test_r_language.py:345: in test_r_markdown_chunks
+    assert len(func_chunks) >= 2
+E   assert 0 >= 2
+E    +  where 0 = len([])
+____________________ TestREdgeCases.test_r_with_s4_classes _____________________
+tests/test_r_language.py:382: in test_r_with_s4_classes
+    assert any("setClass" in c.content and "Person" in c.content for c in chunks)
+E   assert False
+E    +  where False = any(<generator object TestREdgeCases.test_r_with_s4_classes.<locals>.<genexpr> at 0x76f01f217100>)
+_________ TestASTRelationshipTracker.test_infer_javascript_inheritance _________
+tests/test_relationship_tracker.py:204: in test_infer_javascript_inheritance
+    assert len(inheritance_rels) >= 1
+E   assert 0 >= 1
+E    +  where 0 = len([])
+____________ TestASTRelationshipTracker.test_infer_javascript_calls ____________
+tests/test_relationship_tracker.py:217: in test_infer_javascript_calls
+    assert len(call_rels) >= 1
+E   assert 0 >= 1
+E    +  where 0 = len([])
+_______________ TestScalaBasicChunking.test_classes_and_objects ________________
+tests/test_scala_language.py:77: in test_classes_and_objects
+    assert "case_class_definition" in chunk_types
+E   AssertionError: assert 'case_class_definition' in {'class_definition', 'function_declaration', 'function_definition', 'object_definition', 'package_clause', 'trait_definition', ...}
+___________________ TestSemanticChunker.test_basic_chunking ____________________
+tests/test_semantic_chunker.py:137: in test_basic_chunking
+    assert "class_definition" in chunk_types or "merged_chunk" in chunk_types
+E   AssertionError: assert ('class_definition' in {'module'} or 'merged_chunk' in {'module'})
+________________ TestSemanticChunker.test_complexity_splitting _________________
+tests/test_semantic_chunker.py:221: in test_complexity_splitting
+    assert complexity["score"] > 10.0
+E   assert 3.0 > 10.0
+_________________ TestSemanticChunker.test_semantic_boundaries _________________
+tests/test_semantic_chunker.py:301: in test_semantic_boundaries
+    assert len(chunks) >= 3
+E   AssertionError: assert 1 >= 3
+E    +  where 1 = len([CodeChunk(language='python', file_path='test.py', node_type='module', start_line=2, end_line=34, byte_start=1, byte_e...821370492837a698077069f83f95149', file_id='c01476dc52ec07aad08831f20e0c17f3c97b7037', symbol_id=None, parent_route=[])])
+_______________ TestSlidingWindowIntegration.test_error_handling _______________
+tests/test_sliding_integration.py:327: in test_error_handling
+    chunks = fallback.chunk_text(content, "test.txt")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+chunker/fallback/sliding_window_fallback.py:542: in chunk_text
+    chunks = processor.process(content, path_str)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_sliding_integration.py:317: in process
+    raise RuntimeError("Processing failed")
+E   RuntimeError: Processing failed
+------------------------------ Captured log setup ------------------------------
+WARNING  chunker.fallback.sliding_window_fallback:sliding_window_fallback.py:115 Overwriting existing processor: markdown_processor
+WARNING  chunker.fallback.sliding_window_fallback:sliding_window_fallback.py:115 Overwriting existing processor: log_processor
+________________ TestSQLBasicChunking.test_simple_create_table _________________
+tests/test_sql_language.py:25: in test_simple_create_table
+    assert len(chunks) >= 1
+E   assert 0 >= 1
+E    +  where 0 = len([])
+________________ TestSQLBasicChunking.test_multiple_statements _________________
+tests/test_sql_language.py:62: in test_multiple_statements
+    assert "create_table_statement" in chunk_types
+E   AssertionError: assert 'create_table_statement' in set()
+__________________ TestSQLBasicChunking.test_create_function ___________________
+tests/test_sql_language.py:86: in test_create_function
+    assert len(function_chunks) >= 1
+E   assert 0 >= 1
+E    +  where 0 = len([])
+__________________ TestSQLBasicChunking.test_create_procedure __________________
+tests/test_sql_language.py:105: in test_create_procedure
+    assert len(procedure_chunks) >= 1
+E   assert 0 >= 1
+E    +  where 0 = len([])
+______________ TestSQLBasicChunking.test_complex_select_with_cte _______________
+tests/test_sql_language.py:132: in test_complex_select_with_cte
+    assert any("WITH user_stats AS" in c.content for c in chunks)
+E   assert False
+E    +  where False = any(<generator object TestSQLBasicChunking.test_complex_select_with_cte.<locals>.<genexpr> at 0x76f01f2176b0>)
+_________________ TestSQLEdgeCases.test_sql_with_transactions __________________
+tests/test_sql_language.py:243: in test_sql_with_transactions
+    assert len(insert_chunks) == 2
+E   assert 0 == 2
+E    +  where 0 = len([])
+_____________________ TestSQLEdgeCases.test_sql_with_views _____________________
+tests/test_sql_language.py:271: in test_sql_with_views
+    assert len(view_chunks) >= 2
+E   assert 0 >= 2
+E    +  where 0 = len([])
+___________________ TestSQLEdgeCases.test_sql_with_triggers ____________________
+tests/test_sql_language.py:293: in test_sql_with_triggers
+    assert len(trigger_chunks) >= 2
+E   assert 0 >= 2
+E    +  where 0 = len([])
+_________ TestStructuredExportIntegration.test_end_to_end_jsonl_export _________
+tests/test_structured_export_integration.py:214: in test_end_to_end_jsonl_export
+    assert relationship_count > 0
+E   assert 0 > 0
+__________ TestStructuredExportIntegration.test_end_to_end_dot_export __________
+tests/test_structured_export_integration.py:273: in test_end_to_end_dot_export
+    assert "->" in content
+E   assert '->' in 'digraph CodeStructure {\n  rankdir=DOT;\n  node [shape="box", style="rounded,filled", fillcolor="lightblue"];\n  // G..."];\n  "8c847e90f2f2afee02556f2eb04fb9af4418df87" [label="method_definition\\nlanguage: javascript"];\n\n  // Edges\n}'
+____ TestStructuredExportIntegration.test_relationship_tracking_javascript _____
+tests/test_structured_export_integration.py:342: in test_relationship_tracking_javascript
+    assert len(inheritance_rels) >= 2
+E   assert 0 >= 2
+E    +  where 0 = len([])
+________________ TestTokenAwareChunker.test_multiple_languages _________________
+tests/test_token_integration.py:347: in test_multiple_languages
+    assert len(js_chunks) > 0
+E   assert 0 > 0
+E    +  where 0 = len([])
+____________ TestTypeScriptLanguage.test_typescript_basic_chunking _____________
+tests/test_typescript_language.py:42: in test_typescript_basic_chunking
+    assert len(chunks) >= 4
+E   AssertionError: assert 2 >= 4
+E    +  where 2 = len([CodeChunk(language='typescript', file_path='', node_type='method_definition', start_line=11, end_line=13, byte_start=...571ea799f05b153504a56056c0', symbol_id='2c9920b8a7ddd939b2bda6fb13cfe7ccb781a1dc', parent_route=['method_definition'])])
+______________ TestTypeScriptLanguage.test_tsx_component_chunking ______________
+tests/test_typescript_language.py:85: in test_tsx_component_chunking
+    assert len(chunks) >= 2
+E   assert 0 >= 2
+E    +  where 0 = len([])
+_______________ TestTypeScriptLanguage.test_typescript_generics ________________
+tests/test_typescript_language.py:117: in test_typescript_generics
+    assert len(chunks) >= 3
+E   AssertionError: assert 2 >= 3
+E    +  where 2 = len([CodeChunk(language='typescript', file_path='', node_type='method_definition', start_line=15, end_line=17, byte_start=...571ea799f05b153504a56056c0', symbol_id='36aa9b840464ef54c62bc58a1bba7fe33fc0ff3a', parent_route=['method_definition'])])
+______________ TestTypeScriptLanguage.test_typescript_decorators _______________
+tests/test_typescript_language.py:153: in test_typescript_decorators
+    assert len(chunks) >= 3
+E   AssertionError: assert 2 >= 3
+E    +  where 2 = len([CodeChunk(language='typescript', file_path='', node_type='method_definition', start_line=15, end_line=17, byte_start=...571ea799f05b153504a56056c0', symbol_id='503038a713722778ddafb4fcc90faa91b633c143', parent_route=['method_definition'])])
+_______________ TestTypeScriptLanguage.test_typescript_namespace _______________
+tests/test_typescript_language.py:183: in test_typescript_namespace
+    assert namespace_chunk is not None
+E   assert None is not None
+_____________ TestTypeScriptLanguage.test_typescript_enum_chunking _____________
+tests/test_typescript_language.py:209: in test_typescript_enum_chunking
+    assert len(chunks) >= 3
+E   assert 0 >= 3
+E    +  where 0 = len([])
+_________ TestTypeScriptLanguage.test_typescript_file_extensions[.ts] __________
+tests/test_typescript_language.py:216: in test_typescript_file_extensions
+    assert config is not None
+E   assert None is not None
+_________ TestTypeScriptLanguage.test_typescript_file_extensions[.tsx] _________
+tests/test_typescript_language.py:216: in test_typescript_file_extensions
+    assert config is not None
+E   assert None is not None
+________ TestTypeScriptLanguage.test_typescript_file_extensions[.d.ts] _________
+tests/test_typescript_language.py:216: in test_typescript_file_extensions
+    assert config is not None
+E   assert None is not None
+_________________ TestVFSChunker.test_auto_language_detection __________________
+tests/test_vfs.py:271: in test_auto_language_detection
+    assert len(js_chunks) == 1
+E   assert 0 == 1
+E    +  where 0 = len([])
+=============================== warnings summary ===============================
+tests/integration/coordinator.py:30
+  /home/jenner/code/treesitter-chunker/tests/integration/coordinator.py:30: PytestCollectionWarning: cannot collect test class 'TestResult' because it has a __init__ constructor (from: tests/integration/test_coordinator.py)
+    @dataclass
+
+tests/integration/coordinator.py:16
+  /home/jenner/code/treesitter-chunker/tests/integration/coordinator.py:16: PytestCollectionWarning: cannot collect test class 'TestScenario' because it has a __init__ constructor (from: tests/integration/test_coordinator.py)
+    @dataclass
+
+chunker/_internal/registry.py:224: 2 warnings
+tests/integration/context/test_chunker_with_context.py: 2 warnings
+tests/test_chunking.py: 18 warnings
+tests/test_factory.py: 19 warnings
+tests/test_integration.py: 4 warnings
+tests/test_ocaml_language.py: 1 warning
+tests/test_performance.py: 1 warning
+tests/test_performance_features.py: 1 warning
+tests/test_phase13_e2e_workflow.py: 1 warning
+tests/test_php_language.py: 1 warning
+tests/test_r_language.py: 1 warning
+tests/test_registry.py: 1 warning
+tests/test_scala_language.py: 1 warning
+tests/test_sql_language.py: 1 warning
+tests/test_svelte_language.py: 1 warning
+tests/test_swift_language.py: 1 warning
+tests/test_typescript_language.py: 2 warnings
+tests/test_vue_language.py: 1 warning
+tests/test_wasm_language.py: 1 warning
+tests/test_zig_language.py: 1 warning
+  /home/jenner/code/treesitter-chunker/chunker/_internal/registry.py:224: DeprecationWarning: int argument support is deprecated
+    language = Language(lang_ptr)
+
+chunker/rules/builtin.py:200
+  /home/jenner/code/treesitter-chunker/chunker/rules/builtin.py:200: PytestCollectionWarning: cannot collect test class 'TestAnnotationRule' because it has a __init__ constructor (from: tests/test_custom_rules.py)
+    class TestAnnotationRule(BaseRegexRule):
+
+tests/test_auto.py::TestZeroConfigAPI::test_auto_chunk_file_fallback
+  /home/jenner/code/treesitter-chunker/chunker/fallback/sliding_window_fallback.py:558: FallbackWarning: 
+  WARNING: Using fallback chunking for /tmp/tmptei22640.txt
+  Reason: unknown
+  
+  Tree-sitter provides deterministic, AST-based chunking that preserves code structure.
+  Fallback methods may split code at inappropriate boundaries.
+  
+  To improve chunking for this file type:
+  1. Check if a Tree-sitter grammar exists: https://github.com/tree-sitter
+  2. Request grammar support: https://github.com/tree-sitter
+  3. Use the 'more-grammars' feature to add support
+  
+  Current fallback method: line_based
+  
+    return super().chunk_text(content, file_path, language)
+
+tests/test_debug_tools.py::TestQueryDebugger::test_invalid_query
+  /home/jenner/code/treesitter-chunker/chunker/debug/interactive/query_debugger.py:105: DeprecationWarning: query() is deprecated. Use the Query() constructor instead.
+    query = lang.query(query_string)
+
+tests/test_edge_cases.py: 4 warnings
+tests/test_end_to_end.py: 5 warnings
+tests/test_exception_serialization.py: 10 warnings
+tests/test_export_integration_advanced.py: 2 warnings
+tests/test_parallel.py: 493 warnings
+tests/test_performance.py: 2 warnings
+tests/test_performance_advanced.py: 153 warnings
+  /usr/lib/python3.12/multiprocessing/popen_fork.py:66: DeprecationWarning: This process (pid=1429352) is multi-threaded, use of fork() may lead to deadlocks in the child.
+    self.pid = os.fork()
+
+tests/test_factory.py: 3 warnings
+tests/test_integration.py: 22 warnings
+tests/test_parser.py: 1 warning
+  /home/jenner/code/treesitter-chunker/chunker/_internal/factory.py:181: DeprecationWarning: Use the progress_callback in parse()
+    parser.timeout_micros = config.timeout_ms * 1000
+
+tests/test_factory.py::TestParserFactory::test_parser_config_application
+  /home/jenner/code/treesitter-chunker/tests/test_factory.py:271: DeprecationWarning: Use the progress_callback in parse()
+    assert parser.timeout_micros == 500000
+
+tests/test_fallback_chunking.py::TestFallbackManager::test_csv_chunking
+  /home/jenner/code/treesitter-chunker/tests/test_fallback_chunking.py:317: FallbackWarning: Using fallback chunking for /tmp/tmpue4t24q7.csv (type: csv, reason: FallbackReason.NO_GRAMMAR)
+    chunks = manager.chunk_file(f.name)
+
+tests/test_intelligent_fallback.py::TestIntelligentFallback::test_sliding_window_decision_no_language_support
+  /home/jenner/code/treesitter-chunker/chunker/fallback/sliding_window_fallback.py:558: FallbackWarning: 
+  WARNING: Using fallback chunking for unknown.xyz
+  Reason: unknown
+  
+  Tree-sitter provides deterministic, AST-based chunking that preserves code structure.
+  Fallback methods may split code at inappropriate boundaries.
+  
+  To improve chunking for this file type:
+  1. Check if a Tree-sitter grammar exists: https://github.com/tree-sitter
+  2. Request grammar support: https://github.com/tree-sitter
+  3. Use the 'more-grammars' feature to add support
+  
+  Current fallback method: line_based
+  
+    return super().chunk_text(content, file_path, language)
+
+tests/test_intelligent_fallback.py::TestIntelligentFallback::test_specialized_processor_decision
+  /home/jenner/code/treesitter-chunker/chunker/fallback/sliding_window_fallback.py:428: FallbackWarning: 
+  WARNING: Using fallback chunking for test.md
+  Reason: unknown
+  
+  Tree-sitter provides deterministic, AST-based chunking that preserves code structure.
+  Fallback methods may split code at inappropriate boundaries.
+  
+  To improve chunking for this file type:
+  1. Check if a Tree-sitter grammar exists: https://github.com/tree-sitter-grammars/tree-sitter-markdown
+  2. Request grammar support: https://github.com/tree-sitter
+  3. Use the 'more-grammars' feature to add support
+  
+  Current fallback method: regex_based
+  
+    return self.fallback.chunk_text(content, str(file_path))
+
+tests/test_intelligent_fallback.py::TestIntelligentFallback::test_parse_failure_fallback
+  /home/jenner/code/treesitter-chunker/chunker/fallback/sliding_window_fallback.py:558: FallbackWarning: 
+  WARNING: Using fallback chunking for simple.py
+  Reason: unknown
+  
+  Tree-sitter provides deterministic, AST-based chunking that preserves code structure.
+  Fallback methods may split code at inappropriate boundaries.
+  
+  To improve chunking for this file type:
+  1. Check if a Tree-sitter grammar exists: https://github.com/tree-sitter
+  2. Request grammar support: https://github.com/tree-sitter
+  3. Use the 'more-grammars' feature to add support
+  
+  Current fallback method: line_based
+  
+    return super().chunk_text(content, file_path, language)
+
+tests/test_phase11_comprehensive_integration.py::TestPhase11ComprehensiveIntegration::test_markdown_with_code_blocks
+  /home/jenner/code/treesitter-chunker/chunker/fallback/sliding_window_fallback.py:428: FallbackWarning: 
+  WARNING: Using fallback chunking for /tmp/tmp8555uklx/api_docs.md
+  Reason: unknown
+  
+  Tree-sitter provides deterministic, AST-based chunking that preserves code structure.
+  Fallback methods may split code at inappropriate boundaries.
+  
+  To improve chunking for this file type:
+  1. Check if a Tree-sitter grammar exists: https://github.com/tree-sitter-grammars/tree-sitter-markdown
+  2. Request grammar support: https://github.com/tree-sitter
+  3. Use the 'more-grammars' feature to add support
+  
+  Current fallback method: regex_based
+  
+    return self.fallback.chunk_text(content, str(file_path))
+
+tests/test_phase11_comprehensive_integration.py::TestPhase11ComprehensiveIntegration::test_log_file_with_stack_traces
+  /home/jenner/code/treesitter-chunker/chunker/fallback/sliding_window_fallback.py:428: FallbackWarning: 
+  WARNING: Using fallback chunking for /tmp/tmpidukctw_/application.log
+  Reason: unknown
+  
+  Tree-sitter provides deterministic, AST-based chunking that preserves code structure.
+  Fallback methods may split code at inappropriate boundaries.
+  
+  To improve chunking for this file type:
+  1. Check if a Tree-sitter grammar exists: https://github.com/tree-sitter
+  2. Request grammar support: https://github.com/tree-sitter
+  3. Use the 'more-grammars' feature to add support
+  
+  Current fallback method: line_based
+  
+    return self.fallback.chunk_text(content, str(file_path))
+
+tests/test_phase11_comprehensive_integration.py::TestPhase11ComprehensiveIntegration::test_mixed_content_repository
+  /home/jenner/code/treesitter-chunker/chunker/fallback/sliding_window_fallback.py:428: FallbackWarning: 
+  WARNING: Using fallback chunking for /tmp/tmp_h_bd5ax/docs/metrics.md
+  Reason: unknown
+  
+  Tree-sitter provides deterministic, AST-based chunking that preserves code structure.
+  Fallback methods may split code at inappropriate boundaries.
+  
+  To improve chunking for this file type:
+  1. Check if a Tree-sitter grammar exists: https://github.com/tree-sitter-grammars/tree-sitter-markdown
+  2. Request grammar support: https://github.com/tree-sitter
+  3. Use the 'more-grammars' feature to add support
+  
+  Current fallback method: regex_based
+  
+    return self.fallback.chunk_text(content, str(file_path))
+
+tests/test_phase11_comprehensive_integration.py::TestPhase11ComprehensiveIntegration::test_token_limit_with_fallback
+  /home/jenner/code/treesitter-chunker/chunker/fallback/sliding_window_fallback.py:558: FallbackWarning: 
+  WARNING: Using fallback chunking for large.txt
+  Reason: unknown
+  
+  Tree-sitter provides deterministic, AST-based chunking that preserves code structure.
+  Fallback methods may split code at inappropriate boundaries.
+  
+  To improve chunking for this file type:
+  1. Check if a Tree-sitter grammar exists: https://github.com/tree-sitter
+  2. Request grammar support: https://github.com/tree-sitter
+  3. Use the 'more-grammars' feature to add support
+  
+  Current fallback method: line_based
+  
+    return super().chunk_text(content, file_path, language)
+
+tests/test_phase11_comprehensive_integration.py::TestPhase11ComprehensiveIntegration::test_empty_file_handling
+  /home/jenner/code/treesitter-chunker/chunker/fallback/sliding_window_fallback.py:558: FallbackWarning: 
+  WARNING: Using fallback chunking for /tmp/tmpl7kjkkw3/empty.py
+  Reason: unknown
+  
+  Tree-sitter provides deterministic, AST-based chunking that preserves code structure.
+  Fallback methods may split code at inappropriate boundaries.
+  
+  To improve chunking for this file type:
+  1. Check if a Tree-sitter grammar exists: https://github.com/tree-sitter
+  2. Request grammar support: https://github.com/tree-sitter
+  3. Use the 'more-grammars' feature to add support
+  
+  Current fallback method: line_based
+  
+    return super().chunk_text(content, file_path, language)
+
+tests/test_phase11_comprehensive_integration.py::TestPhase11ComprehensiveIntegration::test_cross_language_references
+  /home/jenner/code/treesitter-chunker/chunker/fallback/sliding_window_fallback.py:558: FallbackWarning: 
+  WARNING: Using fallback chunking for /tmp/tmpx0c2ezmd/index.html
+  Reason: unknown
+  
+  Tree-sitter provides deterministic, AST-based chunking that preserves code structure.
+  Fallback methods may split code at inappropriate boundaries.
+  
+  To improve chunking for this file type:
+  1. Check if a Tree-sitter grammar exists: https://github.com/tree-sitter
+  2. Request grammar support: https://github.com/tree-sitter
+  3. Use the 'more-grammars' feature to add support
+  
+  Current fallback method: line_based
+  
+    return super().chunk_text(content, file_path, language)
+
+tests/test_sliding_integration.py::TestSlidingWindowIntegration::test_processor_selection
+  /home/jenner/code/treesitter-chunker/chunker/fallback/sliding_window_fallback.py:558: FallbackWarning: 
+  WARNING: Using fallback chunking for /tmp/tmpbxzhxase/test.txt
+  Reason: unknown
+  
+  Tree-sitter provides deterministic, AST-based chunking that preserves code structure.
+  Fallback methods may split code at inappropriate boundaries.
+  
+  To improve chunking for this file type:
+  1. Check if a Tree-sitter grammar exists: https://github.com/tree-sitter
+  2. Request grammar support: https://github.com/tree-sitter
+  3. Use the 'more-grammars' feature to add support
+  
+  Current fallback method: line_based
+  
+    return super().chunk_text(content, file_path, language)
+
+tests/test_sliding_integration.py::TestSlidingWindowIntegration::test_fallback_reason_propagation
+  /home/jenner/code/treesitter-chunker/chunker/fallback/sliding_window_fallback.py:558: FallbackWarning: 
+  WARNING: Using fallback chunking for unknown.xyz
+  Reason: no_grammar_available
+  
+  Tree-sitter provides deterministic, AST-based chunking that preserves code structure.
+  Fallback methods may split code at inappropriate boundaries.
+  
+  To improve chunking for this file type:
+  1. Check if a Tree-sitter grammar exists: https://github.com/tree-sitter
+  2. Request grammar support: https://github.com/tree-sitter
+  3. Use the 'more-grammars' feature to add support
+  
+  Current fallback method: line_based
+  
+    return super().chunk_text(content, file_path, language)
+
+tests/unit/test_chunk_comparison.py::TestChunkComparison::test_failed_strategy_handling
+  /home/jenner/code/treesitter-chunker/chunker/debug/tools/comparison.py:206: FallbackWarning: Using fallback chunking for /tmp/tmpzyfwc1kf.py (type: text, reason: FallbackReason.NO_GRAMMAR)
+    return manager.chunk_file(file_path)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_cli_integration_advanced.py:216: Interactive mode testing requires TTY
+SKIPPED [1] tests/test_go_language.py:13: Go grammar not available
+SKIPPED [1] tests/test_go_language.py:49: Go grammar not available
+SKIPPED [1] tests/test_go_language.py:85: Go grammar not available
+SKIPPED [1] tests/test_go_language.py:124: Go grammar not available
+SKIPPED [1] tests/test_go_language.py:159: Go grammar not available
+SKIPPED [1] tests/test_java_language.py:13: Java grammar not available
+SKIPPED [1] tests/test_java_language.py:71: Java grammar not available
+SKIPPED [1] tests/test_java_language.py:107: Java grammar not available
+SKIPPED [1] tests/test_java_language.py:143: Java grammar not available
+SKIPPED [1] tests/test_java_language.py:186: Java grammar not available
+SKIPPED [1] tests/test_java_language.py:224: Java grammar not available
+SKIPPED [1] tests/test_metadata_extraction.py:438: TypeScript grammar not available in test environment
+SKIPPED [1] tests/test_metadata_extraction.py:455: TypeScript grammar not available in test environment
+SKIPPED [1] tests/test_phase11_comprehensive_integration.py:318: Sliding window engine not available
+SKIPPED [1] tests/test_ruby_language.py:13: Ruby grammar not available
+SKIPPED [1] tests/test_ruby_language.py:53: Ruby grammar not available
+SKIPPED [1] tests/test_ruby_language.py:91: Ruby grammar not available
+SKIPPED [1] tests/test_ruby_language.py:130: Ruby grammar not available
+SKIPPED [1] tests/test_ruby_language.py:159: Ruby grammar not available
+SKIPPED [1] tests/test_ruby_language.py:191: Ruby grammar not available
+ERROR tests/test_parallel_error_handling.py::TestParallelErrorHandling::test_worker_process_crash_recovery
+ERROR tests/test_parallel_error_handling.py::TestParallelErrorHandling::test_worker_timeout_handling
+ERROR tests/test_parallel_error_handling.py::TestParallelErrorHandling::test_resource_cleanup_after_errors
+ERROR tests/test_parallel_error_handling.py::TestParallelErrorHandling::test_progress_tracking_with_failures
+ERROR tests/test_parallel_error_handling.py::TestParallelErrorHandling::test_deadlock_prevention
+ERROR tests/test_parallel_error_handling.py::TestParallelErrorHandling::test_memory_leak_detection
+ERROR tests/test_phase10_full_integration.py::TestPhase10FullIntegration::test_complete_phase10_workflow
+ERROR tests/test_phase10_full_integration.py::TestPhase10FullIntegration::test_error_handling_and_edge_cases
+ERROR tests/test_phase10_full_integration.py::TestPhase10FullIntegration::test_performance_with_large_codebase
+ERROR tests/test_phase19_contract_compliance.py::test_template_generator_contract_compliance
+ERROR tests/test_phase19_contract_compliance.py::test_grammar_manager_contract_compliance
+ERROR tests/test_phase19_contract_compliance.py::test_language_plugin_contract_compliance
+ERROR tests/test_sliding_integration.py::TestProcessorPerformance::test_large_file_processing
+ERROR tests/test_sliding_integration.py::TestIntegrationScenarios::test_mixed_content_repository
+ERROR tests/test_sliding_integration.py::TestIntegrationScenarios::test_custom_plugin_loading
+FAILED tests/integration/grammar/test_grammar_integration.py::TestGrammarIntegration::test_full_grammar_workflow
+FAILED tests/test_developer_tooling.py::TestDeveloperToolingImpl::test_format_code_with_valid_file[True]
+FAILED tests/test_devenv_integration.py::TestDevEnvironmentIntegration::test_pre_commit_hooks_setup
+FAILED tests/test_haskell_language.py::TestHaskellBasicChunking::test_module_structure
+FAILED tests/test_haskell_language.py::TestHaskellEdgeCases::test_lambda_expressions
+FAILED tests/test_hierarchical_chunker.py::TestHierarchicalChunker::test_leaf_node_preservation
+FAILED tests/test_hierarchy.py::TestHierarchyIntegration::test_javascript_code_hierarchy
+FAILED tests/test_incremental_integration.py::TestIncrementalIntegration::test_incremental_workflow
+FAILED tests/test_integration.py::TestAllLanguages::test_language_metadata_consistency
+FAILED tests/test_julia_language.py::TestJuliaBasicChunking::test_simple_function
+FAILED tests/test_julia_language.py::TestJuliaBasicChunking::test_struct_definitions
+FAILED tests/test_julia_language.py::TestJuliaBasicChunking::test_abstract_and_primitive_types
+FAILED tests/test_julia_language.py::TestJuliaEdgeCases::test_julia_with_metaprogramming
+FAILED tests/test_log_processor.py::TestLogProcessor::test_invalid_configuration
+FAILED tests/test_matlab_language.py::TestMATLABBasicChunking::test_matlab_script
+FAILED tests/test_matlab_language.py::TestMATLABBasicChunking::test_matlab_classdef
+FAILED tests/test_matlab_language.py::TestMATLABEdgeCases::test_matlab_with_only_comments
+FAILED tests/test_matlab_language.py::TestMATLABEdgeCases::test_matlab_with_anonymous_functions
+FAILED tests/test_matlab_language.py::TestMATLABEdgeCases::test_matlab_with_events_enumeration
+FAILED tests/test_metadata_extraction.py::TestIntegrationWithChunker::test_chunk_without_metadata
+FAILED tests/test_metadata_extraction.py::TestIntegrationWithChunker::test_chunk_with_metadata_javascript
+FAILED tests/test_multi_language.py::TestMultiLanguageProcessor::test_group_by_feature
+FAILED tests/test_nasm_language.py::TestNASMPlugin::test_label_chunking - ass...
+FAILED tests/test_nasm_language.py::TestNASMPlugin::test_section_chunking - a...
+FAILED tests/test_nasm_language.py::TestNASMPlugin::test_macro_chunking - ass...
+FAILED tests/test_nasm_language.py::TestNASMPlugin::test_struc_chunking - ass...
+FAILED tests/test_nasm_language.py::TestNASMPlugin::test_global_extern_directives
+FAILED tests/test_nasm_language.py::TestNASMPlugin::test_complex_assembly_file
+FAILED tests/test_ocaml_language.py::TestOCamlBasicChunking::test_simple_functions
+FAILED tests/test_ocaml_language.py::TestOCamlBasicChunking::test_type_definitions
+FAILED tests/test_ocaml_language.py::TestOCamlBasicChunking::test_module_definitions
+FAILED tests/test_ocaml_language.py::TestOCamlBasicChunking::test_exception_definitions
+FAILED tests/test_ocaml_language.py::TestOCamlEdgeCases::test_ocaml_with_only_comments
+FAILED tests/test_ocaml_language.py::TestOCamlEdgeCases::test_ocaml_with_operators
+FAILED tests/test_ocaml_language.py::TestOCamlEdgeCases::test_ocaml_with_gadt
+FAILED tests/test_ocaml_language.py::TestOCamlEdgeCases::test_ocaml_interface_file
+FAILED tests/test_optimization.py::TestChunkOptimizer::test_coherence_score_calculation
+FAILED tests/test_phase10_interface_compatibility.py::TestPhase10InterfaceCompatibility::test_incremental_with_optimization
+FAILED tests/test_phase11_comprehensive_integration.py::TestPhase11ComprehensiveIntegration::test_config_file_processing
+FAILED tests/test_phase11_comprehensive_integration.py::TestPhase11ComprehensiveIntegration::test_mixed_content_repository
+FAILED tests/test_phase11_comprehensive_integration.py::TestPhase11ComprehensiveIntegration::test_performance_with_large_files
+FAILED tests/test_phase13_integration.py::TestDistributionIntegration::test_release_process_updates_all_locations
+FAILED tests/test_phase13_real_integration.py::TestPhase13RealIntegration::test_cross_component_integration
+FAILED tests/test_php_language.py::TestPHPLanguage::test_php_basic_chunking
+FAILED tests/test_php_language.py::TestPHPLanguage::test_php_interface_abstract
+FAILED tests/test_php_language.py::TestPHPLanguage::test_php_anonymous_functions
+FAILED tests/test_php_language.py::TestPHPLanguage::test_php_modern_syntax - ...
+FAILED tests/test_php_language.py::TestPHPLanguage::test_php_mixed_content - ...
+FAILED tests/test_php_language.py::TestPHPLanguage::test_php_namespace_use - ...
+FAILED tests/test_php_language.py::TestPHPLanguage::test_php_file_extensions[.php]
+FAILED tests/test_php_language.py::TestPHPLanguage::test_php_file_extensions[.php3]
+FAILED tests/test_php_language.py::TestPHPLanguage::test_php_file_extensions[.php4]
+FAILED tests/test_php_language.py::TestPHPLanguage::test_php_file_extensions[.php5]
+FAILED tests/test_php_language.py::TestPHPLanguage::test_php_file_extensions[.phtml]
+FAILED tests/test_query_advanced.py::TestNaturalLanguageQueryEngine::test_structured_search
+FAILED tests/test_query_advanced.py::TestAdvancedQueryIndex::test_tokenization
+FAILED tests/test_query_advanced.py::TestAdvancedQueryIndex::test_statistics
+FAILED tests/test_query_advanced.py::TestSmartQueryOptimizer::test_query_suggestions
+FAILED tests/test_query_advanced.py::TestSmartQueryOptimizer::test_preserve_query_structure
+FAILED tests/test_r_language.py::TestRBasicChunking::test_simple_function - A...
+FAILED tests/test_r_language.py::TestRBasicChunking::test_nested_functions - ...
+FAILED tests/test_r_language.py::TestRBasicChunking::test_s3_methods - assert...
+FAILED tests/test_r_language.py::TestRContractCompliance::test_get_chunk_node_types
+FAILED tests/test_r_language.py::TestRContractCompliance::test_should_chunk_node
+FAILED tests/test_r_language.py::TestREdgeCases::test_r_with_complex_assignments
+FAILED tests/test_r_language.py::TestREdgeCases::test_r_markdown_chunks - ass...
+FAILED tests/test_r_language.py::TestREdgeCases::test_r_with_s4_classes - ass...
+FAILED tests/test_relationship_tracker.py::TestASTRelationshipTracker::test_infer_javascript_inheritance
+FAILED tests/test_relationship_tracker.py::TestASTRelationshipTracker::test_infer_javascript_calls
+FAILED tests/test_scala_language.py::TestScalaBasicChunking::test_classes_and_objects
+FAILED tests/test_semantic_chunker.py::TestSemanticChunker::test_basic_chunking
+FAILED tests/test_semantic_chunker.py::TestSemanticChunker::test_complexity_splitting
+FAILED tests/test_semantic_chunker.py::TestSemanticChunker::test_semantic_boundaries
+FAILED tests/test_sliding_integration.py::TestSlidingWindowIntegration::test_error_handling
+FAILED tests/test_sql_language.py::TestSQLBasicChunking::test_simple_create_table
+FAILED tests/test_sql_language.py::TestSQLBasicChunking::test_multiple_statements
+FAILED tests/test_sql_language.py::TestSQLBasicChunking::test_create_function
+FAILED tests/test_sql_language.py::TestSQLBasicChunking::test_create_procedure
+FAILED tests/test_sql_language.py::TestSQLBasicChunking::test_complex_select_with_cte
+FAILED tests/test_sql_language.py::TestSQLEdgeCases::test_sql_with_transactions
+FAILED tests/test_sql_language.py::TestSQLEdgeCases::test_sql_with_views - as...
+FAILED tests/test_sql_language.py::TestSQLEdgeCases::test_sql_with_triggers
+FAILED tests/test_structured_export_integration.py::TestStructuredExportIntegration::test_end_to_end_jsonl_export
+FAILED tests/test_structured_export_integration.py::TestStructuredExportIntegration::test_end_to_end_dot_export
+FAILED tests/test_structured_export_integration.py::TestStructuredExportIntegration::test_relationship_tracking_javascript
+FAILED tests/test_token_integration.py::TestTokenAwareChunker::test_multiple_languages
+FAILED tests/test_typescript_language.py::TestTypeScriptLanguage::test_typescript_basic_chunking
+FAILED tests/test_typescript_language.py::TestTypeScriptLanguage::test_tsx_component_chunking
+FAILED tests/test_typescript_language.py::TestTypeScriptLanguage::test_typescript_generics
+FAILED tests/test_typescript_language.py::TestTypeScriptLanguage::test_typescript_decorators
+FAILED tests/test_typescript_language.py::TestTypeScriptLanguage::test_typescript_namespace
+FAILED tests/test_typescript_language.py::TestTypeScriptLanguage::test_typescript_enum_chunking
+FAILED tests/test_typescript_language.py::TestTypeScriptLanguage::test_typescript_file_extensions[.ts]
+FAILED tests/test_typescript_language.py::TestTypeScriptLanguage::test_typescript_file_extensions[.tsx]
+FAILED tests/test_typescript_language.py::TestTypeScriptLanguage::test_typescript_file_extensions[.d.ts]
+FAILED tests/test_vfs.py::TestVFSChunker::test_auto_language_detection - asse...
+96 failed, 1959 passed, 21 skipped, 775 warnings, 15 errors in 150.22s (0:02:30)

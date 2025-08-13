@@ -288,12 +288,19 @@ lambda x: x + 1
 """,
         )
         original_config = language_config_registry.get("python")
+
+        # Test with no config by temporarily disabling lazy loading
+        original_lazy_loading = language_config_registry._enable_lazy_loading
+        language_config_registry._enable_lazy_loading = False
         language_config_registry.clear()
         chunks_no_config = chunk_file(test_file, "python")
         chunk_types_no_config = {c.node_type for c in chunks_no_config}
         assert "function_definition" in chunk_types_no_config
         assert "class_definition" in chunk_types_no_config
         assert "lambda" not in chunk_types_no_config
+
+        # Restore lazy loading and test with config
+        language_config_registry._enable_lazy_loading = original_lazy_loading
         if original_config:
             language_config_registry.register(
                 original_config,

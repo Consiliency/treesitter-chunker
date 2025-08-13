@@ -87,10 +87,7 @@ class RPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
     def default_chunk_types(self) -> set[str]:
         return {
             "function_definition",
-            "function_declaration",
-            "assignment",
-            "left_assignment",
-            "right_assignment",
+            "binary_operator",  # For assignments like <-
             "if_statement",
             "for_statement",
             "while_statement",
@@ -101,14 +98,15 @@ class RPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
     @staticmethod
     def get_node_name(node: Node, source: bytes) -> str | None:
         """Extract the name from an R node."""
-        if node.type in {"assignment", "left_assignment"}:
+        if node.type == "binary_operator":
+            # For assignment operations, find the left-hand identifier
             for child in node.children:
                 if child.type == "identifier":
                     return source[child.start_byte : child.end_byte].decode("utf-8")
                 break
         elif node.type == "function_definition":
             parent = node.parent
-            if parent and parent.type in {"assignment", "left_assignment"}:
+            if parent and parent.type == "binary_operator":
                 for child in parent.children:
                     if child.type == "identifier":
                         return source[child.start_byte : child.end_byte].decode("utf-8")
@@ -123,7 +121,7 @@ class RPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
 
         def extract_chunks(n: Node, _parent_type: str | None = None):
             if n.type in self.default_chunk_types:
-                if n.type in {"assignment", "left_assignment"}:
+                if n.type == "binary_operator":
                     is_function = False
                     for child in n.children:
                         if child.type == "function_definition":
@@ -146,7 +144,7 @@ class RPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     "content": content,
                     "name": self.get_node_name(n, source),
                 }
-                if n.type in {"assignment", "left_assignment"}:
+                if n.type == "binary_operator":
                     for child in n.children:
                         if child.type == "function_definition":
                             chunk["is_function"] = True
@@ -167,7 +165,8 @@ class RPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         """Determine if a specific node should be chunked."""
         if node.type == "function_definition":
             return True
-        if node.type in {"assignment", "left_assignment"}:
+        if node.type == "binary_operator":
+            # Check if it's a function assignment (has <- operator and function definition)
             for child in node.children:
                 if child.type == "function_definition":
                     return True
@@ -183,7 +182,7 @@ class RPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
     def get_node_context(self, node: Node, source: bytes) -> str | None:
         """Extract meaningful context for a node."""
         # Handle assignments specially
-        if node.type in {"assignment", "left_assignment"}:
+        if node.type == "binary_operator":
             return self._get_assignment_context(node, source)
 
         # Handle function definitions
@@ -227,7 +226,7 @@ class RPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         parent_context: str | None = None,
     ):
         """Process R nodes with special handling for function assignments."""
-        if node.type in {"assignment", "left_assignment"}:
+        if node.type == "binary_operator":
             is_function_assignment = False
             for child in node.children:
                 if child.type == "function_definition":

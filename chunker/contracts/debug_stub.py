@@ -8,8 +8,8 @@ class DebugVisualizationStub(DebugVisualizationContract):
 
     @staticmethod
     def visualize_ast(
-        _file_path: str,
-        _language: str,
+        file_path: str,
+        language: str,
         output_format: str = "svg",
     ) -> str | bytes:
         """Stub that returns valid default values"""
@@ -19,9 +19,9 @@ class DebugVisualizationStub(DebugVisualizationContract):
 
     @staticmethod
     def inspect_chunk(
-        _file_path: str,
-        _chunk_id: str,
-        _include_context: bool = True,
+        file_path: str,
+        chunk_id: str,
+        include_context: bool = True,
     ) -> dict[str, Any]:
         """Stub that returns valid default values"""
         return {
@@ -37,7 +37,7 @@ class DebugVisualizationStub(DebugVisualizationContract):
         }
 
     @staticmethod
-    def profile_chunking(_file_path: str, _language: str) -> dict[str, Any]:
+    def profile_chunking(file_path: str, language: str) -> dict[str, Any]:
         """Stub that returns valid default values"""
         return {
             "status": "not_implemented",
@@ -51,9 +51,9 @@ class DebugVisualizationStub(DebugVisualizationContract):
 
     @staticmethod
     def debug_mode_chunking(
-        _file_path: str,
-        _language: str,
-        _breakpoints: list[str] | None = None,
+        file_path: str,
+        language: str,
+        breakpoints: list[str] | None = None,
     ) -> dict[str, Any]:
         """Stub that returns valid default values"""
         return {
@@ -70,9 +70,9 @@ class ChunkComparisonStub(ChunkComparisonContract):
 
     @staticmethod
     def compare_strategies(
-        _file_path: str,
-        _language: str,
-        _strategies: list[str],
+        file_path: str,
+        language: str,
+        strategies: list[str],
     ) -> dict[str, Any]:
         """Stub that returns valid default values"""
         return {

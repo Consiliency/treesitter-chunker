@@ -8,8 +8,12 @@ from .formats import (
     SQLiteExporter,
     StructuredJSONExporter,
     StructuredJSONLExporter,
-    StructuredParquetExporter,
 )
+
+try:  # optional parquet
+    from .formats import StructuredParquetExporter  # type: ignore
+except Exception:
+    StructuredParquetExporter = None  # type: ignore
 from .formatters import SchemaType, get_formatter
 from .json_export import JSONExporter, JSONLExporter
 from .relationships import ASTRelationshipTracker
@@ -30,6 +34,9 @@ __all__ = [
     "StructuredExportOrchestrator",
     "StructuredJSONExporter",
     "StructuredJSONLExporter",
-    "StructuredParquetExporter",
     "get_formatter",
 ]
+
+# Only expose Parquet if available
+if StructuredParquetExporter is not None:
+    __all__.append("StructuredParquetExporter")

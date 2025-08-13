@@ -21,15 +21,13 @@ from pydantic import BaseModel, Field
 
 # Import the simplified chunker API
 from chunker import __version__, chunk_file, chunk_text, list_languages
-from chunker.graph.xref import build_xref
 from chunker.graph.cut import graph_cut
+from chunker.graph.xref import build_xref
 
 # Create FastAPI app
 app = FastAPI(
     title="Tree-sitter Chunker API",
-    description=(
-        "HTTP API for semantic code chunking using Tree-sitter"
-    ),
+    description=("HTTP API for semantic code chunking using Tree-sitter"),
     version=__version__,
     docs_url="/docs",
     redoc_url="/redoc",
@@ -52,9 +50,7 @@ class ChunkRequest(BaseModel):
     content: str = Field(..., description="Source code content to chunk")
     language: str = Field(
         ...,
-        description=(
-            "Programming language (e.g., 'python', 'javascript')"
-        ),
+        description=("Programming language (e.g., 'python', 'javascript')"),
     )
     min_chunk_size: int | None = Field(
         None,
@@ -224,10 +220,7 @@ async def chunk_text_endpoint(request: ChunkRequest):
                 continue
 
             # Apply type filter
-            if (
-                request.chunk_types
-                and chunk.node_type not in request.chunk_types
-            ):
+            if request.chunk_types and chunk.node_type not in request.chunk_types:
                 continue
 
             filtered_chunks.append(
@@ -344,10 +337,7 @@ async def chunk_file_endpoint(request: ChunkFileRequest):
                 continue
 
             # Apply type filter
-            if (
-                request.chunk_types
-                and chunk.node_type not in request.chunk_types
-            ):
+            if request.chunk_types and chunk.node_type not in request.chunk_types:
                 continue
 
             filtered_chunks.append(
@@ -431,7 +421,7 @@ async def nearest_tests_endpoint(request: NearestTestsRequest):
     try:
         from chunker.helpers.nearest_tests import nearest_tests
 
-        tests = nearest_tests(request.symbols, str(Path(".")))
+        tests = nearest_tests(request.symbols, str(Path()))
         return NearestTestsResponse(tests=tests)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e)) from e

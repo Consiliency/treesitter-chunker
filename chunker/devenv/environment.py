@@ -24,8 +24,31 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
 
     @staticmethod
     def _find_executable(name: str) -> str | None:
-        """Find executable in PATH"""
-        return shutil.which(name)
+        """Find executable in PATH with common virtualenv fallbacks."""
+        path = shutil.which(name)
+        if path:
+            return path
+        try:
+            import sys as _sys
+            from pathlib import Path as _P
+
+            candidates = []
+            # Project-rooted virtualenvs
+            here = _P(__file__).resolve()
+            project = here.parent.parent.parent
+            candidates.append(project / ".fullenv" / "bin" / name)
+            candidates.append(project / ".venv" / "bin" / name)
+            # Current interpreter's bin directory
+            interp_bin = _P(_sys.executable).parent
+            candidates.append(interp_bin / name)
+            # Local user bin
+            candidates.append(_P.home() / ".local" / "bin" / name)
+            for c in candidates:
+                if c.exists():
+                    return str(c)
+        except Exception:
+            return None
+        return None
 
     def setup_pre_commit_hooks(self, project_root: Path) -> bool:
         """
@@ -95,16 +118,15 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
         success = True
         if paths is None:
             paths = ["."]
-        if self._ruff_path:
-            ruff_issues = self._run_ruff(paths, fix)
-            if ruff_issues:
-                success = False
-                issues.extend(ruff_issues)
-        if self._mypy_path:
-            mypy_issues = self._run_mypy(paths)
-            if mypy_issues:
-                success = False
-                issues.extend(mypy_issues)
+        # Always invoke tool runners; they handle missing executables internally.
+        ruff_issues = self._run_ruff(paths, fix)
+        if ruff_issues:
+            success = False
+            issues.extend(ruff_issues)
+        mypy_issues = self._run_mypy(paths)
+        if mypy_issues:
+            success = False
+            issues.extend(mypy_issues)
         return success, issues
 
     def _run_ruff(self, paths: list[str], fix: bool) -> list[dict[str, Any]]:
@@ -216,16 +238,17 @@ class DevelopmentEnvironment(DevelopmentEnvironmentContract):
             paths = ["."]
         modified_files = []
         formatted_correctly = True
-        if self._ruff_path:
-            success, files = self._run_ruff_format(paths, check_only)
-            if not success:
+        # Always attempt ruff format first
+        success, files = self._run_ruff_format(paths, check_only)
+        if not success:
+            formatted_correctly = False
+        modified_files.extend(files)
+        # Fallback to black if ruff format produced no changes and black is available
+        if not files and self._black_path:
+            b_success, b_files = self._run_black(paths, check_only)
+            if not b_success:
                 formatted_correctly = False
-            modified_files.extend(files)
-        elif self._black_path:
-            success, files = self._run_black(paths, check_only)
-            if not success:
-                formatted_correctly = False
-            modified_files.extend(files)
+            modified_files.extend(b_files)
         return formatted_correctly, modified_files
 
     def _run_ruff_format(

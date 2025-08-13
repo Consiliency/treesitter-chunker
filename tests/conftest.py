@@ -7,6 +7,7 @@ from unittest.mock import Mock
 import pytest
 
 from chunker.build import BuildSystem, PlatformSupport
+from tests.integration.fixtures import error_tracking_context, temp_workspace
 
 
 @pytest.fixture
@@ -24,7 +25,8 @@ def platform_support():
 # Monkey-patch the integration tests to use real implementations
 def pytest_runtest_setup(item):
     """Setup test to use real implementations instead of mocks"""
-    if "test_phase13_integration" in str(item.fspath):
+    node_id = getattr(item, "nodeid", "")
+    if "test_phase13_integration" in node_id:
         # Import here to avoid circular imports
 
         # Patch Mock to return real instances for our contracts
