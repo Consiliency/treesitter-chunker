@@ -1,37 +1,24 @@
-"""
-Clone a curated set of Tree‑sitter grammars into ./grammars.
-Run: python scripts/fetch_grammars.py
-"""
-
-import subprocess
+#!/usr/bin/env python3
+import os
 from pathlib import Path
+from chunker.grammar.manager import TreeSitterGrammarManager
 
-GRAMMARS = {
-    # Original languages
-    "python": "https://github.com/tree-sitter/tree-sitter-python.git",
-    "rust": "https://github.com/tree-sitter/tree-sitter-rust.git",
-    "javascript": "https://github.com/tree-sitter/tree-sitter-javascript.git",
-    "c": "https://github.com/tree-sitter/tree-sitter-c.git",
-    "cpp": "https://github.com/tree-sitter/tree-sitter-cpp.git",
-    # New languages for Phase 8
-    "go": "https://github.com/tree-sitter/tree-sitter-go.git",
-    "ruby": "https://github.com/tree-sitter/tree-sitter-ruby.git",
-    "java": "https://github.com/tree-sitter/tree-sitter-java.git",
-    # Additional popular languages
-    "typescript": "https://github.com/tree-sitter/tree-sitter-typescript.git",
-    "csharp": "https://github.com/tree-sitter/tree-sitter-c-sharp.git",
-    "php": "https://github.com/tree-sitter/tree-sitter-php.git",
-    "swift": "https://github.com/alex-pinkus/tree-sitter-swift.git",
-    "kotlin": "https://github.com/fwcd/tree-sitter-kotlin.git",
+langs = os.getenv("CHUNKER_WHEEL_LANGS", "python,javascript,rust").split(",")
+repo_map = {
+	"python": "https://github.com/tree-sitter/tree-sitter-python",
+	"javascript": "https://github.com/tree-sitter/tree-sitter-javascript",
+	"rust": "https://github.com/tree-sitter/tree-sitter-rust",
 }
 
-dest = Path("grammars")
-dest.mkdir(exist_ok=True)
+root = Path(__file__).resolve().parents[1]
+build = root / "build"
+source = root / "grammars"
 
-for lang, repo in GRAMMARS.items():
-    tgt = dest / f"tree-sitter-{lang}"
-    if tgt.exists():
-        print(f"[skip] {lang} already present")
-        continue
-    print(f"[clone] {lang}")
-    subprocess.run(["git", "clone", "--depth=1", repo, str(tgt)], check=True)
+mgr = TreeSitterGrammarManager(grammars_dir=source, build_dir=build)
+for lang in langs:
+	url = repo_map.get(lang)
+	if not url:
+		continue
+	mgr.add_grammar(lang, url)
+	mgr.fetch_grammar(lang)
+print("Fetched grammars:", langs, "into", source)

@@ -91,6 +91,31 @@ python -c "from chunker.parser import list_languages; print(list_languages())"
 # Output: ['c', 'cpp', 'javascript', 'python', 'rust']
 ```
 
+### Using prebuilt grammars (no local builds)
+
+Starting with CI-built wheels, precompiled Tree-sitter grammars are bundled for common platforms. If a grammar isn’t bundled yet, the library can build it on demand to your user cache.
+
+To opt into building grammars once and reusing them:
+
+```bash
+export CHUNKER_GRAMMAR_BUILD_DIR="$HOME/.cache/treesitter-chunker/build"
+```
+
+Then build a language one time from Python:
+
+```python
+from pathlib import Path
+from chunker.grammar.manager import TreeSitterGrammarManager
+
+cache = Path.home() / ".cache" / "treesitter-chunker"
+gm = TreeSitterGrammarManager(grammars_dir=cache / "grammars", build_dir=cache / "build")
+gm.add_grammar("python", "https://github.com/tree-sitter/tree-sitter-python")
+gm.fetch_grammar("python")
+gm.build_grammar("python")
+```
+
+Now chunking with `language="python"` works without further setup.
+
 ## 🚀 Quick Start
 
 ### Python Usage
@@ -441,282 +466,4 @@ Tree-sitter Chunker exports 110+ APIs organized into logical groups:
 
 ### Advanced Query (optional)
 - `AdvancedQueryIndex` - Text/AST/embedding indexes
-- `NaturalLanguageQueryEngine` - NL/structured/regex/AST queries
-- `SmartQueryOptimizer` - Query rewriting and ranking
-
-### Configuration
-- `ChunkerConfig` - Global configuration
-- `LanguageConfig` - Language-specific config
-- `CompositeLanguageConfig` - Config inheritance
-- `ChunkRule` - Custom chunking rules
-
-### Export System
-- `JSONExporter` - Export to JSON
-- `JSONLExporter` - Export to JSONL
-- `ParquetExporter` - Export to Parquet
-- `SchemaType` - Export schema types
-
-### Phase 9 Features
-- **Token Integration**: `TokenCounter`, `TokenAwareChunker`, `TokenConfig`
-- **Chunk Hierarchy**: `ChunkHierarchy`, `ChunkRelationship`, `HierarchyBuilder`
-- **Metadata Extraction**: `MetadataExtractor`, `ChunkMetadata`, `MetadataConfig`
-- **Semantic Merging**: `SemanticChunker`, `MergeStrategy`, `SemanticConfig`
-- **Custom Rules**: `RuleBasedChunker`, `ChunkRule`, `RuleEngine`
-- **Repository Processing**: `RepoProcessor`, `RepoConfig`, `FileFilter`
-- **Overlapping Fallback**: `FallbackChunker`, `ChunkOverlap`, `FallbackStrategy`
-- **Packaging**: `PackageDistributor`, `WheelBuilder`, `PlatformConfig`
-
-### Phase 14 Features
-- **Grammar Discovery**: `GrammarDiscoveryService`, `GrammarInfo`, `GrammarCompatibility`
-- **Grammar Download**: `GrammarDownloadManager`, `DownloadProgress`, `DownloadOptions`
-- **Universal Registry**: `UniversalLanguageRegistry` with auto-download support
-- **Zero-Config API**: `ZeroConfigAPI`, `AutoChunkResult`, automatic language detection
-
-### Error Handling
-- `ChunkerError` - Base exception
-- `LanguageNotFoundError` - Language not supported
-- `ParserError` - Parser configuration error
-- `LibraryNotFoundError` - Missing language library
-
-See the [API Reference](docs/api-reference.md) for detailed documentation.
-
-## 📖 Documentation
-
-- **[Getting Started](docs/getting-started.md)** - Installation and first steps
-- **[User Guide](docs/user-guide.md)** - Comprehensive usage guide
-- **[API Reference](docs/api-reference.md)** - Detailed API documentation
-- **[Plugin Development](docs/plugin-development.md)** - Create custom language plugins
-- **[Configuration Guide](docs/configuration.md)** - Configuration options
-- **[Performance Guide](docs/performance-guide.md)** - Optimization strategies
-- **[Export Formats](docs/export-formats.md)** - Export format details
-- **[Cookbook](docs/cookbook.md)** - Practical recipes and examples
-- **[Architecture](docs/architecture.md)** - System design and internals
-
-### Phase 10 Documentation
-- **[Smart Context](docs/SMART_CONTEXT.md)** - Intelligent context extraction
-- **[Advanced Query](docs/QUERY_ADVANCED.md)** - Natural language queries
-- **[Optimization](docs/OPTIMIZATION.md)** - Chunk optimization strategies
-- **[Incremental Processing](docs/INCREMENTAL_PROCESSING.md)** - Efficient change detection
-- **[Structured Export](docs/STRUCTURED_EXPORT.md)** - Export with relationships
-
-### Phase 11 Documentation
-- **[Markdown Processing](docs/MARKDOWN_PROCESSOR.md)** - Header-aware markdown chunking
-- **[Log Processing](docs/LOG_PROCESSOR.md)** - Advanced log file analysis
-- **[Config Processing](docs/CONFIG_PROCESSOR.md)** - Configuration file handling
-- **[Text Processing](docs/TEXT_PROCESSING.md)** - Non-code file support
-
-### Phase 14 Documentation
-- **[Grammar Discovery](docs/grammar_discovery.md)** - Automatic grammar discovery from GitHub
-- **[Zero-Config API](docs/zero_config_api.md)** - Simple API that requires no setup
-
-## 📁 Project Structure
-
-```
-treesitter-chunker/
-├── chunker/              # Core library
-│   ├── __init__.py      # Main exports (27 APIs)
-│   ├── chunker.py       # Core chunking logic
-│   ├── parser.py        # Parser management
-│   ├── plugin_manager.py # Plugin system
-│   ├── languages/       # Language plugins
-│   ├── export/          # Export formats
-│   ├── parallel.py      # Parallel processing
-│   ├── streaming.py     # Streaming support
-│   └── cache.py         # AST caching
-├── cli/                 # Command-line interface
-├── docs/                # Documentation
-├── tests/               # Test suite
-├── examples/            # Example files
-└── scripts/             # Build scripts
-```
-
-## 🤝 Contributing
-
-Contributions are welcome! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-
-### Development Setup
-
-```bash
-# Clone and install in development mode
-git clone https://github.com/Consiliency/treesitter-chunker.git
-cd treesitter-chunker
-uv pip install -e ".[dev]"
-
-# Run tests (558 tests, >95% coverage)
-python -m pytest
-
-# Run benchmarks
-python benchmarks/run_benchmarks.py
-
-# Enable pre-commit hooks
-uv pip install pre-commit
-pre-commit install
-```
-
-### Test Suite
-
-The project includes a comprehensive test suite with excellent coverage:
-- **Total tests**: 900+ tests all passing (including dedicated tests for all 36+ languages)
-- **Test files**: 65+ test modules
-- **Unit test coverage**: >95%
-- **Integration test coverage**: ~90%
-- **Status**: All tests passing after recent fixes
-- **Production Testing**: Comprehensive methodology covering security, performance, reliability, and operations
-- **Recent Test Fixes**:
-  - FallbackWarning emission in fallback chunking system
-  - CSV header inclusion for multi-chunk CSV files
-  - Large file streaming tests (100MB+ files)
-
-## 🎯 Project Status
-
-### Completed Phases (16 of 19) 🎉
-- **Phase 1**: Core Architecture - Parser redesign, plugin system ✅
-- **Phase 2**: Language Support - 5 languages with custom configs ✅
-- **Phase 3**: Advanced Chunking - Context preservation, relationships ✅
-- **Phase 4**: Performance - Streaming, caching, parallel processing ✅
-- **Phase 5**: CLI & Export - Rich CLI, 14 export formats ✅
-- **Phase 6**: Testing & Docs - >95% coverage, comprehensive guides ✅
-- **Phase 7**: Integration Testing - Cross-module testing ✅
-- **Phase 8**: Structured Export - CSV, XML, minimal formats ✅
-- **Phase 9**: Feature Enhancement - Token counting, custom rules ✅
-- **Phase 10**: Advanced Features - Smart context, query system ✅
-- **Phase 11**: Text Processing - Markdown, logs, config files ✅
-- **Phase 12**: Graph & Database - GraphML, Neo4j, SQLite, PostgreSQL ✅
-- **Phase 13**: Developer Tools & Distribution - PyPI, Docker, CI/CD ✅
-- **Phase 14**: Universal Language Support - 100+ languages auto-download ✅
-- **Phase 15**: Production Readiness - Pre-commit hooks, CI/CD, quality tools ✅
-- **Phase 19**: Comprehensive Language Expansion - 36+ built-in language plugins ✅
-
-## 🚀 Advanced Capabilities
-
-### Smart Processing
-- **Token-Aware Chunking**: Respects LLM context windows (GPT-4, Claude, etc.)
-- **Intelligent Fallback**: Automatically selects best chunking method
-- **Context Preservation**: Maintains imports, class context, and relationships
-- **Semantic Merging**: Groups related code (getters/setters, overloads)
-
-### Text File Support 
-- **Markdown**: Header-aware chunking with code block preservation
-- **Logs**: Timestamp-based grouping with session detection
-- **Config Files**: Section-based chunking for INI/TOML/YAML/JSON
-- **Plain Text**: Paragraph and sentence-aware chunking
-
-### Export Formats
-- **Structured Data**: JSON, JSONL, Parquet, CSV, XML
-- **Graph Formats**: GraphML (yEd), Neo4j, DOT (Graphviz)
-- **Databases**: SQLite with FTS5, PostgreSQL with JSONB
-- **Specialized**: Minimal (code-only), Enhanced (with relationships), Debug
-
-### Advanced Features
-- **Natural Language Query**: Search code with intuitive queries
-- **Smart Context Selection**: Optimal context extraction for LLMs
-- **Incremental Processing**: Process only changed files
-- **Repository Processing**: Git-aware with .gitignore support
-- **Custom Rules**: Define language-specific chunking rules
-
-## ✅ Phase 13: Developer Tools & Distribution (Completed)
-
-Phase 13 added professional development and distribution capabilities:
-
-### Developer Tools
-- **🔍 AST Visualization**: Generate AST diagrams in SVG/PNG/JSON formats
-- **🐛 Debug Tools**: Interactive chunk inspector, profiling, and analysis
-- **📊 Chunk Comparison**: Compare different chunking strategies
-- **🎯 Performance Profiling**: Memory and timing analysis for optimization
-- **🔌 VS Code Extension**: Full-featured extension for code chunking within VS Code
-- **📚 Sphinx Documentation**: Auto-generated API documentation with GitHub Pages deployment
-
-### Development Environment
-- **🔧 Pre-commit Hooks**: Automated code quality checks before commits
-- **✨ Code Formatting**: Black, ruff, and mypy integration
-- **📈 Quality Metrics**: Type coverage and test coverage tracking
-- **🤖 CI/CD Generation**: GitHub Actions workflows for multi-platform testing
-
-### Build System
-- **🏗️ Cross-Platform Building**: Linux, macOS, Windows support
-- **📦 Grammar Compilation**: Automated Tree-sitter grammar building
-- **🔨 Wheel Building**: Platform-specific Python wheels with compiled extensions
-- **✔️ Build Verification**: Automated artifact validation
-
-### Distribution
-- **📦 PyPI Publishing**: Automated package publishing with validation
-- **🐳 Docker Images**: Multi-platform container images (Dockerfile and Alpine variant)
-- **🍺 Homebrew Formula**: macOS/Linux package manager support
-- **📦 Platform Packages**: Debian (.deb) and RPM packages with GitHub Actions workflows
-- **🚀 Release Management**: Version bumping and changelog generation
-
-## ✅ Phase 15: Production Readiness & Developer Experience (Completed)
-
-Phase 15 completed the production readiness with enhanced developer tools and robust CI/CD:
-
-### Developer Tooling
-- **🔧 Pre-commit Integration**: Black, Ruff, mypy hooks for automated code quality
-- **✨ Linting & Formatting**: Automated code formatting and style checking
-- **🎯 Type Checking**: Full mypy integration with strict typing
-- **📊 Quality Metrics**: Code coverage and complexity tracking
-
-### CI/CD Pipeline
-- **🤖 GitHub Actions**: Multi-platform test matrix (Python 3.8-3.12)
-- **✅ Test Automation**: Unit, integration, and contract tests
-- **📈 Coverage Reporting**: Automated coverage tracking with badges
-- **🚀 Release Automation**: Tag-based releases with changelog
-
-### Debug & Visualization
-- **🔍 AST Visualization**: Generate SVG/PNG diagrams of parse trees
-- **🐛 Chunk Inspector**: Interactive chunk analysis tool
-- **📊 Performance Profiling**: Memory and timing analysis
-- **📝 Debug Output**: Detailed logging and trace capabilities
-
-### Build System
-- **🏗️ Cross-Platform Support**: Windows, macOS, Linux builds
-- **📦 Grammar Compilation**: Automated Tree-sitter grammar building
-- **🔨 Wheel Building**: Platform-specific Python wheels
-- **✔️ Build Verification**: Automated testing of built artifacts
-
-### Distribution
-- **📦 PyPI Publishing**: Automated package publishing with validation
-- **🐳 Docker Images**: Multi-platform containers (amd64/arm64)
-- **🍺 Homebrew Formula**: macOS/Linux package manager support
-- **📦 Platform Packages**: Debian (.deb) and RPM packages with workflows
-
-## 🎯 Project Status and Maturity
-
-**Current Status**: ✅ **Production Ready** (v1.0.0)
-
-The Tree-sitter Chunker has completed 16 of 19 planned development phases and is production-ready:
-
-- **Code Maturity**: Stable API with comprehensive documentation
-- **Test Coverage**: 900+ tests with >95% coverage
-- **Performance**: Optimized with 11.9x performance improvements
-- **Languages**: Built-in support for 36+ languages + automatic support for 100+ via download
-- **Export Formats**: 14 different output formats
-- **Distribution**: Available via PyPI, Docker Hub, and Homebrew
-- **Zero-Configuration**: Works out of the box with automatic grammar management
-
-### 🚀 Future Enhancements
-
-With Phase 19 complete, the next phases focus on making Tree-sitter Chunker the ideal submodule for integration into larger platforms:
-
-- **Phase 16 - Performance at Scale**: Handle millions of files with distributed processing
-- **Phase 17 - Deployment Flexibility**: From WASM in browsers to Kubernetes clusters  
-- **Phase 18 - Enhanced Text Processing**: Intelligent chunking for documentation and configs
-
-The chunker is now fully optimized for integration into any vector embedding pipeline with production-ready tooling and CI/CD.
-
-See the [ROADMAP](specs/ROADMAP.md#future-directions-post-phase-14) for detailed phase plans.
-
-## 📚 Documentation
-
-- **[Getting Started Guide](docs/getting-started.md)**: Quick introduction to basic usage
-- **[API Reference](docs/api-reference.md)**: Complete API documentation
-- **[Architecture Overview](docs/architecture.md)**: System design and components
-- **[Lessons Learned](docs/LESSONS_LEARNED.md)**: Insights from development
-- **[Contributing Guide](CONTRIBUTING.md)**: How to contribute to the project
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-Built on top of the excellent [Tree-sitter](https://tree-sitter.github.io/) parsing library.
+- `
