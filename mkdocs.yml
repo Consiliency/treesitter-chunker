@@ -10,6 +10,8 @@ nav:
   - Overview: index.md
   - Getting Started: getting-started.md
   - User Guide: user-guide.md
+  - Configuration: configuration.md
+  - CLI Reference: cli-reference.md
   - API Reference: api-reference.md
   - Export Formats: export-formats.md
   - GraphML Export: graphml_export.md
