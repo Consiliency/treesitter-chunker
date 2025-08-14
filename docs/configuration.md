@@ -359,51 +359,7 @@ include_macros = false
 
 ## CLI Configuration
 
-### .chunkerrc for CLI
-
-The CLI looks for `.chunkerrc` files for default options:
-
-```toml
-# .chunkerrc - CLI-specific configuration
-
-# Default language (for auto-detection)
-default_language = "python"
-
-# Output options
-output_format = "table"  # table, json, jsonl, csv
-show_progress = true
-quiet = false
-verbose = false
-
-# Processing options
-recursive = true
-follow_symlinks = false
-ignore_errors = true
-
-# Default chunk filtering
-chunk_types = ["function_definition", "class_definition"]
-min_lines = 3
-max_lines = 200
-
-# File patterns
-include = ["*.py", "*.js", "*.rs"]
-exclude = ["test_*.py", "*_test.py", "*.min.js"]
-```
-
-### Command-Line Override
-
-Command-line arguments override configuration files:
-
-```bash
-# Override configuration file settings
-chunker chunk src/ --lang python --min-size 5 --max-size 100
-
-# Use different config file
-chunker chunk src/ --config production.toml
-
-# Disable configuration
-chunker chunk src/ --no-config
-```
+Use command-line flags to override file settings. See the [CLI Reference](cli-reference.md).
 
 ## Environment Variables
 
