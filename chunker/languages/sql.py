@@ -158,7 +158,8 @@ class SQLPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     chunk["statement_type"] = n.type.upper()
                 elif n.type.startswith("create_"):
                     chunk["statement_type"] = n.type.replace(
-                        "create_", "CREATE "
+                        "create_",
+                        "CREATE ",
                     ).upper()
                 elif node_type == "create_procedure_statement":
                     chunk["statement_type"] = "CREATE PROCEDURE"

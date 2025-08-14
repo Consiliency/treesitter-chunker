@@ -137,7 +137,9 @@ class PluginRegistry:
 
         # Use instance if available; otherwise resolve from class
         language = _resolve_attr(
-            temp_instance or plugin_class, plugin_class, "language_name"
+            temp_instance or plugin_class,
+            plugin_class,
+            "language_name",
         )
         if not isinstance(language, str) or not language:
             # Invalid language name should be treated as a fatal error
@@ -169,7 +171,9 @@ class PluginRegistry:
         extension_conflicts = []
         try:
             exts_value = _resolve_attr(
-                temp_instance, plugin_class, "supported_extensions"
+                temp_instance,
+                plugin_class,
+                "supported_extensions",
             )
             if isinstance(exts_value, property):
                 # Access property if not resolved

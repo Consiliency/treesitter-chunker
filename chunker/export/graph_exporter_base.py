@@ -164,7 +164,8 @@ class GraphExporterBase(ABC):
 
     @staticmethod
     def _is_class_method_relationship(
-        parent_chunk: CodeChunk, child_chunk: CodeChunk
+        parent_chunk: CodeChunk,
+        child_chunk: CodeChunk,
     ) -> bool:
         """Check if parent is a class and child is a method (language-aware)."""
         # Define class types for different languages

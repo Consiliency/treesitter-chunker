@@ -48,13 +48,15 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
         """Compute difference - supports both file path and direct chunk APIs."""
         # Handle file path API: compute_diff(file_path, new_chunks)
         if isinstance(file_path_or_old_chunks, (str, Path)) and isinstance(
-            new_chunks_or_content, list,
+            new_chunks_or_content,
+            list,
         ):
             file_path = str(file_path_or_old_chunks)
             new_chunks = new_chunks_or_content
             # Use latest if present; otherwise use baseline; both default to []
             old_chunks = self.file_chunks.get(
-                file_path, self._baseline.get(file_path, []),
+                file_path,
+                self._baseline.get(file_path, []),
             )
 
             # Convert new chunks to old/new content format for diff
@@ -104,29 +106,37 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
 
         # Handle original API: compute_diff(old_chunks, new_content, language)
         if isinstance(file_path_or_old_chunks, list) and isinstance(
-            new_chunks_or_content, str,
+            new_chunks_or_content,
+            str,
         ):
             if not language:
                 raise ValueError("Language is required when using content-based diff")
             return self._compute_content_diff(
-                file_path_or_old_chunks, new_chunks_or_content, language,
+                file_path_or_old_chunks,
+                new_chunks_or_content,
+                language,
             )
         # Back-compat: handle (file_path_str, content_str, language)
         if isinstance(file_path_or_old_chunks, (str, Path)) and isinstance(
-            new_chunks_or_content, str,
+            new_chunks_or_content,
+            str,
         ):
             if not language:
                 raise ValueError("Language is required when using content-based diff")
             old_chunks = self.file_chunks.get(str(file_path_or_old_chunks), [])
             return self._compute_content_diff(
-                old_chunks, new_chunks_or_content, language,
+                old_chunks,
+                new_chunks_or_content,
+                language,
             )
         raise ValueError(
             "Invalid arguments: expected (file_path, new_chunks) or (old_chunks, new_content, language)",
         )
 
     def _compute_chunks_diff(
-        self, old_chunks: list[CodeChunk], new_chunks: list[CodeChunk],
+        self,
+        old_chunks: list[CodeChunk],
+        new_chunks: list[CodeChunk],
     ) -> ChunkDiff:
         """Compute diff between two chunk lists."""
         old_map = {chunk.chunk_id: chunk for chunk in old_chunks}

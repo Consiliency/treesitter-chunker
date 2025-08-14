@@ -153,9 +153,7 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
                     char_count / token_count if token_count else 0
                 )
             # compute pack hint
-            enhanced_chunk.metadata["pack_hint"] = (
-                compute_pack_hint(enhanced_chunk)
-            )
+            enhanced_chunk.metadata["pack_hint"] = compute_pack_hint(enhanced_chunk)
             enhanced_chunks.append(enhanced_chunk)
         return enhanced_chunks
 
@@ -212,10 +210,7 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
                     "private ",
                     "protected ",
                 ]
-            ) and (
-                line.startswith((" ", "\t"))
-                and not line.startswith("        ")
-            ):
+            ) and (line.startswith((" ", "\t")) and not line.startswith("        ")):
                 method_starts.append(i)
         if not method_starts:
             return self._split_by_lines(chunk, max_tokens, model)
@@ -230,11 +225,7 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
         current_part = class_header_lines.copy()
         current_tokens = header_tokens
         for i, start_idx in enumerate(method_starts):
-            end_idx = (
-                method_starts[i + 1]
-                if i + 1 < len(method_starts)
-                else len(lines)
-            )
+            end_idx = method_starts[i + 1] if i + 1 < len(method_starts) else len(lines)
             method_lines = lines[start_idx:end_idx]
             method_content = "\n".join(method_lines)
             method_tokens = self.token_counter.count_tokens(
@@ -303,9 +294,7 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
             file_path=original_chunk.file_path,
             node_type=f"{original_chunk.node_type}_part_{index + 1}",
             start_line=original_chunk.start_line + start_offset,
-            end_line=(
-                original_chunk.start_line + start_offset + len(new_lines) - 1
-            ),
+            end_line=(original_chunk.start_line + start_offset + len(new_lines) - 1),
             byte_start=original_chunk.byte_start,
             byte_end=original_chunk.byte_start + len(content.encode()),
             parent_context=original_chunk.parent_context,

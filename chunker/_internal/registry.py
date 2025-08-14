@@ -60,7 +60,9 @@ class LanguageRegistry:
             except OSError as e:
                 # For most operations, we want to surface this, but tests expect a raised error when explicitly loading
                 logger.error(
-                    "Failed to load shared library %s: %s", self._library_path, e,
+                    "Failed to load shared library %s: %s",
+                    self._library_path,
+                    e,
                 )
                 raise LibraryLoadError(self._library_path, str(e)) from e
         return self._library
@@ -146,7 +148,8 @@ class LanguageRegistry:
                         lang_ptr = func()
                         language = Language(lang_ptr)
                         has_scanner = hasattr(
-                            lib, f"{symbol_name}_external_scanner_create",
+                            lib,
+                            f"{symbol_name}_external_scanner_create",
                         )
                         try:
                             test_parser = Parser()

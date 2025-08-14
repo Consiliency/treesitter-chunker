@@ -102,7 +102,11 @@ class ErrorSafeSlidingWindowFallback(SlidingWindowFallback):
         """
         # Delegate to parent implementation
         super().register_custom_processor(
-            name, processor_class, supported_file_types, supported_extensions, priority,
+            name,
+            processor_class,
+            supported_file_types,
+            supported_extensions,
+            priority,
         )
 
     def disable_processor(self, name: str) -> None:

@@ -119,7 +119,8 @@ def _walk(
             callee = (getattr(node, "children", None) or [None])[0]
             if getattr(callee, "type", None) == "identifier":
                 ident = source[callee.start_byte : callee.end_byte].decode(
-                    "utf-8", errors="ignore",
+                    "utf-8",
+                    errors="ignore",
                 )
                 if ident in {"setClass", "setMethod", "setGeneric"}:
                     force_chunk = True
@@ -170,7 +171,8 @@ def _walk(
                     for child in getattr(node, "children", []) or []:
                         if getattr(child, "type", None) == "identifier":
                             ident = source[child.start_byte : child.end_byte].decode(
-                                "utf-8", errors="ignore",
+                                "utf-8",
+                                errors="ignore",
                             )
                             if ident in {"def", "defp", "defmacro", "defmacrop"}:
                                 adjusted_node_type = "function_definition"
@@ -617,7 +619,10 @@ def _merge_julia_comments_with_definitions(chunks: list[CodeChunk]) -> list[Code
 
 
 def _detect_matlab_scripts(
-    chunks: list[CodeChunk], node, source: bytes, parent_chunk,
+    chunks: list[CodeChunk],
+    node,
+    source: bytes,
+    parent_chunk,
 ) -> list[CodeChunk]:
     """Detect MATLAB scripts and add script chunks when appropriate."""
     # Only process at the source_file level (top level) with no parent chunk
@@ -764,7 +769,9 @@ def chunk_file(
         # Fallback to generic markdown extractor if custom pattern finds nothing
         if not snippets:
             snippets = ml.extract_embedded_code(
-                src, host_language="markdown", target_language="r",
+                src,
+                host_language="markdown",
+                target_language="r",
             )
         all_chunks: list[CodeChunk] = []
         for code, start, end in snippets:

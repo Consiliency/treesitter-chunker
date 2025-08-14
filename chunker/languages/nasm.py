@@ -97,7 +97,14 @@ class NASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 if child.type == "word":
                     name = source[child.start_byte : child.end_byte].decode("utf-8")
                     return name.rstrip(":")
-        elif node.type == "assembl_directive_sections" or node.type == "preproc_multiline_macro" or (node.type == "struc_declaration" or node.type == "assembl_directive_symbols"):
+        elif (
+            node.type == "assembl_directive_sections"
+            or node.type == "preproc_multiline_macro"
+            or (
+                node.type == "struc_declaration"
+                or node.type == "assembl_directive_symbols"
+            )
+        ):
             for child in node.children:
                 if child.type == "word":
                     return source[child.start_byte : child.end_byte].decode("utf-8")

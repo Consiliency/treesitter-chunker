@@ -208,10 +208,10 @@ class TreeSitterRelationshipAnalyzer(RelationshipAnalyzer):
         patterns = {
             "python": TreeSitterRelationshipAnalyzer._safe_compile(r"def\s+(\w+)\s*\("),
             "javascript": TreeSitterRelationshipAnalyzer._safe_compile(
-                r"(?:function\s+)?(\w+)\s*\("
+                r"(?:function\s+)?(\w+)\s*\(",
             ),
             "typescript": TreeSitterRelationshipAnalyzer._safe_compile(
-                r"(?:function\s+)?(\w+)\s*\("
+                r"(?:function\s+)?(\w+)\s*\(",
             ),
             "java": TreeSitterRelationshipAnalyzer._safe_compile(
                 r"(?:public|private|protected)?\s*\w+\s+(\w+)\s*\(",
@@ -220,11 +220,11 @@ class TreeSitterRelationshipAnalyzer(RelationshipAnalyzer):
                 r"(?:public|private|protected)?\s*\w+\s+(\w+)\s*\(",
             ),
             "cpp": TreeSitterRelationshipAnalyzer._safe_compile(
-                r"(?:\w+\s+)?(\w+)\s*\("
+                r"(?:\w+\s+)?(\w+)\s*\(",
             ),
             "c": TreeSitterRelationshipAnalyzer._safe_compile(r"(?:\w+\s+)?(\w+)\s*\("),
             "go": TreeSitterRelationshipAnalyzer._safe_compile(
-                r"func\s+(?:\([^)]+\)\s+)?(\w+)\s*\("
+                r"func\s+(?:\([^)]+\)\s+)?(\w+)\s*\(",
             ),
         }
         pattern = patterns.get(chunk.language)
@@ -257,16 +257,16 @@ class TreeSitterRelationshipAnalyzer(RelationshipAnalyzer):
         patterns = {
             "python": TreeSitterRelationshipAnalyzer._safe_compile(r"class\s+(\w+)"),
             "javascript": TreeSitterRelationshipAnalyzer._safe_compile(
-                r"class\s+(\w+)"
+                r"class\s+(\w+)",
             ),
             "typescript": TreeSitterRelationshipAnalyzer._safe_compile(
-                r"(?:class|interface)\s+(\w+)"
+                r"(?:class|interface)\s+(\w+)",
             ),
             "java": TreeSitterRelationshipAnalyzer._safe_compile(
-                r"(?:class|interface)\s+(\w+)"
+                r"(?:class|interface)\s+(\w+)",
             ),
             "csharp": TreeSitterRelationshipAnalyzer._safe_compile(
-                r"(?:class|interface)\s+(\w+)"
+                r"(?:class|interface)\s+(\w+)",
             ),
             "cpp": TreeSitterRelationshipAnalyzer._safe_compile(r"class\s+(\w+)"),
             "c": TreeSitterRelationshipAnalyzer._safe_compile(r"struct\s+(\w+)"),

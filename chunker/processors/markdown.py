@@ -109,7 +109,8 @@ class MarkdownProcessor(SpecializedProcessor):
         overlap_val = getattr(self.config, "overlap_size", None)
         overlap_size = int(overlap_val or 0)
         if not overlap_size and isinstance(
-            getattr(self.config, "format_specific", None), dict
+            getattr(self.config, "format_specific", None),
+            dict,
         ):
             overlap_size = int(self.config.format_specific.get("overlap_size", 0) or 0)
         if overlap_size > 0:

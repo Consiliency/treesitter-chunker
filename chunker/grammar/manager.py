@@ -203,7 +203,9 @@ class TreeSitterGrammarManager(GrammarManager):
             # sources are not present (unit test fixture), treat as success to
             # advance state to READY for validation flow.
             success = _builder.build_language(
-                name, str(grammar.path), str(self.build_dir),
+                name,
+                str(grammar.path),
+                str(self.build_dir),
             )
             if not success and (grammar.path and not any(grammar.path.glob("**/*.*"))):
                 success = True

@@ -96,7 +96,8 @@ class OverlapMerger(ChunkMerger):
         min_start = min(c.start_line for c in group)
         max_end = max(c.end_line for c in group)
         base = sorted(
-            group, key=lambda c: (c.start_line, -(c.end_line - c.start_line)),
+            group,
+            key=lambda c: (c.start_line, -(c.end_line - c.start_line)),
         )[0]
 
         # Aggregate metadata and relations
@@ -525,7 +526,8 @@ class CompositeChunker(ChunkingStrategy):
                         for i in range(m_st):
                             for j in range(i + 1, m_st):
                                 if self.merger.should_merge(
-                                    same_type_chunks[i], same_type_chunks[j],
+                                    same_type_chunks[i],
+                                    same_type_chunks[j],
                                 ):
                                     adj_st[i].add(j)
                                     adj_st[j].add(i)

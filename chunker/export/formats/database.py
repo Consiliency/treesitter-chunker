@@ -5,7 +5,7 @@ from __future__ import annotations
 import io
 import json
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -331,7 +331,7 @@ class PostgreSQLExporter(DatabaseExporter):
         sql_lines.extend(
             [
                 "-- TreeSitter Chunker PostgreSQL Export",
-                f"-- Generated: {datetime.now(timezone.utc).isoformat()}",
+                f"-- Generated: {datetime.now(UTC).isoformat()}",
                 f"-- Chunks: {len(chunks)}, Relationships: {len(relationships)}",
                 "",
                 "BEGIN;",
@@ -575,7 +575,7 @@ class PostgreSQLExporter(DatabaseExporter):
     ) -> None:
         """Stream SQL statements to output."""
         output.write("-- TreeSitter Chunker PostgreSQL Export\n")
-        output.write(f"-- Generated: {datetime.now(timezone.utc).isoformat()}\n")
+        output.write(f"-- Generated: {datetime.now(UTC).isoformat()}\n")
         output.write("\nBEGIN;\n\n")
         if self._schema != "public":
             output.write(f"CREATE SCHEMA IF NOT EXISTS {self._schema};\n")

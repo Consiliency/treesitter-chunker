@@ -248,7 +248,12 @@ class HeaderCommentRule(BaseCommentBlockRule):
         )
         return any(pattern.search(content) for pattern in self._header_patterns)
 
-    def extract_chunk(self, node: Node, source: bytes, file_path: str) -> CodeChunk | None:
+    def extract_chunk(
+        self,
+        node: Node,
+        source: bytes,
+        file_path: str,
+    ) -> CodeChunk | None:
         """Extract header comment."""
         chunk = super().extract_chunk(node, source, file_path)
         if chunk:

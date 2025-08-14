@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import gzip
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -130,7 +130,7 @@ class StructuredJSONExporter(StructuredExporter):
         return {
             "fmt": "json",
             "version": "1.0",
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             "source_files": source_files,
             "chunk_count": len(chunks),
             "relationship_count": len(relationships),
@@ -282,7 +282,7 @@ class StructuredJSONLExporter(StructuredExporter):
                 "data": {
                     "fmt": "jsonl",
                     "version": "1.0",
-                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "created_at": datetime.now(UTC).isoformat(),
                     "source_files": source_files,
                     "chunk_count": len(chunks),
                     "relationship_count": len(relationships),
@@ -312,7 +312,7 @@ class StructuredJSONLExporter(StructuredExporter):
             "data": {
                 "fmt": "jsonl",
                 "version": "1.0",
-                "created_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
                 "streaming": True,
                 "options": {"compress": self.compress},
             },

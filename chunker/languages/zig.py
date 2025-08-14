@@ -98,7 +98,7 @@ class ZigPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             for child in node.children:
                 if child.type == "string_literal":
                     test_name = source[child.start_byte : child.end_byte].decode(
-                        "utf-8"
+                        "utf-8",
                     )
                     return test_name.strip('"')
             return None
@@ -144,7 +144,11 @@ class ZigPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             elif n.type == "ERROR":
                 # Handle functions within ERROR nodes (due to parsing issues)
                 self._extract_function_from_error_node(
-                    n, source, chunks, processed_nodes, container_name
+                    n,
+                    source,
+                    chunks,
+                    processed_nodes,
+                    container_name,
                 )
             elif n.type == "assignment_statement":
                 # Check for struct, enum, union definitions

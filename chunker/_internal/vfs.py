@@ -85,7 +85,7 @@ class LocalFileSystem(VirtualFileSystem):
         """Initialize with optional root path for sandboxing."""
         self.root = Path(root_path) if root_path else Path("/")
         # Expose Path for tests that access LocalFileSystem.Path, rooted to self.root
-        self.Path = lambda p: self._resolve_path(p)
+        self.Path = self._resolve_path
 
     def _resolve_path(self, path: str) -> Path:
         """Resolve a virtual path to actual path."""

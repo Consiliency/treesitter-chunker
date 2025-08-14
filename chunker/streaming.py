@@ -79,7 +79,7 @@ class StreamingChunker:
 
         if node.type in chunk_types:
             # Extract content from memory-mapped data
-            text = mmap_data[node.start_byte:node.end_byte].decode(
+            text = mmap_data[node.start_byte : node.end_byte].decode(
                 "utf-8",
                 errors="replace",
             )
@@ -125,11 +125,14 @@ class StreamingChunker:
         if path.stat().st_size == 0:
             return
 
-        with Path(path).open("rb") as f, mmap.mmap(
-            f.fileno(),
-            0,
-            access=mmap.ACCESS_READ,
-        ) as mmap_data:
+        with (
+            Path(path).open("rb") as f,
+            mmap.mmap(
+                f.fileno(),
+                0,
+                access=mmap.ACCESS_READ,
+            ) as mmap_data,
+        ):
             tree = self.parser.parse(mmap_data)
             root = tree.root_node
             yield from self._walk_streaming(

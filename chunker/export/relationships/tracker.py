@@ -297,7 +297,8 @@ class ASTRelationshipTracker(RelationshipTracker):
                             "scoped_identifier",
                         }:
                             base_name = self._extract_js_member_tail(
-                                chunk, heritage_child,
+                                chunk,
+                                heritage_child,
                             )
                             break
                     if base_name:
@@ -440,7 +441,7 @@ class ASTRelationshipTracker(RelationshipTracker):
         Attempts structured metadata first (signature/exports), then falls back to
         textual heuristics. Supports dotted names by comparing the tail.
         """
-        simple_name = name.split(".")[-1]
+        simple_name = name.rsplit(".", maxsplit=1)[-1]
         for chunk in chunks:
             try:
                 sig = (

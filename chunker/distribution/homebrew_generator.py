@@ -6,11 +6,10 @@ Creates Homebrew formulas for macOS distribution
 
 import hashlib
 import subprocess
+import tomllib
 import urllib.request
 from pathlib import Path
 from typing import Any
-
-import tomllib
 
 
 class HomebrewFormulaGenerator:

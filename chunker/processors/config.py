@@ -47,7 +47,8 @@ class ConfigProcessor(SpecializedProcessor):
         self._yaml_key_pattern = re.compile(r"^(\s*)(\w+):\s*(.*)$", re.MULTILINE)
         # TOML table headers like [table] or [[array_table]]
         self._toml_table_pattern = re.compile(
-            r"^\s*\[(\[)?([^\]]+)(\])?\]\s*$", re.MULTILINE,
+            r"^\s*\[(\[)?([^\]]+)(\])?\]\s*$",
+            re.MULTILINE,
         )
 
     def can_handle(self, file_path: str, content: str | None = None) -> bool:

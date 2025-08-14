@@ -119,7 +119,7 @@ class ContextFactory:
         """
         if language not in cls._context_filters:
             raise ValueError(
-                f"No context filter_func available for language: {language}"
+                f"No context filter_func available for language: {language}",
             )
 
         filter_class = cls._context_filters[language]

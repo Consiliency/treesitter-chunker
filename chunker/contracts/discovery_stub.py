@@ -98,7 +98,7 @@ class GrammarDiscoveryStub(GrammarDiscoveryContract):
         """Stub that searches through minimal grammar list"""
         query_lower = query.lower()
         all_grammars = GrammarDiscoveryStub.list_available_grammars(
-            include_community=True
+            include_community=True,
         )
         return [
             g

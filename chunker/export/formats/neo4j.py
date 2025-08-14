@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -52,7 +52,7 @@ class Neo4jExporter(StructuredExporter):
         cypher_lines.extend(
             [
                 "// TreeSitter Chunker Neo4j Export",
-                f"// Generated: {datetime.now(timezone.utc).isoformat()}",
+                f"// Generated: {datetime.now(UTC).isoformat()}",
                 f"// Chunks: {len(chunks)}, Relationships: {len(relationships)}",
                 "",
                 "// Create constraints for better performance",
@@ -245,7 +245,7 @@ class Neo4jExporter(StructuredExporter):
     ) -> None:
         """Stream Cypher queries to output."""
         output.write("// TreeSitter Chunker Neo4j Export\n")
-        output.write(f"// Generated: {datetime.now(timezone.utc).isoformat()}\n")
+        output.write(f"// Generated: {datetime.now(UTC).isoformat()}\n")
         output.write("\n")
         output.write("// Create constraints for better performance\n")
         output.write(

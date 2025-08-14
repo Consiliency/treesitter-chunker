@@ -168,7 +168,8 @@ class TreeSitterSmartContextProvider(SmartContextProvider):
             import re as _re
 
             for m in _re.finditer(
-                r"@app\.route\(\s*['\"]([^'\"]+)['\"]", chunk.content,
+                r"@app\.route\(\s*['\"]([^'\"]+)['\"]",
+                chunk.content,
             ):
                 route_paths.add(m.group(1))
         for candidate in chunks:
@@ -181,7 +182,8 @@ class TreeSitterSmartContextProvider(SmartContextProvider):
                 import re as _re
 
                 m = _re.search(
-                    r"\b(def|class)\s+([A-Za-z_][A-Za-z0-9_]*)", chunk.content,
+                    r"\b(def|class)\s+([A-Za-z_][A-Za-z0-9_]*)",
+                    chunk.content,
                 )
                 if m:
                     name_hint = m.group(2)

@@ -43,9 +43,7 @@ UPSERT_NODE = (
     "attrs = EXCLUDED.attrs"
 )
 
-INSERT_EDGE = (
-    "INSERT INTO edges (src, dst, type, weight) VALUES (%s, %s, %s, %s)"
-)
+INSERT_EDGE = "INSERT INTO edges (src, dst, type, weight) VALUES (%s, %s, %s, %s)"
 
 INSERT_SPAN = (
     "INSERT INTO spans (file_id, symbol_id, start_byte, end_byte) "

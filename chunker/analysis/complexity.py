@@ -88,7 +88,8 @@ class ComplexityAnalyzer(ASTProcessor):
         if self._increases_nesting(node.type, None):
             context["nesting_depth"] = current_nesting + 1
             context["max_nesting"] = max(
-                context["max_nesting"], context["nesting_depth"],
+                context["max_nesting"],
+                context["nesting_depth"],
             )
 
         # Traverse children with updated context
@@ -108,7 +109,8 @@ class ComplexityAnalyzer(ASTProcessor):
                     context[key] = child_context[key]
             context["dependencies"].update(child_context.get("dependencies", set()))
             context["max_nesting"] = max(
-                context["max_nesting"], child_context.get("max_nesting", 0),
+                context["max_nesting"],
+                child_context.get("max_nesting", 0),
             )
 
         # Restore nesting depth

@@ -116,8 +116,8 @@ class DatabaseExporterBase(ABC):
         """
         return [
             "CREATE INDEX IF NOT EXISTS idx_file_path ON files(path);",
-            ("CREATE INDEX IF NOT EXISTS idx_files_language " "ON files(language);"),
-            ("CREATE INDEX IF NOT EXISTS idx_chunks_file_id " "ON chunks(file_id);"),
+            ("CREATE INDEX IF NOT EXISTS idx_files_language ON files(language);"),
+            ("CREATE INDEX IF NOT EXISTS idx_chunks_file_id ON chunks(file_id);"),
             (
                 "CREATE INDEX IF NOT EXISTS idx_chunks_chunk_type "
                 "ON chunks(chunk_type);"

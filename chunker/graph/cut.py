@@ -63,11 +63,7 @@ def graph_cut(
             d = 1
         node = id_to_node.get(node_id, {})
         change_freq = float(node.get("attrs", {}).get("change_freq", 0.0))
-        hotspot = (
-            change_freq
-            if change_freq > 0
-            else float(out_deg.get(node_id, 0))
-        )
+        hotspot = change_freq if change_freq > 0 else float(out_deg.get(node_id, 0))
         return (
             w_distance * (1.0 / float(d))
             + w_publicness * float(out_deg.get(node_id, 0))
@@ -86,7 +82,8 @@ def graph_cut(
 
     selected_set = set(selected)
     induced_edges = [
-        e for e in edges
+        e
+        for e in edges
         if (e.get("src") in selected_set) and (e.get("dst") in selected_set)
     ]
     return selected, induced_edges

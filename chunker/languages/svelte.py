@@ -240,7 +240,9 @@ class SveltePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     chunks.append(chunk)
             for child in n.children:
                 extract_chunks(
-                    child, in_script and n.type != "script_element", script_content
+                    child,
+                    in_script and n.type != "script_element",
+                    script_content,
                 )
 
         extract_chunks(node)
@@ -257,7 +259,7 @@ class SveltePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                             "start_line": i,
                             "end_line": i,
                             "content": line,
-                        }
+                        },
                     )
                 elif stripped.startswith("{#each"):
                     chunks.append(
@@ -266,7 +268,7 @@ class SveltePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                             "start_line": i,
                             "end_line": i,
                             "content": line,
-                        }
+                        },
                     )
                 elif stripped.startswith("{#await"):
                     chunks.append(
@@ -275,7 +277,7 @@ class SveltePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                             "start_line": i,
                             "end_line": i,
                             "content": line,
-                        }
+                        },
                     )
                 elif stripped.startswith("{#key"):
                     chunks.append(
@@ -284,7 +286,7 @@ class SveltePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                             "start_line": i,
                             "end_line": i,
                             "content": line,
-                        }
+                        },
                     )
         except Exception:
             pass
