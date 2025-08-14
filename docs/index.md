@@ -14,17 +14,18 @@ Welcome to the Tree-sitter Chunker documentation! Tree-sitter Chunker is a power
 - **[Cookbook](cookbook.md)** - Practical recipes and examples
 - **[Architecture](architecture.md)** - System design and internals
 
-### Phase 11: Text Processing
+### Text Processing
 - **[Intelligent Fallback](intelligent_fallback.md)** - Automatic chunking method selection
 - **[Token Limits](token_limits.md)** - LLM-aware token limit handling
 - **[Markdown Processor](markdown_processor.md)** - Markdown document chunking
 - **[Config Processor](config_processor.md)** - Configuration file chunking
 - **[Log Processor](log_processor.md)** - Log file analysis and chunking
 
-### Phase 12: Graph & Database Export
-- **[GraphML Export](graphml_export.md)** - Detailed GraphML export documentation
+### Graph & Database Export
+- **[GraphML Export](graphml_export.md)** - Detailed GraphML export walkthrough
+- **Export Formats** - See [Export Formats](export-formats.md) for JSON/JSONL/Parquet and Neo4j integration
 
-### Phase 14: Universal Language Support
+### Language Support
 - **[Grammar Discovery](grammar_discovery.md)** - Automatic grammar discovery from GitHub
 - **[Zero-Config API](zero_config_api.md)** - Simple API that requires no setup
 
@@ -80,12 +81,7 @@ Simple API with powerful capabilities:
 - **Detailed Documentation**: API reference, guides, and examples
 
 ### 🌐 Multi-Language Support
-Built-in support for:
-- Python (with decorators, async functions)
-- JavaScript (including JSX, TypeScript)
-- Rust (impl blocks, traits, macros)
-- C (functions, structs, preprocessor)
-- C++ (classes, templates, namespaces)
+Built-in support for common languages (Python, JavaScript/TypeScript, Rust, C, C++), with dynamic discovery for many more via Tree-sitter grammar registry.
 
 ## Installation
 
@@ -194,38 +190,26 @@ def process_files(file_list, language):
         return list(results)
 ```
 
-## New Features
+## Capabilities Overview
 
 ### 🔌 Plugin Architecture
 - Dynamic plugin discovery and loading
 - Abstract base class for custom languages
 - Configuration management per plugin
-- Built-in plugins for all supported languages
 
 ### ⚡ Performance Enhancements
-- **AST Caching**: 11.9x speedup with intelligent caching
-- **Parallel Processing**: `chunk_files_parallel()` and `chunk_directory_parallel()`
+- **AST Caching** (repeated files)
+- **Parallel Processing**: `chunk_files_parallel()` / `chunk_directory_parallel()`
 - **Streaming API**: `chunk_file_streaming()` for huge files
-- **Configurable Workers**: Optimize for your CPU count
 
 ### 📤 Export Formats
-- **JSON Export**: Flat, nested, or relational schemas
-- **JSONL Export**: Streaming-friendly line-delimited JSON
-- **Parquet Export**: Columnar format with compression and partitioning
-- **Compression Support**: Gzip, Snappy, Brotli, LZ4, Zstd
+- **JSON / JSONL / Parquet** with compression & partitioning (see Export Formats)
 
-### 🎛️ Advanced Configuration
-- **Config Files**: Support for .chunkerrc, TOML, YAML, JSON
-- **Language Settings**: Per-language chunk types and rules
-- **Plugin Options**: Custom options for each language
-- **Environment Variables**: System-wide configuration
+### 🎛️ Configuration
+- `.chunkerrc` (TOML/YAML/JSON), per-language chunk types and rules, env vars
 
-### 🖥️ Enhanced CLI
-- **Batch Processing**: Process entire directories
-- **File Filtering**: Include/exclude patterns
-- **Chunk Filtering**: By type and size
-- **Progress Tracking**: Rich progress bars with ETA
-- **Multiple Output Formats**: Table, JSON, JSONL
+### 🖥️ CLI
+- Batch processing, filters, progress, JSON/JSONL output, zero-config modes
 
 ## Performance Tips
 
@@ -252,28 +236,10 @@ We welcome contributions! Areas of interest:
 - Documentation improvements
 - Bug fixes and tests
 
-### What's Next
-
-Many features from the [ROADMAP.md](specs/ROADMAP.md) are now implemented:
-
-- ✅ **Plugin System**: Complete with 5 built-in language plugins
-- ✅ **Language Configuration**: Flexible framework with inheritance
-- ✅ **Parallel Processing**: Full support with progress tracking
-- ✅ **Streaming API**: Memory-efficient processing for large files
-- ✅ **Export Formats**: JSON, JSONL, and Parquet with compression
-- ✅ **Advanced CLI**: Batch processing, filtering, and configuration
-- ✅ **AST Caching**: 11.9x performance improvement
-- ✅ **Phase 9 Features**: Token counting, hierarchy, metadata, semantic merging, custom rules
-- ✅ **Phase 10 Features**: Smart context, advanced queries, optimization, multi-language support
-- ✅ **Phase 11 Features**: Text processing, intelligent fallback, token limits
-- ✅ **Phase 12 Features**: Graph exports (GraphML, Neo4j, DOT) and database exports (SQLite, PostgreSQL)
-
-Upcoming features (Phase 13):
-- Pre-commit hooks and linting setup
-- CI/CD pipeline automation
-- AST visualization tools
-- PyPI publishing and Docker support
-- Platform-specific packages
+### Roadmap (High Level)
+- Dev tooling & packaging improvements
+- CI/CD and docs automation
+- Additional language examples and exporters
 
 ## License
 

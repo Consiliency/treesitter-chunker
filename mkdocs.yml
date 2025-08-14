@@ -7,15 +7,15 @@ theme:
     - navigation.sections
     - content.code.copy
 nav:
-  - Overview: docs/index.md
-  - Getting Started: docs/getting-started.md
-  - User Guide: docs/user-guide.md
-  - API Reference: docs/api-reference.md
-  - Export Formats: docs/export-formats.md
-  - GraphML Export: docs/graphml_export.md
-  - Performance Guide: docs/performance-guide.md
-  - Grammar Discovery: docs/grammar_discovery.md
-  - Zero-Config API: docs/zero_config_api.md
+  - Overview: index.md
+  - Getting Started: getting-started.md
+  - User Guide: user-guide.md
+  - API Reference: api-reference.md
+  - Export Formats: export-formats.md
+  - GraphML Export: graphml_export.md
+  - Performance Guide: performance-guide.md
+  - Grammar Discovery: grammar_discovery.md
+  - Zero-Config API: zero_config_api.md
 plugins:
   - search
   - mkdocstrings:
