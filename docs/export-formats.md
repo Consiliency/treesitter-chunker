@@ -8,12 +8,14 @@ Tree-sitter Chunker supports multiple export formats to integrate with different
 2. [JSON Export](#json-export)
 3. [JSONL Export](#jsonl-export)
 4. [Parquet Export](#parquet-export)
-5. [Format Comparison](#format-comparison)
-6. [Schema Types](#schema-types)
-7. [Compression Options](#compression-options)
-8. [Streaming Export](#streaming-export)
-9. [Custom Export Formats](#custom-export-formats)
-10. [Integration Examples](#integration-examples)
+5. [GraphML Walkthrough](#graphml-walkthrough)
+6. [Neo4j Walkthrough](#neo4j-walkthrough)
+7. [Format Comparison](#format-comparison)
+8. [Schema Types](#schema-types)
+9. [Compression Options](#compression-options)
+10. [Streaming Export](#streaming-export)
+11. [Custom Export Formats](#custom-export-formats)
+12. [Integration Examples](#integration-examples)
 
 ## Overview
 
@@ -24,6 +26,48 @@ Tree-sitter Chunker provides three main export formats:
 - **Parquet**: Columnar format, excellent for analytics and big data workflows
 
 Each format supports different schema types and compression options.
+
+## GraphML Walkthrough
+
+GraphML is ideal for visualizing code structure. See `docs/graphml_export.md` for full details.
+
+```python
+from chunker.core import chunk_file
+from chunker.export.graphml_exporter import GraphMLExporter
+
+chunks = chunk_file("example.py", "python")
+exporter = GraphMLExporter()
+exporter.add_chunks(chunks)
+exporter.extract_relationships(chunks)
+exporter.export("chunks.graphml")
+```
+
+Open `chunks.graphml` in yEd/Gephi to explore the call/import graph.
+
+## Neo4j Walkthrough
+
+Export relationships to Neo4j for graph queries:
+
+```python
+from chunker.core import chunk_file
+from chunker.export.formats.graph import Neo4jExporter
+
+chunks = chunk_file("example.py", "python")
+exporter = Neo4jExporter(uri="bolt://localhost:7687", user="neo4j", password="pass")
+exporter.add_chunks(chunks)
+exporter.extract_relationships(chunks)
+exporter.flush()  # Push nodes/edges to Neo4j
+```
+
+Example Cypher queries:
+
+```cypher
+// Functions calling function named 'process'
+MATCH (a:Chunk)-[:CALLS]->(b:Chunk {name: 'process'}) RETURN a, b
+
+// Modules importing others
+MATCH (a:Chunk)-[:IMPORTS]->(b:Chunk) RETURN a.file_path, b.file_path LIMIT 25
+```
 
 ## JSON Export
 

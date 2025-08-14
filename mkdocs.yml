@@ -1,0 +1,34 @@
+site_name: Tree-sitter Chunker
+repo_url: https://github.com/Consiliency/treesitter-chunker
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - content.code.copy
+nav:
+  - Overview: docs/index.md
+  - Getting Started: docs/getting-started.md
+  - User Guide: docs/user-guide.md
+  - API Reference: docs/api-reference.md
+  - Export Formats: docs/export-formats.md
+  - GraphML Export: docs/graphml_export.md
+  - Performance Guide: docs/performance-guide.md
+  - Grammar Discovery: docs/grammar_discovery.md
+  - Zero-Config API: docs/zero_config_api.md
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: ["."]
+          options:
+            show_root_heading: true
+            show_category_heading: true
+            show_if_no_docstring: true
+            docstring_style: google
+markdown_extensions:
+  - admonition
+  - codehilite
+  - toc:
+      permalink: true

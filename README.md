@@ -298,6 +298,16 @@ python cli/main.py chunk src/ --config .chunkerrc
 python cli/main.py batch src/ --exclude "*.tmp,*.bak" --include "*.py"
 ```
 
+### Zero-Config CLI (auto-detection)
+
+```bash
+# Automatically detect language and chunk a file
+python cli/main.py auto-chunk example.rs
+
+# Auto-chunk a directory using detection + intelligent fallbacks
+python cli/main.py auto-batch repo/
+```
+
 ### AST Visualization
 
 Generate Graphviz diagrams of the parse tree:
