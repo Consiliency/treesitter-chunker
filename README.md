@@ -109,6 +109,69 @@ for chunk in chunks:
     print(f"  Context: {chunk.parent_context or 'module level'}")
 ```
 
+### Incremental Processing
+
+Efficiently detect changes after edits and update only what changed:
+
+```python
+from chunker import DefaultIncrementalProcessor, chunk_file
+from pathlib import Path
+
+processor = DefaultIncrementalProcessor()
+
+file_path = Path("example.py")
+old_chunks = chunk_file(file_path, "python")
+processor.store_chunks(str(file_path), old_chunks)
+
+# ... modify example.py ...
+new_chunks = chunk_file(file_path, "python")
+
+# API 1: file path + new chunks
+diff = processor.compute_diff(str(file_path), new_chunks)
+for added in diff.added:
+    print("Added:", added.chunk_id)
+
+# API 2: old chunks + new text + language
+# diff = processor.compute_diff(old_chunks, file_path.read_text(), "python")
+```
+
+### Smart Context and Natural-Language Query (optional)
+
+Advanced features are optional at import time (NumPy/PyArrow heavy deps); when available:
+
+```python
+from chunker import (
+    TreeSitterSmartContextProvider,
+    InMemoryContextCache,
+    AdvancedQueryIndex,
+    NaturalLanguageQueryEngine,
+)
+from chunker import chunk_file
+
+chunks = chunk_file("api/server.py", "python")
+
+# Semantic context
+ctx = TreeSitterSmartContextProvider(cache=InMemoryContextCache(ttl=3600))
+context, metadata = ctx.get_semantic_context(chunks[0])
+
+# Query
+index = AdvancedQueryIndex()
+index.build_index(chunks)
+engine = NaturalLanguageQueryEngine()
+results = engine.search("API endpoints", chunks)
+for r in results[:3]:
+    print(r.score, r.chunk.node_type)
+```
+
+### Streaming Large Files
+
+```python
+from chunker import chunk_file_streaming
+
+for chunk in chunk_file_streaming("big.sql", language="sql"):
+    print(chunk.node_type, chunk.start_line, chunk.end_line)
+```
+
 ### Cross-Language Usage
 
 ```bash
@@ -176,6 +239,21 @@ results = chunk_directory_parallel(
     "python",
     pattern="**/*.py"
 )
+```
+
+### Build Wheels (for contributors)
+
+The build system supports environment flags to speed up or stabilize local builds:
+
+```bash
+# Limit grammars included in combined wheels (comma-separated subset)
+export CHUNKER_WHEEL_LANGS=python,javascript,rust
+
+# Verbose build logs
+export CHUNKER_BUILD_VERBOSE=1
+
+# Optional build timeout in seconds (per compilation unit)
+export CHUNKER_BUILD_TIMEOUT=240
 ```
 
 ### Export Formats
@@ -323,6 +401,8 @@ Tree-sitter Chunker exports 110+ APIs organized into logical groups:
 ### Core Functions
 - `chunk_file()` - Extract chunks from a file
 - `CodeChunk` - Data class representing a chunk
+- `chunk_text()` - Chunk raw source text (convenience wrapper)
+- `chunk_directory()` - Parallel directory chunking (convenience alias)
 
 ### Parser Management
 - `get_parser()` - Get parser for a language
@@ -344,6 +424,15 @@ Tree-sitter Chunker exports 110+ APIs organized into logical groups:
 - `ASTCache` - Cache parsed ASTs
 - `StreamingChunker` - Streaming chunker class
 - `ParallelChunker` - Parallel processing class
+
+### Incremental Processing
+- `DefaultIncrementalProcessor` - Compute diffs between old/new chunks
+- `DefaultChangeDetector`, `DefaultChunkCache` - Helpers and caching
+
+### Advanced Query (optional)
+- `AdvancedQueryIndex` - Text/AST/embedding indexes
+- `NaturalLanguageQueryEngine` - NL/structured/regex/AST queries
+- `SmartQueryOptimizer` - Query rewriting and ranking
 
 ### Configuration
 - `ChunkerConfig` - Global configuration
