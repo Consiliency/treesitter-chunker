@@ -34,7 +34,7 @@ class TestPhase10InterfaceCompatibility:
     """Test that Phase 10 interfaces work together correctly."""
 
     @staticmethod
-    @pytest.fixture
+    @pytest.fixture()
     def sample_chunks(tmp_path) -> list[CodeChunk]:
         """Create sample chunks for testing."""
         test_file = tmp_path / "test.py"
@@ -345,7 +345,7 @@ async function fetchUsers() {
             @staticmethod
             def merge_small_chunks(
                 chunks,
-                _min_tokens,
+                min_tokens,
                 _preserve_boundaries=True,
             ):
                 if len(chunks) > 1:

@@ -1,6 +1,6 @@
 [project]
 name            = "treesitter-chunker"
-version = "1.0.0"
+version = "1.0.1"
 description     = "Semantic code chunker using Tree-sitter for intelligent code analysis"
 readme          = "README.md"
 requires-python = ">=3.10"
@@ -174,7 +174,7 @@ ensure_newline_before_comments = true
 skip_glob = ["*/grammars/*", "*/build/*"]
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py312"
 line-length = 88
 fix = true
 unsafe-fixes = false
@@ -285,15 +285,15 @@ ignore = [
     "S108",    # hardcoded temp path (sometimes necessary)
     "N806",    # non-lowercase variable (following external conventions)
     "B007",    # unused loop variable (clearer than underscore sometimes)
-    "RUF059",  # unused unpacked variable (interface consistency)
+    # "RUF059",  # unused unpacked variable (interface consistency) -- not supported in this ruff version
     "PLR6301", # could be static method (but clearer as instance method)
     "S311",    # random for non-crypto (fine for IDs)
-    "B903",    # dataclass without methods (that's the point)
-    "B909",    # loop mutation (already fixed critical ones)
+    # "B903",    # dataclass without methods (that's the point) -- not supported by current ruff plugin
+    # "B909",    # loop mutation (already fixed critical ones) -- not supported by current ruff plugin
     "E722",    # bare except (sometimes needed)
     "PLR0904", # too many public methods (large classes sometimes needed)
     "PLR0911", # too many return statements (sometimes clearer)
-    "RUF039",  # unraw regex (false positives)
+    # "RUF039",  # unraw regex (false positives) -- not supported in this ruff version
     "S104",    # bind all interfaces (needed for servers)
     "S105",    # hardcoded password (in examples only)
     "S605",    # shell usage (controlled inputs)
@@ -343,7 +343,7 @@ max-returns = 6
 max-statements = 50
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.12"
 strict = true
 warn_return_any = true
 warn_unused_configs = true

@@ -28,24 +28,21 @@ class OCamlConfig(LanguageConfig):
         return {
             "value_definition",
             "let_binding",
-            "let_rec_binding",
-            "function_definition",
-            "fun_expression",
             "type_definition",
             "type_binding",
             "module_definition",
             "module_binding",
-            "signature",
-            "structure",
             "exception_definition",
             "class_definition",
             "class_binding",
             "comment",
+            "fun_expression",
+            "function_expression",
         }
 
     @property
     def file_extensions(self) -> set[str]:
-        return {".ml", ".mli", ".mll", ".mly"}
+        return {".ml", ".mli"}
 
     def __init__(self):
         super().__init__()
@@ -63,6 +60,10 @@ class OCamlConfig(LanguageConfig):
 
 
 # Register the OCaml configuration
+ocaml_config = OCamlConfig()
+from .base import language_config_registry
+
+language_config_registry.register(ocaml_config)
 
 
 class OCamlPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
@@ -74,7 +75,7 @@ class OCamlPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
 
     @property
     def supported_extensions(self) -> set[str]:
-        return {".ml", ".mli", ".mll", ".mly"}
+        return {".ml", ".mli"}
 
     @property
     def default_chunk_types(self) -> set[str]:
@@ -82,12 +83,15 @@ class OCamlPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             "value_definition",
             "let_binding",
             "type_definition",
+            "type_binding",
             "module_definition",
+            "module_binding",
             "exception_definition",
             "class_definition",
-            "signature",
-            "structure",
+            "class_binding",
             "comment",
+            "fun_expression",
+            "function_expression",
         }
 
     @staticmethod
@@ -130,6 +134,12 @@ class OCamlPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         for child in node.children:
             if child.type in {"type_constructor", "lowercase_identifier"}:
                 return source[child.start_byte : child.end_byte].decode("utf-8")
+            if child.type == "type_binding":
+                for subchild in child.children:
+                    if subchild.type == "type_constructor":
+                        return source[subchild.start_byte : subchild.end_byte].decode(
+                            "utf-8",
+                        )
         return None
 
     @staticmethod
@@ -138,6 +148,12 @@ class OCamlPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         for child in node.children:
             if child.type in {"module_name", "uppercase_identifier"}:
                 return source[child.start_byte : child.end_byte].decode("utf-8")
+            if child.type == "module_binding":
+                for subchild in child.children:
+                    if subchild.type == "module_name":
+                        return source[subchild.start_byte : subchild.end_byte].decode(
+                            "utf-8",
+                        )
         return None
 
     @staticmethod
@@ -146,6 +162,12 @@ class OCamlPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         for child in node.children:
             if child.type in {"constructor_name", "uppercase_identifier"}:
                 return source[child.start_byte : child.end_byte].decode("utf-8")
+            if child.type == "constructor_declaration":
+                for subchild in child.children:
+                    if subchild.type == "constructor_name":
+                        return source[subchild.start_byte : subchild.end_byte].decode(
+                            "utf-8",
+                        )
         return None
 
     @staticmethod

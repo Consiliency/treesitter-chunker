@@ -775,7 +775,7 @@ class ChunkOptimizer(ChunkOptimizerInterface):
         for chunk in chunks:
             score = 1.0
             content = chunk.content.strip()
-            if re.search(r":\\s*$", content):
+            if re.search(r":\s*$", content):
                 score *= 0.8
             if re.search(r"^\s*\)", content):
                 score *= 0.7

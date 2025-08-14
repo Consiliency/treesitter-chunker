@@ -186,16 +186,40 @@ class HierarchicalChunker(ChunkingStrategy):
         if node.type in self.atomic_nodes and not self.config["preserve_leaf_nodes"]:
             return False
         line_count = node.end_point[0] - node.start_point[0] + 1
-        if (
-            line_count < self.config["min_chunk_size"]
-            and not self.config["preserve_leaf_nodes"]
-        ):
-            return False
+
+        # Check if this is a leaf node (no children)
+        is_potential_leaf = not node.children
+
+        # Apply granularity first, then consider leaf node preservation
         if self.config["granularity"] == "fine":
-            return True
+            # Fine granularity: include everything above minimum size
+            if line_count >= self.config["min_chunk_size"]:
+                return True
+            # For small nodes, only include if preserving leaf nodes and it's a leaf
+            if (
+                self.config["preserve_leaf_nodes"]
+                and is_potential_leaf
+                and node.type not in self.atomic_nodes
+            ):
+                return True
+            return False
         if self.config["granularity"] == "coarse":
-            return level <= 2
-        return level <= 3 or line_count >= self.config["min_chunk_size"] * 2
+            if level <= 2:
+                return True
+            # For coarse granularity, don't preserve small leaf nodes
+            return False
+        # balanced granularity
+        if level <= 3 or line_count >= self.config["min_chunk_size"] * 2:
+            return True
+        # For small nodes, only include if preserving leaf nodes and it's a leaf
+        if (
+            self.config["preserve_leaf_nodes"]
+            and is_potential_leaf
+            and node.type not in self.atomic_nodes
+            and line_count >= 1
+        ):
+            return True
+        return False
 
     def _analyze_node(self, node: Node, _source: bytes) -> dict[str, Any]:
         """Analyze node properties for metadata."""
@@ -259,10 +283,17 @@ class HierarchicalChunker(ChunkingStrategy):
         if node.type in self.structural_nodes:
             return True
         line_count = metadata["line_count"]
+
+        # Check for leaf node preservation
+        is_leaf = not node_dict["children"]
+        if is_leaf and self.config["preserve_leaf_nodes"]:
+            # Always preserve leaf nodes if configured, except atomic nodes
+            return node.type not in self.atomic_nodes
+
+        # Apply minimum size constraint
         if line_count < self.config["min_chunk_size"]:
-            if not node_dict["children"] and self.config["preserve_leaf_nodes"]:
-                return node.type not in self.atomic_nodes
             return False
+
         if self.config["include_intermediate"]:
             return True
         significant_children = sum(

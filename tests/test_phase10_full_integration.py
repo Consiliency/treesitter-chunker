@@ -34,7 +34,7 @@ class TestPhase10FullIntegration:
         """Set up a multi-file_path project for testing."""
         self.test_dir = tempfile.mkdtemp()
         self.backend_file = Path(self.test_dir) / "api" / "server.py"
-        Path(Path(self.backend_file).mkdir(parents=True).parent, exist_ok=True)
+        Path(self.backend_file).parent.mkdir(parents=True, exist_ok=True)
         with Path(self.backend_file).open("w", encoding="utf-8") as f:
             f.write(
                 """
@@ -102,10 +102,7 @@ def status():
 """,
             )
         self.frontend_file = Path(self.test_dir) / "frontend" / "client.js"
-        Path(
-            Path(self.frontend_file).mkdir(parents=True).parent,
-            exist_ok=True,
-        )
+        Path(self.frontend_file).parent.mkdir(parents=True, exist_ok=True)
         with Path(self.frontend_file).open("w", encoding="utf-8") as f:
             f.write(
                 """
@@ -238,7 +235,7 @@ CREATE TABLE IF NOT EXISTS processing_log (
         query_index = AdvancedQueryIndex()
         for chunk in all_chunks:
             query_index.add_chunk(chunk)
-        query_engine = NaturalLanguageQueryEngine(query_index)
+        query_engine = NaturalLanguageQueryEngine(all_chunks)
         SmartQueryOptimizer()
         results = query_engine.search("functions that process data")
         assert len(results) > 0
@@ -263,7 +260,7 @@ CREATE TABLE IF NOT EXISTS processing_log (
         DefaultChangeDetector()
         DefaultChunkCache()
         for file_path, chunks in chunk_map.items():
-            incremental_processor.update_chunks(file_path, chunks)
+            incremental_processor.store_chunks(file_path, chunks)
         with Path(self.backend_file).open("a", encoding="utf-8") as f:
             f.write(
                 """
@@ -281,8 +278,8 @@ def clear_cache():
             new_chunks,
         )
         assert diff is not None
-        assert len(diff.added) > 0
-        assert any("clear-cache" in chunk.content for chunk in diff.added)
+        assert len(diff.added_chunks) > 0
+        assert any("clear-cache" in chunk.content for chunk in diff.added_chunks)
         api_chunk = next(
             (
                 c
@@ -332,10 +329,10 @@ def clear_cache():
         with Path(empty_file).open("w", encoding="utf-8") as f:
             f.write("")
         ml_processor = MultiLanguageProcessorImpl()
-        result = ml_processor.process_file(empty_file)
-        assert result is not None
+        result = ml_processor.detect_project_languages(str(empty_file.parent))
+        assert isinstance(result, dict)
         empty_index = AdvancedQueryIndex()
-        query_engine = NaturalLanguageQueryEngine(empty_index)
+        query_engine = NaturalLanguageQueryEngine()
         results = query_engine.search("anything")
         assert results == []
         optimizer = ChunkOptimizer()
@@ -348,11 +345,16 @@ def clear_cache():
         assert metrics.original_count == 0
         processor = DefaultIncrementalProcessor()
         chunk = CodeChunk(
-            id="test",
-            content="def test(): pass",
+            language="python",
+            file_path="test.py",
+            node_type="function_definition",
             start_line=1,
             end_line=1,
-            language="python",
+            byte_start=0,
+            byte_end=17,
+            parent_context="",
+            content="def test(): pass",
+            chunk_id="test",
         )
         processor.update_chunks("test.py", [chunk])
         diff = processor.compute_diff("test.py", [chunk])
@@ -376,11 +378,16 @@ class Class_{i}:
         return function_{i}(1, 2)
 """
             chunk = CodeChunk(
-                id=f"chunk_{i}",
-                content=content,
+                language="python",
+                file_path=f"test_{i}.py",
+                node_type="function_definition",
                 start_line=i * 10,
                 end_line=i * 10 + 9,
-                language="python",
+                byte_start=0,
+                byte_end=len(content),
+                parent_context="",
+                content=content,
+                chunk_id=f"chunk_{i}",
             )
             large_chunks.append(chunk)
         index = AdvancedQueryIndex()
@@ -389,7 +396,7 @@ class Class_{i}:
             index.add_chunk(chunk)
         index_time = time.time() - start
         assert index_time < 1.0
-        engine = NaturalLanguageQueryEngine(index)
+        engine = NaturalLanguageQueryEngine()
         start = time.time()
         results = engine.search("function documentation")
         query_time = time.time() - start

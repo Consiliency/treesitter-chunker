@@ -57,7 +57,7 @@ class ComplexityAnalyzer(ASTProcessor):
             "loops": 0,
             "exceptions": 0,
         }
-        self.traverse(node, context)
+        self._traverse_and_count(node, context)
         complexity_score = (
             context["cyclomatic"] * 1.0
             + context["cognitive"] * 0.5
@@ -76,11 +76,53 @@ class ComplexityAnalyzer(ASTProcessor):
             "exceptions": context["exceptions"],
         }
 
+    def _traverse_and_count(self, node: Node, context: dict[str, Any], depth: int = 0):
+        """Custom traversal that properly accumulates complexity metrics."""
+        # Store current nesting depth for this node
+        current_nesting = context.get("nesting_depth", 0)
+
+        # Process current node
+        self.process_node(node, context)
+
+        # Handle nesting for children
+        if self._increases_nesting(node.type, None):
+            context["nesting_depth"] = current_nesting + 1
+            context["max_nesting"] = max(
+                context["max_nesting"], context["nesting_depth"],
+            )
+
+        # Traverse children with updated context
+        for child in node.children:
+            child_context = {**context, "parent": node}
+            self._traverse_and_count(child, child_context, depth + 1)
+            # Merge metrics back
+            for key in [
+                "cyclomatic",
+                "cognitive",
+                "function_calls",
+                "branches",
+                "loops",
+                "exceptions",
+            ]:
+                if key in child_context:
+                    context[key] = child_context[key]
+            context["dependencies"].update(child_context.get("dependencies", set()))
+            context["max_nesting"] = max(
+                context["max_nesting"], child_context.get("max_nesting", 0),
+            )
+
+        # Restore nesting depth
+        context["nesting_depth"] = current_nesting
+
     def process_node(self, node: Node, context: dict[str, Any]) -> Any:
         """Process a single node and update complexity metrics."""
         node_type = node.type
+
+        # Update cyclomatic complexity
         if node_type in self.complexity_weights:
             context["cyclomatic"] += self.complexity_weights[node_type]
+
+        # Handle nesting depth
         parent = context.get("parent")
         if parent:
             parent_type = parent.type if parent else None
@@ -90,25 +132,35 @@ class ComplexityAnalyzer(ASTProcessor):
                     context["max_nesting"],
                     context["nesting_depth"],
                 )
-                context["cognitive"] += context["nesting_depth"] * 0.5
-        if node_type in {"if_statement", "conditional_expression"}:
+                # Cognitive complexity increases with nesting
+                context["cognitive"] += context["nesting_depth"]
+
+        # Count different types of complexity contributors
+        if node_type in {"if_statement", "conditional_expression", "elif_clause"}:
             context["branches"] += 1
+            context["cyclomatic"] += 1
         elif node_type in {"while_statement", "for_statement", "for_in_statement"}:
             context["loops"] += 1
-        elif node_type in {"try_statement", "except_clause"}:
+            context["cyclomatic"] += 1
+        elif node_type in {"try_statement", "except_clause", "finally_clause"}:
             context["exceptions"] += 1
+            if node_type == "except_clause":
+                context["cyclomatic"] += 1
         elif node_type in {"call", "method_call", "function_call"}:
             context["function_calls"] += 1
-            if node_type == "call" and node.children:
-                func_name = self._extract_function_name(node)
-                if func_name:
-                    context["dependencies"].add(func_name)
+            func_name = self._extract_function_name(node)
+            if func_name:
+                context["dependencies"].add(func_name)
         elif node_type == "identifier":
             parent_type = (
                 context.get("parent", {}).type if context.get("parent") else None
             )
             if parent_type in {"type", "annotation", "parameter"}:
                 context["dependencies"].add(node.text.decode())
+        elif node_type in {"and", "or"}:
+            # Logical operators add to complexity
+            context["cyclomatic"] += 1
+
         return None
 
     @staticmethod

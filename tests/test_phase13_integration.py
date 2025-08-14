@@ -265,7 +265,7 @@ class TestDistributionIntegration:
     def test_release_process_updates_all_locations(cls):
         """Release process should update version everywhere"""
         release_mgmt = ReleaseManager()
-        success, info = release_mgmt.prepare_release("1.0.0", "Initial stable release")
+        success, info = release_mgmt.prepare_release("1.0.1", "Patch release")
         assert isinstance(success, bool)
         assert "updated_files" in info
         assert "git_tag" in info

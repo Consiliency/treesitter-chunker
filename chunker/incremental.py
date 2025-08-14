@@ -29,8 +29,194 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
     def __init__(self):
         """Initialize processor."""
         self.change_detector = DefaultChangeDetector()
+        self.file_chunks: dict[str, list[CodeChunk]] = {}
+        # Maintain a baseline snapshot used for (file_path, new_chunks) API diffs
+        self._baseline: dict[str, list[CodeChunk]] = {}
+
+    def store_chunks(self, file_path: str, chunks: list[CodeChunk]) -> None:
+        """Store chunks for a file path."""
+        self.file_chunks[str(file_path)] = chunks
+        # Initialize baseline if not set to avoid spurious additions on first diff
+        self._baseline.setdefault(str(file_path), chunks)
 
     def compute_diff(
+        self,
+        file_path_or_old_chunks: str | list[CodeChunk],
+        new_chunks_or_content: list[CodeChunk] | str,
+        language: str | None = None,
+    ) -> ChunkDiff:
+        """Compute difference - supports both file path and direct chunk APIs."""
+        # Handle file path API: compute_diff(file_path, new_chunks)
+        if isinstance(file_path_or_old_chunks, (str, Path)) and isinstance(
+            new_chunks_or_content, list,
+        ):
+            file_path = str(file_path_or_old_chunks)
+            new_chunks = new_chunks_or_content
+            # Use latest if present; otherwise use baseline; both default to []
+            old_chunks = self.file_chunks.get(
+                file_path, self._baseline.get(file_path, []),
+            )
+
+            # Convert new chunks to old/new content format for diff
+            if not old_chunks and not new_chunks:
+                return ChunkDiff([], [], [], [], [], {})
+
+            # Early-out: if structurally identical, return empty diff
+            if len(old_chunks) == len(new_chunks):
+                same = True
+                for o, n in zip(old_chunks, new_chunks, strict=False):
+                    if not (
+                        o.chunk_id == n.chunk_id
+                        and o.node_type == n.node_type
+                        and o.start_line == n.start_line
+                        and o.end_line == n.end_line
+                        and o.content == n.content
+                    ):
+                        same = False
+                        break
+                if same:
+                    empty = ChunkDiff(
+                        [],
+                        [],
+                        [],
+                        [],
+                        [],
+                        {
+                            "total_old_chunks": len(old_chunks),
+                            "total_new_chunks": len(new_chunks),
+                            "added": 0,
+                            "deleted": 0,
+                            "modified": 0,
+                            "unchanged": len(new_chunks),
+                        },
+                    )
+                    # Back-compat convenience lists
+                    empty.added = []  # type: ignore[attr-defined]
+                    empty.removed = []  # type: ignore[attr-defined]
+                    empty.modified = []  # type: ignore[attr-defined]
+                    return empty
+
+            diff = self._compute_chunks_diff(old_chunks, new_chunks)
+            # Promote new state into both latest and baseline for idempotent subsequent diffs
+            self.file_chunks[file_path] = new_chunks
+            self._baseline[file_path] = new_chunks
+            return diff
+
+        # Handle original API: compute_diff(old_chunks, new_content, language)
+        if isinstance(file_path_or_old_chunks, list) and isinstance(
+            new_chunks_or_content, str,
+        ):
+            if not language:
+                raise ValueError("Language is required when using content-based diff")
+            return self._compute_content_diff(
+                file_path_or_old_chunks, new_chunks_or_content, language,
+            )
+        # Back-compat: handle (file_path_str, content_str, language)
+        if isinstance(file_path_or_old_chunks, (str, Path)) and isinstance(
+            new_chunks_or_content, str,
+        ):
+            if not language:
+                raise ValueError("Language is required when using content-based diff")
+            old_chunks = self.file_chunks.get(str(file_path_or_old_chunks), [])
+            return self._compute_content_diff(
+                old_chunks, new_chunks_or_content, language,
+            )
+        raise ValueError(
+            "Invalid arguments: expected (file_path, new_chunks) or (old_chunks, new_content, language)",
+        )
+
+    def _compute_chunks_diff(
+        self, old_chunks: list[CodeChunk], new_chunks: list[CodeChunk],
+    ) -> ChunkDiff:
+        """Compute diff between two chunk lists."""
+        old_map = {chunk.chunk_id: chunk for chunk in old_chunks}
+        new_map = {chunk.chunk_id: chunk for chunk in new_chunks}
+
+        old_ids = set(old_map.keys())
+        new_ids = set(new_map.keys())
+        unchanged_ids = old_ids & new_ids
+
+        unchanged_chunks = []
+        modified_chunks = []
+
+        for chunk_id in unchanged_ids:
+            old_chunk = old_map[chunk_id]
+            new_chunk = new_map[chunk_id]
+            if old_chunk.content != new_chunk.content:
+                modified_chunks.append((old_chunk, new_chunk))
+            else:
+                unchanged_chunks.append(new_chunk)
+
+        added_ids = new_ids - old_ids
+        deleted_ids = old_ids - new_ids
+
+        added_chunks = [new_map[chunk_id] for chunk_id in added_ids]
+        deleted_chunks = [old_map[chunk_id] for chunk_id in deleted_ids]
+
+        changes = []
+
+        # Add changes for added chunks
+        for chunk in added_chunks:
+            changes.append(
+                ChunkChange(
+                    chunk_id=chunk.chunk_id,
+                    change_type=ChangeType.ADDED,
+                    old_chunk=None,
+                    new_chunk=chunk,
+                    line_changes=[(chunk.start_line, chunk.end_line)],
+                    confidence=1.0,
+                ),
+            )
+
+        # Add changes for deleted chunks
+        for chunk in deleted_chunks:
+            changes.append(
+                ChunkChange(
+                    chunk_id=chunk.chunk_id,
+                    change_type=ChangeType.DELETED,
+                    old_chunk=chunk,
+                    new_chunk=None,
+                    line_changes=[(chunk.start_line, chunk.end_line)],
+                    confidence=1.0,
+                ),
+            )
+
+        # Add changes for modified chunks
+        for old_chunk, new_chunk in modified_chunks:
+            changes.append(
+                ChunkChange(
+                    chunk_id=new_chunk.chunk_id,
+                    change_type=ChangeType.MODIFIED,
+                    old_chunk=old_chunk,
+                    new_chunk=new_chunk,
+                    line_changes=[(new_chunk.start_line, new_chunk.end_line)],
+                    confidence=0.9,
+                ),
+            )
+
+        summary = {
+            "total_old_chunks": len(old_chunks),
+            "total_new_chunks": len(new_chunks),
+            "added": len(added_chunks),
+            "deleted": len(deleted_chunks),
+            "modified": len(modified_chunks),
+            "unchanged": len(unchanged_chunks),
+        }
+        diff = ChunkDiff(
+            changes=changes,
+            added_chunks=added_chunks,
+            deleted_chunks=deleted_chunks,
+            modified_chunks=modified_chunks,
+            unchanged_chunks=unchanged_chunks,
+            summary=summary,
+        )
+        # Back-compat properties expected by some integration tests
+        diff.added = added_chunks  # type: ignore[attr-defined]
+        diff.removed = deleted_chunks  # type: ignore[attr-defined]
+        diff.modified = modified_chunks  # type: ignore[attr-defined]
+        return diff
+
+    def _compute_content_diff(
         self,
         old_chunks: list[CodeChunk],
         new_content: str,
@@ -138,11 +324,36 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
             summary=summary,
         )
 
-    @staticmethod
-    def update_chunks(old_chunks: list[CodeChunk], diff: ChunkDiff) -> list[CodeChunk]:
-        """Update chunks based on diff."""
-        chunk_map = {chunk.chunk_id: chunk for chunk in old_chunks}
-        for change in diff.changes:
+    def update_chunks(
+        self,
+        old_or_path: list[CodeChunk] | str,
+        diff_or_new: ChunkDiff | list[CodeChunk],
+    ) -> list[CodeChunk]:
+        """Update chunks based on diff or directly with new_chunks for a file path.
+
+        Supports:
+        - update_chunks(old_chunks, diff)
+        - update_chunks(file_path: str, new_chunks: list[CodeChunk])
+        """
+        # Overload: (file_path, new_chunks)
+        if isinstance(old_or_path, (str, Path)) and isinstance(diff_or_new, list):
+            # Back-compat path: if called with (file_path, new_chunks) simply replace
+            new_chunks: list[CodeChunk] = diff_or_new
+            file_path = str(old_or_path)
+            # Persist into processor state so subsequent compute_diff() has baseline
+            self.file_chunks[file_path] = list(new_chunks)
+            self._baseline[file_path] = list(new_chunks)
+            return list(new_chunks)
+
+        # Original signature: (old_chunks, diff)
+        old_chunks = old_or_path  # type: ignore[assignment]
+        diff = diff_or_new  # type: ignore[assignment]
+        # Backward-compatible: tests may pass a file_path string; treat as empty prior state
+        if isinstance(old_chunks, str):
+            chunk_map: dict[str, CodeChunk] = {}
+        else:
+            chunk_map = {chunk.chunk_id: chunk for chunk in old_chunks}
+        for change in diff.changes:  # type: ignore[attr-defined]
             if change.change_type == ChangeType.DELETED:
                 chunk_map.pop(change.chunk_id, None)
             elif (

@@ -123,7 +123,7 @@ class SemanticChunker(ChunkingStrategy):
         """Identify nodes that form semantic boundaries."""
         semantic_nodes = []
 
-        def traverse(node: Node, depth: int = 0, parent_semantic: bool = False):
+        def traverse(node: Node, depth: int = 0, parent_is_semantic: bool = False):
             semantic_info = self.semantic_analyzer.analyze_semantics(node, source)
             complexity_info = self.complexity_analyzer.calculate_complexity(
                 node,
@@ -134,16 +134,51 @@ class SemanticChunker(ChunkingStrategy):
                 or complexity_info["score"] > self.config["complexity_threshold"]
                 or semantic_info["cohesion_score"] > self.config["cohesion_threshold"]
             )
-            if is_boundary and not parent_semantic:
+
+            # Skip module node unless it's the only possible chunk
+            should_skip_module = (
+                node.type == "module"
+                and depth == 0
+                and any(
+                    child.type in self.semantic_boundaries for child in node.children
+                )
+            )
+
+            # Skip non-semantic nodes that might have high cohesion scores
+            should_skip_non_semantic = node.type in {
+                "block",
+                "compound_statement",
+                "suite",
+            }
+
+            # Skip nested functions/methods if parent class is already a semantic node
+            should_skip_nested = parent_is_semantic and node.type in {
+                "function_definition",
+                "method_definition",
+            }
+
+            if (
+                is_boundary
+                and not should_skip_module
+                and not should_skip_non_semantic
+                and not should_skip_nested
+            ):
                 metadata = {
                     "semantic": semantic_info,
                     "complexity": complexity_info,
                     "depth": depth,
+                    "name": self._extract_node_name(node),
                 }
                 semantic_nodes.append((node, metadata))
-                parent_semantic = True
+
+                # Mark that we're now inside a semantic boundary
+                current_is_semantic = True
+            else:
+                current_is_semantic = parent_is_semantic
+
+            # Always traverse children to find nested semantic boundaries
             for child in node.children:
-                traverse(child, depth + 1, parent_semantic)
+                traverse(child, depth + 1, current_is_semantic)
 
         traverse(ast)
         return semantic_nodes
@@ -158,7 +193,23 @@ class SemanticChunker(ChunkingStrategy):
     ) -> CodeChunk:
         """Create a chunk from a semantic node."""
         line_count = node.end_point[0] - node.start_point[0] + 1
-        if line_count < self.config["min_chunk_size"]:
+
+        # Allow smaller chunks for important semantic boundaries
+        important_boundaries = {
+            "function_definition",
+            "method_definition",
+            "class_definition",
+            "interface_declaration",
+            "trait_definition",
+        }
+
+        # For important semantic boundaries, use a very low minimum (1 line)
+        # For other nodes, use configured minimum
+        min_size = (
+            1 if node.type in important_boundaries else self.config["min_chunk_size"]
+        )
+
+        if line_count < min_size:
             return None
         content = source[node.start_byte : node.end_byte].decode(
             "utf-8",
@@ -265,7 +316,7 @@ class SemanticChunker(ChunkingStrategy):
             complexity = chunk.metadata.get("complexity", {}).get("score", 0)
             line_count = chunk.end_line - chunk.start_line + 1
             should_split = (
-                complexity > self.config["complexity_threshold"] * 2
+                complexity > self.config["complexity_threshold"] * 3
                 or line_count > self.config["max_chunk_size"]
             )
             if should_split:
@@ -377,13 +428,28 @@ class SemanticChunker(ChunkingStrategy):
         optimized = []
         for chunk in chunks:
             line_count = chunk.end_line - chunk.start_line + 1
+
+            # Keep important semantic boundaries even if they're small
+            important_boundaries = {
+                "function_definition",
+                "method_definition",
+                "class_definition",
+                "interface_declaration",
+                "trait_definition",
+                "merged_chunk",
+            }
+
             if line_count < self.config["min_chunk_size"]:
-                if chunk.node_type in self.semantic_boundaries:
+                if chunk.node_type in important_boundaries:
                     optimized.append(chunk)
+                # Skip small non-important chunks
                 continue
+
+            # Set parent context if missing
             if not chunk.parent_context and hasattr(chunk, "metadata"):
                 semantic = chunk.metadata.get("semantic", {})
                 chunk.parent_context = semantic.get("role", "unknown")
+
             optimized.append(chunk)
         return optimized
 
@@ -460,3 +526,10 @@ class SemanticChunker(ChunkingStrategy):
         merged.dependencies = list(all_deps)
         merged.references = list(all_refs)
         return merged
+
+    def _extract_node_name(self, node: Node) -> str:
+        """Extract name from a node (function, class, etc.)."""
+        for child in node.children:
+            if child.type == "identifier":
+                return child.text.decode()
+        return ""

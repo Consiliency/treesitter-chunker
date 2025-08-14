@@ -51,7 +51,7 @@ class PHPConfig(LanguageConfig):
                 metadata={"type": "closure"},
             ),
         )
-        self.add_ignore_type("comment")
+        # Do not ignore comments globally; tests expect some mixed-content chunks
         self.add_ignore_type("string")
         self.add_ignore_type("integer")
 

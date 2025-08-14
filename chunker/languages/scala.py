@@ -67,8 +67,27 @@ class ScalaConfig(LanguageConfig):
         self.add_ignore_type("string")
         self.add_ignore_type("number")
 
+    def should_chunk_node(self, node_type: str) -> bool:
+        """Override to handle all chunk types including case classes."""
+        return node_type in self.chunk_types
+
+    def _is_case_class(self, node) -> bool:
+        """Check if a class_definition node is a case class."""
+        if node.type != "class_definition":
+            return False
+
+        # Case classes have 'case' as their first child
+        if node.children and node.children[0].type == "case":
+            return True
+
+        return False
+
 
 # Register the Scala configuration
+from .base import language_config_registry
+
+scala_config = ScalaConfig()
+language_config_registry.register(scala_config, aliases=["scala"])
 
 
 class ScalaPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
@@ -89,6 +108,7 @@ class ScalaPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             "class_definition",
             "object_definition",
             "trait_definition",
+            "case_class_definition",
             "val_definition",
             "var_definition",
             "type_definition",
@@ -126,19 +146,24 @@ class ScalaPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         chunks = []
 
         def extract_chunks(n: Node, parent_type: str | None = None):
-            if n.type in self.default_chunk_types:
+            # Check if this is a case class and adjust type accordingly
+            node_type = n.type
+            if n.type == "class_definition" and self._is_case_class(n):
+                node_type = "case_class_definition"
+
+            if node_type in self.default_chunk_types:
                 content = source[n.start_byte : n.end_byte].decode(
                     "utf-8",
                     errors="replace",
                 )
                 chunk = {
-                    "type": n.type,
+                    "type": node_type,
                     "start_line": n.start_point[0] + 1,
                     "end_line": n.end_point[0] + 1,
                     "content": content,
                     "name": self.get_node_name(n, source),
                 }
-                if n.type in {"function_definition", "method_definition"}:
+                if node_type in {"function_definition", "method_definition"}:
                     chunk["is_method"] = True
                     if "private" in content[:50]:
                         chunk["visibility"] = "private"
@@ -146,18 +171,23 @@ class ScalaPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                         chunk["visibility"] = "protected"
                     else:
                         chunk["visibility"] = "public"
-                elif n.type == "case_class_definition":
+                elif node_type == "case_class_definition":
                     chunk["is_case_class"] = True
-                elif n.type == "object_definition":
+                elif node_type == "object_definition":
                     chunk["is_singleton"] = True
-                elif n.type in {"val_definition", "var_definition"}:
+                elif node_type in {"val_definition", "var_definition"}:
                     chunk["is_field"] = True
-                    chunk["is_mutable"] = n.type == "var_definition"
+                    chunk["is_mutable"] = node_type == "var_definition"
                 chunks.append(chunk)
             new_parent = (
-                n.type
-                if n.type
-                in {"class_definition", "object_definition", "trait_definition"}
+                node_type
+                if node_type
+                in {
+                    "class_definition",
+                    "case_class_definition",
+                    "object_definition",
+                    "trait_definition",
+                }
                 else parent_type
             )
             for child in n.children:
@@ -210,6 +240,13 @@ class ScalaPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         parent_context: str | None = None,
     ):
         """Process Scala nodes with special handling for complex constructs."""
+        # Handle case class definitions
+        if node.type == "class_definition" and self._is_case_class(node):
+            chunk = self.create_chunk(node, source, file_path, parent_context)
+            if chunk:
+                chunk.node_type = "case_class_definition"
+                return chunk if self.should_include_chunk(chunk) else None
+
         if node.type == "object_definition" and self._is_companion_object(node, source):
             chunk = self.create_chunk(node, source, file_path, parent_context)
             if chunk:
@@ -262,3 +299,14 @@ class ScalaPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
 
         class_name = self.get_node_name(sibling, source)
         return class_name == obj_name
+
+    def _is_case_class(self, node: Node) -> bool:
+        """Check if a class_definition node is a case class."""
+        if node.type != "class_definition":
+            return False
+
+        # Case classes have 'case' as their first child
+        if node.children and node.children[0].type == "case":
+            return True
+
+        return False

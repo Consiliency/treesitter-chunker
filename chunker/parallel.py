@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import multiprocessing as mp
+import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import TimeoutError as FutureTimeout
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -54,8 +56,9 @@ class ParallelChunker:
         file_paths: list[Path],
     ) -> dict[Path, list[CodeChunk]]:
         """Process multiple files in parallel."""
-        results = {}
-
+        results: dict[Path, list[CodeChunk]] = {}
+        start_time = time.time()
+        timeout_seconds = 10.0
         with ProcessPoolExecutor(max_workers=self.num_workers) as executor:
             # Submit all tasks
             future_to_path = {
@@ -67,9 +70,17 @@ class ParallelChunker:
             for future in as_completed(future_to_path):
                 path = future_to_path[future]
                 try:
-                    file_path, chunks = future.result()
+                    file_path, chunks = future.result(timeout=timeout_seconds)
                     results[file_path] = chunks
+                except FutureTimeout:
+                    # Timed out – cancel and record failure
+                    future.cancel()
+                    print(
+                        f"Timeout processing {path}: exceeded {timeout_seconds}s",
+                    )
+                    results[path] = []
                 except (FileNotFoundError, IndexError, KeyError, PermissionError) as e:
+                    # Normalize known failure classes
                     print(f"Error processing {path}: {e}")
                     results[path] = []
                 except Exception as e:

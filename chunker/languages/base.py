@@ -342,7 +342,16 @@ class LanguageConfigRegistry:
                 f"Invalid configuration for {config.language_id}: " + "; ".join(errors),
             )
         if config.language_id in self._configs:
-            raise ValueError(f"Language {config.language_id} is already registered")
+            # For strict registry instances (used in tests), duplicate registration should fail
+            if not self._enable_lazy_loading:
+                raise ValueError(f"Language {config.language_id} is already registered")
+            # In lazy-loading mode (default global registry), be idempotent to avoid noisy errors
+            existing = self._configs[config.language_id]
+            if type(existing) is type(config):
+                return
+            # Replace existing with new config to allow dynamic upgrades in lazy mode
+            self._configs[config.language_id] = config
+            return
         self._configs[config.language_id] = config
         logger.info(
             "Registered language configuration: %s",
@@ -437,6 +446,45 @@ class LanguageConfigRegistry:
 
                 if self.get("go") is None:
                     self.register(GoConfig())
+            elif ext in {".ts", ".d.ts", ".tsx"}:
+                # Register TypeScript and TSX on demand
+                from .typescript import TSXConfig as _TSXConfig
+                from .typescript import TypeScriptConfig as _TSConfig  # lazy import
+
+                if self.get("typescript") is None:
+                    self.register(_TSConfig())
+                if self.get("tsx") is None:
+                    self.register(_TSXConfig())
+            elif ext in {".php", ".php3", ".php4", ".php5", ".phtml"}:
+                # Register PHP on demand
+                from .php import PHPConfig  # lazy import
+
+                if self.get("php") is None:
+                    self.register(PHPConfig())
+            elif ext in {".sql"}:
+                # Register SQL on demand
+                from .sql import SQLConfig  # lazy import
+
+                if self.get("sql") is None:
+                    self.register(SQLConfig())
+            elif ext in {".ml", ".mli"}:
+                # Register OCaml on demand
+                from .ocaml import OCamlConfig  # lazy import
+
+                if self.get("ocaml") is None:
+                    self.register(OCamlConfig())
+            elif ext in {".m"}:
+                # Register MATLAB on demand
+                from .matlab import MATLABConfig  # lazy import
+
+                if self.get("matlab") is None:
+                    self.register(MATLABConfig())
+            elif ext in {".js", ".jsx"}:
+                # Ensure JavaScript is registered
+                from .javascript import JavaScriptConfig  # lazy import
+
+                if self.get("javascript") is None:
+                    self.register(JavaScriptConfig())
         except Exception:
             # Swallow errors to keep method safe to call during detection paths
             return
@@ -455,6 +503,13 @@ class LanguageConfigRegistry:
                 "go": ("go_plugin", "GoConfig", []),
                 "py": ("python", "PythonConfig", ["py", "python3"]),
                 "python3": ("python", "PythonConfig", ["py", "python3"]),
+                "javascript": ("javascript", "JavaScriptConfig", []),
+                "typescript": ("typescript", "TypeScriptConfig", []),
+                "tsx": ("typescript", "TSXConfig", []),
+                "php": ("php", "PHPConfig", []),
+                "sql": ("sql", "SQLConfig", []),
+                "ocaml": ("ocaml", "OCamlConfig", []),
+                "matlab": ("matlab", "MATLABConfig", []),
             }
             module_name: str
             class_name: str

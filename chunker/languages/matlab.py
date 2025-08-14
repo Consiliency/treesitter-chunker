@@ -7,6 +7,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
+from chunker.types import CodeChunk
 
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
@@ -28,25 +29,22 @@ class MATLABConfig(LanguageConfig):
         return {
             "function_definition",
             "function_declaration",
-            "classdef",
-            "class_definition",
+            "class_definition",  # Full class definition node
+            "classdef",  # Alternative form used by tree-sitter-matlab
+            # Note: methods, properties, events, enumeration are child blocks of class_definition
             "methods",
-            "methods_block",
             "method_definition",
             "properties",
-            "properties_block",
             "events",
-            "events_block",
             "enumeration",
-            "enumeration_block",
             "script",
             "comment",
-            "block_comment",
+            "lambda",  # anonymous functions
         }
 
     @property
     def file_extensions(self) -> set[str]:
-        return {".m", ".mlx"}
+        return {".m"}
 
     def __init__(self):
         super().__init__()
@@ -60,9 +58,18 @@ class MATLABConfig(LanguageConfig):
         )
         self.add_ignore_type("string")
         self.add_ignore_type("number")
+        # For the language configuration system, ignore keyword tokens that duplicate their blocks
+        # Note: The plugin system handles these differently and still supports them
+        # Note: classdef is explicitly included in chunk_types for class detection
+        self.add_ignore_type("function")  # keyword inside function_definition
+        # Note: properties, methods, events, enumeration have same issue but are needed as chunks
 
 
 # Register the MATLAB configuration
+from .base import language_config_registry
+
+# Register the configuration so it's available to the core chunking system
+language_config_registry.register(MATLABConfig())
 
 
 class MATLABPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
@@ -84,17 +91,13 @@ class MATLABPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             "classdef",
             "class_definition",
             "methods",
-            "methods_block",
             "method_definition",
             "properties",
-            "properties_block",
             "events",
-            "events_block",
             "enumeration",
-            "enumeration_block",
             "script",
             "comment",
-            "block_comment",
+            "lambda",  # anonymous functions
         }
 
     @staticmethod
@@ -119,6 +122,16 @@ class MATLABPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             for child in node.children:
                 if child.type == "identifier":
                     return source[child.start_byte : child.end_byte].decode("utf-8")
+        elif node.type == "lambda":
+            # For anonymous functions, return a descriptive name
+            content = source[node.start_byte : node.end_byte].decode("utf-8")
+            # Extract the parameter part if possible
+            if "@(" in content:
+                param_end = content.find(")")
+                if param_end > 0:
+                    params = content[2:param_end]  # Skip "@("
+                    return f"lambda({params})"
+            return "lambda"
         return None
 
     def get_semantic_chunks(self, node: Node, source: bytes) -> list[dict[str, any]]:
@@ -138,7 +151,7 @@ class MATLABPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     "content": content,
                     "name": self.get_node_name(n, source),
                 }
-                if class_context and n.type in {"method_definition", "methods_block"}:
+                if class_context and n.type in {"method_definition", "methods"}:
                     chunk["class_context"] = class_context
                 chunks.append(chunk)
                 if n.type in {"classdef", "class_definition"}:
@@ -146,7 +159,42 @@ class MATLABPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             for child in n.children:
                 extract_chunks(child, class_context)
 
+        # First extract explicit chunks (functions, classes, etc.)
         extract_chunks(node)
+
+        # If this is a source_file node, check if it should be treated as a script
+        if node.type == "source_file":
+            # Check if there are top-level statements that aren't functions/classes
+            has_top_level_code = False
+            has_functions_or_classes = False
+
+            for child in node.children:
+                if child.type in {
+                    "function_definition",
+                    "classdef",
+                    "class_definition",
+                }:
+                    has_functions_or_classes = True
+                elif child.type in {
+                    "assignment",
+                    "function_call",
+                    "command",
+                    "comment",
+                }:
+                    has_top_level_code = True
+
+            # If there's top-level code (and optionally functions/classes), treat as script
+            if has_top_level_code:
+                content = source.decode("utf-8", errors="replace")
+                script_chunk = {
+                    "type": "script",
+                    "start_line": 1,
+                    "end_line": content.count("\n") + 1,
+                    "content": content,
+                    "name": None,
+                }
+                chunks.append(script_chunk)
+
         return chunks
 
     def get_chunk_node_types(self) -> set[str]:
@@ -165,16 +213,12 @@ class MATLABPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             return True
         if node.type in {
             "methods",
-            "methods_block",
             "properties",
-            "properties_block",
             "events",
-            "events_block",
             "enumeration",
-            "enumeration_block",
         }:
             return True
-        return node.type in {"script", "comment", "block_comment"}
+        return node.type in {"script", "comment", "lambda"}
 
     def get_node_context(self, node: Node, source: bytes) -> str | None:
         """Extract meaningful context for a node."""
@@ -185,10 +229,13 @@ class MATLABPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             "classdef": ("classdef", "classdef", True),
             "class_definition": ("classdef", "classdef", True),
             "methods": (None, "methods block", False),
-            "methods_block": (None, "methods block", False),
             "properties": (None, "properties block", False),
-            "properties_block": (None, "properties block", False),
+            "events": (None, "events block", False),
+            "enumeration": (None, "enumeration block", False),
             "method_definition": ("method", "method", True),
+            "script": (None, "script", False),
+            "comment": (None, "comment", False),
+            "lambda": ("lambda", "lambda", True),
         }
 
         context_info = node_context_map.get(node.type)
@@ -218,7 +265,7 @@ class MATLABPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     parent_context = f"class:{class_name}"
                 return chunk
         if (
-            node.type in {"methods", "methods_block", "properties", "properties_block"}
+            node.type in {"methods", "properties", "events", "enumeration"}
             and parent_context
         ):
             chunk = self.create_chunk(node, source, file_path, parent_context)
@@ -234,6 +281,56 @@ class MATLABPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             name = self.get_node_name(node, chunk.content.encode("utf-8"))
             if name:
                 return f"class:{name}"
-        if node.type in {"methods", "methods_block"} and chunk.parent_context:
+        if node.type in {"methods"} and chunk.parent_context:
             return chunk.parent_context
         return chunk.node_type
+
+    def walk_tree(
+        self,
+        node: Node,
+        source: bytes,
+        file_path: str,
+        parent_context: str | None = None,
+    ) -> list[CodeChunk]:
+        """
+        Override tree walking to handle MATLAB script detection.
+        """
+        chunks: list[CodeChunk] = []
+
+        # If this is the root source_file, check for script pattern
+        if node.type == "source_file" and parent_context is None:
+            # Check if there are top-level statements that make this a script
+            has_top_level_code = False
+
+            for child in node.children:
+                if child.type in {"assignment", "function_call", "command", "comment"}:
+                    has_top_level_code = True
+                    break
+
+            # If it's a script, create a script chunk for the whole file
+            if has_top_level_code:
+                content = source.decode("utf-8", errors="replace")
+                script_chunk = CodeChunk(
+                    language=self.language_name,
+                    file_path=file_path,
+                    node_type="script",
+                    start_line=1,
+                    end_line=content.count("\n") + 1,
+                    byte_start=0,
+                    byte_end=len(source),
+                    parent_context="",
+                    content=content,
+                )
+                chunks.append(script_chunk)
+
+        # Process regular nodes
+        chunk = self.process_node(node, source, file_path, parent_context)
+        if chunk:
+            chunks.append(chunk)
+            parent_context = self.get_context_for_children(node, chunk)
+
+        # Recursively process children
+        for child in node.children:
+            chunks.extend(self.walk_tree(child, source, file_path, parent_context))
+
+        return chunks

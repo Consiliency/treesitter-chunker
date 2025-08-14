@@ -35,7 +35,7 @@ class ConfigProcessor(SpecializedProcessor):
     section-based chunking that preserves configuration structure.
     """
 
-    def __init__(self, config: ProcessorConfig | None = None):
+    def __init__(self, config: ProcessorConfig | dict[str, Any] | None = None):
         """Initialize config processor.
 
         Args:
@@ -47,7 +47,7 @@ class ConfigProcessor(SpecializedProcessor):
         self._yaml_key_pattern = re.compile(r"^(\s*)(\w+):\s*(.*)$", re.MULTILINE)
         # TOML table headers like [table] or [[array_table]]
         self._toml_table_pattern = re.compile(
-            r"^\s*\[(\[)?([^\]]+)(\])?\]\s*$", re.MULTILINE
+            r"^\s*\[(\[)?([^\]]+)(\])?\]\s*$", re.MULTILINE,
         )
 
     def can_handle(self, file_path: str, content: str | None = None) -> bool:
@@ -94,6 +94,83 @@ class ConfigProcessor(SpecializedProcessor):
                 return result
 
         return None
+
+    def process(self, arg1: str, arg2: str | None = None) -> list[CodeChunk]:
+        """Process a configuration file and return chunks.
+
+        Supports both call orders for backward compatibility:
+        - process(content, file_path)
+        - process(file_path, content)
+        """
+        # Determine which argument is content vs file_path
+        content: str
+        file_path: str
+        if arg2 is None:
+            # Single-arg usage: treat as content with default file name
+            content = arg1
+            file_path = "config"
+        else:
+            # Heuristic: the content string typically contains newlines or braces/brackets
+            a_has_newline = (
+                "\n" in arg1 or "{" in arg1 or "[" in arg1 or ":" in arg1 or "=" in arg1
+            )
+            b_has_newline = (
+                "\n" in arg2 or "{" in arg2 or "[" in arg2 or ":" in arg2 or "=" in arg2
+            )
+            if a_has_newline and not b_has_newline:
+                content, file_path = arg1, arg2
+            elif (b_has_newline and not a_has_newline) or Path(arg1).suffix:
+                file_path, content = arg1, arg2
+            else:
+                content, file_path = arg1, arg2
+
+        fmt = self.detect_format(file_path, content)
+        if fmt is not None:
+            structure = self.parse_structure(content, fmt)
+            chunks = self.chunk_content(content, structure, file_path)
+            return chunks
+        # Fallback heuristics: attempt concrete formats in order JSON → YAML → TOML → INI
+        try:
+            data = json.loads(content)
+            structure = {
+                "fmt": "json",
+                "type": "object" if isinstance(data, dict) else "array",
+                "keys": list(data.keys()) if isinstance(data, dict) else [],
+            }
+            return self._chunk_json(content, structure, file_path)
+        except Exception:
+            pass
+        if yaml is not None:
+            try:
+                yaml.safe_load(content)
+                structure = self._parse_yaml_structure(content)
+                return self._chunk_yaml(content, structure, file_path)
+            except Exception:
+                pass
+        if toml is not None:
+            try:
+                toml.loads(content)
+                structure = self._parse_toml_structure(content)
+                return self._chunk_toml(content, structure, file_path)
+            except Exception:
+                pass
+        if "=" in content:
+            structure = self._parse_ini_structure(content)
+            return self._chunk_ini(content, structure, file_path)
+        # As last resort, return single chunk to avoid hard failure
+        return self._chunk_ini(
+            content,
+            {
+                "fmt": "ini",
+                "sections": {},
+                "global_section": {
+                    "start": 0,
+                    "end": len(content.split("\n")) - 1,
+                    "keys": [],
+                },
+            },
+            file_path,
+        )
 
     @staticmethod
     def _detect_by_extension(file_path: str, _content: str) -> str | None:

@@ -28,13 +28,16 @@ class JuliaConfig(LanguageConfig):
         return {
             "function_definition",
             "short_function_definition",
+            "assignment",  # one-liner functions
             "macro_definition",
+            "macrocall_expression",  # @generated functions, etc.
             "struct_definition",
-            "abstract_type_definition",
-            "primitive_type_definition",
+            "abstract_definition",  # abstract type definitions
+            "primitive_definition",  # primitive type definitions
             "module_definition",
             "const_statement",
             "comment",
+            "line_comment",  # single-line comments
             "block_comment",
         }
 
@@ -102,13 +105,16 @@ class JuliaPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         return {
             "function_definition",
             "short_function_definition",
+            "assignment",  # one-liner functions
             "macro_definition",
+            "macrocall_expression",  # @generated functions, etc.
             "struct_definition",
-            "abstract_type_definition",
-            "primitive_type_definition",
+            "abstract_definition",  # abstract type definitions
+            "primitive_definition",  # primitive type definitions
             "module_definition",
             "const_statement",
             "comment",
+            "line_comment",  # single-line comments
             "block_comment",
         }
 
@@ -119,10 +125,12 @@ class JuliaPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         node_name_extractors = {
             "function_definition": JuliaPlugin._extract_function_name,
             "short_function_definition": JuliaPlugin._extract_function_name,
+            "assignment": JuliaPlugin._extract_assignment_name,
             "macro_definition": JuliaPlugin._extract_macro_name,
+            "macrocall_expression": JuliaPlugin._extract_macrocall_name,
             "struct_definition": JuliaPlugin._extract_type_name,
-            "abstract_type_definition": JuliaPlugin._extract_type_name,
-            "primitive_type_definition": JuliaPlugin._extract_type_name,
+            "abstract_definition": JuliaPlugin._extract_type_name,
+            "primitive_definition": JuliaPlugin._extract_type_name,
             "module_definition": JuliaPlugin._extract_module_name,
             "const_statement": JuliaPlugin._extract_const_name,
         }
@@ -145,11 +153,35 @@ class JuliaPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         return None
 
     @staticmethod
+    def _extract_assignment_name(node: Node, source: bytes) -> str | None:
+        """Extract name from assignment nodes (one-liner functions)."""
+        for child in node.children:
+            if child.type == "call_expression":
+                # This is a function assignment like f(x) = x + 1
+                for subchild in child.children:
+                    if subchild.type == "identifier":
+                        return source[subchild.start_byte : subchild.end_byte].decode(
+                            "utf-8",
+                        )
+        return None
+
+    @staticmethod
     def _extract_macro_name(node: Node, source: bytes) -> str | None:
         """Extract name from macro definitions."""
         for child in node.children:
             if child.type == "identifier":
                 return "@" + source[child.start_byte : child.end_byte].decode("utf-8")
+        return None
+
+    @staticmethod
+    def _extract_macrocall_name(node: Node, source: bytes) -> str | None:
+        """Extract name from macrocall expressions (e.g., @generated function)."""
+        # For @generated function mysum(...), extract "mysum"
+        for child in node.children:
+            if child.type == "macro_argument_list":
+                for subchild in child.children:
+                    if subchild.type == "function_definition":
+                        return JuliaPlugin._extract_function_name(subchild, source)
         return None
 
     @staticmethod
@@ -197,8 +229,18 @@ class JuliaPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     "utf-8",
                     errors="replace",
                 )
+
+                # Map assignment nodes that are function definitions
+                chunk_type = n.type
+                if n.type == "assignment":
+                    # Check if this is a function assignment
+                    for child in n.children:
+                        if child.type == "call_expression":
+                            chunk_type = "short_function_definition"
+                            break
+
                 chunk = {
-                    "type": n.type,
+                    "type": chunk_type,
                     "start_line": n.start_point[0] + 1,
                     "end_line": n.end_point[0] + 1,
                     "content": content,
@@ -208,7 +250,7 @@ class JuliaPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     chunk["module"] = module_context
                 if n.type == "struct_definition":
                     chunk["is_mutable"] = "mutable" in content.split()[0:2]
-                elif n.type == "short_function_definition":
+                elif chunk_type == "short_function_definition":
                     chunk["is_one_liner"] = True
                 chunks.append(chunk)
                 if n.type == "module_definition":

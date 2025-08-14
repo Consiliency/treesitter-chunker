@@ -83,10 +83,8 @@ class NASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         return {
             "label",
             "section",
-            "segment",
             "macro_definition",
             "struc_definition",
-            "data_definition",
             "global_directive",
             "extern_directive",
         }
@@ -96,23 +94,12 @@ class NASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         """Extract the name from a NASM node."""
         if node.type == "label":
             for child in node.children:
-                if child.type == "identifier":
+                if child.type == "word":
                     name = source[child.start_byte : child.end_byte].decode("utf-8")
                     return name.rstrip(":")
-        elif node.type in {"section", "segment"}:
+        elif node.type == "assembl_directive_sections" or node.type == "preproc_multiline_macro" or (node.type == "struc_declaration" or node.type == "assembl_directive_symbols"):
             for child in node.children:
-                if child.type in {"identifier", "section_name"}:
-                    return source[child.start_byte : child.end_byte].decode("utf-8")
-        elif node.type == "macro_definition":
-            for i, child in enumerate(node.children):
-                if child.type == "identifier" and i > 0:
-                    return source[child.start_byte : child.end_byte].decode("utf-8")
-        elif node.type == "struc_definition" or node.type in {
-            "global_directive",
-            "extern_directive",
-        }:
-            for child in node.children:
-                if child.type == "identifier":
+                if child.type == "word":
                     return source[child.start_byte : child.end_byte].decode("utf-8")
         return None
 
@@ -143,7 +130,7 @@ class NASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 if current_section:
                     chunk["section"] = current_section
                 chunks.append(chunk)
-            elif n.type in {"section", "segment"}:
+            elif n.type == "assembl_directive_sections":
                 content = source[n.start_byte : n.end_byte].decode(
                     "utf-8",
                     errors="replace",
@@ -158,7 +145,7 @@ class NASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     "name": name,
                 }
                 chunks.append(chunk)
-            elif n.type == "macro_definition":
+            elif n.type == "preproc_multiline_macro":
                 content = source[n.start_byte : n.end_byte].decode(
                     "utf-8",
                     errors="replace",
@@ -171,7 +158,7 @@ class NASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     "name": self.get_node_name(n, source),
                 }
                 chunks.append(chunk)
-            elif n.type == "struc_definition":
+            elif n.type == "struc_declaration":
                 content = source[n.start_byte : n.end_byte].decode(
                     "utf-8",
                     errors="replace",
@@ -184,26 +171,22 @@ class NASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     "name": self.get_node_name(n, source),
                 }
                 chunks.append(chunk)
-            elif n.type == "global_directive":
+            elif n.type == "assembl_directive_symbols":
                 content = source[n.start_byte : n.end_byte].decode(
                     "utf-8",
                     errors="replace",
                 )
+                # Determine if this is global or extern based on content
+                content_text = content.strip()
+                if content_text.startswith("global"):
+                    chunk_type = "global"
+                elif content_text.startswith("extern"):
+                    chunk_type = "extern"
+                else:
+                    chunk_type = "symbol"
+
                 chunk = {
-                    "type": "global",
-                    "start_line": n.start_point[0] + 1,
-                    "end_line": n.end_point[0] + 1,
-                    "content": content,
-                    "name": self.get_node_name(n, source),
-                }
-                chunks.append(chunk)
-            elif n.type == "extern_directive":
-                content = source[n.start_byte : n.end_byte].decode(
-                    "utf-8",
-                    errors="replace",
-                )
-                chunk = {
-                    "type": "extern",
+                    "type": chunk_type,
                     "start_line": n.start_point[0] + 1,
                     "end_line": n.end_point[0] + 1,
                     "content": content,
@@ -218,19 +201,23 @@ class NASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
 
     def get_chunk_node_types(self) -> set[str]:
         """Get NASM-specific node types that form chunks."""
-        return self.default_chunk_types
+        return {
+            "label",
+            "assembl_directive_sections",
+            "preproc_multiline_macro",
+            "struc_declaration",
+            "assembl_directive_symbols",
+        }
 
     def should_chunk_node(self, node: Node) -> bool:
         """Determine if a specific node should be chunked."""
-        if node.type in self.default_chunk_types:
-            return True
-        if node.type == "multi_macro_definition":
-            return True
-        if node.type == "conditional_assembly":
-            return len(node.children) > 3
-        if node.type == "data_definition":
-            return node.end_point[0] - node.start_point[0] > 2
-        return False
+        return node.type in {
+            "label",
+            "assembl_directive_sections",
+            "preproc_multiline_macro",
+            "struc_declaration",
+            "assembl_directive_symbols",
+        }
 
     def get_node_context(self, node: Node, source: bytes) -> str | None:
         """Extract meaningful context for a node."""
@@ -240,12 +227,10 @@ class NASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
 
         # Map node types to their context format
         node_context_map = {
-            "section": ("section", "section"),
-            "segment": ("section", "section"),
-            "macro_definition": ("%macro", "%macro"),
-            "struc_definition": ("struc", "struc"),
-            "global_directive": ("global", "global"),
-            "extern_directive": ("extern", "extern"),
+            "assembl_directive_sections": ("section", "section"),
+            "preproc_multiline_macro": ("%macro", "%macro"),
+            "struc_declaration": ("struc", "struc"),
+            "assembl_directive_symbols": ("", ""),
         }
 
         context_info = node_context_map.get(node.type)
@@ -254,6 +239,20 @@ class NASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
 
         prefix, default = context_info
         name = self.get_node_name(node, source)
+
+        # Special handling for assembl_directive_symbols
+        if node.type == "assembl_directive_symbols":
+            content = (
+                source[node.start_byte : node.end_byte]
+                .decode("utf-8", errors="replace")
+                .strip()
+            )
+            if content.startswith("global"):
+                return f"global {name}" if name else "global"
+            if content.startswith("extern"):
+                return f"extern {name}" if name else "extern"
+            return f"{name}" if name else "symbol"
+
         return f"{prefix} {name}" if name else default
 
     def _get_label_context(self, node: Node, source: bytes) -> str:
@@ -284,7 +283,7 @@ class NASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     chunk.node_type = "procedure"
                     chunk.metadata["is_procedure"] = True
                 return chunk if self.should_include_chunk(chunk) else None
-        elif node.type in {"section", "segment"}:
+        elif node.type == "assembl_directive_sections":
             chunk = self.create_chunk(node, source, file_path, parent_context)
             if chunk:
                 section_name = self.get_node_name(node, source)
@@ -297,7 +296,7 @@ class NASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     elif ".bss" in section_name:
                         chunk.metadata["section_type"] = "uninitialized_data"
                 return chunk if self.should_include_chunk(chunk) else None
-        elif node.type == "macro_definition":
+        elif node.type == "preproc_multiline_macro":
             chunk = self.create_chunk(node, source, file_path, parent_context)
             if chunk:
                 param_count = self._count_macro_parameters(node, source)
@@ -324,8 +323,8 @@ class NASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
     def _count_macro_parameters(node: Node, source: bytes) -> int:
         """Count the number of parameters in a macro definition."""
         param_count = 0
-        for i, child in enumerate(node.children):
-            if child.type == "number" and i > 1:
+        for child in node.children:
+            if child.type == "preproc_multiline_macro_arg_spec":
                 with contextlib.suppress(ValueError):
                     param_count = int(
                         source[child.start_byte : child.end_byte].decode("utf-8"),

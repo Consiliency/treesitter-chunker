@@ -361,7 +361,7 @@ reporting:
         """Test performance with larger files."""
         fallback = IntelligentFallbackChunker(token_limit=2000)
         large_py = self.temp_path / "large.py"
-        with large_py.open("w", "r") as f:
+        with large_py.open("w") as f:
             for i in range(50):
                 f.write(
                     f"""

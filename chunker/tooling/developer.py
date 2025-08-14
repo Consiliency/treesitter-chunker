@@ -4,6 +4,7 @@ Team responsible: Developer Tooling Team
 """
 
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -18,6 +19,9 @@ class DeveloperToolingImpl(DeveloperToolingContract):
     def __init__(self):
         """Initialize the developer tooling implementation"""
         self.project_root = self._find_project_root()
+        self._black_path = self._find_executable("black")
+        self._ruff_path = self._find_executable("ruff")
+        self._mypy_path = self._find_executable("mypy")
 
     @staticmethod
     def _find_project_root() -> Path:
@@ -28,6 +32,34 @@ class DeveloperToolingImpl(DeveloperToolingContract):
                 return current
             current = current.parent
         return Path.cwd()
+
+    @staticmethod
+    def _find_executable(name: str) -> str | None:
+        """Find executable in PATH with common virtualenv fallbacks."""
+        path = shutil.which(name)
+        if path:
+            return path
+        try:
+            import sys as _sys
+            from pathlib import Path as _P
+
+            candidates = []
+            # Project-rooted virtualenvs
+            here = _P(__file__).resolve()
+            project = here.parent.parent.parent
+            candidates.append(project / ".fullenv" / "bin" / name)
+            candidates.append(project / ".venv" / "bin" / name)
+            # Current interpreter's bin directory
+            interp_bin = _P(_sys.executable).parent
+            candidates.append(interp_bin / name)
+            # Local user bin
+            candidates.append(_P.home() / ".local" / "bin" / name)
+            for c in candidates:
+                if c.exists():
+                    return str(c)
+        except Exception:
+            return None
+        return None
 
     def run_pre_commit_checks(self, files: list[Path]) -> tuple[bool, dict[str, Any]]:
         """Run all pre-commit checks on specified files
@@ -99,7 +131,10 @@ class DeveloperToolingImpl(DeveloperToolingContract):
         if not python_files:
             return result
         try:
-            cmd = [sys.executable, "-m", "black"]
+            if not self._black_path:
+                result["errors"] = ["Black formatter not found"]
+                return result
+            cmd = [self._black_path]
             if not fix:
                 cmd.append("--check")
                 cmd.append("--diff")
@@ -112,7 +147,15 @@ class DeveloperToolingImpl(DeveloperToolingContract):
                 check=False,
             )
             if proc.returncode == 0:
-                pass
+                if fix:
+                    # When fix=True, parse stderr to find reformatted files
+                    for line in proc.stderr.split("\n"):
+                        if "reformatted" in line:
+                            # Extract file path from stderr line
+                            for python_file in python_files:
+                                if str(python_file) in line:
+                                    result["formatted"].append(str(python_file))
+                                    break
             elif proc.returncode == 1:
                 if not fix:
                     diff_lines = proc.stdout.split("\n")
@@ -171,7 +214,9 @@ class DeveloperToolingImpl(DeveloperToolingContract):
         if not python_files:
             return results
         try:
-            cmd = [sys.executable, "-m", "ruff", "check", "--output-format", "json"]
+            if not self._ruff_path:
+                return results
+            cmd = [self._ruff_path, "check", "--output-format", "json"]
             if fix:
                 cmd.append("--fix")
             cmd.extend([str(f) for f in python_files])
@@ -230,7 +275,9 @@ class DeveloperToolingImpl(DeveloperToolingContract):
         if not python_files:
             return results
         try:
-            cmd = [sys.executable, "-m", "mypy", "--no-error-summary"]
+            if not self._mypy_path:
+                return results
+            cmd = [self._mypy_path, "--no-error-summary"]
             cmd.extend([str(f) for f in python_files])
             try:
                 proc = subprocess.run(

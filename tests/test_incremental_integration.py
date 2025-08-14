@@ -21,7 +21,7 @@ class TestIncrementalIntegration:
     """Integration tests for incremental processing."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def temp_project(cls):
         """Create a temporary project structure."""
         temp_dir = tempfile.mkdtemp()
@@ -65,7 +65,7 @@ def save_results(results):
         shutil.rmtree(temp_dir)
 
     @classmethod
-    @patch("chunker.chunker.get_parser")
+    @patch("chunker.parser.get_parser")
     def test_incremental_workflow(cls, mock_get_parser, temp_project):
         """Test complete incremental processing workflow."""
         mock_parser = mock_get_parser.return_value

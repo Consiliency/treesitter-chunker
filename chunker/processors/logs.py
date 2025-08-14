@@ -13,7 +13,7 @@ import re
 from collections import OrderedDict, deque
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -118,16 +118,13 @@ class LogProcessor(SpecializedProcessor):
                 True,
             )
             self.group_errors = self.config.format_specific.get("group_errors", True)
+        self._validate_config()
         self._init_patterns()
         self._buffer: deque[LogEntry] = deque()
         self._current_session_id: str | None = None
         self._session_counter = 0
 
-    @staticmethod
-    def _validate_config() -> None:
-        """Validate processor configuration."""
-
-    def _validate_config_old(self) -> None:
+    def _validate_config(self) -> None:
         """Validate processor configuration."""
         valid_chunk_by = {"time", "lines", "session", "level"}
         if self.chunk_by not in valid_chunk_by:
@@ -322,7 +319,7 @@ class LogProcessor(SpecializedProcessor):
                     f"{current_year} {timestamp_str}",
                     "%Y %b %d %H:%M:%S",
                 )
-                return dt.replace(tzinfo=timezone.utc)
+                return dt.replace(tzinfo=UTC)
             if format_name == "apache":
                 return datetime.strptime(timestamp_str, "%d/%b/%Y:%H:%M:%S %z")
             if format_name in {"iso_timestamp", "log4j"}:
@@ -338,7 +335,7 @@ class LogProcessor(SpecializedProcessor):
                     try:
                         dt = datetime.strptime(timestamp_str, fmt)
                         if dt.tzinfo is None:
-                            dt = dt.replace(tzinfo=timezone.utc)
+                            dt = dt.replace(tzinfo=UTC)
                         return dt
                     except ValueError:
                         continue
@@ -346,7 +343,7 @@ class LogProcessor(SpecializedProcessor):
                 try:
                     dt = parser.parse(timestamp_str)
                     if dt.tzinfo is None:
-                        dt = dt.replace(tzinfo=timezone.utc)
+                        dt = dt.replace(tzinfo=UTC)
                     return dt
                 except (ImportError, IndexError, KeyError):
                     pass

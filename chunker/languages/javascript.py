@@ -24,6 +24,9 @@ class JavaScriptConfig(LanguageConfig):
             "export_statement",
             "import_statement",
             "variable_declarator",
+            # Add namespace-like and enum patterns via TS superset nodes where present
+            "namespace_export",
+            "enum_declaration",
         }
 
     @property
@@ -77,7 +80,7 @@ class JavaScriptPlugin(LanguagePlugin):
     def get_node_name(node: Node, source: bytes) -> str | None:
         """Extract name from JavaScript nodes."""
         for child in node.children:
-            if child.type == "identifier":
+            if child.type in {"identifier", "type_identifier"}:
                 return source[child.start_byte : child.end_byte].decode("utf-8")
         if node.type == "method_definition":
             for child in node.children:

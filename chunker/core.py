@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from .languages import language_config_registry
+
+# Imported lazily below to avoid circular import with multi_language
 from .metadata import MetadataExtractorFactory
 from .parser import get_parser
 from .types import CodeChunk, compute_file_id, compute_node_id, compute_symbol_id
@@ -108,8 +111,24 @@ def _walk(
     # Ensure route list
     parent_route = (parent_route or []).copy()
 
+    # R special-cases: treat setClass/setMethod calls as chunks
+    force_chunk = False
+    r_call_name: str | None = None
+    if language == "r" and node.type == "call":
+        try:
+            callee = (getattr(node, "children", None) or [None])[0]
+            if getattr(callee, "type", None) == "identifier":
+                ident = source[callee.start_byte : callee.end_byte].decode(
+                    "utf-8", errors="ignore",
+                )
+                if ident in {"setClass", "setMethod", "setGeneric"}:
+                    force_chunk = True
+                    r_call_name = ident
+        except Exception:
+            pass
+
     # Check if this node should be a chunk
-    if should_chunk(node.type):
+    if should_chunk(node.type) or force_chunk:
         # Default span covers the current node
         span_start = node.start_byte
         span_end = node.end_byte
@@ -151,7 +170,7 @@ def _walk(
                     for child in getattr(node, "children", []) or []:
                         if getattr(child, "type", None) == "identifier":
                             ident = source[child.start_byte : child.end_byte].decode(
-                                "utf-8", errors="ignore"
+                                "utf-8", errors="ignore",
                             )
                             if ident in {"def", "defp", "defmacro", "defmacrop"}:
                                 adjusted_node_type = "function_definition"
@@ -178,6 +197,39 @@ def _walk(
                 adjusted_node_type = "class_declaration"
             elif node.type == "instance":
                 adjusted_node_type = "instance_declaration"
+            elif node.type == "header":
+                adjusted_node_type = "module_declaration"
+        elif language == "scala":
+            # Scala: detect case classes and adjust node type
+            if node.type == "class_definition":
+                # Check if this is a case class by examining first child
+                if node.children and node.children[0].type == "case":
+                    adjusted_node_type = "case_class_definition"
+            elif node.type == "function_definition":
+                # Check if this function is inside a class/trait/object (making it a method)
+                parent = getattr(node, "parent", None)
+                while parent:
+                    if parent.type in {
+                        "class_definition",
+                        "trait_definition",
+                        "object_definition",
+                        "template_body",
+                    }:
+                        adjusted_node_type = "method_definition"
+                        break
+                    parent = getattr(parent, "parent", None)
+        elif language == "julia":
+            # Map Julia assignment nodes that are actually function definitions
+            if node.type == "assignment":
+                # Check if left side is a call_expression (function signature)
+                for child in node.children:
+                    if child.type == "call_expression":
+                        adjusted_node_type = "short_function_definition"
+                        break
+            elif node.type == "abstract_definition":
+                adjusted_node_type = "abstract_type_definition"
+            elif node.type == "primitive_definition":
+                adjusted_node_type = "primitive_type_definition"
         elif language == "sql":
             # Map tree-sitter SQL node types to expected test node types
             if node.type in {
@@ -226,6 +278,22 @@ def _walk(
                     "defstruct",
                 }:
                     adjusted_node_type = form_name
+        # For R, include the name identifier for assignment-based function defs by
+        # expanding the span to include the full assignment expression
+        if language == "r" and node.type in {"function_definition"}:
+            parent = getattr(node, "parent", None)
+            if parent is not None and parent.type in {
+                "assignment",
+                "left_assignment",
+                "right_assignment",
+                "binary_operator",
+            }:
+                # Expand to the parent span so the chunk content includes the name and <-
+                span_start = min(span_start, parent.start_byte)
+                span_end = max(span_end, parent.end_byte)
+        # For R special call chunks, normalize node type to the callee name
+        if language == "r" and force_chunk and r_call_name:
+            adjusted_node_type = r_call_name
         text = source[span_start:span_end].decode()
         current_route = [*parent_route, adjusted_node_type]
         current_chunk = CodeChunk(
@@ -296,30 +364,30 @@ def _walk(
                     "logical_lines": complexity.logical_lines,
                 }
 
+            # Set metadata type field for all languages when metadata extraction is enabled
+            if language in {"typescript", "tsx"}:
+                # TypeScript-specific metadata type mapping
+                if adjusted_node_type == "interface_declaration":
+                    metadata["type"] = "interface_declaration"
+                elif adjusted_node_type == "type_alias_declaration":
+                    metadata["type"] = "type_alias_declaration"
+                elif adjusted_node_type == "enum_declaration":
+                    metadata["type"] = "enum_declaration"
+                elif adjusted_node_type in {"internal_module", "module"}:
+                    metadata["type"] = "namespace_declaration"
+                elif adjusted_node_type == "abstract_class_declaration":
+                    metadata["type"] = "class_declaration"
+                    metadata["abstract"] = True
+                else:
+                    metadata["type"] = adjusted_node_type
+            else:
+                # For other languages, set type to node_type by default
+                metadata["type"] = adjusted_node_type
+
             current_chunk.metadata = metadata
         else:
             # For compatibility, even if no extractors create an empty metadata dict
             current_chunk.metadata = {}
-
-        # Set metadata type field for all languages
-        if language in {"typescript", "tsx"}:
-            # TypeScript-specific metadata type mapping
-            if adjusted_node_type == "interface_declaration":
-                current_chunk.metadata["type"] = "interface_declaration"
-            elif adjusted_node_type == "type_alias_declaration":
-                current_chunk.metadata["type"] = "type_alias_declaration"
-            elif adjusted_node_type == "enum_declaration":
-                current_chunk.metadata["type"] = "enum_declaration"
-            elif adjusted_node_type in {"internal_module", "module"}:
-                current_chunk.metadata["type"] = "namespace_declaration"
-            elif adjusted_node_type == "abstract_class_declaration":
-                current_chunk.metadata["type"] = "class_declaration"
-                current_chunk.metadata["abstract"] = True
-            else:
-                current_chunk.metadata["type"] = adjusted_node_type
-        else:
-            # For other languages, set type to node_type by default
-            current_chunk.metadata["type"] = adjusted_node_type
 
         chunks.append(current_chunk)
         # Set better context for select languages
@@ -332,7 +400,7 @@ def _walk(
                     "type_declaration",
                 }:
                     name_node = getattr(node, "child_by_field_name", lambda _n: None)(
-                        "name"
+                        "name",
                     )
                     if name_node is not None:
                         item_name = source[
@@ -469,6 +537,125 @@ def _walk(
             ),
         )
 
+    # Julia-specific post-processing: merge preceding comments with definitions
+    if language == "julia":
+        chunks = _merge_julia_comments_with_definitions(chunks)
+
+    # MATLAB-specific post-processing: detect scripts
+    if language == "matlab":
+        chunks = _detect_matlab_scripts(chunks, node, source, parent_chunk)
+
+    return chunks
+
+
+def _merge_julia_comments_with_definitions(chunks: list[CodeChunk]) -> list[CodeChunk]:
+    """Merge Julia comment chunks with following definition chunks."""
+    if not chunks:
+        return chunks
+
+    merged_chunks = []
+    i = 0
+    while i < len(chunks):
+        current_chunk = chunks[i]
+
+        # Check if this is a line comment followed by a definition
+        if (
+            current_chunk.node_type == "line_comment"
+            and i + 1 < len(chunks)
+            and chunks[i + 1].node_type
+            in {
+                "struct_definition",
+                "function_definition",
+                "module_definition",
+                "macro_definition",
+                "macrocall_expression",
+                "abstract_definition",
+                "primitive_definition",
+                "abstract_type_definition",
+                "primitive_type_definition",
+            }
+        ):
+            next_chunk = chunks[i + 1]
+
+            # Check if they're adjacent (comment right before definition)
+            if (
+                current_chunk.end_line + 1 == next_chunk.start_line
+                or current_chunk.end_line == next_chunk.start_line
+            ):
+
+                # Merge the comment content with the definition content
+                merged_content = current_chunk.content + "\n" + next_chunk.content
+
+                # Create a new chunk with the merged content
+                merged_chunk = CodeChunk(
+                    language=next_chunk.language,
+                    file_path=next_chunk.file_path,
+                    node_type=next_chunk.node_type,
+                    start_line=current_chunk.start_line,
+                    end_line=next_chunk.end_line,
+                    byte_start=current_chunk.byte_start,
+                    byte_end=next_chunk.byte_end,
+                    parent_context=next_chunk.parent_context,
+                    content=merged_content,
+                    parent_chunk_id=next_chunk.parent_chunk_id,
+                    parent_route=next_chunk.parent_route,
+                )
+
+                # Copy metadata from the definition chunk
+                if hasattr(next_chunk, "metadata"):
+                    merged_chunk.metadata = next_chunk.metadata
+
+                merged_chunks.append(merged_chunk)
+                i += 2  # Skip both chunks
+                continue
+
+        # If not merging, just add the current chunk
+        merged_chunks.append(current_chunk)
+        i += 1
+
+    return merged_chunks
+
+
+def _detect_matlab_scripts(
+    chunks: list[CodeChunk], node, source: bytes, parent_chunk,
+) -> list[CodeChunk]:
+    """Detect MATLAB scripts and add script chunks when appropriate."""
+    # Only process at the source_file level (top level) with no parent chunk
+    if node.type != "source_file" or parent_chunk is not None:
+        return chunks
+
+    # Check if there are top-level statements that make this a script
+    has_top_level_code = False
+    has_functions_or_classes = any(
+        chunk.node_type in {"function_definition", "classdef", "class_definition"}
+        for chunk in chunks
+    )
+
+    # Look for top-level statements in the node children
+    for child in node.children:
+        if child.type in {"assignment", "function_call", "command", "comment"}:
+            has_top_level_code = True
+            break
+
+    # If there's top-level code, create a script chunk for the whole file
+    if has_top_level_code:
+        content = source.decode("utf-8", errors="replace")
+        script_chunk = CodeChunk(
+            language="matlab",
+            file_path="",
+            node_type="script",
+            start_line=1,
+            end_line=content.count("\n") + 1,
+            byte_start=0,
+            byte_end=len(source),
+            parent_context="",
+            content=content,
+            parent_chunk_id=None,
+            parent_route=["script"],
+        )
+        # Insert script chunk at the beginning
+        chunks.insert(0, script_chunk)
+
     return chunks
 
 
@@ -557,11 +744,42 @@ def chunk_file(
         List of CodeChunk objects with optional metadata
     """
     # Read file contents with robust decoding
+    p = Path(path)
     try:
-        src = Path(path).read_text(encoding="utf-8")
+        src = p.read_text(encoding="utf-8")
     except UnicodeDecodeError:
         # Fallback: replace invalid bytes to avoid crashing on bad encodings
-        src = Path(path).read_bytes().decode("utf-8", errors="replace")
+        src = p.read_bytes().decode("utf-8", errors="replace")
+
+    # Special handling for R Markdown: extract embedded R code blocks
+    if language == "r" and p.suffix.lower() in {".rmd", ".rmarkdown"}:
+        from .multi_language import (  # local import to avoid cycle
+            MultiLanguageProcessorImpl,
+        )
+
+        ml = MultiLanguageProcessorImpl()
+        # Prefer robust Rmd extraction that supports ```{r chunk-name}
+        pattern = re.compile(r"```\{r[^}]*\}\s*\r?\n([\s\S]*?)\r?\n```", re.DOTALL)
+        snippets = [(m.group(1), m.start(1), m.end(1)) for m in pattern.finditer(src)]
+        # Fallback to generic markdown extractor if custom pattern finds nothing
+        if not snippets:
+            snippets = ml.extract_embedded_code(
+                src, host_language="markdown", target_language="r",
+            )
+        all_chunks: list[CodeChunk] = []
+        for code, start, end in snippets:
+            # Derive pseudo file name for chunk id stability
+            pseudo_path = f"{p}:{start}-{end}"
+            all_chunks.extend(
+                chunk_text(
+                    code,
+                    "r",
+                    pseudo_path,
+                    extract_metadata=extract_metadata,
+                ),
+            )
+        return all_chunks
+
     return chunk_text(
         src,
         language,

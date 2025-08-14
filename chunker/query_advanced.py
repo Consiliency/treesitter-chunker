@@ -16,15 +16,29 @@ from .interfaces.query_advanced import (
 )
 from .types import CodeChunk
 
+# Module-level fallback pool for queries when no chunks are provided explicitly.
+# This is populated by AdvancedQueryIndex so generic query engines can still work
+# in integration scenarios where the index was built but the engine wasn't wired.
+DEFAULT_QUERY_CHUNKS: list[CodeChunk] = []
+
 
 class NaturalLanguageQueryEngine(ChunkQueryAdvanced):
     """Query chunks using natural language or structured queries."""
 
-    def __init__(self):
+    def __init__(self, chunks: list[CodeChunk] | None = None):
         """Initialize the query engine with language models and patterns."""
         self.query_patterns = self._initialize_query_patterns()
         self.code_patterns = self._initialize_code_patterns()
         self.embeddings_cache = {}
+        self.chunks = chunks or []
+
+    def set_chunks(self, chunks: list[CodeChunk]) -> None:
+        """Set the chunks to search from."""
+        self.chunks = chunks
+
+    def add_chunk(self, chunk: CodeChunk) -> None:
+        """Add a chunk to the internal collection."""
+        self.chunks.append(chunk)
 
     @staticmethod
     def _initialize_query_patterns() -> dict[str, list[re.Pattern]]:
@@ -143,19 +157,26 @@ class NaturalLanguageQueryEngine(ChunkQueryAdvanced):
     def search(
         self,
         query: str,
-        chunks: list[CodeChunk],
+        chunks: list[CodeChunk] | None = None,
         query_type: QueryType = QueryType.NATURAL_LANGUAGE,
         limit: int | None = None,
     ) -> list[QueryResult]:
         """Search chunks using various query types."""
+        # Use provided chunks or fall back to internal chunks; finally, try module default
+        search_chunks = chunks if chunks is not None else self.chunks
+        if not search_chunks and DEFAULT_QUERY_CHUNKS:
+            search_chunks = DEFAULT_QUERY_CHUNKS
+        # If still empty, treat as no results rather than scanning everything
+        if not search_chunks:
+            return []
         if query_type == QueryType.NATURAL_LANGUAGE:
-            results = self._natural_language_search(query, chunks)
+            results = self._natural_language_search(query, search_chunks)
         elif query_type == QueryType.STRUCTURED:
-            results = self._structured_search(query, chunks)
+            results = self._structured_search(query, search_chunks)
         elif query_type == QueryType.REGEX:
-            results = self._regex_search(query, chunks)
+            results = self._regex_search(query, search_chunks)
         elif query_type == QueryType.AST_PATTERN:
-            results = self._ast_pattern_search(query, chunks)
+            results = self._ast_pattern_search(query, search_chunks)
         else:
             raise ValueError(f"Unsupported query type: {query_type}")
         results.sort(key=lambda r: r.score, reverse=True)
@@ -429,7 +450,7 @@ class NaturalLanguageQueryEngine(ChunkQueryAdvanced):
     def _parse_structured_query(query: str) -> dict[str, Any]:
         """Parse structured query syntax."""
         criteria = {"keywords": []}
-        pattern = re.compile(r"(\\w+):(\\S+)")
+        pattern = re.compile(r"(\w+):(\S+)")
         matches = pattern.findall(query)
         for key, value in matches:
             if key == "type":
@@ -638,6 +659,22 @@ class AdvancedQueryIndex(QueryIndexAdvanced):
         self.file_index[chunk.file_path].add(chunk_id)
         self.language_index[chunk.language].add(chunk_id)
         self.embeddings[chunk_id] = self._generate_embedding(chunk)
+        # Also populate module-level default pool for engines without explicit chunks
+        DEFAULT_QUERY_CHUNKS.append(chunk)
+
+    def build_index(self, chunks: list[CodeChunk]) -> None:
+        """Build search index from chunks and reset default pool accordingly."""
+        self.chunks.clear()
+        self.text_index.clear()
+        self.type_index.clear()
+        self.file_index.clear()
+        self.language_index.clear()
+        self.embeddings.clear()
+        # Reset default pool to avoid leaking data into empty-index queries
+        global DEFAULT_QUERY_CHUNKS
+        DEFAULT_QUERY_CHUNKS = []
+        for chunk in chunks:
+            self.add_chunk(chunk)
 
     def remove_chunk(self, chunk_id: str) -> None:
         """Remove a chunk from the index."""
@@ -701,12 +738,12 @@ class AdvancedQueryIndex(QueryIndexAdvanced):
     def _tokenize(text: str) -> set[str]:
         """Tokenize text for indexing."""
         tokens = set()
-        words = re.findall(r"\\w+", text)
+        words = re.findall(r"\w+", text)
         for word in words:
             if len(word) >= 2:
                 tokens.add(word.lower())
                 camel_parts = re.findall(
-                    r"[A-Z]?[a-z]+|[A-Z]+(?=[A-Z][a-z]|\\b|\\d)|[0-9]+",
+                    r"[A-Z]?[a-z]+|[A-Z]+(?=[A-Z][a-z]|\b|\d)|[0-9]+",
                     word,
                 )
                 for part in camel_parts:
@@ -912,7 +949,7 @@ class SmartQueryOptimizer(QueryOptimizer):
         type_freq = Counter()
         for chunk in chunks[:100]:
             type_freq[chunk.node_type] += 1
-            tokens = set(re.findall(r"\\w+", chunk.content.lower()))
+            tokens = set(re.findall(r"\w+", chunk.content.lower()))
             for token in tokens:
                 if len(token) >= 3 and token.startswith(partial_lower):
                     term_freq[token] += 1

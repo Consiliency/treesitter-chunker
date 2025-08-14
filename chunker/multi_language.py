@@ -240,7 +240,7 @@ class LanguageDetectorImpl(LanguageDetector):
         language_blocks = []
         # Detect fenced code blocks and include both language and content size
         markdown_blocks = list(
-            re.finditer(r"```([a-zA-Z0-9_+-]*)\n([\s\S]*?)```", content)
+            re.finditer(r"```([a-zA-Z0-9_+-]*)\n([\s\S]*?)```", content),
         )
         for m in markdown_blocks:
             lang = m.group(1) or None
@@ -1058,7 +1058,7 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
                 "method_definition",
             }:
                 name_match = re.search(
-                    r"(?:function|class|def)\\s+(\\w+)",
+                    r"(?:function|class|def)\s+(\w+)",
                     chunk.content,
                 )
                 if name_match:
@@ -1119,8 +1119,8 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
                 "class_definition",
             }:
                 type_patterns = [
-                    "(?:interface|type|class|struct)\\s+(\\w+)",
-                    "type\\s+(\\w+)\\s+struct",
+                    r"(?:interface|type|class|struct)\s+(\w+)",
+                    r"type\s+(\w+)\s+struct",
                 ]
                 type_name = None
                 for pattern in type_patterns:
@@ -1159,10 +1159,10 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
                                     break
             if "sql" in chunk.content.lower() or "query" in chunk.content.lower():
                 table_patterns = [
-                    "FROM\\s+(\\w+)",
-                    "INSERT\\s+INTO\\s+(\\w+)",
-                    "UPDATE\\s+(\\w+)",
-                    "CREATE\\s+TABLE\\s+(\\w+)",
+                    r"FROM\s+(\w+)",
+                    r"INSERT\s+INTO\s+(\w+)",
+                    r"UPDATE\s+(\w+)",
+                    r"CREATE\s+TABLE\s+(\w+)",
                 ]
                 for pattern in table_patterns:
                     for match in re.finditer(pattern, chunk.content, re.IGNORECASE):
@@ -1208,7 +1208,7 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
         for chunk in chunks:
             if chunk.node_type in {"class_definition", "function_definition"}:
                 name_match = re.search(
-                    r"(?:class|function|def)\\s+(\\w+)",
+                    r"(?:class|function|def)\s+(\w+)",
                     chunk.content,
                 )
                 if name_match:
@@ -1222,13 +1222,40 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
         for base_name, name_chunks in name_patterns.items():
             if len(name_chunks) > 1:
                 merged = False
-                for feature_chunks in feature_groups.values():
-                    if any(chunk in feature_chunks for chunk in name_chunks):
-                        for chunk in name_chunks:
-                            if chunk not in feature_chunks:
-                                feature_chunks.append(chunk)
-                        merged = True
-                        break
+                # Find the most appropriate feature group to merge with
+                best_feature = None
+                best_match_count = 0
+
+                for feature_name, feature_chunks in feature_groups.items():
+                    match_count = sum(
+                        1 for chunk in name_chunks if chunk in feature_chunks
+                    )
+                    if match_count > best_match_count:
+                        best_match_count = match_count
+                        best_feature = feature_name
+
+                # If we found a good feature group to merge with, do it
+                if best_feature and best_match_count > 0:
+                    feature_chunks = feature_groups[best_feature]
+                    for chunk in name_chunks:
+                        if chunk not in feature_chunks:
+                            feature_chunks.append(chunk)
+                    merged = True
+
+                # Also check if the base_name matches any existing feature name
+                if not merged:
+                    for feature_name in feature_groups:
+                        if (
+                            base_name.lower() in feature_name.lower()
+                            or feature_name.lower() in base_name.lower()
+                        ):
+                            feature_chunks = feature_groups[feature_name]
+                            for chunk in name_chunks:
+                                if chunk not in feature_chunks:
+                                    feature_chunks.append(chunk)
+                            merged = True
+                            break
+
                 if not merged:
                     feature_groups[f"entity_{base_name}"] = name_chunks
         references = self.cross_language_references(chunks)

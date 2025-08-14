@@ -678,3 +678,12 @@ Summary: Tree-sitter based code chunking library""",
             report["valid"] = False
 
         return report["valid"], report
+
+    def detect_platform(self) -> dict[str, str]:
+        """
+        Detect current platform details
+
+        Returns:
+            Platform info including OS, arch, python version
+        """
+        return self.platform_support.detect_platform()

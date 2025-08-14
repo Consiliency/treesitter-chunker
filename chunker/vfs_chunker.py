@@ -61,6 +61,16 @@ class VFSChunker:
         if language is None:
             language = self._detect_language(path)
             if not language:
+                # Fallback: infer from simple extension map used elsewhere
+                try:
+                    ext = Path(path).suffix.lower()
+                    from .plugin_manager import get_plugin_manager
+
+                    pm = get_plugin_manager()
+                    language = pm.registry.get_language_for_file(Path(path))
+                except Exception:
+                    language = None
+            if not language:
                 raise ValueError(f"Could not detect language for: {path}")
         if streaming and language not in self._chunkers:
             self._chunkers[language] = StreamingChunker(language)

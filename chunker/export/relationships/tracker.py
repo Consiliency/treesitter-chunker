@@ -254,9 +254,15 @@ class ASTRelationshipTracker(RelationshipTracker):
     ) -> None:
         """Find function calls in JavaScript code."""
         if node.type == "call_expression" and node.children:
-            func_node = node.children[0]
-            if func_node.type == "identifier":
-                func_name = chunk.content[func_node.start_byte : func_node.end_byte]
+            callee = node.children[0]
+            # Extract a sensible function name from identifiers or member expressions
+            func_name: str | None = None
+            if callee.type == "identifier":
+                func_name = chunk.content[callee.start_byte : callee.end_byte]
+            elif callee.type in {"member_expression", "subscript_expression"}:
+                # Walk right-most property/identifier
+                func_name = self._extract_js_member_tail(chunk, callee)
+            if func_name:
                 target_chunk = self._find_chunk_by_name(func_name, all_chunks)
                 if target_chunk and target_chunk.chunk_id != chunk.chunk_id:
                     self.track_relationship(
@@ -278,21 +284,46 @@ class ASTRelationshipTracker(RelationshipTracker):
         if node.type == "class_declaration":
             for child in node.children:
                 if child.type == "class_heritage":
+                    # class_heritage may contain identifier or member_expression
+                    base_name = None
                     for heritage_child in child.children:
                         if heritage_child.type == "identifier":
                             base_name = chunk.content[
                                 heritage_child.start_byte : heritage_child.end_byte
                             ]
-                            base_chunk = self._find_chunk_by_name(base_name, all_chunks)
-                            if base_chunk and base_chunk.chunk_id != chunk.chunk_id:
-                                self.track_relationship(
-                                    chunk,
-                                    base_chunk,
-                                    RelationshipType.INHERITS,
-                                    {"base_class": base_name},
-                                )
+                            break
+                        if heritage_child.type in {
+                            "member_expression",
+                            "scoped_identifier",
+                        }:
+                            base_name = self._extract_js_member_tail(
+                                chunk, heritage_child,
+                            )
+                            break
+                    if base_name:
+                        base_chunk = self._find_chunk_by_name(base_name, all_chunks)
+                        if base_chunk and base_chunk.chunk_id != chunk.chunk_id:
+                            self.track_relationship(
+                                chunk,
+                                base_chunk,
+                                RelationshipType.INHERITS,
+                                {"base_class": base_name},
+                            )
         for child in node.children:
             self._find_javascript_inheritance(chunk, child, all_chunks)
+
+    def _extract_js_member_tail(self, chunk: CodeChunk, node: Node) -> str | None:
+        """Extract the right-most identifier name from a JS member/subscript expression."""
+        # Attempt to find the last identifier-like child
+        tail: str | None = None
+        stack = [node]
+        while stack:
+            current = stack.pop()
+            for child in getattr(current, "children", [])[::-1]:
+                if child.type in {"identifier", "property_identifier"}:
+                    return chunk.content[child.start_byte : child.end_byte]
+                stack.append(child)
+        return tail
 
     def _find_c_includes(self, chunk: CodeChunk, node: Node) -> None:
         """Find include statements in C/C++ code."""
@@ -325,6 +356,18 @@ class ASTRelationshipTracker(RelationshipTracker):
                         RelationshipType.CALLS,
                         {"function": func_name},
                     )
+            # Support member expressions obj.method()
+            elif func_node.type in {"member_expression", "call_expression"}:
+                name = self._extract_member_name(func_node, chunk.content)
+                if name:
+                    target_chunk = self._find_chunk_by_name(name, all_chunks)
+                    if target_chunk and target_chunk.chunk_id != chunk.chunk_id:
+                        self.track_relationship(
+                            chunk,
+                            target_chunk,
+                            RelationshipType.CALLS,
+                            {"function": name},
+                        )
         for child in node.children:
             self._find_c_calls(chunk, child, all_chunks)
 
@@ -392,16 +435,43 @@ class ASTRelationshipTracker(RelationshipTracker):
 
     @staticmethod
     def _find_chunk_by_name(name: str, chunks: list[CodeChunk]) -> CodeChunk | None:
-        """Find a chunk by function/class name."""
+        """Find a chunk by function/class name.
+
+        Attempts structured metadata first (signature/exports), then falls back to
+        textual heuristics. Supports dotted names by comparing the tail.
+        """
+        simple_name = name.split(".")[-1]
         for chunk in chunks:
+            try:
+                sig = (
+                    chunk.metadata.get("signature")
+                    if hasattr(chunk, "metadata")
+                    else None
+                )
+                if isinstance(sig, dict):
+                    sig_name = sig.get("name")
+                    if isinstance(sig_name, str) and sig_name == simple_name:
+                        return chunk
+                exports = (
+                    chunk.metadata.get("exports")
+                    if hasattr(chunk, "metadata")
+                    else None
+                )
+                if isinstance(exports, (list, tuple)) and simple_name in exports:
+                    return chunk
+            except Exception:
+                pass
             lines = chunk.content.split("\n")
             for line in lines:
                 if re.match(
-                    f"^\\s*(def|class|function|fn|struct|impl)\\s+{re.escape(name)}\\b",
+                    f"^\\s*(def|class|function|fn|struct|impl)\\s+{re.escape(simple_name)}\\b",
                     line,
                 ):
                     return chunk
-                if re.match(f"^\\s*{re.escape(name)}\\s*=", line):
+                # JS/TS method shorthand or assignment
+                if re.match(f"^\\s*{re.escape(simple_name)}\\s*\\(", line):
+                    return chunk
+                if re.match(f"^\\s*{re.escape(simple_name)}\\s*=", line):
                     return chunk
         return None
 

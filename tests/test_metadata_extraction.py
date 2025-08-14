@@ -79,12 +79,12 @@ class TestPythonMetadataExtraction:
     """Test Python-specific metadata extraction."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def extractor(cls):
         return PythonMetadataExtractor()
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def analyzer(cls):
         return PythonComplexityAnalyzer()
 
@@ -300,12 +300,12 @@ class TestJavaScriptMetadataExtraction:
     """Test JavaScript-specific metadata extraction."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def extractor(cls):
         return JavaScriptMetadataExtractor()
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def analyzer(cls):
         return JavaScriptComplexityAnalyzer()
 
@@ -431,7 +431,7 @@ class TestTypeScriptMetadataExtraction:
     """Test TypeScript-specific metadata extraction."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def extractor(cls):
         return TypeScriptMetadataExtractor()
 
@@ -542,13 +542,21 @@ const utils = {
 };
 """
         chunks = chunk_text(code, "javascript", extract_metadata=True)
-        greet_chunk = next(c for c in chunks if c.node_type == "function_declaration")
+        greet_chunk = next(
+            (c for c in chunks if c.node_type == "function_declaration"),
+            None,
+        )
+        assert greet_chunk is not None, "Expected function_declaration chunk not found"
         assert greet_chunk.metadata is not None
         assert greet_chunk.metadata["signature"]["name"] == "greet"
         assert "Greet a person" in greet_chunk.metadata["docstring"]
         deps = greet_chunk.metadata.get("dependencies", [])
         assert isinstance(deps, list)
-        fetch_chunk = next(c for c in chunks if c.node_type == "method_definition")
+        fetch_chunk = next(
+            (c for c in chunks if c.node_type == "method_definition"),
+            None,
+        )
+        assert fetch_chunk is not None, "Expected method_definition chunk not found"
         assert "async" in fetch_chunk.metadata["signature"]["modifiers"]
         deps = fetch_chunk.metadata.get("dependencies", [])
         assert isinstance(deps, list)

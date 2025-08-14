@@ -16,13 +16,13 @@ class TestNaturalLanguageQueryEngine:
     """Test natural language query engine."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def query_engine(cls):
         """Create query engine instance."""
         return NaturalLanguageQueryEngine()
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def sample_chunks(cls):
         """Create sample code chunks for testing."""
         return [
@@ -253,13 +253,13 @@ class TestAdvancedQueryIndex:
     """Test advanced query index functionality."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def index(cls):
         """Create index instance."""
         return AdvancedQueryIndex()
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def sample_chunks(cls):
         """Create sample chunks."""
         return [
@@ -414,7 +414,7 @@ class TestSmartQueryOptimizer:
     """Test query optimization functionality."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def optimizer(cls):
         """Create optimizer instance."""
         return SmartQueryOptimizer()
@@ -508,10 +508,11 @@ class TestSmartQueryOptimizer:
         optimized = optimizer.optimize_query("", QueryType.NATURAL_LANGUAGE)
         assert not optimized
 
-    def test_preserve_query_structure(self):
+    @staticmethod
+    def test_preserve_query_structure(optimizer):
         """Test that optimization preserves important structure."""
         query = "class ErrorHandler"
-        optimized = self.optimize_query(query, QueryType.NATURAL_LANGUAGE)
+        optimized = optimizer.optimize_query(query, QueryType.NATURAL_LANGUAGE)
         assert "class" in optimized
         assert "errorhandler" in optimized.lower()
 
@@ -530,7 +531,7 @@ class TestIntegration:
     """Integration tests for the complete query system."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def query_system(cls):
         """Create complete query system."""
         engine = NaturalLanguageQueryEngine()

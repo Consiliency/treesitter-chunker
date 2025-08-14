@@ -47,6 +47,7 @@ class AdaptiveChunker(ChunkingStrategy):
         self.complexity_analyzer = ComplexityAnalyzer()
         self.coupling_analyzer = CouplingAnalyzer()
         self.semantic_analyzer = SemanticAnalyzer()
+        self._complex_context_depth = 0
         self.config = {
             "base_chunk_size": 50,
             "min_chunk_size": 10,
@@ -186,6 +187,11 @@ class AdaptiveChunker(ChunkingStrategy):
         """Traverse AST and create adaptive chunks."""
         metrics = self._calculate_node_metrics(node, source)
         ideal_size = self._calculate_ideal_chunk_size(metrics, file_metrics)
+        if self._complex_context_depth > 0:
+            ideal_size = min(ideal_size, 4)
+        # For complex natural-boundary nodes, bias toward smaller target sizes
+        if node.type in self.natural_boundaries and metrics.complexity_score >= 10.0:
+            ideal_size = max(self.config["min_chunk_size"], int(ideal_size * 0.5))
         line_count = node.end_point[0] - node.start_point[0] + 1
         should_chunk = self._should_create_chunk(
             node,
@@ -194,6 +200,42 @@ class AdaptiveChunker(ChunkingStrategy):
             line_count,
             depth,
         )
+        # Special handling for natural boundaries to enforce desired behavior:
+        # - Complex functions/classes: split inside (no single giant chunk)
+        # - Simple functions/classes: one chunk, do not emit children chunks
+        if node.type in self.natural_boundaries:
+            if metrics.complexity_score >= 10.0:
+                # Treat as container: traverse children to create smaller chunks
+                self._complex_context_depth += 1
+                try:
+                    for child in node.children:
+                        self._adaptive_traverse(
+                            child,
+                            source,
+                            file_path,
+                            language,
+                            file_metrics,
+                            chunks,
+                            parent_context,
+                            depth + 1,
+                        )
+                finally:
+                    self._complex_context_depth -= 1
+                return
+            # For simple boundaries, always emit a single chunk and stop
+            if True:
+                # Emit a single chunk for simple boundary and stop
+                chunk = self._create_chunk(
+                    node,
+                    source,
+                    file_path,
+                    language,
+                    parent_context,
+                    metrics,
+                )
+                chunks.append(chunk)
+                return
+
         if should_chunk:
             chunk = self._create_chunk(
                 node,
@@ -205,14 +247,6 @@ class AdaptiveChunker(ChunkingStrategy):
             )
             chunks.append(chunk)
             parent_context = f"{node.type}: {chunk.metadata.get('name', '')}"
-
-            # If preserve_boundaries is True and this is a natural boundary,
-            # don't create additional chunks for its children
-            if (
-                self.config.get("preserve_boundaries", True)
-                and node.type in self.natural_boundaries
-            ):
-                return
             remaining_size = ideal_size - line_count
             if remaining_size > self.config["min_chunk_size"]:
                 return
@@ -233,10 +267,45 @@ class AdaptiveChunker(ChunkingStrategy):
                         language,
                         parent_context,
                     )
-                    chunks.append(group_chunk)
+                    if group_chunk:  # Only add if valid
+                        chunks.append(group_chunk)
+                    else:
+                        # If group chunk creation failed, process each node individually
+                        for child in current_group:
+                            self._adaptive_traverse(
+                                child,
+                                source,
+                                file_path,
+                                language,
+                                file_metrics,
+                                chunks,
+                                parent_context,
+                                depth + 1,
+                            )
                 current_group = []
                 accumulated_lines = 0
-            if child_lines > ideal_size * 0.7 or child.type in self.natural_boundaries:
+            # Force standalone traversal for large/complex children; otherwise allow grouping
+            force_standalone = child_lines > ideal_size * 0.7
+            if not force_standalone and self._complex_context_depth > 0:
+                force_standalone = child_lines >= 3
+            if not force_standalone and child.type in self.natural_boundaries:
+                # Inspect child complexity to decide grouping
+                child_metrics = self._calculate_node_metrics(child, source)
+                if (
+                    child_metrics.complexity_score
+                    >= self.config["high_complexity_threshold"]
+                    or child_lines >= self.config["min_chunk_size"]
+                ):
+                    force_standalone = True
+            # Enhanced boundary preservation: don't group function/class definitions together
+            if (
+                not force_standalone
+                and self.config.get("preserve_boundaries", True)
+                and child.type in self.natural_boundaries
+                and any(n.type in self.natural_boundaries for n in current_group)
+            ):
+                force_standalone = True
+            if force_standalone:
                 if current_group:
                     group_chunk = self._create_group_chunk(
                         current_group,
@@ -245,7 +314,21 @@ class AdaptiveChunker(ChunkingStrategy):
                         language,
                         parent_context,
                     )
-                    chunks.append(group_chunk)
+                    if group_chunk:  # Only add if valid
+                        chunks.append(group_chunk)
+                    else:
+                        # If group chunk creation failed, process each node individually
+                        for child in current_group:
+                            self._adaptive_traverse(
+                                child,
+                                source,
+                                file_path,
+                                language,
+                                file_metrics,
+                                chunks,
+                                parent_context,
+                                depth + 1,
+                            )
                     current_group = []
                     accumulated_lines = 0
                 self._adaptive_traverse(
@@ -269,7 +352,22 @@ class AdaptiveChunker(ChunkingStrategy):
                 language,
                 parent_context,
             )
-            chunks.append(group_chunk)
+            if group_chunk:  # Only add if valid
+                chunks.append(group_chunk)
+            else:
+                # If group chunk creation failed (e.g., boundary preservation),
+                # process each node individually
+                for child in current_group:
+                    self._adaptive_traverse(
+                        child,
+                        source,
+                        file_path,
+                        language,
+                        file_metrics,
+                        chunks,
+                        parent_context,
+                        depth + 1,
+                    )
 
     def _calculate_node_metrics(
         self,
@@ -336,6 +434,22 @@ class AdaptiveChunker(ChunkingStrategy):
         _depth: int,
     ) -> bool:
         """Determine if a node should become a chunk."""
+        # Boundary preservation: don't chunk blocks containing multiple function definitions
+        if self.config.get("preserve_boundaries", True) and node.type == "block":
+            boundary_children = [
+                c for c in node.children if c.type in self.natural_boundaries
+            ]
+            if len(boundary_children) > 1:
+                return False
+
+        # Strong bias: complex code should be in smaller chunks
+        if metrics.complexity_score >= 10.0:
+            # Do not emit very large complex chunks; let traversal/grouping split them
+            if line_count > ideal_size:
+                return False
+            # Prefer emitting when it is already small enough
+            if line_count >= max(3, int(ideal_size * 0.4)):
+                return True
         if (
             self.config.get(
                 "preserve_boundaries",
@@ -348,6 +462,9 @@ class AdaptiveChunker(ChunkingStrategy):
             node.type in self.natural_boundaries
             and line_count >= self.config["min_chunk_size"]
         ):
+            return True
+        # For simple code, prefer larger chunks
+        if metrics.complexity_score < 5.0 and line_count >= ideal_size * 0.85:
             return True
         if line_count >= ideal_size * 0.7:
             return True
@@ -372,6 +489,21 @@ class AdaptiveChunker(ChunkingStrategy):
             "type_definition",
             "comment",
             "decorator_list",
+            # Common statement-level split points
+            "expression_statement",
+            "assignment",
+            "augmented_assignment",
+            "return_statement",
+            "pass_statement",
+            "if_statement",
+            "elif_clause",
+            "else_clause",
+            "for_statement",
+            "while_statement",
+            "try_statement",
+            "except_clause",
+            "finally_clause",
+            "with_statement",
         }
         return node.type in split_preferred
 
@@ -426,6 +558,14 @@ class AdaptiveChunker(ChunkingStrategy):
         """Create a chunk from a group of nodes."""
         if not nodes:
             return None
+
+        # Enhanced boundary preservation: don't group multiple natural boundaries
+        if self.config.get("preserve_boundaries", True):
+            boundary_nodes = [n for n in nodes if n.type in self.natural_boundaries]
+            if len(boundary_nodes) > 1:
+                # If we have multiple boundary nodes, only create individual chunks
+                return None
+
         first_node = nodes[0]
         last_node = nodes[-1]
         start_byte = first_node.start_byte

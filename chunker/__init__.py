@@ -71,7 +71,7 @@ from .smart_context import InMemoryContextCache, TreeSitterSmartContextProvider
 from .streaming import chunk_file_streaming
 from .types import CodeChunk
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 
 
 # Simple text chunking
@@ -125,7 +125,7 @@ if _ADV_QUERY_AVAILABLE:
             "AdvancedQueryIndex",
             "NaturalLanguageQueryEngine",
             "SmartQueryOptimizer",
-        ]
+        ],
     )
 
 __all__.extend(
@@ -152,5 +152,5 @@ __all__.extend(
         "get_plugin_manager",
         "list_languages",
         "return_parser",
-    ]
+    ],
 )
