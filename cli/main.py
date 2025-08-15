@@ -19,8 +19,17 @@ from chunker import chunk_file, chunk_text
 from chunker.exceptions import ChunkerError
 from chunker.parser import list_languages
 
-# Import debug commands
-from .debug import commands as debug_commands
+# Import debug commands conditionally
+try:
+    from .debug import commands as debug_commands
+    HAS_DEBUG = True
+except ImportError as e:
+    if "graphviz" in str(e):
+        HAS_DEBUG = False
+        DEBUG_ERROR = "graphviz"
+    else:
+        HAS_DEBUG = False
+        DEBUG_ERROR = "unknown"
 
 # Import repo commands
 from .repo_command import app as repo_app
@@ -28,7 +37,21 @@ from .repo_command import app as repo_app
 app = typer.Typer(help="Tree‑sitter‑based code‑chunker CLI")
 console = Console()
 
-app.add_typer(debug_commands.app, name="debug", help="Debug and visualization tools")
+if HAS_DEBUG:
+    app.add_typer(debug_commands.app, name="debug", help="Debug and visualization tools")
+else:
+    @app.command()
+    def debug():
+        """Debug and visualization tools (requires graphviz dependency)"""
+        if DEBUG_ERROR == "graphviz":
+            console.print("[yellow]Debug commands require the 'viz' extra: pip install treesitter-chunker[viz][/yellow]")
+            console.print("[blue]Or install graphviz system package:[/blue]")
+            console.print("  Ubuntu/Debian: sudo apt-get install graphviz")
+            console.print("  macOS: brew install graphviz")
+            console.print("  Windows: choco install graphviz")
+        else:
+            console.print("[red]Debug commands failed to load: {DEBUG_ERROR}[/red]")
+        raise typer.Exit(1)
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
