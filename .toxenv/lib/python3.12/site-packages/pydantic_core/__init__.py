@@ -30,7 +30,7 @@ from ._pydantic_core import (
 from .core_schema import CoreConfig, CoreSchema, CoreSchemaType, ErrorType
 
 if _sys.version_info < (3, 11):
-    from typing_extensions import NotRequired as _NotRequired
+    from typing import NotRequired as _NotRequired
 else:
     from typing import NotRequired as _NotRequired
 

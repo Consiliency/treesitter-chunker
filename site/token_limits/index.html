@@ -1,0 +1,1146 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.16">
+    
+    
+      
+        <title>Token Limit Handling - Tree-sitter Chunker</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.7e37652d.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#token-limit-handling" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Tree-sitter Chunker" class="md-header__button md-logo" aria-label="Tree-sitter Chunker" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Tree-sitter Chunker
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Token Limit Handling
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/Consiliency/treesitter-chunker" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Overview
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../getting-started/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../user-guide/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  User Guide
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../configuration/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Configuration
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../cli-reference/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  CLI Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../api-reference/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  API Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../export-formats/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Export Formats
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../graphml_export/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  GraphML Export
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../performance-guide/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Performance Guide
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../grammar_discovery/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Grammar Discovery
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../zero_config_api/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Zero-Config API
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Tree-sitter Chunker" class="md-nav__button md-logo" aria-label="Tree-sitter Chunker" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Tree-sitter Chunker
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/Consiliency/treesitter-chunker" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Getting Started
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    User Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Configuration
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    CLI Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    API Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../export-formats/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Export Formats
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../graphml_export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    GraphML Export
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../performance-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Performance Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../grammar_discovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Grammar Discovery
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zero_config_api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Zero-Config API
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      Quick Start
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#features" class="md-nav__link">
+    <span class="md-ellipsis">
+      Features
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Features">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-token-aware-chunking" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Token-Aware Chunking
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-automatic-chunk-splitting" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Automatic Chunk Splitting
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-multiple-tokenizer-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Multiple Tokenizer Models
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      API Reference
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="API Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Functions
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#chunk_text_with_token_limit" class="md-nav__link">
+    <span class="md-ellipsis">
+      chunk_text_with_token_limit()
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#chunk_file_with_token_limit" class="md-nav__link">
+    <span class="md-ellipsis">
+      chunk_file_with_token_limit()
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#count_chunk_tokens" class="md-nav__link">
+    <span class="md-ellipsis">
+      count_chunk_tokens()
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Classes
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Classes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#treesittertokenawarechunker" class="md-nav__link">
+    <span class="md-ellipsis">
+      TreeSitterTokenAwareChunker
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chunk-metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      Chunk Metadata
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#splitting-strategies" class="md-nav__link">
+    <span class="md-ellipsis">
+      Splitting Strategies
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Splitting Strategies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#class-splitting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Class Splitting
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#function-splitting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Function Splitting
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      Best Practices
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#integration-with-fallback-strategies" class="md-nav__link">
+    <span class="md-ellipsis">
+      Integration with Fallback Strategies
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Performance Considerations
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="token-limit-handling">Token Limit Handling<a class="headerlink" href="#token-limit-handling" title="Permanent link">&para;</a></h1>
+<p>The treesitter-chunker now includes built-in support for respecting token limits when chunking code. This is essential when preparing code for LLMs that have specific context window limitations.</p>
+<h2 id="quick-start">Quick Start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">chunk_file_with_token_limit</span>
+
+<span class="c1"># Chunk a file ensuring no chunk exceeds 1000 tokens</span>
+<span class="n">chunks</span> <span class="o">=</span> <span class="n">chunk_file_with_token_limit</span><span class="p">(</span>
+    <span class="s2">&quot;example.py&quot;</span><span class="p">,</span> 
+    <span class="n">language</span><span class="o">=</span><span class="s2">&quot;python&quot;</span><span class="p">,</span> 
+    <span class="n">max_tokens</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+    <span class="n">model</span><span class="o">=</span><span class="s2">&quot;gpt-4&quot;</span>
+<span class="p">)</span>
+
+<span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">chunks</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">chunk</span><span class="o">.</span><span class="n">node_type</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">chunk</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;token_count&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> tokens&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h2 id="features">Features<a class="headerlink" href="#features" title="Permanent link">&para;</a></h2>
+<h3 id="1-token-aware-chunking">1. Token-Aware Chunking<a class="headerlink" href="#1-token-aware-chunking" title="Permanent link">&para;</a></h3>
+<p>The chunker automatically adds token count information to each chunk's metadata:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">chunk_file</span>
+
+<span class="n">chunks</span> <span class="o">=</span> <span class="n">chunk_file</span><span class="p">(</span><span class="s2">&quot;example.py&quot;</span><span class="p">,</span> <span class="s2">&quot;python&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">chunks</span><span class="p">:</span>
+    <span class="c1"># Token info is automatically added</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Tokens: </span><span class="si">{</span><span class="n">chunk</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;token_count&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;N/A&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="2-automatic-chunk-splitting">2. Automatic Chunk Splitting<a class="headerlink" href="#2-automatic-chunk-splitting" title="Permanent link">&para;</a></h3>
+<p>When a chunk exceeds the specified token limit, it's automatically split while preserving code structure:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Large functions/classes are split intelligently</span>
+<span class="n">chunks</span> <span class="o">=</span> <span class="n">chunk_file_with_token_limit</span><span class="p">(</span><span class="s2">&quot;large_file.py&quot;</span><span class="p">,</span> <span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="n">max_tokens</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="3-multiple-tokenizer-models">3. Multiple Tokenizer Models<a class="headerlink" href="#3-multiple-tokenizer-models" title="Permanent link">&para;</a></h3>
+<p>Support for different LLM tokenizers:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># GPT-4 (default)</span>
+<span class="n">chunks</span> <span class="o">=</span> <span class="n">chunk_file_with_token_limit</span><span class="p">(</span><span class="s2">&quot;file.py&quot;</span><span class="p">,</span> <span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="n">max_tokens</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="s2">&quot;gpt-4&quot;</span><span class="p">)</span>
+
+<span class="c1"># Claude</span>
+<span class="n">chunks</span> <span class="o">=</span> <span class="n">chunk_file_with_token_limit</span><span class="p">(</span><span class="s2">&quot;file.py&quot;</span><span class="p">,</span> <span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="n">max_tokens</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="s2">&quot;claude&quot;</span><span class="p">)</span>
+
+<span class="c1"># GPT-3.5</span>
+<span class="n">chunks</span> <span class="o">=</span> <span class="n">chunk_file_with_token_limit</span><span class="p">(</span><span class="s2">&quot;file.py&quot;</span><span class="p">,</span> <span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="n">max_tokens</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="s2">&quot;gpt-3.5-turbo&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h2 id="api-reference">API Reference<a class="headerlink" href="#api-reference" title="Permanent link">&para;</a></h2>
+<h3 id="functions">Functions<a class="headerlink" href="#functions" title="Permanent link">&para;</a></h3>
+<h4 id="chunk_text_with_token_limit"><code>chunk_text_with_token_limit()</code><a class="headerlink" href="#chunk_text_with_token_limit" title="Permanent link">&para;</a></h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">chunk_text_with_token_limit</span><span class="p">(</span>
+    <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> 
+    <span class="n">language</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> 
+    <span class="n">max_tokens</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> 
+    <span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> 
+    <span class="n">model</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;gpt-4&quot;</span><span class="p">,</span>
+    <span class="n">extract_metadata</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">CodeChunk</span><span class="p">]</span>
+</code></pre></div>
+
+<p>Chunks text ensuring no chunk exceeds the token limit.</p>
+<h4 id="chunk_file_with_token_limit"><code>chunk_file_with_token_limit()</code><a class="headerlink" href="#chunk_file_with_token_limit" title="Permanent link">&para;</a></h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">chunk_file_with_token_limit</span><span class="p">(</span>
+    <span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span> 
+    <span class="n">language</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> 
+    <span class="n">max_tokens</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">model</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;gpt-4&quot;</span><span class="p">,</span> 
+    <span class="n">extract_metadata</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">CodeChunk</span><span class="p">]</span>
+</code></pre></div>
+
+<p>Chunks a file ensuring no chunk exceeds the token limit.</p>
+<h4 id="count_chunk_tokens"><code>count_chunk_tokens()</code><a class="headerlink" href="#count_chunk_tokens" title="Permanent link">&para;</a></h4>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">count_chunk_tokens</span><span class="p">(</span><span class="n">chunk</span><span class="p">:</span> <span class="n">CodeChunk</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;gpt-4&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span>
+</code></pre></div>
+
+<p>Counts tokens in an existing chunk.</p>
+<h3 id="classes">Classes<a class="headerlink" href="#classes" title="Permanent link">&para;</a></h3>
+<h4 id="treesittertokenawarechunker"><code>TreeSitterTokenAwareChunker</code><a class="headerlink" href="#treesittertokenawarechunker" title="Permanent link">&para;</a></h4>
+<p>For advanced use cases, you can use the token-aware chunker directly:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">TreeSitterTokenAwareChunker</span>
+
+<span class="n">chunker</span> <span class="o">=</span> <span class="n">TreeSitterTokenAwareChunker</span><span class="p">()</span>
+
+<span class="c1"># Add token info to existing chunks</span>
+<span class="n">chunks_with_tokens</span> <span class="o">=</span> <span class="n">chunker</span><span class="o">.</span><span class="n">add_token_info</span><span class="p">(</span><span class="n">chunks</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="s2">&quot;gpt-4&quot;</span><span class="p">)</span>
+
+<span class="c1"># Chunk with token limits</span>
+<span class="n">limited_chunks</span> <span class="o">=</span> <span class="n">chunker</span><span class="o">.</span><span class="n">chunk_with_token_limit</span><span class="p">(</span>
+    <span class="s2">&quot;file.py&quot;</span><span class="p">,</span> <span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="n">max_tokens</span><span class="o">=</span><span class="mi">1000</span>
+<span class="p">)</span>
+</code></pre></div>
+
+<h2 id="chunk-metadata">Chunk Metadata<a class="headerlink" href="#chunk-metadata" title="Permanent link">&para;</a></h2>
+<p>When using token-aware chunking, chunks include additional metadata:</p>
+<div class="codehilite"><pre><span></span><code><span class="p">{</span>
+    <span class="s2">&quot;token_count&quot;</span><span class="p">:</span> <span class="mi">156</span><span class="p">,</span>           <span class="c1"># Number of tokens in the chunk</span>
+    <span class="s2">&quot;tokenizer_model&quot;</span><span class="p">:</span> <span class="s2">&quot;gpt-4&quot;</span><span class="p">,</span>   <span class="c1"># Model used for tokenization</span>
+    <span class="s2">&quot;chars_per_token&quot;</span><span class="p">:</span> <span class="mf">4.2</span><span class="p">,</span>       <span class="c1"># Average characters per token</span>
+    <span class="s2">&quot;is_split&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>             <span class="c1"># Whether chunk was split from larger chunk</span>
+    <span class="s2">&quot;split_index&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>             <span class="c1"># Index if split (1, 2, 3...)</span>
+    <span class="s2">&quot;original_chunk_id&quot;</span><span class="p">:</span> <span class="s2">&quot;abc123&quot;</span> <span class="c1"># ID of original chunk before splitting</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h2 id="splitting-strategies">Splitting Strategies<a class="headerlink" href="#splitting-strategies" title="Permanent link">&para;</a></h2>
+<h3 id="class-splitting">Class Splitting<a class="headerlink" href="#class-splitting" title="Permanent link">&para;</a></h3>
+<p>Classes are intelligently split by methods when they exceed token limits:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">LargeClass</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># ...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">method1</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># ...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">method2</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># ...</span>
+</code></pre></div>
+
+<p>If this class exceeds the token limit, it will be split into:
+- Chunk 1: Class header + <code>__init__</code> + <code>method1</code>
+- Chunk 2: Class header + <code>method2</code></p>
+<h3 id="function-splitting">Function Splitting<a class="headerlink" href="#function-splitting" title="Permanent link">&para;</a></h3>
+<p>Large functions are split by logical line groups while preserving context:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">large_function</span><span class="p">():</span>
+    <span class="c1"># Setup code</span>
+    <span class="c1"># ...</span>
+
+    <span class="c1"># Main logic</span>
+    <span class="c1"># ...</span>
+
+    <span class="c1"># Cleanup</span>
+    <span class="c1"># ...</span>
+</code></pre></div>
+
+<h2 id="best-practices">Best Practices<a class="headerlink" href="#best-practices" title="Permanent link">&para;</a></h2>
+<ol>
+<li>
+<p><strong>Choose Appropriate Limits</strong>: Consider the LLM's context window and leave room for prompts:
+   <code>python
+   # For GPT-4 (8k context), leave room for prompts
+   chunks = chunk_file_with_token_limit("file.py", "python", max_tokens=6000)</code></p>
+</li>
+<li>
+<p><strong>Model-Specific Tokenization</strong>: Use the same model for tokenization as you'll use for processing:
+   <code>python
+   # If using Claude for processing
+   chunks = chunk_file_with_token_limit("file.py", "python", 
+                                       max_tokens=5000, model="claude")</code></p>
+</li>
+<li>
+<p><strong>Preserve Metadata</strong>: Token-aware chunking preserves all metadata extraction:
+   <code>python
+   chunks = chunk_file_with_token_limit("file.py", "python", 
+                                       max_tokens=1000, extract_metadata=True)
+   # Chunks still include signatures, docstrings, complexity metrics, etc.</code></p>
+</li>
+</ol>
+<h2 id="integration-with-fallback-strategies">Integration with Fallback Strategies<a class="headerlink" href="#integration-with-fallback-strategies" title="Permanent link">&para;</a></h2>
+<p>Token limits work seamlessly with the fallback chunking system. When tree-sitter chunks are too large, the sliding window fallback can be used:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker.fallback</span><span class="w"> </span><span class="kn">import</span> <span class="n">SlidingWindowFallback</span>
+
+<span class="n">fallback</span> <span class="o">=</span> <span class="n">SlidingWindowFallback</span><span class="p">()</span>
+<span class="c1"># Automatically uses sliding window for files that can&#39;t be parsed</span>
+<span class="c1"># or produce chunks exceeding token limits</span>
+</code></pre></div>
+
+<h2 id="performance-considerations">Performance Considerations<a class="headerlink" href="#performance-considerations" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Token counting is cached per encoding type</li>
+<li>Splitting only occurs when necessary</li>
+<li>Original chunk structure is preserved when possible</li>
+<li>Metadata extraction happens before splitting for efficiency</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "content.code.copy"], "search": "../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.50899def.min.js"></script>
+      
+    
+  </body>
+</html>

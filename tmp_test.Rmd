@@ -1,0 +1,29 @@
+---
+title: "Analysis"
+output: html_document
+---
+
+```{r setup}
+library(ggplot2)
+library(dplyr)
+```
+
+## Data Processing
+
+```{r process-data}
+process_data <- function(df) {
+    df %>%
+        mutate(log_value = log(value)) %>%
+        filter(!is.na(log_value))
+}
+```
+
+## Visualization
+
+```{r plot-function}
+create_plot <- function(data, x_var, y_var) {
+    ggplot(data, aes_string(x = x_var, y = y_var)) +
+        geom_point() +
+        theme_minimal()
+}
+```

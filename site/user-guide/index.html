@@ -1,0 +1,3224 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../getting-started/">
+      
+      
+        <link rel="next" href="../configuration/">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.16">
+    
+    
+      
+        <title>User Guide - Tree-sitter Chunker</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.7e37652d.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#tree-sitter-chunker-user-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Tree-sitter Chunker" class="md-header__button md-logo" aria-label="Tree-sitter Chunker" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Tree-sitter Chunker
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              User Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/Consiliency/treesitter-chunker" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Overview
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../getting-started/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  User Guide
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../configuration/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Configuration
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../cli-reference/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  CLI Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../api-reference/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  API Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../export-formats/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Export Formats
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../graphml_export/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  GraphML Export
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../performance-guide/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Performance Guide
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../grammar_discovery/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Grammar Discovery
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../zero_config_api/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Zero-Config API
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Tree-sitter Chunker" class="md-nav__button md-logo" aria-label="Tree-sitter Chunker" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Tree-sitter Chunker
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/Consiliency/treesitter-chunker" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Getting Started
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    User Guide
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    User Guide
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table of Contents
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#introduction" class="md-nav__link">
+    <span class="md-ellipsis">
+      Introduction
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Introduction">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#key-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      Key Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-use-tree-sitter-chunker" class="md-nav__link">
+    <span class="md-ellipsis">
+      When to Use Tree-sitter Chunker
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Installation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prerequisites
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-with-uv-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      Install with uv (Recommended)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build-language-grammars" class="md-nav__link">
+    <span class="md-ellipsis">
+      Build Language Grammars
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verify-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Verify Installation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#core-concepts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Core Concepts
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core Concepts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#languages-and-grammars" class="md-nav__link">
+    <span class="md-ellipsis">
+      Languages and Grammars
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#code-chunks" class="md-nav__link">
+    <span class="md-ellipsis">
+      Code Chunks
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parser-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parser Management
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#basic-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Basic Usage
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Basic Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#command-line-interface" class="md-nav__link">
+    <span class="md-ellipsis">
+      Command Line Interface
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#python-api-simple" class="md-nav__link">
+    <span class="md-ellipsis">
+      Python API - Simple
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#python-api-advanced" class="md-nav__link">
+    <span class="md-ellipsis">
+      Python API - Advanced
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#supported-languages" class="md-nav__link">
+    <span class="md-ellipsis">
+      Supported Languages
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Supported Languages">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#python" class="md-nav__link">
+    <span class="md-ellipsis">
+      Python
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#javascript" class="md-nav__link">
+    <span class="md-ellipsis">
+      JavaScript
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rust" class="md-nav__link">
+    <span class="md-ellipsis">
+      Rust
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cc" class="md-nav__link">
+    <span class="md-ellipsis">
+      C/C++
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#working-with-chunks" class="md-nav__link">
+    <span class="md-ellipsis">
+      Working with Chunks
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Working with Chunks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#understanding-codechunk" class="md-nav__link">
+    <span class="md-ellipsis">
+      Understanding CodeChunk
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#filtering-and-grouping" class="md-nav__link">
+    <span class="md-ellipsis">
+      Filtering and Grouping
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#analyzing-code-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      Analyzing Code Structure
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#advanced-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      Advanced Features
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Advanced Features">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#working-with-the-language-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      Working with the Language Registry
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-parser-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Custom Parser Configuration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#concurrent-processing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Concurrent Processing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cache-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cache Management
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#integration-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      Integration Patterns
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Integration Patterns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#integration-with-embedding-systems" class="md-nav__link">
+    <span class="md-ellipsis">
+      Integration with Embedding Systems
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation-generation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Documentation Generation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#code-quality-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      Code Quality Analysis
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#plugin-system" class="md-nav__link">
+    <span class="md-ellipsis">
+      Plugin System
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Plugin System">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#using-built-in-plugins" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using Built-in Plugins
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plugin-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Plugin Configuration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#loading-custom-plugins" class="md-nav__link">
+    <span class="md-ellipsis">
+      Loading Custom Plugins
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      Performance Features
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance Features">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ast-caching" class="md-nav__link">
+    <span class="md-ellipsis">
+      AST Caching
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parallel-file-processing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parallel File Processing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#streaming-large-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      Streaming Large Files
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#performance-tips" class="md-nav__link">
+    <span class="md-ellipsis">
+      Performance Tips
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#export-formats" class="md-nav__link">
+    <span class="md-ellipsis">
+      Export Formats
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Export Formats">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#json-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      JSON Export
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#jsonl-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      JSONL Export
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parquet-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parquet Export
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#export-format-comparison" class="md-nav__link">
+    <span class="md-ellipsis">
+      Export Format Comparison
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-export-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      Custom Export Example
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      Performance Best Practices
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance Best Practices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-reuse-parsers" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Reuse Parsers
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-process-in-parallel" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Process in Parallel
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-configure-cache-size" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Configure Cache Size
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-handle-large-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Handle Large Files
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environment Variables
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#programmatic-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Programmatic Configuration
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Troubleshooting
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#common-issues-and-solutions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Common Issues and Solutions
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Common Issues and Solutions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#language-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      Language Not Found
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#library-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      Library Not Found
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parser-version-mismatch" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parser Version Mismatch
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#empty-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      Empty Results
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#debug-information" class="md-nav__link">
+    <span class="md-ellipsis">
+      Debug Information
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#getting-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      Getting Help
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      See Also
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Configuration
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    CLI Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    API Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../export-formats/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Export Formats
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../graphml_export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    GraphML Export
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../performance-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Performance Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../grammar_discovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Grammar Discovery
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zero_config_api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Zero-Config API
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table of Contents
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#introduction" class="md-nav__link">
+    <span class="md-ellipsis">
+      Introduction
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Introduction">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#key-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      Key Features
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-use-tree-sitter-chunker" class="md-nav__link">
+    <span class="md-ellipsis">
+      When to Use Tree-sitter Chunker
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Installation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prerequisites
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-with-uv-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      Install with uv (Recommended)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build-language-grammars" class="md-nav__link">
+    <span class="md-ellipsis">
+      Build Language Grammars
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verify-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Verify Installation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#core-concepts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Core Concepts
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core Concepts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#languages-and-grammars" class="md-nav__link">
+    <span class="md-ellipsis">
+      Languages and Grammars
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#code-chunks" class="md-nav__link">
+    <span class="md-ellipsis">
+      Code Chunks
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parser-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parser Management
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#basic-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Basic Usage
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Basic Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#command-line-interface" class="md-nav__link">
+    <span class="md-ellipsis">
+      Command Line Interface
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#python-api-simple" class="md-nav__link">
+    <span class="md-ellipsis">
+      Python API - Simple
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#python-api-advanced" class="md-nav__link">
+    <span class="md-ellipsis">
+      Python API - Advanced
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#supported-languages" class="md-nav__link">
+    <span class="md-ellipsis">
+      Supported Languages
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Supported Languages">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#python" class="md-nav__link">
+    <span class="md-ellipsis">
+      Python
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#javascript" class="md-nav__link">
+    <span class="md-ellipsis">
+      JavaScript
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rust" class="md-nav__link">
+    <span class="md-ellipsis">
+      Rust
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cc" class="md-nav__link">
+    <span class="md-ellipsis">
+      C/C++
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#working-with-chunks" class="md-nav__link">
+    <span class="md-ellipsis">
+      Working with Chunks
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Working with Chunks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#understanding-codechunk" class="md-nav__link">
+    <span class="md-ellipsis">
+      Understanding CodeChunk
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#filtering-and-grouping" class="md-nav__link">
+    <span class="md-ellipsis">
+      Filtering and Grouping
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#analyzing-code-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      Analyzing Code Structure
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#advanced-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      Advanced Features
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Advanced Features">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#working-with-the-language-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      Working with the Language Registry
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-parser-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Custom Parser Configuration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#concurrent-processing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Concurrent Processing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cache-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cache Management
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#integration-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      Integration Patterns
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Integration Patterns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#integration-with-embedding-systems" class="md-nav__link">
+    <span class="md-ellipsis">
+      Integration with Embedding Systems
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation-generation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Documentation Generation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#code-quality-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      Code Quality Analysis
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#plugin-system" class="md-nav__link">
+    <span class="md-ellipsis">
+      Plugin System
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Plugin System">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#using-built-in-plugins" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using Built-in Plugins
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plugin-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Plugin Configuration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#loading-custom-plugins" class="md-nav__link">
+    <span class="md-ellipsis">
+      Loading Custom Plugins
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      Performance Features
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance Features">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ast-caching" class="md-nav__link">
+    <span class="md-ellipsis">
+      AST Caching
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parallel-file-processing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parallel File Processing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#streaming-large-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      Streaming Large Files
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#performance-tips" class="md-nav__link">
+    <span class="md-ellipsis">
+      Performance Tips
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#export-formats" class="md-nav__link">
+    <span class="md-ellipsis">
+      Export Formats
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Export Formats">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#json-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      JSON Export
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#jsonl-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      JSONL Export
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parquet-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parquet Export
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#export-format-comparison" class="md-nav__link">
+    <span class="md-ellipsis">
+      Export Format Comparison
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-export-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      Custom Export Example
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      Performance Best Practices
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance Best Practices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-reuse-parsers" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Reuse Parsers
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-process-in-parallel" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Process in Parallel
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-configure-cache-size" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Configure Cache Size
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-handle-large-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Handle Large Files
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environment Variables
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#programmatic-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Programmatic Configuration
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Troubleshooting
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#common-issues-and-solutions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Common Issues and Solutions
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Common Issues and Solutions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#language-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      Language Not Found
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#library-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      Library Not Found
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parser-version-mismatch" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parser Version Mismatch
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#empty-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      Empty Results
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#debug-information" class="md-nav__link">
+    <span class="md-ellipsis">
+      Debug Information
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#getting-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      Getting Help
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      See Also
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="tree-sitter-chunker-user-guide">Tree-sitter Chunker User Guide<a class="headerlink" href="#tree-sitter-chunker-user-guide" title="Permanent link">&para;</a></h1>
+<h2 id="table-of-contents">Table of Contents<a class="headerlink" href="#table-of-contents" title="Permanent link">&para;</a></h2>
+<ol>
+<li><a href="#introduction">Introduction</a></li>
+<li><a href="#installation">Installation</a></li>
+<li><a href="#core-concepts">Core Concepts</a></li>
+<li><a href="#basic-usage">Basic Usage</a></li>
+<li><a href="#supported-languages">Supported Languages</a></li>
+<li><a href="#working-with-chunks">Working with Chunks</a></li>
+<li><a href="#advanced-features">Advanced Features</a></li>
+<li><a href="#integration-patterns">Integration Patterns</a></li>
+<li><a href="#performance-best-practices">Performance Best Practices</a></li>
+<li><a href="#configuration">Configuration</a></li>
+<li><a href="#troubleshooting">Troubleshooting</a></li>
+</ol>
+<h2 id="introduction">Introduction<a class="headerlink" href="#introduction" title="Permanent link">&para;</a></h2>
+<p>Tree-sitter Chunker is a powerful library for semantically chunking source code using Tree-sitter parsers. It provides intelligent code splitting that understands syntax and structure, making it ideal for code analysis, documentation generation, and AI/LLM applications.</p>
+<h3 id="key-features">Key Features<a class="headerlink" href="#key-features" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Dynamic Language Discovery</strong>: Automatically discovers available languages from compiled grammars</li>
+<li><strong>Efficient Parser Management</strong>: LRU caching and pooling for optimal performance</li>
+<li><strong>Thread-Safe Operation</strong>: Designed for concurrent processing</li>
+<li><strong>Rich Error Handling</strong>: Comprehensive exception hierarchy with recovery suggestions</li>
+<li><strong>Semantic Understanding</strong>: Extracts meaningful code units (functions, classes, methods)</li>
+<li><strong>Context Preservation</strong>: Maintains parent-child relationships for nested structures</li>
+</ul>
+<h3 id="when-to-use-tree-sitter-chunker">When to Use Tree-sitter Chunker<a class="headerlink" href="#when-to-use-tree-sitter-chunker" title="Permanent link">&para;</a></h3>
+<p>Tree-sitter Chunker is ideal for:</p>
+<ul>
+<li><strong>Code Embedding Generation</strong>: Create embeddings for semantic code search</li>
+<li><strong>LLM Context Windows</strong>: Split code intelligently for language model processing</li>
+<li><strong>Documentation Generation</strong>: Extract functions and classes with metadata</li>
+<li><strong>Code Analysis</strong>: Analyze code structure, complexity, and patterns</li>
+<li><strong>Code Navigation</strong>: Build code maps and understand project structure</li>
+<li><strong>Refactoring Tools</strong>: Identify and process code units programmatically</li>
+</ul>
+<h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
+<h3 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Python 3.8 or higher</li>
+<li>uv package manager (recommended) or pip</li>
+<li>C compiler (for building tree-sitter grammars)</li>
+<li>Git (for fetching grammar repositories)</li>
+</ul>
+<h3 id="install-with-uv-recommended">Install with uv (Recommended)<a class="headerlink" href="#install-with-uv-recommended" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Create virtual environment</span>
+uv<span class="w"> </span>venv
+<span class="nb">source</span><span class="w"> </span>.venv/bin/activate<span class="w">  </span><span class="c1"># On Windows: .venv\Scripts\activate</span>
+
+<span class="c1"># Install package</span>
+uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;.[dev]&quot;</span>
+
+<span class="c1"># Install py-tree-sitter with ABI 15 support</span>
+uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>git+https://github.com/tree-sitter/py-tree-sitter.git
+</code></pre></div>
+
+<h3 id="build-language-grammars">Build Language Grammars<a class="headerlink" href="#build-language-grammars" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Fetch grammar repositories</span>
+python<span class="w"> </span>scripts/fetch_grammars.py
+
+<span class="c1"># Compile grammars into shared library</span>
+python<span class="w"> </span>scripts/build_lib.py
+</code></pre></div>
+
+<h3 id="verify-installation">Verify Installation<a class="headerlink" href="#verify-installation" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker.parser</span><span class="w"> </span><span class="kn">import</span> <span class="n">list_languages</span><span class="p">,</span> <span class="n">get_language_info</span>
+
+<span class="c1"># Check available languages</span>
+<span class="n">languages</span> <span class="o">=</span> <span class="n">list_languages</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Available languages: </span><span class="si">{</span><span class="n">languages</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Get language details</span>
+<span class="n">info</span> <span class="o">=</span> <span class="n">get_language_info</span><span class="p">(</span><span class="s2">&quot;python&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Python ABI version: </span><span class="si">{</span><span class="n">info</span><span class="o">.</span><span class="n">version</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Node types: </span><span class="si">{</span><span class="n">info</span><span class="o">.</span><span class="n">node_types_count</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h2 id="core-concepts">Core Concepts<a class="headerlink" href="#core-concepts" title="Permanent link">&para;</a></h2>
+<h3 id="languages-and-grammars">Languages and Grammars<a class="headerlink" href="#languages-and-grammars" title="Permanent link">&para;</a></h3>
+<p>Tree-sitter uses grammar files to understand language syntax. Each language has:
+- A grammar definition that describes syntax rules
+- A parser that builds Abstract Syntax Trees (AST)
+- Node types that represent different code constructs</p>
+<h3 id="code-chunks">Code Chunks<a class="headerlink" href="#code-chunks" title="Permanent link">&para;</a></h3>
+<p>A chunk is a semantic unit of code with:
+- <strong>Content</strong>: The actual source code
+- <strong>Metadata</strong>: Location, type, and context information
+- <strong>Relationships</strong>: Parent-child relationships for nested structures</p>
+<h3 id="parser-management">Parser Management<a class="headerlink" href="#parser-management" title="Permanent link">&para;</a></h3>
+<p>The library uses several optimization strategies:
+- <strong>Caching</strong>: Recently used parsers are kept in memory
+- <strong>Pooling</strong>: Multiple parsers per language for concurrent use
+- <strong>Lazy Loading</strong>: Languages are loaded only when needed</p>
+<h2 id="basic-usage">Basic Usage<a class="headerlink" href="#basic-usage" title="Permanent link">&para;</a></h2>
+<h3 id="command-line-interface">Command Line Interface<a class="headerlink" href="#command-line-interface" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Basic chunking</span>
+python<span class="w"> </span>cli/main.py<span class="w"> </span>chunk<span class="w"> </span>example.py<span class="w"> </span>-l<span class="w"> </span>python
+
+<span class="c1"># Output as JSON</span>
+python<span class="w"> </span>cli/main.py<span class="w"> </span>chunk<span class="w"> </span>src/main.rs<span class="w"> </span>-l<span class="w"> </span>rust<span class="w"> </span>--json
+
+<span class="c1"># Process JavaScript file</span>
+python<span class="w"> </span>cli/main.py<span class="w"> </span>chunk<span class="w"> </span>app.js<span class="w"> </span>-l<span class="w"> </span>javascript
+</code></pre></div>
+
+<h3 id="python-api-simple">Python API - Simple<a class="headerlink" href="#python-api-simple" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker.chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">chunk_file</span>
+
+<span class="c1"># Chunk a Python file</span>
+<span class="n">chunks</span> <span class="o">=</span> <span class="n">chunk_file</span><span class="p">(</span><span class="s2">&quot;example.py&quot;</span><span class="p">,</span> <span class="s2">&quot;python&quot;</span><span class="p">)</span>
+
+<span class="c1"># Process chunks</span>
+<span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">chunks</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">chunk</span><span class="o">.</span><span class="n">node_type</span><span class="si">}</span><span class="s2"> at lines </span><span class="si">{</span><span class="n">chunk</span><span class="o">.</span><span class="n">start_line</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">chunk</span><span class="o">.</span><span class="n">end_line</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">chunk</span><span class="o">.</span><span class="n">parent_context</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Parent: </span><span class="si">{</span><span class="n">chunk</span><span class="o">.</span><span class="n">parent_context</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Preview: </span><span class="si">{</span><span class="n">chunk</span><span class="o">.</span><span class="n">content</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="nb">chr</span><span class="p">(</span><span class="mi">10</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">...&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="python-api-advanced">Python API - Advanced<a class="headerlink" href="#python-api-advanced" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker.parser</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_parser</span><span class="p">,</span> <span class="n">return_parser</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">LanguageNotFoundError</span>
+
+<span class="c1"># Manual parser management for better control</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">get_parser</span><span class="p">(</span><span class="s2">&quot;python&quot;</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;example.py&quot;</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">tree</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+
+    <span class="c1"># Process the AST</span>
+    <span class="n">root</span> <span class="o">=</span> <span class="n">tree</span><span class="o">.</span><span class="n">root_node</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Root type: </span><span class="si">{</span><span class="n">root</span><span class="o">.</span><span class="n">type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Children: </span><span class="si">{</span><span class="n">root</span><span class="o">.</span><span class="n">child_count</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="k">finally</span><span class="p">:</span>
+    <span class="c1"># Return parser for reuse</span>
+    <span class="n">return_parser</span><span class="p">(</span><span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="n">parser</span><span class="p">)</span>
+</code></pre></div>
+
+<h2 id="supported-languages">Supported Languages<a class="headerlink" href="#supported-languages" title="Permanent link">&para;</a></h2>
+<h3 id="python">Python<a class="headerlink" href="#python" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Extracted node types:</span>
+<span class="c1"># - function_definition (functions)</span>
+<span class="c1"># - class_definition (classes)</span>
+<span class="c1"># - method_definition (methods within classes)</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Calculator</span><span class="p">:</span>  <span class="c1"># class_definition</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>  <span class="c1"># method_definition</span>
+        <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>  <span class="c1"># function_definition</span>
+    <span class="n">calc</span> <span class="o">=</span> <span class="n">Calculator</span><span class="p">()</span>
+</code></pre></div>
+
+<h3 id="javascript">JavaScript<a class="headerlink" href="#javascript" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1">// Extracted node types:</span>
+<span class="c1">// - function_declaration</span>
+<span class="c1">// - class_declaration</span>
+<span class="c1">// - method_definition</span>
+<span class="c1">// - arrow_function</span>
+
+<span class="kd">class</span><span class="w"> </span><span class="nx">Component</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="c1">// class_declaration</span>
+<span class="w">    </span><span class="nx">render</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="c1">// method_definition</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">const</span><span class="w"> </span><span class="nx">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="c1">// arrow_function</span>
+<span class="w">    </span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;clicked&quot;</span><span class="p">);</span>
+<span class="p">};</span>
+</code></pre></div>
+
+<h3 id="rust">Rust<a class="headerlink" href="#rust" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1">// Extracted node types:</span>
+<span class="c1">// - function_item</span>
+<span class="c1">// - impl_item</span>
+<span class="c1">// - struct_item</span>
+<span class="c1">// - trait_item</span>
+
+<span class="k">struct</span><span class="w"> </span><span class="nc">Data</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="c1">// struct_item</span>
+<span class="w">    </span><span class="n">value</span><span class="p">:</span><span class="w"> </span><span class="kt">i32</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="k">impl</span><span class="w"> </span><span class="n">Data</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="c1">// impl_item</span>
+<span class="w">    </span><span class="k">fn</span><span class="w"> </span><span class="nf">new</span><span class="p">()</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="nc">Self</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="c1">// function_item</span>
+<span class="w">        </span><span class="n">Data</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">value</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3 id="cc">C/C++<a class="headerlink" href="#cc" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1">// C extracts: function_definition</span>
+<span class="c1">// C++ adds: class_specifier, method_declaration</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Widget</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="c1">// class_specifier (C++ only)</span>
+<span class="k">public</span><span class="o">:</span>
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="n">update</span><span class="p">();</span><span class="w">  </span><span class="c1">// method_declaration</span>
+<span class="p">};</span>
+
+<span class="kt">int</span><span class="w"> </span><span class="nf">process_data</span><span class="p">(</span><span class="kt">int</span><span class="o">*</span><span class="w"> </span><span class="n">data</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="c1">// function_definition</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h2 id="working-with-chunks">Working with Chunks<a class="headerlink" href="#working-with-chunks" title="Permanent link">&para;</a></h2>
+<h3 id="understanding-codechunk">Understanding CodeChunk<a class="headerlink" href="#understanding-codechunk" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker.chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">CodeChunk</span>
+
+<span class="c1"># Example chunk structure</span>
+<span class="n">chunk</span> <span class="o">=</span> <span class="n">CodeChunk</span><span class="p">(</span>
+    <span class="n">language</span><span class="o">=</span><span class="s2">&quot;python&quot;</span><span class="p">,</span>
+    <span class="n">file_path</span><span class="o">=</span><span class="s2">&quot;/path/to/file.py&quot;</span><span class="p">,</span>
+    <span class="n">node_type</span><span class="o">=</span><span class="s2">&quot;function_definition&quot;</span><span class="p">,</span>
+    <span class="n">start_line</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+    <span class="n">end_line</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span>
+    <span class="n">byte_start</span><span class="o">=</span><span class="mi">234</span><span class="p">,</span>
+    <span class="n">byte_end</span><span class="o">=</span><span class="mi">456</span><span class="p">,</span>
+    <span class="n">parent_context</span><span class="o">=</span><span class="s2">&quot;class:Calculator&quot;</span><span class="p">,</span>
+    <span class="n">content</span><span class="o">=</span><span class="s2">&quot;def add(self, a, b):</span><span class="se">\n</span><span class="s2">    return a + b&quot;</span>
+<span class="p">)</span>
+
+<span class="c1"># Access properties</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Function spans </span><span class="si">{</span><span class="n">chunk</span><span class="o">.</span><span class="n">end_line</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">chunk</span><span class="o">.</span><span class="n">start_line</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2"> lines&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Belongs to: </span><span class="si">{</span><span class="n">chunk</span><span class="o">.</span><span class="n">parent_context</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Size: </span><span class="si">{</span><span class="n">chunk</span><span class="o">.</span><span class="n">byte_end</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">chunk</span><span class="o">.</span><span class="n">byte_start</span><span class="si">}</span><span class="s2"> bytes&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="filtering-and-grouping">Filtering and Grouping<a class="headerlink" href="#filtering-and-grouping" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">defaultdict</span>
+
+<span class="n">chunks</span> <span class="o">=</span> <span class="n">chunk_file</span><span class="p">(</span><span class="s2">&quot;project.py&quot;</span><span class="p">,</span> <span class="s2">&quot;python&quot;</span><span class="p">)</span>
+
+<span class="c1"># Group by type</span>
+<span class="n">by_type</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">chunks</span><span class="p">:</span>
+    <span class="n">by_type</span><span class="p">[</span><span class="n">chunk</span><span class="o">.</span><span class="n">node_type</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Functions: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">by_type</span><span class="p">[</span><span class="s1">&#39;function_definition&#39;</span><span class="p">])</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Classes: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">by_type</span><span class="p">[</span><span class="s1">&#39;class_definition&#39;</span><span class="p">])</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Methods: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">by_type</span><span class="p">[</span><span class="s1">&#39;method_definition&#39;</span><span class="p">])</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Find large functions</span>
+<span class="n">large_functions</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">chunks</span> 
+    <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">node_type</span> <span class="o">==</span> <span class="s2">&quot;function_definition&quot;</span> 
+    <span class="ow">and</span> <span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">end_line</span> <span class="o">-</span> <span class="n">c</span><span class="o">.</span><span class="n">start_line</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">50</span>
+<span class="p">]</span>
+
+<span class="c1"># Get methods of a specific class</span>
+<span class="n">class_methods</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">chunks</span> 
+    <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">parent_context</span> <span class="o">==</span> <span class="s2">&quot;class:MyClass&quot;</span>
+<span class="p">]</span>
+</code></pre></div>
+
+<h3 id="analyzing-code-structure">Analyzing Code Structure<a class="headerlink" href="#analyzing-code-structure" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">analyze_file_structure</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">language</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Analyze the structure of a code file.&quot;&quot;&quot;</span>
+    <span class="n">chunks</span> <span class="o">=</span> <span class="n">chunk_file</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">language</span><span class="p">)</span>
+
+    <span class="c1"># Build hierarchy</span>
+    <span class="n">top_level</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">chunks</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">c</span><span class="o">.</span><span class="n">parent_context</span><span class="p">]</span>
+    <span class="n">nested</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">chunks</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">parent_context</span><span class="p">]</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;File: </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total chunks: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">chunks</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Top-level: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">top_level</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Nested: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">nested</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Complexity metrics</span>
+    <span class="n">sizes</span> <span class="o">=</span> <span class="p">[(</span><span class="n">c</span><span class="o">.</span><span class="n">end_line</span> <span class="o">-</span> <span class="n">c</span><span class="o">.</span><span class="n">start_line</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">chunks</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">sizes</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Average size: </span><span class="si">{</span><span class="nb">sum</span><span class="p">(</span><span class="n">sizes</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="n">sizes</span><span class="p">)</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> lines&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Largest: </span><span class="si">{</span><span class="nb">max</span><span class="p">(</span><span class="n">sizes</span><span class="p">)</span><span class="si">}</span><span class="s2"> lines&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Smallest: </span><span class="si">{</span><span class="nb">min</span><span class="p">(</span><span class="n">sizes</span><span class="p">)</span><span class="si">}</span><span class="s2"> lines&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">chunks</span>
+</code></pre></div>
+
+<h2 id="advanced-features">Advanced Features<a class="headerlink" href="#advanced-features" title="Permanent link">&para;</a></h2>
+<h3 id="working-with-the-language-registry">Working with the Language Registry<a class="headerlink" href="#working-with-the-language-registry" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">LanguageRegistry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="c1"># Access the registry directly</span>
+<span class="n">registry</span> <span class="o">=</span> <span class="n">LanguageRegistry</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;build/my-languages.so&quot;</span><span class="p">))</span>
+
+<span class="c1"># Discover all languages</span>
+<span class="n">languages</span> <span class="o">=</span> <span class="n">registry</span><span class="o">.</span><span class="n">discover_languages</span><span class="p">()</span>
+<span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">metadata</span> <span class="ow">in</span> <span class="n">languages</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">:&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Version: </span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">version</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Node types: </span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">node_types_count</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Has scanner: </span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">has_scanner</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Check specific language</span>
+<span class="k">if</span> <span class="n">registry</span><span class="o">.</span><span class="n">has_language</span><span class="p">(</span><span class="s2">&quot;python&quot;</span><span class="p">):</span>
+    <span class="n">lang</span> <span class="o">=</span> <span class="n">registry</span><span class="o">.</span><span class="n">get_language</span><span class="p">(</span><span class="s2">&quot;python&quot;</span><span class="p">)</span>
+    <span class="c1"># Use with tree-sitter parser</span>
+</code></pre></div>
+
+<h3 id="custom-parser-configuration">Custom Parser Configuration<a class="headerlink" href="#custom-parser-configuration" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker.parser</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_parser</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker.factory</span><span class="w"> </span><span class="kn">import</span> <span class="n">ParserConfig</span>
+
+<span class="c1"># Configure parser with timeout</span>
+<span class="n">config</span> <span class="o">=</span> <span class="n">ParserConfig</span><span class="p">(</span>
+    <span class="n">timeout_ms</span><span class="o">=</span><span class="mi">5000</span><span class="p">,</span>  <span class="c1"># 5 second timeout</span>
+    <span class="n">included_ranges</span><span class="o">=</span><span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1000</span><span class="p">),</span> <span class="p">(</span><span class="mi">2000</span><span class="p">,</span> <span class="mi">3000</span><span class="p">)]</span>  <span class="c1"># Parse only specific byte ranges</span>
+<span class="p">)</span>
+
+<span class="n">parser</span> <span class="o">=</span> <span class="n">get_parser</span><span class="p">(</span><span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+<span class="c1"># Parser will only parse specified ranges and timeout after 5s</span>
+</code></pre></div>
+
+<h3 id="concurrent-processing">Concurrent Processing<a class="headerlink" href="#concurrent-processing" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">concurrent.futures</span><span class="w"> </span><span class="kn">import</span> <span class="n">ThreadPoolExecutor</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">process_directory</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">language</span><span class="p">,</span> <span class="n">max_workers</span><span class="o">=</span><span class="mi">4</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Process all files in directory concurrently.&quot;&quot;&quot;</span>
+    <span class="n">files</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span><span class="o">.</span><span class="n">rglob</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;*.</span><span class="si">{</span><span class="n">language</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">process_file</span><span class="p">(</span><span class="n">file_path</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">chunk_file</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">language</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error in </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="k">with</span> <span class="n">ThreadPoolExecutor</span><span class="p">(</span><span class="n">max_workers</span><span class="o">=</span><span class="n">max_workers</span><span class="p">)</span> <span class="k">as</span> <span class="n">executor</span><span class="p">:</span>
+        <span class="c1"># Submit all files</span>
+        <span class="n">futures</span> <span class="o">=</span> <span class="p">{</span><span class="n">executor</span><span class="o">.</span><span class="n">submit</span><span class="p">(</span><span class="n">process_file</span><span class="p">,</span> <span class="n">f</span><span class="p">):</span> <span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files</span><span class="p">}</span>
+
+        <span class="c1"># Collect results</span>
+        <span class="n">all_chunks</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">future</span> <span class="ow">in</span> <span class="n">futures</span><span class="p">:</span>
+            <span class="n">chunks</span> <span class="o">=</span> <span class="n">future</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
+            <span class="n">all_chunks</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">chunks</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">all_chunks</span>
+
+<span class="c1"># Process entire codebase</span>
+<span class="n">chunks</span> <span class="o">=</span> <span class="n">process_directory</span><span class="p">(</span><span class="s2">&quot;src&quot;</span><span class="p">,</span> <span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="n">max_workers</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="cache-management">Cache Management<a class="headerlink" href="#cache-management" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker.parser</span><span class="w"> </span><span class="kn">import</span> <span class="n">clear_cache</span><span class="p">,</span> <span class="n">_factory</span>
+
+<span class="c1"># Monitor cache performance</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">process_with_stats</span><span class="p">(</span><span class="n">files</span><span class="p">,</span> <span class="n">language</span><span class="p">):</span>
+    <span class="c1"># Clear cache for fresh start</span>
+    <span class="n">clear_cache</span><span class="p">()</span>
+
+    <span class="c1"># Process files</span>
+    <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+        <span class="n">chunk_file</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">language</span><span class="p">)</span>
+
+    <span class="c1"># Get statistics</span>
+    <span class="n">stats</span> <span class="o">=</span> <span class="n">_factory</span><span class="o">.</span><span class="n">get_stats</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cache Performance:&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Hits: </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;cache_hits&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Misses: </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;cache_misses&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Hit rate: </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;hit_rate&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Current cache size: </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;cache_size&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">stats</span>
+</code></pre></div>
+
+<h2 id="integration-patterns">Integration Patterns<a class="headerlink" href="#integration-patterns" title="Permanent link">&para;</a></h2>
+<h3 id="integration-with-embedding-systems">Integration with Embedding Systems<a class="headerlink" href="#integration-with-embedding-systems" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker.chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">chunk_file</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">create_code_embeddings</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">language</span><span class="p">,</span> <span class="n">embedding_model</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate embeddings for code chunks.&quot;&quot;&quot;</span>
+    <span class="n">chunks</span> <span class="o">=</span> <span class="n">chunk_file</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">language</span><span class="p">)</span>
+
+    <span class="n">embeddings</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">chunks</span><span class="p">:</span>
+        <span class="c1"># Prepare text for embedding</span>
+        <span class="n">context</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;File: </span><span class="si">{</span><span class="n">chunk</span><span class="o">.</span><span class="n">file_path</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="n">context</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;Type: </span><span class="si">{</span><span class="n">chunk</span><span class="o">.</span><span class="n">node_type</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="k">if</span> <span class="n">chunk</span><span class="o">.</span><span class="n">parent_context</span><span class="p">:</span>
+            <span class="n">context</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;Parent: </span><span class="si">{</span><span class="n">chunk</span><span class="o">.</span><span class="n">parent_context</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="n">context</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;Lines: </span><span class="si">{</span><span class="n">chunk</span><span class="o">.</span><span class="n">start_line</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">chunk</span><span class="o">.</span><span class="n">end_line</span><span class="si">}</span><span class="se">\n\n</span><span class="s2">&quot;</span>
+        <span class="n">context</span> <span class="o">+=</span> <span class="n">chunk</span><span class="o">.</span><span class="n">content</span>
+
+        <span class="c1"># Generate embedding (example with sentence-transformers)</span>
+        <span class="n">embedding</span> <span class="o">=</span> <span class="n">embedding_model</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>
+
+        <span class="n">embeddings</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+            <span class="s2">&quot;chunk_id&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">chunk</span><span class="o">.</span><span class="n">file_path</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">chunk</span><span class="o">.</span><span class="n">start_line</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;metadata&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="n">chunk</span><span class="o">.</span><span class="n">node_type</span><span class="p">,</span>
+                <span class="s2">&quot;parent&quot;</span><span class="p">:</span> <span class="n">chunk</span><span class="o">.</span><span class="n">parent_context</span><span class="p">,</span>
+                <span class="s2">&quot;lines&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">chunk</span><span class="o">.</span><span class="n">start_line</span><span class="p">,</span> <span class="n">chunk</span><span class="o">.</span><span class="n">end_line</span><span class="p">)</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;embedding&quot;</span><span class="p">:</span> <span class="n">embedding</span><span class="p">,</span>
+            <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="n">chunk</span><span class="o">.</span><span class="n">content</span>
+        <span class="p">})</span>
+
+    <span class="k">return</span> <span class="n">embeddings</span>
+
+<span class="c1"># Search function</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">semantic_search</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">embeddings</span><span class="p">,</span> <span class="n">embedding_model</span><span class="p">,</span> <span class="n">top_k</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Search for relevant code chunks.&quot;&quot;&quot;</span>
+    <span class="n">query_embedding</span> <span class="o">=</span> <span class="n">embedding_model</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+
+    <span class="c1"># Calculate similarities</span>
+    <span class="n">similarities</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">embeddings</span><span class="p">:</span>
+        <span class="n">similarity</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">query_embedding</span><span class="p">,</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;embedding&quot;</span><span class="p">])</span>
+        <span class="n">similarities</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">similarity</span><span class="p">,</span> <span class="n">item</span><span class="p">))</span>
+
+    <span class="c1"># Return top results</span>
+    <span class="n">similarities</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">item</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">similarities</span><span class="p">[:</span><span class="n">top_k</span><span class="p">]]</span>
+</code></pre></div>
+
+<h3 id="documentation-generation">Documentation Generation<a class="headerlink" href="#documentation-generation" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">ast</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker.chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">chunk_file</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">extract_docstrings</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">output_file</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract all docstrings from Python project.&quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+    <span class="n">documentation</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">py_file</span> <span class="ow">in</span> <span class="n">Path</span><span class="p">(</span><span class="n">project_path</span><span class="p">)</span><span class="o">.</span><span class="n">rglob</span><span class="p">(</span><span class="s2">&quot;*.py&quot;</span><span class="p">):</span>
+        <span class="n">chunks</span> <span class="o">=</span> <span class="n">chunk_file</span><span class="p">(</span><span class="n">py_file</span><span class="p">,</span> <span class="s2">&quot;python&quot;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">chunks</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">chunk</span><span class="o">.</span><span class="n">node_type</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;function_definition&quot;</span><span class="p">,</span> <span class="s2">&quot;class_definition&quot;</span><span class="p">]:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="c1"># Parse chunk to extract docstring</span>
+                    <span class="n">tree</span> <span class="o">=</span> <span class="n">ast</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">chunk</span><span class="o">.</span><span class="n">content</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">tree</span><span class="o">.</span><span class="n">body</span><span class="p">:</span>
+                        <span class="n">node</span> <span class="o">=</span> <span class="n">tree</span><span class="o">.</span><span class="n">body</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                        <span class="n">docstring</span> <span class="o">=</span> <span class="n">ast</span><span class="o">.</span><span class="n">get_docstring</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+
+                        <span class="k">if</span> <span class="n">docstring</span><span class="p">:</span>
+                            <span class="n">documentation</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="n">chunk</span><span class="o">.</span><span class="n">node_type</span><span class="p">,</span>
+                                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                                <span class="s2">&quot;file&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">py_file</span><span class="p">),</span>
+                                <span class="s2">&quot;line&quot;</span><span class="p">:</span> <span class="n">chunk</span><span class="o">.</span><span class="n">start_line</span><span class="p">,</span>
+                                <span class="s2">&quot;docstring&quot;</span><span class="p">:</span> <span class="n">docstring</span><span class="p">,</span>
+                                <span class="s2">&quot;signature&quot;</span><span class="p">:</span> <span class="n">chunk</span><span class="o">.</span><span class="n">content</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                            <span class="p">})</span>
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+    <span class="c1"># Generate markdown documentation</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">output_file</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;# API Documentation</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Group by file</span>
+        <span class="n">by_file</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">documentation</span><span class="p">:</span>
+            <span class="n">by_file</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">doc</span><span class="p">[</span><span class="s2">&quot;file&quot;</span><span class="p">],</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">file</span><span class="p">,</span> <span class="n">docs</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">by_file</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;## </span><span class="si">{</span><span class="n">file</span><span class="si">}</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">docs</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;### </span><span class="si">{</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;*</span><span class="si">{</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> at line </span><span class="si">{</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;line&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">*</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;```python</span><span class="se">\n</span><span class="si">{</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;signature&#39;</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s2">```</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;docstring&#39;</span><span class="p">]</span><span class="si">}</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="code-quality-analysis">Code Quality Analysis<a class="headerlink" href="#code-quality-analysis" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker.chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">chunk_file</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">analyze_code_quality</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">language</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Analyze code quality metrics.&quot;&quot;&quot;</span>
+    <span class="n">chunks</span> <span class="o">=</span> <span class="n">chunk_file</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">language</span><span class="p">)</span>
+
+    <span class="n">issues</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">chunks</span><span class="p">:</span>
+        <span class="c1"># Check function length</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="n">chunk</span><span class="o">.</span><span class="n">end_line</span> <span class="o">-</span> <span class="n">chunk</span><span class="o">.</span><span class="n">start_line</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="n">chunk</span><span class="o">.</span><span class="n">node_type</span> <span class="o">==</span> <span class="s2">&quot;function_definition&quot;</span> <span class="ow">and</span> <span class="n">lines</span> <span class="o">&gt;</span> <span class="mi">50</span><span class="p">:</span>
+            <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;long_function&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;severity&quot;</span><span class="p">:</span> <span class="s2">&quot;warning&quot;</span> <span class="k">if</span> <span class="n">lines</span> <span class="o">&lt;</span> <span class="mi">100</span> <span class="k">else</span> <span class="s2">&quot;error&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;location&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">chunk</span><span class="o">.</span><span class="n">file_path</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">chunk</span><span class="o">.</span><span class="n">start_line</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Function is </span><span class="si">{</span><span class="n">lines</span><span class="si">}</span><span class="s2"> lines long (recommended: &lt;50)&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;chunk&quot;</span><span class="p">:</span> <span class="n">chunk</span>
+            <span class="p">})</span>
+
+        <span class="c1"># Check complexity (simple heuristic based on nesting)</span>
+        <span class="n">max_indent</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">chunk</span><span class="o">.</span><span class="n">content</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
+                <span class="n">indent</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">line</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">lstrip</span><span class="p">())</span>
+                <span class="n">max_indent</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">max_indent</span><span class="p">,</span> <span class="n">indent</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">max_indent</span> <span class="o">&gt;</span> <span class="mi">20</span><span class="p">:</span>  <span class="c1"># 5 levels of nesting (4 spaces each)</span>
+            <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;high_complexity&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;severity&quot;</span><span class="p">:</span> <span class="s2">&quot;warning&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;location&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">chunk</span><span class="o">.</span><span class="n">file_path</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">chunk</span><span class="o">.</span><span class="n">start_line</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;High nesting level detected&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;chunk&quot;</span><span class="p">:</span> <span class="n">chunk</span>
+            <span class="p">})</span>
+
+        <span class="c1"># Check naming conventions (Python example)</span>
+        <span class="k">if</span> <span class="n">language</span> <span class="o">==</span> <span class="s2">&quot;python&quot;</span> <span class="ow">and</span> <span class="n">chunk</span><span class="o">.</span><span class="n">node_type</span> <span class="o">==</span> <span class="s2">&quot;function_definition&quot;</span><span class="p">:</span>
+            <span class="c1"># Extract function name</span>
+            <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;def\s+(\w+)&#39;</span><span class="p">,</span> <span class="n">chunk</span><span class="o">.</span><span class="n">content</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
+                <span class="n">func_name</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;^[a-z_][a-z0-9_]*$&#39;</span><span class="p">,</span> <span class="n">func_name</span><span class="p">):</span>
+                    <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;naming_convention&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;severity&quot;</span><span class="p">:</span> <span class="s2">&quot;info&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;location&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">chunk</span><span class="o">.</span><span class="n">file_path</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">chunk</span><span class="o">.</span><span class="n">start_line</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Function &#39;</span><span class="si">{</span><span class="n">func_name</span><span class="si">}</span><span class="s2">&#39; doesn&#39;t follow snake_case&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;chunk&quot;</span><span class="p">:</span> <span class="n">chunk</span>
+                    <span class="p">})</span>
+
+    <span class="k">return</span> <span class="n">issues</span>
+
+<span class="c1"># Generate report</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">generate_quality_report</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">language</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate code quality report for directory.&quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+    <span class="n">all_issues</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">Path</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span><span class="o">.</span><span class="n">rglob</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;*.</span><span class="si">{</span><span class="n">language</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">):</span>
+        <span class="n">issues</span> <span class="o">=</span> <span class="n">analyze_code_quality</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">language</span><span class="p">)</span>
+        <span class="n">all_issues</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">issues</span><span class="p">)</span>
+
+    <span class="c1"># Summary</span>
+    <span class="n">by_type</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">by_severity</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">issue</span> <span class="ow">in</span> <span class="n">all_issues</span><span class="p">:</span>
+        <span class="n">by_type</span><span class="p">[</span><span class="n">issue</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">by_type</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">issue</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="n">by_severity</span><span class="p">[</span><span class="n">issue</span><span class="p">[</span><span class="s2">&quot;severity&quot;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">by_severity</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">issue</span><span class="p">[</span><span class="s2">&quot;severity&quot;</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Code Quality Report&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">50</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total issues: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">all_issues</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">By type:&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="nb">type</span><span class="p">,</span> <span class="n">count</span> <span class="ow">in</span> <span class="n">by_type</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="nb">type</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">count</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">By severity:&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">severity</span><span class="p">,</span> <span class="n">count</span> <span class="ow">in</span> <span class="n">by_severity</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">severity</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">count</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">all_issues</span>
+</code></pre></div>
+
+<h2 id="plugin-system">Plugin System<a class="headerlink" href="#plugin-system" title="Permanent link">&para;</a></h2>
+<h3 id="using-built-in-plugins">Using Built-in Plugins<a class="headerlink" href="#using-built-in-plugins" title="Permanent link">&para;</a></h3>
+<p>Tree-sitter Chunker comes with built-in plugins for Python, JavaScript, Rust, C, and C++:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker.plugin_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_plugin_manager</span>
+
+<span class="c1"># Load built-in plugins</span>
+<span class="n">manager</span> <span class="o">=</span> <span class="n">get_plugin_manager</span><span class="p">()</span>
+<span class="n">manager</span><span class="o">.</span><span class="n">load_built_in_plugins</span><span class="p">()</span>
+
+<span class="c1"># List available plugins</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">manager</span><span class="o">.</span><span class="n">list_plugins</span><span class="p">())</span>
+<span class="c1"># Output: [&#39;python&#39;, &#39;javascript&#39;, &#39;rust&#39;, &#39;c&#39;, &#39;cpp&#39;]</span>
+
+<span class="c1"># Chunk files using plugins</span>
+<span class="n">chunks</span> <span class="o">=</span> <span class="n">chunk_file</span><span class="p">(</span><span class="s2">&quot;example.py&quot;</span><span class="p">,</span> <span class="s2">&quot;python&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="plugin-configuration">Plugin Configuration<a class="headerlink" href="#plugin-configuration" title="Permanent link">&para;</a></h3>
+<p>Configure plugins through configuration files or programmatically:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker.chunker_config</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChunkerConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker.plugin_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">PluginConfig</span>
+
+<span class="c1"># Load configuration from file</span>
+<span class="n">config</span> <span class="o">=</span> <span class="n">ChunkerConfig</span><span class="p">(</span><span class="s2">&quot;chunker.config.toml&quot;</span><span class="p">)</span>
+
+<span class="c1"># Or configure programmatically</span>
+<span class="n">config</span> <span class="o">=</span> <span class="n">ChunkerConfig</span><span class="p">()</span>
+<span class="n">config</span><span class="o">.</span><span class="n">set_plugin_config</span><span class="p">(</span><span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="n">PluginConfig</span><span class="p">(</span>
+    <span class="n">enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">chunk_types</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;function_definition&quot;</span><span class="p">,</span> <span class="s2">&quot;class_definition&quot;</span><span class="p">},</span>
+    <span class="n">min_chunk_size</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+    <span class="n">max_chunk_size</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
+    <span class="n">custom_options</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;include_docstrings&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="s2">&quot;skip_private&quot;</span><span class="p">:</span> <span class="kc">False</span>
+    <span class="p">}</span>
+<span class="p">))</span>
+</code></pre></div>
+
+<h3 id="loading-custom-plugins">Loading Custom Plugins<a class="headerlink" href="#loading-custom-plugins" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker.plugin_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_plugin_manager</span>
+
+<span class="c1"># Load plugins from a directory</span>
+<span class="n">manager</span> <span class="o">=</span> <span class="n">get_plugin_manager</span><span class="p">()</span>
+<span class="n">manager</span><span class="o">.</span><span class="n">load_plugin_directory</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;~/.chunker/plugins&quot;</span><span class="p">))</span>
+
+<span class="c1"># Or register a plugin class directly</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">my_plugin</span><span class="w"> </span><span class="kn">import</span> <span class="n">SwiftPlugin</span>
+<span class="n">manager</span><span class="o">.</span><span class="n">register_plugin</span><span class="p">(</span><span class="n">SwiftPlugin</span><span class="p">)</span>
+</code></pre></div>
+
+<h2 id="performance-features">Performance Features<a class="headerlink" href="#performance-features" title="Permanent link">&para;</a></h2>
+<h3 id="ast-caching">AST Caching<a class="headerlink" href="#ast-caching" title="Permanent link">&para;</a></h3>
+<p>The AST cache provides up to 11.9x speedup for repeated file processing:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">chunk_file</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker.cache</span><span class="w"> </span><span class="kn">import</span> <span class="n">ASTCache</span>
+
+<span class="c1"># Caching is enabled by default</span>
+<span class="n">chunks1</span> <span class="o">=</span> <span class="n">chunk_file</span><span class="p">(</span><span class="s2">&quot;large_file.py&quot;</span><span class="p">,</span> <span class="s2">&quot;python&quot;</span><span class="p">)</span>  <span class="c1"># First run: parses</span>
+<span class="n">chunks2</span> <span class="o">=</span> <span class="n">chunk_file</span><span class="p">(</span><span class="s2">&quot;large_file.py&quot;</span><span class="p">,</span> <span class="s2">&quot;python&quot;</span><span class="p">)</span>  <span class="c1"># Second run: uses cache (11.9x faster)</span>
+
+<span class="c1"># Monitor cache performance</span>
+<span class="n">cache</span> <span class="o">=</span> <span class="n">ASTCache</span><span class="p">(</span><span class="n">max_size</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+<span class="n">stats</span> <span class="o">=</span> <span class="n">cache</span><span class="o">.</span><span class="n">get_stats</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cache hit rate: </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;hit_rate&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cache size: </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;size&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;max_size&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="parallel-file-processing">Parallel File Processing<a class="headerlink" href="#parallel-file-processing" title="Permanent link">&para;</a></h3>
+<p>Process multiple files concurrently for maximum performance:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker.parallel</span><span class="w"> </span><span class="kn">import</span> <span class="n">chunk_files_parallel</span><span class="p">,</span> <span class="n">chunk_directory_parallel</span>
+
+<span class="c1"># Process specific files</span>
+<span class="n">files</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;src/main.py&quot;</span><span class="p">,</span> <span class="s2">&quot;src/utils.py&quot;</span><span class="p">,</span> <span class="s2">&quot;src/models.py&quot;</span><span class="p">]</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">chunk_files_parallel</span><span class="p">(</span>
+    <span class="n">files</span><span class="p">,</span> 
+    <span class="s2">&quot;python&quot;</span><span class="p">,</span> 
+    <span class="n">max_workers</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+    <span class="n">show_progress</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+
+<span class="c1"># Process entire directory</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">chunk_directory_parallel</span><span class="p">(</span>
+    <span class="s2">&quot;src/&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;python&quot;</span><span class="p">,</span>
+    <span class="n">pattern</span><span class="o">=</span><span class="s2">&quot;**/*.py&quot;</span><span class="p">,</span>
+    <span class="n">max_workers</span><span class="o">=</span><span class="mi">8</span>
+<span class="p">)</span>
+
+<span class="k">for</span> <span class="n">file_path</span><span class="p">,</span> <span class="n">chunks</span> <span class="ow">in</span> <span class="n">results</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">chunks</span><span class="p">)</span><span class="si">}</span><span class="s2"> chunks&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="streaming-large-files">Streaming Large Files<a class="headerlink" href="#streaming-large-files" title="Permanent link">&para;</a></h3>
+<p>For very large files, use streaming to avoid loading everything into memory:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker.streaming</span><span class="w"> </span><span class="kn">import</span> <span class="n">chunk_file_streaming</span>
+
+<span class="c1"># Process a huge file incrementally</span>
+<span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">chunk_file_streaming</span><span class="p">(</span><span class="s2">&quot;massive_codebase.py&quot;</span><span class="p">,</span> <span class="s2">&quot;python&quot;</span><span class="p">):</span>
+    <span class="c1"># Process each chunk as it&#39;s found</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="n">chunk</span><span class="o">.</span><span class="n">node_type</span><span class="si">}</span><span class="s2"> at lines </span><span class="si">{</span><span class="n">chunk</span><span class="o">.</span><span class="n">start_line</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">chunk</span><span class="o">.</span><span class="n">end_line</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="c1"># Save to database, send to API, etc.</span>
+    <span class="n">process_chunk</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="performance-tips">Performance Tips<a class="headerlink" href="#performance-tips" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Enable Caching</strong>: Always use caching for files that are processed multiple times</li>
+<li><strong>Use Parallel Processing</strong>: Take advantage of multiple CPU cores</li>
+<li><strong>Stream Large Files</strong>: Use streaming for files over 10MB</li>
+<li><strong>Configure Cache Size</strong>: Adjust based on available memory</li>
+<li><strong>Batch Operations</strong>: Process files in batches rather than one at a time</li>
+</ol>
+<h2 id="export-formats">Export Formats<a class="headerlink" href="#export-formats" title="Permanent link">&para;</a></h2>
+<h3 id="json-export">JSON Export<a class="headerlink" href="#json-export" title="Permanent link">&para;</a></h3>
+<p>Export chunks to JSON with different schema types:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">chunk_file</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker.export.json_export</span><span class="w"> </span><span class="kn">import</span> <span class="n">JSONExporter</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker.export.formatters</span><span class="w"> </span><span class="kn">import</span> <span class="n">SchemaType</span>
+
+<span class="c1"># Get chunks</span>
+<span class="n">chunks</span> <span class="o">=</span> <span class="n">chunk_file</span><span class="p">(</span><span class="s2">&quot;example.py&quot;</span><span class="p">,</span> <span class="s2">&quot;python&quot;</span><span class="p">)</span>
+
+<span class="c1"># Export with flat schema (default)</span>
+<span class="n">exporter</span> <span class="o">=</span> <span class="n">JSONExporter</span><span class="p">(</span><span class="n">schema_type</span><span class="o">=</span><span class="n">SchemaType</span><span class="o">.</span><span class="n">FLAT</span><span class="p">)</span>
+<span class="n">exporter</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="n">chunks</span><span class="p">,</span> <span class="s2">&quot;output.json&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+<span class="c1"># Export with nested schema (preserves hierarchy)</span>
+<span class="n">exporter</span> <span class="o">=</span> <span class="n">JSONExporter</span><span class="p">(</span><span class="n">schema_type</span><span class="o">=</span><span class="n">SchemaType</span><span class="o">.</span><span class="n">NESTED</span><span class="p">)</span>
+<span class="n">exporter</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="n">chunks</span><span class="p">,</span> <span class="s2">&quot;output_nested.json&quot;</span><span class="p">)</span>
+
+<span class="c1"># Export with compression</span>
+<span class="n">exporter</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="n">chunks</span><span class="p">,</span> <span class="s2">&quot;output.json.gz&quot;</span><span class="p">,</span> <span class="n">compress</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="jsonl-export">JSONL Export<a class="headerlink" href="#jsonl-export" title="Permanent link">&para;</a></h3>
+<p>JSON Lines format is ideal for streaming and large datasets:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker.export.json_export</span><span class="w"> </span><span class="kn">import</span> <span class="n">JSONLExporter</span>
+
+<span class="c1"># Export to JSONL</span>
+<span class="n">exporter</span> <span class="o">=</span> <span class="n">JSONLExporter</span><span class="p">()</span>
+<span class="n">exporter</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="n">chunks</span><span class="p">,</span> <span class="s2">&quot;output.jsonl&quot;</span><span class="p">)</span>
+
+<span class="c1"># Stream export for large datasets</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker.streaming</span><span class="w"> </span><span class="kn">import</span> <span class="n">chunk_file_streaming</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">chunk_generator</span><span class="p">():</span>
+    <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">chunk_file_streaming</span><span class="p">(</span><span class="s2">&quot;huge_file.py&quot;</span><span class="p">,</span> <span class="s2">&quot;python&quot;</span><span class="p">):</span>
+        <span class="k">yield</span> <span class="n">chunk</span>
+
+<span class="n">exporter</span><span class="o">.</span><span class="n">export_streaming</span><span class="p">(</span><span class="n">chunk_generator</span><span class="p">(),</span> <span class="s2">&quot;large_output.jsonl&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="parquet-export">Parquet Export<a class="headerlink" href="#parquet-export" title="Permanent link">&para;</a></h3>
+<p>Parquet format is excellent for analytics and data science workflows:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker.exporters</span><span class="w"> </span><span class="kn">import</span> <span class="n">ParquetExporter</span>
+
+<span class="c1"># Basic export</span>
+<span class="n">exporter</span> <span class="o">=</span> <span class="n">ParquetExporter</span><span class="p">()</span>
+<span class="n">exporter</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="n">chunks</span><span class="p">,</span> <span class="s2">&quot;output.parquet&quot;</span><span class="p">)</span>
+
+<span class="c1"># Export with custom columns and compression</span>
+<span class="n">exporter</span> <span class="o">=</span> <span class="n">ParquetExporter</span><span class="p">(</span>
+    <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;language&quot;</span><span class="p">,</span> <span class="s2">&quot;file_path&quot;</span><span class="p">,</span> <span class="s2">&quot;node_type&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">,</span> <span class="s2">&quot;start_line&quot;</span><span class="p">,</span> <span class="s2">&quot;end_line&quot;</span><span class="p">],</span>
+    <span class="n">compression</span><span class="o">=</span><span class="s2">&quot;snappy&quot;</span>  <span class="c1"># Options: snappy, gzip, brotli, lz4, zstd</span>
+<span class="p">)</span>
+<span class="n">exporter</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="n">chunks</span><span class="p">,</span> <span class="s2">&quot;output.parquet&quot;</span><span class="p">)</span>
+
+<span class="c1"># Export with partitioning for large datasets</span>
+<span class="n">exporter</span><span class="o">.</span><span class="n">export_partitioned</span><span class="p">(</span>
+    <span class="n">chunks</span><span class="p">,</span>
+    <span class="s2">&quot;output_dir/&quot;</span><span class="p">,</span>
+    <span class="n">partition_cols</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;language&quot;</span><span class="p">,</span> <span class="s2">&quot;node_type&quot;</span><span class="p">]</span>
+<span class="p">)</span>
+
+<span class="c1"># Stream export for memory efficiency</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker.parallel</span><span class="w"> </span><span class="kn">import</span> <span class="n">chunk_directory_parallel</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">process_directory</span><span class="p">(</span><span class="n">directory</span><span class="p">):</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">chunk_directory_parallel</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="s2">&quot;python&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">file_path</span><span class="p">,</span> <span class="n">file_chunks</span> <span class="ow">in</span> <span class="n">results</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">file_chunks</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">chunk</span>
+
+<span class="n">exporter</span><span class="o">.</span><span class="n">export_streaming</span><span class="p">(</span>
+    <span class="n">process_directory</span><span class="p">(</span><span class="s2">&quot;large_codebase/&quot;</span><span class="p">),</span>
+    <span class="s2">&quot;streaming_output.parquet&quot;</span><span class="p">,</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="mi">1000</span>
+<span class="p">)</span>
+</code></pre></div>
+
+<h3 id="export-format-comparison">Export Format Comparison<a class="headerlink" href="#export-format-comparison" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Format</th>
+<th>Best For</th>
+<th>Compression</th>
+<th>Streaming</th>
+<th>Schema Support</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>JSON</td>
+<td>Human-readable, small datasets</td>
+<td>Optional</td>
+<td>No</td>
+<td>Flexible</td>
+</tr>
+<tr>
+<td>JSONL</td>
+<td>Streaming, logs, APIs</td>
+<td>Optional</td>
+<td>Yes</td>
+<td>Per-line</td>
+</tr>
+<tr>
+<td>Parquet</td>
+<td>Analytics, big data</td>
+<td>Built-in</td>
+<td>Yes</td>
+<td>Typed</td>
+</tr>
+</tbody>
+</table>
+<h3 id="custom-export-example">Custom Export Example<a class="headerlink" href="#custom-export-example" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Export chunks with filtering and transformation</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker.parallel</span><span class="w"> </span><span class="kn">import</span> <span class="n">chunk_directory_parallel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker.exporters</span><span class="w"> </span><span class="kn">import</span> <span class="n">ParquetExporter</span>
+
+<span class="c1"># Process a project</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">chunk_directory_parallel</span><span class="p">(</span><span class="s2">&quot;myproject/&quot;</span><span class="p">,</span> <span class="s2">&quot;python&quot;</span><span class="p">)</span>
+
+<span class="c1"># Filter and transform chunks</span>
+<span class="n">processed_chunks</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">file_path</span><span class="p">,</span> <span class="n">chunks</span> <span class="ow">in</span> <span class="n">results</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">chunks</span><span class="p">:</span>
+        <span class="c1"># Only export functions and classes</span>
+        <span class="k">if</span> <span class="n">chunk</span><span class="o">.</span><span class="n">node_type</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;function_definition&quot;</span><span class="p">,</span> <span class="s2">&quot;class_definition&quot;</span><span class="p">]:</span>
+            <span class="c1"># Add custom metadata</span>
+            <span class="n">chunk</span><span class="o">.</span><span class="n">metadata</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;project&quot;</span><span class="p">:</span> <span class="s2">&quot;myproject&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="s2">&quot;1.0.0&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;extracted_at&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
+            <span class="p">}</span>
+            <span class="n">processed_chunks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
+
+<span class="c1"># Export to Parquet with partitioning</span>
+<span class="n">exporter</span> <span class="o">=</span> <span class="n">ParquetExporter</span><span class="p">(</span><span class="n">compression</span><span class="o">=</span><span class="s2">&quot;zstd&quot;</span><span class="p">)</span>
+<span class="n">exporter</span><span class="o">.</span><span class="n">export_partitioned</span><span class="p">(</span>
+    <span class="n">processed_chunks</span><span class="p">,</span>
+    <span class="s2">&quot;exports/myproject/&quot;</span><span class="p">,</span>
+    <span class="n">partition_cols</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;node_type&quot;</span><span class="p">]</span>
+<span class="p">)</span>
+</code></pre></div>
+
+<h2 id="performance-best-practices">Performance Best Practices<a class="headerlink" href="#performance-best-practices" title="Permanent link">&para;</a></h2>
+<h3 id="1-reuse-parsers">1. Reuse Parsers<a class="headerlink" href="#1-reuse-parsers" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Good - parser reused automatically</span>
+<span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+    <span class="n">chunks</span> <span class="o">=</span> <span class="n">chunk_file</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="s2">&quot;python&quot;</span><span class="p">)</span>
+
+<span class="c1"># Also good - manual control</span>
+<span class="n">parser</span> <span class="o">=</span> <span class="n">get_parser</span><span class="p">(</span><span class="s2">&quot;python&quot;</span><span class="p">)</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+        <span class="c1"># Use same parser for multiple files</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">tree</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+<span class="k">finally</span><span class="p">:</span>
+    <span class="n">return_parser</span><span class="p">(</span><span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="n">parser</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="2-process-in-parallel">2. Process in Parallel<a class="headerlink" href="#2-process-in-parallel" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">concurrent.futures</span><span class="w"> </span><span class="kn">import</span> <span class="n">ThreadPoolExecutor</span>
+
+<span class="c1"># Process multiple files concurrently</span>
+<span class="k">with</span> <span class="n">ThreadPoolExecutor</span><span class="p">(</span><span class="n">max_workers</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span> <span class="k">as</span> <span class="n">executor</span><span class="p">:</span>
+    <span class="n">futures</span> <span class="o">=</span> <span class="p">[</span><span class="n">executor</span><span class="o">.</span><span class="n">submit</span><span class="p">(</span><span class="n">chunk_file</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="s2">&quot;python&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files</span><span class="p">]</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="o">.</span><span class="n">result</span><span class="p">()</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">futures</span><span class="p">]</span>
+</code></pre></div>
+
+<h3 id="3-configure-cache-size">3. Configure Cache Size<a class="headerlink" href="#3-configure-cache-size" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
+<span class="c1"># Set via environment variables</span>
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;CHUNKER_CACHE_SIZE&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;20&#39;</span>
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;CHUNKER_POOL_SIZE&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;10&#39;</span>
+
+<span class="c1"># Or configure factory directly</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker.factory</span><span class="w"> </span><span class="kn">import</span> <span class="n">ParserFactory</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">LanguageRegistry</span>
+
+<span class="n">registry</span> <span class="o">=</span> <span class="n">LanguageRegistry</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;build/my-languages.so&quot;</span><span class="p">))</span>
+<span class="n">factory</span> <span class="o">=</span> <span class="n">ParserFactory</span><span class="p">(</span><span class="n">registry</span><span class="p">,</span> <span class="n">cache_size</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">pool_size</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="4-handle-large-files">4. Handle Large Files<a class="headerlink" href="#4-handle-large-files" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">chunk_large_file</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">language</span><span class="p">,</span> <span class="n">max_size_mb</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Handle large files efficiently.&quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+    <span class="n">file_size</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_size</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">file_size</span> <span class="o">&gt;</span> <span class="n">max_size_mb</span><span class="p">:</span>
+        <span class="c1"># Process in chunks using included_ranges</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">chunker.factory</span><span class="w"> </span><span class="kn">import</span> <span class="n">ParserConfig</span>
+
+        <span class="n">chunk_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">max_size_mb</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">)</span>
+        <span class="n">ranges</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">chunk_size</span><span class="p">):</span>
+                <span class="n">ranges</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">i</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="n">chunk_size</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">))))</span>
+
+        <span class="n">all_chunks</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="ow">in</span> <span class="n">ranges</span><span class="p">:</span>
+            <span class="n">config</span> <span class="o">=</span> <span class="n">ParserConfig</span><span class="p">(</span><span class="n">included_ranges</span><span class="o">=</span><span class="p">[(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)])</span>
+            <span class="n">parser</span> <span class="o">=</span> <span class="n">get_parser</span><span class="p">(</span><span class="n">language</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+            <span class="c1"># Process range...</span>
+
+        <span class="k">return</span> <span class="n">all_chunks</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">chunk_file</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">language</span><span class="p">)</span>
+</code></pre></div>
+
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<h3 id="environment-variables">Environment Variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Set logging level</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHUNKER_LOG_LEVEL</span><span class="o">=</span>DEBUG
+
+<span class="c1"># Configure cache sizes</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHUNKER_CACHE_SIZE</span><span class="o">=</span><span class="m">20</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHUNKER_POOL_SIZE</span><span class="o">=</span><span class="m">10</span>
+
+<span class="c1"># Run with custom configuration</span>
+python<span class="w"> </span>cli/main.py<span class="w"> </span>chunk<span class="w"> </span>file.py<span class="w"> </span>-l<span class="w"> </span>python
+</code></pre></div>
+
+<h3 id="programmatic-configuration">Programmatic Configuration<a class="headerlink" href="#programmatic-configuration" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker.factory</span><span class="w"> </span><span class="kn">import</span> <span class="n">ParserConfig</span>
+
+<span class="c1"># Configure logging</span>
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span>
+    <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">,</span>
+    <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%(asctime)s</span><span class="s1"> - </span><span class="si">%(name)s</span><span class="s1"> - </span><span class="si">%(levelname)s</span><span class="s1"> - </span><span class="si">%(message)s</span><span class="s1">&#39;</span>
+<span class="p">)</span>
+
+<span class="c1"># Configure parser</span>
+<span class="n">config</span> <span class="o">=</span> <span class="n">ParserConfig</span><span class="p">(</span>
+    <span class="n">timeout_ms</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span>  <span class="c1"># 10 second timeout</span>
+    <span class="n">logger</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;parser&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+</code></pre></div>
+
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="common-issues-and-solutions">Common Issues and Solutions<a class="headerlink" href="#common-issues-and-solutions" title="Permanent link">&para;</a></h3>
+<h4 id="language-not-found">Language Not Found<a class="headerlink" href="#language-not-found" title="Permanent link">&para;</a></h4>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker.parser</span><span class="w"> </span><span class="kn">import</span> <span class="n">list_languages</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">LanguageNotFoundError</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">chunks</span> <span class="o">=</span> <span class="n">chunk_file</span><span class="p">(</span><span class="s2">&quot;file.xyz&quot;</span><span class="p">,</span> <span class="s2">&quot;xyz&quot;</span><span class="p">)</span>
+<span class="k">except</span> <span class="n">LanguageNotFoundError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">available</span> <span class="o">=</span> <span class="n">list_languages</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Available languages: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">available</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="c1"># Suggestion: Check if language is compiled into .so file</span>
+</code></pre></div>
+
+<h4 id="library-not-found">Library Not Found<a class="headerlink" href="#library-not-found" title="Permanent link">&para;</a></h4>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Error: LibraryNotFoundError: Shared library not found: build/my-languages.so</span>
+
+<span class="c1"># Solution: Build the library</span>
+python<span class="w"> </span>scripts/fetch_grammars.py
+python<span class="w"> </span>scripts/build_lib.py
+</code></pre></div>
+
+<h4 id="parser-version-mismatch">Parser Version Mismatch<a class="headerlink" href="#parser-version-mismatch" title="Permanent link">&para;</a></h4>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Error: Language &#39;python&#39; ABI version 14 doesn&#39;t match parser version 13</span>
+
+<span class="c1"># Solution: Update py-tree-sitter</span>
+uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>git+https://github.com/tree-sitter/py-tree-sitter.git
+</code></pre></div>
+
+<h4 id="empty-results">Empty Results<a class="headerlink" href="#empty-results" title="Permanent link">&para;</a></h4>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Debug why no chunks are returned</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
+
+<span class="n">chunks</span> <span class="o">=</span> <span class="n">chunk_file</span><span class="p">(</span><span class="s2">&quot;file.py&quot;</span><span class="p">,</span> <span class="s2">&quot;python&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">chunks</span><span class="p">:</span>
+    <span class="c1"># Check if file has supported node types</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">get_parser</span><span class="p">(</span><span class="s2">&quot;python&quot;</span><span class="p">)</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;file.py&quot;</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">tree</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+
+    <span class="c1"># Inspect AST</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">print_tree</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  &quot;</span> <span class="o">*</span> <span class="n">indent</span> <span class="o">+</span> <span class="n">node</span><span class="o">.</span><span class="n">type</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">children</span><span class="p">:</span>
+            <span class="n">print_tree</span><span class="p">(</span><span class="n">child</span><span class="p">,</span> <span class="n">indent</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">print_tree</span><span class="p">(</span><span class="n">tree</span><span class="o">.</span><span class="n">root_node</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="debug-information">Debug Information<a class="headerlink" href="#debug-information" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker.parser</span><span class="w"> </span><span class="kn">import</span> <span class="n">_factory</span><span class="p">,</span> <span class="n">_registry</span>
+
+<span class="c1"># Check loaded languages</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Loaded languages:&quot;</span><span class="p">,</span> <span class="n">_registry</span><span class="o">.</span><span class="n">list_languages</span><span class="p">())</span>
+
+<span class="c1"># Check cache statistics</span>
+<span class="n">stats</span> <span class="o">=</span> <span class="n">_factory</span><span class="o">.</span><span class="n">get_stats</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Cache stats:&quot;</span><span class="p">,</span> <span class="n">stats</span><span class="p">)</span>
+
+<span class="c1"># Enable detailed logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;chunker&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="getting-help">Getting Help<a class="headerlink" href="#getting-help" title="Permanent link">&para;</a></h3>
+<p>When reporting issues:</p>
+<ol>
+<li>
+<p><strong>Version Information</strong>:
+   <code>python
+   import sys
+   import tree_sitter
+   print(f"Python: {sys.version}")
+   print(f"Tree-sitter: {tree_sitter.__version__}")</code></p>
+</li>
+<li>
+<p><strong>Minimal Example</strong>:
+   <code>python
+   from chunker.chunker import chunk_file
+   chunks = chunk_file("problem_file.py", "python")</code></p>
+</li>
+<li>
+<p><strong>Error Traceback</strong>: Include the full error message</p>
+</li>
+<li>
+<p><strong>Environment</strong>: OS, Python version, installation method</p>
+</li>
+</ol>
+<h2 id="see-also">See Also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../api-reference/">API Reference</a> - Complete API documentation</li>
+<li><a href="../plugin-development/">Plugin Development</a> - Creating custom language plugins</li>
+<li><a href="../configuration/">Configuration</a> - Configuration file reference</li>
+<li><a href="../performance-guide/">Performance Guide</a> - Optimization strategies</li>
+<li><a href="../export-formats/">Export Formats</a> - Detailed export documentation</li>
+<li><a href="../getting-started/">Getting Started</a> - Quick start tutorial  </li>
+<li><a href="../architecture/">Architecture</a> - System design details</li>
+<li><a href="../cookbook/">Cookbook</a> - Practical recipes and examples</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "content.code.copy"], "search": "../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.50899def.min.js"></script>
+      
+    
+  </body>
+</html>

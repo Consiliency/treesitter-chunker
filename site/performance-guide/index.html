@@ -1,0 +1,2519 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../graphml_export/">
+      
+      
+        <link rel="next" href="../grammar_discovery/">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.16">
+    
+    
+      
+        <title>Performance Guide - Tree-sitter Chunker</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.7e37652d.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#performance-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Tree-sitter Chunker" class="md-header__button md-logo" aria-label="Tree-sitter Chunker" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Tree-sitter Chunker
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Performance Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/Consiliency/treesitter-chunker" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Overview
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../getting-started/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../user-guide/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  User Guide
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../configuration/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Configuration
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../cli-reference/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  CLI Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../api-reference/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  API Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../export-formats/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Export Formats
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../graphml_export/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  GraphML Export
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Performance Guide
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../grammar_discovery/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Grammar Discovery
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../zero_config_api/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Zero-Config API
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Tree-sitter Chunker" class="md-nav__button md-logo" aria-label="Tree-sitter Chunker" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Tree-sitter Chunker
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/Consiliency/treesitter-chunker" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Getting Started
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    User Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Configuration
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    CLI Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    API Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../export-formats/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Export Formats
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../graphml_export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    GraphML Export
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Performance Guide
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Performance Guide
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table of Contents
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Performance Overview
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#performance-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Performance Metrics
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ast-caching" class="md-nav__link">
+    <span class="md-ellipsis">
+      AST Caching
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="AST Caching">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basic-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Basic Usage
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cache-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cache Configuration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cache-key-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cache Key Strategy
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#advanced-caching" class="md-nav__link">
+    <span class="md-ellipsis">
+      Advanced Caching
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#parallel-processing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parallel Processing
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Parallel Processing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basic-parallel-processing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Basic Parallel Processing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#directory-processing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Directory Processing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-parallel-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Custom Parallel Implementation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parallel-processing-best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parallel Processing Best Practices
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#streaming-large-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      Streaming Large Files
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Streaming Large Files">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basic-streaming" class="md-nav__link">
+    <span class="md-ellipsis">
+      Basic Streaming
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#streaming-with-batching" class="md-nav__link">
+    <span class="md-ellipsis">
+      Streaming with Batching
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-streaming-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Custom Streaming Implementation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#memory-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      Memory Management
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Memory Management">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#memory-profiling" class="md-nav__link">
+    <span class="md-ellipsis">
+      Memory Profiling
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#memory-optimization-strategies" class="md-nav__link">
+    <span class="md-ellipsis">
+      Memory Optimization Strategies
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#benchmarking" class="md-nav__link">
+    <span class="md-ellipsis">
+      Benchmarking
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Benchmarking">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basic-benchmarking" class="md-nav__link">
+    <span class="md-ellipsis">
+      Basic Benchmarking
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#comprehensive-benchmark-suite" class="md-nav__link">
+    <span class="md-ellipsis">
+      Comprehensive Benchmark Suite
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-tuning" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Tuning
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration Tuning">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cache-size-tuning" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cache Size Tuning
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worker-count-optimization" class="md-nav__link">
+    <span class="md-ellipsis">
+      Worker Count Optimization
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration-file-optimization" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration File Optimization
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-bottlenecks" class="md-nav__link">
+    <span class="md-ellipsis">
+      Common Bottlenecks
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Common Bottlenecks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-parser-creation-overhead" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Parser Creation Overhead
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-memory-exhaustion" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Memory Exhaustion
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-cache-thrashing" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Cache Thrashing
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-monitoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      Performance Monitoring
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance Monitoring">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#real-time-monitoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      Real-time Monitoring
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#logging-performance-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Logging Performance Metrics
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      Best Practices
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Best Practices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-profile-before-optimizing" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Profile Before Optimizing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-choose-the-right-tool" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Choose the Right Tool
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-optimize-for-your-use-case" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Optimize for Your Use Case
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-monitor-and-adjust" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Monitor and Adjust
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-error-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Error Recovery
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      See Also
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../grammar_discovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Grammar Discovery
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zero_config_api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Zero-Config API
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table of Contents
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Performance Overview
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#performance-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Performance Metrics
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ast-caching" class="md-nav__link">
+    <span class="md-ellipsis">
+      AST Caching
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="AST Caching">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basic-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Basic Usage
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cache-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cache Configuration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cache-key-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cache Key Strategy
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#advanced-caching" class="md-nav__link">
+    <span class="md-ellipsis">
+      Advanced Caching
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#parallel-processing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parallel Processing
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Parallel Processing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basic-parallel-processing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Basic Parallel Processing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#directory-processing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Directory Processing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-parallel-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Custom Parallel Implementation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parallel-processing-best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parallel Processing Best Practices
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#streaming-large-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      Streaming Large Files
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Streaming Large Files">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basic-streaming" class="md-nav__link">
+    <span class="md-ellipsis">
+      Basic Streaming
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#streaming-with-batching" class="md-nav__link">
+    <span class="md-ellipsis">
+      Streaming with Batching
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-streaming-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Custom Streaming Implementation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#memory-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      Memory Management
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Memory Management">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#memory-profiling" class="md-nav__link">
+    <span class="md-ellipsis">
+      Memory Profiling
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#memory-optimization-strategies" class="md-nav__link">
+    <span class="md-ellipsis">
+      Memory Optimization Strategies
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#benchmarking" class="md-nav__link">
+    <span class="md-ellipsis">
+      Benchmarking
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Benchmarking">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basic-benchmarking" class="md-nav__link">
+    <span class="md-ellipsis">
+      Basic Benchmarking
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#comprehensive-benchmark-suite" class="md-nav__link">
+    <span class="md-ellipsis">
+      Comprehensive Benchmark Suite
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-tuning" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Tuning
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration Tuning">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cache-size-tuning" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cache Size Tuning
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#worker-count-optimization" class="md-nav__link">
+    <span class="md-ellipsis">
+      Worker Count Optimization
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration-file-optimization" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration File Optimization
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-bottlenecks" class="md-nav__link">
+    <span class="md-ellipsis">
+      Common Bottlenecks
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Common Bottlenecks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-parser-creation-overhead" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Parser Creation Overhead
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-memory-exhaustion" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Memory Exhaustion
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-cache-thrashing" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Cache Thrashing
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-monitoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      Performance Monitoring
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance Monitoring">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#real-time-monitoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      Real-time Monitoring
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#logging-performance-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Logging Performance Metrics
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      Best Practices
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Best Practices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-profile-before-optimizing" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Profile Before Optimizing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-choose-the-right-tool" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Choose the Right Tool
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-optimize-for-your-use-case" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Optimize for Your Use Case
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-monitor-and-adjust" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Monitor and Adjust
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-error-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Error Recovery
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      See Also
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="performance-guide">Performance Guide<a class="headerlink" href="#performance-guide" title="Permanent link">&para;</a></h1>
+<p>This guide provides comprehensive strategies and best practices for optimizing Tree-sitter Chunker performance. Learn how to leverage caching, parallel processing, and streaming to handle codebases of any size efficiently.</p>
+<h2 id="table-of-contents">Table of Contents<a class="headerlink" href="#table-of-contents" title="Permanent link">&para;</a></h2>
+<ol>
+<li><a href="#performance-overview">Performance Overview</a></li>
+<li><a href="#ast-caching">AST Caching</a></li>
+<li><a href="#parallel-processing">Parallel Processing</a></li>
+<li><a href="#streaming-large-files">Streaming Large Files</a></li>
+<li><a href="#memory-management">Memory Management</a></li>
+<li><a href="#benchmarking">Benchmarking</a></li>
+<li><a href="#configuration-tuning">Configuration Tuning</a></li>
+<li><a href="#common-bottlenecks">Common Bottlenecks</a></li>
+<li><a href="#performance-monitoring">Performance Monitoring</a></li>
+<li><a href="#best-practices">Best Practices</a></li>
+</ol>
+<h2 id="performance-overview">Performance Overview<a class="headerlink" href="#performance-overview" title="Permanent link">&para;</a></h2>
+<p>Tree-sitter Chunker is designed for high performance with several key optimizations:</p>
+<ul>
+<li><strong>AST Caching</strong>: Up to 11.9x speedup for repeated file processing</li>
+<li><strong>Parser Pooling</strong>: Efficient reuse of parser instances</li>
+<li><strong>Parallel Processing</strong>: Near-linear speedup with CPU cores</li>
+<li><strong>Streaming Support</strong>: Process files larger than available memory</li>
+<li><strong>Lazy Loading</strong>: Languages loaded only when needed</li>
+</ul>
+<h3 id="performance-metrics">Performance Metrics<a class="headerlink" href="#performance-metrics" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>Performance</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Parser Creation</td>
+<td>~10-50ms</td>
+<td>One-time cost per language</td>
+</tr>
+<tr>
+<td>File Parsing</td>
+<td>O(n) with file size</td>
+<td>~1MB/s typical</td>
+</tr>
+<tr>
+<td>Cached Parse</td>
+<td>~0.1ms</td>
+<td>11.9x speedup</td>
+</tr>
+<tr>
+<td>Chunk Extraction</td>
+<td>O(n) with AST nodes</td>
+<td>Linear traversal</td>
+</tr>
+<tr>
+<td>Memory Usage</td>
+<td>~10x source size</td>
+<td>For AST storage</td>
+</tr>
+</tbody>
+</table>
+<h2 id="ast-caching">AST Caching<a class="headerlink" href="#ast-caching" title="Permanent link">&para;</a></h2>
+<p>The AST cache dramatically improves performance when processing files multiple times.</p>
+<h3 id="basic-usage">Basic Usage<a class="headerlink" href="#basic-usage" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">chunk_file</span><span class="p">,</span> <span class="n">ASTCache</span>
+
+<span class="c1"># Caching is enabled by default</span>
+<span class="n">chunks1</span> <span class="o">=</span> <span class="n">chunk_file</span><span class="p">(</span><span class="s2">&quot;large_file.py&quot;</span><span class="p">,</span> <span class="s2">&quot;python&quot;</span><span class="p">)</span>  <span class="c1"># Parses file</span>
+<span class="n">chunks2</span> <span class="o">=</span> <span class="n">chunk_file</span><span class="p">(</span><span class="s2">&quot;large_file.py&quot;</span><span class="p">,</span> <span class="s2">&quot;python&quot;</span><span class="p">)</span>  <span class="c1"># Uses cache (11.9x faster)</span>
+</code></pre></div>
+
+<h3 id="cache-configuration">Cache Configuration<a class="headerlink" href="#cache-configuration" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">ASTCache</span>
+
+<span class="c1"># Create cache with custom size</span>
+<span class="n">cache</span> <span class="o">=</span> <span class="n">ASTCache</span><span class="p">(</span><span class="n">max_size</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>  <span class="c1"># Cache up to 500 ASTs</span>
+
+<span class="c1"># Monitor cache performance</span>
+<span class="n">stats</span> <span class="o">=</span> <span class="n">cache</span><span class="o">.</span><span class="n">get_stats</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Hit rate: </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;hit_rate&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Hits: </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;hits&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, Misses: </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;misses&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Current size: </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;size&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;max_size&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Clear cache when needed</span>
+<span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</code></pre></div>
+
+<h3 id="cache-key-strategy">Cache Key Strategy<a class="headerlink" href="#cache-key-strategy" title="Permanent link">&para;</a></h3>
+<p>The cache uses a composite key based on:
+- File path (absolute)
+- File modification time
+- File size
+- Language</p>
+<p>This ensures cache invalidation when files change.</p>
+<h3 id="advanced-caching">Advanced Caching<a class="headerlink" href="#advanced-caching" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">ASTCache</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">SmartChunker</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cache_size</span><span class="o">=</span><span class="mi">200</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache</span> <span class="o">=</span> <span class="n">ASTCache</span><span class="p">(</span><span class="n">max_size</span><span class="o">=</span><span class="n">cache_size</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">process_with_cache_warmup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">files</span><span class="p">,</span> <span class="n">language</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Warm up cache for frequently accessed files.&quot;&quot;&quot;</span>
+        <span class="c1"># Pre-process popular files</span>
+        <span class="n">popular_files</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">identify_popular_files</span><span class="p">(</span><span class="n">files</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">popular_files</span><span class="p">[:</span><span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">max_size</span><span class="p">]:</span>
+            <span class="n">chunk_file</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">language</span><span class="p">)</span>  <span class="c1"># Warm cache</span>
+
+        <span class="c1"># Process all files</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+            <span class="n">results</span><span class="p">[</span><span class="n">file</span><span class="p">]</span> <span class="o">=</span> <span class="n">chunk_file</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">language</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">results</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">monitor_cache_efficiency</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Monitor and report cache efficiency.&quot;&quot;&quot;</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">get_stats</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;hit_rate&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">0.5</span> <span class="ow">and</span> <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;size&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;max_size&#39;</span><span class="p">]:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Consider increasing cache size for better performance&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">stats</span>
+</code></pre></div>
+
+<h2 id="parallel-processing">Parallel Processing<a class="headerlink" href="#parallel-processing" title="Permanent link">&para;</a></h2>
+<p>Leverage multiple CPU cores for processing many files simultaneously.</p>
+<h3 id="basic-parallel-processing">Basic Parallel Processing<a class="headerlink" href="#basic-parallel-processing" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">chunk_files_parallel</span>
+
+<span class="c1"># Process multiple files in parallel</span>
+<span class="n">files</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;file1.py&quot;</span><span class="p">,</span> <span class="s2">&quot;file2.py&quot;</span><span class="p">,</span> <span class="s2">&quot;file3.py&quot;</span><span class="p">,</span> <span class="s2">&quot;file4.py&quot;</span><span class="p">]</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">chunk_files_parallel</span><span class="p">(</span>
+    <span class="n">files</span><span class="p">,</span>
+    <span class="s2">&quot;python&quot;</span><span class="p">,</span>
+    <span class="n">max_workers</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>  <span class="c1"># Use 4 CPU cores</span>
+    <span class="n">show_progress</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+
+<span class="c1"># Results is a dict mapping file paths to chunks</span>
+<span class="k">for</span> <span class="n">file_path</span><span class="p">,</span> <span class="n">chunks</span> <span class="ow">in</span> <span class="n">results</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">chunks</span><span class="p">)</span><span class="si">}</span><span class="s2"> chunks&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="directory-processing">Directory Processing<a class="headerlink" href="#directory-processing" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">chunk_directory_parallel</span>
+
+<span class="c1"># Process entire directory tree</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">chunk_directory_parallel</span><span class="p">(</span>
+    <span class="s2">&quot;src/&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;python&quot;</span><span class="p">,</span>
+    <span class="n">pattern</span><span class="o">=</span><span class="s2">&quot;**/*.py&quot;</span><span class="p">,</span>  <span class="c1"># Glob pattern</span>
+    <span class="n">max_workers</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+    <span class="n">show_progress</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Processed </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">)</span><span class="si">}</span><span class="s2"> files&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="custom-parallel-implementation">Custom Parallel Implementation<a class="headerlink" href="#custom-parallel-implementation" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">concurrent.futures</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProcessPoolExecutor</span><span class="p">,</span> <span class="n">as_completed</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">chunk_file</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">multiprocessing</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mp</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">process_large_codebase</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">language</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Custom parallel processing with fine control.&quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+    <span class="c1"># Find all files</span>
+    <span class="n">files</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span><span class="o">.</span><span class="n">rglob</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;*.</span><span class="si">{</span><span class="n">language</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">))</span>
+
+    <span class="c1"># Determine optimal worker count</span>
+    <span class="n">cpu_count</span> <span class="o">=</span> <span class="n">mp</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span>
+    <span class="n">worker_count</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">cpu_count</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">files</span><span class="p">),</span> <span class="mi">32</span><span class="p">)</span>  <span class="c1"># Cap at 32</span>
+
+    <span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">failed</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># Process with progress tracking</span>
+    <span class="k">with</span> <span class="n">ProcessPoolExecutor</span><span class="p">(</span><span class="n">max_workers</span><span class="o">=</span><span class="n">worker_count</span><span class="p">)</span> <span class="k">as</span> <span class="n">executor</span><span class="p">:</span>
+        <span class="c1"># Submit all tasks</span>
+        <span class="n">future_to_file</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">executor</span><span class="o">.</span><span class="n">submit</span><span class="p">(</span><span class="n">chunk_file</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">f</span><span class="p">),</span> <span class="n">language</span><span class="p">):</span> <span class="n">f</span> 
+            <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files</span>
+        <span class="p">}</span>
+
+        <span class="c1"># Process completed tasks</span>
+        <span class="k">for</span> <span class="n">future</span> <span class="ow">in</span> <span class="n">as_completed</span><span class="p">(</span><span class="n">future_to_file</span><span class="p">):</span>
+            <span class="n">file</span> <span class="o">=</span> <span class="n">future_to_file</span><span class="p">[</span><span class="n">future</span><span class="p">]</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">chunks</span> <span class="o">=</span> <span class="n">future</span><span class="o">.</span><span class="n">result</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+                <span class="n">results</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">file</span><span class="p">)]</span> <span class="o">=</span> <span class="n">chunks</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to process </span><span class="si">{</span><span class="n">file</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">failed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">results</span><span class="p">,</span> <span class="n">failed</span>
+
+<span class="c1"># Use it</span>
+<span class="n">results</span><span class="p">,</span> <span class="n">failed</span> <span class="o">=</span> <span class="n">process_large_codebase</span><span class="p">(</span><span class="s2">&quot;large_project/&quot;</span><span class="p">,</span> <span class="s2">&quot;python&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Processed: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">)</span><span class="si">}</span><span class="s2">, Failed: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">failed</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="parallel-processing-best-practices">Parallel Processing Best Practices<a class="headerlink" href="#parallel-processing-best-practices" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Worker Count</strong>: Use <code>min(cpu_count, file_count)</code> workers</li>
+<li><strong>Batch Size</strong>: Group small files to reduce overhead</li>
+<li><strong>Memory Limits</strong>: Monitor memory usage with many workers</li>
+<li><strong>Error Handling</strong>: Isolate failures to individual files</li>
+</ol>
+<h2 id="streaming-large-files">Streaming Large Files<a class="headerlink" href="#streaming-large-files" title="Permanent link">&para;</a></h2>
+<p>For files too large to fit in memory, use streaming processing.</p>
+<h3 id="basic-streaming">Basic Streaming<a class="headerlink" href="#basic-streaming" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">chunk_file_streaming</span>
+
+<span class="c1"># Process a very large file</span>
+<span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">chunk_file_streaming</span><span class="p">(</span><span class="s2">&quot;huge_codebase.py&quot;</span><span class="p">,</span> <span class="s2">&quot;python&quot;</span><span class="p">):</span>
+    <span class="c1"># Each chunk is yielded as it&#39;s found</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="n">chunk</span><span class="o">.</span><span class="n">node_type</span><span class="si">}</span><span class="s2"> at lines </span><span class="si">{</span><span class="n">chunk</span><span class="o">.</span><span class="n">start_line</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">chunk</span><span class="o">.</span><span class="n">end_line</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Process immediately without storing all chunks</span>
+    <span class="k">if</span> <span class="n">chunk</span><span class="o">.</span><span class="n">node_type</span> <span class="o">==</span> <span class="s2">&quot;function_definition&quot;</span><span class="p">:</span>
+        <span class="n">analyze_function</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="streaming-with-batching">Streaming with Batching<a class="headerlink" href="#streaming-with-batching" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">chunk_file_streaming</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">itertools</span><span class="w"> </span><span class="kn">import</span> <span class="n">islice</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">process_in_batches</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">language</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">100</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Process chunks in batches to balance memory and efficiency.&quot;&quot;&quot;</span>
+    <span class="n">stream</span> <span class="o">=</span> <span class="n">chunk_file_streaming</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">language</span><span class="p">)</span>
+
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="c1"># Get next batch</span>
+        <span class="n">batch</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">islice</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">))</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">batch</span><span class="p">:</span>
+            <span class="k">break</span>
+
+        <span class="c1"># Process batch</span>
+        <span class="n">process_batch</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
+
+        <span class="c1"># Optional: Clear memory between batches</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">gc</span>
+        <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">process_batch</span><span class="p">(</span><span class="n">chunks</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Process a batch of chunks.&quot;&quot;&quot;</span>
+    <span class="c1"># Example: Save to database</span>
+    <span class="n">records</span> <span class="o">=</span> <span class="p">[</span><span class="n">chunk_to_record</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span> <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">chunks</span><span class="p">]</span>
+    <span class="n">db</span><span class="o">.</span><span class="n">insert_many</span><span class="p">(</span><span class="n">records</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="custom-streaming-implementation">Custom Streaming Implementation<a class="headerlink" href="#custom-streaming-implementation" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">StreamingChunker</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">mmap</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">MemoryEfficientChunker</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">language</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">chunker</span> <span class="o">=</span> <span class="n">StreamingChunker</span><span class="p">(</span><span class="n">language</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">process_huge_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Process files of any size efficiently.&quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="c1"># Use memory mapping for efficient access</span>
+            <span class="k">with</span> <span class="n">mmap</span><span class="o">.</span><span class="n">mmap</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">fileno</span><span class="p">(),</span> <span class="mi">0</span><span class="p">,</span> <span class="n">access</span><span class="o">=</span><span class="n">mmap</span><span class="o">.</span><span class="n">ACCESS_READ</span><span class="p">)</span> <span class="k">as</span> <span class="n">mmapped</span><span class="p">:</span>
+                <span class="c1"># Process in chunks</span>
+                <span class="n">chunk_size</span> <span class="o">=</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span>  <span class="c1"># 1MB chunks</span>
+                <span class="n">offset</span> <span class="o">=</span> <span class="mi">0</span>
+
+                <span class="k">while</span> <span class="n">offset</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">mmapped</span><span class="p">):</span>
+                    <span class="c1"># Read chunk</span>
+                    <span class="n">end</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">offset</span> <span class="o">+</span> <span class="n">chunk_size</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">mmapped</span><span class="p">))</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="n">mmapped</span><span class="p">[</span><span class="n">offset</span><span class="p">:</span><span class="n">end</span><span class="p">]</span>
+
+                    <span class="c1"># Process chunk</span>
+                    <span class="k">for</span> <span class="n">code_chunk</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">chunker</span><span class="o">.</span><span class="n">process_bytes</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">offset</span><span class="p">):</span>
+                        <span class="k">yield</span> <span class="n">code_chunk</span>
+
+                    <span class="n">offset</span> <span class="o">=</span> <span class="n">end</span>
+</code></pre></div>
+
+<h2 id="memory-management">Memory Management<a class="headerlink" href="#memory-management" title="Permanent link">&para;</a></h2>
+<p>Optimize memory usage for large-scale processing.</p>
+<h3 id="memory-profiling">Memory Profiling<a class="headerlink" href="#memory-profiling" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">psutil</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">chunk_file</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">profile_memory_usage</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">language</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Profile memory usage during chunking.&quot;&quot;&quot;</span>
+    <span class="n">process</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">Process</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">())</span>
+
+    <span class="c1"># Baseline memory</span>
+    <span class="n">baseline</span> <span class="o">=</span> <span class="n">process</span><span class="o">.</span><span class="n">memory_info</span><span class="p">()</span><span class="o">.</span><span class="n">rss</span> <span class="o">/</span> <span class="mi">1024</span> <span class="o">/</span> <span class="mi">1024</span>  <span class="c1"># MB</span>
+
+    <span class="c1"># Process file</span>
+    <span class="n">chunks</span> <span class="o">=</span> <span class="n">chunk_file</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">language</span><span class="p">)</span>
+
+    <span class="c1"># Peak memory</span>
+    <span class="n">peak</span> <span class="o">=</span> <span class="n">process</span><span class="o">.</span><span class="n">memory_info</span><span class="p">()</span><span class="o">.</span><span class="n">rss</span> <span class="o">/</span> <span class="mi">1024</span> <span class="o">/</span> <span class="mi">1024</span>  <span class="c1"># MB</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Memory usage: </span><span class="si">{</span><span class="n">peak</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">baseline</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> MB&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Memory per chunk: </span><span class="si">{</span><span class="p">(</span><span class="n">peak</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">baseline</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="n">chunks</span><span class="p">)</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> MB&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">chunks</span>
+</code></pre></div>
+
+<h3 id="memory-optimization-strategies">Memory Optimization Strategies<a class="headerlink" href="#memory-optimization-strategies" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">chunk_files_parallel</span><span class="p">,</span> <span class="n">ASTCache</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">gc</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">MemoryOptimizedProcessor</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Smaller cache for memory-constrained environments</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache</span> <span class="o">=</span> <span class="n">ASTCache</span><span class="p">(</span><span class="n">max_size</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">process_with_memory_limit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">files</span><span class="p">,</span> <span class="n">language</span><span class="p">,</span> <span class="n">memory_limit_mb</span><span class="o">=</span><span class="mi">1000</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Process files while staying within memory limit.&quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">resource</span>
+
+        <span class="c1"># Set memory limit (Unix only)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">resource</span><span class="p">,</span> <span class="s1">&#39;RLIMIT_AS&#39;</span><span class="p">):</span>
+            <span class="n">resource</span><span class="o">.</span><span class="n">setrlimit</span><span class="p">(</span>
+                <span class="n">resource</span><span class="o">.</span><span class="n">RLIMIT_AS</span><span class="p">,</span>
+                <span class="p">(</span><span class="n">memory_limit_mb</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Process in smaller batches</span>
+        <span class="n">batch_size</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">memory_limit_mb</span> <span class="o">//</span> <span class="mi">100</span><span class="p">)</span>  <span class="c1"># Rough estimate</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">files</span><span class="p">),</span> <span class="n">batch_size</span><span class="p">):</span>
+            <span class="n">batch</span> <span class="o">=</span> <span class="n">files</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span> <span class="o">+</span> <span class="n">batch_size</span><span class="p">]</span>
+            <span class="n">batch_results</span> <span class="o">=</span> <span class="n">chunk_files_parallel</span><span class="p">(</span><span class="n">batch</span><span class="p">,</span> <span class="n">language</span><span class="p">,</span> <span class="n">max_workers</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+            <span class="n">results</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">batch_results</span><span class="p">)</span>
+
+            <span class="c1"># Force garbage collection between batches</span>
+            <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+
+            <span class="c1"># Clear cache if memory pressure</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_memory_usage</span><span class="p">()</span> <span class="o">&gt;</span> <span class="n">memory_limit_mb</span> <span class="o">*</span> <span class="mf">0.8</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">results</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_memory_usage</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get current memory usage in MB.&quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">psutil</span>
+        <span class="n">process</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">Process</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">process</span><span class="o">.</span><span class="n">memory_info</span><span class="p">()</span><span class="o">.</span><span class="n">rss</span> <span class="o">/</span> <span class="mi">1024</span> <span class="o">/</span> <span class="mi">1024</span>
+</code></pre></div>
+
+<h2 id="benchmarking">Benchmarking<a class="headerlink" href="#benchmarking" title="Permanent link">&para;</a></h2>
+<p>Measure and compare performance across different scenarios.</p>
+<h3 id="basic-benchmarking">Basic Benchmarking<a class="headerlink" href="#basic-benchmarking" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">chunk_file</span><span class="p">,</span> <span class="n">chunk_files_parallel</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">benchmark_single_vs_parallel</span><span class="p">(</span><span class="n">files</span><span class="p">,</span> <span class="n">language</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compare single-threaded vs parallel processing.&quot;&quot;&quot;</span>
+
+    <span class="c1"># Single-threaded</span>
+    <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="n">results_single</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+        <span class="n">results_single</span><span class="p">[</span><span class="n">file</span><span class="p">]</span> <span class="o">=</span> <span class="n">chunk_file</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">language</span><span class="p">)</span>
+    <span class="n">single_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
+
+    <span class="c1"># Clear cache for fair comparison</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">clear_cache</span>
+    <span class="n">clear_cache</span><span class="p">()</span>
+
+    <span class="c1"># Parallel</span>
+    <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="n">results_parallel</span> <span class="o">=</span> <span class="n">chunk_files_parallel</span><span class="p">(</span><span class="n">files</span><span class="p">,</span> <span class="n">language</span><span class="p">)</span>
+    <span class="n">parallel_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Single-threaded: </span><span class="si">{</span><span class="n">single_time</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Parallel: </span><span class="si">{</span><span class="n">parallel_time</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Speedup: </span><span class="si">{</span><span class="n">single_time</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">parallel_time</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">x&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">results_parallel</span>
+</code></pre></div>
+
+<h3 id="comprehensive-benchmark-suite">Comprehensive Benchmark Suite<a class="headerlink" href="#comprehensive-benchmark-suite" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">statistics</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">chunk_file</span><span class="p">,</span> <span class="n">ASTCache</span><span class="p">,</span> <span class="n">chunk_file_streaming</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ChunkerBenchmark</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">benchmark_cache_performance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="p">,</span> <span class="n">language</span><span class="p">,</span> <span class="n">iterations</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Benchmark cache hit performance.&quot;&quot;&quot;</span>
+        <span class="n">times_cold</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">times_hot</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">iterations</span><span class="p">):</span>
+            <span class="c1"># Cold cache</span>
+            <span class="n">cache</span> <span class="o">=</span> <span class="n">ASTCache</span><span class="p">()</span>
+            <span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+            <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
+            <span class="n">chunk_file</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">language</span><span class="p">)</span>
+            <span class="n">times_cold</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span>
+
+            <span class="c1"># Hot cache</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
+            <span class="n">chunk_file</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">language</span><span class="p">)</span>
+            <span class="n">times_hot</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span>
+
+        <span class="n">cold_avg</span> <span class="o">=</span> <span class="n">statistics</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">times_cold</span><span class="p">)</span>
+        <span class="n">hot_avg</span> <span class="o">=</span> <span class="n">statistics</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">times_hot</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;cache&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;cold_avg&#39;</span><span class="p">:</span> <span class="n">cold_avg</span><span class="p">,</span>
+            <span class="s1">&#39;hot_avg&#39;</span><span class="p">:</span> <span class="n">hot_avg</span><span class="p">,</span>
+            <span class="s1">&#39;speedup&#39;</span><span class="p">:</span> <span class="n">cold_avg</span> <span class="o">/</span> <span class="n">hot_avg</span><span class="p">,</span>
+            <span class="s1">&#39;cold_stdev&#39;</span><span class="p">:</span> <span class="n">statistics</span><span class="o">.</span><span class="n">stdev</span><span class="p">(</span><span class="n">times_cold</span><span class="p">),</span>
+            <span class="s1">&#39;hot_stdev&#39;</span><span class="p">:</span> <span class="n">statistics</span><span class="o">.</span><span class="n">stdev</span><span class="p">(</span><span class="n">times_hot</span><span class="p">)</span>
+        <span class="p">}</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cache Performance:&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Cold: </span><span class="si">{</span><span class="n">cold_avg</span><span class="o">*</span><span class="mi">1000</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">ms ± </span><span class="si">{</span><span class="n">statistics</span><span class="o">.</span><span class="n">stdev</span><span class="p">(</span><span class="n">times_cold</span><span class="p">)</span><span class="o">*</span><span class="mi">1000</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">ms&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Hot:  </span><span class="si">{</span><span class="n">hot_avg</span><span class="o">*</span><span class="mi">1000</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">ms ± </span><span class="si">{</span><span class="n">statistics</span><span class="o">.</span><span class="n">stdev</span><span class="p">(</span><span class="n">times_hot</span><span class="p">)</span><span class="o">*</span><span class="mi">1000</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">ms&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Speedup: </span><span class="si">{</span><span class="n">cold_avg</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">hot_avg</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">x&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">benchmark_file_sizes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">language</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Benchmark performance across different file sizes.&quot;&quot;&quot;</span>
+        <span class="c1"># Create test files of different sizes</span>
+        <span class="n">test_sizes</span> <span class="o">=</span> <span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="mi">10000</span><span class="p">,</span> <span class="mi">100000</span><span class="p">]</span>  <span class="c1"># lines</span>
+
+        <span class="k">for</span> <span class="n">size</span> <span class="ow">in</span> <span class="n">test_sizes</span><span class="p">:</span>
+            <span class="n">content</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_test_file</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">language</span><span class="p">)</span>
+            <span class="n">file_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;test_</span><span class="si">{</span><span class="n">size</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">language</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+
+            <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
+            <span class="n">chunks</span> <span class="o">=</span> <span class="n">chunk_file</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">language</span><span class="p">)</span>
+            <span class="n">elapsed</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">size</span><span class="si">}</span><span class="s2"> lines: </span><span class="si">{</span><span class="n">elapsed</span><span class="o">*</span><span class="mi">1000</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">ms, </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">chunks</span><span class="p">)</span><span class="si">}</span><span class="s2"> chunks&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Rate: </span><span class="si">{</span><span class="n">size</span><span class="o">/</span><span class="n">elapsed</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> lines/sec&quot;</span><span class="p">)</span>
+
+            <span class="n">Path</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span><span class="o">.</span><span class="n">unlink</span><span class="p">()</span>  <span class="c1"># Clean up</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_test_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lines</span><span class="p">,</span> <span class="n">language</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate test file with specified number of lines.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">language</span> <span class="o">==</span> <span class="s2">&quot;python&quot;</span><span class="p">:</span>
+            <span class="n">template</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;def function_</span><span class="si">{i}</span><span class="s2">(x, y):</span>
+<span class="s2">    </span><span class="se">\&quot;\&quot;\&quot;</span><span class="s2">Function </span><span class="si">{i}</span><span class="s2"> docstring.</span><span class="se">\&quot;\&quot;\&quot;</span>
+<span class="s2">    result = x + y + </span><span class="si">{i}</span>
+<span class="s2">    return result</span>
+
+<span class="s2">&quot;&quot;&quot;</span>
+            <span class="n">functions</span> <span class="o">=</span> <span class="n">lines</span> <span class="o">//</span> <span class="mi">5</span>  <span class="c1"># Each function is ~5 lines</span>
+            <span class="k">return</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">template</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="o">=</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">functions</span><span class="p">))</span>
+
+        <span class="c1"># Add other languages as needed</span>
+        <span class="k">return</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">*</span> <span class="n">lines</span>
+</code></pre></div>
+
+<h2 id="configuration-tuning">Configuration Tuning<a class="headerlink" href="#configuration-tuning" title="Permanent link">&para;</a></h2>
+<p>Optimize configuration for your specific use case.</p>
+<h3 id="cache-size-tuning">Cache Size Tuning<a class="headerlink" href="#cache-size-tuning" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">ASTCache</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">psutil</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">determine_optimal_cache_size</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Determine optimal cache size based on available memory.&quot;&quot;&quot;</span>
+    <span class="c1"># Get available memory</span>
+    <span class="n">available_mb</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">virtual_memory</span><span class="p">()</span><span class="o">.</span><span class="n">available</span> <span class="o">/</span> <span class="mi">1024</span> <span class="o">/</span> <span class="mi">1024</span>
+
+    <span class="c1"># Use 10% of available memory for cache (rough estimate)</span>
+    <span class="c1"># Assume average AST size of 1MB</span>
+    <span class="n">optimal_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">available_mb</span> <span class="o">*</span> <span class="mf">0.1</span><span class="p">)</span>
+
+    <span class="c1"># Apply reasonable bounds</span>
+    <span class="n">optimal_size</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">optimal_size</span><span class="p">,</span> <span class="mi">1000</span><span class="p">))</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Recommended cache size: </span><span class="si">{</span><span class="n">optimal_size</span><span class="si">}</span><span class="s2"> entries&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">optimal_size</span>
+
+<span class="c1"># Use it</span>
+<span class="n">cache</span> <span class="o">=</span> <span class="n">ASTCache</span><span class="p">(</span><span class="n">max_size</span><span class="o">=</span><span class="n">determine_optimal_cache_size</span><span class="p">())</span>
+</code></pre></div>
+
+<h3 id="worker-count-optimization">Worker Count Optimization<a class="headerlink" href="#worker-count-optimization" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">multiprocessing</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mp</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">chunk_files_parallel</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">determine_optimal_workers</span><span class="p">(</span><span class="n">file_count</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Determine optimal number of workers.&quot;&quot;&quot;</span>
+    <span class="n">cpu_count</span> <span class="o">=</span> <span class="n">mp</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span>
+
+    <span class="c1"># Rules of thumb:</span>
+    <span class="c1"># - Don&#39;t exceed CPU count</span>
+    <span class="c1"># - Don&#39;t create more workers than files</span>
+    <span class="c1"># - Account for memory constraints</span>
+    <span class="c1"># - Leave some CPUs for system</span>
+
+    <span class="k">if</span> <span class="n">file_count</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">min</span><span class="p">(</span><span class="n">file_count</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">file_count</span> <span class="o">&lt;</span> <span class="mi">100</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">min</span><span class="p">(</span><span class="n">file_count</span><span class="p">,</span> <span class="n">cpu_count</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">min</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="n">cpu_count</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>  <span class="c1"># Leave one CPU free</span>
+
+<span class="c1"># Use it</span>
+<span class="n">files</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;file1.py&quot;</span><span class="p">,</span> <span class="s2">&quot;file2.py&quot;</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>  <span class="c1"># Your files</span>
+<span class="n">optimal_workers</span> <span class="o">=</span> <span class="n">determine_optimal_workers</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">files</span><span class="p">))</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">chunk_files_parallel</span><span class="p">(</span><span class="n">files</span><span class="p">,</span> <span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="n">max_workers</span><span class="o">=</span><span class="n">optimal_workers</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="configuration-file-optimization">Configuration File Optimization<a class="headerlink" href="#configuration-file-optimization" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># chunker.config.toml - Optimized for large codebases</span>
+
+<span class="c1"># Performance settings</span>
+<span class="k">[performance]</span>
+<span class="n">cache_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">500</span><span class="w">  </span><span class="c1"># Increase for frequently accessed files</span>
+<span class="n">parser_pool_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">10</span><span class="w">  </span><span class="c1"># Number of parsers per language</span>
+<span class="n">parallel_workers</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">8</span><span class="w">  </span><span class="c1"># Adjust based on CPU count</span>
+
+<span class="c1"># Memory management</span>
+<span class="k">[memory]</span>
+<span class="n">max_file_size_mb</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">50</span><span class="w">  </span><span class="c1"># Stream files larger than this</span>
+<span class="n">streaming_chunk_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1048576</span><span class="w">  </span><span class="c1"># 1MB chunks for streaming</span>
+<span class="n">gc_threshold</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">100</span><span class="w">  </span><span class="c1"># Run GC after processing N files</span>
+
+<span class="c1"># Language-specific optimizations</span>
+<span class="k">[languages.python]</span>
+<span class="n">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="c1"># Only chunk what you need</span>
+<span class="n">chunk_types</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;function_definition&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;class_definition&quot;</span><span class="p">]</span>
+<span class="n">min_chunk_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5</span><span class="w">  </span><span class="c1"># Skip tiny functions</span>
+<span class="n">max_chunk_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">500</span><span class="w">  </span><span class="c1"># Split huge functions</span>
+
+<span class="k">[languages.javascript]</span>
+<span class="n">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="c1"># Include only important constructs</span>
+<span class="n">chunk_types</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;function_declaration&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;class_declaration&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;arrow_function&quot;</span><span class="p">]</span>
+<span class="c1"># Skip minified files</span>
+<span class="n">exclude_patterns</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;*.min.js&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;*bundle.js&quot;</span><span class="p">]</span>
+</code></pre></div>
+
+<h2 id="common-bottlenecks">Common Bottlenecks<a class="headerlink" href="#common-bottlenecks" title="Permanent link">&para;</a></h2>
+<h3 id="1-parser-creation-overhead">1. Parser Creation Overhead<a class="headerlink" href="#1-parser-creation-overhead" title="Permanent link">&para;</a></h3>
+<p><strong>Problem</strong>: Creating parsers is expensive (~10-50ms each).</p>
+<p><strong>Solution</strong>: Reuse parsers with pooling.</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_parser</span><span class="p">,</span> <span class="n">return_parser</span>
+
+<span class="c1"># Bad: Creating new parser each time</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">process_files_slow</span><span class="p">(</span><span class="n">files</span><span class="p">,</span> <span class="n">language</span><span class="p">):</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+        <span class="n">parser</span> <span class="o">=</span> <span class="n">get_parser</span><span class="p">(</span><span class="n">language</span><span class="p">)</span>  <span class="c1"># Expensive!</span>
+        <span class="c1"># ... use parser ...</span>
+    <span class="k">return</span> <span class="n">results</span>
+
+<span class="c1"># Good: Reuse parser</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">process_files_fast</span><span class="p">(</span><span class="n">files</span><span class="p">,</span> <span class="n">language</span><span class="p">):</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">get_parser</span><span class="p">(</span><span class="n">language</span><span class="p">)</span>  <span class="c1"># Create once</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+            <span class="c1"># ... use same parser ...</span>
+            <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">results</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">return_parser</span><span class="p">(</span><span class="n">language</span><span class="p">,</span> <span class="n">parser</span><span class="p">)</span>  <span class="c1"># Return for reuse</span>
+</code></pre></div>
+
+<h3 id="2-memory-exhaustion">2. Memory Exhaustion<a class="headerlink" href="#2-memory-exhaustion" title="Permanent link">&para;</a></h3>
+<p><strong>Problem</strong>: Processing too many large files at once.</p>
+<p><strong>Solution</strong>: Use streaming and batching.</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Bad: Load everything into memory</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">process_all_at_once</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">language</span><span class="p">):</span>
+    <span class="n">all_chunks</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">Path</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span><span class="o">.</span><span class="n">rglob</span><span class="p">(</span><span class="s2">&quot;*.py&quot;</span><span class="p">):</span>
+        <span class="n">chunks</span> <span class="o">=</span> <span class="n">chunk_file</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">language</span><span class="p">)</span>
+        <span class="n">all_chunks</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">chunks</span><span class="p">)</span>  <span class="c1"># Memory grows unbounded!</span>
+    <span class="k">return</span> <span class="n">all_chunks</span>
+
+<span class="c1"># Good: Process and release</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">process_incrementally</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">language</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">Path</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span><span class="o">.</span><span class="n">rglob</span><span class="p">(</span><span class="s2">&quot;*.py&quot;</span><span class="p">):</span>
+        <span class="n">chunks</span> <span class="o">=</span> <span class="n">chunk_file</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">language</span><span class="p">)</span>
+        <span class="k">yield from</span> <span class="n">chunks</span>  <span class="c1"># Yield immediately</span>
+        <span class="c1"># Chunks are garbage collected after use</span>
+</code></pre></div>
+
+<h3 id="3-cache-thrashing">3. Cache Thrashing<a class="headerlink" href="#3-cache-thrashing" title="Permanent link">&para;</a></h3>
+<p><strong>Problem</strong>: Cache constantly evicting useful entries.</p>
+<p><strong>Solution</strong>: Increase cache size or implement smarter eviction.</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">ASTCache</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">SmartCache</span><span class="p">(</span><span class="n">ASTCache</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">max_size</span><span class="o">=</span><span class="mi">100</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">max_size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">access_counts</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="p">,</span> <span class="n">language</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">language</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">result</span><span class="p">:</span>
+            <span class="c1"># Track access frequency</span>
+            <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">file_path</span><span class="p">),</span> <span class="n">language</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">access_counts</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">access_counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">result</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">evict_least_frequently_used</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Evict based on access frequency instead of recency.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_size</span><span class="p">:</span>
+            <span class="c1"># Find least frequently used</span>
+            <span class="n">lfu_key</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">access_counts</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">lfu_key</span><span class="p">]</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">access_counts</span><span class="p">[</span><span class="n">lfu_key</span><span class="p">]</span>
+</code></pre></div>
+
+<h2 id="performance-monitoring">Performance Monitoring<a class="headerlink" href="#performance-monitoring" title="Permanent link">&para;</a></h2>
+<h3 id="real-time-monitoring">Real-time Monitoring<a class="headerlink" href="#real-time-monitoring" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">psutil</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">chunk_files_parallel</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">PerformanceMonitor</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">running</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stats</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;files_processed&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s1">&#39;chunks_extracted&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s1">&#39;processing_time&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s1">&#39;peak_memory_mb&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s1">&#39;cpu_percent&#39;</span><span class="p">:</span> <span class="p">[]</span>
+        <span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">start_monitoring</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Start background monitoring thread.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">running</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">monitor_thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_monitor</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">monitor_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">stop_monitoring</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Stop monitoring and return stats.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">running</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">monitor_thread</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">stats</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_monitor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Background monitoring loop.&quot;&quot;&quot;</span>
+        <span class="n">process</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">Process</span><span class="p">()</span>
+
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">running</span><span class="p">:</span>
+            <span class="c1"># CPU usage</span>
+            <span class="n">cpu</span> <span class="o">=</span> <span class="n">process</span><span class="o">.</span><span class="n">cpu_percent</span><span class="p">(</span><span class="n">interval</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;cpu_percent&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cpu</span><span class="p">)</span>
+
+            <span class="c1"># Memory usage</span>
+            <span class="n">memory_mb</span> <span class="o">=</span> <span class="n">process</span><span class="o">.</span><span class="n">memory_info</span><span class="p">()</span><span class="o">.</span><span class="n">rss</span> <span class="o">/</span> <span class="mi">1024</span> <span class="o">/</span> <span class="mi">1024</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;peak_memory_mb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;peak_memory_mb&#39;</span><span class="p">],</span> 
+                <span class="n">memory_mb</span>
+            <span class="p">)</span>
+
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">process_with_monitoring</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">files</span><span class="p">,</span> <span class="n">language</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Process files while monitoring performance.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_monitoring</span><span class="p">()</span>
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">results</span> <span class="o">=</span> <span class="n">chunk_files_parallel</span><span class="p">(</span><span class="n">files</span><span class="p">,</span> <span class="n">language</span><span class="p">)</span>
+
+            <span class="c1"># Update stats</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;files_processed&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;chunks_extracted&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span>
+                <span class="nb">len</span><span class="p">(</span><span class="n">chunks</span><span class="p">)</span> <span class="k">for</span> <span class="n">chunks</span> <span class="ow">in</span> <span class="n">results</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;processing_time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+
+            <span class="k">return</span> <span class="n">results</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">stats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stop_monitoring</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">print_report</span><span class="p">(</span><span class="n">stats</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">print_report</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stats</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Print performance report.&quot;&quot;&quot;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Performance Report:&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Files processed: </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;files_processed&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Chunks extracted: </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;chunks_extracted&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Processing time: </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;processing_time&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Peak memory: </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;peak_memory_mb&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> MB&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;cpu_percent&#39;</span><span class="p">]:</span>
+            <span class="n">avg_cpu</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;cpu_percent&#39;</span><span class="p">])</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;cpu_percent&#39;</span><span class="p">])</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Average CPU: </span><span class="si">{</span><span class="n">avg_cpu</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;processing_time&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">rate</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;files_processed&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;processing_time&#39;</span><span class="p">]</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Processing rate: </span><span class="si">{</span><span class="n">rate</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> files/sec&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="logging-performance-metrics">Logging Performance Metrics<a class="headerlink" href="#logging-performance-metrics" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">wraps</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">chunk_file</span>
+
+<span class="c1"># Configure performance logger</span>
+<span class="n">perf_logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;chunker.performance&#39;</span><span class="p">)</span>
+<span class="n">perf_logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">log_performance</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Decorator to log function performance.&quot;&quot;&quot;</span>
+    <span class="nd">@wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">elapsed</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span>
+
+        <span class="n">perf_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> completed in </span><span class="si">{</span><span class="n">elapsed</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s&quot;</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span>
+    <span class="k">return</span> <span class="n">wrapper</span>
+
+<span class="c1"># Use it</span>
+<span class="nd">@log_performance</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">process_codebase</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">language</span><span class="p">):</span>
+    <span class="c1"># Your processing logic</span>
+    <span class="k">pass</span>
+</code></pre></div>
+
+<h2 id="best-practices">Best Practices<a class="headerlink" href="#best-practices" title="Permanent link">&para;</a></h2>
+<h3 id="1-profile-before-optimizing">1. Profile Before Optimizing<a class="headerlink" href="#1-profile-before-optimizing" title="Permanent link">&para;</a></h3>
+<p>Always measure before optimizing:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">cProfile</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pstats</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">profile_chunking</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">language</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Profile chunking performance.&quot;&quot;&quot;</span>
+    <span class="n">profiler</span> <span class="o">=</span> <span class="n">cProfile</span><span class="o">.</span><span class="n">Profile</span><span class="p">()</span>
+    <span class="n">profiler</span><span class="o">.</span><span class="n">enable</span><span class="p">()</span>
+
+    <span class="c1"># Run the code</span>
+    <span class="n">chunks</span> <span class="o">=</span> <span class="n">chunk_file</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">language</span><span class="p">)</span>
+
+    <span class="n">profiler</span><span class="o">.</span><span class="n">disable</span><span class="p">()</span>
+
+    <span class="c1"># Print stats</span>
+    <span class="n">stats</span> <span class="o">=</span> <span class="n">pstats</span><span class="o">.</span><span class="n">Stats</span><span class="p">(</span><span class="n">profiler</span><span class="p">)</span>
+    <span class="n">stats</span><span class="o">.</span><span class="n">sort_stats</span><span class="p">(</span><span class="s1">&#39;cumulative&#39;</span><span class="p">)</span>
+    <span class="n">stats</span><span class="o">.</span><span class="n">print_stats</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>  <span class="c1"># Top 10 functions</span>
+
+    <span class="k">return</span> <span class="n">chunks</span>
+</code></pre></div>
+
+<h3 id="2-choose-the-right-tool">2. Choose the Right Tool<a class="headerlink" href="#2-choose-the-right-tool" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Small files (&lt;1MB)</strong>: Use <code>chunk_file()</code></li>
+<li><strong>Many files</strong>: Use <code>chunk_files_parallel()</code></li>
+<li><strong>Large files (&gt;10MB)</strong>: Use <code>chunk_file_streaming()</code></li>
+<li><strong>Entire codebases</strong>: Use <code>chunk_directory_parallel()</code></li>
+</ul>
+<h3 id="3-optimize-for-your-use-case">3. Optimize for Your Use Case<a class="headerlink" href="#3-optimize-for-your-use-case" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># For CI/CD - Speed matters most</span>
+<span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;max_workers&#39;</span><span class="p">:</span> <span class="n">mp</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">(),</span>
+    <span class="s1">&#39;cache_size&#39;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">,</span>
+    <span class="s1">&#39;show_progress&#39;</span><span class="p">:</span> <span class="kc">False</span>
+<span class="p">}</span>
+
+<span class="c1"># For development - Memory efficiency matters</span>
+<span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;max_workers&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="s1">&#39;cache_size&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
+    <span class="s1">&#39;streaming_threshold&#39;</span><span class="p">:</span> <span class="mi">5</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span>  <span class="c1"># 5MB</span>
+<span class="p">}</span>
+
+<span class="c1"># For analysis - Completeness matters</span>
+<span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;max_workers&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+    <span class="s1">&#39;timeout&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>  <span class="c1"># No timeout</span>
+    <span class="s1">&#39;ignore_errors&#39;</span><span class="p">:</span> <span class="kc">False</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3 id="4-monitor-and-adjust">4. Monitor and Adjust<a class="headerlink" href="#4-monitor-and-adjust" title="Permanent link">&para;</a></h3>
+<p>Continuously monitor and adjust based on real-world usage:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">ASTCache</span>
+
+<span class="c1"># Periodic cache effectiveness check</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">check_cache_effectiveness</span><span class="p">():</span>
+    <span class="n">cache</span> <span class="o">=</span> <span class="n">ASTCache</span><span class="p">()</span>
+    <span class="n">stats</span> <span class="o">=</span> <span class="n">cache</span><span class="o">.</span><span class="n">get_stats</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;hit_rate&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">0.3</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Low cache hit rate - consider:&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;- Increasing cache size&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;- Pre-warming cache with common files&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;- Checking if files are being modified&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;size&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;max_size&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;misses&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;hits&#39;</span><span class="p">]:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Cache is full but ineffective - increase size&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="5-error-recovery">5. Error Recovery<a class="headerlink" href="#5-error-recovery" title="Permanent link">&para;</a></h3>
+<p>Build resilient systems that handle failures gracefully:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">robust_processing</span><span class="p">(</span><span class="n">files</span><span class="p">,</span> <span class="n">language</span><span class="p">,</span> <span class="n">max_retries</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Process files with retry logic and error handling.&quot;&quot;&quot;</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">failed</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">attempt</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_retries</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">chunks</span> <span class="o">=</span> <span class="n">chunk_file</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">language</span><span class="p">)</span>
+                <span class="n">results</span><span class="p">[</span><span class="n">file</span><span class="p">]</span> <span class="o">=</span> <span class="n">chunks</span>
+                <span class="k">break</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">attempt</span> <span class="o">==</span> <span class="n">max_retries</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to process </span><span class="si">{</span><span class="n">file</span><span class="si">}</span><span class="s2"> after </span><span class="si">{</span><span class="n">max_retries</span><span class="si">}</span><span class="s2"> attempts: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="n">failed</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">file</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span> <span class="o">*</span> <span class="p">(</span><span class="n">attempt</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>  <span class="c1"># Exponential backoff</span>
+
+    <span class="k">return</span> <span class="n">results</span><span class="p">,</span> <span class="n">failed</span>
+</code></pre></div>
+
+<h2 id="see-also">See Also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../api-reference/">API Reference</a> - Complete API documentation</li>
+<li><a href="../user-guide/">User Guide</a> - General usage guide</li>
+<li><a href="../export-formats/">Export Formats</a> - Output format optimization</li>
+<li><a href="../configuration/">Configuration</a> - Performance-related settings</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "content.code.copy"], "search": "../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.50899def.min.js"></script>
+      
+    
+  </body>
+</html>

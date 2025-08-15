@@ -14,7 +14,8 @@ from chunker.template_generator import TemplateGenerator
 
 
 @pytest.mark.parametrize(
-    "implementation_class", [TemplateGenerator, TemplateGeneratorStub],
+    "implementation_class",
+    [TemplateGenerator, TemplateGeneratorStub],
 )
 def test_template_generator_contract_compliance(implementation_class):
     """Verify template generator implementation matches contract"""
@@ -46,7 +47,9 @@ def test_template_generator_contract_compliance(implementation_class):
         impl_return = impl_sig.return_annotation
 
         # Handle string annotations vs actual types
-        if (isinstance(contract_return, str) and not isinstance(impl_return, str)) or (isinstance(impl_return, str) and not isinstance(contract_return, str)):
+        if (isinstance(contract_return, str) and not isinstance(impl_return, str)) or (
+            isinstance(impl_return, str) and not isinstance(contract_return, str)
+        ):
             # Skip comparison when one is forward ref and other is not
             pass
         else:
@@ -84,7 +87,8 @@ def test_grammar_manager_contract_compliance(implementation_class):
 
 
 @pytest.mark.parametrize(
-    "implementation_class", [HaskellPlugin, ExtendedLanguagePluginStub],
+    "implementation_class",
+    [HaskellPlugin, ExtendedLanguagePluginStub],
 )
 def test_language_plugin_contract_compliance(implementation_class):
     """Verify language plugin implementation matches contract"""
@@ -127,7 +131,9 @@ def test_language_plugin_contract_compliance(implementation_class):
         impl_return = impl_sig.return_annotation
 
         # Handle string annotations vs actual types
-        if (isinstance(contract_return, str) and not isinstance(impl_return, str)) or (isinstance(impl_return, str) and not isinstance(contract_return, str)):
+        if (isinstance(contract_return, str) and not isinstance(impl_return, str)) or (
+            isinstance(impl_return, str) and not isinstance(contract_return, str)
+        ):
             # Skip comparison when one is forward ref and other is not
             pass
         else:

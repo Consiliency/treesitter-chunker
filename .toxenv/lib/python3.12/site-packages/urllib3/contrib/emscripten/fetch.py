@@ -51,7 +51,7 @@ from pyodide.ffi import (  # type: ignore[import-not-found]
 )
 
 if TYPE_CHECKING:
-    from typing_extensions import Buffer
+    from collections.abc import Buffer
 
 from .request import EmscriptenRequest
 from .response import EmscriptenResponse

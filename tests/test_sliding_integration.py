@@ -22,13 +22,13 @@ from chunker.sliding_window import (
 from chunker.types import CodeChunk
 
 
-@pytest.fixture()
+@pytest.fixture
 def fallback():
     """Create sliding window fallback instance."""
     return SlidingWindowFallback()
 
 
-@pytest.fixture()
+@pytest.fixture
 def temp_dir():
     """Create temporary directory for test files."""
     with tempfile.TemporaryDirectory() as tmpdir:

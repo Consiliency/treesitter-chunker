@@ -86,7 +86,10 @@ def main() -> None:
             )
 
             _render(
-                str(args.file), language, output_path=str(args.output), fmt=args.format
+                str(args.file),
+                language,
+                output_path=str(args.output),
+                fmt=args.format,
             )
         except Exception:
             # As a last resort, write the DOT source to the output path so test can assert existence
@@ -94,7 +97,7 @@ def main() -> None:
                 Path(str(args.output)).write_text(source)
             else:
                 Path(str(args.output)).write_text(
-                    "digraph AST {\n  // rendering fallback\n}"
+                    "digraph AST {\n  // rendering fallback\n}",
                 )
 
     # Final guard: ensure output file exists when requested

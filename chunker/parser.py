@@ -28,8 +28,13 @@ class _ParserState:
     def __init__(self) -> None:
         self.registry: LanguageRegistry | None = None
         self.factory: ParserFactory | None = None
+        # Prefer in-package built artifacts when present (for wheels with prebuilt grammars)
+        package_build = Path(__file__).parent / "data" / "grammars" / "build"
+        combined_lib = package_build / "languages.so"
         self.default_library_path = (
-            Path(__file__).parent.parent / "build" / "my-languages.so"
+            combined_lib
+            if combined_lib.exists()
+            else Path(__file__).parent.parent / "build" / "my-languages.so"
         )
 
     def initialize(self, library_path: Path | None = None) -> None:
@@ -42,14 +47,8 @@ class _ParserState:
             path = library_path or self.default_library_path
             # If the compiled library doesn't exist or fails to load, initialize registry
             # with no shared library so that list_languages() can still function for tests
-            try:
-                if not path.exists():
-                    raise LibraryNotFoundError(path)
-                self.registry = LanguageRegistry(path)
-            except Exception:
-                # Fallback: initialize registry with a dummy path to enable non-shared discovery
-                # Tests will exercise nm fallback and individual per-language libs if present
-                self.registry = LanguageRegistry(path)
+            # Always initialize the registry; it now tolerates missing combined library
+            self.registry = LanguageRegistry(path)
             self.factory = ParserFactory(self.registry)
             languages = self.registry.list_languages()
 
@@ -127,9 +126,9 @@ def get_parser(language: str, config: ParserConfig | None = None) -> Parser:
                     gm.build_grammar(language)
                     # After building, try again (factory will now be able to load individual lib
                     return _state.factory.get_parser(normalized, config)
-        except Exception:
-            # Fall back to raising the original error
-            pass
+        except Exception as e:
+            # Fall back to raising the original error, but log for diagnostics in CI
+            logger.debug("On-demand grammar build attempt failed: %s", e)
         available = _state.registry.list_languages() if _state.registry else []
         raise LanguageNotFoundError(language, available) from None
     except ParserConfigError:

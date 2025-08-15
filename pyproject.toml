@@ -1,6 +1,6 @@
 [project]
 name            = "treesitter-chunker"
-version = "1.0.1"
+version = "1.0.7"
 description     = "Semantic code chunker using Tree-sitter for intelligent code analysis"
 readme          = "README.md"
 requires-python = ">=3.10"
@@ -37,6 +37,7 @@ dependencies = [
     "pyyaml",
     "pygments",
     "chardet",
+    "python-dateutil>=2.8.2",
     "gitpython>=3.1.0",
     "pathspec>=0.11.0",
     "tqdm>=4.65.0",
@@ -97,7 +98,11 @@ include = ["chunker", "chunker.*", "cli", "cli.*"]
 exclude = ["tests*", "benchmarks*", "examples*", "docs*", "scripts*", "grammars*"]
 
 [tool.setuptools.package-data]
-chunker = ["py.typed"]
+chunker = [
+    "py.typed",
+    "data/grammars/build/*",
+    "data/grammars/build/queries/*/*.scm",
+]
 "*" = ["*.so", "*.dll", "*.dylib", "*.pyi"]
 
 [tool.setuptools_scm]

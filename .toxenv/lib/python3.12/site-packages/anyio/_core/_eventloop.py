@@ -13,7 +13,9 @@ import sniffio
 if sys.version_info >= (3, 11):
     from typing import TypeVarTuple, Unpack
 else:
-    from typing_extensions import TypeVarTuple, Unpack
+    from typing import Unpack
+
+    from typing_extensions import TypeVarTuple
 
 if TYPE_CHECKING:
     from ..abc import AsyncBackend

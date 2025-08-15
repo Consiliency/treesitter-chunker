@@ -1,0 +1,1935 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.16">
+    
+    
+      
+        <title>Plugin Development Guide - Tree-sitter Chunker</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.7e37652d.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#plugin-development-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Tree-sitter Chunker" class="md-header__button md-logo" aria-label="Tree-sitter Chunker" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Tree-sitter Chunker
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Plugin Development Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/Consiliency/treesitter-chunker" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Overview
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../getting-started/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../user-guide/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  User Guide
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../configuration/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Configuration
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../cli-reference/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  CLI Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../api-reference/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  API Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../export-formats/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Export Formats
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../graphml_export/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  GraphML Export
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../performance-guide/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Performance Guide
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../grammar_discovery/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Grammar Discovery
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../zero_config_api/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Zero-Config API
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Tree-sitter Chunker" class="md-nav__button md-logo" aria-label="Tree-sitter Chunker" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Tree-sitter Chunker
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/Consiliency/treesitter-chunker" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Getting Started
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    User Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Configuration
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    CLI Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    API Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../export-formats/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Export Formats
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../graphml_export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    GraphML Export
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../performance-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Performance Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../grammar_discovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Grammar Discovery
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zero_config_api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Zero-Config API
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table of Contents
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      Quick Start
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#plugin-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      Plugin Architecture
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Plugin Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      Core Components
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plugin-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      Plugin Lifecycle
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-interfaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      Key Interfaces
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#creating-a-language-plugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      Creating a Language Plugin
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Creating a Language Plugin">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-define-your-plugin-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 1: Define Your Plugin Class
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-implement-name-extraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 2: Implement Name Extraction
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-implement-custom-chunk-processing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 3: Implement Custom Chunk Processing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-add-custom-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 4: Add Custom Filtering
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-5-context-building" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 5: Context Building
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#plugin-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Plugin Configuration
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Plugin Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Options
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-configuration-in-plugins" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using Configuration in Plugins
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#advanced-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      Advanced Features
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Advanced Features">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-language-detection" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Language Detection
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-custom-node-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Custom Node Types
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-metadata-extraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Metadata Extraction
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-relationship-detection" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Relationship Detection
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#testing-your-plugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      Testing Your Plugin
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Testing Your Plugin">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#unit-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      Unit Tests
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#integration-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      Integration Tests
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#distributing-plugins" class="md-nav__link">
+    <span class="md-ellipsis">
+      Distributing Plugins
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Distributing Plugins">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-package-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Package Structure
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-entry-points" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Entry Points
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Installation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-plugin-directory" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Plugin Directory
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#built-in-plugin-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Built-in Plugin Examples
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Built-in Plugin Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pythonplugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      PythonPlugin
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#javascriptplugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      JavaScriptPlugin
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rustplugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      RustPlugin
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      Best Practices
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Best Practices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-error-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Error Handling
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Performance
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Compatibility
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Documentation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Testing
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      Conclusion
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="plugin-development-guide">Plugin Development Guide<a class="headerlink" href="#plugin-development-guide" title="Permanent link">&para;</a></h1>
+<p>This guide covers how to create custom language plugins for Tree-sitter Chunker. The plugin architecture allows you to add support for new languages or customize the chunking behavior for existing languages.</p>
+<h2 id="table-of-contents">Table of Contents<a class="headerlink" href="#table-of-contents" title="Permanent link">&para;</a></h2>
+<ol>
+<li><a href="#overview">Overview</a></li>
+<li><a href="#quick-start">Quick Start</a></li>
+<li><a href="#plugin-architecture">Plugin Architecture</a></li>
+<li><a href="#creating-a-language-plugin">Creating a Language Plugin</a></li>
+<li><a href="#plugin-configuration">Plugin Configuration</a></li>
+<li><a href="#advanced-features">Advanced Features</a></li>
+<li><a href="#testing-your-plugin">Testing Your Plugin</a></li>
+<li><a href="#distributing-plugins">Distributing Plugins</a></li>
+<li><a href="#built-in-plugin-examples">Built-in Plugin Examples</a></li>
+<li><a href="#best-practices">Best Practices</a></li>
+</ol>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>The Tree-sitter Chunker plugin system provides:</p>
+<ul>
+<li><strong>Extensibility</strong>: Add support for new languages without modifying core code</li>
+<li><strong>Customization</strong>: Override default chunking behavior for specific languages</li>
+<li><strong>Configuration</strong>: Fine-tune plugin behavior through configuration files</li>
+<li><strong>Discovery</strong>: Automatic plugin discovery from directories</li>
+<li><strong>Hot Loading</strong>: Load plugins at runtime</li>
+</ul>
+<h2 id="quick-start">Quick Start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
+<p>Here's a minimal example of a custom language plugin:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker.languages.plugin_base</span><span class="w"> </span><span class="kn">import</span> <span class="n">LanguagePlugin</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Set</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tree_sitter</span><span class="w"> </span><span class="kn">import</span> <span class="n">Node</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">GoPlugin</span><span class="p">(</span><span class="n">LanguagePlugin</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Plugin for Go language support.&quot;&quot;&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">language_name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;go&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">supported_extensions</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;.go&quot;</span><span class="p">}</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">default_chunk_types</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;function_declaration&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;method_declaration&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;type_declaration&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;interface_declaration&quot;</span>
+        <span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_node_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">Node</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extract the name from a Go node.&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">children</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">child</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;identifier&quot;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">source</span><span class="p">[</span><span class="n">child</span><span class="o">.</span><span class="n">start_byte</span><span class="p">:</span><span class="n">child</span><span class="o">.</span><span class="n">end_byte</span><span class="p">]</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+</code></pre></div>
+
+<p>To use this plugin:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_plugin_manager</span>
+
+<span class="n">manager</span> <span class="o">=</span> <span class="n">get_plugin_manager</span><span class="p">()</span>
+<span class="n">manager</span><span class="o">.</span><span class="n">register_plugin</span><span class="p">(</span><span class="n">GoPlugin</span><span class="p">)</span>
+
+<span class="c1"># Now you can chunk Go files</span>
+<span class="n">chunks</span> <span class="o">=</span> <span class="n">chunk_file</span><span class="p">(</span><span class="s2">&quot;main.go&quot;</span><span class="p">,</span> <span class="s2">&quot;go&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h2 id="plugin-architecture">Plugin Architecture<a class="headerlink" href="#plugin-architecture" title="Permanent link">&para;</a></h2>
+<h3 id="core-components">Core Components<a class="headerlink" href="#core-components" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>LanguagePlugin</strong>: Abstract base class that all plugins must inherit from</li>
+<li><strong>PluginManager</strong>: Manages plugin discovery, loading, and lifecycle</li>
+<li><strong>PluginRegistry</strong>: Internal registry of available plugins</li>
+<li><strong>PluginConfig</strong>: Configuration for individual plugins</li>
+</ol>
+<h3 id="plugin-lifecycle">Plugin Lifecycle<a class="headerlink" href="#plugin-lifecycle" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="n">graph</span><span class="w"> </span><span class="n">TD</span>
+<span class="w">    </span><span class="n">A</span><span class="p">[</span><span class="n">Plugin</span><span class="w"> </span><span class="kt">Class</span><span class="w"> </span><span class="n">Definition</span><span class="p">]</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">B</span><span class="p">[</span><span class="n">Plugin</span><span class="w"> </span><span class="n">Discovery</span><span class="p">]</span>
+<span class="w">    </span><span class="n">B</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">C</span><span class="p">[</span><span class="n">Plugin</span><span class="w"> </span><span class="n">Registration</span><span class="p">]</span>
+<span class="w">    </span><span class="n">C</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">D</span><span class="p">[</span><span class="n">Plugin</span><span class="w"> </span><span class="n">Instantiation</span><span class="p">]</span>
+<span class="w">    </span><span class="n">D</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">E</span><span class="p">[</span><span class="n">Plugin</span><span class="w"> </span><span class="n">Configuration</span><span class="p">]</span>
+<span class="w">    </span><span class="n">E</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">F</span><span class="p">[</span><span class="n">Plugin</span><span class="w"> </span><span class="n">Usage</span><span class="p">]</span>
+<span class="w">    </span><span class="n">F</span><span class="w"> </span><span class="o">--&gt;</span><span class="w"> </span><span class="n">G</span><span class="p">[</span><span class="n">Chunk</span><span class="w"> </span><span class="n">Processing</span><span class="p">]</span>
+</code></pre></div>
+
+<h3 id="key-interfaces">Key Interfaces<a class="headerlink" href="#key-interfaces" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">LanguagePlugin</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base class for all language plugins.&quot;&quot;&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">language_name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the language identifier (e.g., &#39;python&#39;, &#39;rust&#39;).&quot;&quot;&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">supported_extensions</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return set of file extensions this plugin handles.&quot;&quot;&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">default_chunk_types</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return default set of node types to chunk.&quot;&quot;&quot;</span>
+
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_node_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">Node</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extract a human-readable name from a node.&quot;&quot;&quot;</span>
+
+    <span class="c1"># Optional methods to override</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">should_include_chunk</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">chunk</span><span class="p">:</span> <span class="n">CodeChunk</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Filter chunks based on custom criteria.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">process_node</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">Node</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> 
+                    <span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">parent_context</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">CodeChunk</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Process a node and return a chunk if appropriate.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_context_for_children</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">Node</span><span class="p">,</span> <span class="n">chunk</span><span class="p">:</span> <span class="n">CodeChunk</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build context string for nested definitions.&quot;&quot;&quot;</span>
+</code></pre></div>
+
+<h2 id="creating-a-language-plugin">Creating a Language Plugin<a class="headerlink" href="#creating-a-language-plugin" title="Permanent link">&para;</a></h2>
+<h3 id="step-1-define-your-plugin-class">Step 1: Define Your Plugin Class<a class="headerlink" href="#step-1-define-your-plugin-class" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker.languages.plugin_base</span><span class="w"> </span><span class="kn">import</span> <span class="n">LanguagePlugin</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker.languages.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">PluginConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Set</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tree_sitter</span><span class="w"> </span><span class="kn">import</span> <span class="n">Node</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">SwiftPlugin</span><span class="p">(</span><span class="n">LanguagePlugin</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Plugin for Swift language support.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">PluginConfig</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_method_pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;func\s+(\w+)&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_class_pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;class\s+(\w+)&#39;</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">language_name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;swift&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">supported_extensions</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;.swift&quot;</span><span class="p">}</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">default_chunk_types</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;function_declaration&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;init_declaration&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;class_declaration&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;struct_declaration&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;enum_declaration&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;protocol_declaration&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;extension_declaration&quot;</span>
+        <span class="p">}</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">plugin_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return plugin metadata.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Swift Language Plugin&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="s2">&quot;1.0.0&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;author&quot;</span><span class="p">:</span> <span class="s2">&quot;Your Name&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Provides Swift language support for chunking&quot;</span>
+        <span class="p">}</span>
+</code></pre></div>
+
+<h3 id="step-2-implement-name-extraction">Step 2: Implement Name Extraction<a class="headerlink" href="#step-2-implement-name-extraction" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_node_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">Node</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract the name from a Swift node.&quot;&quot;&quot;</span>
+    <span class="c1"># Different node types have different structures</span>
+    <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;function_declaration&quot;</span><span class="p">:</span>
+        <span class="c1"># Look for the identifier after &#39;func&#39; keyword</span>
+        <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">children</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">child</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;simple_identifier&quot;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">source</span><span class="p">[</span><span class="n">child</span><span class="o">.</span><span class="n">start_byte</span><span class="p">:</span><span class="n">child</span><span class="o">.</span><span class="n">end_byte</span><span class="p">]</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+
+    <span class="k">elif</span> <span class="n">node</span><span class="o">.</span><span class="n">type</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;class_declaration&quot;</span><span class="p">,</span> <span class="s2">&quot;struct_declaration&quot;</span><span class="p">]:</span>
+        <span class="c1"># Look for type identifier</span>
+        <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">children</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">child</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;type_identifier&quot;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">source</span><span class="p">[</span><span class="n">child</span><span class="o">.</span><span class="n">start_byte</span><span class="p">:</span><span class="n">child</span><span class="o">.</span><span class="n">end_byte</span><span class="p">]</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Fallback to regex pattern matching</span>
+    <span class="n">content</span> <span class="o">=</span> <span class="n">source</span><span class="p">[</span><span class="n">node</span><span class="o">.</span><span class="n">start_byte</span><span class="p">:</span><span class="n">node</span><span class="o">.</span><span class="n">end_byte</span><span class="p">]</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+    <span class="n">first_line</span> <span class="o">=</span> <span class="n">content</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="s2">&quot;func&quot;</span> <span class="ow">in</span> <span class="n">first_line</span><span class="p">:</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_method_pattern</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">first_line</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="s2">&quot;class&quot;</span> <span class="ow">in</span> <span class="n">first_line</span><span class="p">:</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_class_pattern</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">first_line</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="kc">None</span>
+</code></pre></div>
+
+<h3 id="step-3-implement-custom-chunk-processing">Step 3: Implement Custom Chunk Processing<a class="headerlink" href="#step-3-implement-custom-chunk-processing" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">process_node</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">Node</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> 
+                <span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">parent_context</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">CodeChunk</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Process Swift nodes with special handling.&quot;&quot;&quot;</span>
+
+    <span class="c1"># Skip private methods if configured</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">custom_options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;skip_private&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="n">source</span><span class="p">[</span><span class="n">node</span><span class="o">.</span><span class="n">start_byte</span><span class="p">:</span><span class="n">node</span><span class="o">.</span><span class="n">end_byte</span><span class="p">]</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">content</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;private &quot;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="c1"># Handle computed properties specially</span>
+    <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;computed_property&quot;</span><span class="p">:</span>
+        <span class="c1"># Create a custom chunk for computed properties</span>
+        <span class="n">chunk</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_chunk</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">file_path</span><span class="p">,</span> <span class="n">parent_context</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">chunk</span><span class="p">:</span>
+            <span class="n">chunk</span><span class="o">.</span><span class="n">node_type</span> <span class="o">=</span> <span class="s2">&quot;computed_property&quot;</span>
+            <span class="c1"># Add metadata about getter/setter</span>
+            <span class="n">has_getter</span> <span class="o">=</span> <span class="s2">&quot;get {&quot;</span> <span class="ow">in</span> <span class="n">chunk</span><span class="o">.</span><span class="n">content</span>
+            <span class="n">has_setter</span> <span class="o">=</span> <span class="s2">&quot;set {&quot;</span> <span class="ow">in</span> <span class="n">chunk</span><span class="o">.</span><span class="n">content</span>
+            <span class="n">chunk</span><span class="o">.</span><span class="n">metadata</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;has_getter&quot;</span><span class="p">:</span> <span class="n">has_getter</span><span class="p">,</span>
+                <span class="s2">&quot;has_setter&quot;</span><span class="p">:</span> <span class="n">has_setter</span>
+            <span class="p">}</span>
+        <span class="k">return</span> <span class="n">chunk</span>
+
+    <span class="c1"># Default processing for other nodes</span>
+    <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">process_node</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">file_path</span><span class="p">,</span> <span class="n">parent_context</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="step-4-add-custom-filtering">Step 4: Add Custom Filtering<a class="headerlink" href="#step-4-add-custom-filtering" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">should_include_chunk</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">chunk</span><span class="p">:</span> <span class="n">CodeChunk</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Filter chunks based on Swift-specific criteria.&quot;&quot;&quot;</span>
+    <span class="c1"># Always include if no size constraints</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="c1"># Apply size constraints</span>
+    <span class="n">chunk_lines</span> <span class="o">=</span> <span class="n">chunk</span><span class="o">.</span><span class="n">end_line</span> <span class="o">-</span> <span class="n">chunk</span><span class="o">.</span><span class="n">start_line</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="k">if</span> <span class="n">chunk_lines</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">min_chunk_size</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="n">chunk_lines</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">max_chunk_size</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="c1"># Skip test methods if configured</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">custom_options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;skip_tests&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">chunk</span><span class="o">.</span><span class="n">file_path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;Tests.swift&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;test&quot;</span> <span class="ow">in</span> <span class="n">chunk</span><span class="o">.</span><span class="n">content</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="c1"># Skip generated code</span>
+    <span class="k">if</span> <span class="s2">&quot;// Generated code - do not modify&quot;</span> <span class="ow">in</span> <span class="n">chunk</span><span class="o">.</span><span class="n">content</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">return</span> <span class="kc">True</span>
+</code></pre></div>
+
+<h3 id="step-5-context-building">Step 5: Context Building<a class="headerlink" href="#step-5-context-building" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_context_for_children</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">Node</span><span class="p">,</span> <span class="n">chunk</span><span class="p">:</span> <span class="n">CodeChunk</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build context string for nested Swift definitions.&quot;&quot;&quot;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_node_name</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">chunk</span><span class="o">.</span><span class="n">content</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">name</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">chunk</span><span class="o">.</span><span class="n">parent_context</span>
+
+    <span class="c1"># Build hierarchical context</span>
+    <span class="n">context_parts</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">chunk</span><span class="o">.</span><span class="n">parent_context</span><span class="p">:</span>
+        <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">chunk</span><span class="o">.</span><span class="n">parent_context</span><span class="p">)</span>
+
+    <span class="c1"># Add type information to context</span>
+    <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;class_declaration&quot;</span><span class="p">:</span>
+        <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;class:</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">node</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;struct_declaration&quot;</span><span class="p">:</span>
+        <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;struct:</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">node</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;enum_declaration&quot;</span><span class="p">:</span>
+        <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;enum:</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">node</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;protocol_declaration&quot;</span><span class="p">:</span>
+        <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;protocol:</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">node</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;extension_declaration&quot;</span><span class="p">:</span>
+        <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;extension:</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">context_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="s2">&quot;.&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">context_parts</span><span class="p">)</span>
+</code></pre></div>
+
+<h2 id="plugin-configuration">Plugin Configuration<a class="headerlink" href="#plugin-configuration" title="Permanent link">&para;</a></h2>
+<h3 id="configuration-options">Configuration Options<a class="headerlink" href="#configuration-options" title="Permanent link">&para;</a></h3>
+<p>Plugins can be configured through:</p>
+<ol>
+<li><strong>PluginConfig object</strong>:</li>
+</ol>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker.languages.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">PluginConfig</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">PluginConfig</span><span class="p">(</span>
+    <span class="n">enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">chunk_types</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;function_declaration&quot;</span><span class="p">,</span> <span class="s2">&quot;class_declaration&quot;</span><span class="p">},</span>
+    <span class="n">min_chunk_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+    <span class="n">max_chunk_size</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+    <span class="n">custom_options</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;skip_private&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="s2">&quot;skip_tests&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="s2">&quot;include_comments&quot;</span><span class="p">:</span> <span class="kc">True</span>
+    <span class="p">}</span>
+<span class="p">)</span>
+
+<span class="n">plugin</span> <span class="o">=</span> <span class="n">SwiftPlugin</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+</code></pre></div>
+
+<ol>
+<li><strong>Configuration files</strong> (TOML/YAML/JSON):</li>
+</ol>
+<div class="codehilite"><pre><span></span><code><span class="c1"># chunker.config.toml</span>
+<span class="k">[plugins.swift]</span>
+<span class="n">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">chunk_types</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;function_declaration&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;class_declaration&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;struct_declaration&quot;</span><span class="p">]</span>
+<span class="n">min_chunk_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3</span>
+<span class="n">max_chunk_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">300</span>
+
+<span class="k">[plugins.swift.custom_options]</span>
+<span class="n">skip_private</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">skip_tests</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">include_comments</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+</code></pre></div>
+
+<ol>
+<li><strong>Environment variables</strong>:</li>
+</ol>
+<div class="codehilite"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">CHUNKER_SWIFT_ENABLED</span><span class="o">=</span><span class="nb">true</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHUNKER_SWIFT_MIN_SIZE</span><span class="o">=</span><span class="m">5</span>
+</code></pre></div>
+
+<h3 id="using-configuration-in-plugins">Using Configuration in Plugins<a class="headerlink" href="#using-configuration-in-plugins" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">PluginConfig</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+    <span class="c1"># Access configuration</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">skip_private</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">custom_options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;skip_private&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">include_comments</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">custom_options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;include_comments&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Default values</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">skip_private</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">include_comments</span> <span class="o">=</span> <span class="kc">True</span>
+</code></pre></div>
+
+<h2 id="advanced-features">Advanced Features<a class="headerlink" href="#advanced-features" title="Permanent link">&para;</a></h2>
+<h3 id="1-language-detection">1. Language Detection<a class="headerlink" href="#1-language-detection" title="Permanent link">&para;</a></h3>
+<p>Implement custom language detection based on file content:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">detect_language</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">content</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Detect if file is Swift based on content.&quot;&quot;&quot;</span>
+    <span class="c1"># Check extension first</span>
+    <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">file_path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">ext</span><span class="p">)</span> <span class="k">for</span> <span class="n">ext</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">supported_extensions</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="c1"># Check shebang</span>
+    <span class="k">if</span> <span class="n">content</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="sa">b</span><span class="s2">&quot;#!/usr/bin/swift&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="c1"># Check for Swift-specific keywords</span>
+    <span class="n">content_str</span> <span class="o">=</span> <span class="n">content</span><span class="p">[:</span><span class="mi">1000</span><span class="p">]</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+    <span class="n">swift_keywords</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;import Foundation&#39;</span><span class="p">,</span> <span class="s1">&#39;import UIKit&#39;</span><span class="p">,</span> <span class="s1">&#39;func &#39;</span><span class="p">,</span> <span class="s1">&#39;var &#39;</span><span class="p">,</span> <span class="s1">&#39;let &#39;</span><span class="p">]</span>
+    <span class="k">return</span> <span class="nb">any</span><span class="p">(</span><span class="n">keyword</span> <span class="ow">in</span> <span class="n">content_str</span> <span class="k">for</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="n">swift_keywords</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="2-custom-node-types">2. Custom Node Types<a class="headerlink" href="#2-custom-node-types" title="Permanent link">&para;</a></h3>
+<p>Define language-specific node types:</p>
+<div class="codehilite"><pre><span></span><code><span class="nd">@property</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">custom_node_mappings</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Map tree-sitter node types to semantic types.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;computed_property&quot;</span><span class="p">:</span> <span class="s2">&quot;property&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;init_declaration&quot;</span><span class="p">:</span> <span class="s2">&quot;constructor&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;deinit_declaration&quot;</span><span class="p">:</span> <span class="s2">&quot;destructor&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;operator_declaration&quot;</span><span class="p">:</span> <span class="s2">&quot;operator&quot;</span>
+    <span class="p">}</span>
+</code></pre></div>
+
+<h3 id="3-metadata-extraction">3. Metadata Extraction<a class="headerlink" href="#3-metadata-extraction" title="Permanent link">&para;</a></h3>
+<p>Extract additional metadata from chunks:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">extract_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">chunk</span><span class="p">:</span> <span class="n">CodeChunk</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract Swift-specific metadata.&quot;&quot;&quot;</span>
+    <span class="n">metadata</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="c1"># Extract access level</span>
+    <span class="n">access_levels</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;public&quot;</span><span class="p">,</span> <span class="s2">&quot;internal&quot;</span><span class="p">,</span> <span class="s2">&quot;fileprivate&quot;</span><span class="p">,</span> <span class="s2">&quot;private&quot;</span><span class="p">,</span> <span class="s2">&quot;open&quot;</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">level</span> <span class="ow">in</span> <span class="n">access_levels</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">chunk</span><span class="o">.</span><span class="n">content</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">level</span><span class="si">}</span><span class="s2"> &quot;</span><span class="p">):</span>
+            <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;access_level&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">level</span>
+            <span class="k">break</span>
+
+    <span class="c1"># Extract attributes</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+    <span class="n">attributes</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;@(\w+)&#39;</span><span class="p">,</span> <span class="n">chunk</span><span class="o">.</span><span class="n">content</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">attributes</span><span class="p">:</span>
+        <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;attributes&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">attributes</span>
+
+    <span class="c1"># Check if async</span>
+    <span class="k">if</span> <span class="s2">&quot;async&quot;</span> <span class="ow">in</span> <span class="n">chunk</span><span class="o">.</span><span class="n">content</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]:</span>
+        <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;is_async&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="c1"># Check if throws</span>
+    <span class="k">if</span> <span class="s2">&quot;throws&quot;</span> <span class="ow">in</span> <span class="n">chunk</span><span class="o">.</span><span class="n">content</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]:</span>
+        <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;throws&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">return</span> <span class="n">metadata</span>
+</code></pre></div>
+
+<h3 id="4-relationship-detection">4. Relationship Detection<a class="headerlink" href="#4-relationship-detection" title="Permanent link">&para;</a></h3>
+<p>Detect relationships between chunks:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">detect_relationships</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">chunks</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">CodeChunk</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Detect relationships between Swift code chunks.&quot;&quot;&quot;</span>
+    <span class="n">relationships</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">chunks</span><span class="p">:</span>
+        <span class="n">chunk_id</span> <span class="o">=</span> <span class="n">chunk</span><span class="o">.</span><span class="n">chunk_id</span>
+        <span class="n">relationships</span><span class="p">[</span><span class="n">chunk_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Find protocol conformances</span>
+        <span class="k">if</span> <span class="n">chunk</span><span class="o">.</span><span class="n">node_type</span> <span class="o">==</span> <span class="s2">&quot;class_declaration&quot;</span><span class="p">:</span>
+            <span class="c1"># Extract protocols from class declaration</span>
+            <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;class\s+\w+\s*:\s*([\w\s,]+)&#39;</span><span class="p">,</span> <span class="n">chunk</span><span class="o">.</span><span class="n">content</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
+                <span class="n">protocols</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)]</span>
+                <span class="k">for</span> <span class="n">protocol</span> <span class="ow">in</span> <span class="n">protocols</span><span class="p">:</span>
+                    <span class="c1"># Find protocol chunks</span>
+                    <span class="n">protocol_chunks</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">chunks</span> 
+                                     <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">node_type</span> <span class="o">==</span> <span class="s2">&quot;protocol_declaration&quot;</span> 
+                                     <span class="ow">and</span> <span class="n">protocol</span> <span class="ow">in</span> <span class="n">c</span><span class="o">.</span><span class="n">content</span><span class="p">]</span>
+                    <span class="k">for</span> <span class="n">pc</span> <span class="ow">in</span> <span class="n">protocol_chunks</span><span class="p">:</span>
+                        <span class="n">relationships</span><span class="p">[</span><span class="n">chunk_id</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pc</span><span class="o">.</span><span class="n">chunk_id</span><span class="p">)</span>
+
+        <span class="c1"># Find method calls</span>
+        <span class="n">method_calls</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;(\w+)\(&#39;</span><span class="p">,</span> <span class="n">chunk</span><span class="o">.</span><span class="n">content</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">method_name</span> <span class="ow">in</span> <span class="n">method_calls</span><span class="p">:</span>
+            <span class="c1"># Find method definitions</span>
+            <span class="n">method_chunks</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">chunks</span> 
+                           <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">node_type</span> <span class="o">==</span> <span class="s2">&quot;function_declaration&quot;</span>
+                           <span class="ow">and</span> <span class="n">method_name</span> <span class="ow">in</span> <span class="n">c</span><span class="o">.</span><span class="n">content</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">mc</span> <span class="ow">in</span> <span class="n">method_chunks</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">mc</span><span class="o">.</span><span class="n">chunk_id</span> <span class="o">!=</span> <span class="n">chunk_id</span><span class="p">:</span>
+                    <span class="n">relationships</span><span class="p">[</span><span class="n">chunk_id</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mc</span><span class="o">.</span><span class="n">chunk_id</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">relationships</span>
+</code></pre></div>
+
+<h2 id="testing-your-plugin">Testing Your Plugin<a class="headerlink" href="#testing-your-plugin" title="Permanent link">&para;</a></h2>
+<h3 id="unit-tests">Unit Tests<a class="headerlink" href="#unit-tests" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">chunk_file</span><span class="p">,</span> <span class="n">get_plugin_manager</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">your_plugin</span><span class="w"> </span><span class="kn">import</span> <span class="n">SwiftPlugin</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_swift_plugin_registration</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test plugin registration.&quot;&quot;&quot;</span>
+    <span class="n">manager</span> <span class="o">=</span> <span class="n">get_plugin_manager</span><span class="p">()</span>
+    <span class="n">manager</span><span class="o">.</span><span class="n">register_plugin</span><span class="p">(</span><span class="n">SwiftPlugin</span><span class="p">)</span>
+
+    <span class="k">assert</span> <span class="s2">&quot;swift&quot;</span> <span class="ow">in</span> <span class="n">manager</span><span class="o">.</span><span class="n">list_plugins</span><span class="p">()</span>
+    <span class="n">plugin</span> <span class="o">=</span> <span class="n">manager</span><span class="o">.</span><span class="n">get_plugin</span><span class="p">(</span><span class="s2">&quot;swift&quot;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">plugin</span><span class="p">,</span> <span class="n">SwiftPlugin</span><span class="p">)</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_swift_chunking</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test Swift file chunking.&quot;&quot;&quot;</span>
+    <span class="n">manager</span> <span class="o">=</span> <span class="n">get_plugin_manager</span><span class="p">()</span>
+    <span class="n">manager</span><span class="o">.</span><span class="n">register_plugin</span><span class="p">(</span><span class="n">SwiftPlugin</span><span class="p">)</span>
+
+    <span class="c1"># Create test file</span>
+    <span class="n">swift_code</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">    class MyClass {</span>
+<span class="s1">        func myMethod() {</span>
+<span class="s1">            print(&quot;Hello&quot;)</span>
+<span class="s1">        }</span>
+
+<span class="s1">        private func privateMethod() {</span>
+<span class="s1">            // This should be skipped if configured</span>
+<span class="s1">        }</span>
+<span class="s1">    }</span>
+<span class="s1">    &#39;&#39;&#39;</span>
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;test.swift&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">swift_code</span><span class="p">)</span>
+
+    <span class="n">chunks</span> <span class="o">=</span> <span class="n">chunk_file</span><span class="p">(</span><span class="s2">&quot;test.swift&quot;</span><span class="p">,</span> <span class="s2">&quot;swift&quot;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">chunks</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span>  <span class="c1"># Class and at least one method</span>
+
+    <span class="c1"># Check chunk types</span>
+    <span class="n">chunk_types</span> <span class="o">=</span> <span class="p">{</span><span class="n">chunk</span><span class="o">.</span><span class="n">node_type</span> <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">chunks</span><span class="p">}</span>
+    <span class="k">assert</span> <span class="s2">&quot;class_declaration&quot;</span> <span class="ow">in</span> <span class="n">chunk_types</span>
+    <span class="k">assert</span> <span class="s2">&quot;function_declaration&quot;</span> <span class="ow">in</span> <span class="n">chunk_types</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_plugin_configuration</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test plugin configuration.&quot;&quot;&quot;</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">PluginConfig</span><span class="p">(</span>
+        <span class="n">custom_options</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;skip_private&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+    <span class="p">)</span>
+    <span class="n">plugin</span> <span class="o">=</span> <span class="n">SwiftPlugin</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+    <span class="c1"># Test that configuration is applied</span>
+    <span class="k">assert</span> <span class="n">plugin</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">custom_options</span><span class="p">[</span><span class="s2">&quot;skip_private&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">True</span>
+</code></pre></div>
+
+<h3 id="integration-tests">Integration Tests<a class="headerlink" href="#integration-tests" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">test_swift_plugin_with_real_files</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test with real Swift files.&quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+
+    <span class="n">manager</span> <span class="o">=</span> <span class="n">get_plugin_manager</span><span class="p">()</span>
+    <span class="n">manager</span><span class="o">.</span><span class="n">register_plugin</span><span class="p">(</span><span class="n">SwiftPlugin</span><span class="p">)</span>
+
+    <span class="c1"># Create a more complex Swift file</span>
+    <span class="n">swift_content</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">    import Foundation</span>
+
+<span class="s1">    @objc protocol DataSource {</span>
+<span class="s1">        func numberOfItems() -&gt; Int</span>
+<span class="s1">        func itemAtIndex(_ index: Int) -&gt; String</span>
+<span class="s1">    }</span>
+
+<span class="s1">    class ViewController: UIViewController, DataSource {</span>
+<span class="s1">        private var items: [String] = []</span>
+
+<span class="s1">        override func viewDidLoad() {</span>
+<span class="s1">            super.viewDidLoad()</span>
+<span class="s1">            setupUI()</span>
+<span class="s1">        }</span>
+
+<span class="s1">        private func setupUI() {</span>
+<span class="s1">            // UI setup code</span>
+<span class="s1">        }</span>
+
+<span class="s1">        // MARK: - DataSource</span>
+
+<span class="s1">        func numberOfItems() -&gt; Int {</span>
+<span class="s1">            return items.count</span>
+<span class="s1">        }</span>
+
+<span class="s1">        func itemAtIndex(_ index: Int) -&gt; String {</span>
+<span class="s1">            return items[index]</span>
+<span class="s1">        }</span>
+<span class="s1">    }</span>
+<span class="s1">    &#39;&#39;&#39;</span>
+
+    <span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">NamedTemporaryFile</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">suffix</span><span class="o">=</span><span class="s1">&#39;.swift&#39;</span><span class="p">,</span> <span class="n">delete</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">swift_content</span><span class="p">)</span>
+        <span class="n">temp_path</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">name</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">chunks</span> <span class="o">=</span> <span class="n">chunk_file</span><span class="p">(</span><span class="n">temp_path</span><span class="p">,</span> <span class="s2">&quot;swift&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Verify chunks</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">chunks</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+        <span class="c1"># Check for protocol</span>
+        <span class="n">protocol_chunks</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">chunks</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">node_type</span> <span class="o">==</span> <span class="s2">&quot;protocol_declaration&quot;</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">protocol_chunks</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+
+        <span class="c1"># Check for class</span>
+        <span class="n">class_chunks</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">chunks</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">node_type</span> <span class="o">==</span> <span class="s2">&quot;class_declaration&quot;</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">class_chunks</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+
+        <span class="c1"># Check context</span>
+        <span class="n">method_chunks</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">chunks</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">node_type</span> <span class="o">==</span> <span class="s2">&quot;function_declaration&quot;</span><span class="p">]</span>
+        <span class="n">class_methods</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">method_chunks</span> <span class="k">if</span> <span class="s2">&quot;class:ViewController&quot;</span> <span class="ow">in</span> <span class="n">c</span><span class="o">.</span><span class="n">parent_context</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">class_methods</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="n">temp_path</span><span class="p">)</span>
+</code></pre></div>
+
+<h2 id="distributing-plugins">Distributing Plugins<a class="headerlink" href="#distributing-plugins" title="Permanent link">&para;</a></h2>
+<h3 id="1-package-structure">1. Package Structure<a class="headerlink" href="#1-package-structure" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code>swift-chunker-plugin/
+├── swift_chunker/
+│   ├── __init__.py
+│   └── plugin.py
+├── tests/
+│   └── test_plugin.py
+├── examples/
+│   └── example.swift
+├── README.md
+├── LICENSE
+└── pyproject.toml
+</code></pre></div>
+
+<h3 id="2-entry-points">2. Entry Points<a class="headerlink" href="#2-entry-points" title="Permanent link">&para;</a></h3>
+<p>Use setuptools entry points for automatic discovery:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># pyproject.toml</span>
+<span class="k">[project.entry-points.</span><span class="s2">&quot;chunker.plugins&quot;</span><span class="k">]</span>
+<span class="n">swift</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;swift_chunker.plugin:SwiftPlugin&quot;</span>
+</code></pre></div>
+
+<h3 id="3-installation">3. Installation<a class="headerlink" href="#3-installation" title="Permanent link">&para;</a></h3>
+<p>Users can install your plugin:</p>
+<div class="codehilite"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>swift-chunker-plugin
+
+<span class="c1"># The plugin is automatically discovered</span>
+from<span class="w"> </span>chunker<span class="w"> </span>import<span class="w"> </span>get_plugin_manager
+
+<span class="nv">manager</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>get_plugin_manager<span class="o">()</span>
+manager.discover_plugins<span class="o">()</span><span class="w">  </span><span class="c1"># Finds entry point plugins</span>
+</code></pre></div>
+
+<h3 id="4-plugin-directory">4. Plugin Directory<a class="headerlink" href="#4-plugin-directory" title="Permanent link">&para;</a></h3>
+<p>Alternatively, users can place plugins in a directory:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_plugin_manager</span>
+
+<span class="n">manager</span> <span class="o">=</span> <span class="n">get_plugin_manager</span><span class="p">()</span>
+<span class="n">manager</span><span class="o">.</span><span class="n">load_plugin_directory</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;~/.chunker/plugins&quot;</span><span class="p">))</span>
+</code></pre></div>
+
+<h2 id="built-in-plugin-examples">Built-in Plugin Examples<a class="headerlink" href="#built-in-plugin-examples" title="Permanent link">&para;</a></h2>
+<p>Study the built-in plugins for best practices:</p>
+<h3 id="pythonplugin">PythonPlugin<a class="headerlink" href="#pythonplugin" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">PythonPlugin</span><span class="p">(</span><span class="n">LanguagePlugin</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Shows how to handle decorators and async functions.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">process_node</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">Node</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> 
+                    <span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">parent_context</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># Handle decorated definitions specially</span>
+        <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;decorated_definition&quot;</span><span class="p">:</span>
+            <span class="c1"># Extract the actual function/class</span>
+            <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">children</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">child</span><span class="o">.</span><span class="n">type</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;function_definition&quot;</span><span class="p">,</span> <span class="s2">&quot;class_definition&quot;</span><span class="p">}:</span>
+                    <span class="n">chunk</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_chunk</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">file_path</span><span class="p">,</span> <span class="n">parent_context</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">chunk</span><span class="p">:</span>
+                        <span class="n">chunk</span><span class="o">.</span><span class="n">node_type</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;decorated_</span><span class="si">{</span><span class="n">child</span><span class="o">.</span><span class="n">type</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="k">return</span> <span class="n">chunk</span>
+
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">process_node</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">file_path</span><span class="p">,</span> <span class="n">parent_context</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="javascriptplugin">JavaScriptPlugin<a class="headerlink" href="#javascriptplugin" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">JavaScriptPlugin</span><span class="p">(</span><span class="n">LanguagePlugin</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Shows how to handle different function types.&quot;&quot;&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">default_chunk_types</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;function_declaration&quot;</span><span class="p">,</span>   <span class="c1"># function foo() {}</span>
+            <span class="s2">&quot;function_expression&quot;</span><span class="p">,</span>     <span class="c1"># const foo = function() {}</span>
+            <span class="s2">&quot;arrow_function&quot;</span><span class="p">,</span>         <span class="c1"># const foo = () =&gt; {}</span>
+            <span class="s2">&quot;method_definition&quot;</span><span class="p">,</span>      <span class="c1"># class methods</span>
+            <span class="s2">&quot;class_declaration&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;class_expression&quot;</span>
+        <span class="p">}</span>
+</code></pre></div>
+
+<h3 id="rustplugin">RustPlugin<a class="headerlink" href="#rustplugin" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">RustPlugin</span><span class="p">(</span><span class="n">LanguagePlugin</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Shows how to handle impl blocks and traits.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_context_for_children</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">Node</span><span class="p">,</span> <span class="n">chunk</span><span class="p">:</span> <span class="n">CodeChunk</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;impl_item&quot;</span><span class="p">:</span>
+            <span class="c1"># Extract what is being implemented</span>
+            <span class="n">impl_text</span> <span class="o">=</span> <span class="n">chunk</span><span class="o">.</span><span class="n">content</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="s2">&quot; for &quot;</span> <span class="ow">in</span> <span class="n">impl_text</span><span class="p">:</span>
+                <span class="c1"># impl Trait for Type</span>
+                <span class="n">parts</span> <span class="o">=</span> <span class="n">impl_text</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; for &quot;</span><span class="p">)</span>
+                <span class="n">type_name</span> <span class="o">=</span> <span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                <span class="n">trait_name</span> <span class="o">=</span> <span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;impl:</span><span class="si">{</span><span class="n">trait_name</span><span class="si">}</span><span class="s2">:for:</span><span class="si">{</span><span class="n">type_name</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># impl Type</span>
+                <span class="n">type_name</span> <span class="o">=</span> <span class="n">impl_text</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;impl:</span><span class="si">{</span><span class="n">type_name</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_context_for_children</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">chunk</span><span class="p">)</span>
+</code></pre></div>
+
+<h2 id="best-practices">Best Practices<a class="headerlink" href="#best-practices" title="Permanent link">&para;</a></h2>
+<h3 id="1-error-handling">1. Error Handling<a class="headerlink" href="#1-error-handling" title="Permanent link">&para;</a></h3>
+<p>Always handle parsing errors gracefully:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_node_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">Node</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Your extraction logic</span>
+        <span class="k">return</span> <span class="n">extracted_name</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to extract name from </span><span class="si">{</span><span class="n">node</span><span class="o">.</span><span class="n">type</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+</code></pre></div>
+
+<h3 id="2-performance">2. Performance<a class="headerlink" href="#2-performance" title="Permanent link">&para;</a></h3>
+<p>Cache expensive operations:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">PluginConfig</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_name_cache</span> <span class="o">=</span> <span class="p">{}</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_node_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">Node</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+    <span class="n">cache_key</span> <span class="o">=</span> <span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">start_byte</span><span class="p">,</span> <span class="n">node</span><span class="o">.</span><span class="n">end_byte</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">cache_key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name_cache</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name_cache</span><span class="p">[</span><span class="n">cache_key</span><span class="p">]</span>
+
+    <span class="n">name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extract_name</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">source</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_name_cache</span><span class="p">[</span><span class="n">cache_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+    <span class="k">return</span> <span class="n">name</span>
+</code></pre></div>
+
+<h3 id="3-compatibility">3. Compatibility<a class="headerlink" href="#3-compatibility" title="Permanent link">&para;</a></h3>
+<p>Support multiple tree-sitter grammar versions:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_node_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">Node</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+    <span class="c1"># Try new grammar structure first</span>
+    <span class="n">name_node</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">child_by_field_name</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">name_node</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">source</span><span class="p">[</span><span class="n">name_node</span><span class="o">.</span><span class="n">start_byte</span><span class="p">:</span><span class="n">name_node</span><span class="o">.</span><span class="n">end_byte</span><span class="p">]</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Fall back to old structure</span>
+    <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">children</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">child</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;identifier&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">source</span><span class="p">[</span><span class="n">child</span><span class="o">.</span><span class="n">start_byte</span><span class="p">:</span><span class="n">child</span><span class="o">.</span><span class="n">end_byte</span><span class="p">]</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="kc">None</span>
+</code></pre></div>
+
+<h3 id="4-documentation">4. Documentation<a class="headerlink" href="#4-documentation" title="Permanent link">&para;</a></h3>
+<p>Document your plugin thoroughly:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">MyPlugin</span><span class="p">(</span><span class="n">LanguagePlugin</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Plugin for MyLanguage support.</span>
+
+<span class="sd">    This plugin provides chunking support for MyLanguage files (.ml).</span>
+<span class="sd">    It extracts functions, classes, and modules as separate chunks.</span>
+
+<span class="sd">    Configuration Options:</span>
+<span class="sd">        - skip_private (bool): Skip private functions (default: False)</span>
+<span class="sd">        - min_chunk_size (int): Minimum lines per chunk (default: 3)</span>
+<span class="sd">        - include_docstrings (bool): Include docstrings in chunks (default: True)</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; from chunker import get_plugin_manager</span>
+<span class="sd">        &gt;&gt;&gt; manager = get_plugin_manager()</span>
+<span class="sd">        &gt;&gt;&gt; manager.register_plugin(MyPlugin)</span>
+<span class="sd">        &gt;&gt;&gt; chunks = chunk_file(&quot;example.ml&quot;, &quot;mylang&quot;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+</code></pre></div>
+
+<h3 id="5-testing">5. Testing<a class="headerlink" href="#5-testing" title="Permanent link">&para;</a></h3>
+<p>Write comprehensive tests:</p>
+<ul>
+<li>Unit tests for each method</li>
+<li>Integration tests with real files</li>
+<li>Edge case tests (empty files, malformed code)</li>
+<li>Performance tests for large files</li>
+<li>Configuration tests</li>
+</ul>
+<h2 id="conclusion">Conclusion<a class="headerlink" href="#conclusion" title="Permanent link">&para;</a></h2>
+<p>The plugin architecture makes Tree-sitter Chunker highly extensible. By following this guide, you can:</p>
+<ul>
+<li>Add support for new languages</li>
+<li>Customize chunking behavior</li>
+<li>Share plugins with the community</li>
+<li>Integrate with existing tools</li>
+</ul>
+<p>For more examples and the latest plugin API, see the <a href="../api-reference/">API Reference</a> and explore the built-in plugins in the <code>chunker/languages/</code> directory.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "content.code.copy"], "search": "../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.50899def.min.js"></script>
+      
+    
+  </body>
+</html>

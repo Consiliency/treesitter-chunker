@@ -1,0 +1,2379 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../user-guide/">
+      
+      
+        <link rel="next" href="../cli-reference/">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.16">
+    
+    
+      
+        <title>Configuration - Tree-sitter Chunker</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.7e37652d.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#configuration-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Tree-sitter Chunker" class="md-header__button md-logo" aria-label="Tree-sitter Chunker" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Tree-sitter Chunker
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Configuration
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/Consiliency/treesitter-chunker" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Overview
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../getting-started/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../user-guide/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  User Guide
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Configuration
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../cli-reference/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  CLI Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../api-reference/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  API Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../export-formats/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Export Formats
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../graphml_export/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  GraphML Export
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../performance-guide/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Performance Guide
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../grammar_discovery/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Grammar Discovery
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../zero_config_api/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Zero-Config API
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Tree-sitter Chunker" class="md-nav__button md-logo" aria-label="Tree-sitter Chunker" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Tree-sitter Chunker
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/Consiliency/treesitter-chunker" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Getting Started
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    User Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Configuration
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Configuration
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table of Contents
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Files
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration Files">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#file-locations" class="md-nav__link">
+    <span class="md-ellipsis">
+      File Locations
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#file-names" class="md-nav__link">
+    <span class="md-ellipsis">
+      File Names
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      Discovery
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#file-formats" class="md-nav__link">
+    <span class="md-ellipsis">
+      File Formats
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="File Formats">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#toml-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      TOML (Recommended)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#yaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      YAML
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#json" class="md-nav__link">
+    <span class="md-ellipsis">
+      JSON
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Options
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration Options">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#global-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Global Options
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#language-specific-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Language-Specific Options
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#export-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Export Options
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Export Options">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#json-export-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      JSON Export Options
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parquet-export-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parquet Export Options
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#plugin-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Plugin Configuration
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Plugin Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#plugin-discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      Plugin Discovery
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#per-plugin-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Per-Plugin Configuration
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cli-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      CLI Configuration
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environment Variables
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Environment Variables">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#general-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      General Variables
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#language-specific-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      Language-Specific Variables
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-precedence" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Precedence
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration Precedence">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-precedence" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Precedence
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Examples
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basic-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Basic Configuration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-language-project" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multi-Language Project
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cicd-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      CI/CD Configuration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#development-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Development Configuration
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      Best Practices
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Best Practices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-use-version-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Use Version Control
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-environment-specific-configs" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Environment-Specific Configs
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-validate-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Validate Configuration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-document-custom-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Document Custom Options
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-use-hierarchical-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Use Hierarchical Configuration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-secure-sensitive-information" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Secure Sensitive Information
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-performance-tuning" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. Performance Tuning
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      See Also
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    CLI Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    API Reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../export-formats/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Export Formats
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../graphml_export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    GraphML Export
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../performance-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Performance Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../grammar_discovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Grammar Discovery
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zero_config_api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Zero-Config API
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      Table of Contents
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Files
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration Files">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#file-locations" class="md-nav__link">
+    <span class="md-ellipsis">
+      File Locations
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#file-names" class="md-nav__link">
+    <span class="md-ellipsis">
+      File Names
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      Discovery
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#file-formats" class="md-nav__link">
+    <span class="md-ellipsis">
+      File Formats
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="File Formats">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#toml-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      TOML (Recommended)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#yaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      YAML
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#json" class="md-nav__link">
+    <span class="md-ellipsis">
+      JSON
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Options
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration Options">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#global-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Global Options
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#language-specific-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Language-Specific Options
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#export-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Export Options
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Export Options">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#json-export-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      JSON Export Options
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parquet-export-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parquet Export Options
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#plugin-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Plugin Configuration
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Plugin Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#plugin-discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      Plugin Discovery
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#per-plugin-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Per-Plugin Configuration
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cli-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      CLI Configuration
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environment Variables
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Environment Variables">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#general-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      General Variables
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#language-specific-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      Language-Specific Variables
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-precedence" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Precedence
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration Precedence">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-precedence" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Precedence
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Examples
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basic-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Basic Configuration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-language-project" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multi-Language Project
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cicd-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      CI/CD Configuration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#development-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Development Configuration
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      Best Practices
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Best Practices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-use-version-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Use Version Control
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-environment-specific-configs" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Environment-Specific Configs
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-validate-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Validate Configuration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-document-custom-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Document Custom Options
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-use-hierarchical-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Use Hierarchical Configuration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-secure-sensitive-information" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Secure Sensitive Information
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-performance-tuning" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. Performance Tuning
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      See Also
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="configuration-reference">Configuration Reference<a class="headerlink" href="#configuration-reference" title="Permanent link">&para;</a></h1>
+<p>Tree-sitter Chunker supports flexible configuration through multiple formats and sources. This guide covers all configuration options, file formats, and best practices.</p>
+<h2 id="table-of-contents">Table of Contents<a class="headerlink" href="#table-of-contents" title="Permanent link">&para;</a></h2>
+<ol>
+<li><a href="#configuration-overview">Configuration Overview</a></li>
+<li><a href="#configuration-files">Configuration Files</a></li>
+<li><a href="#file-formats">File Formats</a></li>
+<li><a href="#configuration-options">Configuration Options</a></li>
+<li><a href="#plugin-configuration">Plugin Configuration</a></li>
+<li><a href="#cli-configuration">CLI Configuration</a></li>
+<li><a href="#environment-variables">Environment Variables</a></li>
+<li><a href="#configuration-precedence">Configuration Precedence</a></li>
+<li><a href="#examples">Examples</a></li>
+<li><a href="#best-practices">Best Practices</a></li>
+</ol>
+<h2 id="configuration-overview">Configuration Overview<a class="headerlink" href="#configuration-overview" title="Permanent link">&para;</a></h2>
+<p>Tree-sitter Chunker can be configured through:</p>
+<ol>
+<li><strong>Configuration files</strong> - <code>.chunkerrc</code>, <code>chunker.config.toml</code>, etc.</li>
+<li><strong>Command-line arguments</strong> - Override specific settings</li>
+<li><strong>Environment variables</strong> - System-wide settings</li>
+<li><strong>Programmatic configuration</strong> - In-code configuration</li>
+</ol>
+<h2 id="configuration-files">Configuration Files<a class="headerlink" href="#configuration-files" title="Permanent link">&para;</a></h2>
+<h3 id="file-locations">File Locations<a class="headerlink" href="#file-locations" title="Permanent link">&para;</a></h3>
+<p>The configuration system searches for files in the following order:</p>
+<ol>
+<li>Current directory: <code>.chunkerrc</code>, <code>chunker.config.*</code></li>
+<li>Parent directories (up to root)</li>
+<li>User home directory: <code>~/.chunker/config.*</code></li>
+<li>System-wide: <code>/etc/chunker/config.*</code></li>
+</ol>
+<h3 id="file-names">File Names<a class="headerlink" href="#file-names" title="Permanent link">&para;</a></h3>
+<p>Supported configuration file names:
+- <code>.chunkerrc</code> (TOML format by default)
+- <code>chunker.config.toml</code>
+- <code>chunker.config.yaml</code> / <code>chunker.config.yml</code>
+- <code>chunker.config.json</code></p>
+<h3 id="discovery">Discovery<a class="headerlink" href="#discovery" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChunkerConfig</span>
+
+<span class="c1"># Automatically find configuration</span>
+<span class="n">config</span> <span class="o">=</span> <span class="n">ChunkerConfig</span><span class="o">.</span><span class="n">find_config</span><span class="p">()</span>
+
+<span class="c1"># Or specify explicit path</span>
+<span class="n">config</span> <span class="o">=</span> <span class="n">ChunkerConfig</span><span class="p">(</span><span class="s2">&quot;/path/to/config.toml&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h2 id="file-formats">File Formats<a class="headerlink" href="#file-formats" title="Permanent link">&para;</a></h2>
+<h3 id="toml-recommended">TOML (Recommended)<a class="headerlink" href="#toml-recommended" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># chunker.config.toml</span>
+
+<span class="c1"># Global settings</span>
+<span class="n">chunk_types</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;function_definition&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;class_definition&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;method_definition&quot;</span><span class="p">]</span>
+<span class="n">min_chunk_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3</span>
+<span class="n">max_chunk_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">200</span>
+
+<span class="c1"># File filtering</span>
+<span class="n">include_patterns</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;*.py&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;*.js&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;*.rs&quot;</span><span class="p">]</span>
+<span class="n">exclude_patterns</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;*test*&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;*__pycache__*&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;*.min.js&quot;</span><span class="p">]</span>
+
+<span class="c1"># Processing options</span>
+<span class="n">parallel_workers</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span>
+<span class="n">cache_enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">cache_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">100</span>
+
+<span class="c1"># Plugin directories</span>
+<span class="n">plugin_dirs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;./plugins&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;~/.chunker/plugins&quot;</span><span class="p">]</span>
+
+<span class="c1"># Language-specific settings</span>
+<span class="k">[languages.python]</span>
+<span class="n">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">chunk_types</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;function_definition&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;class_definition&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;async_function_definition&quot;</span><span class="p">]</span>
+<span class="n">min_chunk_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5</span>
+<span class="n">max_chunk_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">300</span>
+
+<span class="k">[languages.python.custom_options]</span>
+<span class="n">include_docstrings</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">include_type_hints</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">skip_private</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+
+<span class="k">[languages.javascript]</span>
+<span class="n">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">chunk_types</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;function_declaration&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;arrow_function&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;class_declaration&quot;</span><span class="p">]</span>
+<span class="n">include_jsx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+
+<span class="k">[languages.rust]</span>
+<span class="n">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">chunk_types</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;function_item&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;impl_item&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;trait_item&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;struct_item&quot;</span><span class="p">]</span>
+<span class="n">include_tests</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+
+<span class="c1"># Export settings</span>
+<span class="k">[export]</span>
+<span class="n">default_format</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;json&quot;</span>
+<span class="n">compression</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">include_metadata</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+
+<span class="k">[export.json]</span>
+<span class="n">indent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span>
+<span class="n">schema_type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;nested&quot;</span>
+
+<span class="k">[export.parquet]</span>
+<span class="n">compression</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;snappy&quot;</span>
+<span class="n">partition_by</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;language&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;file_path&quot;</span><span class="p">]</span>
+</code></pre></div>
+
+<h3 id="yaml">YAML<a class="headerlink" href="#yaml" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># chunker.config.yaml</span>
+
+<span class="c1"># Global settings</span>
+<span class="nt">chunk_types</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">function_definition</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">class_definition</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">method_definition</span>
+<span class="nt">min_chunk_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
+<span class="nt">max_chunk_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">200</span>
+
+<span class="c1"># File filtering</span>
+<span class="nt">include_patterns</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;*.py&quot;</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;*.js&quot;</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;*.rs&quot;</span>
+<span class="nt">exclude_patterns</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;*test*&quot;</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;*__pycache__*&quot;</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;*.min.js&quot;</span>
+
+<span class="c1"># Processing options</span>
+<span class="nt">parallel_workers</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span>
+<span class="nt">cache_enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="nt">cache_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
+
+<span class="c1"># Plugin directories</span>
+<span class="nt">plugin_dirs</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./plugins</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">~/.chunker/plugins</span>
+
+<span class="c1"># Language-specific settings</span>
+<span class="nt">languages</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">python</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">chunk_types</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">function_definition</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">class_definition</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">async_function_definition</span>
+<span class="w">    </span><span class="nt">min_chunk_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
+<span class="w">    </span><span class="nt">max_chunk_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">300</span>
+<span class="w">    </span><span class="nt">custom_options</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">include_docstrings</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">      </span><span class="nt">include_type_hints</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">      </span><span class="nt">skip_private</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+
+<span class="w">  </span><span class="nt">javascript</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">chunk_types</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">function_declaration</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">arrow_function</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">class_declaration</span>
+<span class="w">    </span><span class="nt">include_jsx</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+
+<span class="w">  </span><span class="nt">rust</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">chunk_types</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">function_item</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">impl_item</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">trait_item</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">struct_item</span>
+<span class="w">    </span><span class="nt">include_tests</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+
+<span class="c1"># Export settings</span>
+<span class="nt">export</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">default_format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">json</span>
+<span class="w">  </span><span class="nt">compression</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">include_metadata</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+
+<span class="w">  </span><span class="nt">json</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">indent</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<span class="w">    </span><span class="nt">schema_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nested</span>
+
+<span class="w">  </span><span class="nt">parquet</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">compression</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">snappy</span>
+<span class="w">    </span><span class="nt">partition_by</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">language</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">file_path</span>
+</code></pre></div>
+
+<h3 id="json">JSON<a class="headerlink" href="#json" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;chunk_types&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;function_definition&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;class_definition&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;method_definition&quot;</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;min_chunk_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;max_chunk_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">200</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;include_patterns&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;*.py&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;*.js&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;*.rs&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;exclude_patterns&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;*test*&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;*__pycache__*&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;*.min.js&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;parallel_workers&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;cache_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;cache_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">100</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;plugin_dirs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;./plugins&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;~/.chunker/plugins&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;languages&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;python&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;chunk_types&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="s2">&quot;function_definition&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s2">&quot;class_definition&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s2">&quot;async_function_definition&quot;</span>
+<span class="w">      </span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;min_chunk_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;max_chunk_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">300</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;custom_options&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;include_docstrings&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;include_type_hints&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;skip_private&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;export&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;default_format&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;json&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;compression&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;include_metadata&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;json&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;indent&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;schema_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;nested&quot;</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;parquet&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;compression&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;snappy&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;partition_by&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;language&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;file_path&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h2 id="configuration-options">Configuration Options<a class="headerlink" href="#configuration-options" title="Permanent link">&para;</a></h2>
+<h3 id="global-options">Global Options<a class="headerlink" href="#global-options" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>chunk_types</code></td>
+<td>List[str]</td>
+<td>Language defaults</td>
+<td>Node types to extract as chunks</td>
+</tr>
+<tr>
+<td><code>min_chunk_size</code></td>
+<td>int</td>
+<td>0</td>
+<td>Minimum chunk size in lines</td>
+</tr>
+<tr>
+<td><code>max_chunk_size</code></td>
+<td>int</td>
+<td>1000000</td>
+<td>Maximum chunk size in lines</td>
+</tr>
+<tr>
+<td><code>include_patterns</code></td>
+<td>List[str]</td>
+<td>[]</td>
+<td>File patterns to include</td>
+</tr>
+<tr>
+<td><code>exclude_patterns</code></td>
+<td>List[str]</td>
+<td>[]</td>
+<td>File patterns to exclude</td>
+</tr>
+<tr>
+<td><code>parallel_workers</code></td>
+<td>int</td>
+<td>CPU count</td>
+<td>Number of parallel workers</td>
+</tr>
+<tr>
+<td><code>cache_enabled</code></td>
+<td>bool</td>
+<td>true</td>
+<td>Enable AST caching</td>
+</tr>
+<tr>
+<td><code>cache_size</code></td>
+<td>int</td>
+<td>100</td>
+<td>Maximum cache entries</td>
+</tr>
+<tr>
+<td><code>plugin_dirs</code></td>
+<td>List[str]</td>
+<td>[]</td>
+<td>Additional plugin directories</td>
+</tr>
+<tr>
+<td><code>enabled_languages</code></td>
+<td>List[str]</td>
+<td>All</td>
+<td>Languages to enable</td>
+</tr>
+<tr>
+<td><code>log_level</code></td>
+<td>str</td>
+<td>"INFO"</td>
+<td>Logging level</td>
+</tr>
+</tbody>
+</table>
+<h3 id="language-specific-options">Language-Specific Options<a class="headerlink" href="#language-specific-options" title="Permanent link">&para;</a></h3>
+<p>Each language can have its own configuration under the <code>languages</code> section:</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>enabled</code></td>
+<td>bool</td>
+<td>true</td>
+<td>Enable this language</td>
+</tr>
+<tr>
+<td><code>chunk_types</code></td>
+<td>List[str]</td>
+<td>Plugin defaults</td>
+<td>Override chunk types</td>
+</tr>
+<tr>
+<td><code>min_chunk_size</code></td>
+<td>int</td>
+<td>Global value</td>
+<td>Language-specific minimum</td>
+</tr>
+<tr>
+<td><code>max_chunk_size</code></td>
+<td>int</td>
+<td>Global value</td>
+<td>Language-specific maximum</td>
+</tr>
+<tr>
+<td><code>file_extensions</code></td>
+<td>List[str]</td>
+<td>Plugin defaults</td>
+<td>File extensions to process</td>
+</tr>
+<tr>
+<td><code>custom_options</code></td>
+<td>Dict</td>
+<td>{}</td>
+<td>Plugin-specific options</td>
+</tr>
+</tbody>
+</table>
+<h3 id="export-options">Export Options<a class="headerlink" href="#export-options" title="Permanent link">&para;</a></h3>
+<p>Configure export formats under the <code>export</code> section:</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>default_format</code></td>
+<td>str</td>
+<td>"json"</td>
+<td>Default export format</td>
+</tr>
+<tr>
+<td><code>compression</code></td>
+<td>bool</td>
+<td>false</td>
+<td>Enable compression</td>
+</tr>
+<tr>
+<td><code>include_metadata</code></td>
+<td>bool</td>
+<td>true</td>
+<td>Include chunk metadata</td>
+</tr>
+</tbody>
+</table>
+<h4 id="json-export-options">JSON Export Options<a class="headerlink" href="#json-export-options" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>indent</code></td>
+<td>int</td>
+<td>2</td>
+<td>JSON indentation</td>
+</tr>
+<tr>
+<td><code>schema_type</code></td>
+<td>str</td>
+<td>"flat"</td>
+<td>Schema type: flat, nested, relational</td>
+</tr>
+<tr>
+<td><code>include_line_numbers</code></td>
+<td>bool</td>
+<td>true</td>
+<td>Include line numbers</td>
+</tr>
+</tbody>
+</table>
+<h4 id="parquet-export-options">Parquet Export Options<a class="headerlink" href="#parquet-export-options" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>compression</code></td>
+<td>str</td>
+<td>"snappy"</td>
+<td>Compression: snappy, gzip, brotli, lz4, zstd</td>
+</tr>
+<tr>
+<td><code>partition_by</code></td>
+<td>List[str]</td>
+<td>[]</td>
+<td>Columns to partition by</td>
+</tr>
+<tr>
+<td><code>row_group_size</code></td>
+<td>int</td>
+<td>5000</td>
+<td>Rows per group</td>
+</tr>
+</tbody>
+</table>
+<h2 id="plugin-configuration">Plugin Configuration<a class="headerlink" href="#plugin-configuration" title="Permanent link">&para;</a></h2>
+<h3 id="plugin-discovery">Plugin Discovery<a class="headerlink" href="#plugin-discovery" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Enable/disable plugin discovery</span>
+<span class="k">[plugins]</span>
+<span class="n">auto_discover</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">entry_points</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="w">  </span><span class="c1"># Discover from Python entry points</span>
+<span class="n">builtin</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="w">       </span><span class="c1"># Load built-in plugins</span>
+
+<span class="c1"># Additional plugin directories</span>
+<span class="n">plugin_dirs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;./my_plugins&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;~/.chunker/plugins&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;/usr/local/share/chunker/plugins&quot;</span>
+<span class="p">]</span>
+
+<span class="c1"># Explicitly load plugins</span>
+<span class="n">load_plugins</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;swift&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;kotlin&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;scala&quot;</span><span class="p">]</span>
+</code></pre></div>
+
+<h3 id="per-plugin-configuration">Per-Plugin Configuration<a class="headerlink" href="#per-plugin-configuration" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="k">[plugins.python]</span>
+<span class="n">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">chunk_types</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;function_definition&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;class_definition&quot;</span><span class="p">]</span>
+<span class="n">min_chunk_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3</span>
+<span class="n">max_chunk_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">500</span>
+
+<span class="c1"># Plugin-specific options</span>
+<span class="k">[plugins.python.custom_options]</span>
+<span class="n">include_docstrings</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">include_decorators</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">include_type_hints</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">skip_private</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">skip_tests</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+
+<span class="k">[plugins.javascript]</span>
+<span class="n">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">include_jsx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">include_typescript</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">es_module_syntax</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+
+<span class="k">[plugins.rust]</span>
+<span class="n">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">include_tests</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">include_docs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">include_macros</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+</code></pre></div>
+
+<h2 id="cli-configuration">CLI Configuration<a class="headerlink" href="#cli-configuration" title="Permanent link">&para;</a></h2>
+<p>Use command-line flags to override file settings. See the <a href="../cli-reference/">CLI Reference</a>.</p>
+<h2 id="environment-variables">Environment Variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h2>
+<p>Environment variables provide system-wide defaults:</p>
+<h3 id="general-variables">General Variables<a class="headerlink" href="#general-variables" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Configuration file location</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHUNKER_CONFIG_PATH</span><span class="o">=</span>/etc/chunker/config.toml
+
+<span class="c1"># Logging</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHUNKER_LOG_LEVEL</span><span class="o">=</span>DEBUG
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHUNKER_LOG_FILE</span><span class="o">=</span>/var/log/chunker.log
+
+<span class="c1"># Performance</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHUNKER_CACHE_SIZE</span><span class="o">=</span><span class="m">200</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHUNKER_PARALLEL_WORKERS</span><span class="o">=</span><span class="m">8</span>
+
+<span class="c1"># Plugin directories</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHUNKER_PLUGIN_PATH</span><span class="o">=</span>/opt/chunker/plugins:/usr/local/lib/chunker
+</code></pre></div>
+
+<h3 id="language-specific-variables">Language-Specific Variables<a class="headerlink" href="#language-specific-variables" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Python configuration</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHUNKER_PYTHON_ENABLED</span><span class="o">=</span><span class="nb">true</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHUNKER_PYTHON_MIN_SIZE</span><span class="o">=</span><span class="m">5</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHUNKER_PYTHON_INCLUDE_DOCSTRINGS</span><span class="o">=</span><span class="nb">true</span>
+
+<span class="c1"># JavaScript configuration</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHUNKER_JAVASCRIPT_ENABLED</span><span class="o">=</span><span class="nb">true</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHUNKER_JAVASCRIPT_INCLUDE_JSX</span><span class="o">=</span><span class="nb">true</span>
+
+<span class="c1"># Rust configuration</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHUNKER_RUST_ENABLED</span><span class="o">=</span><span class="nb">true</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHUNKER_RUST_INCLUDE_TESTS</span><span class="o">=</span><span class="nb">false</span>
+</code></pre></div>
+
+<h2 id="configuration-precedence">Configuration Precedence<a class="headerlink" href="#configuration-precedence" title="Permanent link">&para;</a></h2>
+<p>Configuration sources are applied in the following order (later sources override earlier ones):</p>
+<ol>
+<li>Built-in defaults</li>
+<li>System configuration (<code>/etc/chunker/config.*</code>)</li>
+<li>User configuration (<code>~/.chunker/config.*</code>)</li>
+<li>Project configuration (<code>.chunkerrc</code>, <code>chunker.config.*</code>)</li>
+<li>Environment variables</li>
+<li>Command-line arguments</li>
+<li>Programmatic configuration</li>
+</ol>
+<h3 id="example-precedence">Example Precedence<a class="headerlink" href="#example-precedence" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Built-in default: min_chunk_size = 0</span>
+<span class="c1"># User config: min_chunk_size = 3</span>
+<span class="c1"># Project config: min_chunk_size = 5</span>
+<span class="c1"># Environment: CHUNKER_MIN_SIZE = 10</span>
+<span class="c1"># CLI: --min-size 15</span>
+
+<span class="c1"># Final value: min_chunk_size = 15</span>
+</code></pre></div>
+
+<h2 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">&para;</a></h2>
+<h3 id="basic-configuration">Basic Configuration<a class="headerlink" href="#basic-configuration" title="Permanent link">&para;</a></h3>
+<p>Simple configuration for a Python project:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># .chunkerrc</span>
+<span class="n">chunk_types</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;function_definition&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;class_definition&quot;</span><span class="p">]</span>
+<span class="n">min_chunk_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5</span>
+<span class="n">exclude_patterns</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;*test*.py&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;__pycache__&quot;</span><span class="p">]</span>
+</code></pre></div>
+
+<h3 id="multi-language-project">Multi-Language Project<a class="headerlink" href="#multi-language-project" title="Permanent link">&para;</a></h3>
+<p>Configuration for a project with multiple languages:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># chunker.config.toml</span>
+
+<span class="c1"># Global defaults</span>
+<span class="n">min_chunk_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3</span>
+<span class="n">max_chunk_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">300</span>
+<span class="n">parallel_workers</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span>
+
+<span class="c1"># Python files</span>
+<span class="k">[languages.python]</span>
+<span class="n">chunk_types</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;function_definition&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;class_definition&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;async_function_definition&quot;</span><span class="p">]</span>
+<span class="n">exclude_patterns</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;*_test.py&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;test_*.py&quot;</span><span class="p">]</span>
+
+<span class="k">[languages.python.custom_options]</span>
+<span class="n">include_docstrings</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">skip_private</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+
+<span class="c1"># JavaScript/TypeScript files</span>
+<span class="k">[languages.javascript]</span>
+<span class="n">chunk_types</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;function_declaration&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;arrow_function&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;class_declaration&quot;</span><span class="p">]</span>
+<span class="n">file_extensions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;.js&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;.jsx&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;.ts&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;.tsx&quot;</span><span class="p">]</span>
+<span class="n">include_jsx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+
+<span class="c1"># Rust files</span>
+<span class="k">[languages.rust]</span>
+<span class="n">chunk_types</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;function_item&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;impl_item&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;trait_item&quot;</span><span class="p">]</span>
+<span class="n">include_tests</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">include_docs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+</code></pre></div>
+
+<h3 id="cicd-configuration">CI/CD Configuration<a class="headerlink" href="#cicd-configuration" title="Permanent link">&para;</a></h3>
+<p>Configuration for continuous integration:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># ci.config.toml</span>
+
+<span class="c1"># Strict settings for CI</span>
+<span class="n">min_chunk_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="w">  </span><span class="c1"># Don&#39;t skip small functions</span>
+<span class="n">max_chunk_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">500</span><span class="w">  </span><span class="c1"># Flag large functions</span>
+<span class="n">parallel_workers</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="w">  </span><span class="c1"># Limit resource usage</span>
+
+<span class="c1"># Only process source files</span>
+<span class="n">include_patterns</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;src/**/*.py&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;lib/**/*.js&quot;</span><span class="p">]</span>
+<span class="n">exclude_patterns</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;**/*test*&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;**/vendor/**&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;**/node_modules/**&quot;</span><span class="p">]</span>
+
+<span class="c1"># Export settings for analysis</span>
+<span class="k">[export]</span>
+<span class="n">default_format</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;json&quot;</span>
+<span class="n">compression</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span><span class="w">  </span><span class="c1"># Faster processing</span>
+<span class="n">include_metadata</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+
+<span class="k">[export.json]</span>
+<span class="n">indent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="w">  </span><span class="c1"># Compact output</span>
+<span class="n">schema_type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;flat&quot;</span><span class="w">  </span><span class="c1"># Simple structure</span>
+</code></pre></div>
+
+<h3 id="development-configuration">Development Configuration<a class="headerlink" href="#development-configuration" title="Permanent link">&para;</a></h3>
+<p>Configuration for local development:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># dev.config.toml</span>
+
+<span class="c1"># Verbose output for debugging</span>
+<span class="n">log_level</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;DEBUG&quot;</span>
+<span class="n">show_progress</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">verbose</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+
+<span class="c1"># Include everything for analysis</span>
+<span class="n">include_tests</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">include_docs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">min_chunk_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="w">  </span><span class="c1"># Show all chunks</span>
+
+<span class="c1"># Fast iteration</span>
+<span class="n">cache_enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">cache_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">500</span><span class="w">  </span><span class="c1"># Large cache for development</span>
+
+<span class="c1"># Custom plugin development</span>
+<span class="n">plugin_dirs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;./dev_plugins&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;./experimental_plugins&quot;</span><span class="p">]</span>
+
+<span class="k">[plugins.my_custom_plugin]</span>
+<span class="n">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">debug_mode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+</code></pre></div>
+
+<h2 id="best-practices">Best Practices<a class="headerlink" href="#best-practices" title="Permanent link">&para;</a></h2>
+<h3 id="1-use-version-control">1. Use Version Control<a class="headerlink" href="#1-use-version-control" title="Permanent link">&para;</a></h3>
+<p>Always version control your configuration files:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># .gitignore</span>
+<span class="c1"># Don&#39;t ignore project configuration</span>
+!.chunkerrc
+!chunker.config.toml
+
+<span class="c1"># But ignore personal configuration</span>
+.chunkerrc.local
+chunker.config.local.toml
+</code></pre></div>
+
+<h3 id="2-environment-specific-configs">2. Environment-Specific Configs<a class="headerlink" href="#2-environment-specific-configs" title="Permanent link">&para;</a></h3>
+<p>Use different configurations for different environments:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChunkerConfig</span>
+
+<span class="n">env</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;CHUNKER_ENV&quot;</span><span class="p">,</span> <span class="s2">&quot;development&quot;</span><span class="p">)</span>
+<span class="n">config_file</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;chunker.config.</span><span class="si">{</span><span class="n">env</span><span class="si">}</span><span class="s2">.toml&quot;</span>
+<span class="n">config</span> <span class="o">=</span> <span class="n">ChunkerConfig</span><span class="p">(</span><span class="n">config_file</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="3-validate-configuration">3. Validate Configuration<a class="headerlink" href="#3-validate-configuration" title="Permanent link">&para;</a></h3>
+<p>Always validate configuration files:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChunkerConfig</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">ChunkerConfig</span><span class="p">(</span><span class="s2">&quot;chunker.config.toml&quot;</span><span class="p">)</span>
+    <span class="n">config</span><span class="o">.</span><span class="n">validate</span><span class="p">()</span>
+<span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid configuration: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="4-document-custom-options">4. Document Custom Options<a class="headerlink" href="#4-document-custom-options" title="Permanent link">&para;</a></h3>
+<p>Document all custom options in your configuration:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># chunker.config.toml</span>
+
+<span class="c1"># Custom options for our Python analyzer</span>
+<span class="k">[languages.python.custom_options]</span>
+<span class="c1"># Skip functions with &quot;deprecated&quot; in their name or docstring</span>
+<span class="n">skip_deprecated</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+
+<span class="c1"># Minimum complexity score to include a function</span>
+<span class="n">min_complexity</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5</span>
+
+<span class="c1"># Extract type annotations as separate metadata</span>
+<span class="n">extract_type_annotations</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+</code></pre></div>
+
+<h3 id="5-use-hierarchical-configuration">5. Use Hierarchical Configuration<a class="headerlink" href="#5-use-hierarchical-configuration" title="Permanent link">&para;</a></h3>
+<p>Organize configuration hierarchically:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Base configuration</span>
+<span class="k">[base]</span>
+<span class="n">min_chunk_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3</span>
+<span class="n">max_chunk_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">200</span>
+
+<span class="c1"># Language-specific overrides</span>
+<span class="k">[languages.python]</span>
+<span class="n">min_chunk_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5</span><span class="w">  </span><span class="c1"># Python tends to have more boilerplate</span>
+
+<span class="k">[languages.rust]</span>
+<span class="n">max_chunk_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">150</span><span class="w">  </span><span class="c1"># Rust functions are typically more concise</span>
+</code></pre></div>
+
+<h3 id="6-secure-sensitive-information">6. Secure Sensitive Information<a class="headerlink" href="#6-secure-sensitive-information" title="Permanent link">&para;</a></h3>
+<p>Never store sensitive information in configuration files:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># DON&#39;T DO THIS</span>
+<span class="n">api_key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;sk-1234567890abcdef&quot;</span>
+
+<span class="c1"># DO THIS INSTEAD</span>
+<span class="n">api_key_env</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;CHUNKER_API_KEY&quot;</span><span class="w">  </span><span class="c1"># Read from environment</span>
+</code></pre></div>
+
+<h3 id="7-performance-tuning">7. Performance Tuning<a class="headerlink" href="#7-performance-tuning" title="Permanent link">&para;</a></h3>
+<p>Profile and tune configuration for performance:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Performance tuning</span>
+<span class="k">[performance]</span>
+<span class="c1"># Adjust based on system resources</span>
+<span class="n">parallel_workers</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">8</span><span class="w">  </span><span class="c1"># Number of CPU cores</span>
+<span class="n">cache_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">200</span><span class="w">     </span><span class="c1"># Based on available memory</span>
+
+<span class="c1"># File size thresholds</span>
+<span class="n">streaming_threshold</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">10485760</span><span class="w">  </span><span class="c1"># 10MB - use streaming for larger files</span>
+<span class="n">batch_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">100</span><span class="w">  </span><span class="c1"># Process files in batches</span>
+
+<span class="c1"># Language-specific tuning</span>
+<span class="k">[languages.python.performance]</span>
+<span class="n">parser_timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5000</span><span class="w">  </span><span class="c1"># 5 seconds for complex files</span>
+</code></pre></div>
+
+<h2 id="see-also">See Also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../api-reference/">API Reference</a> - Complete API documentation</li>
+<li><a href="../plugin-development/">Plugin Development</a> - Creating custom plugins</li>
+<li><a href="../cli-reference/">CLI Reference</a> - Command-line options</li>
+<li><a href="../user-guide/">User Guide</a> - General usage guide</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "content.code.copy"], "search": "../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.50899def.min.js"></script>
+      
+    
+  </body>
+</html>

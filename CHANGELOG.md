@@ -37,6 +37,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+
+
+
+
+
+
+
+
+## [1.0.0] - 2025-08-14
+
+Test release
+
+## [1.0.0] - 2025-08-14
+
+Release notes
+
+## [1.0.1] - 2025-08-14
+
+Patch release
+
+## [1.0.0] - 2025-08-14
+
+Test release
+
+## [1.0.0] - 2025-08-14
+
+Release notes
+
+## [1.0.1] - 2025-08-14
+
+Patch release
+
+## [1.0.0] - 2025-08-14
+
+Test release
+
+## [1.0.0] - 2025-08-14
+
+Release notes
+
+## [1.0.1] - 2025-08-14
+
+Patch release
+
 ## [1.0.0] - 2025-08-14
 
 Test release
