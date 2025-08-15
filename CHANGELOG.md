@@ -5,285 +5,94 @@ All notable changes to treesitter-chunker will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## [1.0.0] - 2025-08-14
-
-Test release
-
-## [1.0.0] - 2025-08-14
-
-Release notes
-
-## [1.0.1] - 2025-08-14
-
-Patch release
-
-## [1.0.0] - 2025-08-14
-
-Test release
-
-## [1.0.0] - 2025-08-14
-
-Release notes
-
-## [1.0.1] - 2025-08-14
-
-Patch release
-
-## [1.0.0] - 2025-08-14
-
-Test release
-
-## [1.0.0] - 2025-08-14
-
-Release notes
-
-## [1.0.1] - 2025-08-14
-
-Patch release
-
-## [1.0.0] - 2025-08-14
-
-Test release
-
-## [1.0.0] - 2025-08-14
-
-Release notes
-
-## [1.0.1] - 2025-08-14
-
-Patch release
-
-## [1.0.0] - 2025-08-14
-
-Test release
-
-## [1.0.0] - 2025-08-14
-
-Release notes
-
-## [1.0.1] - 2025-08-14
-
-Patch release
-
-## [1.0.0] - 2025-08-14
-
-Test release
-
-## [1.0.0] - 2025-08-14
-
-Test release
-
-## [1.0.0] - 2025-08-14
-
-Release notes
-
-## [1.0.1] - 2025-08-14
-
-Patch release
-
-## [1.0.0] - 2025-08-14
-
-Test release
-
-## [1.0.0] - 2025-08-14
-
-Test release
-
-## [1.0.0] - 2025-08-14
-
-Test release
-
-## [1.0.0] - 2025-08-14
-
-Release notes
-
-## [1.0.1] - 2025-08-14
-
-Patch release
-
-## [1.0.0] - 2025-08-14
-
-Test release
-
-## [1.0.0] - 2025-08-14
-
-Release notes
-
-## [1.0.1] - 2025-08-14
-
-Patch release
-
-## [1.0.0] - 2025-08-14
-
-Test release
-
-## [1.0.0] - 2025-08-14
-
-Release notes
-
-## [1.0.1] - 2025-08-14
-
-Patch release
-
-## [1.0.0] - 2025-08-14
-
-Test release
-
-## [1.0.0] - 2025-08-14
-
-Release notes
-
-## [1.0.1] - 2025-08-14
-
-Patch release
-
-## [1.0.0] - 2025-08-14
-
-Test release
-
-## [1.0.0] - 2025-08-14
-
-Release notes
-
-## [1.0.1] - 2025-08-14
-
-Patch release
-
-## [1.0.0] - 2025-08-14
-
-Test release
-
-## [1.0.0] - 2025-08-14
-
-Release notes
-
-## [1.0.1] - 2025-08-14
-
-Patch release
-
-## [1.0.1] - 2025-08-14
-
-Patch release
-
-## [1.0.1] - 2025-08-13
-
-Patch release
-
 ## [Unreleased]
 
-## [1.0.0] - 2025-07-31
-
-### Added
-- **REST API using FastAPI** for cross-language integration
-- **Enhanced CLI** with multiple output formats (JSON, JSONL, CSV, minimal)
-- **stdin support** for piping code to chunker
-- **Cross-language integration guide** with examples for Python, JavaScript, Go
-- **Internal module structure** (`_internal/`) for better API encapsulation
-- Created `chunker/core.py` to break circular dependencies
-- Added `docs/troubleshooting.md` with common issues and solutions
-- **Public VFS interface** for advanced file system operations
-- **Simplified imports**: `chunk_file`, `chunk_text`, `chunk_directory` directly from chunker
-- **chunk_text()** function for direct text chunking without file I/O
-
-### Changed
-- **Major API refactoring** for cleaner public interface
-- Moved internal modules (registry, factory) to `_internal/` directory
-- Moved `_walk()` and `chunk_file()` functions to new `chunker/core.py` module
-- Updated import statements throughout documentation to reflect new module structure
-- **ParserConfig** and **LanguageMetadata** now properly exposed in public API
+## [1.0.9] - 2025-01-27
 
 ### Fixed
-- Resolved circular import issues between `chunker.py` and `token/chunker.py` by creating `chunker/core.py`
-- Fixed ABI version mismatch errors by adding appropriate skip markers to tests
-- Fixed CLI test failures related to minimum chunk size (functions must be 3+ lines)
-- Fixed CLI test failures where files named with "test" were excluded by default patterns
-- Fixed JSON/JSONL parsing errors in CLI tests caused by control characters in output
-- Updated all documentation to use correct import paths after module restructuring
-- Fixed 100% test coverage - all tests now passing or properly skipped
-- Fixed all linting issues across the codebase
-
-### Breaking Changes
-- Internal modules (registry, factory) are no longer directly accessible
-- Some internal APIs moved to `_internal/` namespace
-- Users should use public functions instead of internal classes
-
-## [Previous Releases]
-
-### [1.1.0] - 2025-07-25
-
-### Added
-- **Phase 15: Production Readiness & Developer Experience**
-  - Pre-commit hooks with Black, Ruff, and mypy integration
-  - Comprehensive CI/CD pipeline with GitHub Actions
-  - Multi-platform test matrix (Python 3.8-3.12)
-  - Automated code quality checks and formatting
-  - Debug and visualization tools for AST analysis
-  - Cross-platform build system with automated verification
-  - Enhanced distribution with PyPI, Docker, and Homebrew support
-  - Release automation with changelog generation
+- **CLI Stability**: Fixed CLI crashes when graphviz is not available
+- **Version Management**: Made package version dynamic using importlib.metadata instead of hardcoded values
+- **Debug Commands**: Made debug commands gracefully handle missing graphviz dependency
+- **Import Handling**: Conditional imports for debug modules to prevent crashes
 
 ### Changed
-- Updated documentation to reflect Phase 15 completion
-- Enhanced test coverage to 900+ tests
-- Improved build system for cross-platform compatibility
+- CLI debug commands now provide helpful error messages when graphviz is missing
+- Package version is now automatically read from package metadata
 
-## [1.0.0] - 2025-07-24
+## [1.0.8] - 2025-01-27
 
-Initial stable release
+### Fixed
+- **CLI Graphviz Issue**: Fixed CLI crashes related to missing graphviz dependency
+- **Debug Commands**: Made debug command imports truly optional
+
+### Changed
+- CLI now handles missing graphviz gracefully with informative error messages
+- Debug commands are conditionally loaded to prevent import failures
+
+## [1.0.7] - 2025-01-27
 
 ### Added
-- Initial release of treesitter-chunker
-- Multi-language support (Python, JavaScript, TypeScript, C, C++, Rust, Go, Java, Ruby)
-- Multiple chunking strategies (semantic, hierarchical, adaptive, composite)
-- Export formats (JSON, JSONL, Parquet, Neo4j)
-- Performance optimizations with caching and parallel processing
-- Plugin architecture for language extensions
-- Comprehensive CLI interface
-- Debug and visualization tools
-- Cross-platform support (Windows, macOS, Linux)
-- Docker images (standard and Alpine)
-- Package distribution via PyPI, Conda, and Homebrew
+- **Prebuilt Grammar Support**: Embedded prebuilt Tree-sitter grammars in PyPI wheels
+- **No Local Builds**: Wheels now include compiled grammar libraries for immediate use
+- **Enhanced CI/CD**: GitHub Actions workflow for building and publishing wheels with grammars
+
+### Changed
+- **Package Structure**: Grammars are now built into `chunker/data/grammars/build/` during wheel creation
+- **Parser Defaults**: Parser now defaults to packaged grammar libraries when available
+- **Build System**: Modified grammar build scripts to support in-package builds
+
+### Fixed
+- **CI Workflow**: Fixed wheel build and publish workflow for automated releases
+- **Grammar Packaging**: Ensured built grammars are properly included in wheel distributions
+
+## [1.0.6] - 2025-01-27
+
+### Added
+- **CI/CD Integration**: GitHub Actions workflow for automated wheel building and publishing
+- **Cross-Platform Wheels**: Support for Linux and macOS wheel builds
+
+### Changed
+- **Build Process**: Integrated grammar building into CI pipeline
+- **Distribution**: Automated PyPI publishing on version tags
+
+## [1.0.5] - 2025-01-27
+
+### Added
+- **PyPI Publishing**: Package now available on PyPI for easy installation
+- **Wheel Distribution**: Pre-built wheels for faster installation
+- **Core Dependencies**: Added `python-dateutil` as required runtime dependency
+
+### Fixed
+- **Language Registry**: Fixed language discovery and registration issues
+- **Incremental Processing**: Resolved chunk diff computation and state persistence
+- **Language Plugins**: Fixed various language-specific chunking issues (R, PHP, OCaml, MATLAB, TypeScript)
+- **Query Engine**: Fixed advanced query index and natural language search
+- **Error Handling**: Improved parallel processing error handling and recovery
+- **Build System**: Fixed grammar validation and parser factory issues
+
+### Changed
+- **Documentation**: Streamlined documentation, removed development-centric information
+- **CLI**: Added minimal CLI section with zero-config auto-detection
+- **API Documentation**: Published API documentation using MkDocs and mkdocstrings
+
+## [1.0.1] - 2025-08-14
+
+### Fixed
+- **Patch Release**: Various bug fixes and improvements
+
+## [1.0.0] - 2025-08-14
+
+### Added
+- **Initial Release**: Core Tree-sitter-based code chunking functionality
+- **Multi-language Support**: Python, JavaScript, TypeScript, C, C++, Rust, Go, Java, Ruby
+- **Chunking Strategies**: Semantic, hierarchical, adaptive, composite chunking
+- **Export Formats**: JSON, JSONL, Parquet, Neo4j, GraphML
+- **Performance Features**: Caching, parallel processing, incremental updates
+- **Plugin Architecture**: Extensible language support system
+- **CLI Interface**: Comprehensive command-line interface
+- **Debug Tools**: AST visualization and debugging capabilities
+- **Cross-platform**: Windows, macOS, Linux support
+- **Distribution**: PyPI, Conda, Homebrew, Docker support
 
 ### Changed
 - N/A (initial release)
@@ -294,9 +103,6 @@ Initial stable release
 ### Removed
 - N/A (initial release)
 
-### Fixed
-- N/A (initial release)
-
 ### Security
 - N/A (initial release)
 
@@ -304,5 +110,12 @@ Initial stable release
 
 Initial public release.
 
-[Unreleased]: https://github.com/Consiliency/treesitter-chunker/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Consiliency/treesitter-chunker/compare/v1.0.9...HEAD
+[1.0.9]: https://github.com/Consiliency/treesitter-chunker/compare/v1.0.8...v1.0.9
+[1.0.8]: https://github.com/Consiliency/treesitter-chunker/compare/v1.0.7...v1.0.8
+[1.0.7]: https://github.com/Consiliency/treesitter-chunker/compare/v1.0.6...v1.0.7
+[1.0.6]: https://github.com/Consiliency/treesitter-chunker/compare/v1.0.5...v1.0.6
+[1.0.5]: https://github.com/Consiliency/treesitter-chunker/compare/v1.0.1...v1.0.5
+[1.0.1]: https://github.com/Consiliency/treesitter-chunker/compare/v1.0.0...v1.0.1
+[1.0.0]: https://github.com/Consiliency/treesitter-chunker/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/Consiliency/treesitter-chunker/releases/tag/v0.1.0

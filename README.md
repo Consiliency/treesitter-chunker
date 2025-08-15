@@ -4,6 +4,10 @@ A high-performance semantic code chunker that leverages [Tree-sitter](https://tr
 
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)]()
 [![Tree-sitter](https://img.shields.io/badge/tree--sitter-latest-green.svg)]()
+[![PyPI](https://img.shields.io/badge/PyPI-1.0.9-blue.svg)](https://pypi.org/project/treesitter-chunker/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)]()
+
+**🚀 Production Ready**: Version 1.0.9 is now available on PyPI with prebuilt wheels, no local compilation required for basic usage!
 
 ## ✨ Key Features
 
@@ -24,23 +28,49 @@ A high-performance semantic code chunker that leverages [Tree-sitter](https://tr
 - 🔧 **Developer Tools** - Pre-commit hooks, CI/CD generation, quality metrics
 - 📦 **Multi-Platform Distribution** - PyPI, Docker, Homebrew packages
 - 🌐 **Zero-Configuration** - Automatic language detection and grammar download
+- 🚀 **Production Ready** - Prebuilt wheels with embedded grammars, no local compilation required
 
 ## 📦 Installation
 
 ### Prerequisites
 - Python 3.8+ (for Python usage)
-- C compiler (for building Tree-sitter grammars)
-- `uv` package manager (recommended) or pip
+- C compiler (for building Tree-sitter grammars - only needed if using languages not included in prebuilt wheels)
 
 ### Installation Methods
 
-#### From PyPI (when published)
+#### From PyPI (Recommended)
 ```bash
+# Install the latest stable version
 pip install treesitter-chunker
 
 # With REST API support
 pip install "treesitter-chunker[api]"
+
+# With visualization tools (requires graphviz system package)
+pip install "treesitter-chunker[viz]"
+
+# With all optional dependencies
+pip install "treesitter-chunker[all]"
 ```
+
+**Note**: Prebuilt wheels include compiled Tree-sitter grammars for common languages (Python, JavaScript, Rust, C, C++), so no local compilation is required for basic usage.
+
+### No Local Builds Required
+
+Starting with version 1.0.7+, `treesitter-chunker` wheels include precompiled Tree-sitter grammars for common languages. This means:
+
+- ✅ **Immediate Use**: No C compiler or build tools required for basic languages
+- ✅ **Faster Installation**: Wheels install instantly without compilation
+- ✅ **Consistent Performance**: Same grammar versions across all installations
+- ✅ **Offline Capable**: Works without internet access after installation
+
+**Supported Languages in Prebuilt Wheels:**
+- Python, JavaScript, TypeScript, JSX, TSX
+- C, C++, Rust
+- Additional languages can be built on-demand if needed
+
+**For Advanced Usage:**
+If you need languages not included in prebuilt wheels, the package can still build them locally using the same build system used during wheel creation.
 
 #### For Other Languages
 See [Cross-Language Usage Guide](docs/cross-language-usage.md) for using from JavaScript, Go, Ruby, etc.
@@ -69,7 +99,7 @@ sudo dpkg -i python3-treesitter-chunker_1.0.0-1_all.deb
 sudo rpm -i python-treesitter-chunker-1.0.0-1.noarch.rpm
 ```
 
-### Quick Install
+### Quick Install (Development)
 
 ```bash
 # Clone the repository
@@ -308,36 +338,45 @@ parquet_exporter.export(chunks, "chunks.parquet")
 
 ```bash
 # Basic chunking
-python cli/main.py chunk example.py -l python
+treesitter-chunker chunk example.py -l python
 
 # Process directory with progress bar
-python cli/main.py batch src/ --recursive
+treesitter-chunker batch src/ --recursive
 
 # Export as JSON
-python cli/main.py chunk example.py -l python --json > chunks.json
+treesitter-chunker chunk example.py -l python --json > chunks.json
 
 # With configuration file
-python cli/main.py chunk src/ --config .chunkerrc
+treesitter-chunker chunk src/ --config .chunkerrc
 
 # Override exclude patterns (default excludes files with 'test' in name)
-python cli/main.py batch src/ --exclude "*.tmp,*.bak" --include "*.py"
+treesitter-chunker batch src/ --exclude "*.tmp,*.bak" --include "*.py"
+
+# List available languages
+treesitter-chunker languages
+
+# Get help for specific commands
+treesitter-chunker chunk --help
+treesitter-chunker batch --help
 ```
 
 ### Zero-Config CLI (auto-detection)
 
 ```bash
 # Automatically detect language and chunk a file
-python cli/main.py auto-chunk example.rs
+treesitter-chunker auto-chunk example.rs
 
 # Auto-chunk a directory using detection + intelligent fallbacks
-python cli/main.py auto-batch repo/
+treesitter-chunker auto-batch repo/
 ```
 
-### AST Visualization
-
-Generate Graphviz diagrams of the parse tree:
+### Debug and Visualization
 
 ```bash
+# Debug commands (requires graphviz or install with [viz] extra)
+treesitter-chunker debug --help
+
+# AST visualization (requires graphviz system package)
 python scripts/visualize_ast.py example.py --lang python --out example.svg
 ```
 
