@@ -33,7 +33,7 @@ jobs:
           CHUNKER_WHEEL_LANGS: python,javascript,rust
           CHUNKER_GRAMMAR_BUILD_DIR: ${{ github.workspace }}/chunker/data/grammars/build
           CIBW_ENVIRONMENT: CHUNKER_GRAMMAR_BUILD_DIR=${{ github.workspace }}/chunker/data/grammars/build
-          CIBW_BEFORE_BUILD: python scripts/fetch_grammars.py && python scripts/build_lib.py
+          CIBW_BEFORE_BUILD: pip install tree_sitter && python scripts/fetch_grammars.py && python scripts/build_lib.py
         run: |
           mkdir -p chunker/data/grammars/build
           python -m cibuildwheel --output-dir wheelhouse
