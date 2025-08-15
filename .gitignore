@@ -51,3 +51,16 @@ __pycache__/
 wheel_build_verbose*.log
 pytest_*.log
 
+# Environment files (secrets)
+.env
+.env.*
+*.env
+.*.env
+!.env.example
+.envrc
+.flaskenv
+
+# Common private keys/certs
+*.pem
+*.key
+*.crt
