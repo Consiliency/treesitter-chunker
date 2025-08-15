@@ -71,7 +71,7 @@ Common import corrections:
 
 3. **File excluded by pattern**: When using batch processing, files with "test" in the name are excluded by default:
    ```bash
-   python cli/main.py batch src/ --exclude "*.tmp" --include "*.py"
+   treesitter-chunker batch src/ --exclude "*.tmp" --include "*.py"
    ```
 
 #### Parser Not Available

@@ -43,14 +43,32 @@ Tree-sitter Chunker provides a comprehensive API for semantically chunking sourc
 ## Installation
 
 ```bash
+# Install from PyPI (recommended)
+pip install treesitter-chunker
+
+# With visualization tools (requires graphviz)
+pip install "treesitter-chunker[viz]"
+
+# With all optional dependencies
+pip install "treesitter-chunker[all]"
+```
+
+**Note**: Prebuilt wheels include compiled Tree-sitter grammars for common languages (Python, JavaScript, Rust, C, C++), so no local compilation is required!
+
+### Development Installation
+
+If you want to contribute or need the latest development version:
+
+```bash
+# Clone the repository
+git clone https://github.com/Consiliency/treesitter-chunker.git
+cd treesitter-chunker
+
 # Install with uv (recommended)
 uv pip install -e ".[dev]"
-
-# Required dependencies
 uv pip install git+https://github.com/tree-sitter/py-tree-sitter.git
-uv pip install pyarrow>=11.0.0
 
-# Build language grammars
+# Build language grammars (only needed for development)
 python scripts/fetch_grammars.py
 python scripts/build_lib.py
 ```

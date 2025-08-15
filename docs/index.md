@@ -86,15 +86,40 @@ Built-in support for common languages (Python, JavaScript/TypeScript, Rust, C, C
 ## Installation
 
 ```bash
-# Using uv (recommended)
-uv pip install -e ".[dev]"
+# Install from PyPI (recommended)
+pip install treesitter-chunker
 
-# Install py-tree-sitter with ABI 15 support
+# With visualization tools (requires graphviz)
+pip install "treesitter-chunker[viz]"
+
+# With all optional dependencies
+pip install "treesitter-chunker[all]"
+```
+
+**Note**: Prebuilt wheels include compiled Tree-sitter grammars for common languages (Python, JavaScript, Rust, C, C++), so no local compilation is required!
+
+### Development Installation
+
+If you want to contribute or need the latest development version:
+
+```bash
+# Clone the repository
+git clone https://github.com/Consiliency/treesitter-chunker.git
+cd treesitter-chunker
+
+# Install with uv (recommended)
+uv venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+uv pip install -e ".[dev]"
 uv pip install git+https://github.com/tree-sitter/py-tree-sitter.git
 
 # Build language grammars
 python scripts/fetch_grammars.py
 python scripts/build_lib.py
+
+# Verify installation
+python -c "from chunker.parser import list_languages; print(list_languages())"
+# Output: ['c', 'cpp', 'javascript', 'python', 'rust']
 ```
 
 ## Use Cases

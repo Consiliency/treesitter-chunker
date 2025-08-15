@@ -4,12 +4,17 @@ This page summarizes the command-line interface for Tree-sitter Chunker.
 
 ## Installation
 
-Run the CLI from the repository:
+Install the CLI from PyPI:
 
 ```bash
-python -m pip install -e ".[dev]"
-# or use uv
-uv pip install -e ".[dev]"
+# Install the latest stable version
+pip install treesitter-chunker
+
+# With visualization tools (requires graphviz)
+pip install "treesitter-chunker[viz]"
+
+# With all optional dependencies
+pip install "treesitter-chunker[all]"
 ```
 
 ## Commands
@@ -17,27 +22,44 @@ uv pip install -e ".[dev]"
 ### Chunk a single file
 
 ```bash
-python cli/main.py chunk example.py -l python
+treesitter-chunker chunk example.py -l python
 # Output options
-python cli/main.py chunk example.py -l python --json > chunks.json
+treesitter-chunker chunk example.py -l python --json > chunks.json
 ```
 
 ### Batch process a directory
 
 ```bash
-python cli/main.py batch src/ --recursive
+treesitter-chunker batch src/ --recursive
 # Include / exclude patterns
-python cli/main.py batch src/ --include "**/*.py" --exclude "**/tests/**,**/*.tmp"
+treesitter-chunker batch src/ --include "**/*.py" --exclude "**/tests/**,**/*.tmp"
 ```
 
 ### Zero-config auto-detection
 
 ```bash
 # Automatically detect language for a file and chunk it
-python cli/main.py auto-chunk path/to/file
+treesitter-chunker auto-chunk path/to/file
 
 # Auto-chunk an entire directory using detection + intelligent fallbacks
-python cli/main.py auto-batch path/to/repo
+treesitter-chunker auto-batch path/to/repo
+```
+
+### List available languages
+
+```bash
+# Show all supported languages
+treesitter-chunker languages
+```
+
+### Debug and visualization
+
+```bash
+# Debug commands (requires graphviz or install with [viz] extra)
+treesitter-chunker debug --help
+
+# AST visualization
+treesitter-chunker debug ast example.py --lang python --format tree
 ```
 
 ### Configuration
@@ -45,7 +67,7 @@ python cli/main.py auto-batch path/to/repo
 You can pass a configuration file to adjust chunk sizes, language rules, and filters:
 
 ```bash
-python cli/main.py chunk src/ --config .chunkerrc
+treesitter-chunker chunk src/ --config .chunkerrc
 ```
 
 Supported formats: TOML, YAML, JSON. See the Configuration guide for details.

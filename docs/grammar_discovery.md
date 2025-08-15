@@ -1,6 +1,6 @@
 # Grammar Discovery Service
 
-The Grammar Discovery Service is a core component of Phase 14 - Universal Language Support. It provides automatic discovery of tree-sitter grammars from GitHub and manages metadata about available grammars.
+The Grammar Discovery Service is a core component that provides automatic discovery of tree-sitter grammars from GitHub and manages metadata about available grammars.
 
 ## Overview
 

@@ -43,31 +43,44 @@ Tree-sitter Chunker is ideal for:
 ### Prerequisites
 
 - Python 3.8 or higher
-- uv package manager (recommended) or pip
-- C compiler (for building tree-sitter grammars)
-- Git (for fetching grammar repositories)
+- ~~uv package manager (recommended) or pip~~ **pip is sufficient for PyPI installation**
+- ~~C compiler (for building tree-sitter grammars)~~ **No longer required for basic usage!**
+- ~~Git (for fetching grammar repositories)~~ **No longer required for basic usage!**
 
-### Install with uv (Recommended)
+### Install from PyPI (Recommended)
+
+The easiest way to get started is to install the pre-built package from PyPI:
 
 ```bash
-# Create virtual environment
-uv venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+# Install the latest stable version
+pip install treesitter-chunker
 
-# Install package
+# With visualization tools (requires graphviz)
+pip install "treesitter-chunker[viz]"
+
+# With all optional dependencies
+pip install "treesitter-chunker[all]"
+```
+
+**Note**: Prebuilt wheels include compiled Tree-sitter grammars for common languages (Python, JavaScript, Rust, C, C++), so no local compilation is required!
+
+### Development Installation
+
+If you want to contribute or need the latest development version:
+
+```bash
+# Clone the repository
+git clone https://github.com/Consiliency/treesitter-chunker.git
+cd treesitter-chunker
+
+# Install in development mode
 uv pip install -e ".[dev]"
 
 # Install py-tree-sitter with ABI 15 support
 uv pip install git+https://github.com/tree-sitter/py-tree-sitter.git
-```
 
-### Build Language Grammars
-
-```bash
-# Fetch grammar repositories
+# Build language grammars (only needed for development)
 python scripts/fetch_grammars.py
-
-# Compile grammars into shared library
 python scripts/build_lib.py
 ```
 

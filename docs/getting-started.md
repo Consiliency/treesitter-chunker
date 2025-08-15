@@ -15,33 +15,35 @@ Tree-sitter Chunker intelligently splits source code into semantic chunks like f
 
 - Python 3.8 or higher
 - Basic command line familiarity
-- A C compiler (for building grammars)
-- Git (for fetching grammar repositories)
+- ~~A C compiler (for building grammars)~~ **No longer required for basic usage!**
+- ~~Git (for fetching grammar repositories)~~ **No longer required for basic usage!**
 
 ## Installation
 
-### Step 1: Set Up Environment
+### Option 1: Install from PyPI (Recommended)
 
-We recommend using `uv` for package management:
+The easiest way to get started is to install the pre-built package from PyPI:
 
 ```bash
-# Install uv (if not already installed)
-pip install uv
+# Install the latest stable version
+pip install treesitter-chunker
 
-# Create a new project directory
-mkdir my-chunker-project
-cd my-chunker-project
+# With visualization tools (requires graphviz)
+pip install "treesitter-chunker[viz]"
 
-# Create virtual environment
-uv venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+# With all optional dependencies
+pip install "treesitter-chunker[all]"
 ```
 
-### Step 2: Install Tree-sitter Chunker
+**Note**: Prebuilt wheels include compiled Tree-sitter grammars for common languages (Python, JavaScript, Rust, C, C++), so no local compilation is required!
+
+### Option 2: Development Installation
+
+If you want to contribute or need the latest development version:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/treesitter-chunker.git
+git clone https://github.com/Consiliency/treesitter-chunker.git
 cd treesitter-chunker
 
 # Install in development mode
@@ -49,18 +51,19 @@ uv pip install -e ".[dev]"
 
 # Install py-tree-sitter with ABI 15 support
 uv pip install git+https://github.com/tree-sitter/py-tree-sitter.git
+
+# Build language grammars (only needed for development)
+python scripts/fetch_grammars.py
+python scripts/build_lib.py
 ```
 
-### Step 3: Build Language Support
+### Verify Installation
 
 ```bash
-# Fetch grammar repositories
-python scripts/fetch_grammars.py
+# Check if the package is installed
+python -c "import chunker; print('Version:', chunker.__version__)"
 
-# Compile grammars (this takes a minute)
-python scripts/build_lib.py
-
-# Verify installation
+# List available languages
 python -c "from chunker.parser import list_languages; print(list_languages())"
 # Should output: ['c', 'cpp', 'javascript', 'python', 'rust']
 ```
@@ -116,7 +119,7 @@ if __name__ == "__main__":
 
 ```bash
 # Basic chunking - see the structure
-python cli/main.py chunk example.py -l python
+treesitter-chunker chunk example.py -l python
 
 # Output:
 # ┏━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┓
@@ -132,7 +135,7 @@ python cli/main.py chunk example.py -l python
 # └────────┴──────────────────────┴──────────┴──────────────────────┘
 
 # Get JSON output for programmatic use
-python cli/main.py chunk example.py -l python --json > chunks.json
+treesitter-chunker chunk example.py -l python --json > chunks.json
 ```
 
 ### Step 3: Use the Python API
@@ -568,7 +571,7 @@ include_jsx = true
 EOF
 
 # Use with CLI
-python cli/main.py chunk example.py -l python --config .chunkerrc
+treesitter-chunker chunk example.py -l python --config .chunkerrc
 ```
 
 ## Working with Different Languages
