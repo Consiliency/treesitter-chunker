@@ -71,7 +71,12 @@ from .smart_context import InMemoryContextCache, TreeSitterSmartContextProvider
 from .streaming import chunk_file_streaming
 from .types import CodeChunk
 
-__version__ = "1.0.1"
+# Dynamic version from package metadata
+try:
+    from importlib.metadata import version
+    __version__ = version("treesitter-chunker")
+except ImportError:
+    __version__ = "1.0.8"  # Fallback version
 
 
 # Simple text chunking
