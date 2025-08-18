@@ -11,8 +11,8 @@ This document provides a comprehensive overview of the Tree-sitter Chunker archi
 5. [Design Decisions](#design-decisions)
 6. [Extension Points](#extension-points)
 7. [Performance Considerations](#performance-considerations)
-8. [Security Considerations](#security-considerations)
-9. [Future Enhancements](#future-enhancements)
+8. [Security Considerations](#security-considerments)
+9. [Current State and Future Enhancements](#current-state-and-future-enhancements)
 
 ## System Overview
 

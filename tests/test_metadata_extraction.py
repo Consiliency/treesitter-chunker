@@ -79,12 +79,12 @@ class TestPythonMetadataExtraction:
     """Test Python-specific metadata extraction."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def extractor(cls):
         return PythonMetadataExtractor()
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def analyzer(cls):
         return PythonComplexityAnalyzer()
 
@@ -300,12 +300,12 @@ class TestJavaScriptMetadataExtraction:
     """Test JavaScript-specific metadata extraction."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def extractor(cls):
         return JavaScriptMetadataExtractor()
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def analyzer(cls):
         return JavaScriptComplexityAnalyzer()
 
@@ -431,7 +431,7 @@ class TestTypeScriptMetadataExtraction:
     """Test TypeScript-specific metadata extraction."""
 
     @classmethod
-    @pytest.fixture
+    @pytest.fixture()
     def extractor(cls):
         return TypeScriptMetadataExtractor()
 

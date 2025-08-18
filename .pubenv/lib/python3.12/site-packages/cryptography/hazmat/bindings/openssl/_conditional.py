@@ -169,15 +169,11 @@ CONDITIONAL_NAMES = {
     "Cryptography_HAS_PSK_TLSv1_3": cryptography_has_psk_tlsv13,
     "Cryptography_HAS_CUSTOM_EXT": cryptography_has_custom_ext,
     "Cryptography_HAS_TLSv1_3_FUNCTIONS": cryptography_has_tlsv13_functions,
-    "Cryptography_HAS_TLSv1_3_HS_FUNCTIONS": (
-        cryptography_has_tlsv13_hs_functions
-    ),
+    "Cryptography_HAS_TLSv1_3_HS_FUNCTIONS": (cryptography_has_tlsv13_hs_functions),
     "Cryptography_HAS_ENGINE": cryptography_has_engine,
     "Cryptography_HAS_VERIFIED_CHAIN": cryptography_has_verified_chain,
     "Cryptography_HAS_SRTP": cryptography_has_srtp,
-    "Cryptography_HAS_OP_NO_RENEGOTIATION": (
-        cryptography_has_op_no_renegotiation
-    ),
+    "Cryptography_HAS_OP_NO_RENEGOTIATION": (cryptography_has_op_no_renegotiation),
     "Cryptography_HAS_DTLS_GET_DATA_MTU": cryptography_has_dtls_get_data_mtu,
     "Cryptography_HAS_SSL_COOKIE": cryptography_has_ssl_cookie,
     "Cryptography_HAS_PRIME_CHECKS": cryptography_has_prime_checks,

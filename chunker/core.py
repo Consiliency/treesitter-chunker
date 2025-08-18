@@ -354,6 +354,14 @@ def _walk(
                 exports = extractor.extract_exports(node, source)
                 if exports:
                     metadata["exports"] = sorted(exports)
+                
+                # Extract calls with spans
+                calls = extractor.extract_calls(node, source)
+                if calls:
+                    # Backward compatibility: extract just names
+                    metadata["calls"] = [call["name"] for call in calls]
+                    # New detailed format: include spans
+                    metadata["call_spans"] = calls
 
             if analyzer:
                 # Calculate complexity metrics

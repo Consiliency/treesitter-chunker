@@ -5,29 +5,14 @@
 from __future__ import annotations
 
 from cryptography import utils
-from cryptography.hazmat.decrepit.ciphers.algorithms import (
-    ARC4 as ARC4,
-)
-from cryptography.hazmat.decrepit.ciphers.algorithms import (
-    CAST5 as CAST5,
-)
-from cryptography.hazmat.decrepit.ciphers.algorithms import (
-    IDEA as IDEA,
-)
-from cryptography.hazmat.decrepit.ciphers.algorithms import (
-    SEED as SEED,
-)
-from cryptography.hazmat.decrepit.ciphers.algorithms import (
-    Blowfish as Blowfish,
-)
-from cryptography.hazmat.decrepit.ciphers.algorithms import (
-    TripleDES as TripleDES,
-)
+from cryptography.hazmat.decrepit.ciphers.algorithms import ARC4 as ARC4
+from cryptography.hazmat.decrepit.ciphers.algorithms import CAST5 as CAST5
+from cryptography.hazmat.decrepit.ciphers.algorithms import IDEA as IDEA
+from cryptography.hazmat.decrepit.ciphers.algorithms import SEED as SEED
+from cryptography.hazmat.decrepit.ciphers.algorithms import Blowfish as Blowfish
+from cryptography.hazmat.decrepit.ciphers.algorithms import TripleDES as TripleDES
 from cryptography.hazmat.primitives._cipheralgorithm import _verify_key_size
-from cryptography.hazmat.primitives.ciphers import (
-    BlockCipherAlgorithm,
-    CipherAlgorithm,
-)
+from cryptography.hazmat.primitives.ciphers import BlockCipherAlgorithm, CipherAlgorithm
 
 
 class AES(BlockCipherAlgorithm):

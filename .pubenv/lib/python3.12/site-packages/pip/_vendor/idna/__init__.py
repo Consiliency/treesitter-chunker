@@ -22,11 +22,11 @@ from .intranges import intranges_contain
 from .package_data import __version__
 
 __all__ = [
-    "__version__",
     "IDNABidiError",
     "IDNAError",
     "InvalidCodepoint",
     "InvalidCodepointContext",
+    "__version__",
     "alabel",
     "check_bidi",
     "check_hyphen_ok",

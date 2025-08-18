@@ -201,8 +201,9 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
             if use_cxx:
                 cmd.extend(["-std=c++17"])  # scanners often use modern C++
             else:
-                # Use C99 with GNU extensions for better designated initializer support
-                cmd.extend(["-std=gnu99"])
+                # Use C11 for better support of static_assert and other features
+                # Some grammars (like C++) have scanner.c files that use C11 features
+                cmd.extend(["-std=c11"])
 
             # Link stdc++ if using C++
             if use_cxx:

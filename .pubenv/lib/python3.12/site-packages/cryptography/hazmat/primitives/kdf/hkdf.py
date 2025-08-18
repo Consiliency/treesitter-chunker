@@ -59,9 +59,7 @@ class HKDFExpand(KeyDerivationFunction):
         max_length = 255 * algorithm.digest_size
 
         if length > max_length:
-            raise ValueError(
-                f"Cannot derive keys larger than {max_length} octets."
-            )
+            raise ValueError(f"Cannot derive keys larger than {max_length} octets.")
 
         self._length = length
 

@@ -18,6 +18,22 @@ nav:
   - Performance Guide: performance-guide.md
   - Grammar Discovery: grammar_discovery.md
   - Zero-Config API: zero_config_api.md
+  - Cookbook: cookbook.md
+  - Plugin Development: plugin-development.md
+  - Architecture: architecture.md
+  - Troubleshooting: troubleshooting.md
+  - Advanced Topics:
+    - Intelligent Fallback: intelligent_fallback.md
+    - Token Limits: token_limits.md
+    - Markdown Processor: markdown_processor.md
+    - Config Processor: config_processor.md
+    - Log Processor: log_processor.md
+    - Metadata Extraction: metadata-extraction.md
+    - Overlapping Fallback: overlapping-fallback.md
+    - Cross-Language Usage: cross-language-usage.md
+    - Environment Variables: environment_variables.md
+    - Internal API: internal-api.md
+    - Packaging: packaging.md
 plugins:
   - search
   - mkdocstrings:

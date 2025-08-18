@@ -5,7 +5,7 @@ pytest_plugins = [
 import pytest
 
 
-@pytest.fixture
+@pytest.fixture()
 def _temp_workspace(temp_workspace):
     """Alias for backward-compatibility with tests expecting _temp_workspace."""
     return temp_workspace
@@ -64,13 +64,13 @@ from chunker.build import BuildSystem, PlatformSupport
 from tests.integration.fixtures import error_tracking_context, temp_workspace
 
 
-@pytest.fixture
+@pytest.fixture()
 def build_system():
     """Provide real BuildSystem instance"""
     return BuildSystem()
 
 
-@pytest.fixture
+@pytest.fixture()
 def platform_support():
     """Provide real PlatformSupport instance"""
     return PlatformSupport()

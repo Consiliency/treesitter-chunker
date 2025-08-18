@@ -400,6 +400,119 @@ class JavaScriptMetadataExtractor(BaseMetadataExtractor):
             id_node = self._find_child_by_type(declarator, "identifier")
             if id_node:
                 exports.add(self._get_node_text(id_node, source))
+    
+    def extract_calls(self, node: Node, source: bytes) -> list[dict[str, Any]]:
+        """Extract function/method calls with their byte spans."""
+        calls = []
+        
+        # Traverse the tree to find all call expressions
+        self._extract_calls_recursive(node, source, calls)
+        
+        return calls
+    
+    def _extract_calls_recursive(self, node: Node, source: bytes, calls: list) -> None:
+        """Recursively extract calls from the AST."""
+        if node.type == "call_expression":
+            call_info = self._extract_js_call_info(node, source)
+            if call_info:
+                calls.append(call_info)
+        
+        # Also handle new expressions (constructor calls)
+        elif node.type == "new_expression":
+            constructor = self._find_child_by_type(node, "identifier")
+            if not constructor:
+                # Try member expression for new Foo.Bar()
+                constructor = self._find_child_by_type(node, "member_expression")
+            
+            if constructor:
+                name = self._extract_member_name(constructor, source)
+                if name:
+                    calls.append({
+                        "name": f"new {name}",
+                        "start": node.start_byte,
+                        "end": node.end_byte,
+                        "type": "constructor",
+                    })
+        
+        # Also handle tagged template literals (e.g., styled.div`...`)
+        elif node.type == "tagged_template_expression":
+            tag_node = node.children[0] if node.children else None
+            if tag_node:
+                name = self._extract_member_name(tag_node, source)
+                if name:
+                    calls.append({
+                        "name": name,
+                        "start": node.start_byte,
+                        "end": node.end_byte,
+                        "type": "tagged_template",
+                    })
+        
+        # Recurse into children
+        for child in node.children:
+            self._extract_calls_recursive(child, source, calls)
+    
+    def _extract_js_call_info(self, call_node: Node, source: bytes) -> dict[str, Any] | None:
+        """Extract information from a JavaScript call expression."""
+        func_node = call_node.children[0] if call_node.children else None
+        if not func_node:
+            return None
+        
+        # Extract the function name
+        name = None
+        call_type = "function"
+        
+        if func_node.type == "identifier":
+            name = self._get_node_text(func_node, source)
+        elif func_node.type == "member_expression":
+            name = self._extract_member_name(func_node, source)
+            call_type = "method"
+        elif func_node.type == "super":
+            name = "super"
+            call_type = "super"
+        
+        if not name:
+            return None
+        
+        return {
+            "name": name,
+            "start": call_node.start_byte,
+            "end": call_node.end_byte,
+            "type": call_type,
+        }
+    
+    def _extract_member_name(self, member_node: Node, source: bytes) -> str | None:
+        """Extract the full name from a member expression."""
+        if member_node.type == "identifier":
+            return self._get_node_text(member_node, source)
+        
+        if member_node.type != "member_expression":
+            return None
+        
+        parts = []
+        current = member_node
+        
+        while current and current.type == "member_expression":
+            # Get the property name
+            property_node = None
+            for child in current.children:
+                if child.type == "property_identifier":
+                    property_node = child
+                    break
+                elif child.type == "identifier" and child != current.children[0]:
+                    property_node = child
+                    break
+            
+            if property_node:
+                parts.insert(0, self._get_node_text(property_node, source))
+            
+            # Move to the object part
+            current = current.children[0] if current.children else None
+        
+        # Get the base object
+        if current and current.type == "identifier":
+            parts.insert(0, self._get_node_text(current, source))
+        
+        return ".".join(parts) if parts else None
 
 
 class JavaScriptComplexityAnalyzer(BaseComplexityAnalyzer):

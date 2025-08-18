@@ -11,6 +11,10 @@ from .languages import (
     PythonMetadataExtractor,
     TypeScriptComplexityAnalyzer,
     TypeScriptMetadataExtractor,
+    RustMetadataExtractor,
+    GoMetadataExtractor,
+    CMetadataExtractor,
+    CppMetadataExtractor,
 )
 
 
@@ -24,6 +28,10 @@ class MetadataExtractorFactory:
         "typescript": TypeScriptMetadataExtractor,
         "tsx": TypeScriptMetadataExtractor,  # TSX uses same extractor
         "jsx": JavaScriptMetadataExtractor,  # JSX uses same extractor
+        "rust": RustMetadataExtractor,
+        "go": GoMetadataExtractor,
+        "c": CMetadataExtractor,
+        "cpp": CppMetadataExtractor,
     }
 
     _analyzers: ClassVar[dict[str, type[ComplexityAnalyzer]]] = {

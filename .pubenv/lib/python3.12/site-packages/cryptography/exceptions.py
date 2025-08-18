@@ -41,9 +41,7 @@ class InvalidSignature(Exception):
 
 
 class InternalError(Exception):
-    def __init__(
-        self, msg: str, err_code: list[rust_openssl.OpenSSLError]
-    ) -> None:
+    def __init__(self, msg: str, err_code: list[rust_openssl.OpenSSLError]) -> None:
         super().__init__(msg)
         self.err_code = err_code
 

@@ -130,7 +130,7 @@ def get_parser(language: str, config: ParserConfig | None = None) -> Parser:
             # Fall back to raising the original error, but log for diagnostics in CI
             logger.debug("On-demand grammar build attempt failed: %s", e)
         available = _state.registry.list_languages() if _state.registry else []
-        raise LanguageNotFoundError(language, available) from None
+        raise LanguageNotFoundError(normalized, available) from None
     except ParserConfigError:
         raise
     except (IndexError, KeyError, SyntaxError) as e:

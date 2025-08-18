@@ -102,6 +102,40 @@ class MetadataExtractor(ABC):
             Set of exported symbols
         """
 
+    @staticmethod
+    @abstractmethod
+    def extract_calls(node: Node, source: bytes) -> list[dict[str, Any]]:
+        """
+        Extract function calls with precise byte spans from a node.
+        
+        Args:
+            node: AST node to analyze
+            source: Original source code bytes
+            
+        Returns:
+            List of call information dictionaries, each containing:
+            - name: Function name (str)
+            - start: Start byte of entire call expression (int)
+            - end: End byte of entire call expression (int)
+            - function_start: Start byte of function name (int)
+            - function_end: End byte of function name (int)
+            - arguments_start: Start byte of arguments (int, optional)
+            - arguments_end: End byte of arguments (int, optional)
+            
+        Example:
+            [
+                {
+                    "name": "print",
+                    "start": 100,
+                    "end": 110,
+                    "function_start": 100,
+                    "function_end": 105,
+                    "arguments_start": 106,
+                    "arguments_end": 109
+                }
+            ]
+        """
+
 
 class ComplexityAnalyzer(ABC):
     """Analyze code complexity metrics."""

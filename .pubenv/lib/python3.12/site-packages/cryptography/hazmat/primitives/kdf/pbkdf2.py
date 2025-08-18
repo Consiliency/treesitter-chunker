@@ -27,9 +27,7 @@ class PBKDF2HMAC(KeyDerivationFunction):
         iterations: int,
         backend: typing.Any = None,
     ):
-        from cryptography.hazmat.backends.openssl.backend import (
-            backend as ossl,
-        )
+        from cryptography.hazmat.backends.openssl.backend import backend as ossl
 
         if not ossl.pbkdf2_hmac_supported(algorithm):
             raise UnsupportedAlgorithm(
