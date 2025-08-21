@@ -1,24 +1,32 @@
-# Virtual env & build artefacts
+# Virtual environments
 .venv/
+.fullenv/
+.toxenv/
+
+# Build artifacts
 build/
 dist/
 *.so
+*.egg-info/
 
 # Python
 __pycache__/
 *.py[cod]
+*.pyo
+*.pyd
 
-# Test & tooling
+# Test & coverage
 .coverage
+.pytest_cache/
 pytest_cache/
+pytest_*.log
+*.log
 
 # Generated files
 generated_config.yaml
 generated_config.toml
 generated_config.json
 worktrees/
-worktrees/
-__pycache__/
 
 # Test repositories (downloaded for testing)
 TypeScript/
@@ -32,24 +40,8 @@ ruby/
 rust/
 serde/
 
-# Local envs and caches
-.toxenv/
-.fullenv/
-.venv/
-.pytest_cache/
+# Local caches
 __pycache__/
-*.log
-
-
-# Local envs and caches
-.toxenv/
-.fullenv/
-.venv/
-.pytest_cache/
-__pycache__/
-*.log
-wheel_build_verbose*.log
-pytest_*.log
 
 # Environment files (secrets)
 .env
@@ -64,3 +56,19 @@ pytest_*.log
 *.pem
 *.key
 *.crt
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
