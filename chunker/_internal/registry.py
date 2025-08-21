@@ -11,12 +11,12 @@ from typing import TYPE_CHECKING, Any
 
 from tree_sitter import Language, Parser
 
+from chunker._internal.error_handling import log_grammar_discovery_summary
 from chunker.exceptions import (
     LanguageNotFoundError,
     LibraryLoadError,
     LibraryNotFoundError,
 )
-from chunker._internal.error_handling import log_grammar_discovery_summary
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -52,7 +52,8 @@ class LanguageRegistry:
         # nm or per-language libraries and allow on-demand builds.
         if not self._library_path.exists():
             logger.warning(
-                "Shared library not found at %s; will use fallbacks", self._library_path,
+                "Shared library not found at %s; will use fallbacks",
+                self._library_path,
             )
 
     def _load_library(self) -> ctypes.CDLL:
@@ -77,28 +78,31 @@ class LanguageRegistry:
                 List of (language_name, symbol_name) tuples
         """
         symbols = []
-        
+
         # PRIMARY SOURCE: Package grammar directory (deterministic location)
-        package_grammar_build = Path(__file__).parent.parent / "data" / "grammars" / "build"
+        package_grammar_build = (
+            Path(__file__).parent.parent / "data" / "grammars" / "build"
+        )
         if package_grammar_build.exists():
             logger.info("Scanning package grammar directory: %s", package_grammar_build)
             symbols.extend(self._scan_directory_for_languages(package_grammar_build))
-        
+
         # SECONDARY SOURCE: User cache directory (if configured)
         user_cache = Path.home() / ".cache" / "treesitter-chunker" / "build"
         if user_cache.exists():
             logger.info("Scanning user cache directory: %s", user_cache)
             symbols.extend(self._scan_directory_for_languages(user_cache))
-        
+
         # OVERRIDE SOURCE: Environment variable (for development/testing)
         from os import getenv as _getenv
+
         override = _getenv("CHUNKER_GRAMMAR_BUILD_DIR")
         if override:
             override_path = Path(override)
             if override_path.exists():
                 logger.info("Scanning override directory: %s", override_path)
                 symbols.extend(self._scan_directory_for_languages(override_path))
-        
+
         # Remove duplicates while preserving order
         seen = set()
         unique_symbols = []
@@ -106,44 +110,52 @@ class LanguageRegistry:
             if lang_name not in seen:
                 seen.add(lang_name)
                 unique_symbols.append((lang_name, symbol_name))
-        
+
         logger.info("Discovered %s unique language symbols", len(unique_symbols))
         return unique_symbols
-    
+
     def _scan_directory_for_languages(self, directory: Path) -> list[tuple[str, str]]:
         """Scan a specific directory for language libraries.
-        
+
         Args:
             directory: Directory to scan for .so/.dll/.dylib files
-                
+
         Returns:
             List of (language_name, symbol_name) tuples found in this directory
         """
         symbols = []
         combined_suffix = Path(self._library_path).suffix or ".so"
-        
+
         for file_path in directory.glob(f"*{combined_suffix}"):
             if file_path.is_file():
                 # Extract language name from filename (e.g., "python.so" -> "python")
                 lang_name = file_path.stem
                 symbol_name = f"tree_sitter_{lang_name}"
-                
+
                 # Validate this is a language library by checking for the symbol
                 if self._validate_language_library(file_path, symbol_name):
                     symbols.append((lang_name, symbol_name))
-                    logger.debug("Found language library: %s -> %s", file_path.name, lang_name)
+                    logger.debug(
+                        "Found language library: %s -> %s",
+                        file_path.name,
+                        lang_name,
+                    )
                 else:
-                    logger.warning("File %s exists but doesn't contain expected symbol %s", file_path.name, symbol_name)
-        
+                    logger.warning(
+                        "File %s exists but doesn't contain expected symbol %s",
+                        file_path.name,
+                        symbol_name,
+                    )
+
         return symbols
-    
+
     def _validate_language_library(self, library_path: Path, symbol_name: str) -> bool:
         """Validate that a library file contains the expected language symbol.
-        
+
         Args:
             library_path: Path to the library file
             symbol_name: Expected symbol name (e.g., "tree_sitter_python")
-                
+
         Returns:
             True if the library contains the expected symbol
         """
@@ -158,19 +170,20 @@ class LanguageRegistry:
                     lang_ptr = func()
                     # Test if we can create a Language object (this validates the library)
                     from tree_sitter import Language
+
                     Language(lang_ptr)
                     return True
                 except Exception as e:
                     logger.warning(
                         "Library %s has symbol %s but failed Language creation: %s",
-                        library_path.name, symbol_name, e
+                        library_path.name,
+                        symbol_name,
+                        e,
                     )
                     return False
             return False
         except (OSError, AttributeError) as e:
-            logger.debug(
-                "Failed to validate library %s: %s", library_path.name, e
-            )
+            logger.debug("Failed to validate library %s: %s", library_path.name, e)
             return False
 
     def discover_languages(self) -> dict[str, LanguageMetadata]:
@@ -190,7 +203,9 @@ class LanguageRegistry:
         symbols = self._discover_symbols()
         if lib is None:
             # No combined library available - will rely on individual language libraries
-            logger.info("No combined library available, will scan for individual language libraries")
+            logger.info(
+                "No combined library available, will scan for individual language libraries",
+            )
         logger.info("Discovered %s potential language symbols", len(symbols))
         for lang_name, symbol_name in symbols:
             try:
@@ -261,10 +276,10 @@ class LanguageRegistry:
                 logger.error("Error loading language '%s': %s", lang_name, e)
         # No more hardcoded baseline languages - only what's actually discovered
         self._discovered = True
-        
+
         # Use enhanced error logging for discovery summary
         log_grammar_discovery_summary(list(discovered.keys()), total_expected=30)
-        
+
         return discovered
 
     def _try_load_from_individual_library(self, name: str) -> Language | None:
@@ -278,12 +293,14 @@ class LanguageRegistry:
         # an env override, and the user cache path (~/.cache/treesitter-chunker/build)
         base_dir = Path(self._library_path).parent
         search_dirs: list[Path] = [base_dir]
-        
+
         # Add package grammar build directory where individual .so files are located
-        package_grammar_build = Path(__file__).parent.parent / "data" / "grammars" / "build"
+        package_grammar_build = (
+            Path(__file__).parent.parent / "data" / "grammars" / "build"
+        )
         if package_grammar_build.exists():
             search_dirs.append(package_grammar_build)
-        
+
         env_dir = Path(str(Path().home()))
         from os import getenv as _getenv
 
@@ -320,23 +337,26 @@ class LanguageRegistry:
                         return language
                     except (AttributeError, OSError, ValueError) as e:
                         logger.error(
-                            "Failed loading '%s' from %s: %s", name, path_candidate, e,
+                            "Failed loading '%s' from %s: %s",
+                            name,
+                            path_candidate,
+                            e,
                         )
                         # Provide more specific error guidance
                         if "symbol" in str(e).lower():
                             logger.error(
                                 "This appears to be a symbol/library issue. "
-                                "The grammar may be corrupted or incompatible."
+                                "The grammar may be corrupted or incompatible.",
                             )
                         elif "version" in str(e).lower():
                             logger.error(
                                 "This appears to be a version compatibility issue. "
-                                "The grammar may not be compatible with your tree-sitter version."
+                                "The grammar may not be compatible with your tree-sitter version.",
                             )
                         else:
                             logger.error(
                                 "Unknown error loading grammar. "
-                                "Try recompiling the grammar from source."
+                                "Try recompiling the grammar from source.",
                             )
         return None
 

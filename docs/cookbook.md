@@ -15,6 +15,7 @@ This cookbook contains practical recipes for common use cases with Tree-sitter C
 9. [Language-Specific Recipes](#language-specific-recipes)
 10. [Build Tool Integration](#build-tool-integration)
 11. [Advanced Patterns](#advanced-patterns)
+12. [Call Span Extraction and Metadata Analysis](#call-span-extraction-and-metadata-analysis)
 
 ## Code Search and Indexing
 
@@ -4225,6 +4226,835 @@ class CustomChunker:
         
         walk(tree.root_node)
         return chunks
+```
+
+## Call Span Extraction and Metadata Analysis
+
+### Extract Function Call Spans with Precise Byte Offsets
+
+Extract precise call-site information including byte spans, line numbers, and context for function calls across multiple programming languages.
+
+```python
+from chunker import chunk_file
+from chunker.metadata import BaseMetadataExtractor
+from pathlib import Path
+import json
+
+class CallSpanAnalyzer:
+    """Analyze function calls with precise byte spans and metadata."""
+    
+    def __init__(self):
+        self.extractor = BaseMetadataExtractor()
+        self.call_data = []
+    
+    def analyze_file(self, file_path: str, language: str):
+        """Analyze a file and extract all function call information."""
+        chunks = chunk_file(file_path, language)
+        
+        for chunk in chunks:
+            # Extract calls from each chunk
+            calls = self.extractor.extract_calls(chunk)
+            
+            for call in calls:
+                call_info = {
+                    'file': file_path,
+                    'chunk_type': chunk.node_type,
+                    'chunk_start_line': chunk.start_line,
+                    'chunk_end_line': chunk.end_line,
+                    'call_type': call.get('type', 'unknown'),
+                    'function_name': call.get('name', 'unknown'),
+                    'call_start_byte': call.get('start_byte'),
+                    'call_end_byte': call.get('end_byte'),
+                    'call_start_line': call.get('start_line'),
+                    'call_end_line': call.get('end_line'),
+                    'arguments': call.get('arguments', []),
+                    'context': call.get('context', ''),
+                    'parent_context': chunk.parent_context
+                }
+                
+                self.call_data.append(call_info)
+        
+        return self.call_data
+    
+    def analyze_directory(self, directory: str, language: str):
+        """Analyze all files in a directory."""
+        path = Path(directory)
+        language_extensions = {
+            'python': '.py',
+            'javascript': '.js',
+            'rust': '.rs',
+            'go': '.go',
+            'c': '.c',
+            'cpp': '.cpp'
+        }
+        
+        ext = language_extensions.get(language, '.py')
+        
+        for file_path in path.rglob(f"*{ext}"):
+            if self._should_skip(file_path):
+                continue
+            
+            try:
+                self.analyze_file(str(file_path), language)
+            except Exception as e:
+                print(f"Error processing {file_path}: {e}")
+        
+        return self.call_data
+    
+    def _should_skip(self, file_path):
+        """Check if file should be skipped."""
+        skip_patterns = ['__pycache__', 'node_modules', '.git', 'venv', 'target']
+        return any(pattern in str(file_path) for pattern in skip_patterns)
+    
+    def generate_call_report(self):
+        """Generate a comprehensive call analysis report."""
+        if not self.call_data:
+            return "No call data available."
+        
+        report = {
+            'summary': {
+                'total_calls': len(self.call_data),
+                'files_analyzed': len(set(call['file'] for call in self.call_data)),
+                'languages': list(set(call.get('language', 'unknown') for call in self.call_data))
+            },
+            'call_types': {},
+            'function_frequency': {},
+            'file_statistics': {}
+        }
+        
+        # Analyze call types
+        for call in self.call_data:
+            call_type = call['call_type']
+            report['call_types'][call_type] = report['call_types'].get(call_type, 0) + 1
+            
+            # Function frequency
+            func_name = call['function_name']
+            if func_name != 'unknown':
+                report['function_frequency'][func_name] = report['function_frequency'].get(func_name, 0) + 1
+        
+        # File statistics
+        for call in self.call_data:
+            file_path = call['file']
+            if file_path not in report['file_statistics']:
+                report['file_statistics'][file_path] = {
+                    'total_calls': 0,
+                    'unique_functions': set(),
+                    'call_types': set()
+                }
+            
+            report['file_statistics'][file_path]['total_calls'] += 1
+            report['file_statistics'][file_path]['unique_functions'].add(call['function_name'])
+            report['file_statistics'][file_path]['call_types'].add(call['call_type'])
+        
+        # Convert sets to lists for JSON serialization
+        for file_stats in report['file_statistics'].values():
+            file_stats['unique_functions'] = list(file_stats['unique_functions'])
+            file_stats['call_types'] = list(file_stats['call_types'])
+        
+        return report
+    
+    def find_function_usage(self, function_name: str):
+        """Find all usages of a specific function."""
+        usages = []
+        
+        for call in self.call_data:
+            if call['function_name'] == function_name:
+                usages.append({
+                    'file': call['file'],
+                    'line': call['call_start_line'],
+                    'context': call['context'],
+                    'arguments': call['arguments']
+                })
+        
+        return usages
+    
+    def export_call_data(self, output_path: str):
+        """Export call data to JSON for further analysis."""
+        with open(output_path, 'w') as f:
+            json.dump(self.call_data, f, indent=2)
+        
+        print(f"Call data exported to: {output_path}")
+    
+    def print_call_summary(self):
+        """Print a summary of call analysis."""
+        if not self.call_data:
+            print("No call data available.")
+            return
+        
+        print("Call Span Analysis Summary")
+        print("=" * 60)
+        print(f"Total function calls analyzed: {len(self.call_data)}")
+        print(f"Files analyzed: {len(set(call['file'] for call in self.call_data))}")
+        
+        # Most common function calls
+        func_counts = {}
+        for call in self.call_data:
+            func_name = call['function_name']
+            if func_name != 'unknown':
+                func_counts[func_name] = func_counts.get(func_name, 0) + 1
+        
+        if func_counts:
+            print("\nMost common function calls:")
+            for func, count in sorted(func_counts.items(), key=lambda x: x[1], reverse=True)[:10]:
+                print(f"  {func}: {count} calls")
+        
+        # Call types
+        call_type_counts = {}
+        for call in self.call_data:
+            call_type = call['call_type']
+            call_type_counts[call_type] = call_type_counts.get(call_type, 0) + 1
+        
+        print("\nCall types:")
+        for call_type, count in sorted(call_type_counts.items()):
+            print(f"  {call_type}: {count}")
+
+# Usage example
+analyzer = CallSpanAnalyzer()
+
+# Analyze a single file
+calls = analyzer.analyze_file("example.py", "python")
+print(f"Found {len(calls)} function calls in example.py")
+
+# Analyze entire project
+project_calls = analyzer.analyze_directory("./src", "python")
+print(f"Found {len(project_calls)} total function calls in project")
+
+# Generate report
+report = analyzer.generate_call_report()
+print(json.dumps(report, indent=2))
+
+# Find specific function usage
+usages = analyzer.find_function_usage("process_data")
+print(f"Function 'process_data' used {len(usages)} times")
+
+# Export data
+analyzer.export_call_data("call_analysis.json")
+analyzer.print_call_summary()
+```
+
+### Advanced Metadata Extraction with Language-Specific Patterns
+
+Extract rich metadata including function calls, method calls, imports, and language-specific constructs with precise location information.
+
+```python
+from chunker import chunk_file
+from chunker.metadata import BaseMetadataExtractor
+from typing import Dict, List, Any
+import re
+
+class AdvancedMetadataExtractor:
+    """Extract comprehensive metadata from code chunks."""
+    
+    def __init__(self):
+        self.base_extractor = BaseMetadataExtractor()
+        self.metadata_cache = {}
+    
+    def extract_comprehensive_metadata(self, file_path: str, language: str) -> Dict[str, Any]:
+        """Extract all available metadata from a file."""
+        chunks = chunk_file(file_path, language)
+        
+        metadata = {
+            'file_info': {
+                'path': file_path,
+                'language': language,
+                'total_chunks': len(chunks),
+                'total_lines': sum(chunk.end_line - chunk.start_line + 1 for chunk in chunks)
+            },
+            'chunks': [],
+            'imports': [],
+            'function_calls': [],
+            'class_definitions': [],
+            'dependencies': set(),
+            'complexity_metrics': {}
+        }
+        
+        for chunk in chunks:
+            chunk_metadata = self._extract_chunk_metadata(chunk, language)
+            metadata['chunks'].append(chunk_metadata)
+            
+            # Extract imports
+            if chunk.node_type in ['import_statement', 'import_declaration']:
+                import_info = self._extract_import_info(chunk, language)
+                if import_info:
+                    metadata['imports'].append(import_info)
+                    metadata['dependencies'].add(import_info['module'])
+            
+            # Extract function calls
+            calls = self.base_extractor.extract_calls(chunk)
+            for call in calls:
+                call_info = self._enrich_call_info(call, chunk, language)
+                metadata['function_calls'].append(call_info)
+            
+            # Extract class definitions
+            if chunk.node_type == 'class_definition':
+                class_info = self._extract_class_info(chunk, language)
+                metadata['class_definitions'].append(class_info)
+        
+        # Convert set to list for JSON serialization
+        metadata['dependencies'] = list(metadata['dependencies'])
+        
+        # Calculate complexity metrics
+        metadata['complexity_metrics'] = self._calculate_complexity_metrics(chunks)
+        
+        return metadata
+    
+    def _extract_chunk_metadata(self, chunk, language: str) -> Dict[str, Any]:
+        """Extract metadata from a single chunk."""
+        chunk_meta = {
+            'type': chunk.node_type,
+            'start_line': chunk.start_line,
+            'end_line': chunk.end_line,
+            'start_byte': getattr(chunk, 'start_byte', None),
+            'end_byte': getattr(chunk, 'end_byte', None),
+            'parent_context': chunk.parent_context,
+            'content_preview': chunk.content[:200] + '...' if len(chunk.content) > 200 else chunk.content
+        }
+        
+        # Language-specific metadata
+        if language == 'python':
+            chunk_meta.update(self._extract_python_metadata(chunk))
+        elif language == 'javascript':
+            chunk_meta.update(self._extract_javascript_metadata(chunk))
+        elif language == 'rust':
+            chunk_meta.update(self._extract_rust_metadata(chunk))
+        
+        return chunk_meta
+    
+    def _extract_python_metadata(self, chunk) -> Dict[str, Any]:
+        """Extract Python-specific metadata."""
+        metadata = {}
+        
+        if chunk.node_type == 'function_definition':
+            # Extract decorators
+            decorators = re.findall(r'@(\w+)', chunk.content)
+            if decorators:
+                metadata['decorators'] = decorators
+            
+            # Extract async status
+            if 'async def' in chunk.content:
+                metadata['is_async'] = True
+            
+            # Extract parameters
+            param_match = re.search(r'def\s+\w+\s*\(([^)]*)\)', chunk.content)
+            if param_match:
+                params = param_match.group(1).split(',')
+                metadata['parameters'] = [p.strip() for p in params if p.strip() and p.strip() != 'self']
+        
+        elif chunk.node_type == 'class_definition':
+            # Extract base classes
+            base_match = re.search(r'class\s+\w+\s*\(([^)]*)\)', chunk.content)
+            if base_match:
+                bases = base_match.group(1).split(',')
+                metadata['base_classes'] = [b.strip() for b in bases if b.strip()]
+        
+        return metadata
+    
+    def _extract_javascript_metadata(self, chunk) -> Dict[str, Any]:
+        """Extract JavaScript-specific metadata."""
+        metadata = {}
+        
+        if chunk.node_type == 'function_declaration':
+            # Extract async status
+            if 'async function' in chunk.content:
+                metadata['is_async'] = True
+            
+            # Extract arrow function
+            if '=>' in chunk.content:
+                metadata['is_arrow_function'] = True
+        
+        elif chunk.node_type == 'class_declaration':
+            # Extract extends
+            extends_match = re.search(r'class\s+\w+\s+extends\s+(\w+)', chunk.content)
+            if extends_match:
+                metadata['extends'] = extends_match.group(1)
+        
+        return metadata
+    
+    def _extract_rust_metadata(self, chunk) -> Dict[str, Any]:
+        """Extract Rust-specific metadata."""
+        metadata = {}
+        
+        if chunk.node_type == 'function_item':
+            # Extract async status
+            if 'async fn' in chunk.content:
+                metadata['is_async'] = True
+            
+            # Extract visibility
+            if chunk.content.strip().startswith('pub '):
+                metadata['visibility'] = 'public'
+            else:
+                metadata['visibility'] = 'private'
+        
+        elif chunk.node_type == 'struct_item':
+            # Extract visibility
+            if chunk.content.strip().startswith('pub struct'):
+                metadata['visibility'] = 'public'
+            else:
+                metadata['visibility'] = 'private'
+        
+        return metadata
+    
+    def _extract_import_info(self, chunk, language: str) -> Dict[str, Any]:
+        """Extract import information from a chunk."""
+        import_info = {
+            'type': chunk.node_type,
+            'start_line': chunk.start_line,
+            'end_line': chunk.end_line
+        }
+        
+        if language == 'python':
+            # Python import patterns
+            from_match = re.search(r'from\s+([\w.]+)\s+import', chunk.content)
+            if from_match:
+                import_info['module'] = from_match.group(1)
+                import_info['import_type'] = 'from_import'
+            else:
+                import_match = re.search(r'import\s+([\w.]+)', chunk.content)
+                if import_match:
+                    import_info['module'] = import_match.group(1)
+                    import_info['import_type'] = 'direct_import'
+        
+        elif language == 'javascript':
+            # JavaScript import patterns
+            from_match = re.search(r'from\s+["\']([^"\']+)["\']', chunk.content)
+            if from_match:
+                import_info['module'] = from_match.group(1)
+                import_info['import_type'] = 'es6_import'
+            else:
+                require_match = re.search(r'require\s*\(\s*["\']([^"\']+)["\']', chunk.content)
+                if require_match:
+                    import_info['module'] = require_match.group(1)
+                    import_info['import_type'] = 'commonjs_require'
+        
+        elif language == 'rust':
+            # Rust use patterns
+            use_match = re.search(r'use\s+([\w:]+)', chunk.content)
+            if use_match:
+                import_info['module'] = use_match.group(1)
+                import_info['import_type'] = 'use_statement'
+        
+        return import_info if 'module' in import_info else None
+    
+    def _enrich_call_info(self, call: Dict, chunk, language: str) -> Dict[str, Any]:
+        """Enrich call information with additional context."""
+        enriched_call = call.copy()
+        enriched_call.update({
+            'chunk_type': chunk.node_type,
+            'chunk_start_line': chunk.start_line,
+            'chunk_end_line': chunk.end_line,
+            'parent_context': chunk.parent_context,
+            'language': language
+        })
+        
+        # Extract call context (what's calling this function)
+        if chunk.node_type == 'function_definition':
+            enriched_call['caller_type'] = 'function'
+            # Try to extract function name
+            func_match = re.search(r'(?:def|fn|function)\s+(\w+)', chunk.content)
+            if func_match:
+                enriched_call['caller_name'] = func_match.group(1)
+        elif chunk.node_type == 'method_definition':
+            enriched_call['caller_type'] = 'method'
+        
+        return enriched_call
+    
+    def _extract_class_info(self, chunk, language: str) -> Dict[str, Any]:
+        """Extract class-specific information."""
+        class_info = {
+            'name': self._extract_class_name(chunk.content, language),
+            'start_line': chunk.start_line,
+            'end_line': chunk.end_line,
+            'methods': [],
+            'properties': []
+        }
+        
+        # Extract methods and properties (simplified)
+        lines = chunk.content.split('\n')
+        for line in lines:
+            if language == 'python':
+                if 'def ' in line and 'def __' not in line:
+                    method_match = re.search(r'def\s+(\w+)', line)
+                    if method_match:
+                        class_info['methods'].append(method_match.group(1))
+            elif language == 'javascript':
+                if 'function ' in line or '()' in line:
+                    method_match = re.search(r'(\w+)\s*\(', line)
+                    if method_match:
+                        class_info['methods'].append(method_match.group(1))
+        
+        return class_info
+    
+    def _extract_class_name(self, content: str, language: str) -> str:
+        """Extract class name from content."""
+        if language == 'python':
+            match = re.search(r'class\s+(\w+)', content)
+        elif language == 'javascript':
+            match = re.search(r'class\s+(\w+)', content)
+        elif language == 'rust':
+            match = re.search(r'struct\s+(\w+)', content)
+        else:
+            match = re.search(r'class\s+(\w+)', content)
+        
+        return match.group(1) if match else 'Unknown'
+    
+    def _calculate_complexity_metrics(self, chunks) -> Dict[str, Any]:
+        """Calculate complexity metrics for the file."""
+        total_lines = sum(chunk.end_line - chunk.start_line + 1 for chunk in chunks)
+        total_chunks = len(chunks)
+        
+        # Count control flow statements
+        control_flow_count = 0
+        for chunk in chunks:
+            content = chunk.content.lower()
+            control_flow_count += content.count('if ') + content.count('for ') + content.count('while ')
+            control_flow_count += content.count('try:') + content.count('except:') + content.count('finally:')
+        
+        return {
+            'total_lines': total_lines,
+            'total_chunks': total_chunks,
+            'average_chunk_size': total_lines / total_chunks if total_chunks > 0 else 0,
+            'control_flow_density': control_flow_count / total_lines if total_lines > 0 else 0,
+            'cyclomatic_complexity': control_flow_count + total_chunks
+        }
+    
+    def export_metadata(self, metadata: Dict[str, Any], output_path: str):
+        """Export metadata to JSON file."""
+        import json
+        
+        with open(output_path, 'w') as f:
+            json.dump(metadata, f, indent=2)
+        
+        print(f"Metadata exported to: {output_path}")
+    
+    def generate_metadata_summary(self, metadata: Dict[str, Any]):
+        """Generate a human-readable summary of metadata."""
+        print("Metadata Analysis Summary")
+        print("=" * 50)
+        print(f"File: {metadata['file_info']['path']}")
+        print(f"Language: {metadata['file_info']['language']}")
+        print(f"Total chunks: {metadata['file_info']['total_chunks']}")
+        print(f"Total lines: {metadata['file_info']['total_lines']}")
+        
+        print(f"\nImports: {len(metadata['imports'])}")
+        for imp in metadata['imports'][:5]:  # Show first 5
+            print(f"  - {imp['module']} ({imp['import_type']})")
+        
+        print(f"\nFunction calls: {len(metadata['function_calls'])}")
+        if metadata['function_calls']:
+            call_types = {}
+            for call in metadata['function_calls']:
+                call_type = call.get('type', 'unknown')
+                call_types[call_type] = call_types.get(call_type, 0) + 1
+            
+            for call_type, count in call_types.items():
+                print(f"  - {call_type}: {count}")
+        
+        print(f"\nClasses: {len(metadata['class_definitions'])}")
+        for cls in metadata['class_definitions']:
+            print(f"  - {cls['name']} ({len(cls['methods'])} methods)")
+        
+        print(f"\nComplexity Metrics:")
+        metrics = metadata['complexity_metrics']
+        print(f"  - Cyclomatic complexity: {metrics['cyclomatic_complexity']}")
+        print(f"  - Control flow density: {metrics['control_flow_density']:.3f}")
+        print(f"  - Average chunk size: {metrics['average_chunk_size']:.1f} lines")
+
+# Usage example
+extractor = AdvancedMetadataExtractor()
+
+# Extract metadata from a file
+metadata = extractor.extract_comprehensive_metadata("example.py", "python")
+
+# Generate summary
+extractor.generate_metadata_summary(metadata)
+
+# Export metadata
+extractor.export_metadata(metadata, "metadata_analysis.json")
+
+# Analyze multiple files
+files_to_analyze = [
+    ("src/main.py", "python"),
+    ("src/utils.js", "javascript"),
+    ("src/lib.rs", "rust")
+]
+
+all_metadata = {}
+for file_path, language in files_to_analyze:
+    try:
+        file_metadata = extractor.extract_comprehensive_metadata(file_path, language)
+        all_metadata[file_path] = file_metadata
+    except Exception as e:
+        print(f"Error analyzing {file_path}: {e}")
+
+# Export combined metadata
+extractor.export_metadata(all_metadata, "project_metadata.json")
+```
+
+### Cross-Language Call Pattern Analysis
+
+Analyze function call patterns across multiple programming languages to identify common patterns and language-specific differences.
+
+```python
+from chunker import chunk_file
+from chunker.metadata import BaseMetadataExtractor
+from collections import defaultdict
+from typing import Dict, List, Set
+import json
+
+class CrossLanguageCallAnalyzer:
+    """Analyze function call patterns across multiple programming languages."""
+    
+    def __init__(self):
+        self.extractor = BaseMetadataExtractor()
+        self.language_patterns = defaultdict(list)
+        self.call_patterns = defaultdict(int)
+        self.function_signatures = defaultdict(set)
+    
+    def analyze_language(self, file_path: str, language: str):
+        """Analyze call patterns in a specific language file."""
+        try:
+            chunks = chunk_file(file_path, language)
+            
+            for chunk in chunks:
+                calls = self.extractor.extract_calls(chunk)
+                
+                for call in calls:
+                    pattern_info = self._analyze_call_pattern(call, chunk, language)
+                    self.language_patterns[language].append(pattern_info)
+                    
+                    # Track call patterns
+                    pattern_key = f"{language}:{call.get('type', 'unknown')}"
+                    self.call_patterns[pattern_key] += 1
+                    
+                    # Track function signatures
+                    if call.get('name'):
+                        signature = self._create_function_signature(call, language)
+                        self.function_signatures[language].add(signature)
+            
+            print(f"Analyzed {file_path} ({language}): {len(calls)} calls found")
+            
+        except Exception as e:
+            print(f"Error analyzing {file_path} ({language}): {e}")
+    
+    def _analyze_call_pattern(self, call: Dict, chunk, language: str) -> Dict:
+        """Analyze a single call pattern."""
+        pattern = {
+            'language': language,
+            'call_type': call.get('type', 'unknown'),
+            'function_name': call.get('name', 'unknown'),
+            'arguments': call.get('arguments', []),
+            'context': {
+                'chunk_type': chunk.node_type,
+                'start_line': chunk.start_line,
+                'end_line': chunk.end_line,
+                'parent_context': chunk.parent_context
+            },
+            'location': {
+                'start_byte': call.get('start_byte'),
+                'end_byte': call.get('end_byte'),
+                'start_line': call.get('start_line'),
+                'end_line': call.get('end_line')
+            }
+        }
+        
+        # Language-specific pattern analysis
+        if language == 'python':
+            pattern.update(self._analyze_python_pattern(call, chunk))
+        elif language == 'javascript':
+            pattern.update(self._analyze_javascript_pattern(call, chunk))
+        elif language == 'rust':
+            pattern.update(self._analyze_rust_pattern(call, chunk))
+        
+        return pattern
+    
+    def _analyze_python_pattern(self, call: Dict, chunk) -> Dict:
+        """Analyze Python-specific call patterns."""
+        pattern = {}
+        
+        # Check for method calls vs function calls
+        if call.get('type') == 'call':
+            # Check if it's a method call
+            if '.' in call.get('name', ''):
+                pattern['call_category'] = 'method_call'
+                pattern['object_type'] = 'attribute_access'
+            else:
+                pattern['call_category'] = 'function_call'
+        
+        # Check for decorators
+        if chunk.node_type == 'decorated_definition':
+            pattern['has_decorators'] = True
+        
+        return pattern
+    
+    def _analyze_javascript_pattern(self, call: Dict, chunk) -> Dict:
+        """Analyze JavaScript-specific call patterns."""
+        pattern = {}
+        
+        # Check for method calls
+        if call.get('type') == 'call_expression':
+            if '.' in call.get('name', ''):
+                pattern['call_category'] = 'method_call'
+            else:
+                pattern['call_category'] = 'function_call'
+        
+        # Check for arrow functions
+        if '=>' in chunk.content:
+            pattern['arrow_function_context'] = True
+        
+        return pattern
+    
+    def _analyze_rust_pattern(self, call: Dict, chunk) -> Dict:
+        """Analyze Rust-specific call patterns."""
+        pattern = {}
+        
+        # Check for method calls
+        if call.get('type') == 'call_expression':
+            if '::' in call.get('name', ''):
+                pattern['call_category'] = 'associated_function'
+            elif '.' in call.get('name', ''):
+                pattern['call_category'] = 'method_call'
+            else:
+                pattern['call_category'] = 'function_call'
+        
+        # Check for macro calls
+        if '!' in call.get('name', ''):
+            pattern['call_category'] = 'macro_call'
+        
+        return pattern
+    
+    def _create_function_signature(self, call: Dict, language: str) -> str:
+        """Create a function signature for tracking."""
+        name = call.get('name', 'unknown')
+        args = call.get('arguments', [])
+        
+        if language == 'python':
+            return f"{name}({len(args)} args)"
+        elif language == 'javascript':
+            return f"{name}({len(args)} args)"
+        elif language == 'rust':
+            return f"{name}({len(args)} args)"
+        else:
+            return f"{name}({len(args)} args)"
+    
+    def generate_cross_language_report(self) -> Dict:
+        """Generate a comprehensive cross-language analysis report."""
+        report = {
+            'summary': {
+                'languages_analyzed': list(self.language_patterns.keys()),
+                'total_calls': sum(len(patterns) for patterns in self.language_patterns.values()),
+                'unique_patterns': len(self.call_patterns)
+            },
+            'language_comparison': {},
+            'common_patterns': {},
+            'language_specific_patterns': {},
+            'function_signature_analysis': {}
+        }
+        
+        # Language comparison
+        for language, patterns in self.language_patterns.items():
+            report['language_comparison'][language] = {
+                'total_calls': len(patterns),
+                'call_types': defaultdict(int),
+                'call_categories': defaultdict(int),
+                'average_arguments': 0
+            }
+            
+            total_args = 0
+            for pattern in patterns:
+                call_type = pattern.get('call_type', 'unknown')
+                report['language_comparison'][language]['call_types'][call_type] += 1
+                
+                call_category = pattern.get('call_category', 'unknown')
+                report['language_comparison'][language]['call_categories'][call_category] += 1
+                
+                total_args += len(pattern.get('arguments', []))
+            
+            if patterns:
+                report['language_comparison'][language]['average_arguments'] = total_args / len(patterns)
+        
+        # Common patterns across languages
+        for pattern_key, count in self.call_patterns.items():
+            if count > 1:  # Only show patterns that appear multiple times
+                report['common_patterns'][pattern_key] = count
+        
+        # Language-specific patterns
+        for language, patterns in self.language_patterns.items():
+            language_specific = []
+            for pattern in patterns:
+                if pattern.get('call_category'):
+                    language_specific.append({
+                        'type': pattern['call_type'],
+                        'category': pattern['call_category'],
+                        'function': pattern['function_name']
+                    })
+            
+            if language_specific:
+                report['language_specific_patterns'][language] = language_specific
+        
+        # Function signature analysis
+        for language, signatures in self.function_signatures.items():
+            report['function_signature_analysis'][language] = {
+                'total_signatures': len(signatures),
+                'signatures': list(signatures)
+            }
+        
+        return report
+    
+    def print_cross_language_summary(self):
+        """Print a human-readable summary of cross-language analysis."""
+        report = self.generate_cross_language_report()
+        
+        print("Cross-Language Call Pattern Analysis")
+        print("=" * 60)
+        print(f"Languages analyzed: {', '.join(report['summary']['languages_analyzed'])}")
+        print(f"Total function calls: {report['summary']['total_calls']}")
+        print(f"Unique call patterns: {report['summary']['unique_patterns']}")
+        
+        print("\nLanguage Comparison:")
+        for language, stats in report['language_comparison'].items():
+            print(f"\n  {language.upper()}:")
+            print(f"    Total calls: {stats['total_calls']}")
+            print(f"    Average arguments: {stats['average_arguments']:.1f}")
+            
+            print("    Call types:")
+            for call_type, count in stats['call_types'].items():
+                print(f"      - {call_type}: {count}")
+            
+            print("    Call categories:")
+            for category, count in stats['call_categories'].items():
+                if category != 'unknown':
+                    print(f"      - {category}: {count}")
+        
+        print("\nCommon Patterns:")
+        for pattern, count in sorted(report['common_patterns'].items(), key=lambda x: x[1], reverse=True):
+            print(f"  {pattern}: {count} occurrences")
+        
+        print("\nFunction Signatures:")
+        for language, sig_info in report['function_signature_analysis'].items():
+            print(f"  {language}: {sig_info['total_signatures']} unique signatures")
+    
+    def export_analysis(self, output_path: str):
+        """Export the complete analysis to JSON."""
+        report = self.generate_cross_language_report()
+        
+        with open(output_path, 'w') as f:
+            json.dump(report, f, indent=2)
+        
+        print(f"Cross-language analysis exported to: {output_path}")
+
+# Usage example
+analyzer = CrossLanguageCallAnalyzer()
+
+# Analyze files in different languages
+analyzer.analyze_language("src/main.py", "python")
+analyzer.analyze_language("src/utils.js", "javascript")
+analyzer.analyze_language("src/lib.rs", "rust")
+
+# Generate and display report
+analyzer.print_cross_language_summary()
+
+# Export analysis
+analyzer.export_analysis("cross_language_analysis.json")
 ```
 
 ## See Also

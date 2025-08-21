@@ -354,7 +354,7 @@ def _walk(
                 exports = extractor.extract_exports(node, source)
                 if exports:
                     metadata["exports"] = sorted(exports)
-                
+
                 # Extract calls with spans
                 calls = extractor.extract_calls(node, source)
                 if calls:

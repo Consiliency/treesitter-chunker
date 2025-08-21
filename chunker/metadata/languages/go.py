@@ -19,31 +19,31 @@ class GoMetadataExtractor(BaseMetadataExtractor):
         """Extract function/method signature information."""
         if node.type not in {"function_declaration", "method_declaration"}:
             return None
-        
+
         name_node = self._find_child_by_type(node, "identifier")
         if not name_node:
             return None
-        
+
         name = self._get_node_text(name_node, source)
-        
+
         parameters = []
         params_node = self._find_child_by_type(node, "parameter_list")
         if params_node:
             parameters = self._extract_parameters(params_node, source)
-        
+
         return_type = None
         # Go can have multiple return types
         result_node = self._find_child_by_type(node, "result")
         if result_node:
             return_type = self._get_node_text(result_node, source).strip("()")
-        
+
         modifiers = []
         # Check if it's a method (has receiver)
         if node.type == "method_declaration":
             receiver_node = self._find_child_by_type(node, "parameter_list")
             if receiver_node:
                 modifiers.append("method")
-        
+
         return SignatureInfo(
             name=name,
             parameters=parameters,
@@ -59,14 +59,14 @@ class GoMetadataExtractor(BaseMetadataExtractor):
         if comment:
             if comment.startswith("//"):
                 return comment.strip("/").strip()
-            elif comment.startswith("/*"):
+            if comment.startswith("/*"):
                 return comment.strip("/*").strip("*/").strip()
         return None
 
     def extract_imports(self, node: Node, source: bytes) -> list[str]:
         """Extract import statements."""
         imports = []
-        
+
         def collect_imports(n: Node, _depth: int):
             if n.type == "import_declaration":
                 imports.append(self._get_node_text(n, source).strip())
@@ -75,14 +75,14 @@ class GoMetadataExtractor(BaseMetadataExtractor):
                 import_text = self._get_node_text(n, source).strip()
                 if import_text:
                     imports.append(import_text)
-        
+
         self._walk_tree(node, collect_imports)
         return imports
 
     def extract_calls(self, node: Node, source: bytes) -> list[dict[str, Any]]:
         """
         Extract Go-specific function and method calls.
-        
+
         Handles:
         - Function calls: func()
         - Method calls: obj.Method()
@@ -90,7 +90,7 @@ class GoMetadataExtractor(BaseMetadataExtractor):
         - Built-in functions: make(), len(), append()
         """
         calls = []
-        
+
         def collect_calls(n: Node, _depth: int):
             # Go uses "call_expression" for function calls
             if n.type == "call_expression":
@@ -99,16 +99,21 @@ class GoMetadataExtractor(BaseMetadataExtractor):
                     call_info = self._extract_go_call_info(n, func_node, source)
                     if call_info:
                         calls.append(call_info)
-        
+
         self._walk_tree(node, collect_calls)
         return calls
-    
-    def _extract_go_call_info(self, call_node: Node, func_node: Node, source: bytes) -> dict[str, Any] | None:
+
+    def _extract_go_call_info(
+        self,
+        call_node: Node,
+        func_node: Node,
+        source: bytes,
+    ) -> dict[str, Any] | None:
         """Extract Go-specific call information."""
         if func_node.type == "identifier":
             # Simple function call or built-in
             return self._create_call_info(call_node, func_node, source)
-        elif func_node.type == "selector_expression":
+        if func_node.type == "selector_expression":
             # Method call or package function: obj.Method() or fmt.Println()
             # Get the field identifier (method/function name)
             field_node = self._find_child_by_type(func_node, "field_identifier")
@@ -120,7 +125,7 @@ class GoMetadataExtractor(BaseMetadataExtractor):
             inner_node = func_node.children[1] if len(func_node.children) > 1 else None
             if inner_node:
                 return self._extract_go_call_info(call_node, inner_node, source)
-        
+
         return None
 
     def extract_dependencies(self, node: Node, source: bytes) -> set[str]:
@@ -129,33 +134,71 @@ class GoMetadataExtractor(BaseMetadataExtractor):
         identifiers = self._extract_identifiers(node, source)
         defined = self._extract_defined_symbols(node, source)
         dependencies = identifiers - defined
-        
+
         # Filter out Go built-in functions and types
         go_builtins = {
-            "append", "cap", "close", "complex", "copy", "delete", "imag", "len",
-            "make", "new", "panic", "print", "println", "real", "recover",
-            "bool", "byte", "complex64", "complex128", "error", "float32", "float64",
-            "int", "int8", "int16", "int32", "int64", "rune", "string",
-            "uint", "uint8", "uint16", "uint32", "uint64", "uintptr",
-            "true", "false", "nil", "iota",
+            "append",
+            "cap",
+            "close",
+            "complex",
+            "copy",
+            "delete",
+            "imag",
+            "len",
+            "make",
+            "new",
+            "panic",
+            "print",
+            "println",
+            "real",
+            "recover",
+            "bool",
+            "byte",
+            "complex64",
+            "complex128",
+            "error",
+            "float32",
+            "float64",
+            "int",
+            "int8",
+            "int16",
+            "int32",
+            "int64",
+            "rune",
+            "string",
+            "uint",
+            "uint8",
+            "uint16",
+            "uint32",
+            "uint64",
+            "uintptr",
+            "true",
+            "false",
+            "nil",
+            "iota",
         }
         dependencies = dependencies - go_builtins
-        
+
         return dependencies
 
     def extract_exports(self, node: Node, source: bytes) -> list[str]:
         """Extract exported symbols."""
         exports = []
-        
+
         # In Go, exported identifiers start with an uppercase letter
-        if node.type in {"function_declaration", "method_declaration", "type_declaration", 
-                        "const_declaration", "var_declaration"}:
+        if node.type in {
+            "function_declaration",
+            "method_declaration",
+            "type_declaration",
+            "const_declaration",
+            "var_declaration",
+        }:
             name_node = self._find_child_by_type(node, "identifier")
             if name_node:
                 name = self._get_node_text(name_node, source)
                 if name and name[0].isupper():
                     exports.append(name)
-        
+
         # Handle type specs within type declarations
         def collect_type_exports(n: Node, _depth: int):
             if n.type == "type_spec":
@@ -164,19 +207,19 @@ class GoMetadataExtractor(BaseMetadataExtractor):
                     name = self._get_node_text(name_node, source)
                     if name and name[0].isupper():
                         exports.append(name)
-        
+
         self._walk_tree(node, collect_type_exports)
-        
+
         return exports
 
     def _extract_parameters(self, params_node: Node, source: bytes) -> list[str]:
         """Extract parameter list from a parameter_list node."""
         parameters = []
         for child in params_node.children:
-            if child.type == "parameter_declaration":
-                param_text = self._get_node_text(child, source)
-                parameters.append(param_text)
-            elif child.type == "variadic_parameter_declaration":
+            if (
+                child.type == "parameter_declaration"
+                or child.type == "variadic_parameter_declaration"
+            ):
                 param_text = self._get_node_text(child, source)
                 parameters.append(param_text)
         return parameters
@@ -184,7 +227,7 @@ class GoMetadataExtractor(BaseMetadataExtractor):
     def _extract_defined_symbols(self, node: Node, source: bytes) -> set[str]:
         """Extract symbols defined within this node."""
         defined = set()
-        
+
         def collect_definitions(n: Node, _depth: int):
             if n.type == "short_var_declaration":
                 # := declarations
@@ -208,6 +251,6 @@ class GoMetadataExtractor(BaseMetadataExtractor):
                 name_node = self._find_child_by_type(n, "type_identifier")
                 if name_node:
                     defined.add(self._get_node_text(name_node, source))
-        
+
         self._walk_tree(node, collect_definitions)
         return defined

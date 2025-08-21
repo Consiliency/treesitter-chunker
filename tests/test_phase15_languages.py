@@ -1,8 +1,10 @@
 """Test suite for Phase 1.5: Extended language support for call span extraction."""
 
-import pytest
 from typing import Any
+
+import pytest
 from tree_sitter import Node
+
 from chunker.metadata import MetadataExtractorFactory
 from chunker.metadata.extractor import BaseMetadataExtractor
 from chunker.parser import get_parser
@@ -10,23 +12,23 @@ from chunker.parser import get_parser
 
 class SimpleMetadataExtractor(BaseMetadataExtractor):
     """Simple concrete implementation for testing."""
-    
+
     def extract_imports(self, node: Node, source: bytes) -> list[str]:
         """Extract imports (not needed for call testing)."""
         return []
-    
+
     def extract_exports(self, node: Node, source: bytes) -> list[str]:
         """Extract exports (not needed for call testing)."""
         return []
-    
+
     def extract_dependencies(self, node: Node, source: bytes) -> list[str]:
         """Extract dependencies (not needed for call testing)."""
         return []
-    
+
     def extract_signature(self, node: Node, source: bytes) -> dict[str, Any] | None:
         """Extract signature (not needed for call testing)."""
         return None
-    
+
     def extract_docstring(self, node: Node, source: bytes) -> str | None:
         """Extract docstring (not needed for call testing)."""
         return None
@@ -42,17 +44,19 @@ class TestPhase15Languages:
         extractor = MetadataExtractorFactory.create_extractor(language)
         if extractor is None:
             extractor = SimpleMetadataExtractor(language)
-        
+
         parser = get_parser(language)
         tree = parser.parse(code.encode())
-        
+
         calls = extractor.extract_calls(tree.root_node, code.encode())
         extracted_names = [call["name"] for call in calls]
-        
+
         # Check that all expected calls are found
         for expected in expected_calls:
-            assert expected in extracted_names, f"Expected call '{expected}' not found in {extracted_names}"
-        
+            assert (
+                expected in extracted_names
+            ), f"Expected call '{expected}' not found in {extracted_names}"
+
         # Verify span information is present
         for call in calls:
             assert "start" in call
@@ -265,16 +269,18 @@ class TestPhase15EdgeCases:
         extractor = MetadataExtractorFactory.create_extractor(language)
         if extractor is None:
             extractor = SimpleMetadataExtractor(language)
-        
+
         parser = get_parser(language)
         tree = parser.parse(code.encode())
-        
+
         calls = extractor.extract_calls(tree.root_node, code.encode())
         extracted_names = [call["name"] for call in calls]
-        
+
         # Check that none of the not_expected items are detected
         for item in not_expected:
-            assert item not in extracted_names, f"False positive: '{item}' should not be detected as a call"
+            assert (
+                item not in extracted_names
+            ), f"False positive: '{item}' should not be detected as a call"
 
     def test_java_property_access(self):
         """Test that Java property access is not detected as method calls."""
@@ -325,21 +331,24 @@ class TestPhase15Performance:
             code_lines.append(f"    func{i}();")
             code_lines.append(f"    obj.method{i}();")
             code_lines.append(f"    Module.function{i}();")
-        
+
         code = "def test():\n" + "\n".join(code_lines)
-        
+
         extractor = SimpleMetadataExtractor("python")
         parser = get_parser("python")
         tree = parser.parse(code.encode())
-        
+
         import time
+
         start = time.time()
         calls = extractor.extract_calls(tree.root_node, code.encode())
         elapsed = time.time() - start
-        
+
         # Should process 3000 calls in under 1 second
         assert len(calls) >= 3000
-        assert elapsed < 1.0, f"Performance issue: took {elapsed:.2f}s to process 3000 calls"
+        assert (
+            elapsed < 1.0
+        ), f"Performance issue: took {elapsed:.2f}s to process 3000 calls"
 
     def test_nested_calls_performance(self):
         """Test performance with deeply nested function calls."""
@@ -349,18 +358,21 @@ class TestPhase15Performance:
             nested += f"inner{i}("
         nested += "value"
         nested += ")" * 51
-        
+
         code = f"def test():\n    {nested}"
-        
+
         extractor = SimpleMetadataExtractor("python")
         parser = get_parser("python")
         tree = parser.parse(code.encode())
-        
+
         import time
+
         start = time.time()
         calls = extractor.extract_calls(tree.root_node, code.encode())
         elapsed = time.time() - start
-        
+
         # Should handle nested calls efficiently
         assert len(calls) >= 50
-        assert elapsed < 0.5, f"Performance issue with nested calls: took {elapsed:.2f}s"
+        assert (
+            elapsed < 0.5
+        ), f"Performance issue with nested calls: took {elapsed:.2f}s"

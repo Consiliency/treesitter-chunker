@@ -1,0 +1,90 @@
+================================================================================
+PRODUCTION VALIDATION REPORT
+================================================================================
+Validation ID: 640b48de-9d3c-4ff8-a999-20e59c95666f
+Deployment Stage: PRODUCTION
+Timestamp: 2025-08-20T03:24:33.956482+00:00
+Duration: 2.05 seconds
+Deployment Ready: ❌ NO
+Exit Code: 1
+
+================================================================================
+SUMMARY
+================================================================================
+Total Checks: 58
+✅ Passed: 48
+ℹ️  Info: 3
+⚠️  Warnings: 5
+❌ Errors: 2
+🚨 Critical: 0
+
+--------------------------------------------------
+CATEGORY BREAKDOWN
+--------------------------------------------------
+DEPENDENCY: 17 total (❌ 2 errors, 🚨 0 critical)
+CONFIGURATION: 6 total (✅ all passed)
+SECURITY: 10 total (⚠️  4 warnings)
+PERFORMANCE: 6 total (⚠️  1 warnings)
+INTEGRATION: 6 total (✅ all passed)
+CRITICAL_PATH: 13 total (✅ all passed)
+DEPLOYMENT: 0 total (✅ all passed)
+SYSTEM_HEALTH: 0 total (✅ all passed)
+
+================================================================================
+🚨 BLOCKING ISSUES (MUST FIX BEFORE DEPLOYMENT)
+================================================================================
+❌ tree_sitter_version: tree_sitter version unknown is below required 0.20.0
+   💡 Upgrade tree_sitter to version 0.20.0 or higher
+   💡 Run: pip install --upgrade tree_sitter
+
+❌ psutil_check: Failed to check psutil: 'tuple' object has no attribute 'split'
+   💡 Manually verify psutil installation
+   💡 Check system configuration
+
+
+================================================================================
+💡 RECOMMENDATIONS
+================================================================================
+1. Change directory permissions to remove other write access
+2. Check system configuration
+3. Check system resources
+4. Continue using input validation consistently
+5. Investigate performance bottlenecks
+6. Keep dependencies updated
+7. Manually verify psutil installation
+8. Restrict permissions on sensitive files (e.g., chmod 600)
+9. Review optimization configuration
+10. Review usage of eval(), exec(), and shell=True
+
+❌ ERROR RESULTS
+---------------
+tree_sitter_version: tree_sitter version unknown is below required 0.20.0
+  💡 Upgrade tree_sitter to version 0.20.0 or higher
+  💡 Run: pip install --upgrade tree_sitter
+
+psutil_check: Failed to check psutil: 'tuple' object has no attribute 'split'
+  💡 Manually verify psutil installation
+  💡 Check system configuration
+
+
+⚠️ WARNING RESULTS
+-----------------
+directory_permissions: Current directory is writable by others: 755
+  💡 Change directory permissions to remove other write access
+
+sensitive_file_permissions: Found 1 sensitive files with loose permissions
+  💡 Restrict permissions on sensitive files (e.g., chmod 600)
+
+ssl_protocol: Potentially insecure SSL protocol: PROTOCOL_TLS_CLIENT
+  💡 Use TLS 1.2 or higher
+
+code_injection_risks: Found potential code injection risks in 1 files
+  💡 Review usage of eval(), exec(), and shell=True
+  💡 Use safer alternatives like ast.literal_eval()
+  💡 Validate and sanitize all user inputs
+
+performance_optimizer_health: Low performance optimizer health score: 50.0/100
+  💡 Investigate performance bottlenecks
+  💡 Check system resources
+  💡 Review optimization configuration
+

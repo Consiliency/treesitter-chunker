@@ -1,0 +1,1360 @@
+{
+  "validation_id": "640b48de-9d3c-4ff8-a999-20e59c95666f",
+  "deployment_stage": "production",
+  "timestamp": "2025-08-20T03:24:33.956482+00:00",
+  "duration": 2.0473690032958984,
+  "results": [
+    {
+      "check_name": "performance_optimization_level",
+      "category": "configuration",
+      "severity": "pass",
+      "message": "Valid optimization level: balanced",
+      "details": {
+        "level": "balanced"
+      },
+      "timestamp": "2025-08-20T03:24:33.963100+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "performance_cache_size",
+      "category": "configuration",
+      "severity": "pass",
+      "message": "Valid cache size: 1000",
+      "details": {
+        "cache_size": 1000
+      },
+      "timestamp": "2025-08-20T03:24:33.963103+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "logging_level",
+      "category": "configuration",
+      "severity": "pass",
+      "message": "Valid log level: INFO",
+      "details": {
+        "level": "INFO"
+      },
+      "timestamp": "2025-08-20T03:24:33.963105+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "config_file__chunkerrc",
+      "category": "configuration",
+      "severity": "pass",
+      "message": "Configuration file .chunkerrc is readable",
+      "details": {
+        "file": ".chunkerrc",
+        "size": 770
+      },
+      "timestamp": "2025-08-20T03:24:33.964875+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "config_file_pyproject_toml",
+      "category": "configuration",
+      "severity": "pass",
+      "message": "Configuration file pyproject.toml is readable",
+      "details": {
+        "file": "pyproject.toml",
+        "size": 13850
+      },
+      "timestamp": "2025-08-20T03:24:33.967766+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "config_files_available",
+      "category": "configuration",
+      "severity": "pass",
+      "message": "Found 2 configuration file(s)",
+      "details": {
+        "files": [
+          ".chunkerrc",
+          "pyproject.toml"
+        ]
+      },
+      "timestamp": "2025-08-20T03:24:33.967770+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "system_startup",
+      "category": "critical_path",
+      "severity": "pass",
+      "message": "System startup successful in 0.03s",
+      "details": {
+        "startup_duration": 0.03178691864013672,
+        "init_result": {
+          "status": "success",
+          "initialization_time": 0.03129887580871582,
+          "system_health": {
+            "overall_status": "healthy",
+            "last_check": "2025-08-20T03:24:33.995848+00:00",
+            "component_count": 6,
+            "healthy_components": 6,
+            "available_components": 6,
+            "system_metrics": {
+              "cpu_percent": 0.0,
+              "memory_usage_mb": 86.8125,
+              "num_threads": 83,
+              "request_count": 10,
+              "error_count": 10,
+              "error_rate": 1.0
+            },
+            "components": {
+              "error_pipeline": {
+                "status": "healthy",
+                "type": "error_handling",
+                "error_count": 0,
+                "last_error": null
+              },
+              "error_orchestrator": {
+                "status": "healthy",
+                "type": "error_handling",
+                "error_count": 0,
+                "last_error": null
+              },
+              "grammar_registry": {
+                "status": "healthy",
+                "type": "grammar_management",
+                "error_count": 0,
+                "last_error": null
+              },
+              "grammar_manager": {
+                "status": "healthy",
+                "type": "grammar_management",
+                "error_count": 0,
+                "last_error": null
+              },
+              "grammar_cli": {
+                "status": "healthy",
+                "type": "cli_tools",
+                "error_count": 0,
+                "last_error": null
+              },
+              "token_aware_chunker": {
+                "status": "healthy",
+                "type": "core_chunking",
+                "error_count": 0,
+                "last_error": null
+              }
+            }
+          },
+          "components": [
+            "error_pipeline",
+            "error_orchestrator",
+            "grammar_registry",
+            "grammar_manager",
+            "grammar_cli",
+            "token_aware_chunker"
+          ],
+          "session_id": "d8b151c6-3415-4d37-a889-6913ca52895c"
+        }
+      },
+      "timestamp": "2025-08-20T03:24:33.996018+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "system_operations",
+      "category": "critical_path",
+      "severity": "pass",
+      "message": "System operations working during runtime",
+      "details": {
+        "health_status": "HealthStatus.HEALTHY",
+        "diagnostics_available": true
+      },
+      "timestamp": "2025-08-20T03:24:33.996422+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "system_shutdown",
+      "category": "critical_path",
+      "severity": "pass",
+      "message": "System shutdown successful in 0.00s",
+      "details": {
+        "shutdown_duration": 0.0011172294616699219
+      },
+      "timestamp": "2025-08-20T03:24:33.997546+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "error_recovery_file_not_found",
+      "category": "critical_path",
+      "severity": "pass",
+      "message": "Error recovery successful for file_not_found",
+      "details": {
+        "scenario": "file_not_found",
+        "error_type": "FileNotFoundError",
+        "recovery_result": {
+          "status": "fallback",
+          "error": "test_file.txt",
+          "error_type": "FileNotFoundError",
+          "message": "Error processing failed: ErrorHandlingPipeline.process_error() got an unexpected keyword argument 'error'",
+          "processing_time": 8.344650268554688e-06,
+          "guidance": [
+            "Error processing system is currently unavailable",
+            "Check system logs for more detailed information",
+            "Contact support if the issue persists"
+          ],
+          "session_id": "d8b151c6-3415-4d37-a889-6913ca52895c"
+        }
+      },
+      "timestamp": "2025-08-20T03:24:33.997731+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "error_recovery_permission_denied",
+      "category": "critical_path",
+      "severity": "pass",
+      "message": "Error recovery successful for permission_denied",
+      "details": {
+        "scenario": "permission_denied",
+        "error_type": "PermissionError",
+        "recovery_result": {
+          "status": "fallback",
+          "error": "Access denied",
+          "error_type": "PermissionError",
+          "message": "Error processing failed: ErrorHandlingPipeline.process_error() got an unexpected keyword argument 'error'",
+          "processing_time": 8.106231689453125e-06,
+          "guidance": [
+            "Error processing system is currently unavailable",
+            "Check system logs for more detailed information",
+            "Contact support if the issue persists"
+          ],
+          "session_id": "d8b151c6-3415-4d37-a889-6913ca52895c"
+        }
+      },
+      "timestamp": "2025-08-20T03:24:33.997812+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "error_recovery_value_error",
+      "category": "critical_path",
+      "severity": "pass",
+      "message": "Error recovery successful for value_error",
+      "details": {
+        "scenario": "value_error",
+        "error_type": "ValueError",
+        "recovery_result": {
+          "status": "fallback",
+          "error": "Invalid value",
+          "error_type": "ValueError",
+          "message": "Error processing failed: ErrorHandlingPipeline.process_error() got an unexpected keyword argument 'error'",
+          "processing_time": 3.814697265625e-06,
+          "guidance": [
+            "Error processing system is currently unavailable",
+            "Check system logs for more detailed information",
+            "Contact support if the issue persists"
+          ],
+          "session_id": "d8b151c6-3415-4d37-a889-6913ca52895c"
+        }
+      },
+      "timestamp": "2025-08-20T03:24:33.997871+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "error_recovery_type_error",
+      "category": "critical_path",
+      "severity": "pass",
+      "message": "Error recovery successful for type_error",
+      "details": {
+        "scenario": "type_error",
+        "error_type": "TypeError",
+        "recovery_result": {
+          "status": "fallback",
+          "error": "Invalid type",
+          "error_type": "TypeError",
+          "message": "Error processing failed: ErrorHandlingPipeline.process_error() got an unexpected keyword argument 'error'",
+          "processing_time": 3.337860107421875e-06,
+          "guidance": [
+            "Error processing system is currently unavailable",
+            "Check system logs for more detailed information",
+            "Contact support if the issue persists"
+          ],
+          "session_id": "d8b151c6-3415-4d37-a889-6913ca52895c"
+        }
+      },
+      "timestamp": "2025-08-20T03:24:33.997960+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "error_recovery_runtime_error",
+      "category": "critical_path",
+      "severity": "pass",
+      "message": "Error recovery successful for runtime_error",
+      "details": {
+        "scenario": "runtime_error",
+        "error_type": "RuntimeError",
+        "recovery_result": {
+          "status": "fallback",
+          "error": "Runtime issue",
+          "error_type": "RuntimeError",
+          "message": "Error processing failed: ErrorHandlingPipeline.process_error() got an unexpected keyword argument 'error'",
+          "processing_time": 3.337860107421875e-06,
+          "guidance": [
+            "Error processing system is currently unavailable",
+            "Check system logs for more detailed information",
+            "Contact support if the issue persists"
+          ],
+          "session_id": "d8b151c6-3415-4d37-a889-6913ca52895c"
+        }
+      },
+      "timestamp": "2025-08-20T03:24:33.998077+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "memory_pressure_handling",
+      "category": "critical_path",
+      "severity": "pass",
+      "message": "System operates under memory pressure",
+      "details": {
+        "baseline_memory_mb": 85.09765625,
+        "peak_memory_mb": 92.59765625,
+        "memory_increase_mb": 7.5,
+        "health_status": "HealthStatus.HEALTHY"
+      },
+      "timestamp": "2025-08-20T03:24:34.000504+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "file_descriptor_limits",
+      "category": "critical_path",
+      "severity": "pass",
+      "message": "Handled 50 open file descriptors",
+      "details": {
+        "max_files_opened": 50
+      },
+      "timestamp": "2025-08-20T03:24:34.004830+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "concurrent_operations",
+      "category": "critical_path",
+      "severity": "pass",
+      "message": "Concurrent operations successful: 10/10",
+      "details": {
+        "total_tasks": 10,
+        "successful_tasks": 10,
+        "failed_tasks": 0,
+        "duration": 0.2016432285308838,
+        "success_rate": 1.0
+      },
+      "timestamp": "2025-08-20T03:24:34.208535+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "json_data_integrity",
+      "category": "critical_path",
+      "severity": "pass",
+      "message": "JSON data integrity maintained",
+      "details": {
+        "data_size": 164
+      },
+      "timestamp": "2025-08-20T03:24:34.208605+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "file_io_integrity",
+      "category": "critical_path",
+      "severity": "pass",
+      "message": "File I/O integrity maintained",
+      "details": {
+        "file_size": 60
+      },
+      "timestamp": "2025-08-20T03:24:34.208818+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "directory_permissions",
+      "category": "security",
+      "severity": "warning",
+      "message": "Current directory is writable by others: 755",
+      "details": {
+        "directory": "/home/jenner/code/treesitter-chunker",
+        "permissions": "755"
+      },
+      "timestamp": "2025-08-20T03:24:33.963428+00:00",
+      "duration": 0.0,
+      "recommendations": [
+        "Change directory permissions to remove other write access"
+      ],
+      "metadata": {}
+    },
+    {
+      "check_name": "sensitive_file_permissions",
+      "category": "security",
+      "severity": "warning",
+      "message": "Found 1 sensitive files with loose permissions",
+      "details": {
+        "files": [
+          {
+            "file": "/home/jenner/code/treesitter-chunker/config",
+            "permissions": "755"
+          }
+        ]
+      },
+      "timestamp": "2025-08-20T03:24:33.975182+00:00",
+      "duration": 0.0,
+      "recommendations": [
+        "Restrict permissions on sensitive files (e.g., chmod 600)"
+      ],
+      "metadata": {}
+    },
+    {
+      "check_name": "ssl_context",
+      "category": "security",
+      "severity": "pass",
+      "message": "SSL context creation successful",
+      "details": {
+        "protocol": "PROTOCOL_TLS_CLIENT",
+        "verify_mode": "CERT_REQUIRED",
+        "check_hostname": true
+      },
+      "timestamp": "2025-08-20T03:24:33.988774+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "ssl_protocol",
+      "category": "security",
+      "severity": "warning",
+      "message": "Potentially insecure SSL protocol: PROTOCOL_TLS_CLIENT",
+      "details": {
+        "protocol": "PROTOCOL_TLS_CLIENT"
+      },
+      "timestamp": "2025-08-20T03:24:33.988780+00:00",
+      "duration": 0.0,
+      "recommendations": [
+        "Use TLS 1.2 or higher"
+      ],
+      "metadata": {}
+    },
+    {
+      "check_name": "ssl_verification_enabled",
+      "category": "security",
+      "severity": "pass",
+      "message": "SSL certificate verification is enabled",
+      "details": {
+        "ssl_verify": true
+      },
+      "timestamp": "2025-08-20T03:24:33.988782+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "code_injection_risks",
+      "category": "security",
+      "severity": "warning",
+      "message": "Found potential code injection risks in 1 files",
+      "details": {
+        "vulnerable_files": [
+          {
+            "file": "/home/jenner/code/treesitter-chunker/scripts/fix_perf401_improved.py",
+            "vulnerabilities": [
+              {
+                "pattern": "os_system",
+                "matches": 1
+              }
+            ]
+          }
+        ]
+      },
+      "timestamp": "2025-08-20T03:24:34.468154+00:00",
+      "duration": 0.0,
+      "recommendations": [
+        "Review usage of eval(), exec(), and shell=True",
+        "Use safer alternatives like ast.literal_eval()",
+        "Validate and sanitize all user inputs"
+      ],
+      "metadata": {}
+    },
+    {
+      "check_name": "python_version_security",
+      "category": "security",
+      "severity": "pass",
+      "message": "Python version 3.12 is secure",
+      "details": {
+        "version": "3.12.3"
+      },
+      "timestamp": "2025-08-20T03:24:34.469419+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "dependency_files_found",
+      "category": "security",
+      "severity": "info",
+      "message": "Found dependency files: pyproject.toml",
+      "details": {
+        "files": [
+          "pyproject.toml"
+        ]
+      },
+      "timestamp": "2025-08-20T03:24:34.469482+00:00",
+      "duration": 0.0,
+      "recommendations": [
+        "Run 'pip install safety && safety check' to scan for vulnerabilities",
+        "Keep dependencies updated",
+        "Use dependency pinning for security"
+      ],
+      "metadata": {}
+    },
+    {
+      "check_name": "input_validation_present",
+      "category": "security",
+      "severity": "pass",
+      "message": "Input validation patterns found in codebase",
+      "details": {
+        "validation_patterns": {
+          "regex_validation": 8,
+          "type_checking": 1
+        }
+      },
+      "timestamp": "2025-08-20T03:24:34.835091+00:00",
+      "duration": 0.0,
+      "recommendations": [
+        "Continue using input validation consistently"
+      ],
+      "metadata": {}
+    },
+    {
+      "check_name": "sensitive_data_exposure",
+      "category": "security",
+      "severity": "pass",
+      "message": "No obvious sensitive data exposure found",
+      "details": {
+        "scanned_files": 6,
+        "patterns_checked": [
+          "api_keys",
+          "passwords",
+          "tokens",
+          "secrets",
+          "private_keys"
+        ]
+      },
+      "timestamp": "2025-08-20T03:24:34.838537+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "python_availability",
+      "category": "dependency",
+      "severity": "pass",
+      "message": "python is available (version 3.12.3)",
+      "details": {
+        "available": true,
+        "version": "3.12.3",
+        "executable": "/home/jenner/code/treesitter-chunker/.venv/bin/python",
+        "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39"
+      },
+      "timestamp": "2025-08-20T03:24:33.962741+00:00",
+      "duration": 1.1444091796875e-05,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "tree_sitter_version",
+      "category": "dependency",
+      "severity": "error",
+      "message": "tree_sitter version unknown is below required 0.20.0",
+      "details": {
+        "available": true,
+        "version": "unknown",
+        "module_path": "/home/jenner/code/treesitter-chunker/.venv/lib/python3.12/site-packages/tree_sitter/__init__.py"
+      },
+      "timestamp": "2025-08-20T03:24:33.962754+00:00",
+      "duration": 8.821487426757812e-06,
+      "recommendations": [
+        "Upgrade tree_sitter to version 0.20.0 or higher",
+        "Run: pip install --upgrade tree_sitter"
+      ],
+      "metadata": {}
+    },
+    {
+      "check_name": "psutil_check",
+      "category": "dependency",
+      "severity": "error",
+      "message": "Failed to check psutil: 'tuple' object has no attribute 'split'",
+      "details": {
+        "error": "'tuple' object has no attribute 'split'",
+        "traceback": "Traceback (most recent call last):\n  File \"/home/jenner/code/treesitter-chunker/chunker/integration/production_validator.py\", line 341, in _validate_dependency\n    version_check = self._check_version(\n                    ^^^^^^^^^^^^^^^^^^^^\n  File \"/home/jenner/code/treesitter-chunker/chunker/integration/production_validator.py\", line 523, in _check_version\n    \"meets_requirement\": version_tuple(current) >= version_tuple(required),\n                         ^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/jenner/code/treesitter-chunker/chunker/integration/production_validator.py\", line 520, in version_tuple\n    return tuple(map(int, (v.split(\".\"))))\n                           ^^^^^^^\nAttributeError: 'tuple' object has no attribute 'split'\n"
+      },
+      "timestamp": "2025-08-20T03:24:33.963005+00:00",
+      "duration": 0.00024771690368652344,
+      "recommendations": [
+        "Manually verify psutil installation",
+        "Check system configuration"
+      ],
+      "metadata": {}
+    },
+    {
+      "check_name": "pathlib_availability",
+      "category": "dependency",
+      "severity": "pass",
+      "message": "pathlib is available",
+      "details": {
+        "available": true,
+        "test_path": "/home/jenner/code/treesitter-chunker/chunker/integration"
+      },
+      "timestamp": "2025-08-20T03:24:33.963030+00:00",
+      "duration": 2.2172927856445312e-05,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "threading_availability",
+      "category": "dependency",
+      "severity": "pass",
+      "message": "threading is available",
+      "details": {
+        "available": true,
+        "active_count": 44,
+        "main_thread": "MainThread"
+      },
+      "timestamp": "2025-08-20T03:24:33.963036+00:00",
+      "duration": 4.76837158203125e-06,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "graphviz_availability",
+      "category": "dependency",
+      "severity": "pass",
+      "message": "graphviz is available (version 0.21)",
+      "details": {
+        "available": true,
+        "version": "0.21"
+      },
+      "timestamp": "2025-08-20T03:24:33.963040+00:00",
+      "duration": 2.384185791015625e-06,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "pygments_availability",
+      "category": "dependency",
+      "severity": "pass",
+      "message": "pygments is available (version 2.19.2)",
+      "details": {
+        "available": true,
+        "version": "2.19.2"
+      },
+      "timestamp": "2025-08-20T03:24:33.963042+00:00",
+      "duration": 1.430511474609375e-06,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "sqlite3_availability",
+      "category": "dependency",
+      "severity": "pass",
+      "message": "sqlite3 is available (version 3.45.1)",
+      "details": {
+        "available": true,
+        "version": "3.45.1",
+        "threadsafety": 3
+      },
+      "timestamp": "2025-08-20T03:24:33.963045+00:00",
+      "duration": 2.6226043701171875e-06,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "requests_availability",
+      "category": "dependency",
+      "severity": "pass",
+      "message": "requests is available (version 2.32.4)",
+      "details": {
+        "available": true,
+        "version": "2.32.4"
+      },
+      "timestamp": "2025-08-20T03:24:33.963048+00:00",
+      "duration": 1.6689300537109375e-06,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "pydantic_availability",
+      "category": "dependency",
+      "severity": "pass",
+      "message": "pydantic is available (version 2.11.7)",
+      "details": {
+        "available": true,
+        "version": "2.11.7"
+      },
+      "timestamp": "2025-08-20T03:24:33.963050+00:00",
+      "duration": 1.1920928955078125e-06,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "system_memory",
+      "category": "dependency",
+      "severity": "pass",
+      "message": "System memory: 64110 MB (required: 512 MB)",
+      "details": {
+        "total_mb": 64110.0859375,
+        "available_mb": 52313.73828125
+      },
+      "timestamp": "2025-08-20T03:24:33.963683+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "system_cpu",
+      "category": "dependency",
+      "severity": "pass",
+      "message": "CPU cores: 32 (required: 1)",
+      "details": {
+        "cpu_count": 32,
+        "cpu_percent": 3.5
+      },
+      "timestamp": "2025-08-20T03:24:34.964599+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "system_disk",
+      "category": "dependency",
+      "severity": "pass",
+      "message": "Available disk space: 875650 MB (required: 1024 MB)",
+      "details": {
+        "free_mb": 875649.765625,
+        "total_mb": 1031018.42578125
+      },
+      "timestamp": "2025-08-20T03:24:34.964639+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "env_path",
+      "category": "dependency",
+      "severity": "pass",
+      "message": "Environment variable PATH is set",
+      "details": {
+        "variable": "PATH",
+        "value_length": 5087
+      },
+      "timestamp": "2025-08-20T03:24:34.964657+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "env_pythonpath",
+      "category": "dependency",
+      "severity": "info",
+      "message": "Environment variable PYTHONPATH is not set",
+      "details": {
+        "variable": "PYTHONPATH",
+        "description": "Python module search path"
+      },
+      "timestamp": "2025-08-20T03:24:34.964663+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "env_home",
+      "category": "dependency",
+      "severity": "pass",
+      "message": "Environment variable HOME is set",
+      "details": {
+        "variable": "HOME",
+        "value_length": 12
+      },
+      "timestamp": "2025-08-20T03:24:34.964666+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "env_temp",
+      "category": "dependency",
+      "severity": "info",
+      "message": "Environment variable TEMP is not set",
+      "details": {
+        "variable": "TEMP",
+        "description": "Temporary directory"
+      },
+      "timestamp": "2025-08-20T03:24:34.964668+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "performance_string_processing",
+      "category": "performance",
+      "severity": "pass",
+      "message": "string_processing completed in 4.03ms",
+      "details": {
+        "duration_ms": 4.033803939819336,
+        "memory_delta_mb": 0.0,
+        "requirement_ms": 5000
+      },
+      "timestamp": "2025-08-20T03:24:33.969234+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "performance_file_operations",
+      "category": "performance",
+      "severity": "pass",
+      "message": "file_operations completed in 4.00ms",
+      "details": {
+        "duration_ms": 3.995656967163086,
+        "memory_delta_mb": 0.0,
+        "requirement_ms": 5000
+      },
+      "timestamp": "2025-08-20T03:24:33.973570+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "performance_list_operations",
+      "category": "performance",
+      "severity": "pass",
+      "message": "list_operations completed in 0.91ms",
+      "details": {
+        "duration_ms": 0.9145736694335938,
+        "memory_delta_mb": 0.25,
+        "requirement_ms": 5000
+      },
+      "timestamp": "2025-08-20T03:24:33.975288+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "memory_usage_test",
+      "category": "performance",
+      "severity": "pass",
+      "message": "Memory usage test passed: 83.3 MB",
+      "details": {
+        "baseline_mb": 82.09765625,
+        "peak_mb": 83.34765625,
+        "increase_mb": 1.25,
+        "limit_mb": 1024
+      },
+      "timestamp": "2025-08-20T03:24:33.977967+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "concurrency_throughput",
+      "category": "performance",
+      "severity": "pass",
+      "message": "Concurrency test passed: 7103.0 ops/sec",
+      "details": {
+        "throughput_ops_sec": 7102.970364098222,
+        "requirement_ops_sec": 10,
+        "duration": 0.002815723419189453,
+        "operations": 20
+      },
+      "timestamp": "2025-08-20T03:24:33.980796+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "performance_optimizer_health",
+      "category": "performance",
+      "severity": "warning",
+      "message": "Low performance optimizer health score: 50.0/100",
+      "details": {
+        "health_score": 50.0,
+        "optimization_duration": 0.0004775524139404297,
+        "optimization_result": {
+          "timestamp": "2025-08-20T03:24:34.084516+00:00",
+          "optimization_level": "balanced",
+          "components": {
+            "cache": {
+              "l1_cache": {
+                "size": 0,
+                "max_size": 500,
+                "hits": 0,
+                "misses": 0,
+                "evictions": 0,
+                "hit_rate": 0.0,
+                "total_size_bytes": 0,
+                "avg_entry_size": 0.0
+              },
+              "l2_cache": {
+                "size": 0,
+                "max_size": 2000,
+                "hits": 0,
+                "misses": 0,
+                "evictions": 0,
+                "hit_rate": 0.0,
+                "total_size_bytes": 0,
+                "avg_entry_size": 0.0
+              },
+              "l3_cache": {
+                "size": 0,
+                "max_size": 10000,
+                "hits": 0,
+                "misses": 0,
+                "evictions": 0,
+                "hit_rate": 0.0,
+                "total_size_bytes": 0,
+                "avg_entry_size": 0.0
+              },
+              "overall_hit_rate": 0.0,
+              "invalidation_patterns": 0,
+              "warming_queue_size": 0,
+              "access_patterns_tracked": 0
+            },
+            "memory": {
+              "memory_pressure": {
+                "memory_mb": 86.0625,
+                "pressure_level": "normal"
+              },
+              "object_pools": []
+            },
+            "concurrency": {
+              "current_utilization": 0.0,
+              "active_tasks": 0,
+              "max_workers": 32,
+              "action": "scale_down_to_31"
+            },
+            "io": {
+              "queue_status": {
+                "pending_reads": 0,
+                "pending_writes": 0
+              },
+              "file_handles": {
+                "active": 0,
+                "closed": 0
+              }
+            }
+          },
+          "health_score": 50.0,
+          "bottlenecks": [],
+          "auto_tuning": {
+            "actions_taken": [],
+            "recommendations": [
+              "Consider increasing cache sizes"
+            ]
+          },
+          "optimization_time": 0.00023889541625976562,
+          "status": "success"
+        }
+      },
+      "timestamp": "2025-08-20T03:24:34.084847+00:00",
+      "duration": 0.0,
+      "recommendations": [
+        "Investigate performance bottlenecks",
+        "Check system resources",
+        "Review optimization configuration"
+      ],
+      "metadata": {}
+    },
+    {
+      "check_name": "core_integrator_initialization",
+      "category": "integration",
+      "severity": "pass",
+      "message": "Core system integrator initialized successfully",
+      "details": {
+        "session_id": "d8b151c6-3415-4d37-a889-6913ca52895c"
+      },
+      "timestamp": "2025-08-20T03:24:33.963942+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "core_system_initialization",
+      "category": "integration",
+      "severity": "pass",
+      "message": "Core system initialization successful",
+      "details": {
+        "status": "success",
+        "initialization_time": 0.02736520767211914,
+        "system_health": {
+          "overall_status": "healthy",
+          "last_check": "2025-08-20T03:24:33.991676+00:00",
+          "component_count": 6,
+          "healthy_components": 6,
+          "available_components": 6,
+          "system_metrics": {
+            "cpu_percent": 0.0,
+            "memory_usage_mb": 86.8125,
+            "num_threads": 83,
+            "request_count": 10,
+            "error_count": 10,
+            "error_rate": 1.0
+          },
+          "components": {
+            "error_pipeline": {
+              "status": "healthy",
+              "type": "error_handling",
+              "error_count": 0,
+              "last_error": null
+            },
+            "error_orchestrator": {
+              "status": "healthy",
+              "type": "error_handling",
+              "error_count": 0,
+              "last_error": null
+            },
+            "grammar_registry": {
+              "status": "healthy",
+              "type": "grammar_management",
+              "error_count": 0,
+              "last_error": null
+            },
+            "grammar_manager": {
+              "status": "healthy",
+              "type": "grammar_management",
+              "error_count": 0,
+              "last_error": null
+            },
+            "grammar_cli": {
+              "status": "healthy",
+              "type": "cli_tools",
+              "error_count": 0,
+              "last_error": null
+            },
+            "token_aware_chunker": {
+              "status": "healthy",
+              "type": "core_chunking",
+              "error_count": 0,
+              "last_error": null
+            }
+          }
+        },
+        "components": [
+          "error_pipeline",
+          "error_orchestrator",
+          "grammar_registry",
+          "grammar_manager",
+          "grammar_cli",
+          "token_aware_chunker"
+        ],
+        "session_id": "d8b151c6-3415-4d37-a889-6913ca52895c"
+      },
+      "timestamp": "2025-08-20T03:24:33.991901+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "core_system_health",
+      "category": "integration",
+      "severity": "pass",
+      "message": "Core system health is good",
+      "details": {
+        "health_status": "healthy",
+        "diagnostics": {
+          "session_id": "d8b151c6-3415-4d37-a889-6913ca52895c",
+          "startup_time": "2025-08-20T03:24:21.102414+00:00",
+          "system_health": {
+            "overall_status": "healthy",
+            "last_check": "2025-08-20T03:24:33.991676+00:00",
+            "component_count": 6,
+            "healthy_components": 6,
+            "available_components": 6,
+            "system_metrics": {
+              "cpu_percent": 0.0,
+              "memory_usage_mb": 86.8125,
+              "num_threads": 83,
+              "request_count": 10,
+              "error_count": 10,
+              "error_rate": 1.0
+            },
+            "components": {
+              "error_pipeline": {
+                "status": "healthy",
+                "type": "error_handling",
+                "error_count": 0,
+                "last_error": null
+              },
+              "error_orchestrator": {
+                "status": "healthy",
+                "type": "error_handling",
+                "error_count": 0,
+                "last_error": null
+              },
+              "grammar_registry": {
+                "status": "healthy",
+                "type": "grammar_management",
+                "error_count": 0,
+                "last_error": null
+              },
+              "grammar_manager": {
+                "status": "healthy",
+                "type": "grammar_management",
+                "error_count": 0,
+                "last_error": null
+              },
+              "grammar_cli": {
+                "status": "healthy",
+                "type": "cli_tools",
+                "error_count": 0,
+                "last_error": null
+              },
+              "token_aware_chunker": {
+                "status": "healthy",
+                "type": "core_chunking",
+                "error_count": 0,
+                "last_error": null
+              }
+            }
+          },
+          "system_info": {
+            "cpu_percent": 0.0,
+            "memory_info": {
+              "rss": 89231360,
+              "vms": 5543428096,
+              "shared": 22806528,
+              "text": 3026944,
+              "lib": 0,
+              "data": 1869004800,
+              "dirty": 0
+            },
+            "num_threads": 86,
+            "uptime": 12.891783
+          },
+          "performance_stats": {
+            "initialization_time": {
+              "count": 3,
+              "avg": 0.04503544171651205,
+              "min": 0.02736520767211914,
+              "max": 0.05532097816467285,
+              "recent": [
+                0.05242013931274414,
+                0.05532097816467285,
+                0.02736520767211914
+              ]
+            }
+          },
+          "request_count": 5,
+          "error_count": 5,
+          "active_sessions": 0,
+          "phase_availability": {
+            "phase_17_error_handling": true,
+            "phase_18_grammar_management": true,
+            "core_chunking": true
+          }
+        }
+      },
+      "timestamp": "2025-08-20T03:24:33.994228+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "performance_optimizer_creation",
+      "category": "integration",
+      "severity": "pass",
+      "message": "Performance optimizer created successfully",
+      "details": {
+        "optimization_level": "OptimizationLevel.BALANCED"
+      },
+      "timestamp": "2025-08-20T03:24:34.096656+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "performance_report_generation",
+      "category": "integration",
+      "severity": "pass",
+      "message": "Performance report generated successfully",
+      "details": {
+        "report_timestamp": "2025-08-20T03:24:34.096661+00:00"
+      },
+      "timestamp": "2025-08-20T03:24:34.097423+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    },
+    {
+      "check_name": "core_performance_integration",
+      "category": "integration",
+      "severity": "pass",
+      "message": "Core and performance components integrated successfully",
+      "details": {
+        "available": true,
+        "health_summary": {
+          "overall_status": "healthy",
+          "last_check": "2025-08-20T03:24:33.995848+00:00",
+          "component_count": 6,
+          "healthy_components": 0,
+          "available_components": 0,
+          "system_metrics": {
+            "cpu_percent": 0.0,
+            "memory_usage_mb": 86.8125,
+            "num_threads": 83,
+            "request_count": 10,
+            "error_count": 10,
+            "error_rate": 1.0
+          },
+          "components": {
+            "error_pipeline": {
+              "status": "shutdown",
+              "type": "error_handling",
+              "error_count": 0,
+              "last_error": null
+            },
+            "error_orchestrator": {
+              "status": "shutdown",
+              "type": "error_handling",
+              "error_count": 0,
+              "last_error": null
+            },
+            "grammar_registry": {
+              "status": "shutdown",
+              "type": "grammar_management",
+              "error_count": 0,
+              "last_error": null
+            },
+            "grammar_manager": {
+              "status": "shutdown",
+              "type": "grammar_management",
+              "error_count": 0,
+              "last_error": null
+            },
+            "grammar_cli": {
+              "status": "shutdown",
+              "type": "cli_tools",
+              "error_count": 0,
+              "last_error": null
+            },
+            "token_aware_chunker": {
+              "status": "shutdown",
+              "type": "core_chunking",
+              "error_count": 0,
+              "last_error": null
+            }
+          }
+        }
+      },
+      "timestamp": "2025-08-20T03:24:35.099875+00:00",
+      "duration": 0.0,
+      "recommendations": [],
+      "metadata": {}
+    }
+  ],
+  "summary": {
+    "total_checks": 58,
+    "pass": 48,
+    "info": 3,
+    "warning": 5,
+    "error": 2,
+    "critical": 0,
+    "categories": {
+      "dependency": {
+        "total": 17,
+        "pass": 13,
+        "warning": 0,
+        "error": 2,
+        "critical": 0
+      },
+      "configuration": {
+        "total": 6,
+        "pass": 6,
+        "warning": 0,
+        "error": 0,
+        "critical": 0
+      },
+      "security": {
+        "total": 10,
+        "pass": 5,
+        "warning": 4,
+        "error": 0,
+        "critical": 0
+      },
+      "performance": {
+        "total": 6,
+        "pass": 5,
+        "warning": 1,
+        "error": 0,
+        "critical": 0
+      },
+      "integration": {
+        "total": 6,
+        "pass": 6,
+        "warning": 0,
+        "error": 0,
+        "critical": 0
+      },
+      "critical_path": {
+        "total": 13,
+        "pass": 13,
+        "warning": 0,
+        "error": 0,
+        "critical": 0
+      },
+      "deployment": {
+        "total": 0,
+        "pass": 0,
+        "warning": 0,
+        "error": 0,
+        "critical": 0
+      },
+      "system_health": {
+        "total": 0,
+        "pass": 0,
+        "warning": 0,
+        "error": 0,
+        "critical": 0
+      }
+    }
+  },
+  "deployment_ready": false,
+  "exit_code": 1,
+  "metadata": {
+    "validator_version": "1.9.4",
+    "python_version": "3.12.3",
+    "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "hostname": "TorrenceBioAI1",
+    "config": {}
+  }
+}

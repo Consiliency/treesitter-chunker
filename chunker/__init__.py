@@ -67,6 +67,27 @@ except Exception:  # pragma: no cover - keep import lightweight during build tes
     NaturalLanguageQueryEngine = None  # type: ignore
     SmartQueryOptimizer = None  # type: ignore
     _ADV_QUERY_AVAILABLE = False
+
+# Optional system integration (Phase 1.7 + 1.8 integration)
+try:
+    from .integration import (
+        SystemIntegrator,
+        get_system_health,
+        get_system_integrator,
+        initialize_treesitter_system,
+        process_grammar_error,
+    )
+
+    _SYSTEM_INTEGRATION_AVAILABLE = True
+except (
+    Exception
+):  # pragma: no cover - graceful degradation when integration not available
+    SystemIntegrator = None  # type: ignore
+    get_system_integrator = None  # type: ignore
+    initialize_treesitter_system = None  # type: ignore
+    process_grammar_error = None  # type: ignore
+    get_system_health = None  # type: ignore
+    _SYSTEM_INTEGRATION_AVAILABLE = False
 from .smart_context import InMemoryContextCache, TreeSitterSmartContextProvider
 from .streaming import chunk_file_streaming
 from .types import CodeChunk
@@ -74,6 +95,7 @@ from .types import CodeChunk
 # Dynamic version from package metadata
 try:
     from importlib.metadata import version
+
     __version__ = version("treesitter-chunker")
 except ImportError:
     __version__ = "1.0.8"  # Fallback version
@@ -130,6 +152,18 @@ if _ADV_QUERY_AVAILABLE:
             "AdvancedQueryIndex",
             "NaturalLanguageQueryEngine",
             "SmartQueryOptimizer",
+        ],
+    )
+
+# Extend __all__ with system integration API only if import succeeded
+if _SYSTEM_INTEGRATION_AVAILABLE:
+    __all__.extend(
+        [
+            "SystemIntegrator",
+            "get_system_health",
+            "get_system_integrator",
+            "initialize_treesitter_system",
+            "process_grammar_error",
         ],
     )
 

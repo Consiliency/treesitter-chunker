@@ -21,7 +21,9 @@ Custom documentation additions for compute functions.
 
 function_doc_additions = {}
 
-function_doc_additions["filter"] = """
+function_doc_additions[
+    "filter"
+] = """
     Examples
     --------
     >>> import pyarrow as pa
@@ -42,7 +44,9 @@ function_doc_additions["filter"] = """
     ]
     """
 
-function_doc_additions["mode"] = """
+function_doc_additions[
+    "mode"
+] = """
     Examples
     --------
     >>> import pyarrow as pa

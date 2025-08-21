@@ -398,7 +398,9 @@ class ComprehensiveGrammarCLI:
             )
             try:
                 result = self.orchestrator.process_error_in_session(
-                    session.session_id, error_msg, context,
+                    session.session_id,
+                    error_msg,
+                    context,
                 )
                 return {
                     "success": result.success,
@@ -468,7 +470,8 @@ class ComprehensiveGrammarCLI:
         ]
 
     def _find_grammar(
-        self, language: str,
+        self,
+        language: str,
     ) -> tuple[Path, str, GrammarPriority] | None:
         """Find grammar following priority order.
 
@@ -580,7 +583,10 @@ class ComprehensiveGrammarCLI:
         return GrammarStatus.INCOMPATIBLE
 
     def _run_command(
-        self, cmd: List[str], cwd: Path | None = None, timeout: int = 300,
+        self,
+        cmd: List[str],
+        cwd: Path | None = None,
+        timeout: int = 300,
     ) -> tuple[int, str, str]:
         """Run shell command with timeout.
 
@@ -594,7 +600,12 @@ class ComprehensiveGrammarCLI:
         """
         try:
             result = subprocess.run(
-                cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout, check=False,
+                cmd,
+                cwd=cwd,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                check=False,
             )
             return result.returncode, result.stdout, result.stderr
         except subprocess.TimeoutExpired:
@@ -670,7 +681,8 @@ class ComprehensiveGrammarCLI:
 
         except Exception as e:
             error_result = self._handle_error(
-                str(e), context={"operation": "list_grammars"},
+                str(e),
+                context={"operation": "list_grammars"},
             )
             click.echo(f"❌ Error listing grammars: {e}")
 
@@ -736,11 +748,13 @@ class ComprehensiveGrammarCLI:
             click.echo(priority_name)
 
             for grammar in sorted(
-                priority_groups[priority], key=lambda g: g.get("language", ""),
+                priority_groups[priority],
+                key=lambda g: g.get("language", ""),
             ):
                 # Determine status and emoji
                 is_valid = grammar.get("validation", {}).get(
-                    "is_valid", grammar.get("exists", False),
+                    "is_valid",
+                    grammar.get("exists", False),
                 )
                 status = grammar.get("status", "unknown")
 
@@ -769,7 +783,8 @@ class ComprehensiveGrammarCLI:
                         import time
 
                         date_str = time.strftime(
-                            "%Y-%m-%d %H:%M", time.localtime(grammar["install_date"]),
+                            "%Y-%m-%d %H:%M",
+                            time.localtime(grammar["install_date"]),
                         )
                         click.echo(f"    Installed: {date_str}")
             click.echo()
@@ -826,7 +841,10 @@ class ComprehensiveGrammarCLI:
 
                 grammar_path, source, priority = grammar_info
                 metadata = self._build_grammar_metadata_fallback(
-                    language, grammar_path, source, priority,
+                    language,
+                    grammar_path,
+                    source,
+                    priority,
                 )
 
             # Output in requested format
@@ -852,7 +870,9 @@ class ComprehensiveGrammarCLI:
 
         except Exception as e:
             error_result = self._handle_error(
-                str(e), language, {"operation": "grammar_info"},
+                str(e),
+                language,
+                {"operation": "grammar_info"},
             )
             click.echo(f"❌ Error getting grammar info: {e}")
 
@@ -864,7 +884,9 @@ class ComprehensiveGrammarCLI:
             return 1
 
     def _display_grammar_info_table(
-        self, language: str, metadata: dict[str, Any],
+        self,
+        language: str,
+        metadata: dict[str, Any],
     ) -> None:
         """Display grammar information in table format.
 
@@ -922,7 +944,8 @@ class ComprehensiveGrammarCLI:
                 import time
 
                 install_time = time.strftime(
-                    "%Y-%m-%d %H:%M", time.localtime(metadata["install_date"]),
+                    "%Y-%m-%d %H:%M",
+                    time.localtime(metadata["install_date"]),
                 )
                 click.echo(f"Installed: {install_time}")
             if "source_url" in metadata:
@@ -1027,7 +1050,11 @@ class ComprehensiveGrammarCLI:
         click.echo()
 
     def _build_grammar_metadata_fallback(
-        self, language: str, grammar_path: Path, source: str, priority: Any,
+        self,
+        language: str,
+        grammar_path: Path,
+        source: str,
+        priority: Any,
     ) -> dict[str, Any]:
         """Build grammar metadata using fallback methods.
 
@@ -1066,7 +1093,9 @@ class ComprehensiveGrammarCLI:
         return metadata
 
     def _get_enhanced_recommendations(
-        self, language: str, metadata: dict[str, Any],
+        self,
+        language: str,
+        metadata: dict[str, Any],
     ) -> List[str]:
         """Get enhanced recommendations based on grammar metadata.
 
@@ -1129,7 +1158,10 @@ class ComprehensiveGrammarCLI:
         return f"{emoji} {status.title()}"
 
     def _get_grammar_recommendations(
-        self, language: str, status: str, path: Path,
+        self,
+        language: str,
+        status: str,
+        path: Path,
     ) -> List[str]:
         """Get recommendations for grammar improvement.
 
@@ -1269,7 +1301,9 @@ class ComprehensiveGrammarCLI:
 
         except Exception as e:
             error_result = self._handle_error(
-                str(e), language, {"operation": "versions"},
+                str(e),
+                language,
+                {"operation": "versions"},
             )
             click.echo(f"❌ Error fetching versions: {e}")
 
@@ -1324,7 +1358,10 @@ class ComprehensiveGrammarCLI:
             # Use core grammar manager if available
             if self.grammar_manager:
                 success, error_msg = self.grammar_manager.install_grammar(
-                    language, repo_url, version, force,
+                    language,
+                    repo_url,
+                    version,
+                    force,
                 )
 
                 if success:
@@ -1354,7 +1391,11 @@ class ComprehensiveGrammarCLI:
                 return 1
             # Fallback to manual installation
             return self._fetch_grammar_fallback(
-                language, version, branch, force, repo_url,
+                language,
+                version,
+                branch,
+                force,
+                repo_url,
             )
 
         except Exception as e:
@@ -1437,7 +1478,8 @@ class ComprehensiveGrammarCLI:
                 progress.update(f"Checking out version {version}...")
                 checkout_cmd = ["git", "checkout", version]
                 returncode, stdout, stderr = self._run_command(
-                    checkout_cmd, cwd=target_dir,
+                    checkout_cmd,
+                    cwd=target_dir,
                 )
 
                 if returncode != 0:
@@ -1564,7 +1606,9 @@ class ComprehensiveGrammarCLI:
 
                 generate_cmd = ["npx", "tree-sitter", "generate"]
                 generate_result = self._run_command(
-                    generate_cmd, cwd=source_dir, timeout=60,
+                    generate_cmd,
+                    cwd=source_dir,
+                    timeout=60,
                 )
 
                 if generate_result[0] != 0:
@@ -1592,7 +1636,9 @@ class ComprehensiveGrammarCLI:
 
                 # Create compilation script
                 compile_script = self._create_compile_script(
-                    language, source_dir, compiled_grammar,
+                    language,
+                    source_dir,
+                    compiled_grammar,
                 )
 
                 if not compile_script:
@@ -1602,7 +1648,9 @@ class ComprehensiveGrammarCLI:
 
                 # Execute compilation
                 compile_result = self._run_command(
-                    ["python", str(compile_script)], cwd=source_dir, timeout=120,
+                    ["python", str(compile_script)],
+                    cwd=source_dir,
+                    timeout=120,
                 )
 
                 if compile_result[0] != 0:
@@ -1683,7 +1731,10 @@ class ComprehensiveGrammarCLI:
             return 1
 
     def _create_compile_script(
-        self, language: str, source_dir: Path, output_path: Path,
+        self,
+        language: str,
+        source_dir: Path,
+        output_path: Path,
     ) -> Path | None:
         """Create compilation script for grammar.
 
@@ -1761,7 +1812,10 @@ if __name__ == "__main__":
             return None
 
     def remove_grammar(
-        self, language: str, confirm: bool = True, clean_cache: bool = True,
+        self,
+        language: str,
+        confirm: bool = True,
+        clean_cache: bool = True,
     ) -> int:
         """Remove user-installed grammar with enhanced cleanup.
 
@@ -1868,7 +1922,10 @@ if __name__ == "__main__":
             return 1
 
     def test_grammar(
-        self, language: str, file_path: str, show_ast: bool = False,
+        self,
+        language: str,
+        file_path: str,
+        show_ast: bool = False,
     ) -> int:
         """Test grammar with specific file.
 
@@ -1912,12 +1969,18 @@ if __name__ == "__main__":
                 if grammar_path.suffix == ".so":
                     # Use compiled grammar
                     result = self._test_compiled_grammar(
-                        language, grammar_path, test_file, show_ast,
+                        language,
+                        grammar_path,
+                        test_file,
+                        show_ast,
                     )
                 else:
                     # Use source grammar via tree-sitter CLI
                     result = self._test_source_grammar(
-                        language, grammar_path, test_file, show_ast,
+                        language,
+                        grammar_path,
+                        test_file,
+                        show_ast,
                     )
 
                 progress.stop(
@@ -1965,7 +2028,9 @@ if __name__ == "__main__":
 
         except Exception as e:
             error_result = self._handle_error(
-                str(e), language, {"operation": "test", "test_file": file_path},
+                str(e),
+                language,
+                {"operation": "test", "test_file": file_path},
             )
             click.echo(f"❌ Error testing grammar: {e}")
 
@@ -1977,7 +2042,11 @@ if __name__ == "__main__":
             return 1
 
     def _test_compiled_grammar(
-        self, language: str, grammar_path: Path, test_file: Path, show_ast: bool,
+        self,
+        language: str,
+        grammar_path: Path,
+        test_file: Path,
+        show_ast: bool,
     ) -> dict[str, Any]:
         """Test compiled grammar.
 
@@ -2046,14 +2115,21 @@ if __name__ == "__main__":
             except ImportError:
                 # Fall back to tree-sitter CLI
                 return self._test_with_cli(
-                    language, grammar_path.parent, test_file, show_ast,
+                    language,
+                    grammar_path.parent,
+                    test_file,
+                    show_ast,
                 )
 
         except Exception as e:
             return {"success": False, "error": str(e)}
 
     def _test_source_grammar(
-        self, language: str, grammar_path: Path, test_file: Path, show_ast: bool,
+        self,
+        language: str,
+        grammar_path: Path,
+        test_file: Path,
+        show_ast: bool,
     ) -> dict[str, Any]:
         """Test source grammar using CLI.
 
@@ -2069,7 +2145,11 @@ if __name__ == "__main__":
         return self._test_with_cli(language, grammar_path, test_file, show_ast)
 
     def _test_with_cli(
-        self, language: str, grammar_dir: Path, test_file: Path, show_ast: bool,
+        self,
+        language: str,
+        grammar_dir: Path,
+        test_file: Path,
+        show_ast: bool,
     ) -> dict[str, Any]:
         """Test grammar using tree-sitter CLI.
 
@@ -2090,7 +2170,9 @@ if __name__ == "__main__":
 
             start_time = time.time()
             returncode, stdout, stderr = self._run_command(
-                cmd, cwd=grammar_dir, timeout=30,
+                cmd,
+                cwd=grammar_dir,
+                timeout=30,
             )
             parse_time = time.time() - start_time
 
@@ -2125,7 +2207,9 @@ if __name__ == "__main__":
             return {"success": False, "error": str(e)}
 
     def validate_grammar(
-        self, language: str | None = None, fix: bool = False,
+        self,
+        language: str | None = None,
+        fix: bool = False,
     ) -> int:
         """Validate grammar installation.
 
@@ -2212,7 +2296,9 @@ if __name__ == "__main__":
 
         except Exception as e:
             error_result = self._handle_error(
-                str(e), language, {"operation": "validate"},
+                str(e),
+                language,
+                {"operation": "validate"},
             )
             click.echo(f"❌ Error validating grammar: {e}")
 
@@ -2224,7 +2310,11 @@ if __name__ == "__main__":
             return 1
 
     def _validate_single_grammar(
-        self, language: str, path: Path, source: str, fix: bool,
+        self,
+        language: str,
+        path: Path,
+        source: str,
+        fix: bool,
     ) -> dict[str, Any]:
         """Validate a single grammar.
 
@@ -2268,7 +2358,10 @@ if __name__ == "__main__":
         return result
 
     def _validate_compiled_grammar(
-        self, language: str, grammar_path: Path, fix: bool,
+        self,
+        language: str,
+        grammar_path: Path,
+        fix: bool,
     ) -> dict[str, Any]:
         """Validate compiled grammar.
 
@@ -2331,7 +2424,10 @@ if __name__ == "__main__":
         return result
 
     def _validate_source_grammar(
-        self, language: str, source_path: Path, fix: bool,
+        self,
+        language: str,
+        source_path: Path,
+        fix: bool,
     ) -> dict[str, Any]:
         """Validate source grammar.
 
@@ -2386,7 +2482,8 @@ if __name__ == "__main__":
                         )
                         generate_cmd = ["npx", "tree-sitter", "generate"]
                         returncode, stdout, stderr = self._run_command(
-                            generate_cmd, cwd=source_path,
+                            generate_cmd,
+                            cwd=source_path,
                         )
 
                         if returncode == 0:
@@ -2585,7 +2682,8 @@ def grammar_cli(ctx, cache_dir, verbose):
     ctx.obj["cache_dir"] = Path(cache_dir) if cache_dir else None
     ctx.obj["verbose"] = verbose
     ctx.obj["cli"] = ComprehensiveGrammarCLI(
-        cache_dir=ctx.obj["cache_dir"], verbose=verbose,
+        cache_dir=ctx.obj["cache_dir"],
+        verbose=verbose,
     )
 
 
@@ -2700,7 +2798,10 @@ def export(ctx, output_file, format):
 
 @grammar_cli.command(name="cleanup")
 @click.option(
-    "--days", default=7, type=int, help="Remove cache files older than N days",
+    "--days",
+    default=7,
+    type=int,
+    help="Remove cache files older than N days",
 )
 @click.pass_context
 def cleanup_cmd(ctx, days):

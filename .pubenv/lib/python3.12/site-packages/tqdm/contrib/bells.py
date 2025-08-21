@@ -8,7 +8,8 @@ Even more features than `tqdm.auto` (all the bells & whistles):
 - `tqdm.contrib.discord`
     + uses `${TQDM_DISCORD_TOKEN}` and `${TQDM_DISCORD_CHANNEL_ID}`
 """
-__all__ = ['tqdm', 'trange']
+
+__all__ = ["tqdm", "trange"]
 import warnings
 from os import getenv
 

@@ -1,12 +1,13 @@
 """
 Thin wrappers around `itertools`.
 """
+
 import itertools
 
 from ..auto import tqdm as tqdm_auto
 
 __author__ = {"github.com/": ["casperdcl"]}
-__all__ = ['product']
+__all__ = ["product"]
 
 
 def product(*iterables, **tqdm_kwargs):

@@ -107,11 +107,11 @@ class MetadataExtractor(ABC):
     def extract_calls(node: Node, source: bytes) -> list[dict[str, Any]]:
         """
         Extract function calls with precise byte spans from a node.
-        
+
         Args:
             node: AST node to analyze
             source: Original source code bytes
-            
+
         Returns:
             List of call information dictionaries, each containing:
             - name: Function name (str)
@@ -121,7 +121,7 @@ class MetadataExtractor(ABC):
             - function_end: End byte of function name (int)
             - arguments_start: Start byte of arguments (int, optional)
             - arguments_end: End byte of arguments (int, optional)
-            
+
         Example:
             [
                 {

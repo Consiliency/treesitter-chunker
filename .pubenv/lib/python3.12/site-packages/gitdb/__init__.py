@@ -8,7 +8,7 @@ __author__ = "Sebastian Thiel"
 __contact__ = "byronimo@gmail.com"
 __homepage__ = "https://github.com/gitpython-developers/gitdb"
 version_info = (4, 0, 12)
-__version__ = '.'.join(str(i) for i in version_info)
+__version__ = ".".join(str(i) for i in version_info)
 
 # default imports
 from gitdb.base import *

@@ -5,16 +5,16 @@ from typing import ClassVar
 from chunker.interfaces.metadata import ComplexityAnalyzer, MetadataExtractor
 
 from .languages import (
+    CMetadataExtractor,
+    CppMetadataExtractor,
+    GoMetadataExtractor,
     JavaScriptComplexityAnalyzer,
     JavaScriptMetadataExtractor,
     PythonComplexityAnalyzer,
     PythonMetadataExtractor,
+    RustMetadataExtractor,
     TypeScriptComplexityAnalyzer,
     TypeScriptMetadataExtractor,
-    RustMetadataExtractor,
-    GoMetadataExtractor,
-    CMetadataExtractor,
-    CppMetadataExtractor,
 )
 
 

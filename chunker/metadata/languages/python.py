@@ -88,7 +88,7 @@ class PythonMetadataExtractor(BaseMetadataExtractor):
     def extract_calls(self, node: Node, source: bytes) -> list[dict[str, Any]]:
         """
         Extract Python-specific function and method calls.
-        
+
         Handles:
         - Function calls: func()
         - Method calls: obj.method()
@@ -96,7 +96,7 @@ class PythonMetadataExtractor(BaseMetadataExtractor):
         - Built-in calls: print(), len()
         """
         calls = []
-        
+
         def collect_calls(n: Node, _depth: int):
             # Python uses "call" for function calls
             if n.type == "call":
@@ -104,12 +104,12 @@ class PythonMetadataExtractor(BaseMetadataExtractor):
                 if not func_node:
                     # Simple function call
                     func_node = n.children[0] if n.children else None
-                
+
                 if func_node:
                     call_info = self._extract_python_call_info(n, func_node, source)
                     if call_info:
                         calls.append(call_info)
-            
+
             # Handle decorator calls
             elif n.type == "decorator":
                 # Decorator can be a simple @name or @name()
@@ -117,19 +117,28 @@ class PythonMetadataExtractor(BaseMetadataExtractor):
                     if child.type == "call":
                         func_node = child.children[0] if child.children else None
                         if func_node:
-                            call_info = self._extract_python_call_info(child, func_node, source)
+                            call_info = self._extract_python_call_info(
+                                child,
+                                func_node,
+                                source,
+                            )
                             if call_info:
                                 calls.append(call_info)
-        
+
         self._walk_tree(node, collect_calls)
         return calls
-    
-    def _extract_python_call_info(self, call_node: Node, func_node: Node, source: bytes) -> dict[str, Any] | None:
+
+    def _extract_python_call_info(
+        self,
+        call_node: Node,
+        func_node: Node,
+        source: bytes,
+    ) -> dict[str, Any] | None:
         """Extract Python-specific call information."""
         if func_node.type == "identifier":
             # Simple function call
             return self._create_call_info(call_node, func_node, source)
-        elif func_node.type == "attribute":
+        if func_node.type == "attribute":
             # Method call: obj.method()
             # In Python's AST, attribute has structure: object . identifier
             # We want the identifier after the dot
@@ -137,13 +146,13 @@ class PythonMetadataExtractor(BaseMetadataExtractor):
             for child in func_node.children:
                 if child.type == "identifier":
                     identifiers.append(child)
-            
+
             # Get the last identifier (the method name)
             if identifiers:
                 attr_node = identifiers[-1]
                 func_name = self._get_node_text(attr_node, source)
                 return self._create_call_info(call_node, func_node, source, func_name)
-        
+
         return None
 
     def extract_dependencies(self, node: Node, source: bytes) -> set[str]:

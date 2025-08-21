@@ -1,6 +1,6 @@
 [project]
 name            = "treesitter-chunker"
-version = "1.0.9"
+version = "2.0.0"
 description     = "Semantic code chunker using Tree-sitter for intelligent code analysis"
 readme          = "README.md"
 requires-python = ">=3.10"
@@ -88,9 +88,11 @@ tsc = "cli.main:app"
 requires = [
     "setuptools>=61.0",
     "wheel",
-    "setuptools-scm[toml]>=6.2",
+    # "setuptools-scm[toml]>=6.2",
 ]
 build-backend = "setuptools.build_meta"
+
+
 
 [tool.setuptools.packages.find]
 where   = ["."]
@@ -105,8 +107,7 @@ chunker = [
 ]
 "*" = ["*.so", "*.dll", "*.dylib", "*.pyi"]
 
-[tool.setuptools_scm]
-write_to = "chunker/_version.py"
+
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
