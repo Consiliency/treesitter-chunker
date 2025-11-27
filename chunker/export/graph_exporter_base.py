@@ -1,14 +1,127 @@
 """Base class for graph export functionality."""
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from chunker.types import CodeChunk
 
 
+@dataclass
+class UnifiedGraphNode:
+    """Unified graph node representation for xref, exporters, and APIs.
+
+    This dataclass provides a consistent node schema across:
+    - XRef builder (chunker/graph/xref.py)
+    - GraphCut (chunker/graph/cut.py)
+    - Graph exporters
+    - HTTP API (api/server.py)
+
+    Attributes:
+        id: Unique node identifier (typically node_id or chunk_id).
+        file: Source file path.
+        lang: Programming language.
+        symbol: Symbol identifier (e.g., function/class name), may be None.
+        kind: Node type (e.g., 'function_definition', 'class_definition').
+        attrs: Additional metadata attributes.
+    """
+
+    id: str
+    file: str
+    lang: str
+    symbol: str | None
+    kind: str
+    attrs: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary format for API/export."""
+        return {
+            "id": self.id,
+            "file": self.file,
+            "lang": self.lang,
+            "symbol": self.symbol,
+            "kind": self.kind,
+            "attrs": self.attrs,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "UnifiedGraphNode":
+        """Create from dictionary format."""
+        return cls(
+            id=data.get("id", ""),
+            file=data.get("file", ""),
+            lang=data.get("lang", ""),
+            symbol=data.get("symbol"),
+            kind=data.get("kind", ""),
+            attrs=data.get("attrs", {}),
+        )
+
+    @classmethod
+    def from_chunk(cls, chunk: CodeChunk) -> "UnifiedGraphNode":
+        """Create from a CodeChunk."""
+        return cls(
+            id=chunk.node_id or chunk.chunk_id or "",
+            file=str(chunk.file_path),
+            lang=chunk.language,
+            symbol=chunk.symbol_id,
+            kind=chunk.node_type,
+            attrs=chunk.metadata or {},
+        )
+
+
+@dataclass
+class UnifiedGraphEdge:
+    """Unified graph edge representation for xref, exporters, and APIs.
+
+    This dataclass provides a consistent edge schema across:
+    - XRef builder (chunker/graph/xref.py)
+    - GraphCut (chunker/graph/cut.py)
+    - Graph exporters
+    - HTTP API (api/server.py)
+
+    Attributes:
+        src: Source node ID.
+        dst: Destination node ID.
+        type: Relationship type (e.g., 'CALLS', 'IMPORTS', 'DEFINES').
+        weight: Edge weight for scoring/ranking (default 1.0).
+    """
+
+    src: str
+    dst: str
+    type: str
+    weight: float = 1.0
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary format for API/export."""
+        return {
+            "src": self.src,
+            "dst": self.dst,
+            "type": self.type,
+            "weight": self.weight,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "UnifiedGraphEdge":
+        """Create from dictionary format."""
+        return cls(
+            src=data.get("src") or data.get("source_id", ""),
+            dst=data.get("dst") or data.get("target_id", ""),
+            type=data.get("type") or data.get("relationship_type", ""),
+            weight=float(data.get("weight", 1.0)),
+        )
+
+
 class GraphNode:
-    """Represents a node in the graph."""
+    """Represents a node in the graph.
+
+    .. deprecated::
+        This class is deprecated. For new code, use :class:`UnifiedGraphNode`
+        which provides a consistent schema across xref, GraphCut, exporters,
+        and APIs. Use :meth:`to_unified` to convert to the new format.
+
+    Note: This is the legacy GraphNode class maintained for backward compatibility.
+    """
 
     def __init__(self, chunk: CodeChunk):
         self.id = f"{chunk.file_path}:{chunk.start_line}:{chunk.end_line}"
@@ -33,9 +146,29 @@ class GraphNode:
         if chunk.metadata:
             self.properties.update(chunk.metadata)
 
+    def to_unified(self) -> UnifiedGraphNode:
+        """Convert to UnifiedGraphNode format.
+
+        Returns:
+            UnifiedGraphNode with equivalent data.
+        """
+        return UnifiedGraphNode(
+            id=self.chunk.node_id or self.chunk.chunk_id or self.id,
+            file=str(self.chunk.file_path),
+            lang=self.chunk.language,
+            symbol=self.chunk.symbol_id,
+            kind=self.chunk.node_type,
+            attrs=self.properties,
+        )
+
 
 class GraphEdge:
-    """Represents an edge between nodes in the graph."""
+    """Represents an edge between nodes in the graph.
+
+    .. deprecated::
+        This class is deprecated. For new code, use :class:`UnifiedGraphEdge`
+        which provides a consistent schema. Use :meth:`to_unified` to convert.
+    """
 
     def __init__(
         self,
@@ -48,6 +181,19 @@ class GraphEdge:
         self.target_id = target_id
         self.relationship_type = relationship_type
         self.properties = properties or {}
+
+    def to_unified(self) -> UnifiedGraphEdge:
+        """Convert to UnifiedGraphEdge format.
+
+        Returns:
+            UnifiedGraphEdge with equivalent data.
+        """
+        return UnifiedGraphEdge(
+            src=self.source_id,
+            dst=self.target_id,
+            type=self.relationship_type,
+            weight=float(self.properties.get("weight", 1.0)),
+        )
 
 
 class GraphExporterBase(ABC):

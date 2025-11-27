@@ -24,6 +24,7 @@ from chunker.contracts.download_contract import (
     DownloadProgress,
     GrammarDownloadContract,
 )
+from chunker.utils.json import safe_json_loads
 
 
 class GrammarDownloadManager(GrammarDownloadContract):
@@ -70,11 +71,15 @@ class GrammarDownloadManager(GrammarDownloadContract):
 
     def _load_metadata(self):
         """Load cache metadata"""
+        default_metadata = {"grammars": {}, "version": "1.0"}
         if self._metadata_file.exists():
-            with self._metadata_file.open() as f:
-                self._metadata = json.load(f)
+            try:
+                content = self._metadata_file.read_text(encoding="utf-8")
+                self._metadata = safe_json_loads(content, default_metadata)
+            except OSError:
+                self._metadata = default_metadata
         else:
-            self._metadata = {"grammars": {}, "version": "1.0"}
+            self._metadata = default_metadata
 
     def _save_metadata(self):
         """Save cache metadata"""

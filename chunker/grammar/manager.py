@@ -13,6 +13,7 @@ from chunker.interfaces.grammar import (
     GrammarStatus,
     NodeTypeInfo,
 )
+from chunker.utils.json import safe_json_loads
 
 from . import builder as _builder
 
@@ -359,8 +360,8 @@ class TreeSitterGrammarManager(GrammarManager):
         if not self._config_file.exists():
             return
         try:
-            with Path(self._config_file).open(encoding="utf-8") as f:
-                data = json.load(f)
+            content = Path(self._config_file).read_text(encoding="utf-8")
+            data = safe_json_loads(content, {})
             for name, info in data.items():
                 grammar = GrammarInfo(
                     name=name,
@@ -373,7 +374,7 @@ class TreeSitterGrammarManager(GrammarManager):
                 )
                 self._grammars[name] = grammar
             logger.info("Loaded %s grammars from config", len(self._grammars))
-        except (AttributeError, FileNotFoundError, IndexError) as e:
+        except (OSError, TypeError, KeyError) as e:
             logger.error("Failed to load grammar config: %s", e)
 
     def _save_config(self) -> None:

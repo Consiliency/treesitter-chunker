@@ -1,35 +1,28 @@
 """Ruby language support for chunking."""
 
-import logging
-
 from tree_sitter import Node
 
 from chunker.types import CodeChunk
+from chunker.utils.text import safe_decode
 
 from .base import LanguageChunker
-
-logger = logging.getLogger(__name__)
 
 
 class RubyChunker(LanguageChunker):
     """Chunker implementation for Ruby."""
 
     @staticmethod
-    def _safe_decode(data: bytes, errors: str = "replace") -> str:
-        """Safely decode bytes to string.
+    def _safe_decode(data: bytes | None, errors: str = "replace") -> str:
+        """Safely decode bytes to string using centralized utility.
 
         Args:
-            data: Bytes to decode.
+            data: Bytes to decode (or None).
             errors: Error handling strategy ('replace', 'ignore', 'strict').
 
         Returns:
-            str: Decoded string.
+            str: Decoded string, or empty string if data is None.
         """
-        try:
-            return data.decode("utf-8")
-        except UnicodeDecodeError:
-            logger.warning("Invalid UTF-8 sequence encountered, using replacement")
-            return data.decode("utf-8", errors=errors)
+        return safe_decode(data, errors=errors)
 
     @property
     def language_name(self) -> str:

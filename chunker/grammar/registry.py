@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -12,6 +11,7 @@ import tree_sitter
 from chunker._internal.registry import LanguageRegistry
 from chunker.contracts.registry_contract import UniversalRegistryContract
 from chunker.exceptions import LanguageNotFoundError
+from chunker.utils.json import safe_json_loads
 
 if TYPE_CHECKING:
     from chunker.contracts.discovery_contract import GrammarDiscoveryContract
@@ -56,13 +56,14 @@ class UniversalLanguageRegistry(UniversalRegistryContract):
 
     def _load_metadata(self) -> dict[str, Any]:
         """Load metadata from cache."""
+        default_metadata = {"installed": {}, "auto_downloaded": []}
         if self._metadata_path.exists():
             try:
-                with self._metadata_path.open("r", encoding="utf-8") as f:
-                    return json.load(f)
-            except (OSError, json.JSONDecodeError) as e:
+                content = self._metadata_path.read_text(encoding="utf-8")
+                return safe_json_loads(content, default_metadata)
+            except OSError as e:
                 logger.warning("Failed to load metadata: %s", e)
-        return {"installed": {}, "auto_downloaded": []}
+        return default_metadata
 
     def _save_metadata(self) -> None:
         """Save metadata to cache."""

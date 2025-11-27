@@ -12,6 +12,7 @@ from chunker.contracts.discovery_contract import (
     GrammarDiscoveryContract,
     GrammarInfo,
 )
+from chunker.utils.json import safe_json_loads
 
 logger = logging.getLogger(__name__)
 
@@ -277,9 +278,10 @@ class GrammarDiscoveryService(GrammarDiscoveryContract):
         if not self.cache_file.exists():
             return None
         try:
-            with self.cache_file.open() as f:
-                return json.load(f)
-        except (FileNotFoundError, OSError):
+            content = self.cache_file.read_text(encoding="utf-8")
+            result = safe_json_loads(content, None)
+            return result if result else None
+        except OSError:
             logger.exception("Failed to load cache")
             return None
 

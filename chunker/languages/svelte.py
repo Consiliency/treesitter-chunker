@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from chunker.types import CodeChunk
+from chunker.utils.text import safe_decode_bytes
 
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
@@ -107,17 +108,17 @@ class SveltePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
     def get_node_name(node: Node, source: bytes) -> str | None:
         """Extract the name from a Svelte node."""
         if node.type == "script_element":
-            content = source[node.start_byte : node.end_byte].decode("utf-8")
+            content = safe_decode_bytes(source[node.start_byte : node.end_byte])
             if 'context="module"' in content[:50]:
                 return "module"
             return "instance"
         if node.type == "slot_element":
             for child in node.children:
-                if child.type == "attribute" and "name=" in source[
-                    child.start_byte : child.end_byte
-                ].decode("utf-8"):
-                    attr_content = source[child.start_byte : child.end_byte].decode(
-                        "utf-8",
+                if child.type == "attribute" and "name=" in safe_decode_bytes(
+                    source[child.start_byte : child.end_byte]
+                ):
+                    attr_content = safe_decode_bytes(
+                        source[child.start_byte : child.end_byte]
                     )
                     match = re.search(r'name="([^"]+)"', attr_content)
                     if match:
@@ -125,7 +126,7 @@ class SveltePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         elif node.type == "component":
             for child in node.children:
                 if child.type == "tag_name":
-                    return source[child.start_byte : child.end_byte].decode("utf-8")
+                    return safe_decode_bytes(source[child.start_byte : child.end_byte])
         return None
 
     @staticmethod

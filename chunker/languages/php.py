@@ -7,6 +7,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
+from chunker.utils.text import safe_decode_bytes
 
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
@@ -83,9 +84,9 @@ class PHPPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         # Look for name or identifier in children
         for child in node.children:
             if child.type == "name":
-                return source[child.start_byte : child.end_byte].decode("utf-8")
+                return safe_decode_bytes(source[child.start_byte : child.end_byte])
             if child.type == "identifier":
-                return source[child.start_byte : child.end_byte].decode("utf-8")
+                return safe_decode_bytes(source[child.start_byte : child.end_byte])
         return None
 
     def get_semantic_chunks(self, node: Node, source: bytes) -> list[dict[str, any]]:

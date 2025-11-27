@@ -7,6 +7,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
+from chunker.utils.text import safe_decode_bytes
 
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
@@ -102,13 +103,13 @@ class WASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             # Look for an identifier child in the module node
             for child in node.children:
                 if child.type == "identifier":
-                    name = source[child.start_byte : child.end_byte].decode("utf-8")
+                    name = safe_decode_bytes(source[child.start_byte : child.end_byte])
                     return name.lstrip("$")
         elif node.type == "module_field_func":
             # Look for the identifier child in function
             for child in node.children:
                 if child.type == "identifier":
-                    name = source[child.start_byte : child.end_byte].decode("utf-8")
+                    name = safe_decode_bytes(source[child.start_byte : child.end_byte])
                     return name.lstrip("$")
         elif node.type in {
             "module_field_memory",
@@ -119,7 +120,7 @@ class WASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             # Look for identifier child in these module fields
             for child in node.children:
                 if child.type == "identifier":
-                    name = source[child.start_byte : child.end_byte].decode("utf-8")
+                    name = safe_decode_bytes(source[child.start_byte : child.end_byte])
                     return name.lstrip("$")
         elif node.type == "module_field_export":
             # Look for the name field which contains a string
@@ -127,9 +128,9 @@ class WASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 if child.type == "name":
                     for name_child in child.children:
                         if name_child.type == "string":
-                            name = source[
-                                name_child.start_byte : name_child.end_byte
-                            ].decode("utf-8")
+                            name = safe_decode_bytes(
+                                source[name_child.start_byte : name_child.end_byte]
+                            )
                             return name.strip('"')
         elif node.type == "module_field_import":
             # Look for name fields (module and name)
@@ -138,9 +139,9 @@ class WASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 if child.type == "name":
                     for name_child in child.children:
                         if name_child.type == "string":
-                            name = source[
-                                name_child.start_byte : name_child.end_byte
-                            ].decode("utf-8")
+                            name = safe_decode_bytes(
+                                source[name_child.start_byte : name_child.end_byte]
+                            )
                             names.append(name.strip('"'))
             if len(names) >= 2:
                 return f"{names[0]}.{names[1]}"

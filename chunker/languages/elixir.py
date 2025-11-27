@@ -7,6 +7,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
+from chunker.utils.text import safe_decode, safe_decode_bytes
 
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
@@ -122,7 +123,7 @@ class ElixirPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         fn_type_node = None
         for child in node.children:
             if child.type == "identifier":
-                fn_type = source[child.start_byte : child.end_byte].decode("utf-8")
+                fn_type = safe_decode_bytes(source[child.start_byte : child.end_byte])
                 if fn_type in {"def", "defp", "defmacro", "defmacrop"}:
                     fn_type_node = child
                     break
@@ -146,7 +147,7 @@ class ElixirPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         """Extract name from a module definition node."""
         for child in node.children:
             if child.type == "alias":
-                return source[child.start_byte : child.end_byte].decode("utf-8")
+                return safe_decode_bytes(source[child.start_byte : child.end_byte])
         return None
 
     @staticmethod
@@ -154,7 +155,7 @@ class ElixirPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         """Extract name from a spec definition node."""
         for child in node.children:
             if child.type == "identifier":
-                return source[child.start_byte : child.end_byte].decode("utf-8")
+                return safe_decode_bytes(source[child.start_byte : child.end_byte])
         return None
 
     @staticmethod
@@ -162,7 +163,7 @@ class ElixirPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         """Extract the first identifier from a node's children."""
         for child in node.children:
             if child.type == "identifier":
-                return source[child.start_byte : child.end_byte].decode("utf-8")
+                return safe_decode_bytes(source[child.start_byte : child.end_byte])
         return None
 
     def get_semantic_chunks(self, node: Node, source: bytes) -> list[dict[str, any]]:
@@ -237,7 +238,7 @@ class ElixirPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             for child in node.children:
                 if child.type == "identifier":
                     fn_type = (
-                        child.text.decode("utf-8") if hasattr(child, "text") else ""
+                        safe_decode(child.text) if hasattr(child, "text") else ""
                     )
                     if fn_type in {"def", "defp", "defmacro", "defmacrop"}:
                         return True
@@ -341,7 +342,7 @@ class ElixirPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             if child.type != "identifier":
                 continue
 
-            fn_type = source[child.start_byte : child.end_byte].decode("utf-8")
+            fn_type = safe_decode_bytes(source[child.start_byte : child.end_byte])
             if fn_type in {"def", "defp", "defmacro", "defmacrop"}:
                 return fn_type
 

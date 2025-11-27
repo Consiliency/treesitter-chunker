@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from chunker.utils.text import safe_decode_bytes
+
 from .base import LanguageConfig, language_config_registry
 from .plugin_base import LanguagePlugin
 
@@ -144,39 +146,39 @@ class TypeScriptPlugin(LanguagePlugin):
         ):
             for child in node.children:
                 if child.type == "type_identifier":
-                    return source[child.start_byte : child.end_byte].decode("utf-8")
+                    return safe_decode_bytes(source[child.start_byte : child.end_byte])
         elif node.type == "enum_declaration":
             for child in node.children:
                 if child.type == "identifier":
-                    return source[child.start_byte : child.end_byte].decode("utf-8")
+                    return safe_decode_bytes(source[child.start_byte : child.end_byte])
         elif node.type in {"internal_module", "module"}:
             # Namespace or module declaration
             for child in node.children:
                 if child.type in {"identifier", "string"}:
-                    name = source[child.start_byte : child.end_byte].decode("utf-8")
+                    name = safe_decode_bytes(source[child.start_byte : child.end_byte])
                     # Remove quotes from string module names
                     return name.strip("\"'")
         elif node.type == "abstract_class_declaration":
             for child in node.children:
                 if child.type == "type_identifier":
-                    return source[child.start_byte : child.end_byte].decode("utf-8")
+                    return safe_decode_bytes(source[child.start_byte : child.end_byte])
 
         # Handle standard JavaScript/TypeScript nodes
         for child in node.children:
             if child.type == "identifier" or child.type == "type_identifier":
-                return source[child.start_byte : child.end_byte].decode("utf-8")
+                return safe_decode_bytes(source[child.start_byte : child.end_byte])
 
         # Method definitions
         if node.type == "method_definition":
             for child in node.children:
                 if child.type == "property_identifier":
-                    return source[child.start_byte : child.end_byte].decode("utf-8")
+                    return safe_decode_bytes(source[child.start_byte : child.end_byte])
 
         # Variable declarator with function
         if node.type == "variable_declarator":
             for child in node.children:
                 if child.type == "identifier":
-                    return source[child.start_byte : child.end_byte].decode("utf-8")
+                    return safe_decode_bytes(source[child.start_byte : child.end_byte])
 
         return None
 
