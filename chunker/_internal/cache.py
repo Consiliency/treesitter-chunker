@@ -1,3 +1,19 @@
+"""Caching infrastructure for tree-sitter chunker.
+
+This module provides SQLite-based caching for parsed ASTs and code chunks,
+enabling significant performance improvements for repeated parsing operations.
+
+Classes:
+    ASTCache: Main cache implementation with integrity checking.
+
+Example:
+    cache = ASTCache(Path("~/.cache/chunker"))
+    chunks = cache.get_cached_chunks(file_path, "python")
+    if chunks is None:
+        chunks = parse_file(file_path)
+        cache.cache_chunks(file_path, "python", chunks)
+"""
+
 from __future__ import annotations
 
 import hashlib

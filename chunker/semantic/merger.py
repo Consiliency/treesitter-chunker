@@ -164,7 +164,30 @@ class TreeSitterSemanticMerger(SemanticMerger):
         self,
         chunks: list[CodeChunk],
     ) -> dict[str, list[CodeChunk]]:
-        """Build groups of chunks that should be merged together."""
+        """Build groups of chunks that should be merged together.
+
+        Groups chunks by their logical relationship (e.g., small methods
+        in the same class, related helper functions) using a union-find
+        algorithm to efficiently cluster related chunks.
+
+        Args:
+            chunks: List of chunks to analyze for merging.
+
+        Returns:
+            Dictionary mapping chunk IDs to lists of related chunks.
+            Each chunk in the input maps to its merge group. Groups
+            are sorted by start line for consistent ordering.
+
+        Example:
+            >>> merger = TreeSitterSemanticMerger()
+            >>> groups = merger._build_merge_groups(chunks)
+            >>> # groups maps each chunk_id to its merge group:
+            >>> # {
+            >>> #     "chunk_a_id": [chunk_a, chunk_b],  # merged pair
+            >>> #     "chunk_b_id": [chunk_a, chunk_b],  # same group
+            >>> #     "chunk_c_id": [chunk_c],           # standalone
+            >>> # }
+        """
         parent = {chunk.chunk_id: chunk.chunk_id for chunk in chunks}
         {chunk.chunk_id: chunk for chunk in chunks}
 

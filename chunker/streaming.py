@@ -1,3 +1,18 @@
+"""Streaming support for large file processing.
+
+This module enables processing of files larger than available memory
+by streaming chunks as they are parsed rather than loading everything.
+
+Classes:
+    StreamingChunker: Process large files using memory-mapped I/O.
+    FileMetadata: Metadata about a processed file.
+
+Functions:
+    chunk_file_streaming: Stream chunks from a file.
+    compute_file_hash: Compute SHA256 hash of a file.
+    get_file_metadata: Get metadata about a file.
+"""
+
 from __future__ import annotations
 
 import hashlib
