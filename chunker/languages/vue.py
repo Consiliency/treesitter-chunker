@@ -16,6 +16,15 @@ from .plugin_base import LanguagePlugin
 if TYPE_CHECKING:
     from tree_sitter import Node
 
+# Content preview length for detecting lang attributes in SFC templates
+CONTENT_PREVIEW_LENGTH = 50
+
+# Supported script languages
+SCRIPT_LANGUAGES = frozenset({"ts", "typescript"})
+
+# Supported style languages
+STYLE_LANGUAGES = frozenset({"scss", "sass", "less", "stylus"})
+
 
 class VueConfig(LanguageConfig):
     """Language configuration for Vue Single File Components."""
@@ -143,12 +152,11 @@ class VuePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     "section": n.type.replace("_element", ""),
                 }
                 if n.type == "script_element":
-                    if "setup" in content[:50]:
+                    preview = content[:CONTENT_PREVIEW_LENGTH]
+                    if "setup" in preview:
                         chunk["is_setup"] = True
-                    if 'lang="ts"' in content[:50] or "lang='ts'" in content[:50]:
-                        chunk["language"] = "typescript"
-                    else:
-                        chunk["language"] = "javascript"
+                    script_lang = self._detect_script_lang(content)
+                    chunk["language"] = "typescript" if script_lang else "javascript"
                     # Heuristic: raw_text script contents are not parsed into JS AST.
                     # Detect component definition directly from the script text.
                     if ("export default" in content) or ("defineComponent" in content):
@@ -171,14 +179,12 @@ class VuePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                             comp["name"] = name_match.group(1)
                         chunks.append(comp)
                 elif n.type == "style_element":
-                    if "scoped" in content[:50]:
+                    preview = content[:CONTENT_PREVIEW_LENGTH]
+                    if "scoped" in preview:
                         chunk["is_scoped"] = True
-                    if 'lang="scss"' in content[:50] or "lang='scss'" in content[:50]:
-                        chunk["preprocessor"] = "scss"
-                    elif 'lang="sass"' in content[:50] or "lang='sass'" in content[:50]:
-                        chunk["preprocessor"] = "sass"
-                    elif 'lang="less"' in content[:50] or "lang='less'" in content[:50]:
-                        chunk["preprocessor"] = "less"
+                    style_lang = self._detect_style_lang(content)
+                    if style_lang:
+                        chunk["preprocessor"] = style_lang
                 chunks.append(chunk)
                 section = n.type
             elif n.type == "export_statement" and section == "script_element":
@@ -259,17 +265,48 @@ class VuePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
     def _get_element_context(node: Node, source: bytes) -> str:
         """Get context for script/style elements based on attributes."""
         content = source[node.start_byte : node.end_byte].decode("utf-8")
+        preview = content[:CONTENT_PREVIEW_LENGTH]
 
         if node.type == "script_element":
-            if "setup" in content[:50]:
+            if "setup" in preview:
                 return "<script setup> section"
             return "<script> section"
         if node.type == "style_element":
-            if "scoped" in content[:50]:
+            if "scoped" in preview:
                 return "<style scoped> section"
             return "<style> section"
 
         return ""
+
+    def _detect_script_lang(self, content: str) -> str | None:
+        """Detect script language from SFC content.
+
+        Args:
+            content: Full file content.
+
+        Returns:
+            Detected language or None.
+        """
+        preview = content[:CONTENT_PREVIEW_LENGTH]
+        for lang in SCRIPT_LANGUAGES:
+            if f'lang="{lang}"' in preview or f"lang='{lang}'" in preview:
+                return lang
+        return None
+
+    def _detect_style_lang(self, content: str) -> str | None:
+        """Detect style language from SFC content.
+
+        Args:
+            content: Full file content.
+
+        Returns:
+            Detected language or None.
+        """
+        preview = content[:CONTENT_PREVIEW_LENGTH]
+        for lang in STYLE_LANGUAGES:
+            if f'lang="{lang}"' in preview or f"lang='{lang}'" in preview:
+                return lang
+        return None
 
     def process_node(
         self,
@@ -298,10 +335,10 @@ class VuePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             chunk = self.create_chunk(node, source, file_path, parent_context)
             if chunk:
                 content = chunk.content
+                preview = content[:CONTENT_PREVIEW_LENGTH]
                 chunk.metadata = {
-                    "is_setup": "setup" in content[:50],
-                    "uses_typescript": 'lang="ts"' in content[:50]
-                    or "lang='ts'" in content[:50],
+                    "is_setup": "setup" in preview,
+                    "uses_typescript": self._detect_script_lang(content) is not None,
                 }
                 if any(
                     api in content
@@ -313,9 +350,10 @@ class VuePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             chunk = self.create_chunk(node, source, file_path, parent_context)
             if chunk:
                 content = chunk.content
+                preview = content[:CONTENT_PREVIEW_LENGTH]
                 chunk.metadata = {
-                    "is_scoped": "scoped" in content[:50],
-                    "preprocessor": self._detect_style_preprocessor(content),
+                    "is_scoped": "scoped" in preview,
+                    "preprocessor": self._detect_style_lang(content),
                 }
                 return chunk if self.should_include_chunk(chunk) else None
         if node.type == "export_statement":
@@ -382,16 +420,3 @@ class VuePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     chunks.append(chunk)
 
         return chunks
-
-    @staticmethod
-    def _detect_style_preprocessor(content: str) -> str | None:
-        """Detect the style preprocessor from style tag attributes."""
-        if 'lang="scss"' in content[:50] or "lang='scss'" in content[:50]:
-            return "scss"
-        if 'lang="sass"' in content[:50] or "lang='sass'" in content[:50]:
-            return "sass"
-        if 'lang="less"' in content[:50] or "lang='less'" in content[:50]:
-            return "less"
-        if 'lang="stylus"' in content[:50] or "lang='stylus'" in content[:50]:
-            return "stylus"
-        return None

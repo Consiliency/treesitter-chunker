@@ -6,6 +6,14 @@ import hashlib
 from dataclasses import dataclass, field
 from typing import Any
 
+__all__ = [
+    "CodeChunk",
+    "compute_file_id",
+    "compute_node_id",
+    "compute_symbol_id",
+    "compute_text_hash16",
+]
+
 
 def compute_text_hash16(text: str) -> str:
     return hashlib.sha1(text.encode("utf-8")).hexdigest()[:16]

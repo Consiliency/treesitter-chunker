@@ -8,6 +8,11 @@ from typing import TYPE_CHECKING
 
 from .languages import language_config_registry
 
+__all__ = [
+    "chunk_file",
+    "chunk_text",
+]
+
 # Imported lazily below to avoid circular import with multi_language
 from .metadata import MetadataExtractorFactory
 from .parser import get_parser

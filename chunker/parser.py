@@ -19,7 +19,17 @@ from .grammar.manager import TreeSitterGrammarManager
 
 if TYPE_CHECKING:
     from tree_sitter import Parser
+
 logger = logging.getLogger(__name__)
+
+__all__ = [
+    "ParserConfig",
+    "clear_cache",
+    "get_language_info",
+    "get_parser",
+    "list_languages",
+    "return_parser",
+]
 
 
 class _ParserState:

@@ -2262,86 +2262,86 @@ class SystemIntegrationTester:
         """Print comprehensive test summary to console."""
         report = self.generate_comprehensive_report()
 
-        print("\n" + "=" * 80)
-        print("🧪 SYSTEM INTEGRATION TEST REPORT - PHASE 1.7")
-        print("=" * 80)
+        logger.info("\n" + "=" * 80)
+        logger.info("SYSTEM INTEGRATION TEST REPORT - PHASE 1.7")
+        logger.info("=" * 80)
 
         # Overall summary
         overall = report["overall_summary"]
-        print("\n📊 Overall Results:")
-        print(f"   • Total Test Suites: {overall['total_suites']}")
-        print(f"   • Total Tests: {overall['total_tests']}")
-        print(f"   • Success Rate: {overall['overall_success_rate']:.1f}%")
-        print(
-            f"   • Total Execution Time: {overall['total_execution_time']:.2f} seconds",
+        logger.info("\nOverall Results:")
+        logger.info("   Total Test Suites: %s", overall["total_suites"])
+        logger.info("   Total Tests: %s", overall["total_tests"])
+        logger.info("   Success Rate: %.1f%%", overall["overall_success_rate"])
+        logger.info(
+            "   Total Execution Time: %.2f seconds",
+            overall["total_execution_time"],
         )
 
         # Test status breakdown
-        print("\n📈 Test Status Breakdown:")
+        logger.info("\nTest Status Breakdown:")
         for status, count in overall["test_status_counts"].items():
-            emoji = {
-                TestStatus.PASSED: "✅",
-                TestStatus.FAILED: "❌",
-                TestStatus.ERROR: "🔥",
-                TestStatus.SKIPPED: "⏭️",
-                TestStatus.TIMEOUT: "⏰",
-            }.get(status, "❓")
-            print(f"   • {emoji} {status.title()}: {count}")
+            logger.info("   %s: %s", status.title(), count)
 
         # Component availability
-        print("\n🔧 Component Availability:")
+        logger.info("\nComponent Availability:")
         availability = report["report_metadata"]["component_availability"]
         for component, available in availability.items():
-            status = "✅" if available else "❌"
-            print(f"   • {component.replace('_', ' ').title()}: {status}")
+            status_str = "Available" if available else "Not Available"
+            logger.info("   %s: %s", component.replace("_", " ").title(), status_str)
 
         # Test suites
-        print("\n📋 Test Suite Results:")
+        logger.info("\nTest Suite Results:")
         for suite_id, suite_data in report["test_suites"].items():
-            print(
-                f"   • {suite_data['suite_name']}: {suite_data['test_counts'].get(TestStatus.PASSED, 0)}/{len(suite_data['tests'])} passed ({suite_data['success_rate']:.1f}%)",
+            logger.info(
+                "   %s: %s/%s passed (%.1f%%)",
+                suite_data["suite_name"],
+                suite_data["test_counts"].get(TestStatus.PASSED, 0),
+                len(suite_data["tests"]),
+                suite_data["success_rate"],
             )
 
         # Phase 1.8 readiness
         phase18 = report["phase_18_readiness"]
-        status_emoji = (
-            "✅"
-            if phase18["readiness_status"] == "READY"
-            else "❌" if phase18["readiness_status"] == "NOT_READY" else "⚠️"
-        )
-        print("\n🚀 Phase 1.8 Readiness:")
-        print(f"   • Status: {status_emoji} {phase18['readiness_status']}")
-        print(
-            f"   • Phase 1.8 Tests: {phase18['passed_phase18_tests']}/{phase18['total_phase18_tests']} passed ({phase18['phase18_success_rate']:.1f}%)",
+        logger.info("\nPhase 1.8 Readiness:")
+        logger.info("   Status: %s", phase18["readiness_status"])
+        logger.info(
+            "   Phase 1.8 Tests: %s/%s passed (%.1f%%)",
+            phase18["passed_phase18_tests"],
+            phase18["total_phase18_tests"],
+            phase18["phase18_success_rate"],
         )
 
         # Critical failures
         if overall["critical_failures"]:
-            print("\n🚨 Critical Failures:")
+            logger.warning("\nCritical Failures:")
             for failure in overall["critical_failures"][:5]:  # Show first 5
-                print(
-                    f"   • {failure['suite']} -> {failure['test']}: {failure['status']}",
+                logger.warning(
+                    "   %s -> %s: %s",
+                    failure["suite"],
+                    failure["test"],
+                    failure["status"],
                 )
             if len(overall["critical_failures"]) > 5:
-                print(f"   ... and {len(overall['critical_failures']) - 5} more")
+                logger.warning("   ... and %s more", len(overall["critical_failures"]) - 5)
 
         # Performance metrics
         if overall.get("performance_metrics"):
             perf = overall["performance_metrics"]
-            print("\n⚡ Performance Metrics:")
-            print(f"   • Performance Tests: {perf['total_performance_tests']}")
-            print(f"   • Avg Execution Time: {perf['avg_execution_time']:.2f}s")
-            print(
-                f"   • Performance Success Rate: {perf['performance_test_success_rate']:.1f}%",
+            logger.info("\nPerformance Metrics:")
+            logger.info("   Performance Tests: %s", perf["total_performance_tests"])
+            logger.info("   Avg Execution Time: %.2fs", perf["avg_execution_time"])
+            logger.info(
+                "   Performance Success Rate: %.1f%%",
+                perf["performance_test_success_rate"],
             )
 
         # Recommendations
         if report["recommendations"]:
-            print("\n💡 Recommendations:")
+            logger.info("\nRecommendations:")
             for i, rec in enumerate(report["recommendations"][:5], 1):
-                print(f"   {i}. {rec}")
+                logger.info("   %s. %s", i, rec)
 
-        print("=" * 80)
+        logger.info("=" * 80)
 
 
 def run_comprehensive_system_integration_tests(
@@ -2367,8 +2367,8 @@ def run_comprehensive_system_integration_tests(
     tester = SystemIntegrationTester(config)
 
     try:
-        print("🚀 Starting Comprehensive System Integration Testing")
-        print("=" * 80)
+        logger.info("Starting Comprehensive System Integration Testing")
+        logger.info("=" * 80)
 
         # Run all tests
         report = tester.run_all_system_integration_tests()
@@ -2391,16 +2391,15 @@ def run_comprehensive_system_integration_tests(
             html_path = output_dir / f"system_integration_report_{timestamp}.html"
             tester.save_report(html_path, "html")
 
-            print("\n📄 Reports saved to:")
-            print(f"   • JSON: {json_path}")
-            print(f"   • HTML: {html_path}")
+            logger.info("\nReports saved to:")
+            logger.info("   JSON: %s", json_path)
+            logger.info("   HTML: %s", html_path)
 
-        print("\n✅ Comprehensive system integration testing completed successfully!")
+        logger.info("\nComprehensive system integration testing completed successfully!")
         return tester
 
     except Exception as e:
-        logger.error(f"System integration testing failed: {e}")
-        print(f"\n❌ System integration testing failed: {e}")
+        logger.error("System integration testing failed: %s", e)
         raise
 
 

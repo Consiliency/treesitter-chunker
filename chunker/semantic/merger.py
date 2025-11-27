@@ -1,29 +1,46 @@
 """Semantic merger for intelligent chunk merging."""
 
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from chunker.interfaces.semantic import SemanticMerger
 from chunker.types import CodeChunk
 
 from .analyzer import TreeSitterRelationshipAnalyzer
 
+# Default thresholds for semantic merging
+DEFAULT_SMALL_METHOD_THRESHOLD = 10  # Lines
+DEFAULT_MAX_MERGED_SIZE = 100  # Lines
+DEFAULT_COHESION_THRESHOLD = 0.6  # 0.0 to 1.0
+
 
 @dataclass
 class MergeConfig:
-    """Configuration for semantic merging."""
+    """Configuration for semantic merging.
+
+    Attributes:
+        merge_getters_setters: Whether to merge getter/setter pairs.
+        merge_overloaded_functions: Whether to merge overloaded functions.
+        merge_small_methods: Whether to merge small related methods.
+        merge_interface_implementations: Whether to merge interface implementations.
+        small_method_threshold: Methods smaller than this are merge candidates.
+        max_merged_size: Maximum size of merged chunk in lines.
+        cohesion_threshold: Minimum semantic similarity for merging (0.0-1.0).
+        language_configs: Per-language override configurations.
+    """
 
     merge_getters_setters: bool = True
     merge_overloaded_functions: bool = True
     merge_small_methods: bool = True
     merge_interface_implementations: bool = False
-    small_method_threshold: int = 10
-    max_merged_size: int = 100
-    cohesion_threshold: float = 0.6
-    language_configs: dict[str, dict] = None
+    small_method_threshold: int = DEFAULT_SMALL_METHOD_THRESHOLD
+    max_merged_size: int = DEFAULT_MAX_MERGED_SIZE
+    cohesion_threshold: float = DEFAULT_COHESION_THRESHOLD
+    language_configs: dict[str, dict] = field(default_factory=dict)
 
     def __post_init__(self):
-        if self.language_configs is None:
+        # Set default language configs if none provided
+        if not self.language_configs:
             self.language_configs = {
                 "python": {"merge_decorators": True, "merge_property_methods": True},
                 "java": {"merge_constructors": False, "merge_overrides": True},

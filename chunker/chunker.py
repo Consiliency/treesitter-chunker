@@ -13,6 +13,13 @@ from .token.counter import TiktokenCounter
 if TYPE_CHECKING:
     from .types import CodeChunk
 
+__all__ = [
+    "TreeSitterTokenAwareChunker",
+    "chunk_file_with_token_limit",
+    "chunk_text_with_token_limit",
+    "count_chunk_tokens",
+]
+
 
 def chunk_text_with_token_limit(
     text: str,

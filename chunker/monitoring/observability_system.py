@@ -1207,7 +1207,7 @@ class LogAggregator:
             self._process_log_entry(log_entry)
         except Exception as e:
             # Don't let log processing break the application
-            print(f"Error in structlog processor: {e}")
+            self.logger.debug("Error in structlog processor: %s", e)
 
         return event_dict
 
@@ -1230,7 +1230,7 @@ class LogAggregator:
 
         except Exception as e:
             # Don't let log processing break the application
-            print(f"Error processing log entry: {e}")
+            self.logger.debug("Error processing log entry: %s", e)
 
     def add_enrichment_function(self, func: Callable[[LogEntry], None]) -> None:
         """Add a log enrichment function."""
