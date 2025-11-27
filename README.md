@@ -4,14 +4,14 @@ A high-performance semantic code chunker that leverages [Tree-sitter](https://tr
 
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Tree-sitter](https://img.shields.io/badge/tree--sitter-latest-green.svg)](https://tree-sitter.github.io/)
-[![PyPI](https://img.shields.io/badge/PyPI-2.0.0-blue.svg)](https://pypi.org/project/treesitter-chunker/)
+[![PyPI](https://img.shields.io/badge/PyPI-2.0.1-blue.svg)](https://pypi.org/project/treesitter-chunker/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
 [![Test Coverage](https://img.shields.io/badge/coverage-95%25-brightgreen.svg)]()
 [![Code Quality](https://img.shields.io/badge/quality-A-brightgreen.svg)]()
 [![Platforms](https://img.shields.io/badge/platforms-Linux%20%7C%20macOS%20%7C%20Windows-blue.svg)]()
 
-**🚀 Production Ready**: Version 2.0.0 is now available on PyPI with prebuilt wheels, no local compilation required for basic usage!
+**🚀 Production Ready**: Version 2.0.1 is now available on PyPI with prebuilt wheels, no local compilation required for basic usage!
 
 ## 🏗️ Architecture Overview
 
