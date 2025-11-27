@@ -1,14 +1,35 @@
 """Ruby language support for chunking."""
 
+import logging
+
 from tree_sitter import Node
 
 from chunker.types import CodeChunk
 
 from .base import LanguageChunker
 
+logger = logging.getLogger(__name__)
+
 
 class RubyChunker(LanguageChunker):
     """Chunker implementation for Ruby."""
+
+    @staticmethod
+    def _safe_decode(data: bytes, errors: str = "replace") -> str:
+        """Safely decode bytes to string.
+
+        Args:
+            data: Bytes to decode.
+            errors: Error handling strategy ('replace', 'ignore', 'strict').
+
+        Returns:
+            str: Decoded string.
+        """
+        try:
+            return data.decode("utf-8")
+        except UnicodeDecodeError:
+            logger.warning("Invalid UTF-8 sequence encountered, using replacement")
+            return data.decode("utf-8", errors=errors)
 
     @property
     def language_name(self) -> str:
@@ -87,19 +108,19 @@ class RubyChunker(LanguageChunker):
         if node.type == "method":
             name_node = node.child_by_field_name("name")
             if name_node:
-                info["method_name"] = name_node.text.decode("utf-8")
+                info["method_name"] = self._safe_decode(name_node.text)
             info["visibility"] = self._get_method_visibility(node)
         elif node.type == "class":
             name_node = node.child_by_field_name("name")
             if name_node:
-                info["class_name"] = name_node.text.decode("utf-8")
+                info["class_name"] = self._safe_decode(name_node.text)
             superclass_node = node.child_by_field_name("superclass")
             if superclass_node:
-                info["superclass"] = superclass_node.text.decode("utf-8")
+                info["superclass"] = self._safe_decode(superclass_node.text)
         elif node.type == "module":
             name_node = node.child_by_field_name("name")
             if name_node:
-                info["module_name"] = name_node.text.decode("utf-8")
+                info["module_name"] = self._safe_decode(name_node.text)
         elif node.type == "call":
             method_name = self._get_call_method_name(node)
             if method_name in {"attr_accessor", "attr_reader", "attr_writer"}:
@@ -136,36 +157,36 @@ class RubyChunker(LanguageChunker):
             return name_node is not None
         return node.type != "lambda"
 
-    @staticmethod
-    def _get_call_method_name(call_node: Node) -> str | None:
+    @classmethod
+    def _get_call_method_name(cls, call_node: Node) -> str | None:
         """Extract method name from a call node."""
         method_node = call_node.child_by_field_name("method")
         if method_node:
-            return method_node.text.decode("utf-8")
+            return cls._safe_decode(method_node.text)
         return None
 
-    @staticmethod
-    def _get_call_arguments(call_node: Node) -> list[str]:
+    @classmethod
+    def _get_call_arguments(cls, call_node: Node) -> list[str]:
         """Extract arguments from a call node."""
         args = []
         arguments_node = call_node.child_by_field_name("arguments")
         if arguments_node:
             args.extend(
-                child.text.decode("utf-8").strip("\"'")
+                cls._safe_decode(child.text).strip("\"'")
                 for child in arguments_node.children
                 if child.type in {"string", "symbol", "identifier"}
             )
         return args
 
-    @staticmethod
-    def _extract_attr_names(attr_call_node: Node) -> list[str]:
+    @classmethod
+    def _extract_attr_names(cls, attr_call_node: Node) -> list[str]:
         """Extract attribute names from attr_* calls."""
         names = []
         arguments_node = attr_call_node.child_by_field_name("arguments")
         if arguments_node:
             for child in arguments_node.children:
                 if child.type == "symbol":
-                    name = child.text.decode("utf-8").lstrip(":")
+                    name = cls._safe_decode(child.text).lstrip(":")
                     names.append(name)
         return names
 

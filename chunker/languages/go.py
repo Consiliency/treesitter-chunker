@@ -71,8 +71,9 @@ class GoChunker(LanguageChunker):
                 info["function_name"] = name_node.text.decode("utf-8")
             params_node = node.child_by_field_name("parameters")
             if params_node and params_node.child_count > 0:
-                first_param = params_node.children[0]
-                if first_param.type == "parameter_declaration":
+                children = getattr(params_node, "children", [])
+                first_param = children[0] if children else None
+                if first_param and first_param.type == "parameter_declaration":
                     type_node = first_param.child_by_field_name("type")
                     if type_node:
                         info["receiver_type"] = type_node.text.decode("utf-8")
@@ -122,8 +123,9 @@ class GoChunker(LanguageChunker):
         """Get the receiver type for a method."""
         params_node = node.child_by_field_name("parameters")
         if params_node and params_node.child_count > 0:
-            first_param = params_node.children[0]
-            if first_param.type == "parameter_declaration":
+            children = getattr(params_node, "children", [])
+            first_param = children[0] if children else None
+            if first_param and first_param.type == "parameter_declaration":
                 return first_param.child_by_field_name("type")
         return None
 

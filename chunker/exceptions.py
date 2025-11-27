@@ -433,7 +433,38 @@ class LibrarySymbolError(LibraryError):
         return f"{base}. Rebuild library with 'python scripts/build_lib.py' or verify grammar files."
 
 
+class CacheError(ChunkerError):
+    """Base class for cache-related errors."""
+
+
+class CacheCorruptionError(CacheError):
+    """Raised when cache data integrity check fails."""
+
+    def __init__(self, path: Path, reason: str):
+        super().__init__(
+            f"Cache corruption detected for {path}: {reason}",
+            {"path": str(path), "reason": reason},
+        )
+        self.path = path
+        self.reason = reason
+
+
+class CacheVersionError(CacheError):
+    """Raised when cache version is incompatible."""
+
+    def __init__(self, cache_version: str, expected_version: str):
+        super().__init__(
+            f"Cache version mismatch: got {cache_version}, expected {expected_version}",
+            {"cache_version": cache_version, "expected_version": expected_version},
+        )
+        self.cache_version = cache_version
+        self.expected_version = expected_version
+
+
 __all__ = [
+    "CacheCorruptionError",
+    "CacheError",
+    "CacheVersionError",
     "ChunkerError",
     "LanguageError",
     "LanguageLoadError",

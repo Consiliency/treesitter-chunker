@@ -2,10 +2,47 @@
 
 import csv
 import json
+import re
 from pathlib import Path
 from typing import Any
 
 from .database_exporter_base import DatabaseExporterBase
+
+
+def _escape_postgres_string(value: str) -> str:
+    """Safely escape a string for PostgreSQL.
+
+    Uses proper escaping to prevent SQL injection by:
+    1. Escaping single quotes by doubling them
+    2. Escaping backslashes
+    3. Handling special characters
+
+    Args:
+        value: The string to escape
+
+    Returns:
+        Safely escaped string for use in SQL
+    """
+    if value is None:
+        return "NULL"
+    # Escape backslashes first, then single quotes
+    escaped = value.replace("\\", "\\\\").replace("'", "''")
+    # Remove any null bytes which can cause issues
+    escaped = escaped.replace("\x00", "")
+    return escaped
+
+
+def _escape_postgres_identifier(identifier: str) -> str:
+    """Safely escape a PostgreSQL identifier (table/column name).
+
+    Args:
+        identifier: The identifier to escape
+
+    Returns:
+        Safely escaped identifier
+    """
+    # Remove any characters that aren't alphanumeric or underscore
+    return re.sub(r"[^\w]", "", identifier)
 
 
 class PostgresExporter(DatabaseExporterBase):
@@ -220,33 +257,49 @@ $$ LANGUAGE SQL;
         return copy_cmd, rows
 
     def get_insert_statements(self, batch_size: int = 100) -> list[str]:
-        """Generate INSERT statements with ON CONFLICT handling."""
+        """Generate INSERT statements with ON CONFLICT handling.
+
+        Uses proper string escaping to prevent SQL injection attacks.
+        For production use with untrusted data, prefer get_parameterized_statements()
+        which returns queries with placeholders for use with database drivers.
+        """
         statements = []
         for i in range(0, len(self.chunks), batch_size):
             batch = self.chunks[i : i + batch_size]
             values_parts = []
             for chunk in batch:
                 chunk_data = self._get_chunk_data(chunk)
-                content_escaped = chunk_data["content"].replace("'", "''")
+                # Use safe escaping function instead of simple replace
+                content_escaped = _escape_postgres_string(chunk_data["content"])
+                id_escaped = _escape_postgres_string(chunk_data["id"])
+                file_path_escaped = _escape_postgres_string(chunk_data["file_path"])
                 metadata_json = (
-                    json.dumps(
-                        chunk_data["metadata"],
-                    )
+                    json.dumps(chunk_data["metadata"])
                     if chunk_data["metadata"]
                     else "{}"
                 )
-                metadata_escaped = metadata_json.replace("'", "''")
+                metadata_escaped = _escape_postgres_string(metadata_json)
+                chunk_type_escaped = (
+                    f"'{_escape_postgres_string(chunk_data['chunk_type'])}'"
+                    if chunk_data["chunk_type"]
+                    else "NULL"
+                )
+                language_escaped = (
+                    f"'{_escape_postgres_string(chunk_data['language'])}'"
+                    if chunk_data["language"]
+                    else "NULL"
+                )
                 values_parts.append(
                     f"""(
-                    '{chunk_data['id']}',
-                    '{chunk_data['file_path']}',
+                    '{id_escaped}',
+                    '{file_path_escaped}',
                     {chunk_data['start_line']},
                     {chunk_data['end_line']},
                     {chunk_data['start_byte'] if chunk_data['start_byte'] is not None else 'NULL'},
                     {chunk_data['end_byte'] if chunk_data['end_byte'] is not None else 'NULL'},
                     '{content_escaped}',
-                    {f"'{chunk_data['chunk_type']}'" if chunk_data['chunk_type'] else 'NULL'},
-                    {f"'{chunk_data['language']}'" if chunk_data['language'] else 'NULL'},
+                    {chunk_type_escaped},
+                    {language_escaped},
                     '{metadata_escaped}'::jsonb
                 )""",
                 )
@@ -262,7 +315,7 @@ ON CONFLICT (id) DO UPDATE SET
     content = EXCLUDED.content,
     chunk_type = EXCLUDED.chunk_type,
     language = EXCLUDED.language,
-    metadata = EXCLUDED.metadata;"""  # - TODO: Refactor to use parameterized queries
+    metadata = EXCLUDED.metadata;"""
             statements.append(statement)
         if self.relationships:
             for i in range(0, len(self.relationships), batch_size):
@@ -272,12 +325,16 @@ ON CONFLICT (id) DO UPDATE SET
                     props_json = (
                         json.dumps(rel["properties"]) if rel["properties"] else "{}"
                     )
-                    props_escaped = props_json.replace("'", "''")
+                    # Use safe escaping for all string values
+                    source_escaped = _escape_postgres_string(rel["source_id"])
+                    target_escaped = _escape_postgres_string(rel["target_id"])
+                    rel_type_escaped = _escape_postgres_string(rel["relationship_type"])
+                    props_escaped = _escape_postgres_string(props_json)
                     values_parts.append(
                         f"""(
-                        '{rel['source_id']}',
-                        '{rel['target_id']}',
-                        '{rel['relationship_type']}',
+                        '{source_escaped}',
+                        '{target_escaped}',
+                        '{rel_type_escaped}',
                         '{props_escaped}'::jsonb
                     )""",
                     )
@@ -285,13 +342,119 @@ ON CONFLICT (id) DO UPDATE SET
 INSERT INTO relationships (source_id, target_id, relationship_type, properties)
 VALUES {','.join(values_parts)}
 ON CONFLICT (source_id, target_id, relationship_type) DO UPDATE SET
-    properties = EXCLUDED.properties;"""  # - TODO: Refactor to use parameterized queries
+    properties = EXCLUDED.properties;"""
                 statements.append(statement)
         statements.append("REFRESH MATERIALIZED VIEW CONCURRENTLY file_stats;")
         statements.append(
             "REFRESH MATERIALIZED VIEW CONCURRENTLY chunk_graph;",
         )
         return statements
+
+    def get_parameterized_statements(
+        self,
+        batch_size: int = 100,
+    ) -> list[tuple[str, list[tuple[Any, ...]]]]:
+        """Generate parameterized INSERT statements for safe database operations.
+
+        Returns queries with $1, $2, etc. placeholders and corresponding parameter
+        tuples for use with database drivers like psycopg2/asyncpg.
+
+        This is the recommended approach for production use with untrusted data
+        as it completely prevents SQL injection attacks.
+
+        Args:
+            batch_size: Number of rows per INSERT statement
+
+        Returns:
+            List of (query_template, params_list) tuples where params_list
+            contains tuples of values for each row.
+        """
+        results = []
+
+        # Generate chunk inserts
+        for i in range(0, len(self.chunks), batch_size):
+            batch = self.chunks[i : i + batch_size]
+            params_list = []
+
+            for chunk in batch:
+                chunk_data = self._get_chunk_data(chunk)
+                metadata_json = (
+                    json.dumps(chunk_data["metadata"])
+                    if chunk_data["metadata"]
+                    else "{}"
+                )
+                params_list.append((
+                    chunk_data["id"],
+                    chunk_data["file_path"],
+                    chunk_data["start_line"],
+                    chunk_data["end_line"],
+                    chunk_data["start_byte"],
+                    chunk_data["end_byte"],
+                    chunk_data["content"],
+                    chunk_data["chunk_type"],
+                    chunk_data["language"],
+                    metadata_json,
+                ))
+
+            # Build parameterized query with numbered placeholders
+            placeholders = []
+            for idx in range(len(batch)):
+                base = idx * 10
+                placeholders.append(
+                    f"(${base + 1}, ${base + 2}, ${base + 3}, ${base + 4}, "
+                    f"${base + 5}, ${base + 6}, ${base + 7}, ${base + 8}, "
+                    f"${base + 9}, ${base + 10}::jsonb)"
+                )
+
+            query = f"""
+INSERT INTO chunks (id, file_path, start_line, end_line, start_byte, end_byte, content, chunk_type, language, metadata)
+VALUES {', '.join(placeholders)}
+ON CONFLICT (id) DO UPDATE SET
+    file_path = EXCLUDED.file_path,
+    start_line = EXCLUDED.start_line,
+    end_line = EXCLUDED.end_line,
+    start_byte = EXCLUDED.start_byte,
+    end_byte = EXCLUDED.end_byte,
+    content = EXCLUDED.content,
+    chunk_type = EXCLUDED.chunk_type,
+    language = EXCLUDED.language,
+    metadata = EXCLUDED.metadata;"""
+
+            results.append((query, params_list))
+
+        # Generate relationship inserts
+        if self.relationships:
+            for i in range(0, len(self.relationships), batch_size):
+                batch = self.relationships[i : i + batch_size]
+                params_list = []
+
+                for rel in batch:
+                    props_json = (
+                        json.dumps(rel["properties"]) if rel["properties"] else "{}"
+                    )
+                    params_list.append((
+                        rel["source_id"],
+                        rel["target_id"],
+                        rel["relationship_type"],
+                        props_json,
+                    ))
+
+                placeholders = []
+                for idx in range(len(batch)):
+                    base = idx * 4
+                    placeholders.append(
+                        f"(${base + 1}, ${base + 2}, ${base + 3}, ${base + 4}::jsonb)"
+                    )
+
+                query = f"""
+INSERT INTO relationships (source_id, target_id, relationship_type, properties)
+VALUES {', '.join(placeholders)}
+ON CONFLICT (source_id, target_id, relationship_type) DO UPDATE SET
+    properties = EXCLUDED.properties;"""
+
+                results.append((query, params_list))
+
+        return results
 
     def export(self, output_path: Path, format: str = "sql", **options) -> None:
         """Export to PostgreSQL fmt.

@@ -6,12 +6,22 @@ language-specific chunking configurations.
 
 from __future__ import annotations
 
+import importlib
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+__all__ = [
+    "ChunkRule",
+    "CompositeLanguageConfig",
+    "LanguageChunker",
+    "LanguageConfig",
+    "LanguageConfigRegistry",
+    "PluginConfig",
+]
 
 
 @dataclass
@@ -521,10 +531,7 @@ class LanguageConfigRegistry:
                 class_name = f"{language_id.capitalize()}Config"
                 aliases = []
 
-            module = __import__(
-                f"{__package__}.{module_name}",
-                fromlist=[class_name],
-            )
+            module = importlib.import_module(f"{__package__}.{module_name}")
             config_cls = getattr(module, class_name, None)
             if not config_cls:
                 return

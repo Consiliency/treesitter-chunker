@@ -211,7 +211,7 @@ def extract_stack_trace_info(exc_info: tuple) -> dict[str, Any]:
                             if len(str_value) > 100:
                                 str_value = str_value[:100] + "..."
                             frame_info["locals"][name] = str_value
-                        except:
+                        except (TypeError, ValueError, AttributeError, RecursionError):
                             frame_info["locals"][name] = "<unrepresentable>"
 
                 stack_info["stack_frames"].append(frame_info)

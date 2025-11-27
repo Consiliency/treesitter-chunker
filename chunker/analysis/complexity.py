@@ -1,10 +1,13 @@
 """Complexity analysis for AST nodes."""
 
+import logging
 from typing import Any
 
 from tree_sitter import Node
 
 from chunker.interfaces.base import ASTProcessor
+
+logger = logging.getLogger(__name__)
 
 
 class ComplexityAnalyzer(ASTProcessor):
@@ -195,22 +198,39 @@ class ComplexityAnalyzer(ASTProcessor):
         return node_type in nesting_nodes
 
     @staticmethod
-    def _extract_function_name(call_node: Node) -> str:
+    def _safe_decode(data: bytes, errors: str = "replace") -> str:
+        """Safely decode bytes to string.
+
+        Args:
+            data: Bytes to decode.
+            errors: Error handling strategy ('replace', 'ignore', 'strict').
+
+        Returns:
+            str: Decoded string.
+        """
+        try:
+            return data.decode("utf-8")
+        except UnicodeDecodeError:
+            logger.warning("Invalid UTF-8 sequence encountered, using replacement")
+            return data.decode("utf-8", errors=errors)
+
+    @classmethod
+    def _extract_function_name(cls, call_node: Node) -> str:
         """Extract function name from a call node."""
         if not call_node.children:
             return ""
         func_node = call_node.children[0]
         if func_node.type == "identifier":
-            return func_node.text.decode()
+            return cls._safe_decode(func_node.text)
         if func_node.type == "attribute":
             parts = [
-                child.text.decode()
+                cls._safe_decode(child.text)
                 for child in func_node.children
                 if child.type in {"identifier", "attribute"}
             ]
             return ".".join(parts)
         if func_node.type == "member_expression":
-            return func_node.text.decode()
+            return cls._safe_decode(func_node.text)
         return ""
 
     @staticmethod

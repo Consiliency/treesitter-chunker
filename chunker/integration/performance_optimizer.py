@@ -1059,7 +1059,19 @@ class ConcurrencyOptimizer:
 
 
 class IOOptimizer:
-    """I/O optimization with batch operations and connection pooling."""
+    """I/O optimization with batch operations and connection pooling.
+
+    Supports context manager protocol for safe resource management.
+
+    Example:
+        with IOOptimizer(config) as optimizer:
+            optimizer.batch_read(...)
+
+    Can also be used directly:
+        optimizer = IOOptimizer(config)
+        optimizer.batch_read(...)
+        optimizer.close()  # or optimizer.shutdown()
+    """
 
     def __init__(self, config: dict[str, Any] | None = None):
         self.config = config or {}
@@ -1080,6 +1092,7 @@ class IOOptimizer:
 
         # Connection pools
         self.db_pool: Queue = Queue()
+        self._db_conn: sqlite3.Connection | None = None  # Single persistent connection
         self.file_handles: dict[str, Any] = {}
         self.handle_lock = RLock()
 
@@ -1094,6 +1107,37 @@ class IOOptimizer:
         # Background processing
         self.shutdown_event = Event()
         self._start_batch_processors()
+
+    def __enter__(self) -> "IOOptimizer":
+        """Enter context manager."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Exit context manager, close all resources."""
+        self.close()
+
+    def _get_persistent_connection(self) -> sqlite3.Connection:
+        """Get or create persistent in-memory database connection.
+
+        Returns:
+            sqlite3.Connection: Thread-safe connection.
+        """
+        if self._db_conn is None:
+            self._db_conn = sqlite3.connect(":memory:", check_same_thread=False)
+        return self._db_conn
+
+    def close(self) -> None:
+        """Close all resources. Alias for shutdown()."""
+        self.shutdown()
+
+    def __del__(self):
+        """Destructor to ensure connection cleanup."""
+        try:
+            if self._db_conn:
+                self._db_conn.close()
+                self._db_conn = None
+        except Exception:
+            pass  # Ignore errors during destructor
 
     def batch_read(
         self,
@@ -1409,7 +1453,15 @@ class IOOptimizer:
                     self.logger.warning(f"Error closing file handle: {e}")
             self.file_handles.clear()
 
-        # Close database connections
+        # Close persistent database connection
+        if self._db_conn:
+            try:
+                self._db_conn.close()
+            except Exception as e:
+                self.logger.warning(f"Error closing persistent db connection: {e}")
+            self._db_conn = None
+
+        # Close pooled database connections
         while not self.db_pool.empty():
             try:
                 conn = self.db_pool.get_nowait()

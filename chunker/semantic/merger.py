@@ -1,29 +1,46 @@
 """Semantic merger for intelligent chunk merging."""
 
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from chunker.interfaces.semantic import SemanticMerger
 from chunker.types import CodeChunk
 
 from .analyzer import TreeSitterRelationshipAnalyzer
 
+# Default thresholds for semantic merging
+DEFAULT_SMALL_METHOD_THRESHOLD = 10  # Lines
+DEFAULT_MAX_MERGED_SIZE = 100  # Lines
+DEFAULT_COHESION_THRESHOLD = 0.6  # 0.0 to 1.0
+
 
 @dataclass
 class MergeConfig:
-    """Configuration for semantic merging."""
+    """Configuration for semantic merging.
+
+    Attributes:
+        merge_getters_setters: Whether to merge getter/setter pairs.
+        merge_overloaded_functions: Whether to merge overloaded functions.
+        merge_small_methods: Whether to merge small related methods.
+        merge_interface_implementations: Whether to merge interface implementations.
+        small_method_threshold: Methods smaller than this are merge candidates.
+        max_merged_size: Maximum size of merged chunk in lines.
+        cohesion_threshold: Minimum semantic similarity for merging (0.0-1.0).
+        language_configs: Per-language override configurations.
+    """
 
     merge_getters_setters: bool = True
     merge_overloaded_functions: bool = True
     merge_small_methods: bool = True
     merge_interface_implementations: bool = False
-    small_method_threshold: int = 10
-    max_merged_size: int = 100
-    cohesion_threshold: float = 0.6
-    language_configs: dict[str, dict] = None
+    small_method_threshold: int = DEFAULT_SMALL_METHOD_THRESHOLD
+    max_merged_size: int = DEFAULT_MAX_MERGED_SIZE
+    cohesion_threshold: float = DEFAULT_COHESION_THRESHOLD
+    language_configs: dict[str, dict] = field(default_factory=dict)
 
     def __post_init__(self):
-        if self.language_configs is None:
+        # Set default language configs if none provided
+        if not self.language_configs:
             self.language_configs = {
                 "python": {"merge_decorators": True, "merge_property_methods": True},
                 "java": {"merge_constructors": False, "merge_overrides": True},
@@ -147,7 +164,30 @@ class TreeSitterSemanticMerger(SemanticMerger):
         self,
         chunks: list[CodeChunk],
     ) -> dict[str, list[CodeChunk]]:
-        """Build groups of chunks that should be merged together."""
+        """Build groups of chunks that should be merged together.
+
+        Groups chunks by their logical relationship (e.g., small methods
+        in the same class, related helper functions) using a union-find
+        algorithm to efficiently cluster related chunks.
+
+        Args:
+            chunks: List of chunks to analyze for merging.
+
+        Returns:
+            Dictionary mapping chunk IDs to lists of related chunks.
+            Each chunk in the input maps to its merge group. Groups
+            are sorted by start line for consistent ordering.
+
+        Example:
+            >>> merger = TreeSitterSemanticMerger()
+            >>> groups = merger._build_merge_groups(chunks)
+            >>> # groups maps each chunk_id to its merge group:
+            >>> # {
+            >>> #     "chunk_a_id": [chunk_a, chunk_b],  # merged pair
+            >>> #     "chunk_b_id": [chunk_a, chunk_b],  # same group
+            >>> #     "chunk_c_id": [chunk_c],           # standalone
+            >>> # }
+        """
         parent = {chunk.chunk_id: chunk.chunk_id for chunk in chunks}
         {chunk.chunk_id: chunk for chunk in chunks}
 

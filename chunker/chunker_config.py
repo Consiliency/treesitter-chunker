@@ -4,11 +4,19 @@ import json
 import logging
 import os
 import re
+import tomllib
 from pathlib import Path
 from typing import Any, ClassVar
 
-import toml
 import yaml
+
+# tomli_w is needed for writing TOML files (tomllib is read-only)
+try:
+    import tomli_w
+
+    HAS_TOMLI_W = True
+except ImportError:
+    HAS_TOMLI_W = False
 
 from .languages.base import PluginConfig
 
@@ -70,15 +78,18 @@ class ChunkerConfig:
             raise FileNotFoundError(f"Configuration file not found: {config_path}")
         ext = config_path.suffix.lower()
         try:
-            with Path(config_path).open(encoding="utf-8") as f:
-                if ext == ".toml":
-                    self.data = toml.load(f)
-                elif ext in {".yaml", ".yml"}:
+            if ext == ".toml":
+                # tomllib requires binary mode
+                with Path(config_path).open("rb") as f:
+                    self.data = tomllib.load(f)
+            elif ext in {".yaml", ".yml"}:
+                with Path(config_path).open(encoding="utf-8") as f:
                     self.data = yaml.safe_load(f) or {}
-                elif ext == ".json":
+            elif ext == ".json":
+                with Path(config_path).open(encoding="utf-8") as f:
                     self.data = json.load(f)
-                else:
-                    raise ValueError(f"Unsupported config format: {ext}")
+            else:
+                raise ValueError(f"Unsupported config format: {ext}")
             self.config_path = config_path
             if self.use_env_vars:
                 self.data = self._expand_env_vars(self.data)
@@ -91,7 +102,11 @@ class ChunkerConfig:
             raise
 
     def save(self, config_path: Path | None = None) -> None:
-        """Save configuration to file."""
+        """Save configuration to file.
+
+        Note: For TOML output, requires the optional 'tomli-w' package.
+        Install with: pip install tomli-w
+        """
         if not config_path:
             config_path = self.config_path
         if not config_path:
@@ -100,15 +115,22 @@ class ChunkerConfig:
         ext = config_path.suffix.lower()
         save_data = self._prepare_save_data()
         try:
-            with Path(config_path).open("w", encoding="utf-8") as f:
-                if ext == ".toml":
-                    toml.dump(save_data, f)
-                elif ext in {".yaml", ".yml"}:
+            if ext == ".toml":
+                if not HAS_TOMLI_W:
+                    raise ImportError(
+                        "Writing TOML files requires 'tomli-w'. "
+                        "Install with: pip install tomli-w"
+                    )
+                with Path(config_path).open("wb") as f:
+                    tomli_w.dump(save_data, f)
+            elif ext in {".yaml", ".yml"}:
+                with Path(config_path).open("w", encoding="utf-8") as f:
                     yaml.safe_dump(save_data, f, default_flow_style=False)
-                elif ext == ".json":
+            elif ext == ".json":
+                with Path(config_path).open("w", encoding="utf-8") as f:
                     json.dump(save_data, f, indent=2)
-                else:
-                    raise ValueError(f"Unsupported config format: {ext}")
+            else:
+                raise ValueError(f"Unsupported config format: {ext}")
             logger.info("Saved configuration to: %s", config_path)
         except (AttributeError, FileNotFoundError, KeyError) as e:
             logger.error("Failed to save config to %s: %s", config_path, e)

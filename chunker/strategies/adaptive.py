@@ -1,4 +1,12 @@
-"""Adaptive chunking strategy that adjusts chunk size based on complexity."""
+"""Adaptive chunking strategies.
+
+This module provides chunking strategies that adapt based on file size,
+complexity, and content type to optimize chunk quality and performance.
+
+Classes:
+    AdaptiveMetrics: Metrics used for adaptive chunking decisions.
+    AdaptiveChunker: Main adaptive chunking implementation.
+"""
 
 from dataclasses import dataclass
 from typing import Any

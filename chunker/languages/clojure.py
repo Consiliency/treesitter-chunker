@@ -131,8 +131,10 @@ class ClojurePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                                 name_child.start_byte : name_child.end_byte
                             ].decode("utf-8")
         elif node.type == "ns_form":
-            for child in node.children:
-                if child.type == "sym_lit" and child != node.children[0]:
+            children = list(node.children)
+            first_child = children[0] if children else None
+            for child in children:
+                if child.type == "sym_lit" and child != first_child:
                     return source[child.start_byte : child.end_byte].decode("utf-8")
         return None
 

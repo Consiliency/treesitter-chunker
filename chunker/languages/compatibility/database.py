@@ -4,9 +4,10 @@ import json
 import logging
 import shutil
 import sqlite3
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 from .grammar_analyzer import GrammarAnalyzer
 from .schema import (
@@ -22,7 +23,19 @@ logger = logging.getLogger(__name__)
 
 
 class CompatibilityDatabase:
-    """Main database class for managing compatibility information."""
+    """Main database class for managing compatibility information.
+
+    Supports context manager protocol for safe resource management.
+
+    Example:
+        with CompatibilityDatabase(path) as db:
+            db.query(...)
+
+    Can also be used directly (backward compatible):
+        db = CompatibilityDatabase(path)
+        db.query(...)
+        del db  # connection closed in __del__
+    """
 
     def __init__(self, db_path: Path | None = None):
         """Initialize the compatibility database.
@@ -33,15 +46,74 @@ class CompatibilityDatabase:
         self.db_path = Path(db_path) if db_path else Path("compatibility.db")
         self.schema = CompatibilitySchema()
         self.grammar_analyzer = None
-        self.conn = None
+        self._conn: sqlite3.Connection | None = None
+        self._in_context_manager = False
         self._init_database()
         logger.debug(f"Initialized CompatibilityDatabase at {self.db_path}")
+
+    def __enter__(self) -> "CompatibilityDatabase":
+        """Enter context manager, ensure connection is open."""
+        self._in_context_manager = True
+        if self._conn is None:
+            self._conn = sqlite3.connect(str(self.db_path))
+            self._conn.row_factory = sqlite3.Row
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Exit context manager, close connection."""
+        self._in_context_manager = False
+        if self._conn:
+            self._conn.close()
+            self._conn = None
+
+    @property
+    def conn(self) -> sqlite3.Connection:
+        """Get active connection.
+
+        Returns:
+            sqlite3.Connection: The active database connection.
+
+        Raises:
+            RuntimeError: If connection is not available.
+        """
+        if self._conn is None:
+            raise RuntimeError(
+                "Database connection not available. "
+                "Use context manager: with CompatibilityDatabase(path) as db: ..."
+            )
+        return self._conn
+
+    @conn.setter
+    def conn(self, value: sqlite3.Connection | None) -> None:
+        """Set the connection (for backward compatibility)."""
+        self._conn = value
+
+    @contextmanager
+    def transaction(self) -> Iterator[sqlite3.Cursor]:
+        """Create a transaction with automatic commit/rollback.
+
+        Yields:
+            sqlite3.Cursor: Cursor for executing queries.
+
+        Example:
+            with db.transaction() as cursor:
+                cursor.execute("INSERT INTO ...")
+        """
+        cursor = self.conn.cursor()
+        try:
+            yield cursor
+            self.conn.commit()
+        except Exception:
+            self.conn.rollback()
+            raise
+        finally:
+            cursor.close()
 
     def _init_database(self) -> None:
         """Initialize the database and create tables."""
         try:
-            self.conn = sqlite3.connect(str(self.db_path))
-            self.conn.row_factory = sqlite3.Row
+            self._conn = sqlite3.connect(str(self.db_path))
+            self._conn.row_factory = sqlite3.Row
             self._create_tables()
             logger.info("Database initialized successfully")
         except Exception as e:
@@ -771,15 +843,15 @@ class CompatibilityDatabase:
             backup_path = Path(backup_path)
 
             # Close current connection
-            if self.conn:
-                self.conn.close()
+            if self._conn:
+                self._conn.close()
 
             # Copy database file
             shutil.copy2(self.db_path, backup_path)
 
             # Reopen connection
-            self.conn = sqlite3.connect(str(self.db_path))
-            self.conn.row_factory = sqlite3.Row
+            self._conn = sqlite3.connect(str(self.db_path))
+            self._conn.row_factory = sqlite3.Row
 
             logger.info(f"Database backed up to {backup_path}")
 
@@ -800,15 +872,15 @@ class CompatibilityDatabase:
                 raise FileNotFoundError(f"Backup file not found: {backup_path}")
 
             # Close current connection
-            if self.conn:
-                self.conn.close()
+            if self._conn:
+                self._conn.close()
 
             # Copy backup to database location
             shutil.copy2(backup_path, self.db_path)
 
             # Reopen connection
-            self.conn = sqlite3.connect(str(self.db_path))
-            self.conn.row_factory = sqlite3.Row
+            self._conn = sqlite3.connect(str(self.db_path))
+            self._conn.row_factory = sqlite3.Row
 
             # Reinitialize schema
             self.schema = CompatibilitySchema()
@@ -819,10 +891,15 @@ class CompatibilityDatabase:
             logger.error(f"Error restoring database: {e}")
             raise
 
+    def close(self) -> None:
+        """Close database connection and release resources."""
+        if self._conn:
+            self._conn.close()
+            self._conn = None
+
     def __del__(self):
         """Clean up database connection."""
-        if self.conn:
-            self.conn.close()
+        self.close()
 
 
 class DatabaseManager:

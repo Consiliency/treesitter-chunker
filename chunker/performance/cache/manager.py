@@ -10,16 +10,22 @@ from .multi_level import MultiLevelCache
 
 logger = logging.getLogger(__name__)
 
+# Default cache sizes
+DEFAULT_AST_CACHE_SIZE = 100
+DEFAULT_CHUNK_CACHE_SIZE = 1000
+DEFAULT_QUERY_CACHE_SIZE = 500
+DEFAULT_METADATA_CACHE_SIZE = 500
+
 
 class CacheManager(CacheManagerInterface):
     """Implementation of CacheManager interface with multi-level caching."""
 
     def __init__(
         self,
-        ast_size: int = 100,
-        chunk_size: int = 1000,
-        query_size: int = 500,
-        metadata_size: int = 500,
+        ast_size: int = DEFAULT_AST_CACHE_SIZE,
+        chunk_size: int = DEFAULT_CHUNK_CACHE_SIZE,
+        query_size: int = DEFAULT_QUERY_CACHE_SIZE,
+        metadata_size: int = DEFAULT_METADATA_CACHE_SIZE,
     ):
         """Initialize cache manager.
 
