@@ -3,7 +3,7 @@ name            = "treesitter-chunker"
 version = "2.0.0"
 description     = "Semantic code chunker using Tree-sitter for intelligent code analysis"
 readme          = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license         = { text = "MIT" }
 authors         = [{ name = "Consiliency", email = "dev@consiliency.com" }]
 maintainers     = [{ name = "Consiliency", email = "dev@consiliency.com" }]
@@ -18,9 +18,9 @@ classifiers     = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Operating System :: OS Independent",
     "Operating System :: POSIX :: Linux",
     "Operating System :: MacOS :: MacOS X",
@@ -33,7 +33,6 @@ dependencies = [
     "rich",
     "typer",
     "pyarrow>=11.0.0",
-    "toml",
     "pyyaml",
     "pygments",
     "chardet",
@@ -42,6 +41,7 @@ dependencies = [
     "pathspec>=0.11.0",
     "tqdm>=4.65.0",
     "tiktoken>=0.5.0",
+    "tomli-w>=1.0.0",  # For writing TOML files (tomllib is read-only in stdlib)
 ]
 
 [project.optional-dependencies]
@@ -59,7 +59,6 @@ dev = [
     "bandit[toml]>=1.7.8",
     "types-setuptools",
     "types-pyyaml",
-    "types-toml",
     "build",
     "wheel",
     "twine",
@@ -152,7 +151,7 @@ exclude_lines = [
 
 [tool.black]
 line-length = 88
-target-version = ['py310', 'py311', 'py312']
+target-version = ['py311', 'py312', 'py313']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -385,7 +384,7 @@ skips = ["B101", "B601", "B602", "B603", "B607"]
 
 [tool.cibuildwheel]
 # Build for multiple platforms
-build = ["cp310-*", "cp311-*", "cp312-*"]
+build = ["cp311-*", "cp312-*", "cp313-*"]
 skip = ["*-musllinux_i686", "*-win32", "pp*"]
 
 # Platform-specific build settings

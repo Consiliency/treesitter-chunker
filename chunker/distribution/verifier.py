@@ -186,10 +186,17 @@ with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
                     check=False,
                 )
                 details["installation_output"] = install_result.stdout
-                test_cmd = f"conda run -n {env_name} python -c 'import chunker; print(chunker.__version__)'"
+                # Use shell=False with list form for security
                 test_result = subprocess.run(
-                    test_cmd,
-                    shell=True,
+                    [
+                        conda_cmd,
+                        "run",
+                        "-n",
+                        env_name,
+                        "python",
+                        "-c",
+                        "import chunker; print(chunker.__version__)",
+                    ],
                     capture_output=True,
                     text=True,
                     check=False,

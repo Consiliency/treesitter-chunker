@@ -296,11 +296,16 @@ class IntegrationTester:
         return results
 
     def _test_invalid_language_error(self) -> bool:
-        """Test handling of invalid language."""
+        """Test handling of invalid language.
+
+        Returns:
+            bool: True if error was handled gracefully, False otherwise.
+        """
         try:
             result = self.grammar_manager.install_grammar("nonexistent_language")
             return not result  # Should fail gracefully
-        except:
+        except (ValueError, KeyError, RuntimeError) as e:
+            logger.debug("Expected error during invalid language test: %s", e)
             return True  # Exception handling is recovery
 
     def _test_corrupt_grammar_error(self) -> bool:
@@ -313,13 +318,18 @@ class IntegrationTester:
             validator = GrammarValidator()
             result = validator.validate_integrity(corrupt_file)
             return not result.get("valid", False)
-        except:
+        except (OSError, ValueError) as e:
+            logger.debug("Expected error during corrupt grammar test: %s", e)
             return True
         finally:
             corrupt_file.unlink(missing_ok=True)
 
     def _test_network_failure_error(self) -> bool:
-        """Test handling of network failures."""
+        """Test handling of network failures.
+
+        Returns:
+            bool: True if error was handled gracefully, False otherwise.
+        """
         # Simulate network failure by using invalid URL
         try:
             installer = GrammarInstaller(self.grammar_dir)
@@ -329,7 +339,8 @@ class IntegrationTester:
                 "https://invalid.url.test",
             )
             return False  # Should not succeed
-        except:
+        except (OSError, TimeoutError, ConnectionError) as e:
+            logger.debug("Expected error during network failure test: %s", e)
             return True  # Should handle gracefully
 
     def _test_disk_full_error(self) -> bool:
@@ -339,7 +350,8 @@ class IntegrationTester:
         try:
             self.cache_manager.cleanup_cache()
             return True
-        except:
+        except OSError as e:
+            logger.debug("Error during disk full test: %s", e)
             return False
 
     def _test_permission_denied_error(self) -> bool:
@@ -352,7 +364,8 @@ class IntegrationTester:
         try:
             dm = DirectoryManager(readonly_dir)
             return False  # Should not succeed
-        except:
+        except PermissionError as e:
+            logger.debug("Expected error during permission denied test: %s", e)
             return True  # Should handle gracefully
         finally:
             readonly_dir.chmod(0o755)
@@ -455,7 +468,8 @@ class CLIValidator:
         try:
             self.cli.list_grammars(format="table")
             return True
-        except:
+        except Exception as e:
+            logger.debug("Error in list command test: %s", e)
             return False
 
     def _test_info_command(self) -> bool:
@@ -463,7 +477,8 @@ class CLIValidator:
         try:
             self.cli.show_grammar_info("python", detailed=False)
             return True
-        except:
+        except Exception as e:
+            logger.debug("Error in info command test: %s", e)
             return False
 
     def _test_versions_command(self) -> bool:
@@ -471,7 +486,8 @@ class CLIValidator:
         try:
             self.cli.list_versions("python")
             return True
-        except:
+        except Exception as e:
+            logger.debug("Error in versions command test: %s", e)
             return False
 
     def _test_fetch_command(self) -> bool:
@@ -490,7 +506,8 @@ class CLIValidator:
             # Test with dry run
             self.cli.remove_grammar("python", force=True)
             return True
-        except:
+        except Exception as e:
+            logger.debug("Error in remove command test: %s", e)
             return False
 
     def _test_test_command(self) -> bool:
@@ -503,7 +520,8 @@ class CLIValidator:
         try:
             self.cli.validate_grammar("python")
             return True
-        except:
+        except Exception as e:
+            logger.debug("Error in validate command test: %s", e)
             return False
 
     def test_user_experience(self) -> dict[str, Any]:
@@ -555,8 +573,8 @@ class CLIValidator:
             try:
                 self.cli.list_grammars(format=fmt)
                 formats_working += 1
-            except:
-                pass
+            except Exception as e:
+                logger.debug("Output format %s failed: %s", fmt, e)
 
         return formats_working / 3
 
@@ -584,7 +602,8 @@ class CLIValidator:
                 results["handled_gracefully"].append(case_name)
             except SystemExit:
                 results["crashed"].append(case_name)
-            except:
+            except Exception as e:
+                logger.debug("Error case %s handled gracefully: %s", case_name, e)
                 results["handled_gracefully"].append(case_name)
 
             results["error_cases"].append(case_name)
@@ -642,7 +661,8 @@ class SystemValidator:
         try:
             self.grammar_manager.discover_grammars()
             results["components"]["core"] = "healthy"
-        except:
+        except Exception as e:
+            logger.debug("Core component health check failed: %s", e)
             results["components"]["core"] = "unhealthy"
             results["status"] = "degraded"
 
@@ -651,7 +671,8 @@ class SystemValidator:
             config = UserConfig()
             config.get("grammars.default_source")
             results["components"]["config"] = "healthy"
-        except:
+        except Exception as e:
+            logger.debug("Config component health check failed: %s", e)
             results["components"]["config"] = "unhealthy"
             results["status"] = "degraded"
 
@@ -662,7 +683,8 @@ class SystemValidator:
             )
             cache.get_cache_size()
             results["components"]["cache"] = "healthy"
-        except:
+        except Exception as e:
+            logger.debug("Cache component health check failed: %s", e)
             results["components"]["cache"] = "unhealthy"
             results["status"] = "degraded"
 
@@ -670,7 +692,8 @@ class SystemValidator:
         try:
             db = CompatibilityDatabase()
             results["components"]["compatibility_db"] = "healthy"
-        except:
+        except Exception as e:
+            logger.debug("Compatibility DB health check failed: %s", e)
             results["components"]["compatibility_db"] = "unhealthy"
             results["status"] = "degraded"
 
@@ -802,8 +825,8 @@ class PerformanceBenchmark:
                     op_func()
                     duration = time.time() - start
                     times.append(duration)
-                except:
-                    pass
+                except Exception as e:
+                    logger.debug("Benchmark operation %s failed: %s", op_name, e)
 
             if times:
                 results["operations"][op_name] = {

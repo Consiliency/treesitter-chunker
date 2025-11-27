@@ -259,7 +259,7 @@ class TroubleshootingEntry:
             try:
                 stop_words = set(stopwords.words("english"))
                 words = [w for w in words if w not in stop_words and len(w) > 2]
-            except:
+            except (LookupError, OSError):
                 # Fallback if NLTK data not available
                 common_words = {
                     "the",

@@ -476,11 +476,11 @@ Summary: Tree-sitter based code chunking library""",
         cmd.extend([f"/Fe{dll_path}"] + all_c_files)
 
         try:
+            # Use shell=False for security - command is already a list
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
-                shell=True,
                 check=False,
             )
             if result.returncode == 0:
