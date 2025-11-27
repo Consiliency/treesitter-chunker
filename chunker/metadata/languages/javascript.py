@@ -250,6 +250,30 @@ class JavaScriptMetadataExtractor(BaseMetadataExtractor):
                     parameters.append(param)
         return parameters
 
+    def _safe_get_child(
+        self,
+        node: Node,
+        index: int,
+        default: Node | None = None,
+    ) -> Node | None:
+        """Safely get child node by index.
+
+        Args:
+            node: Parent node.
+            index: Child index (supports negative indexing).
+            default: Value to return if index out of bounds.
+
+        Returns:
+            Child node at index, or default if not found.
+        """
+        children = getattr(node, "children", [])
+        if not children:
+            return default
+        try:
+            return children[index]
+        except IndexError:
+            return default
+
     def _parse_parameter(
         self,
         param_node: Node,
@@ -280,12 +304,12 @@ class JavaScriptMetadataExtractor(BaseMetadataExtractor):
                 text = self._get_node_text(param_node, source)
                 if "?" in text:
                     param_info["name"] += "?"
-            for child in param_node.children:
+            for i, child in enumerate(param_node.children):
                 if child.type == "=":
-                    idx = param_node.children.index(child)
-                    if idx + 1 < len(param_node.children):
+                    next_child = self._safe_get_child(param_node, i + 1)
+                    if next_child:
                         param_info["default"] = self._get_node_text(
-                            param_node.children[idx + 1],
+                            next_child,
                             source,
                         )
         elif param_node.type == "rest_parameter":
@@ -294,9 +318,14 @@ class JavaScriptMetadataExtractor(BaseMetadataExtractor):
                 param_info["name"] = "..." + self._get_node_text(identifier, source)
         elif param_node.type in {"object_pattern", "array_pattern"}:
             param_info["name"] = self._get_node_text(param_node, source)
-        elif param_node.type == "assignment_pattern" and len(param_node.children) >= 3:
-            param_info["name"] = self._get_node_text(param_node.children[0], source)
-            param_info["default"] = self._get_node_text(param_node.children[2], source)
+        elif param_node.type == "assignment_pattern":
+            # Safe access with bounds check
+            first_child = self._safe_get_child(param_node, 0)
+            third_child = self._safe_get_child(param_node, 2)
+            if first_child:
+                param_info["name"] = self._get_node_text(first_child, source)
+            if third_child:
+                param_info["default"] = self._get_node_text(third_child, source)
         return param_info if param_info["name"] else None
 
     def _has_async_modifier(self, node: Node, source: bytes) -> bool:

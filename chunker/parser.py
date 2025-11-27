@@ -107,16 +107,25 @@ def get_parser(language: str, config: ParserConfig | None = None) -> Parser:
             )
             repo_url: str | None = None
             if sources_path.exists():
-                with sources_path.open("r", encoding="utf-8") as f:
-                    sources = json.load(f)
-                    # Handle common alias differences for repo lookup
-                    repo_alias_map = {
-                        "csharp": "csharp",
-                        "c_sharp": "csharp",
-                        "typescript": "typescript",
-                    }
-                    repo_key = repo_alias_map.get(language, language)
-                    repo_url = sources.get(repo_key)
+                try:
+                    with sources_path.open("r", encoding="utf-8") as f:
+                        sources = json.load(f)
+                except json.JSONDecodeError as e:
+                    logger.warning(
+                        "Invalid JSON in %s: %s at line %s",
+                        sources_path,
+                        e.msg,
+                        e.lineno,
+                    )
+                    sources = {}
+                # Handle common alias differences for repo lookup
+                repo_alias_map = {
+                    "csharp": "csharp",
+                    "c_sharp": "csharp",
+                    "typescript": "typescript",
+                }
+                repo_key = repo_alias_map.get(language, language)
+                repo_url = sources.get(repo_key)
             if repo_url:
                 gm = TreeSitterGrammarManager()
                 if not gm.get_grammar_info(language):
