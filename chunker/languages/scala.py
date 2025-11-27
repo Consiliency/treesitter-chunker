@@ -7,6 +7,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
+from chunker.utils.text import safe_decode_bytes
 
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
@@ -125,7 +126,7 @@ class ScalaPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         }:
             for child in node.children:
                 if child.type == "identifier":
-                    return source[child.start_byte : child.end_byte].decode("utf-8")
+                    return safe_decode_bytes(source[child.start_byte : child.end_byte])
         elif node.type in {
             "class_definition",
             "object_definition",
@@ -134,11 +135,11 @@ class ScalaPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         }:
             for child in node.children:
                 if child.type in {"identifier", "class_identifier"}:
-                    return source[child.start_byte : child.end_byte].decode("utf-8")
+                    return safe_decode_bytes(source[child.start_byte : child.end_byte])
         elif node.type == "type_definition":
             for child in node.children:
                 if child.type == "type_identifier":
-                    return source[child.start_byte : child.end_byte].decode("utf-8")
+                    return safe_decode_bytes(source[child.start_byte : child.end_byte])
         return None
 
     def get_semantic_chunks(self, node: Node, source: bytes) -> list[dict[str, any]]:
@@ -152,10 +153,7 @@ class ScalaPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 node_type = "case_class_definition"
 
             if node_type in self.default_chunk_types:
-                content = source[n.start_byte : n.end_byte].decode(
-                    "utf-8",
-                    errors="replace",
-                )
+                content = safe_decode_bytes(source[n.start_byte : n.end_byte])
                 chunk = {
                     "type": node_type,
                     "start_line": n.start_point[0] + 1,
@@ -253,7 +251,7 @@ class ScalaPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 chunk.node_type = "companion_object"
                 return chunk if self.should_include_chunk(chunk) else None
         if node.type in {"val_definition", "function_definition"}:
-            content = source[node.start_byte : node.end_byte].decode("utf-8")
+            content = safe_decode_bytes(source[node.start_byte : node.end_byte])
             if "implicit" in content[:50]:
                 chunk = self.create_chunk(node, source, file_path, parent_context)
                 if chunk:

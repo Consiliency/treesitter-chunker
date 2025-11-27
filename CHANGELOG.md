@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2025-11-27
+
+### 🔧 Pre-Production Finalization (v4 Spec)
+
+#### Internal Improvements
+- **Safe Decode Migration**: Migrated 11 language plugins to use centralized `safe_decode_bytes` utility from `chunker/utils/text.py` for consistent UTF-8 handling with graceful fallback on encoding errors
+  - Affected plugins: clojure, go, vue, zig, haskell, sql, python, cs_plugin, scala, java_plugin, elixir
+- **JSON Loading Consistency**: Migrated JSON configuration loading to use centralized `load_json_file` utility from `chunker/utils/json.py` for consistent error handling
+  - `chunker/grammar/repository.py`: Custom grammar repository loading
+  - `chunker/chunker_config.py`: ChunkerConfig JSON support
+  - `chunker/config/strategy_config.py`: StrategyConfig JSON support
+
+#### Error Handling
+- JSON parsing errors now raise `ConfigurationError` with detailed line/column information
+- Invalid UTF-8 in source files handled gracefully with replacement characters
+
+#### API Surface
+- No breaking changes to public API
+- All function signatures in `chunker/__init__.py` unchanged
+- HTTP API endpoints in `api/server.py` unchanged
+
+#### Testing
+- All existing tests pass
+- New validation tests for utility functions
+- Security tests verified (no `shell=True`, no bare `except:`)
+
+---
+
 ## [2.0.0] - 2025-08-20
 
 ### 🚀 Major Release - Production Ready with Performance Optimization

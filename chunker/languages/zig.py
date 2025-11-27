@@ -7,6 +7,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
+from chunker.utils.text import safe_decode_bytes
 
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
@@ -97,8 +98,8 @@ class ZigPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             # For test expressions, find the string literal
             for child in node.children:
                 if child.type == "string_literal":
-                    test_name = source[child.start_byte : child.end_byte].decode(
-                        "utf-8",
+                    test_name = safe_decode_bytes(
+                        source[child.start_byte : child.end_byte]
                     )
                     return test_name.strip('"')
             return None
@@ -106,7 +107,7 @@ class ZigPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         # For other nodes, find the identifier
         for child in node.children:
             if child.type == "identifier":
-                return source[child.start_byte : child.end_byte].decode("utf-8")
+                return safe_decode_bytes(source[child.start_byte : child.end_byte])
         return None
 
     def get_semantic_chunks(self, node: Node, source: bytes) -> list[dict[str, any]]:
@@ -117,10 +118,7 @@ class ZigPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         def extract_chunks(n: Node, container_name: str | None = None):
             if n.type == "function_declaration" and n not in processed_nodes:
                 processed_nodes.add(n)
-                content = source[n.start_byte : n.end_byte].decode(
-                    "utf-8",
-                    errors="replace",
-                )
+                content = safe_decode_bytes(source[n.start_byte : n.end_byte])
                 name = self.get_node_name(n, source)
                 chunk = {
                     "type": "function",
@@ -157,7 +155,7 @@ class ZigPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 container_expr = None
                 for child in n.children:
                     if child.type == "identifier":
-                        name = source[child.start_byte : child.end_byte].decode("utf-8")
+                        name = safe_decode_bytes(source[child.start_byte : child.end_byte])
                     elif child.type == "struct_expression":
                         chunk_type = "struct"
                         container_expr = child
@@ -171,10 +169,7 @@ class ZigPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                         chunk_type = "error_set"
 
                 if chunk_type and name:
-                    content = source[n.start_byte : n.end_byte].decode(
-                        "utf-8",
-                        errors="replace",
-                    )
+                    content = safe_decode_bytes(source[n.start_byte : n.end_byte])
                     chunk = {
                         "type": chunk_type,
                         "start_line": n.start_point[0] + 1,
@@ -190,10 +185,7 @@ class ZigPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                         return  # Don't recurse further to avoid double-processing
 
             elif n.type == "test_expression":
-                content = source[n.start_byte : n.end_byte].decode(
-                    "utf-8",
-                    errors="replace",
-                )
+                content = safe_decode_bytes(source[n.start_byte : n.end_byte])
                 name = self.get_node_name(n, source)
                 chunk = {
                     "type": "test",
@@ -204,10 +196,7 @@ class ZigPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 }
                 chunks.append(chunk)
             elif n.type == "comptime_block":
-                content = source[n.start_byte : n.end_byte].decode(
-                    "utf-8",
-                    errors="replace",
-                )
+                content = safe_decode_bytes(source[n.start_byte : n.end_byte])
                 chunk = {
                     "type": "comptime",
                     "start_line": n.start_point[0] + 1,
@@ -255,9 +244,9 @@ class ZigPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 # Look for identifier after 'fn'
                 if i + 1 < len(children) and children[i + 1].type == "identifier":
                     # We found a function pattern, now find the end
-                    func_name = source[
-                        children[i + 1].start_byte : children[i + 1].end_byte
-                    ].decode("utf-8")
+                    func_name = safe_decode_bytes(
+                        source[children[i + 1].start_byte : children[i + 1].end_byte]
+                    )
 
                     # Find the function body by looking for balanced braces
                     func_end_idx = self._find_function_end(children, i + 2)
@@ -265,9 +254,9 @@ class ZigPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                         # Create function chunk
                         start_node = children[fn_start_idx]
                         end_node = children[func_end_idx]
-                        content = source[
-                            start_node.start_byte : end_node.end_byte
-                        ].decode("utf-8", errors="replace")
+                        content = safe_decode_bytes(
+                            source[start_node.start_byte : end_node.end_byte]
+                        )
 
                         # Create a synthetic node ID for deduplication
                         synthetic_id = (start_node.start_byte, end_node.end_byte)

@@ -1,10 +1,11 @@
 """Tree-sitter grammar repository implementation."""
 
-import json
 import logging
 from pathlib import Path
 
+from chunker.exceptions import ConfigurationError
 from chunker.interfaces.grammar import GrammarInfo, GrammarRepository, GrammarStatus
+from chunker.utils.json import load_json_file
 
 logger = logging.getLogger(__name__)
 
@@ -304,25 +305,18 @@ class TreeSitterGrammarRepository(GrammarRepository):
         """Load custom repository definitions.
 
         Args:
-            repo_file: Path to JSON file with custom repos
+            repo_file: Path to JSON file with custom repos.
         """
         try:
-            with Path(repo_file).open(
-                "r",
-                encoding="utf-8",
-            ) as f:
-                custom_repos = json.load(f)
-
-            # Merge with existing grammars
+            custom_repos = load_json_file(repo_file)
             self._grammars.update(custom_repos)
-
-            # Rebuild extension map
             self._build_extension_map()
-
-            logger.info("Loaded %s custom grammar repositories", len(custom_repos))
-
-        except (ValueError, json.JSONDecodeError) as e:
-            logger.error("Failed to load custom repositories: %s", e)
+            logger.info(
+                "Loaded %s custom grammar repositories",
+                len(custom_repos),
+            )
+        except ConfigurationError as e:
+            logger.error("Failed to load custom repositories from %s: %s", repo_file, e)
 
 
 class _RepositoryState:

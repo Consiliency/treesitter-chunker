@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from chunker.utils.text import safe_decode_bytes
+
 from .plugin_base import LanguagePlugin
 
 if TYPE_CHECKING:
@@ -37,5 +39,5 @@ class CSharpPlugin(LanguagePlugin):
     def get_node_name(node: Node, source: bytes) -> str | None:
         for child in node.children:
             if child.type == "identifier":
-                return source[child.start_byte : child.end_byte].decode("utf-8")
+                return safe_decode_bytes(source[child.start_byte : child.end_byte])
         return None

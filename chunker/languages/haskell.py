@@ -7,6 +7,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
+from chunker.utils.text import safe_decode_bytes
 
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
@@ -101,25 +102,25 @@ class HaskellPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         if node.type in {"function", "signature"}:
             for child in node.children:
                 if child.type == "variable":
-                    return source[child.start_byte : child.end_byte].decode("utf-8")
+                    return safe_decode_bytes(source[child.start_byte : child.end_byte])
         elif node.type == "data_type" or node.type == "class":
             for child in node.children:
                 if child.type == "name":
-                    return source[child.start_byte : child.end_byte].decode("utf-8")
+                    return safe_decode_bytes(source[child.start_byte : child.end_byte])
         elif node.type == "header":
             # Extract module name from module header
             for child in node.children:
                 if child.type == "module" and hasattr(child, "children"):
                     for grandchild in child.children:
                         if grandchild.type == "module_id":
-                            return source[
-                                grandchild.start_byte : grandchild.end_byte
-                            ].decode("utf-8")
+                            return safe_decode_bytes(
+                                source[grandchild.start_byte : grandchild.end_byte]
+                            )
         elif node.type == "import":
             # Extract imported module name
             for child in node.children:
                 if child.type == "module":
-                    return source[child.start_byte : child.end_byte].decode("utf-8")
+                    return safe_decode_bytes(source[child.start_byte : child.end_byte])
         return None
 
     def get_semantic_chunks(self, node: Node, source: bytes) -> list[dict[str, any]]:
@@ -128,10 +129,7 @@ class HaskellPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
 
         def extract_chunks(n: Node, parent_context: str | None = None):
             if n.type in self.default_chunk_types:
-                content = source[n.start_byte : n.end_byte].decode(
-                    "utf-8",
-                    errors="replace",
-                )
+                content = safe_decode_bytes(source[n.start_byte : n.end_byte])
 
                 # Map node types for compatibility with tests
                 chunk_type = n.type
@@ -243,10 +241,7 @@ class HaskellPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         parent_context: str | None = None,
     ):
         """Create a CodeChunk from a node with Haskell-specific type mapping."""
-        content = source[node.start_byte : node.end_byte].decode(
-            "utf-8",
-            errors="replace",
-        )
+        content = safe_decode_bytes(source[node.start_byte : node.end_byte])
 
         # Map node types for compatibility with tests
         chunk_type = node.type
@@ -288,9 +283,8 @@ class HaskellPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 if prev_sibling and prev_sibling.type == "signature":
                     combined_start = prev_sibling.start_byte
                     combined_end = node.end_byte
-                    combined_content = source[combined_start:combined_end].decode(
-                        "utf-8",
-                        errors="replace",
+                    combined_content = safe_decode_bytes(
+                        source[combined_start:combined_end]
                     )
                     chunk = self.create_chunk(node, source, file_path, parent_context)
                     if chunk:

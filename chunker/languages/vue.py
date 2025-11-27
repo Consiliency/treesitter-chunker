@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
 from chunker.types import CodeChunk
+from chunker.utils.text import safe_decode, safe_decode_bytes
 
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
@@ -116,7 +117,7 @@ class VuePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
     def get_node_name(node: Node, source: bytes) -> str | None:
         """Extract the name from a Vue node."""
         if node.type == "export_statement":
-            content = source[node.start_byte : node.end_byte].decode("utf-8")
+            content = safe_decode_bytes(source[node.start_byte : node.end_byte])
             if "name:" in content:
                 match = re.search(
                     r'name:\\s*[\'\\"]([^\'\\"]+)[\'\\"]',
@@ -127,7 +128,7 @@ class VuePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         elif node.type == "component_definition":
             for child in node.children:
                 if child.type == "identifier":
-                    return source[child.start_byte : child.end_byte].decode("utf-8")
+                    return safe_decode_bytes(source[child.start_byte : child.end_byte])
         return None
 
     def get_semantic_chunks(self, node: Node, source: bytes) -> list[dict[str, any]]:
@@ -140,10 +141,7 @@ class VuePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 "script_element",
                 "style_element",
             }:
-                content = source[n.start_byte : n.end_byte].decode(
-                    "utf-8",
-                    errors="replace",
-                )
+                content = safe_decode_bytes(source[n.start_byte : n.end_byte])
                 chunk = {
                     "type": n.type,
                     "start_line": n.start_point[0] + 1,
@@ -188,10 +186,7 @@ class VuePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 chunks.append(chunk)
                 section = n.type
             elif n.type == "export_statement" and section == "script_element":
-                content = source[n.start_byte : n.end_byte].decode(
-                    "utf-8",
-                    errors="replace",
-                )
+                content = safe_decode_bytes(source[n.start_byte : n.end_byte])
                 if "export default" in content:
                     chunk = {
                         "type": "component_definition",
@@ -231,7 +226,7 @@ class VuePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         if node.type in {"element", "template"}:
             for child in node.children:
                 if child.type == "attribute" and any(
-                    attr in child.text.decode("utf-8") if hasattr(child, "text") else ""
+                    attr in safe_decode(child.text) if hasattr(child, "text") else ""
                     for attr in ["v-if", "v-for", "v-show"]
                 ):
                     return len(node.children) > 3
@@ -264,7 +259,7 @@ class VuePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
     @staticmethod
     def _get_element_context(node: Node, source: bytes) -> str:
         """Get context for script/style elements based on attributes."""
-        content = source[node.start_byte : node.end_byte].decode("utf-8")
+        content = safe_decode_bytes(source[node.start_byte : node.end_byte])
         preview = content[:CONTENT_PREVIEW_LENGTH]
 
         if node.type == "script_element":
@@ -357,7 +352,7 @@ class VuePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 }
                 return chunk if self.should_include_chunk(chunk) else None
         if node.type == "export_statement":
-            content = source[node.start_byte : node.end_byte].decode("utf-8")
+            content = safe_decode_bytes(source[node.start_byte : node.end_byte])
             if "export default" in content:
                 chunk = self.create_chunk(node, source, file_path, parent_context)
                 if chunk:

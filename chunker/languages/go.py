@@ -3,6 +3,7 @@
 from tree_sitter import Node
 
 from chunker.types import CodeChunk
+from chunker.utils.text import safe_decode_bytes
 
 from .base import LanguageChunker
 
@@ -68,7 +69,7 @@ class GoChunker(LanguageChunker):
         if node.type == "function_declaration":
             name_node = node.child_by_field_name("name")
             if name_node:
-                info["function_name"] = name_node.text.decode("utf-8")
+                info["function_name"] = safe_decode_bytes(name_node.text)
             params_node = node.child_by_field_name("parameters")
             if params_node and params_node.child_count > 0:
                 children = getattr(params_node, "children", [])
@@ -76,11 +77,11 @@ class GoChunker(LanguageChunker):
                 if first_param and first_param.type == "parameter_declaration":
                     type_node = first_param.child_by_field_name("type")
                     if type_node:
-                        info["receiver_type"] = type_node.text.decode("utf-8")
+                        info["receiver_type"] = safe_decode_bytes(type_node.text)
         elif node.type in {"type_declaration", "type_spec"}:
             name_node = node.child_by_field_name("name")
             if name_node:
-                info["type_name"] = name_node.text.decode("utf-8")
+                info["type_name"] = safe_decode_bytes(name_node.text)
             for child in node.children:
                 if child.type == "struct_type":
                     info["type_kind"] = "struct"
@@ -91,7 +92,7 @@ class GoChunker(LanguageChunker):
         elif node.type == "package_clause":
             name_node = node.child_by_field_name("name")
             if name_node:
-                info["package_name"] = name_node.text.decode("utf-8")
+                info["package_name"] = safe_decode_bytes(name_node.text)
         return info
 
     def get_context_nodes(self, node: Node) -> list[Node]:

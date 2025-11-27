@@ -6,6 +6,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from chunker.utils.text import safe_decode_bytes
+
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
 
@@ -75,7 +77,7 @@ class PythonPlugin(LanguagePlugin):
         """Extract the name from a Python node."""
         for child in node.children:
             if child.type == "identifier":
-                return source[child.start_byte : child.end_byte].decode("utf-8")
+                return safe_decode_bytes(source[child.start_byte : child.end_byte])
         return None
 
     def get_context_for_children(self, node: Node, chunk) -> str:

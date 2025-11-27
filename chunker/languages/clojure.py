@@ -5,6 +5,7 @@ Support for Clojure language.
 from __future__ import annotations
 
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
+from chunker.utils.text import safe_decode_bytes
 
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
@@ -111,9 +112,9 @@ class ClojurePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             if len(children) >= 2:
                 first_child = children[0]
                 if first_child.type == "sym_lit":
-                    form_name = source[
-                        first_child.start_byte : first_child.end_byte
-                    ].decode("utf-8")
+                    form_name = safe_decode_bytes(
+                        source[first_child.start_byte : first_child.end_byte]
+                    )
                     if form_name in {
                         "defn",
                         "defn-",
@@ -127,15 +128,15 @@ class ClojurePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     }:
                         name_child = children[1]
                         if name_child.type == "sym_lit":
-                            return source[
-                                name_child.start_byte : name_child.end_byte
-                            ].decode("utf-8")
+                            return safe_decode_bytes(
+                                source[name_child.start_byte : name_child.end_byte]
+                            )
         elif node.type == "ns_form":
             children = list(node.children)
             first_child = children[0] if children else None
             for child in children:
                 if child.type == "sym_lit" and child != first_child:
-                    return source[child.start_byte : child.end_byte].decode("utf-8")
+                    return safe_decode_bytes(source[child.start_byte : child.end_byte])
         return None
 
     @staticmethod
@@ -147,9 +148,9 @@ class ClojurePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         if len(children) >= 2:
             first_child = children[0]
             if first_child.type == "sym_lit":
-                form_name = source[
-                    first_child.start_byte : first_child.end_byte
-                ].decode("utf-8")
+                form_name = safe_decode_bytes(
+                    source[first_child.start_byte : first_child.end_byte]
+                )
                 if form_name in {
                     "defn",
                     "defn-",
@@ -172,10 +173,7 @@ class ClojurePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
 
         def extract_chunks(n: Node, namespace: str | None = None):
             if n.type == "ns_form":
-                content = source[n.start_byte : n.end_byte].decode(
-                    "utf-8",
-                    errors="replace",
-                )
+                content = safe_decode_bytes(source[n.start_byte : n.end_byte])
                 chunk = {
                     "type": "namespace",
                     "start_line": n.start_point[0] + 1,
@@ -188,10 +186,7 @@ class ClojurePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             elif n.type == "list_lit":
                 def_type = self._is_definition_form(n, source)
                 if def_type:
-                    content = source[n.start_byte : n.end_byte].decode(
-                        "utf-8",
-                        errors="replace",
-                    )
+                    content = safe_decode_bytes(source[n.start_byte : n.end_byte])
                     chunk = {
                         "type": def_type,
                         "start_line": n.start_point[0] + 1,
@@ -215,10 +210,7 @@ class ClojurePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                         chunk["namespace"] = namespace
                     chunks.append(chunk)
             elif n.type in self.default_chunk_types:
-                content = source[n.start_byte : n.end_byte].decode(
-                    "utf-8",
-                    errors="replace",
-                )
+                content = safe_decode_bytes(source[n.start_byte : n.end_byte])
                 chunk = {
                     "type": n.type,
                     "start_line": n.start_point[0] + 1,

@@ -7,6 +7,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginContract
+from chunker.utils.text import safe_decode_bytes
 
 from .base import ChunkRule, LanguageConfig
 from .plugin_base import LanguagePlugin
@@ -101,17 +102,17 @@ class SQLPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         if node.type.startswith("create_"):
             for child in node.children:
                 if child.type in {"relation", "identifier"}:
-                    return source[child.start_byte : child.end_byte].decode("utf-8")
+                    return safe_decode_bytes(source[child.start_byte : child.end_byte])
                 if child.type == "object_reference":
                     for subchild in child.children:
                         if subchild.type == "identifier":
-                            return source[
-                                subchild.start_byte : subchild.end_byte
-                            ].decode("utf-8")
+                            return safe_decode_bytes(
+                                source[subchild.start_byte : subchild.end_byte]
+                            )
         elif node.type in {"function_definition", "procedure_definition"}:
             for child in node.children:
                 if child.type == "identifier":
-                    return source[child.start_byte : child.end_byte].decode("utf-8")
+                    return safe_decode_bytes(source[child.start_byte : child.end_byte])
         return None
 
     def get_semantic_chunks(self, node: Node, source: bytes) -> list[dict[str, any]]:
@@ -120,10 +121,7 @@ class SQLPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
 
         def extract_chunks(n: Node, _parent_type: str | None = None):
             if n.type in self.default_chunk_types:
-                content = source[n.start_byte : n.end_byte].decode(
-                    "utf-8",
-                    errors="replace",
-                )
+                content = safe_decode_bytes(source[n.start_byte : n.end_byte])
 
                 # Map tree-sitter node types to expected test node types
                 node_type = n.type
@@ -230,9 +228,9 @@ class SQLPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 if child.type == "from":
                     for subchild in child.children:
                         if subchild.type == "relation":
-                            table_name = source[
-                                subchild.start_byte : subchild.end_byte
-                            ].decode("utf-8")
+                            table_name = safe_decode_bytes(
+                                source[subchild.start_byte : subchild.end_byte]
+                            )
                             return f"SELECT FROM {table_name}"
             return "SELECT statement"
         if node.type in {"insert", "update", "delete"}:

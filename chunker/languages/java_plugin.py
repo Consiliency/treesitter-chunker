@@ -2,6 +2,8 @@
 
 from tree_sitter import Node
 
+from chunker.utils.text import safe_decode_bytes
+
 from .base import ChunkRule, LanguageConfig, language_config_registry
 from .plugin_base import LanguagePlugin
 
@@ -88,10 +90,10 @@ class JavaPlugin(LanguagePlugin):
         """Extract class declaration name."""
         name_node = node.child_by_field_name("name")
         if name_node:
-            name = name_node.text.decode("utf-8")
+            name = safe_decode_bytes(name_node.text)
             superclass = node.child_by_field_name("superclass")
             if superclass:
-                return f"{name} extends {superclass.text.decode('utf-8')}"
+                return f"{name} extends {safe_decode_bytes(superclass.text)}"
             return name
         return "class"
 
@@ -100,7 +102,7 @@ class JavaPlugin(LanguagePlugin):
         """Extract interface declaration name."""
         name_node = node.child_by_field_name("name")
         if name_node:
-            return f"interface {name_node.text.decode('utf-8')}"
+            return f"interface {safe_decode_bytes(name_node.text)}"
         return "interface"
 
     @staticmethod
@@ -108,7 +110,7 @@ class JavaPlugin(LanguagePlugin):
         """Extract enum declaration name."""
         name_node = node.child_by_field_name("name")
         if name_node:
-            return f"enum {name_node.text.decode('utf-8')}"
+            return f"enum {safe_decode_bytes(name_node.text)}"
         return "enum"
 
     @staticmethod
@@ -116,10 +118,10 @@ class JavaPlugin(LanguagePlugin):
         """Extract method declaration name."""
         name_node = node.child_by_field_name("name")
         if name_node:
-            method_name = name_node.text.decode("utf-8")
+            method_name = safe_decode_bytes(name_node.text)
             type_node = node.child_by_field_name("type")
             if type_node:
-                return f"{type_node.text.decode('utf-8')} {method_name}(...)"
+                return f"{safe_decode_bytes(type_node.text)} {method_name}(...)"
             return f"{method_name}(...)"
         return "method"
 
@@ -128,30 +130,30 @@ class JavaPlugin(LanguagePlugin):
         """Extract constructor declaration name."""
         name_node = node.child_by_field_name("name")
         if name_node:
-            return f"{name_node.text.decode('utf-8')}(...)"
+            return f"{safe_decode_bytes(name_node.text)}(...)"
         return "constructor"
 
     @staticmethod
     def _extract_field_name(node: Node) -> str:
         """Extract field declaration name."""
         type_node = node.child_by_field_name("type")
-        type_str = type_node.text.decode("utf-8") if type_node else "?"
+        type_str = safe_decode_bytes(type_node.text) if type_node else "?"
         field_names = []
         for child in node.children:
             if child.type == "variable_declarator":
                 name = child.child_by_field_name("name")
                 if name:
-                    field_names.append(name.text.decode("utf-8"))
+                    field_names.append(safe_decode_bytes(name.text))
         if field_names:
             return f"{type_str} {', '.join(field_names)}"
-        return node.text.decode("utf-8")[:50]
+        return safe_decode_bytes(node.text)[:50]
 
     @staticmethod
     def _extract_annotation_name(node: Node) -> str:
         """Extract annotation declaration name."""
         name_node = node.child_by_field_name("name")
         if name_node:
-            return f"@interface {name_node.text.decode('utf-8')}"
+            return f"@interface {safe_decode_bytes(name_node.text)}"
         return "@interface"
 
 

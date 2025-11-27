@@ -174,13 +174,12 @@ class ElixirPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             if n.type == "call":
                 for child in n.children:
                     if child.type == "identifier":
-                        fn_type = source[child.start_byte : child.end_byte].decode(
-                            "utf-8",
+                        fn_type = safe_decode_bytes(
+                            source[child.start_byte : child.end_byte]
                         )
                         if fn_type in {"def", "defp", "defmacro", "defmacrop"}:
-                            content = source[n.start_byte : n.end_byte].decode(
-                                "utf-8",
-                                errors="replace",
+                            content = safe_decode_bytes(
+                                source[n.start_byte : n.end_byte]
                             )
                             chunk = {
                                 "type": "function_definition",
@@ -198,10 +197,7 @@ class ElixirPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                             chunks.append(chunk)
                             return
             if n.type in self.default_chunk_types:
-                content = source[n.start_byte : n.end_byte].decode(
-                    "utf-8",
-                    errors="replace",
-                )
+                content = safe_decode_bytes(source[n.start_byte : n.end_byte])
                 chunk = {
                     "type": n.type,
                     "start_line": n.start_point[0] + 1,
@@ -366,7 +362,7 @@ class ElixirPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         parent_context: str | None,
     ):
         """Process module attribute nodes."""
-        content = source[node.start_byte : node.end_byte].decode("utf-8")
+        content = safe_decode_bytes(source[node.start_byte : node.end_byte])
         if not content.startswith(("@behaviour", "@behavior")):
             return None
 

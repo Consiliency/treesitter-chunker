@@ -7,6 +7,8 @@ from typing import Any
 
 import yaml
 
+from chunker.utils.json import load_json_file
+
 
 @dataclass
 class StrategyConfig:
@@ -127,11 +129,7 @@ def load_strategy_config(path: str | Path) -> StrategyConfig:
 
     # Determine format from extension
     if path.suffix == ".json":
-        with Path(path).open(
-            "r",
-            encoding="utf-8",
-        ) as f:
-            data = json.load(f)
+        data = load_json_file(path)
     elif path.suffix in {".yaml", ".yml"}:
         with Path(path).open(
             "r",

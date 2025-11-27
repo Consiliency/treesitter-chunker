@@ -10,6 +10,8 @@ from typing import Any, ClassVar
 
 import yaml
 
+from chunker.utils.json import load_json_file
+
 # tomli_w is needed for writing TOML files (tomllib is read-only)
 try:
     import tomli_w
@@ -86,8 +88,7 @@ class ChunkerConfig:
                 with Path(config_path).open(encoding="utf-8") as f:
                     self.data = yaml.safe_load(f) or {}
             elif ext == ".json":
-                with Path(config_path).open(encoding="utf-8") as f:
-                    self.data = json.load(f)
+                self.data = load_json_file(config_path)
             else:
                 raise ValueError(f"Unsupported config format: {ext}")
             self.config_path = config_path
