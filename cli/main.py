@@ -34,6 +34,9 @@ except ImportError as e:
 # Import repo commands
 from .repo_command import app as repo_app
 
+# Import setup commands
+from .setup_command import app as setup_app
+
 app = typer.Typer(help="Tree‑sitter‑based code‑chunker CLI")
 console = Console()
 
@@ -57,6 +60,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
 app.add_typer(repo_app, name="repo", help="Repository processing commands")
+app.add_typer(setup_app, name="setup", help="Grammar setup and management")
 
 
 def load_config(

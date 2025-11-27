@@ -13,6 +13,106 @@ A high-performance semantic code chunker that leverages [Tree-sitter](https://tr
 
 **🚀 Production Ready**: Version 2.0.0 is now available on PyPI with prebuilt wheels, no local compilation required for basic usage!
 
+## 🏗️ Architecture Overview
+
+Tree-sitter Chunker is designed as a modular, high-performance semantic code analysis system. The following C4-style diagram illustrates how the major components fit together:
+
+```mermaid
+flowchart TB
+    subgraph "External Systems"
+        DEV[👤 Developer<br/>CLI/SDK User]
+        AGENT[🤖 LLM/Agent<br/>REST API Consumer]
+    end
+
+    subgraph chunker["Tree-sitter Chunker System"]
+        subgraph interface["Interface Layer"]
+            CLI[CLI Interface<br/>treesitter-chunker]
+            API[REST API<br/>FastAPI :8000]
+            SDK[Python SDK<br/>import chunker]
+        end
+
+        subgraph core["Core Processing"]
+            CORE[Core Chunker<br/>chunk_file・chunk_text]
+            TOKEN[Token-Aware Chunker<br/>pack_hint・max_tokens]
+            REPO[Repository Processor<br/>parallel・git-aware]
+        end
+
+        subgraph lang["Language Support"]
+            PARSER[Parser Factory<br/>caching・pooling]
+            PLUGINS[Language Plugins<br/>36+ built-in]
+            GRAMMAR[Grammar Manager<br/>100+ auto-download]
+        end
+
+        subgraph graph["Graph & Analysis"]
+            XREF[XRef Builder<br/>build_xref]
+            CUT[Graph Cut<br/>BFS・scoring]
+            META[Metadata Extractor<br/>calls・symbols・complexity]
+        end
+
+        subgraph export["Export Layer"]
+            PG[(PostgreSQL)]
+            NEO[(Neo4j)]
+            FILES[JSON・JSONL<br/>Parquet・GraphML]
+        end
+    end
+
+    subgraph external["External Dependencies"]
+        TS[🌳 Tree-sitter<br/>AST Parsing]
+        TIK[🔢 tiktoken<br/>Token Counting]
+    end
+
+    DEV --> CLI & SDK
+    AGENT --> API
+
+    CLI & API & SDK --> CORE
+    CORE --> TOKEN
+    REPO --> CORE
+
+    CORE --> PARSER
+    PARSER --> PLUGINS
+    PARSER --> GRAMMAR
+    PARSER --> TS
+
+    CORE --> META
+    META --> XREF
+    XREF --> CUT
+
+    TOKEN --> TIK
+
+    XREF --> PG & NEO & FILES
+    CUT --> API
+```
+
+### Data Flow: From Code to Chunks
+
+```mermaid
+flowchart LR
+    subgraph input["📥 Input"]
+        FILE[Source Files]
+        TEXT[Code Text]
+    end
+
+    subgraph process["⚙️ Processing Pipeline"]
+        PARSE[1. Parse<br/>Tree-sitter AST]
+        WALK[2. Walk<br/>Extract Nodes]
+        CHUNK[3. Chunk<br/>Create CodeChunk]
+        ENRICH[4. Enrich<br/>Metadata・Tokens]
+    end
+
+    subgraph output["📤 Output"]
+        CHUNKS[CodeChunks<br/>with stable IDs]
+        GRAPH[Graph Model<br/>nodes・edges]
+        SPANS[Byte Spans<br/>file_id・symbol_id]
+    end
+
+    FILE & TEXT --> PARSE --> WALK --> CHUNK --> ENRICH
+    ENRICH --> CHUNKS --> GRAPH & SPANS
+```
+
+For detailed architecture documentation, see [docs/architecture.md](docs/architecture.md).
+
+---
+
 ## 📊 Performance Benchmarks
 
 Tree-sitter Chunker is designed for high-performance code analysis:
@@ -174,17 +274,45 @@ python -c "from chunker.parser import list_languages; print(list_languages())"
 # Output: ['c', 'cpp', 'javascript', 'python', 'rust']
 ```
 
-### Using prebuilt grammars (no local builds)
+### Grammar Setup
 
-Starting with CI-built wheels, precompiled Tree-sitter grammars are bundled for common platforms. If a grammar isn’t bundled yet, the library can build it on demand to your user cache.
+Tree-sitter Chunker requires compiled grammar libraries for parsing. Prebuilt wheels include common languages (Python, JavaScript, Rust), but you can set up additional grammars using the CLI.
 
-To opt into building grammars once and reusing them:
+#### CLI Setup (Recommended)
 
 ```bash
+# Set up default languages (python, javascript, rust)
+treesitter-chunker setup grammars
+
+# Set up specific languages
+treesitter-chunker setup grammars python go java typescript
+
+# Set up all extended languages (10 common languages)
+treesitter-chunker setup grammars --all
+
+# Check setup status
+treesitter-chunker setup status
+
+# List all available grammars
+treesitter-chunker setup list-available
+
+# Clean up grammar files
+treesitter-chunker setup clean --builds  # Remove built libraries only
+treesitter-chunker setup clean --all     # Remove sources and builds
+```
+
+#### Environment Configuration
+
+You can customize where grammars are stored:
+
+```bash
+# Set custom build directory (persists across installations)
 export CHUNKER_GRAMMAR_BUILD_DIR="$HOME/.cache/treesitter-chunker/build"
 ```
 
-Then build a language one time from Python:
+#### Programmatic Setup
+
+For advanced use cases, you can set up grammars programmatically:
 
 ```python
 from pathlib import Path
@@ -197,7 +325,12 @@ gm.fetch_grammar("python")
 gm.build_grammar("python")
 ```
 
-Now chunking with `language="python"` works without further setup.
+#### Requirements for Building Grammars
+
+Building grammars from source requires:
+- **C compiler** (gcc, clang, or MSVC)
+- **Git** (for fetching grammar sources)
+- **Python development headers** (usually included with Python installation)
 
 ## 🚀 Quick Start
 
@@ -642,6 +775,283 @@ mkdocs serve
 - **Issues**: [GitHub Issues](https://github.com/Consiliency/treesitter-chunker/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/Consiliency/treesitter-chunker/discussions)
 - **Documentation**: [Contributing Guide](CONTRIBUTING.md)
+
+## 🔐 Stable IDs & Spans
+
+Tree-sitter Chunker generates stable, deterministic identifiers for all code entities, enabling reliable cross-referencing and incremental processing.
+
+### ID Generation
+
+```python
+from chunker.types import CodeChunk
+
+chunk = chunk_file("example.py", "python")[0]
+
+# Stable identifiers (SHA1-based, deterministic)
+chunk.node_id     # Unique ID based on file + language + route + content hash
+chunk.file_id     # Hash of the file path
+chunk.symbol_id   # Hash of language + file + symbol name
+chunk.chunk_id    # Full 40-char SHA1 for backward compatibility
+
+# Hierarchical context
+chunk.parent_route  # ["module", "ClassName", "method_name"]
+chunk.parent_context  # "ClassName" (immediate parent)
+```
+
+### Byte-Accurate Spans
+
+Every chunk includes precise byte offsets for source mapping:
+
+```python
+chunk.byte_start  # Start byte offset in file
+chunk.byte_end    # End byte offset in file
+chunk.start_line  # 1-indexed start line
+chunk.end_line    # 1-indexed end line
+```
+
+These spans are propagated through:
+- Repository processing and incremental watch
+- Graph exporters (PostgreSQL, Neo4j)
+- REST API responses
+- XRef graph nodes
+
+---
+
+## 📊 Unified Graph Model
+
+The chunker uses a unified graph model for cross-reference analysis, graph export, and agent platform integration.
+
+### Graph Node Schema
+
+```python
+@dataclass
+class UnifiedGraphNode:
+    id: str                    # Stable node ID (node_id from CodeChunk)
+    file: str                  # Source file path
+    lang: str                  # Language identifier
+    symbol: str | None         # Symbol name (function/class name)
+    kind: str                  # Node type (function_definition, class_definition)
+    attrs: dict[str, Any]      # Metadata (token_count, complexity, change_freq)
+```
+
+### Graph Edge Schema
+
+```python
+@dataclass
+class UnifiedGraphEdge:
+    src: str                   # Source node ID
+    dst: str                   # Destination node ID
+    type: str                  # Relationship type (CALLS, DEFINES, IMPORTS, INHERITS)
+    weight: float              # Edge weight (default 1.0)
+```
+
+### Building Cross-Reference Graphs
+
+```python
+from chunker import chunk_file
+from chunker.graph.xref import build_xref
+
+chunks = chunk_file("src/app.py", "python")
+nodes, edges = build_xref(chunks)
+
+# nodes: list of dicts with {id, file, lang, symbol, kind, attrs}
+# edges: list of dicts with {src, dst, type, weight}
+```
+
+### Graph Cut for Context Selection
+
+Extract minimal subgraphs for LLM context:
+
+```python
+from chunker.graph.cut import graph_cut
+
+# Select nodes within 2 hops of seeds, up to 200 nodes
+selected_ids, induced_edges = graph_cut(
+    seeds=["function_abc_node_id"],
+    nodes=nodes,
+    edges=edges,
+    radius=2,          # BFS depth
+    budget=200,        # Max nodes to return
+    weights={
+        "distance": 1.0,    # Favor nodes closer to seeds
+        "publicness": 0.5,  # Favor high out-degree nodes
+        "hotspots": 0.3,    # Favor frequently changed nodes
+    }
+)
+```
+
+---
+
+## 🤖 Agent Platform REST API
+
+Tree-sitter Chunker provides a REST API for LLM agents and external tools.
+
+### Starting the Server
+
+```bash
+# Install with API support
+pip install "treesitter-chunker[api]"
+
+# Start server
+uvicorn api.server:app --host 0.0.0.0 --port 8000
+
+# Or run directly
+python -m api.server
+```
+
+### Available Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | API info and available endpoints |
+| `/health` | GET | Health check |
+| `/languages` | GET | List supported languages |
+| `/chunk/text` | POST | Chunk source code text |
+| `/chunk/file` | POST | Chunk file from filesystem |
+| `/graph/xref` | POST | Build cross-reference graph |
+| `/graph/cut` | POST | Extract subgraph via BFS |
+| `/export/postgres` | POST | Export to PostgreSQL |
+| `/nearest-tests` | POST | Find related test files |
+
+### Example: Chunk Code via API
+
+```bash
+curl -X POST http://localhost:8000/chunk/text \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "def hello():\n    return \"world\"",
+    "language": "python"
+  }'
+```
+
+### Example: Build Graph and Cut
+
+```bash
+# Step 1: Build cross-reference graph
+curl -X POST http://localhost:8000/graph/xref \
+  -H "Content-Type: application/json" \
+  -d '{"paths": ["/path/to/file.py"]}'
+
+# Step 2: Extract subgraph around seeds
+curl -X POST http://localhost:8000/graph/cut \
+  -H "Content-Type: application/json" \
+  -d '{
+    "seeds": ["node_id_1", "node_id_2"],
+    "nodes": [...],
+    "edges": [...],
+    "params": {"radius": 2, "budget": 100}
+  }'
+```
+
+### API Documentation
+
+Interactive API docs available at:
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
+
+---
+
+## 🛡️ Security Posture
+
+Tree-sitter Chunker follows security best practices for production deployments.
+
+### Exception Handling
+
+- **No bare `except:` clauses** - All exception handlers specify explicit exception types
+- **Structured error logging** - Errors are logged with context for debugging
+- **Graceful degradation** - Failures in non-critical paths don't crash the system
+
+### SQL Injection Prevention
+
+- **Parameterized queries** - Database exporters use parameterized SQL for all user data
+- **Safe script generation** - SQL file exports use proper escaping for string literals
+- **Separated concerns** - Direct DB access uses `executemany()` with parameters; file export uses escaped literals
+
+```python
+# Internal parameterized query pattern
+cursor.executemany(
+    "INSERT INTO chunks (id, content) VALUES (%s, %s)",
+    [(chunk.id, chunk.content) for chunk in chunks]
+)
+```
+
+### Shell Command Safety
+
+- **Argument lists** - Subprocess calls use `shell=False` with argument lists
+- **Input validation** - File paths and language names are validated before use
+- **No string interpolation** - Commands are built from safe argument arrays
+
+```python
+# Safe subprocess pattern
+subprocess.run(
+    ["git", "diff", "--name-only", commit_hash],
+    capture_output=True,
+    check=True,
+)
+```
+
+### Input Validation
+
+- **File size limits** - Streaming mode for large files prevents memory exhaustion
+- **Parser timeouts** - Tree-sitter parsing has configurable timeouts
+- **Path validation** - File operations validate paths exist and are accessible
+- **Encoding safety** - Text decoding uses `errors="replace"` for malformed input
+
+### Thread Safety
+
+- **Immutable registries** - Language registry is read-only after initialization
+- **Synchronized access** - Parser factory uses locks for thread-safe caching
+- **No shared mutable state** - CodeChunk objects are independent
+
+---
+
+## 🔢 LLM Token Packing
+
+The `pack_hint` metadata helps prioritize chunks for LLM context windows.
+
+### Pack Hint Calculation
+
+```python
+from chunker.packing import compute_pack_hint
+
+# Returns float in [0.0, 1.0] - higher = more important
+hint = compute_pack_hint(chunk)
+
+# Factors considered:
+# - token_count (smaller = higher hint)
+# - complexity (higher cyclomatic = higher hint)
+# - degree (more xref connections = higher hint)
+# - recent_changes (frequently modified = higher hint)
+```
+
+### Automatic Token Enrichment
+
+```python
+from chunker.token.chunker import TreeSitterTokenAwareChunker
+
+chunker = TreeSitterTokenAwareChunker()
+chunks = chunker.chunk_file("app.py", "python")
+
+for chunk in chunks:
+    print(f"{chunk.node_type}: {chunk.metadata['token_count']} tokens")
+    print(f"  pack_hint: {chunk.metadata['pack_hint']:.2f}")
+```
+
+### Token-Limited Chunking
+
+```python
+from chunker import chunk_text_with_token_limit
+
+# Automatically split chunks exceeding token limit
+chunks = chunk_text_with_token_limit(
+    code,
+    language="python",
+    max_tokens=4000,  # GPT-4 context budget
+    model="gpt-4"
+)
+```
+
+---
 
 ## 📄 License
 
