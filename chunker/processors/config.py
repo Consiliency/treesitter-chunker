@@ -12,17 +12,12 @@ import re
 from pathlib import Path
 from typing import Any
 
-import toml
 import yaml
 
 try:
-    pass
+    import toml
 except ImportError:
-    toml = None
-try:
-    pass
-except ImportError:
-    yaml = None
+    toml = None  # type: ignore[assignment]
 from chunker.types import CodeChunk
 
 from .base import ProcessorConfig, SpecializedProcessor
