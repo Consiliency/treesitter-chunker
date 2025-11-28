@@ -1,0 +1,225 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>chunker.chunker &mdash; TreeSitter Chunker Documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            TreeSitter Chunker
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/chunker.html">Chunker Module</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">TreeSitter Chunker</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">chunker.chunker</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for chunker.chunker</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Main chunker module with token-aware chunking capabilities.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+
+<span class="c1"># Import the core functions from the new module</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">chunk_text</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.token.chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">TreeSitterTokenAwareChunker</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.token.counter</span><span class="w"> </span><span class="kn">import</span> <span class="n">TiktokenCounter</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">CodeChunk</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;TreeSitterTokenAwareChunker&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;chunk_file_with_token_limit&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;chunk_text_with_token_limit&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;count_chunk_tokens&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+
+<div class="viewcode-block" id="chunk_text_with_token_limit">
+<a class="viewcode-back" href="../../api/chunker.html#chunker.chunker.chunk_text_with_token_limit">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">chunk_text_with_token_limit</span><span class="p">(</span>
+    <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">language</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">max_tokens</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+    <span class="n">model</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;gpt-4&quot;</span><span class="p">,</span>
+    <span class="n">extract_metadata</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">CodeChunk</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parse text and return chunks that respect token limits.</span>
+
+<span class="sd">    This function chunks code using tree-sitter and ensures no chunk exceeds</span>
+<span class="sd">    the specified token limit. Large chunks are automatically split while</span>
+<span class="sd">    preserving code structure when possible.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        text: Source code text to chunk</span>
+<span class="sd">        language: Programming language</span>
+<span class="sd">        max_tokens: Maximum tokens per chunk</span>
+<span class="sd">        file_path: Path to the file (optional)</span>
+<span class="sd">        model: Tokenizer model to use (default: &quot;gpt-4&quot;)</span>
+<span class="sd">        extract_metadata: Whether to extract metadata (default: True)</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        List of CodeChunk objects with token counts in metadata</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># First get regular chunks</span>
+    <span class="n">chunks</span> <span class="o">=</span> <span class="n">chunk_text</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">language</span><span class="p">,</span> <span class="n">file_path</span><span class="p">,</span> <span class="n">extract_metadata</span><span class="p">)</span>
+
+    <span class="c1"># Create token-aware chunker</span>
+    <span class="n">token_chunker</span> <span class="o">=</span> <span class="n">TreeSitterTokenAwareChunker</span><span class="p">()</span>
+
+    <span class="c1"># Add token info and split if needed</span>
+    <span class="n">chunks_with_tokens</span> <span class="o">=</span> <span class="n">token_chunker</span><span class="o">.</span><span class="n">add_token_info</span><span class="p">(</span><span class="n">chunks</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+
+    <span class="c1"># Handle oversized chunks</span>
+    <span class="n">final_chunks</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">chunks_with_tokens</span><span class="p">:</span>
+        <span class="n">token_count</span> <span class="o">=</span> <span class="n">chunk</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;token_count&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">token_count</span> <span class="o">&lt;=</span> <span class="n">max_tokens</span><span class="p">:</span>
+            <span class="n">final_chunks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Split the oversized chunk</span>
+            <span class="n">split_chunks</span> <span class="o">=</span> <span class="n">token_chunker</span><span class="o">.</span><span class="n">_split_large_chunk</span><span class="p">(</span><span class="n">chunk</span><span class="p">,</span> <span class="n">max_tokens</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+            <span class="n">final_chunks</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">split_chunks</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">final_chunks</span></div>
+
+
+
+<div class="viewcode-block" id="chunk_file_with_token_limit">
+<a class="viewcode-back" href="../../api/chunker.html#chunker.chunker.chunk_file_with_token_limit">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">chunk_file_with_token_limit</span><span class="p">(</span>
+    <span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">language</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">max_tokens</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">model</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;gpt-4&quot;</span><span class="p">,</span>
+    <span class="n">extract_metadata</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">CodeChunk</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parse file and return chunks that respect token limits.</span>
+
+<span class="sd">    This function chunks a file using tree-sitter and ensures no chunk exceeds</span>
+<span class="sd">    the specified token limit. Large chunks are automatically split while</span>
+<span class="sd">    preserving code structure when possible.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        path: Path to the file to chunk</span>
+<span class="sd">        language: Programming language</span>
+<span class="sd">        max_tokens: Maximum tokens per chunk</span>
+<span class="sd">        model: Tokenizer model to use (default: &quot;gpt-4&quot;)</span>
+<span class="sd">        extract_metadata: Whether to extract metadata (default: True)</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        List of CodeChunk objects with token counts in metadata</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">src</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">chunk_text_with_token_limit</span><span class="p">(</span>
+        <span class="n">src</span><span class="p">,</span>
+        <span class="n">language</span><span class="p">,</span>
+        <span class="n">max_tokens</span><span class="p">,</span>
+        <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">),</span>
+        <span class="n">model</span><span class="p">,</span>
+        <span class="n">extract_metadata</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">count_chunk_tokens</span><span class="p">(</span><span class="n">chunk</span><span class="p">:</span> <span class="n">CodeChunk</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;gpt-4&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Count tokens in a code chunk.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        chunk: The CodeChunk to count tokens for</span>
+<span class="sd">        model: Tokenizer model to use (default: &quot;gpt-4&quot;)</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Number of tokens in the chunk</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">counter</span> <span class="o">=</span> <span class="n">TiktokenCounter</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">counter</span><span class="o">.</span><span class="n">count_tokens</span><span class="p">(</span><span class="n">chunk</span><span class="o">.</span><span class="n">content</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Consiliency.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
