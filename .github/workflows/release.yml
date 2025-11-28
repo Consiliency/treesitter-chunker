@@ -109,12 +109,7 @@ jobs:
         pip install uv
         uv pip install --system build wheel twine
         uv pip install --system git+https://github.com/tree-sitter/py-tree-sitter.git
-    
-    - name: Fetch grammars
-      run: python scripts/fetch_grammars.py
-    
-    - name: Build grammars
-      run: python scripts/build_lib.py
+        uv pip install --system -e .
     
     - name: Build package
       run: python -m build
