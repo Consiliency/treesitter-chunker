@@ -62,6 +62,7 @@ jobs:
 
     - name: Download build artifacts
       uses: actions/download-artifact@v4
+      continue-on-error: true
       with:
         name: distribution-artifacts
         path: ./dist
@@ -90,7 +91,8 @@ jobs:
     
     permissions:
       id-token: write
-    
+      contents: read
+
     steps:
     - uses: actions/checkout@v4
       with:
