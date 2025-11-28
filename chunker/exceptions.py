@@ -433,6 +433,21 @@ class LibrarySymbolError(LibraryError):
         return f"{base}. Rebuild library with 'python scripts/build_lib.py' or verify grammar files."
 
 
+class ConfigurationError(ChunkerError):
+    """Raised when configuration loading or parsing fails.
+
+    This exception provides clear context about where the error occurred
+    (file path) and what went wrong (invalid JSON, missing file, etc.).
+    """
+
+    def __init__(self, message: str, path: str | None = None):
+        details = {}
+        if path:
+            details["path"] = str(path)
+        super().__init__(message, details)
+        self.path = path
+
+
 class CacheError(ChunkerError):
     """Base class for cache-related errors."""
 
@@ -466,6 +481,7 @@ __all__ = [
     "CacheError",
     "CacheVersionError",
     "ChunkerError",
+    "ConfigurationError",
     "LanguageError",
     "LanguageLoadError",
     "LanguageNotFoundError",

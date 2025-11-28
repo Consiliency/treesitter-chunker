@@ -5,7 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.2] - 2025-11-28
+## [2.0.3] - 2025-11-28
+
+### 🐛 Bug Fix
+
+- **Added ConfigurationError class**: Added the missing `ConfigurationError` exception class to `chunker/exceptions.py` that was referenced by `chunker/utils/json.py` but never committed
+
+---
+
+## [2.0.2] - 2025-11-28 [YANKED]
+
+**Note**: This version is missing the `ConfigurationError` class. Use v2.0.3 instead.
 
 ### 🐛 Bug Fix
 
@@ -15,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.0.1] - 2025-11-27 [YANKED]
 
-**Note**: This version has a critical bug - the `toml` package import fails, preventing the module from loading. Use v2.0.2 instead.
+**Note**: This version has critical bugs - the `toml` package import fails, and `ConfigurationError` is missing. Use v2.0.3 instead.
 
 ### 🔧 Pre-Production Finalization (v4 Spec)
 
