@@ -3225,6 +3225,1426 @@ volumes:
   grammar_cache:
 ```
 
+### Human-in-the-Loop Context Augmentation
+
+A critical feature for collaborative AI-human systems is allowing humans to **augment context** by interacting with the code visualization. This creates a feedback loop where human expertise enhances AI understanding.
+
+#### Interaction Model
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        HUMAN CONTEXT AUGMENTATION                            │
+│                                                                             │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │                      VISUAL INTERACTIONS                             │   │
+│   │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌────────────┐ │   │
+│   │  │   CLICK     │  │  MULTI-     │  │   LASSO     │  │  EXPAND/   │ │   │
+│   │  │  (select)   │  │  SELECT     │  │  (region)   │  │  COLLAPSE  │ │   │
+│   │  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └─────┬──────┘ │   │
+│   └─────────┼────────────────┼────────────────┼────────────────┼─────────┘   │
+│             │                │                │                │             │
+│             └────────────────┴────────────────┴────────────────┘             │
+│                                      │                                       │
+│                                      ▼                                       │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │                    CONTEXT ACTIONS                                   │   │
+│   │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌────────────┐ │   │
+│   │  │  ANNOTATE   │  │    TAG      │  │   DISCUSS   │  │    PIN     │ │   │
+│   │  │  "This is   │  │  #critical  │  │  "How does  │  │  (persist) │ │   │
+│   │  │   the auth  │  │  #security  │  │   this      │  │            │ │   │
+│   │  │   entry"    │  │  #tech-debt │  │   work?"    │  │            │ │   │
+│   │  └─────────────┘  └─────────────┘  └─────────────┘  └────────────┘ │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                                      │                                       │
+│                                      ▼                                       │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │                    STORED IN DATABASE                                │   │
+│   │                                                                      │   │
+│   │   annotations, selections, conversations, pins → chunks linkage     │   │
+│   │                                                                      │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                                      │                                       │
+│                                      ▼                                       │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │                 AVAILABLE TO AI AGENTS                               │   │
+│   │                                                                      │   │
+│   │   "What has the team flagged as security-critical?"                 │   │
+│   │   "Show me code the humans discussed recently"                      │   │
+│   │   "What context did the developer provide about auth?"              │   │
+│   │                                                                      │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Extended Database Schema for Human Context
+
+```sql
+-- Human annotations on code chunks
+CREATE TABLE annotations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    chunk_id UUID REFERENCES chunks(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL,  -- Who created this
+
+    -- Annotation content
+    content TEXT NOT NULL,
+    annotation_type TEXT NOT NULL,  -- 'note', 'question', 'explanation', 'warning'
+
+    -- Position within chunk (optional, for inline annotations)
+    start_offset INTEGER,  -- Byte offset within chunk
+    end_offset INTEGER,
+
+    -- Metadata
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    is_resolved BOOLEAN DEFAULT FALSE  -- For questions/issues
+);
+
+CREATE INDEX idx_annotations_chunk ON annotations(chunk_id);
+CREATE INDEX idx_annotations_user ON annotations(user_id);
+CREATE INDEX idx_annotations_type ON annotations(annotation_type);
+
+-- Tags for categorization (many-to-many with chunks)
+CREATE TABLE tags (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT UNIQUE NOT NULL,
+    color TEXT,  -- Hex color for UI
+    description TEXT,
+    created_by UUID NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE chunk_tags (
+    chunk_id UUID REFERENCES chunks(id) ON DELETE CASCADE,
+    tag_id UUID REFERENCES tags(id) ON DELETE CASCADE,
+    tagged_by UUID NOT NULL,
+    tagged_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (chunk_id, tag_id)
+);
+
+CREATE INDEX idx_chunk_tags_tag ON chunk_tags(tag_id);
+
+-- Saved selections (pinned context sets)
+CREATE TABLE selections (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+
+    -- Selection can be shared
+    is_public BOOLEAN DEFAULT FALSE,
+
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE selection_chunks (
+    selection_id UUID REFERENCES selections(id) ON DELETE CASCADE,
+    chunk_id UUID REFERENCES chunks(id) ON DELETE CASCADE,
+
+    -- Order and notes for this chunk in the selection
+    position INTEGER NOT NULL,
+    note TEXT,  -- Why this chunk is included
+
+    PRIMARY KEY (selection_id, chunk_id)
+);
+
+-- Conversations attached to code
+CREATE TABLE conversations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title TEXT,
+
+    -- Can be attached to a chunk, file, or selection
+    chunk_id UUID REFERENCES chunks(id) ON DELETE SET NULL,
+    file_id UUID REFERENCES files(id) ON DELETE SET NULL,
+    selection_id UUID REFERENCES selections(id) ON DELETE SET NULL,
+
+    created_by UUID NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    is_resolved BOOLEAN DEFAULT FALSE
+);
+
+CREATE TABLE conversation_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+    user_id UUID,  -- NULL for AI responses
+
+    role TEXT NOT NULL,  -- 'user', 'assistant', 'system'
+    content TEXT NOT NULL,
+
+    -- Messages can reference specific chunks
+    referenced_chunks UUID[],
+
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_conversations_chunk ON conversations(chunk_id);
+CREATE INDEX idx_conversations_file ON conversations(file_id);
+CREATE INDEX idx_conv_messages_conv ON conversation_messages(conversation_id);
+
+-- Embeddings for annotations (for semantic search of human context)
+CREATE TABLE annotation_embeddings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    annotation_id UUID REFERENCES annotations(id) ON DELETE CASCADE,
+    embedding vector(1536) NOT NULL,
+    model TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(annotation_id, model)
+);
+
+CREATE INDEX idx_annotation_embeddings_vector ON annotation_embeddings
+    USING ivfflat (embedding vector_cosine_ops)
+    WITH (lists = 50);
+```
+
+#### Context Augmentation Service
+
+```python
+# services/context_augmentation_service.py
+
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Literal
+
+import asyncpg
+from openai import AsyncOpenAI
+
+
+@dataclass
+class Annotation:
+    id: str
+    chunk_id: str
+    user_id: str
+    content: str
+    annotation_type: str
+    created_at: datetime
+
+
+@dataclass
+class Selection:
+    id: str
+    name: str
+    description: str | None
+    chunk_ids: list[str]
+    notes: dict[str, str]  # chunk_id -> note
+
+
+@dataclass
+class ConversationContext:
+    conversation_id: str
+    messages: list[dict]
+    referenced_chunks: list[str]
+    attached_to: dict  # {"type": "chunk"|"file"|"selection", "id": "..."}
+
+
+class ContextAugmentationService:
+    """
+    Service for managing human-provided context augmentation.
+
+    Humans can:
+    - Annotate code chunks with notes, questions, explanations
+    - Tag chunks for categorization
+    - Create saved selections (pinned context sets)
+    - Have conversations attached to code
+    """
+
+    def __init__(
+        self,
+        db_pool: asyncpg.Pool,
+        openai_client: AsyncOpenAI,
+        embedding_model: str = "text-embedding-3-small",
+    ):
+        self.db = db_pool
+        self.openai = openai_client
+        self.embedding_model = embedding_model
+
+    # --- Annotations ---
+
+    async def create_annotation(
+        self,
+        chunk_id: str,
+        user_id: str,
+        content: str,
+        annotation_type: Literal["note", "question", "explanation", "warning"],
+        start_offset: int | None = None,
+        end_offset: int | None = None,
+    ) -> Annotation:
+        """Add a human annotation to a code chunk."""
+        async with self.db.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                INSERT INTO annotations
+                    (chunk_id, user_id, content, annotation_type, start_offset, end_offset)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                RETURNING id, created_at
+                """,
+                chunk_id, user_id, content, annotation_type, start_offset, end_offset
+            )
+
+            annotation_id = row['id']
+
+            # Generate and store embedding for the annotation
+            embedding_response = await self.openai.embeddings.create(
+                model=self.embedding_model,
+                input=content,
+            )
+
+            await conn.execute(
+                """
+                INSERT INTO annotation_embeddings (annotation_id, embedding, model)
+                VALUES ($1, $2, $3)
+                """,
+                annotation_id,
+                embedding_response.data[0].embedding,
+                self.embedding_model,
+            )
+
+            return Annotation(
+                id=str(annotation_id),
+                chunk_id=chunk_id,
+                user_id=user_id,
+                content=content,
+                annotation_type=annotation_type,
+                created_at=row['created_at'],
+            )
+
+    async def get_annotations_for_chunk(
+        self,
+        chunk_id: str,
+    ) -> list[Annotation]:
+        """Get all annotations for a specific chunk."""
+        async with self.db.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT id, chunk_id, user_id, content, annotation_type, created_at
+                FROM annotations
+                WHERE chunk_id = $1
+                ORDER BY created_at DESC
+                """,
+                chunk_id
+            )
+
+        return [
+            Annotation(
+                id=str(row['id']),
+                chunk_id=str(row['chunk_id']),
+                user_id=str(row['user_id']),
+                content=row['content'],
+                annotation_type=row['annotation_type'],
+                created_at=row['created_at'],
+            )
+            for row in rows
+        ]
+
+    # --- Tags ---
+
+    async def tag_chunk(
+        self,
+        chunk_id: str,
+        tag_name: str,
+        user_id: str,
+    ) -> None:
+        """Add a tag to a chunk."""
+        async with self.db.acquire() as conn:
+            # Get or create tag
+            tag_id = await conn.fetchval(
+                """
+                INSERT INTO tags (name, created_by)
+                VALUES ($1, $2)
+                ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+                RETURNING id
+                """,
+                tag_name.lower(), user_id
+            )
+
+            # Link tag to chunk
+            await conn.execute(
+                """
+                INSERT INTO chunk_tags (chunk_id, tag_id, tagged_by)
+                VALUES ($1, $2, $3)
+                ON CONFLICT DO NOTHING
+                """,
+                chunk_id, tag_id, user_id
+            )
+
+    async def get_chunks_by_tag(
+        self,
+        tag_name: str,
+        repository_id: str | None = None,
+    ) -> list[dict]:
+        """Get all chunks with a specific tag."""
+        async with self.db.acquire() as conn:
+            sql = """
+                SELECT
+                    c.id::text as chunk_id,
+                    c.content,
+                    c.node_type,
+                    f.path as file_path,
+                    c.start_line,
+                    c.end_line
+                FROM chunk_tags ct
+                JOIN tags t ON t.id = ct.tag_id
+                JOIN chunks c ON c.id = ct.chunk_id
+                JOIN files f ON f.id = c.file_id
+                WHERE LOWER(t.name) = LOWER($1)
+            """
+            params = [tag_name]
+
+            if repository_id:
+                sql += " AND f.repository_id = $2"
+                params.append(repository_id)
+
+            rows = await conn.fetch(sql, *params)
+
+        return [dict(row) for row in rows]
+
+    # --- Selections (Pinned Context Sets) ---
+
+    async def create_selection(
+        self,
+        user_id: str,
+        name: str,
+        chunk_ids: list[str],
+        description: str | None = None,
+        notes: dict[str, str] | None = None,
+    ) -> Selection:
+        """Create a saved selection of chunks."""
+        notes = notes or {}
+
+        async with self.db.acquire() as conn:
+            async with conn.transaction():
+                selection_id = await conn.fetchval(
+                    """
+                    INSERT INTO selections (user_id, name, description)
+                    VALUES ($1, $2, $3)
+                    RETURNING id
+                    """,
+                    user_id, name, description
+                )
+
+                for position, chunk_id in enumerate(chunk_ids):
+                    await conn.execute(
+                        """
+                        INSERT INTO selection_chunks (selection_id, chunk_id, position, note)
+                        VALUES ($1, $2, $3, $4)
+                        """,
+                        selection_id, chunk_id, position, notes.get(chunk_id)
+                    )
+
+        return Selection(
+            id=str(selection_id),
+            name=name,
+            description=description,
+            chunk_ids=chunk_ids,
+            notes=notes,
+        )
+
+    async def get_selection(self, selection_id: str) -> Selection | None:
+        """Get a saved selection by ID."""
+        async with self.db.acquire() as conn:
+            selection_row = await conn.fetchrow(
+                "SELECT id, name, description FROM selections WHERE id = $1",
+                selection_id
+            )
+
+            if not selection_row:
+                return None
+
+            chunk_rows = await conn.fetch(
+                """
+                SELECT chunk_id::text, note
+                FROM selection_chunks
+                WHERE selection_id = $1
+                ORDER BY position
+                """,
+                selection_id
+            )
+
+        return Selection(
+            id=str(selection_row['id']),
+            name=selection_row['name'],
+            description=selection_row['description'],
+            chunk_ids=[row['chunk_id'] for row in chunk_rows],
+            notes={row['chunk_id']: row['note'] for row in chunk_rows if row['note']},
+        )
+
+    # --- Conversations ---
+
+    async def create_conversation(
+        self,
+        user_id: str,
+        title: str | None = None,
+        chunk_id: str | None = None,
+        file_id: str | None = None,
+        selection_id: str | None = None,
+    ) -> str:
+        """Start a conversation attached to code."""
+        async with self.db.acquire() as conn:
+            conversation_id = await conn.fetchval(
+                """
+                INSERT INTO conversations (title, chunk_id, file_id, selection_id, created_by)
+                VALUES ($1, $2, $3, $4, $5)
+                RETURNING id
+                """,
+                title, chunk_id, file_id, selection_id, user_id
+            )
+
+        return str(conversation_id)
+
+    async def add_message(
+        self,
+        conversation_id: str,
+        role: Literal["user", "assistant", "system"],
+        content: str,
+        user_id: str | None = None,
+        referenced_chunks: list[str] | None = None,
+    ) -> str:
+        """Add a message to a conversation."""
+        async with self.db.acquire() as conn:
+            message_id = await conn.fetchval(
+                """
+                INSERT INTO conversation_messages
+                    (conversation_id, user_id, role, content, referenced_chunks)
+                VALUES ($1, $2, $3, $4, $5)
+                RETURNING id
+                """,
+                conversation_id, user_id, role, content, referenced_chunks
+            )
+
+            # Update conversation timestamp
+            await conn.execute(
+                "UPDATE conversations SET updated_at = NOW() WHERE id = $1",
+                conversation_id
+            )
+
+        return str(message_id)
+
+    async def get_conversation_context(
+        self,
+        conversation_id: str,
+    ) -> ConversationContext | None:
+        """Get full conversation context for AI."""
+        async with self.db.acquire() as conn:
+            conv_row = await conn.fetchrow(
+                """
+                SELECT id, chunk_id, file_id, selection_id
+                FROM conversations
+                WHERE id = $1
+                """,
+                conversation_id
+            )
+
+            if not conv_row:
+                return None
+
+            message_rows = await conn.fetch(
+                """
+                SELECT role, content, referenced_chunks
+                FROM conversation_messages
+                WHERE conversation_id = $1
+                ORDER BY created_at
+                """,
+                conversation_id
+            )
+
+        # Determine what the conversation is attached to
+        attached_to = {}
+        if conv_row['chunk_id']:
+            attached_to = {"type": "chunk", "id": str(conv_row['chunk_id'])}
+        elif conv_row['file_id']:
+            attached_to = {"type": "file", "id": str(conv_row['file_id'])}
+        elif conv_row['selection_id']:
+            attached_to = {"type": "selection", "id": str(conv_row['selection_id'])}
+
+        # Collect all referenced chunks
+        all_referenced = set()
+        messages = []
+        for row in message_rows:
+            messages.append({
+                "role": row['role'],
+                "content": row['content'],
+            })
+            if row['referenced_chunks']:
+                all_referenced.update(row['referenced_chunks'])
+
+        return ConversationContext(
+            conversation_id=str(conv_row['id']),
+            messages=messages,
+            referenced_chunks=list(all_referenced),
+            attached_to=attached_to,
+        )
+```
+
+#### AI Agent Access to Human Context
+
+```python
+# services/context_service.py (extended)
+
+class AIContextService:
+    # ... previous methods ...
+
+    async def search_annotations(
+        self,
+        query: str,
+        repository_id: str | None = None,
+        annotation_types: list[str] | None = None,
+        limit: int = 10,
+    ) -> ContextResult:
+        """
+        Search human annotations semantically.
+
+        Use for:
+        - "What has the team noted about authentication?"
+        - "Show me questions developers asked about this code"
+        - "Find warnings about security"
+        """
+        # Generate query embedding
+        response = await self.openai.embeddings.create(
+            model=self.embedding_model,
+            input=query,
+        )
+        query_embedding = response.data[0].embedding
+
+        sql = """
+            SELECT
+                c.id::text as chunk_id,
+                f.path as file_path,
+                f.language,
+                c.content,
+                c.node_type,
+                c.start_line,
+                c.end_line,
+                c.parent_context,
+                c.parent_route,
+                c.metadata,
+                a.content as annotation,
+                a.annotation_type,
+                1 - (ae.embedding <=> $1::vector) as similarity
+            FROM annotation_embeddings ae
+            JOIN annotations a ON a.id = ae.annotation_id
+            JOIN chunks c ON c.id = a.chunk_id
+            JOIN files f ON f.id = c.file_id
+            WHERE 1 - (ae.embedding <=> $1::vector) > 0.6
+        """
+        params = [query_embedding]
+        param_idx = 2
+
+        if repository_id:
+            sql += f" AND f.repository_id = ${param_idx}"
+            params.append(repository_id)
+            param_idx += 1
+
+        if annotation_types:
+            sql += f" AND a.annotation_type = ANY(${param_idx})"
+            params.append(annotation_types)
+            param_idx += 1
+
+        sql += f" ORDER BY similarity DESC LIMIT ${param_idx}"
+        params.append(limit)
+
+        async with self.db.acquire() as conn:
+            rows = await conn.fetch(sql, *params)
+
+        chunks = []
+        for row in rows:
+            chunk = self._row_to_chunk(row)
+            # Enrich with annotation data
+            chunk.metadata['annotation'] = {
+                'content': row['annotation'],
+                'type': row['annotation_type'],
+            }
+            chunks.append(chunk)
+
+        return ContextResult(
+            chunks=chunks,
+            total_tokens=self._estimate_tokens(chunks),
+            query_type="annotation_search",
+        )
+
+    async def get_tagged_context(
+        self,
+        tags: list[str],
+        repository_id: str | None = None,
+        limit: int = 50,
+    ) -> ContextResult:
+        """
+        Get code chunks by human-assigned tags.
+
+        Use for:
+        - "Show me all #security-critical code"
+        - "What's tagged as #needs-review?"
+        - "Find #api-endpoints"
+        """
+        sql = """
+            SELECT DISTINCT
+                c.id::text as chunk_id,
+                f.path as file_path,
+                f.language,
+                c.content,
+                c.node_type,
+                c.start_line,
+                c.end_line,
+                c.parent_context,
+                c.parent_route,
+                c.metadata,
+                array_agg(t.name) as tags,
+                1.0 as relevance
+            FROM chunk_tags ct
+            JOIN tags t ON t.id = ct.tag_id
+            JOIN chunks c ON c.id = ct.chunk_id
+            JOIN files f ON f.id = c.file_id
+            WHERE LOWER(t.name) = ANY($1)
+        """
+        params = [[tag.lower() for tag in tags]]
+        param_idx = 2
+
+        if repository_id:
+            sql += f" AND f.repository_id = ${param_idx}"
+            params.append(repository_id)
+            param_idx += 1
+
+        sql += """
+            GROUP BY c.id, f.path, f.language, c.content, c.node_type,
+                     c.start_line, c.end_line, c.parent_context, c.parent_route, c.metadata
+            LIMIT $""" + str(param_idx)
+        params.append(limit)
+
+        async with self.db.acquire() as conn:
+            rows = await conn.fetch(sql, *params)
+
+        chunks = []
+        for row in rows:
+            chunk = self._row_to_chunk(row)
+            chunk.metadata['tags'] = row['tags']
+            chunks.append(chunk)
+
+        return ContextResult(
+            chunks=chunks,
+            total_tokens=self._estimate_tokens(chunks),
+            query_type="tagged_context",
+        )
+
+    async def get_selection_context(
+        self,
+        selection_id: str,
+    ) -> ContextResult:
+        """
+        Get all chunks in a human-curated selection.
+
+        Use when humans have pre-selected relevant context.
+        """
+        sql = """
+            SELECT
+                c.id::text as chunk_id,
+                f.path as file_path,
+                f.language,
+                c.content,
+                c.node_type,
+                c.start_line,
+                c.end_line,
+                c.parent_context,
+                c.parent_route,
+                c.metadata,
+                sc.note as selection_note,
+                sc.position,
+                1.0 as relevance
+            FROM selection_chunks sc
+            JOIN chunks c ON c.id = sc.chunk_id
+            JOIN files f ON f.id = c.file_id
+            WHERE sc.selection_id = $1
+            ORDER BY sc.position
+        """
+
+        async with self.db.acquire() as conn:
+            rows = await conn.fetch(sql, selection_id)
+
+        chunks = []
+        for row in rows:
+            chunk = self._row_to_chunk(row)
+            if row['selection_note']:
+                chunk.metadata['selection_note'] = row['selection_note']
+            chunks.append(chunk)
+
+        return ContextResult(
+            chunks=chunks,
+            total_tokens=self._estimate_tokens(chunks),
+            query_type="selection_context",
+        )
+
+    async def get_conversation_with_code(
+        self,
+        conversation_id: str,
+    ) -> dict:
+        """
+        Get a conversation with all its referenced code.
+
+        Returns conversation history plus the code chunks
+        that were discussed.
+        """
+        async with self.db.acquire() as conn:
+            # Get conversation and messages
+            conv_row = await conn.fetchrow(
+                """
+                SELECT c.id, c.title, c.chunk_id, c.file_id, c.selection_id
+                FROM conversations c
+                WHERE c.id = $1
+                """,
+                conversation_id
+            )
+
+            if not conv_row:
+                return None
+
+            messages = await conn.fetch(
+                """
+                SELECT role, content, referenced_chunks
+                FROM conversation_messages
+                WHERE conversation_id = $1
+                ORDER BY created_at
+                """,
+                conversation_id
+            )
+
+            # Collect all referenced chunk IDs
+            referenced_ids = set()
+            if conv_row['chunk_id']:
+                referenced_ids.add(str(conv_row['chunk_id']))
+
+            for msg in messages:
+                if msg['referenced_chunks']:
+                    referenced_ids.update(msg['referenced_chunks'])
+
+            # Fetch the actual chunks
+            if referenced_ids:
+                chunks = await conn.fetch(
+                    """
+                    SELECT
+                        c.id::text as chunk_id,
+                        f.path as file_path,
+                        c.content,
+                        c.node_type,
+                        c.start_line,
+                        c.end_line
+                    FROM chunks c
+                    JOIN files f ON f.id = c.file_id
+                    WHERE c.id = ANY($1::uuid[])
+                    """,
+                    list(referenced_ids)
+                )
+            else:
+                chunks = []
+
+        return {
+            "conversation_id": str(conv_row['id']),
+            "title": conv_row['title'],
+            "messages": [
+                {"role": m['role'], "content": m['content']}
+                for m in messages
+            ],
+            "referenced_code": [dict(c) for c in chunks],
+        }
+```
+
+#### Frontend Components for Context Augmentation
+
+```tsx
+// frontend/src/components/ContextAugmentation/AnnotationPanel.tsx
+
+import { useState } from 'react';
+import { useASTStore } from '../../stores/astStore';
+
+interface AnnotationPanelProps {
+  chunkId: string;
+  onClose: () => void;
+}
+
+export function AnnotationPanel({ chunkId, onClose }: AnnotationPanelProps) {
+  const [content, setContent] = useState('');
+  const [type, setType] = useState<'note' | 'question' | 'explanation' | 'warning'>('note');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    try {
+      await fetch('/api/annotations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chunk_id: chunkId,
+          content,
+          annotation_type: type,
+        }),
+      });
+      onClose();
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="annotation-panel">
+      <h4>Add Annotation</h4>
+
+      <div className="annotation-type-selector">
+        {(['note', 'question', 'explanation', 'warning'] as const).map((t) => (
+          <button
+            key={t}
+            className={`type-btn ${type === t ? 'active' : ''}`}
+            onClick={() => setType(t)}
+          >
+            {t === 'note' && '📝'}
+            {t === 'question' && '❓'}
+            {t === 'explanation' && '💡'}
+            {t === 'warning' && '⚠️'}
+            {t.charAt(0).toUpperCase() + t.slice(1)}
+          </button>
+        ))}
+      </div>
+
+      <textarea
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        placeholder={
+          type === 'note' ? 'Add a note about this code...' :
+          type === 'question' ? 'What would you like to know?' :
+          type === 'explanation' ? 'Explain what this code does...' :
+          'What should others watch out for?'
+        }
+        rows={4}
+      />
+
+      <div className="annotation-actions">
+        <button onClick={onClose}>Cancel</button>
+        <button
+          onClick={handleSubmit}
+          disabled={!content.trim() || isSubmitting}
+          className="primary"
+        >
+          {isSubmitting ? 'Saving...' : 'Save Annotation'}
+        </button>
+      </div>
+    </div>
+  );
+}
+```
+
+```tsx
+// frontend/src/components/ContextAugmentation/SelectionBuilder.tsx
+
+import { useState, useCallback } from 'react';
+import type { CodeChunk } from '../../types/ast';
+
+interface SelectionBuilderProps {
+  selectedChunks: CodeChunk[];
+  onSave: (name: string, description: string, notes: Record<string, string>) => void;
+  onClear: () => void;
+}
+
+export function SelectionBuilder({
+  selectedChunks,
+  onSave,
+  onClear
+}: SelectionBuilderProps) {
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [isExpanded, setIsExpanded] = useState(true);
+
+  const handleNoteChange = useCallback((chunkId: string, note: string) => {
+    setNotes(prev => ({ ...prev, [chunkId]: note }));
+  }, []);
+
+  if (selectedChunks.length === 0) {
+    return (
+      <div className="selection-builder empty">
+        <p>Click chunks in the tree or editor to build a context selection</p>
+        <p className="hint">Hold Cmd/Ctrl to multi-select</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="selection-builder">
+      <div className="selection-header">
+        <h4>Context Selection ({selectedChunks.length} items)</h4>
+        <button onClick={() => setIsExpanded(!isExpanded)}>
+          {isExpanded ? '▼' : '▶'}
+        </button>
+      </div>
+
+      {isExpanded && (
+        <>
+          <div className="selection-items">
+            {selectedChunks.map((chunk, index) => (
+              <div key={chunk.id} className="selection-item">
+                <div className="item-header">
+                  <span className="item-number">{index + 1}</span>
+                  <span className="item-type">{chunk.node_type}</span>
+                  <span className="item-location">
+                    {chunk.parent_route.join(' → ')}
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Why is this relevant? (optional)"
+                  value={notes[chunk.id] || ''}
+                  onChange={(e) => handleNoteChange(chunk.id, e.target.value)}
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="selection-save">
+            <input
+              type="text"
+              placeholder="Selection name..."
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <textarea
+              placeholder="Description (optional)..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={2}
+            />
+            <div className="save-actions">
+              <button onClick={onClear}>Clear</button>
+              <button
+                onClick={() => onSave(name, description, notes)}
+                disabled={!name.trim()}
+                className="primary"
+              >
+                Save Selection
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+```
+
+```tsx
+// frontend/src/components/ContextAugmentation/CodeConversation.tsx
+
+import { useState, useEffect, useRef } from 'react';
+import type { CodeChunk } from '../../types/ast';
+
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+  referencedChunks?: string[];
+}
+
+interface CodeConversationProps {
+  attachedTo: {
+    type: 'chunk' | 'file' | 'selection';
+    id: string;
+    name?: string;
+  };
+  initialContext?: CodeChunk[];
+}
+
+export function CodeConversation({ attachedTo, initialContext }: CodeConversationProps) {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Initialize conversation
+  useEffect(() => {
+    const initConversation = async () => {
+      const response = await fetch('/api/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          [`${attachedTo.type}_id`]: attachedTo.id,
+          title: `Discussion: ${attachedTo.name || attachedTo.id}`,
+        }),
+      });
+      const data = await response.json();
+      setConversationId(data.id);
+    };
+
+    initConversation();
+  }, [attachedTo]);
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleSend = async () => {
+    if (!input.trim() || !conversationId) return;
+
+    const userMessage: Message = { role: 'user', content: input };
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
+
+    try {
+      // Send message to backend (which will query AI with code context)
+      const response = await fetch(`/api/conversations/${conversationId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          role: 'user',
+          content: input,
+          referenced_chunks: initialContext?.map(c => c.id),
+        }),
+      });
+
+      const data = await response.json();
+
+      // Add AI response
+      const assistantMessage: Message = {
+        role: 'assistant',
+        content: data.response,
+        referencedChunks: data.referenced_chunks,
+      };
+      setMessages(prev => [...prev, assistantMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="code-conversation">
+      <div className="conversation-header">
+        <h4>Discussion</h4>
+        <span className="attached-to">
+          Attached to: {attachedTo.type} - {attachedTo.name || attachedTo.id}
+        </span>
+      </div>
+
+      <div className="conversation-messages">
+        {initialContext && initialContext.length > 0 && (
+          <div className="context-summary">
+            <strong>Context:</strong> {initialContext.length} code chunks selected
+          </div>
+        )}
+
+        {messages.map((msg, index) => (
+          <div key={index} className={`message ${msg.role}`}>
+            <div className="message-content">{msg.content}</div>
+            {msg.referencedChunks && msg.referencedChunks.length > 0 && (
+              <div className="referenced-chunks">
+                Referenced {msg.referencedChunks.length} code chunks
+              </div>
+            )}
+          </div>
+        ))}
+
+        {isLoading && (
+          <div className="message assistant loading">
+            Thinking...
+          </div>
+        )}
+
+        <div ref={messagesEndRef} />
+      </div>
+
+      <div className="conversation-input">
+        <textarea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Ask about this code..."
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              handleSend();
+            }
+          }}
+        />
+        <button onClick={handleSend} disabled={isLoading || !input.trim()}>
+          Send
+        </button>
+      </div>
+    </div>
+  );
+}
+```
+
+#### Updated State Management for Selections
+
+```typescript
+// frontend/src/stores/selectionStore.ts
+
+import { create } from 'zustand';
+import type { CodeChunk } from '../types/ast';
+
+interface SelectionState {
+  // Currently selected chunks (for building a selection)
+  selectedChunks: CodeChunk[];
+
+  // Saved selections
+  savedSelections: Array<{
+    id: string;
+    name: string;
+    chunkCount: number;
+  }>;
+
+  // Actions
+  toggleChunkSelection: (chunk: CodeChunk) => void;
+  addToSelection: (chunk: CodeChunk) => void;
+  removeFromSelection: (chunkId: string) => void;
+  clearSelection: () => void;
+
+  // Multi-select with Cmd/Ctrl
+  isMultiSelectMode: boolean;
+  setMultiSelectMode: (enabled: boolean) => void;
+}
+
+export const useSelectionStore = create<SelectionState>((set, get) => ({
+  selectedChunks: [],
+  savedSelections: [],
+  isMultiSelectMode: false,
+
+  toggleChunkSelection: (chunk) => {
+    const { selectedChunks, isMultiSelectMode } = get();
+    const exists = selectedChunks.some(c => c.id === chunk.id);
+
+    if (exists) {
+      set({ selectedChunks: selectedChunks.filter(c => c.id !== chunk.id) });
+    } else if (isMultiSelectMode) {
+      set({ selectedChunks: [...selectedChunks, chunk] });
+    } else {
+      set({ selectedChunks: [chunk] });
+    }
+  },
+
+  addToSelection: (chunk) => {
+    const { selectedChunks } = get();
+    if (!selectedChunks.some(c => c.id === chunk.id)) {
+      set({ selectedChunks: [...selectedChunks, chunk] });
+    }
+  },
+
+  removeFromSelection: (chunkId) => {
+    set({ selectedChunks: get().selectedChunks.filter(c => c.id !== chunkId) });
+  },
+
+  clearSelection: () => set({ selectedChunks: [] }),
+
+  setMultiSelectMode: (enabled) => set({ isMultiSelectMode: enabled }),
+}));
+
+// Hook to handle keyboard modifiers
+export function useMultiSelectKeyboard() {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Meta' || e.key === 'Control') {
+        useSelectionStore.getState().setMultiSelectMode(true);
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Meta' || e.key === 'Control') {
+        useSelectionStore.getState().setMultiSelectMode(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
+}
+```
+
+#### API Routes for Human Context
+
+```python
+# api/context_routes.py
+
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel
+
+from services.context_augmentation_service import ContextAugmentationService
+
+router = APIRouter(prefix="/context", tags=["Human Context"])
+
+
+class CreateAnnotationRequest(BaseModel):
+    chunk_id: str
+    content: str
+    annotation_type: str
+    start_offset: int | None = None
+    end_offset: int | None = None
+
+
+class TagChunkRequest(BaseModel):
+    chunk_id: str
+    tag_name: str
+
+
+class CreateSelectionRequest(BaseModel):
+    name: str
+    description: str | None = None
+    chunk_ids: list[str]
+    notes: dict[str, str] | None = None
+
+
+class CreateConversationRequest(BaseModel):
+    title: str | None = None
+    chunk_id: str | None = None
+    file_id: str | None = None
+    selection_id: str | None = None
+
+
+class SendMessageRequest(BaseModel):
+    role: str
+    content: str
+    referenced_chunks: list[str] | None = None
+
+
+@router.post("/annotations")
+async def create_annotation(
+    request: CreateAnnotationRequest,
+    user_id: str = Depends(get_current_user_id),
+    service: ContextAugmentationService = Depends(),
+):
+    """Add an annotation to a code chunk."""
+    return await service.create_annotation(
+        chunk_id=request.chunk_id,
+        user_id=user_id,
+        content=request.content,
+        annotation_type=request.annotation_type,
+        start_offset=request.start_offset,
+        end_offset=request.end_offset,
+    )
+
+
+@router.get("/annotations/{chunk_id}")
+async def get_annotations(
+    chunk_id: str,
+    service: ContextAugmentationService = Depends(),
+):
+    """Get all annotations for a chunk."""
+    return await service.get_annotations_for_chunk(chunk_id)
+
+
+@router.post("/tags")
+async def tag_chunk(
+    request: TagChunkRequest,
+    user_id: str = Depends(get_current_user_id),
+    service: ContextAugmentationService = Depends(),
+):
+    """Add a tag to a chunk."""
+    await service.tag_chunk(
+        chunk_id=request.chunk_id,
+        tag_name=request.tag_name,
+        user_id=user_id,
+    )
+    return {"status": "tagged"}
+
+
+@router.get("/tags/{tag_name}/chunks")
+async def get_chunks_by_tag(
+    tag_name: str,
+    repository_id: str | None = None,
+    service: ContextAugmentationService = Depends(),
+):
+    """Get all chunks with a specific tag."""
+    return await service.get_chunks_by_tag(tag_name, repository_id)
+
+
+@router.post("/selections")
+async def create_selection(
+    request: CreateSelectionRequest,
+    user_id: str = Depends(get_current_user_id),
+    service: ContextAugmentationService = Depends(),
+):
+    """Save a selection of chunks."""
+    return await service.create_selection(
+        user_id=user_id,
+        name=request.name,
+        description=request.description,
+        chunk_ids=request.chunk_ids,
+        notes=request.notes,
+    )
+
+
+@router.get("/selections/{selection_id}")
+async def get_selection(
+    selection_id: str,
+    service: ContextAugmentationService = Depends(),
+):
+    """Get a saved selection."""
+    return await service.get_selection(selection_id)
+
+
+@router.post("/conversations")
+async def create_conversation(
+    request: CreateConversationRequest,
+    user_id: str = Depends(get_current_user_id),
+    service: ContextAugmentationService = Depends(),
+):
+    """Start a new conversation attached to code."""
+    conversation_id = await service.create_conversation(
+        user_id=user_id,
+        title=request.title,
+        chunk_id=request.chunk_id,
+        file_id=request.file_id,
+        selection_id=request.selection_id,
+    )
+    return {"id": conversation_id}
+
+
+@router.post("/conversations/{conversation_id}/messages")
+async def send_message(
+    conversation_id: str,
+    request: SendMessageRequest,
+    user_id: str = Depends(get_current_user_id),
+    service: ContextAugmentationService = Depends(),
+    ai_service: AIContextService = Depends(),
+):
+    """Send a message in a conversation and get AI response."""
+    # Store user message
+    await service.add_message(
+        conversation_id=conversation_id,
+        role="user",
+        content=request.content,
+        user_id=user_id,
+        referenced_chunks=request.referenced_chunks,
+    )
+
+    # Get conversation context for AI
+    context = await service.get_conversation_context(conversation_id)
+
+    # Get relevant code chunks
+    code_context = []
+    if context.referenced_chunks:
+        for chunk_id in context.referenced_chunks[:10]:  # Limit context
+            chunk_result = await ai_service.get_chunk_by_id(chunk_id)
+            if chunk_result:
+                code_context.append(chunk_result)
+
+    # Generate AI response (you'd integrate your LLM here)
+    ai_response = await generate_ai_response(
+        messages=context.messages,
+        code_context=code_context,
+    )
+
+    # Store AI response
+    await service.add_message(
+        conversation_id=conversation_id,
+        role="assistant",
+        content=ai_response.content,
+        referenced_chunks=ai_response.referenced_chunks,
+    )
+
+    return {
+        "response": ai_response.content,
+        "referenced_chunks": ai_response.referenced_chunks,
+    }
+```
+
 ### Summary: When to Use Each Architecture
 
 | Architecture | Use Case | Complexity |
