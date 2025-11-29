@@ -1850,6 +1850,1398 @@ CMD ["nginx", "-g", "daemon off;"]
 
 ---
 
+## Part 2: Code Intelligence Platform Architecture
+
+For building a **production code intelligence system** that serves both human visualization and AI agent context management, a database-backed architecture is the right approach. This section covers building a platform where:
+
+- **Code is the source of truth** stored in the database
+- **Humans** visualize and navigate via the AST viewer UI
+- **AI agents** query for relevant context via APIs
+- **Changes propagate** through a one-way reactive data flow
+
+### Why Database-Backed Architecture?
+
+| Requirement | Direct WebSocket | DB-Backed |
+|-------------|------------------|-----------|
+| Persist code across sessions | No | Yes |
+| Multi-user/multi-agent access | Limited | Yes |
+| Query code semantically | No | Yes (vector search) |
+| Version history | No | Yes |
+| Cross-repository analysis | No | Yes |
+| Offline AI agent access | No | Yes (cached) |
+
+### Platform Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              CONSUMERS                                       │
+│                                                                             │
+│   ┌─────────────────────┐              ┌─────────────────────────────────┐  │
+│   │    HUMAN VIEWER     │              │         AI AGENTS               │  │
+│   │  ┌───────────────┐  │              │  ┌─────────────────────────┐   │  │
+│   │  │ Code Editor   │  │              │  │ Context Retrieval API   │   │  │
+│   │  │ AST Tree View │  │              │  │ - Semantic search       │   │  │
+│   │  │ Dependency    │  │              │  │ - Graph traversal       │   │  │
+│   │  │   Graph       │  │              │  │ - Chunk retrieval       │   │  │
+│   │  └───────────────┘  │              │  └─────────────────────────┘   │  │
+│   └──────────┬──────────┘              └──────────────┬─────────────────┘  │
+│              │                                        │                     │
+│              │         Subscribe (read-only)          │  Query              │
+│              └────────────────┬───────────────────────┘                     │
+│                               │                                             │
+└───────────────────────────────┼─────────────────────────────────────────────┘
+                                │
+┌───────────────────────────────┼─────────────────────────────────────────────┐
+│                          DATABASE LAYER                                      │
+│                               │                                             │
+│   ┌───────────────────────────▼───────────────────────────────────────────┐ │
+│   │                    PostgreSQL + pgvector                               │ │
+│   │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐  │ │
+│   │  │   files      │ │   chunks     │ │  embeddings  │ │    edges     │  │ │
+│   │  │  - path      │ │  - chunk_id  │ │  - chunk_id  │ │  - source    │  │ │
+│   │  │  - content   │ │  - content   │ │  - vector    │ │  - target    │  │ │
+│   │  │  - language  │ │  - metadata  │ │  - model     │ │  - type      │  │ │
+│   │  │  - hash      │ │  - file_id   │ │              │ │  - weight    │  │ │
+│   │  └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘  │ │
+│   │                                                                        │ │
+│   │                    Real-time Subscriptions (Supabase)                  │ │
+│   └────────────────────────────────────────────────────────────────────────┘ │
+│                               ▲                                             │
+└───────────────────────────────┼─────────────────────────────────────────────┘
+                                │
+                                │ Write (one-way)
+                                │
+┌───────────────────────────────┼─────────────────────────────────────────────┐
+│                        INDEXING SERVICE                                      │
+│                               │                                             │
+│   ┌───────────────────────────▼───────────────────────────────────────────┐ │
+│   │                    Code Indexing Pipeline                              │ │
+│   │                                                                        │ │
+│   │  1. Receive code → 2. Parse AST → 3. Extract chunks → 4. Embed        │ │
+│   │                         │              │                  │            │ │
+│   │                   treesitter-     treesitter-      OpenAI /           │ │
+│   │                   chunker         chunker          local model         │ │
+│   │                                                                        │ │
+│   │  5. Build xref graph → 6. Write to DB → 7. Notify subscribers         │ │
+│   └────────────────────────────────────────────────────────────────────────┘ │
+│                               ▲                                             │
+└───────────────────────────────┼─────────────────────────────────────────────┘
+                                │
+                                │ Code changes
+                                │
+┌───────────────────────────────┼─────────────────────────────────────────────┐
+│                         CODE SOURCES                                         │
+│   ┌───────────────┐  ┌───────────────┐  ┌───────────────┐                   │
+│   │  Git Repos    │  │  File Upload  │  │  Editor API   │                   │
+│   └───────────────┘  └───────────────┘  └───────────────┘                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Database Schema
+
+```sql
+-- PostgreSQL with pgvector extension
+
+-- Enable vector extension
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- Repositories/Projects
+CREATE TABLE repositories (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    url TEXT,
+    default_branch TEXT DEFAULT 'main',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Source files (the source of truth)
+CREATE TABLE files (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    repository_id UUID REFERENCES repositories(id) ON DELETE CASCADE,
+    path TEXT NOT NULL,
+    content TEXT NOT NULL,
+    language TEXT NOT NULL,
+    content_hash TEXT NOT NULL,  -- SHA256 for change detection
+    version INTEGER DEFAULT 1,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+
+    UNIQUE(repository_id, path)
+);
+
+-- Index for fast lookups
+CREATE INDEX idx_files_repo_path ON files(repository_id, path);
+CREATE INDEX idx_files_language ON files(language);
+CREATE INDEX idx_files_hash ON files(content_hash);
+
+-- Semantic code chunks (derived from files via treesitter-chunker)
+CREATE TABLE chunks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    file_id UUID REFERENCES files(id) ON DELETE CASCADE,
+
+    -- treesitter-chunker identifiers
+    chunk_id TEXT NOT NULL,        -- Stable SHA1 from treesitter-chunker
+    node_id TEXT NOT NULL,         -- Node identifier
+
+    -- Content & position
+    content TEXT NOT NULL,
+    node_type TEXT NOT NULL,
+    start_line INTEGER NOT NULL,
+    end_line INTEGER NOT NULL,
+    start_byte INTEGER NOT NULL,
+    end_byte INTEGER NOT NULL,
+
+    -- Context hierarchy
+    parent_context TEXT,           -- e.g., "ClassName"
+    parent_route TEXT[],           -- e.g., ["module", "Class", "method"]
+    parent_chunk_id UUID REFERENCES chunks(id),
+
+    -- Rich metadata from treesitter-chunker
+    metadata JSONB DEFAULT '{}',   -- complexity, calls, imports, etc.
+
+    -- Tracking
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    file_version INTEGER NOT NULL,  -- Links to files.version
+
+    UNIQUE(file_id, chunk_id)
+);
+
+-- Indexes for chunk queries
+CREATE INDEX idx_chunks_file ON chunks(file_id);
+CREATE INDEX idx_chunks_node_type ON chunks(node_type);
+CREATE INDEX idx_chunks_parent ON chunks(parent_chunk_id);
+CREATE INDEX idx_chunks_metadata ON chunks USING GIN(metadata);
+
+-- Vector embeddings for semantic search
+CREATE TABLE embeddings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    chunk_id UUID REFERENCES chunks(id) ON DELETE CASCADE,
+
+    -- Embedding vector (1536 dims for text-embedding-3-small)
+    embedding vector(1536) NOT NULL,
+
+    -- Model tracking
+    model TEXT NOT NULL,           -- e.g., "text-embedding-3-small"
+    model_version TEXT,
+
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+
+    UNIQUE(chunk_id, model)
+);
+
+-- Vector similarity index
+CREATE INDEX idx_embeddings_vector ON embeddings
+    USING ivfflat (embedding vector_cosine_ops)
+    WITH (lists = 100);
+
+-- Cross-reference edges (from treesitter-chunker's build_xref)
+CREATE TABLE edges (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    source_chunk_id UUID REFERENCES chunks(id) ON DELETE CASCADE,
+    target_chunk_id UUID REFERENCES chunks(id) ON DELETE CASCADE,
+
+    edge_type TEXT NOT NULL,       -- DEFINES, IMPORTS, CALLS, INHERITS, REFERENCES
+    weight FLOAT DEFAULT 1.0,
+    metadata JSONB DEFAULT '{}',
+
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+
+    UNIQUE(source_chunk_id, target_chunk_id, edge_type)
+);
+
+-- Index for graph traversal
+CREATE INDEX idx_edges_source ON edges(source_chunk_id);
+CREATE INDEX idx_edges_target ON edges(target_chunk_id);
+CREATE INDEX idx_edges_type ON edges(edge_type);
+
+-- Symbols table for fast symbol lookup
+CREATE TABLE symbols (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    chunk_id UUID REFERENCES chunks(id) ON DELETE CASCADE,
+
+    name TEXT NOT NULL,
+    kind TEXT NOT NULL,            -- function, class, method, variable
+    language TEXT NOT NULL,
+
+    -- Quick access without joining
+    file_path TEXT NOT NULL,
+    start_line INTEGER NOT NULL,
+
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_symbols_name ON symbols(name);
+CREATE INDEX idx_symbols_kind ON symbols(kind);
+CREATE INDEX idx_symbols_name_trgm ON symbols USING GIN(name gin_trgm_ops);  -- Fuzzy search
+```
+
+### Indexing Service Implementation
+
+```python
+# services/indexing_service.py
+
+import asyncio
+import hashlib
+from dataclasses import dataclass
+from typing import AsyncIterator
+
+import asyncpg
+from openai import AsyncOpenAI
+
+from chunker import chunk_text, get_parser
+from chunker.graph.xref import build_xref
+from chunker.types import CodeChunk
+
+
+@dataclass
+class IndexingResult:
+    file_id: str
+    chunks_indexed: int
+    embeddings_created: int
+    edges_created: int
+
+
+class CodeIndexingService:
+    """
+    Service that indexes code into the database.
+
+    This is the ONLY writer to the database. All other services
+    (human UI, AI agents) only read from it.
+    """
+
+    def __init__(
+        self,
+        db_pool: asyncpg.Pool,
+        openai_client: AsyncOpenAI,
+        embedding_model: str = "text-embedding-3-small",
+    ):
+        self.db = db_pool
+        self.openai = openai_client
+        self.embedding_model = embedding_model
+
+    async def index_file(
+        self,
+        repository_id: str,
+        file_path: str,
+        content: str,
+        language: str,
+    ) -> IndexingResult:
+        """
+        Index a single file: parse, chunk, embed, and store.
+
+        This is idempotent - re-indexing the same content is a no-op.
+        """
+        content_hash = hashlib.sha256(content.encode()).hexdigest()
+
+        async with self.db.acquire() as conn:
+            # Check if file already indexed with same content
+            existing = await conn.fetchrow(
+                """
+                SELECT id, version FROM files
+                WHERE repository_id = $1 AND path = $2 AND content_hash = $3
+                """,
+                repository_id, file_path, content_hash
+            )
+
+            if existing:
+                # Content unchanged, skip re-indexing
+                return IndexingResult(
+                    file_id=str(existing['id']),
+                    chunks_indexed=0,
+                    embeddings_created=0,
+                    edges_created=0,
+                )
+
+            # Start transaction
+            async with conn.transaction():
+                # Upsert file
+                file_row = await conn.fetchrow(
+                    """
+                    INSERT INTO files (repository_id, path, content, language, content_hash)
+                    VALUES ($1, $2, $3, $4, $5)
+                    ON CONFLICT (repository_id, path) DO UPDATE SET
+                        content = EXCLUDED.content,
+                        language = EXCLUDED.language,
+                        content_hash = EXCLUDED.content_hash,
+                        version = files.version + 1,
+                        updated_at = NOW()
+                    RETURNING id, version
+                    """,
+                    repository_id, file_path, content, language, content_hash
+                )
+
+                file_id = file_row['id']
+                file_version = file_row['version']
+
+                # Delete old chunks (cascade deletes embeddings and edges)
+                await conn.execute(
+                    "DELETE FROM chunks WHERE file_id = $1 AND file_version < $2",
+                    file_id, file_version
+                )
+
+                # Parse and chunk with treesitter-chunker
+                chunks = chunk_text(content, language)
+
+                if not chunks:
+                    return IndexingResult(
+                        file_id=str(file_id),
+                        chunks_indexed=0,
+                        embeddings_created=0,
+                        edges_created=0,
+                    )
+
+                # Build xref graph
+                nodes, xref_edges = build_xref(chunks)
+
+                # Insert chunks
+                chunk_id_map = {}  # chunk.chunk_id -> db UUID
+
+                for chunk in chunks:
+                    chunk_db_id = await conn.fetchval(
+                        """
+                        INSERT INTO chunks (
+                            file_id, chunk_id, node_id, content, node_type,
+                            start_line, end_line, start_byte, end_byte,
+                            parent_context, parent_route, metadata, file_version
+                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                        ON CONFLICT (file_id, chunk_id) DO UPDATE SET
+                            content = EXCLUDED.content,
+                            metadata = EXCLUDED.metadata,
+                            file_version = EXCLUDED.file_version
+                        RETURNING id
+                        """,
+                        file_id, chunk.chunk_id, chunk.node_id, chunk.content,
+                        chunk.node_type, chunk.start_line, chunk.end_line,
+                        chunk.byte_start, chunk.byte_end, chunk.parent_context,
+                        chunk.parent_route, chunk.metadata, file_version
+                    )
+                    chunk_id_map[chunk.chunk_id] = chunk_db_id
+
+                    # Insert symbol for quick lookup
+                    symbol_name = self._extract_symbol_name(chunk)
+                    if symbol_name:
+                        await conn.execute(
+                            """
+                            INSERT INTO symbols (chunk_id, name, kind, language, file_path, start_line)
+                            VALUES ($1, $2, $3, $4, $5, $6)
+                            ON CONFLICT DO NOTHING
+                            """,
+                            chunk_db_id, symbol_name, chunk.node_type,
+                            language, file_path, chunk.start_line
+                        )
+
+                # Insert edges
+                edges_created = 0
+                for edge in xref_edges:
+                    src_db_id = chunk_id_map.get(edge['src'])
+                    dst_db_id = chunk_id_map.get(edge['dst'])
+
+                    if src_db_id and dst_db_id:
+                        await conn.execute(
+                            """
+                            INSERT INTO edges (source_chunk_id, target_chunk_id, edge_type, weight)
+                            VALUES ($1, $2, $3, $4)
+                            ON CONFLICT DO NOTHING
+                            """,
+                            src_db_id, dst_db_id,
+                            edge.get('type', 'REFERENCES'),
+                            edge.get('weight', 1.0)
+                        )
+                        edges_created += 1
+
+                # Generate and store embeddings
+                embeddings_created = await self._create_embeddings(
+                    conn, chunks, chunk_id_map
+                )
+
+                return IndexingResult(
+                    file_id=str(file_id),
+                    chunks_indexed=len(chunks),
+                    embeddings_created=embeddings_created,
+                    edges_created=edges_created,
+                )
+
+    async def _create_embeddings(
+        self,
+        conn: asyncpg.Connection,
+        chunks: list[CodeChunk],
+        chunk_id_map: dict[str, str],
+    ) -> int:
+        """Generate embeddings for chunks in batches."""
+
+        # Prepare texts for embedding
+        texts = []
+        chunk_ids = []
+
+        for chunk in chunks:
+            # Create embedding text with context
+            embed_text = self._prepare_embedding_text(chunk)
+            texts.append(embed_text)
+            chunk_ids.append(chunk_id_map[chunk.chunk_id])
+
+        # Batch embed (OpenAI allows up to 2048 per request)
+        embeddings_created = 0
+        batch_size = 100
+
+        for i in range(0, len(texts), batch_size):
+            batch_texts = texts[i:i + batch_size]
+            batch_ids = chunk_ids[i:i + batch_size]
+
+            response = await self.openai.embeddings.create(
+                model=self.embedding_model,
+                input=batch_texts,
+            )
+
+            for j, embedding_data in enumerate(response.data):
+                await conn.execute(
+                    """
+                    INSERT INTO embeddings (chunk_id, embedding, model)
+                    VALUES ($1, $2, $3)
+                    ON CONFLICT (chunk_id, model) DO UPDATE SET
+                        embedding = EXCLUDED.embedding
+                    """,
+                    batch_ids[j],
+                    embedding_data.embedding,
+                    self.embedding_model,
+                )
+                embeddings_created += 1
+
+        return embeddings_created
+
+    def _prepare_embedding_text(self, chunk: CodeChunk) -> str:
+        """Prepare text for embedding with context."""
+        parts = []
+
+        # Add hierarchical context
+        if chunk.parent_route:
+            parts.append(f"Path: {' > '.join(chunk.parent_route)}")
+
+        # Add type info
+        parts.append(f"Type: {chunk.node_type}")
+
+        # Add the code
+        parts.append(chunk.content)
+
+        return "\n".join(parts)
+
+    def _extract_symbol_name(self, chunk: CodeChunk) -> str | None:
+        """Extract symbol name from chunk for symbol table."""
+        if chunk.parent_route:
+            return chunk.parent_route[-1]
+        return None
+```
+
+### AI Agent Context Retrieval API
+
+```python
+# services/context_service.py
+
+from dataclasses import dataclass
+from typing import Literal
+
+import asyncpg
+from openai import AsyncOpenAI
+
+
+@dataclass
+class ContextChunk:
+    """A chunk of code returned to AI agents."""
+    chunk_id: str
+    file_path: str
+    language: str
+    content: str
+    node_type: str
+    start_line: int
+    end_line: int
+    parent_context: str | None
+    parent_route: list[str]
+    relevance_score: float
+    metadata: dict
+
+
+@dataclass
+class ContextResult:
+    """Result of a context query."""
+    chunks: list[ContextChunk]
+    total_tokens: int  # Estimated token count
+    query_type: str
+
+
+class AIContextService:
+    """
+    Service for AI agents to retrieve relevant code context.
+
+    Provides multiple retrieval strategies:
+    - Semantic search (vector similarity)
+    - Symbol lookup (exact/fuzzy name match)
+    - Graph traversal (related code)
+    - Hybrid (combine multiple strategies)
+    """
+
+    def __init__(
+        self,
+        db_pool: asyncpg.Pool,
+        openai_client: AsyncOpenAI,
+        embedding_model: str = "text-embedding-3-small",
+    ):
+        self.db = db_pool
+        self.openai = openai_client
+        self.embedding_model = embedding_model
+
+    async def semantic_search(
+        self,
+        query: str,
+        repository_id: str | None = None,
+        languages: list[str] | None = None,
+        limit: int = 10,
+        similarity_threshold: float = 0.7,
+    ) -> ContextResult:
+        """
+        Find code chunks semantically similar to a natural language query.
+
+        Use for:
+        - "Find code that handles user authentication"
+        - "Where is the database connection configured?"
+        - "Show me error handling patterns"
+        """
+        # Generate query embedding
+        response = await self.openai.embeddings.create(
+            model=self.embedding_model,
+            input=query,
+        )
+        query_embedding = response.data[0].embedding
+
+        # Build query with filters
+        sql = """
+            SELECT
+                c.id::text as chunk_id,
+                f.path as file_path,
+                f.language,
+                c.content,
+                c.node_type,
+                c.start_line,
+                c.end_line,
+                c.parent_context,
+                c.parent_route,
+                c.metadata,
+                1 - (e.embedding <=> $1::vector) as similarity
+            FROM embeddings e
+            JOIN chunks c ON c.id = e.chunk_id
+            JOIN files f ON f.id = c.file_id
+            WHERE 1 - (e.embedding <=> $1::vector) > $2
+        """
+        params = [query_embedding, similarity_threshold]
+        param_idx = 3
+
+        if repository_id:
+            sql += f" AND f.repository_id = ${param_idx}"
+            params.append(repository_id)
+            param_idx += 1
+
+        if languages:
+            sql += f" AND f.language = ANY(${param_idx})"
+            params.append(languages)
+            param_idx += 1
+
+        sql += f" ORDER BY similarity DESC LIMIT ${param_idx}"
+        params.append(limit)
+
+        async with self.db.acquire() as conn:
+            rows = await conn.fetch(sql, *params)
+
+        chunks = [
+            ContextChunk(
+                chunk_id=row['chunk_id'],
+                file_path=row['file_path'],
+                language=row['language'],
+                content=row['content'],
+                node_type=row['node_type'],
+                start_line=row['start_line'],
+                end_line=row['end_line'],
+                parent_context=row['parent_context'],
+                parent_route=row['parent_route'] or [],
+                relevance_score=float(row['similarity']),
+                metadata=row['metadata'] or {},
+            )
+            for row in rows
+        ]
+
+        return ContextResult(
+            chunks=chunks,
+            total_tokens=self._estimate_tokens(chunks),
+            query_type="semantic_search",
+        )
+
+    async def find_symbol(
+        self,
+        symbol_name: str,
+        repository_id: str | None = None,
+        kind: str | None = None,  # function, class, method
+        fuzzy: bool = False,
+        limit: int = 10,
+    ) -> ContextResult:
+        """
+        Find code by symbol name.
+
+        Use for:
+        - "Find the UserService class"
+        - "Show me the authenticate function"
+        - "Where is processPayment defined?"
+        """
+        async with self.db.acquire() as conn:
+            if fuzzy:
+                # Fuzzy trigram search
+                sql = """
+                    SELECT
+                        c.id::text as chunk_id,
+                        f.path as file_path,
+                        f.language,
+                        c.content,
+                        c.node_type,
+                        c.start_line,
+                        c.end_line,
+                        c.parent_context,
+                        c.parent_route,
+                        c.metadata,
+                        similarity(s.name, $1) as relevance
+                    FROM symbols s
+                    JOIN chunks c ON c.id = s.chunk_id
+                    JOIN files f ON f.id = c.file_id
+                    WHERE s.name % $1
+                """
+            else:
+                # Exact match (case-insensitive)
+                sql = """
+                    SELECT
+                        c.id::text as chunk_id,
+                        f.path as file_path,
+                        f.language,
+                        c.content,
+                        c.node_type,
+                        c.start_line,
+                        c.end_line,
+                        c.parent_context,
+                        c.parent_route,
+                        c.metadata,
+                        1.0 as relevance
+                    FROM symbols s
+                    JOIN chunks c ON c.id = s.chunk_id
+                    JOIN files f ON f.id = c.file_id
+                    WHERE LOWER(s.name) = LOWER($1)
+                """
+
+            params = [symbol_name]
+            param_idx = 2
+
+            if repository_id:
+                sql += f" AND f.repository_id = ${param_idx}"
+                params.append(repository_id)
+                param_idx += 1
+
+            if kind:
+                sql += f" AND s.kind = ${param_idx}"
+                params.append(kind)
+                param_idx += 1
+
+            sql += f" ORDER BY relevance DESC LIMIT ${param_idx}"
+            params.append(limit)
+
+            rows = await conn.fetch(sql, *params)
+
+        chunks = [self._row_to_chunk(row) for row in rows]
+
+        return ContextResult(
+            chunks=chunks,
+            total_tokens=self._estimate_tokens(chunks),
+            query_type="symbol_search",
+        )
+
+    async def get_related_code(
+        self,
+        chunk_id: str,
+        relationship_types: list[str] | None = None,
+        direction: Literal["incoming", "outgoing", "both"] = "both",
+        depth: int = 1,
+        limit: int = 20,
+    ) -> ContextResult:
+        """
+        Find code related to a specific chunk via the xref graph.
+
+        Use for:
+        - "What calls this function?"
+        - "What does this class depend on?"
+        - "Show me code that imports this module"
+        """
+        relationship_types = relationship_types or [
+            "CALLS", "IMPORTS", "INHERITS", "REFERENCES", "DEFINES"
+        ]
+
+        async with self.db.acquire() as conn:
+            # Use recursive CTE for multi-hop traversal
+            sql = """
+                WITH RECURSIVE related AS (
+                    -- Base case: direct relationships
+                    SELECT
+                        CASE
+                            WHEN e.source_chunk_id = $1::uuid THEN e.target_chunk_id
+                            ELSE e.source_chunk_id
+                        END as chunk_id,
+                        e.edge_type,
+                        1 as depth,
+                        CASE
+                            WHEN e.source_chunk_id = $1::uuid THEN 'outgoing'
+                            ELSE 'incoming'
+                        END as direction
+                    FROM edges e
+                    WHERE (e.source_chunk_id = $1::uuid OR e.target_chunk_id = $1::uuid)
+                      AND e.edge_type = ANY($2)
+                      AND ($3 = 'both'
+                           OR ($3 = 'outgoing' AND e.source_chunk_id = $1::uuid)
+                           OR ($3 = 'incoming' AND e.target_chunk_id = $1::uuid))
+
+                    UNION
+
+                    -- Recursive case: follow edges up to depth
+                    SELECT
+                        CASE
+                            WHEN e.source_chunk_id = r.chunk_id THEN e.target_chunk_id
+                            ELSE e.source_chunk_id
+                        END,
+                        e.edge_type,
+                        r.depth + 1,
+                        r.direction
+                    FROM edges e
+                    JOIN related r ON (e.source_chunk_id = r.chunk_id OR e.target_chunk_id = r.chunk_id)
+                    WHERE r.depth < $4
+                      AND e.edge_type = ANY($2)
+                )
+                SELECT DISTINCT
+                    c.id::text as chunk_id,
+                    f.path as file_path,
+                    f.language,
+                    c.content,
+                    c.node_type,
+                    c.start_line,
+                    c.end_line,
+                    c.parent_context,
+                    c.parent_route,
+                    c.metadata,
+                    MIN(r.depth)::float / $4 as relevance  -- Closer = more relevant
+                FROM related r
+                JOIN chunks c ON c.id = r.chunk_id
+                JOIN files f ON f.id = c.file_id
+                WHERE r.chunk_id != $1::uuid
+                GROUP BY c.id, f.path, f.language, c.content, c.node_type,
+                         c.start_line, c.end_line, c.parent_context, c.parent_route, c.metadata
+                ORDER BY relevance
+                LIMIT $5
+            """
+
+            rows = await conn.fetch(
+                sql, chunk_id, relationship_types, direction, depth, limit
+            )
+
+        chunks = [self._row_to_chunk(row) for row in rows]
+
+        return ContextResult(
+            chunks=chunks,
+            total_tokens=self._estimate_tokens(chunks),
+            query_type="graph_traversal",
+        )
+
+    async def get_file_chunks(
+        self,
+        file_path: str,
+        repository_id: str,
+        node_types: list[str] | None = None,
+    ) -> ContextResult:
+        """
+        Get all chunks from a specific file.
+
+        Use for:
+        - "Show me all functions in auth.py"
+        - "What classes are in this file?"
+        """
+        async with self.db.acquire() as conn:
+            sql = """
+                SELECT
+                    c.id::text as chunk_id,
+                    f.path as file_path,
+                    f.language,
+                    c.content,
+                    c.node_type,
+                    c.start_line,
+                    c.end_line,
+                    c.parent_context,
+                    c.parent_route,
+                    c.metadata,
+                    1.0 as relevance
+                FROM chunks c
+                JOIN files f ON f.id = c.file_id
+                WHERE f.path = $1 AND f.repository_id = $2
+            """
+            params = [file_path, repository_id]
+
+            if node_types:
+                sql += " AND c.node_type = ANY($3)"
+                params.append(node_types)
+
+            sql += " ORDER BY c.start_line"
+
+            rows = await conn.fetch(sql, *params)
+
+        chunks = [self._row_to_chunk(row) for row in rows]
+
+        return ContextResult(
+            chunks=chunks,
+            total_tokens=self._estimate_tokens(chunks),
+            query_type="file_chunks",
+        )
+
+    async def hybrid_search(
+        self,
+        query: str,
+        repository_id: str | None = None,
+        semantic_weight: float = 0.7,
+        symbol_weight: float = 0.3,
+        limit: int = 10,
+    ) -> ContextResult:
+        """
+        Combine semantic search with symbol matching.
+
+        Best for general "find relevant code" queries.
+        """
+        # Run both searches
+        semantic_result = await self.semantic_search(
+            query, repository_id, limit=limit * 2
+        )
+        symbol_result = await self.find_symbol(
+            query, repository_id, fuzzy=True, limit=limit * 2
+        )
+
+        # Merge and re-rank
+        seen_ids = set()
+        merged = []
+
+        for chunk in semantic_result.chunks:
+            if chunk.chunk_id not in seen_ids:
+                chunk.relevance_score *= semantic_weight
+                merged.append(chunk)
+                seen_ids.add(chunk.chunk_id)
+
+        for chunk in symbol_result.chunks:
+            if chunk.chunk_id in seen_ids:
+                # Boost if found in both
+                for m in merged:
+                    if m.chunk_id == chunk.chunk_id:
+                        m.relevance_score += chunk.relevance_score * symbol_weight
+                        break
+            else:
+                chunk.relevance_score *= symbol_weight
+                merged.append(chunk)
+                seen_ids.add(chunk.chunk_id)
+
+        # Sort by combined score and limit
+        merged.sort(key=lambda c: c.relevance_score, reverse=True)
+        chunks = merged[:limit]
+
+        return ContextResult(
+            chunks=chunks,
+            total_tokens=self._estimate_tokens(chunks),
+            query_type="hybrid_search",
+        )
+
+    def _row_to_chunk(self, row) -> ContextChunk:
+        return ContextChunk(
+            chunk_id=row['chunk_id'],
+            file_path=row['file_path'],
+            language=row['language'],
+            content=row['content'],
+            node_type=row['node_type'],
+            start_line=row['start_line'],
+            end_line=row['end_line'],
+            parent_context=row['parent_context'],
+            parent_route=row['parent_route'] or [],
+            relevance_score=float(row['relevance']),
+            metadata=row['metadata'] or {},
+        )
+
+    def _estimate_tokens(self, chunks: list[ContextChunk]) -> int:
+        """Rough token estimate (4 chars ≈ 1 token)."""
+        return sum(len(c.content) // 4 for c in chunks)
+```
+
+### AI Agent API Endpoints
+
+```python
+# api/agent_routes.py
+
+from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel, Field
+
+from services.context_service import AIContextService, ContextResult
+
+
+router = APIRouter(prefix="/agent", tags=["AI Agent Context"])
+
+
+class SemanticSearchRequest(BaseModel):
+    query: str = Field(..., description="Natural language query")
+    repository_id: str | None = None
+    languages: list[str] | None = None
+    limit: int = Field(default=10, le=50)
+    similarity_threshold: float = Field(default=0.7, ge=0.0, le=1.0)
+
+
+class SymbolSearchRequest(BaseModel):
+    symbol_name: str
+    repository_id: str | None = None
+    kind: str | None = Field(None, description="function, class, method, etc.")
+    fuzzy: bool = False
+    limit: int = Field(default=10, le=50)
+
+
+class RelatedCodeRequest(BaseModel):
+    chunk_id: str
+    relationship_types: list[str] | None = None
+    direction: str = Field(default="both", pattern="^(incoming|outgoing|both)$")
+    depth: int = Field(default=1, ge=1, le=5)
+    limit: int = Field(default=20, le=100)
+
+
+class HybridSearchRequest(BaseModel):
+    query: str
+    repository_id: str | None = None
+    semantic_weight: float = Field(default=0.7, ge=0.0, le=1.0)
+    symbol_weight: float = Field(default=0.3, ge=0.0, le=1.0)
+    limit: int = Field(default=10, le=50)
+
+
+@router.post("/search/semantic", response_model=ContextResult)
+async def semantic_search(
+    request: SemanticSearchRequest,
+    context_service: AIContextService = Depends(),
+):
+    """
+    Semantic code search using vector similarity.
+
+    Best for natural language queries like:
+    - "authentication logic"
+    - "database error handling"
+    - "API rate limiting"
+    """
+    return await context_service.semantic_search(
+        query=request.query,
+        repository_id=request.repository_id,
+        languages=request.languages,
+        limit=request.limit,
+        similarity_threshold=request.similarity_threshold,
+    )
+
+
+@router.post("/search/symbol", response_model=ContextResult)
+async def symbol_search(
+    request: SymbolSearchRequest,
+    context_service: AIContextService = Depends(),
+):
+    """
+    Find code by symbol/function/class name.
+
+    Best for specific lookups like:
+    - "UserService"
+    - "authenticate"
+    - "handleRequest"
+    """
+    return await context_service.find_symbol(
+        symbol_name=request.symbol_name,
+        repository_id=request.repository_id,
+        kind=request.kind,
+        fuzzy=request.fuzzy,
+        limit=request.limit,
+    )
+
+
+@router.post("/related", response_model=ContextResult)
+async def get_related_code(
+    request: RelatedCodeRequest,
+    context_service: AIContextService = Depends(),
+):
+    """
+    Find code related to a specific chunk via the dependency graph.
+
+    Use after finding a chunk to explore:
+    - What calls this function?
+    - What does this depend on?
+    - What inherits from this class?
+    """
+    return await context_service.get_related_code(
+        chunk_id=request.chunk_id,
+        relationship_types=request.relationship_types,
+        direction=request.direction,
+        depth=request.depth,
+        limit=request.limit,
+    )
+
+
+@router.post("/search/hybrid", response_model=ContextResult)
+async def hybrid_search(
+    request: HybridSearchRequest,
+    context_service: AIContextService = Depends(),
+):
+    """
+    Combined semantic + symbol search.
+
+    Best general-purpose search for AI agents.
+    """
+    return await context_service.hybrid_search(
+        query=request.query,
+        repository_id=request.repository_id,
+        semantic_weight=request.semantic_weight,
+        symbol_weight=request.symbol_weight,
+        limit=request.limit,
+    )
+
+
+@router.get("/file/{repository_id}/{file_path:path}", response_model=ContextResult)
+async def get_file_context(
+    repository_id: str,
+    file_path: str,
+    node_types: list[str] = Query(default=None),
+    context_service: AIContextService = Depends(),
+):
+    """
+    Get all chunks from a specific file.
+    """
+    return await context_service.get_file_chunks(
+        file_path=file_path,
+        repository_id=repository_id,
+        node_types=node_types,
+    )
+```
+
+### Real-time Frontend Subscription (Supabase)
+
+```typescript
+// frontend/src/hooks/useRealtimeCode.ts
+
+import { useEffect, useState, useCallback } from 'react';
+import { createClient, RealtimeChannel } from '@supabase/supabase-js';
+import type { ASTNode, CodeChunk } from '../types/ast';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+interface UseRealtimeCodeOptions {
+  repositoryId: string;
+  filePath?: string;
+}
+
+interface RealtimeCodeState {
+  file: {
+    id: string;
+    path: string;
+    content: string;
+    language: string;
+  } | null;
+  chunks: CodeChunk[];
+  loading: boolean;
+  error: Error | null;
+}
+
+export function useRealtimeCode({ repositoryId, filePath }: UseRealtimeCodeOptions) {
+  const [state, setState] = useState<RealtimeCodeState>({
+    file: null,
+    chunks: [],
+    loading: true,
+    error: null,
+  });
+
+  // Subscribe to file changes
+  useEffect(() => {
+    if (!filePath) return;
+
+    let channel: RealtimeChannel;
+
+    const setupSubscription = async () => {
+      // Initial fetch
+      const { data: file, error: fileError } = await supabase
+        .from('files')
+        .select('id, path, content, language')
+        .eq('repository_id', repositoryId)
+        .eq('path', filePath)
+        .single();
+
+      if (fileError) {
+        setState(prev => ({ ...prev, error: fileError, loading: false }));
+        return;
+      }
+
+      // Fetch chunks for this file
+      const { data: chunks, error: chunksError } = await supabase
+        .from('chunks')
+        .select('*')
+        .eq('file_id', file.id)
+        .order('start_line');
+
+      if (chunksError) {
+        setState(prev => ({ ...prev, error: chunksError, loading: false }));
+        return;
+      }
+
+      setState({
+        file,
+        chunks: chunks.map(transformChunk),
+        loading: false,
+        error: null,
+      });
+
+      // Subscribe to real-time updates
+      channel = supabase
+        .channel(`file:${file.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'files',
+            filter: `id=eq.${file.id}`,
+          },
+          (payload) => {
+            if (payload.eventType === 'UPDATE') {
+              setState(prev => ({
+                ...prev,
+                file: payload.new as any,
+              }));
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'chunks',
+            filter: `file_id=eq.${file.id}`,
+          },
+          async () => {
+            // Refetch all chunks on any change
+            const { data } = await supabase
+              .from('chunks')
+              .select('*')
+              .eq('file_id', file.id)
+              .order('start_line');
+
+            if (data) {
+              setState(prev => ({
+                ...prev,
+                chunks: data.map(transformChunk),
+              }));
+            }
+          }
+        )
+        .subscribe();
+    };
+
+    setupSubscription();
+
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, [repositoryId, filePath]);
+
+  // Update file content (triggers re-indexing on backend)
+  const updateContent = useCallback(
+    async (newContent: string) => {
+      if (!state.file) return;
+
+      // Call backend API to update (this triggers the indexing pipeline)
+      const response = await fetch('/api/files/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          repository_id: repositoryId,
+          file_path: filePath,
+          content: newContent,
+          language: state.file.language,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update file');
+      }
+
+      // The real-time subscription will automatically update the state
+    },
+    [state.file, repositoryId, filePath]
+  );
+
+  return {
+    ...state,
+    updateContent,
+  };
+}
+
+function transformChunk(row: any): CodeChunk {
+  return {
+    id: row.chunk_id,
+    node_type: row.node_type,
+    content: row.content,
+    start_line: row.start_line,
+    end_line: row.end_line,
+    parent_context: row.parent_context,
+    parent_route: row.parent_route || [],
+    metadata: row.metadata || {},
+  };
+}
+```
+
+### Updated Dependencies for Platform Architecture
+
+```toml
+# pyproject.toml for Code Intelligence Platform
+
+[project]
+name = "code-intelligence-platform"
+version = "0.1.0"
+dependencies = [
+    # Core parsing
+    "treesitter-chunker>=2.0.1",
+
+    # API
+    "fastapi>=0.100.0",
+    "uvicorn>=0.22.0",
+    "pydantic>=2.0",
+
+    # Database
+    "asyncpg>=0.28.0",          # Async PostgreSQL
+    "pgvector>=0.2.0",          # Vector operations
+
+    # Embeddings
+    "openai>=1.0.0",            # OpenAI API
+    # OR for local embeddings:
+    # "sentence-transformers>=2.2.0",
+
+    # Background tasks
+    "celery>=5.3.0",            # Task queue
+    "redis>=5.0.0",             # Celery backend
+
+    # Utilities
+    "httpx>=0.24.0",            # Async HTTP
+    "tenacity>=8.0.0",          # Retries
+]
+```
+
+### Docker Compose for Full Platform
+
+```yaml
+# docker-compose.yml
+
+version: '3.8'
+
+services:
+  # PostgreSQL with pgvector
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: codebase
+      POSTGRES_USER: codebase
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U codebase"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis for Celery
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # API Server
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql://codebase:${POSTGRES_PASSWORD}@postgres:5432/codebase
+      REDIS_URL: redis://redis:6379/0
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - grammar_cache:/root/.cache/treesitter-chunker
+
+  # Indexing Worker
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A worker worker --loglevel=info
+    environment:
+      DATABASE_URL: postgresql://codebase:${POSTGRES_PASSWORD}@postgres:5432/codebase
+      REDIS_URL: redis://redis:6379/0
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - grammar_cache:/root/.cache/treesitter-chunker
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  redis_data:
+  grammar_cache:
+```
+
+### Summary: When to Use Each Architecture
+
+| Architecture | Use Case | Complexity |
+|--------------|----------|------------|
+| **Part 1: WebSocket-based** | Single-user tool, learning, IDE extension | Low |
+| **Part 2: DB-backed Platform** | Multi-user, AI agents, persistent analysis | Medium-High |
+
+**Part 2 is the right choice when:**
+- Code needs to persist across sessions
+- Multiple consumers (humans + AI agents) need access
+- Semantic search is required
+- You're building a platform/service, not a tool
+- Cross-repository analysis is needed
+- You need audit trails or versioning
+
+---
+
 ## Next Steps
 
 1. **Clone the template**: Start with the project structure above
