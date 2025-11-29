@@ -4645,6 +4645,1660 @@ async def send_message(
     }
 ```
 
+### Voice-Based Interaction with Enumerated AST
+
+A powerful addition to the point-and-click interface is **voice-based interaction** where users can reference visible AST elements by number, manipulate nodes, and control context distillation through natural speech.
+
+#### Enumeration System
+
+Every visible element in the UI receives a stable, visible identifier:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    ENUMERATED AST VIEW                                       │
+│                                                                             │
+│  ┌─ Code Editor ─────────────────────┐  ┌─ AST Tree ────────────────────┐  │
+│  │                                   │  │                                │  │
+│  │  [F1] def authenticate(user):     │  │  [N1] ▼ module                 │  │
+│  │  [F1.1]   """Verify user."""      │  │    [N2] ▼ function: auth...   │  │
+│  │  [F1.2]   token = get_token()     │  │      [N3]   parameters        │  │
+│  │  [F1.3]   if validate(token):     │  │      [N4]   docstring         │  │
+│  │  [F1.4]     return True           │  │      [N5] ▼ if_statement      │  │
+│  │  [F1.5]   return False            │  │        [N6]   condition       │  │
+│  │                                   │  │        [N7]   return True     │  │
+│  │  [F2] class UserService:          │  │      [N8]   return False      │  │
+│  │  [F2.1]   def __init__(self):     │  │    [N9] ▼ class: UserSer...   │  │
+│  │  [F2.2]     self.db = Database()  │  │      [N10]  method: __init__  │  │
+│  │                                   │  │      [N11]  method: get_user  │  │
+│  │  [C1] → authenticate              │  │                                │  │
+│  │  [C2] → UserService.get_user      │  │  ┌─ Edges ──────────────────┐ │  │
+│  │                                   │  │  │ [E1] F1 ──CALLS──→ C1    │ │  │
+│  └───────────────────────────────────┘  │  │ [E2] F2.1 ─CALLS─→ C2    │ │  │
+│                                         │  │ [E3] N9 ──DEFINES─→ N10  │ │  │
+│  ┌─ Voice Input ─────────────────────────┴──┴────────────────────────┐   │  │
+│  │ 🎤 "Select node 5 and node 7, then explain the control flow"      │   │  │
+│  │    "Show me callers of function 1"                                │   │  │
+│  │    "Add edge 1 to context with signatures only"                   │   │  │
+│  └───────────────────────────────────────────────────────────────────┘   │  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+ENUMERATION KEY:
+  [Fn]     = Function/method definition (n = order of appearance)
+  [Fn.m]   = Line m within function n
+  [Cn]     = Class definition
+  [Cn.m]   = Member m of class n
+  [Nn]     = AST node in tree view
+  [En]     = Edge/relationship
+```
+
+#### Enumeration Data Model
+
+```typescript
+// frontend/src/types/enumeration.ts
+
+/**
+ * Enumeration types for unambiguous voice reference
+ */
+export type EnumerationType =
+  | 'function'    // F1, F2, F3...
+  | 'class'       // C1, C2, C3...
+  | 'node'        // N1, N2, N3...
+  | 'edge'        // E1, E2, E3...
+  | 'line'        // L1, L2, L3... (within a function)
+  | 'param'       // P1, P2, P3... (parameters)
+  | 'call'        // X1, X2, X3... (call sites)
+  ;
+
+export interface EnumeratedElement {
+  // The visible label shown in UI
+  label: string;  // e.g., "F1", "N5", "E3"
+
+  // Full path for nested elements
+  path: string;   // e.g., "F1.2", "C1.M3"
+
+  // What this enumerates
+  type: EnumerationType;
+
+  // Reference to actual data
+  chunkId?: string;
+  nodeId?: string;
+  edgeId?: string;
+
+  // Position in source
+  startLine: number;
+  endLine: number;
+
+  // For context distillation
+  hasSignature: boolean;
+  hasBody: boolean;
+  hasDocstring: boolean;
+}
+
+export interface EnumerationState {
+  // All currently visible enumerated elements
+  elements: Map<string, EnumeratedElement>;
+
+  // Reverse lookup: chunkId/nodeId -> label
+  labelsByChunk: Map<string, string>;
+  labelsByNode: Map<string, string>;
+
+  // Currently spoken/referenced elements
+  referencedLabels: string[];
+}
+
+/**
+ * Context distillation levels
+ */
+export type DistillationLevel =
+  | 'full'           // Complete code with body
+  | 'signatures'     // Function/class signatures only (no body)
+  | 'definitions'    // Names and types only
+  | 'references'     // Just the symbol references
+  | 'docstrings'     // Signatures + docstrings
+  ;
+
+export interface ContextDistillation {
+  level: DistillationLevel;
+  includeImports: boolean;
+  includeComments: boolean;
+  maxDepth?: number;  // For nested structures
+}
+```
+
+#### BAML Schema for Voice Command Processing
+
+BAML (Boundary AI Markup Language) provides type-safe LLM interactions for parsing voice commands and generating responses.
+
+```baml
+// baml_src/voice_commands.baml
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENUMS & TYPES
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum CommandIntent {
+  SELECT              // "select node 5"
+  DESELECT            // "deselect function 2"
+  ADD_TO_CONTEXT      // "add class 1 to context"
+  REMOVE_FROM_CONTEXT // "remove edge 3 from context"
+  EXPLAIN             // "explain this code"
+  NAVIGATE            // "go to function 3"
+  SHOW_CALLERS        // "show callers of node 5"
+  SHOW_CALLEES        // "show what function 2 calls"
+  SHOW_EDGES          // "show edges for class 1"
+  ANNOTATE            // "annotate node 5 as security-critical"
+  TAG                 // "tag this as needs-review"
+  ASK_QUESTION        // "how does this handle errors?"
+  SET_DISTILLATION    // "show signatures only"
+  EXPAND              // "expand node 5"
+  COLLAPSE            // "collapse class 1"
+  COMPARE             // "compare function 1 and function 2"
+  TRACE               // "trace data flow from node 3"
+  UNKNOWN
+}
+
+enum DistillationLevel {
+  FULL
+  SIGNATURES
+  DEFINITIONS
+  REFERENCES
+  DOCSTRINGS
+}
+
+enum ElementType {
+  FUNCTION
+  CLASS
+  NODE
+  EDGE
+  LINE
+  PARAMETER
+  CALL_SITE
+  ALL_VISIBLE
+  CURRENT_SELECTION
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VOICE COMMAND PARSING
+// ─────────────────────────────────────────────────────────────────────────────
+
+class ElementReference {
+  type ElementType
+  label string?           // "F1", "N5", "E3"
+  range string?           // "1-5", "1,3,5"
+  qualifier string?       // "all functions", "selected nodes"
+}
+
+class ParsedVoiceCommand {
+  intent CommandIntent
+  targets ElementReference[]
+  distillation DistillationLevel?
+  annotation_text string?
+  tag_name string?
+  question string?
+  raw_transcript string
+  confidence float
+}
+
+function ParseVoiceCommand(transcript: string, visible_elements: string) -> ParsedVoiceCommand {
+  client "openai/gpt-4o"
+
+  prompt #"
+    You are a voice command parser for an AST code viewer application.
+
+    Parse the user's voice command and extract the structured intent.
+
+    ## Currently Visible Elements
+    {{ visible_elements }}
+
+    ## Voice Transcript
+    "{{ transcript }}"
+
+    ## Reference Syntax
+    - Functions: F1, F2, F3... or "function 1", "function two"
+    - Classes: C1, C2, C3... or "class 1", "class two"
+    - Nodes: N1, N2, N3... or "node 1", "node five"
+    - Edges: E1, E2, E3... or "edge 1", "edge three"
+    - Lines: F1.1, F1.2... or "line 2 of function 1"
+    - Ranges: "nodes 1 through 5", "functions 2 to 4"
+    - Multiple: "nodes 1, 3, and 5", "function 1 and class 2"
+
+    ## Distillation Keywords
+    - "full code" / "complete" → FULL
+    - "signatures only" / "just signatures" → SIGNATURES
+    - "definitions" / "names only" → DEFINITIONS
+    - "references" / "usages" → REFERENCES
+    - "with docstrings" / "documented" → DOCSTRINGS
+
+    ## Example Commands
+    - "select node 5" → SELECT, targets=[{type:NODE, label:"N5"}]
+    - "add functions 1 through 3 to context with signatures only"
+      → ADD_TO_CONTEXT, targets=[{type:FUNCTION, range:"1-3"}], distillation:SIGNATURES
+    - "show me what calls function 2" → SHOW_CALLERS, targets=[{type:FUNCTION, label:"F2"}]
+    - "explain the selected code" → EXPLAIN, targets=[{type:CURRENT_SELECTION}]
+    - "tag node 5 as security critical" → TAG, targets=[{type:NODE, label:"N5"}], tag_name:"security-critical"
+
+    Parse the command and return structured data.
+  "#
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONTEXT DISTILLATION
+// ─────────────────────────────────────────────────────────────────────────────
+
+class DistilledCode {
+  original_label string
+  chunk_id string
+  distilled_content string
+  distillation_level DistillationLevel
+  token_count int
+  preserved_elements string[]  // What was kept: ["signature", "docstring", "types"]
+}
+
+function DistillCodeToLevel(
+  code: string,
+  language: string,
+  target_level: DistillationLevel
+) -> DistilledCode {
+  client "openai/gpt-4o-mini"
+
+  prompt #"
+    Distill the following {{ language }} code to the {{ target_level }} level.
+
+    ## Distillation Rules
+
+    **FULL**: Return the complete code unchanged.
+
+    **SIGNATURES**: Keep only:
+    - Function/method signatures (name, parameters, return type)
+    - Class declarations with inheritance
+    - Important type annotations
+    - Remove all function bodies (replace with `...` or `pass`)
+
+    **DEFINITIONS**: Keep only:
+    - Function/class/variable names
+    - Parameter names and types
+    - No implementation details
+
+    **REFERENCES**: Extract only:
+    - What this code references (calls, imports, uses)
+    - What references this code
+
+    **DOCSTRINGS**: Like SIGNATURES but include docstrings/comments
+
+    ## Code to Distill
+    ```{{ language }}
+    {{ code }}
+    ```
+
+    Return the distilled version.
+  "#
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CODE EXPLANATION WITH CONTEXT
+// ─────────────────────────────────────────────────────────────────────────────
+
+class CodeExplanation {
+  summary string
+  detailed_explanation string
+  key_concepts string[]
+  related_elements string[]     // Other elements user might want to see
+  suggested_questions string[]  // Follow-up questions
+}
+
+function ExplainCodeWithContext(
+  selected_code: string,
+  context_code: string,
+  user_question: string?,
+  conversation_history: string?
+) -> CodeExplanation {
+  client "openai/gpt-4o"
+
+  prompt #"
+    You are an expert code analyst helping a developer understand their codebase.
+
+    ## Selected Code (what the user is focused on)
+    ```
+    {{ selected_code }}
+    ```
+
+    ## Surrounding Context
+    ```
+    {{ context_code }}
+    ```
+
+    {% if user_question %}
+    ## User's Question
+    {{ user_question }}
+    {% endif %}
+
+    {% if conversation_history %}
+    ## Previous Discussion
+    {{ conversation_history }}
+    {% endif %}
+
+    Provide a clear, helpful explanation. Reference specific line numbers
+    and element labels (F1, N5, etc.) when discussing code.
+  "#
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EDGE & RELATIONSHIP ANALYSIS
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum RelationshipType {
+  CALLS
+  CALLED_BY
+  IMPORTS
+  IMPORTED_BY
+  INHERITS
+  INHERITED_BY
+  DEFINES
+  DEFINED_BY
+  REFERENCES
+  REFERENCED_BY
+  DEPENDS_ON
+  DEPENDED_BY
+}
+
+class EdgeAnalysis {
+  edge_label string           // "E1"
+  source_label string         // "F1"
+  target_label string         // "F2"
+  relationship RelationshipType
+  description string
+  importance string           // "critical", "normal", "optional"
+  data_flow string?           // What data flows across this edge
+}
+
+function AnalyzeEdge(
+  source_code: string,
+  target_code: string,
+  edge_type: string,
+  context: string
+) -> EdgeAnalysis {
+  client "openai/gpt-4o"
+
+  prompt #"
+    Analyze the relationship between these two code elements.
+
+    ## Source Element
+    ```
+    {{ source_code }}
+    ```
+
+    ## Target Element
+    ```
+    {{ target_code }}
+    ```
+
+    ## Relationship Type
+    {{ edge_type }}
+
+    ## Context
+    {{ context }}
+
+    Describe:
+    1. What is the nature of this relationship?
+    2. What data or control flows between them?
+    3. How critical is this connection?
+    4. What would break if this edge were severed?
+  "#
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INPUT/OUTPUT PROTOCOL ANALYSIS
+// ─────────────────────────────────────────────────────────────────────────────
+
+class ParameterInfo {
+  name string
+  type string?
+  description string
+  required bool
+  default_value string?
+  constraints string[]
+}
+
+class IOProtocol {
+  element_label string
+  inputs ParameterInfo[]
+  outputs ParameterInfo[]
+  side_effects string[]
+  exceptions string[]
+  preconditions string[]
+  postconditions string[]
+  example_usage string?
+}
+
+function ExtractIOProtocol(
+  code: string,
+  language: string,
+  include_examples: bool
+) -> IOProtocol {
+  client "openai/gpt-4o"
+
+  prompt #"
+    Extract the input/output protocol for this {{ language }} code element.
+
+    ```{{ language }}
+    {{ code }}
+    ```
+
+    Identify:
+    1. All inputs (parameters, expected globals, file reads, etc.)
+    2. All outputs (return values, mutations, file writes, etc.)
+    3. Side effects (logging, network calls, state changes)
+    4. Exceptions that may be raised
+    5. Preconditions (what must be true before calling)
+    6. Postconditions (what will be true after calling)
+    {% if include_examples %}
+    7. Example usage
+    {% endif %}
+  "#
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AST MANIPULATION SUGGESTIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum ManipulationType {
+  RENAME
+  EXTRACT_FUNCTION
+  INLINE_FUNCTION
+  ADD_PARAMETER
+  REMOVE_PARAMETER
+  CHANGE_RETURN_TYPE
+  ADD_ERROR_HANDLING
+  ADD_LOGGING
+  ADD_VALIDATION
+  SPLIT_FUNCTION
+  MERGE_FUNCTIONS
+}
+
+class ManipulationSuggestion {
+  manipulation_type ManipulationType
+  target_label string
+  description string
+  before_preview string
+  after_preview string
+  impact_analysis string[]    // What other elements are affected
+  risk_level string           // "safe", "moderate", "risky"
+}
+
+function SuggestManipulation(
+  code: string,
+  user_intent: string,
+  affected_edges: string
+) -> ManipulationSuggestion {
+  client "openai/gpt-4o"
+
+  prompt #"
+    The user wants to manipulate this code element.
+
+    ## Current Code
+    ```
+    {{ code }}
+    ```
+
+    ## User's Intent
+    {{ user_intent }}
+
+    ## Connected Elements (edges that would be affected)
+    {{ affected_edges }}
+
+    Suggest the appropriate manipulation:
+    1. What type of refactoring is needed?
+    2. Show before/after preview
+    3. What other code would be impacted?
+    4. What's the risk level?
+  "#
+}
+```
+
+#### BAML Client Configuration
+
+```baml
+// baml_src/clients.baml
+
+client<llm> GPT4o {
+  provider "openai"
+  options {
+    model "gpt-4o"
+    temperature 0.1
+    api_key env.OPENAI_API_KEY
+  }
+}
+
+client<llm> GPT4oMini {
+  provider "openai"
+  options {
+    model "gpt-4o-mini"
+    temperature 0.1
+    api_key env.OPENAI_API_KEY
+  }
+}
+
+client<llm> Claude {
+  provider "anthropic"
+  options {
+    model "claude-sonnet-4-20250514"
+    temperature 0.1
+    api_key env.ANTHROPIC_API_KEY
+  }
+}
+
+// Retry configuration
+retry_policy Default {
+  max_retries 2
+  strategy {
+    type "exponential_backoff"
+    initial_delay_ms 500
+    max_delay_ms 10000
+    multiplier 2
+  }
+}
+```
+
+#### Voice Processing Service
+
+```python
+# services/voice_service.py
+
+import asyncio
+from dataclasses import dataclass
+from typing import AsyncIterator
+
+from baml_client import baml  # Generated BAML client
+from baml_client.types import (
+    ParsedVoiceCommand,
+    DistilledCode,
+    CodeExplanation,
+    EdgeAnalysis,
+    IOProtocol,
+    ManipulationSuggestion,
+    DistillationLevel,
+    CommandIntent,
+)
+
+
+@dataclass
+class VoiceCommandResult:
+    command: ParsedVoiceCommand
+    execution_result: dict
+    response_text: str  # For text-to-speech
+
+
+class VoiceInteractionService:
+    """
+    Service for processing voice commands with BAML-powered LLM interactions.
+    """
+
+    def __init__(
+        self,
+        enumeration_service: "EnumerationService",
+        context_service: "AIContextService",
+    ):
+        self.enumeration = enumeration_service
+        self.context = context_service
+
+    async def process_voice_input(
+        self,
+        transcript: str,
+        session_id: str,
+    ) -> VoiceCommandResult:
+        """
+        Process a voice transcript and execute the command.
+        """
+        # Get currently visible elements for context
+        visible_elements = await self.enumeration.get_visible_elements_description(
+            session_id
+        )
+
+        # Parse the voice command using BAML
+        parsed_command = await baml.ParseVoiceCommand(
+            transcript=transcript,
+            visible_elements=visible_elements,
+        )
+
+        # Execute based on intent
+        execution_result = await self._execute_command(parsed_command, session_id)
+
+        # Generate spoken response
+        response_text = await self._generate_response(parsed_command, execution_result)
+
+        return VoiceCommandResult(
+            command=parsed_command,
+            execution_result=execution_result,
+            response_text=response_text,
+        )
+
+    async def _execute_command(
+        self,
+        command: ParsedVoiceCommand,
+        session_id: str,
+    ) -> dict:
+        """Execute the parsed voice command."""
+
+        match command.intent:
+            case CommandIntent.SELECT:
+                return await self._handle_select(command, session_id)
+
+            case CommandIntent.ADD_TO_CONTEXT:
+                return await self._handle_add_to_context(command, session_id)
+
+            case CommandIntent.EXPLAIN:
+                return await self._handle_explain(command, session_id)
+
+            case CommandIntent.SHOW_CALLERS:
+                return await self._handle_show_callers(command, session_id)
+
+            case CommandIntent.SHOW_CALLEES:
+                return await self._handle_show_callees(command, session_id)
+
+            case CommandIntent.SET_DISTILLATION:
+                return await self._handle_set_distillation(command, session_id)
+
+            case CommandIntent.ANNOTATE | CommandIntent.TAG:
+                return await self._handle_annotate(command, session_id)
+
+            case CommandIntent.ASK_QUESTION:
+                return await self._handle_question(command, session_id)
+
+            case CommandIntent.TRACE:
+                return await self._handle_trace(command, session_id)
+
+            case _:
+                return {"error": "Unknown command", "intent": command.intent}
+
+    async def _handle_select(
+        self,
+        command: ParsedVoiceCommand,
+        session_id: str,
+    ) -> dict:
+        """Handle selection commands."""
+        selected_labels = []
+
+        for target in command.targets:
+            if target.label:
+                selected_labels.append(target.label)
+            elif target.range:
+                # Expand range like "1-5" to individual labels
+                expanded = self.enumeration.expand_range(target.type, target.range)
+                selected_labels.extend(expanded)
+
+        # Update selection state
+        await self.enumeration.set_selection(session_id, selected_labels)
+
+        return {
+            "action": "select",
+            "selected": selected_labels,
+            "count": len(selected_labels),
+        }
+
+    async def _handle_add_to_context(
+        self,
+        command: ParsedVoiceCommand,
+        session_id: str,
+    ) -> dict:
+        """Handle adding elements to context with optional distillation."""
+        elements = await self._resolve_targets(command.targets, session_id)
+
+        distillation_level = command.distillation or DistillationLevel.FULL
+
+        # Distill each element
+        distilled_elements = []
+        for element in elements:
+            if distillation_level != DistillationLevel.FULL:
+                distilled = await baml.DistillCodeToLevel(
+                    code=element["content"],
+                    language=element["language"],
+                    target_level=distillation_level,
+                )
+                distilled_elements.append(distilled)
+            else:
+                distilled_elements.append({
+                    "original_label": element["label"],
+                    "chunk_id": element["chunk_id"],
+                    "distilled_content": element["content"],
+                    "distillation_level": distillation_level,
+                    "token_count": len(element["content"]) // 4,
+                })
+
+        # Store in context
+        await self.context.add_to_working_context(
+            session_id,
+            distilled_elements,
+        )
+
+        return {
+            "action": "add_to_context",
+            "elements": [e["original_label"] for e in distilled_elements],
+            "distillation": distillation_level,
+            "total_tokens": sum(e["token_count"] for e in distilled_elements),
+        }
+
+    async def _handle_explain(
+        self,
+        command: ParsedVoiceCommand,
+        session_id: str,
+    ) -> dict:
+        """Handle explanation requests."""
+        elements = await self._resolve_targets(command.targets, session_id)
+
+        # Get selected code
+        selected_code = "\n\n".join(
+            f"[{e['label']}]\n{e['content']}" for e in elements
+        )
+
+        # Get surrounding context
+        context_code = await self.context.get_surrounding_context(
+            session_id,
+            [e["chunk_id"] for e in elements],
+        )
+
+        # Get conversation history if any
+        history = await self.context.get_conversation_history(session_id)
+
+        # Generate explanation using BAML
+        explanation = await baml.ExplainCodeWithContext(
+            selected_code=selected_code,
+            context_code=context_code,
+            user_question=command.question,
+            conversation_history=history,
+        )
+
+        return {
+            "action": "explain",
+            "explanation": explanation,
+            "elements_explained": [e["label"] for e in elements],
+        }
+
+    async def _handle_show_callers(
+        self,
+        command: ParsedVoiceCommand,
+        session_id: str,
+    ) -> dict:
+        """Show what calls the target element."""
+        elements = await self._resolve_targets(command.targets, session_id)
+
+        all_callers = []
+        for element in elements:
+            callers = await self.context.get_related_code(
+                chunk_id=element["chunk_id"],
+                relationship_types=["CALLS"],
+                direction="incoming",
+                depth=1,
+            )
+            all_callers.extend(callers.chunks)
+
+        # Enumerate the callers
+        caller_labels = await self.enumeration.enumerate_results(
+            session_id, all_callers, prefix="X"  # X for call sites
+        )
+
+        return {
+            "action": "show_callers",
+            "target": elements[0]["label"] if elements else None,
+            "callers": caller_labels,
+            "count": len(caller_labels),
+        }
+
+    async def _handle_set_distillation(
+        self,
+        command: ParsedVoiceCommand,
+        session_id: str,
+    ) -> dict:
+        """Set the context distillation level."""
+        level = command.distillation or DistillationLevel.FULL
+
+        await self.context.set_distillation_level(session_id, level)
+
+        return {
+            "action": "set_distillation",
+            "level": level,
+        }
+
+    async def _resolve_targets(
+        self,
+        targets: list,
+        session_id: str,
+    ) -> list[dict]:
+        """Resolve target references to actual code elements."""
+        resolved = []
+
+        for target in targets:
+            if target.qualifier == "CURRENT_SELECTION":
+                selected = await self.enumeration.get_current_selection(session_id)
+                resolved.extend(selected)
+            elif target.label:
+                element = await self.enumeration.get_element_by_label(
+                    session_id, target.label
+                )
+                if element:
+                    resolved.append(element)
+            elif target.range:
+                expanded = self.enumeration.expand_range(target.type, target.range)
+                for label in expanded:
+                    element = await self.enumeration.get_element_by_label(
+                        session_id, label
+                    )
+                    if element:
+                        resolved.append(element)
+
+        return resolved
+
+    async def _generate_response(
+        self,
+        command: ParsedVoiceCommand,
+        result: dict,
+    ) -> str:
+        """Generate a spoken response for text-to-speech."""
+
+        match command.intent:
+            case CommandIntent.SELECT:
+                count = result.get("count", 0)
+                if count == 1:
+                    return f"Selected {result['selected'][0]}"
+                elif count > 1:
+                    return f"Selected {count} elements"
+                else:
+                    return "Nothing selected"
+
+            case CommandIntent.ADD_TO_CONTEXT:
+                level = result.get("distillation", "full")
+                count = len(result.get("elements", []))
+                tokens = result.get("total_tokens", 0)
+                return f"Added {count} elements to context at {level} level. {tokens} tokens."
+
+            case CommandIntent.EXPLAIN:
+                explanation = result.get("explanation", {})
+                return explanation.get("summary", "I've analyzed the code.")
+
+            case CommandIntent.SHOW_CALLERS:
+                count = result.get("count", 0)
+                target = result.get("target", "the element")
+                return f"Found {count} callers of {target}"
+
+            case _:
+                return "Command executed"
+
+
+class EnumerationService:
+    """
+    Manages the enumeration of visible AST elements.
+    """
+
+    def __init__(self, db_pool):
+        self.db = db_pool
+        self._session_enumerations: dict[str, dict] = {}
+
+    async def enumerate_visible_ast(
+        self,
+        session_id: str,
+        ast_root: dict,
+        chunks: list,
+        edges: list,
+    ) -> dict[str, "EnumeratedElement"]:
+        """
+        Assign labels to all visible elements.
+
+        Returns a mapping of label -> element data.
+        """
+        enumeration = {}
+        counters = {
+            "function": 0,
+            "class": 0,
+            "node": 0,
+            "edge": 0,
+        }
+
+        # Enumerate functions and classes from chunks
+        for chunk in chunks:
+            if chunk["node_type"] in ("function_definition", "method_definition"):
+                counters["function"] += 1
+                label = f"F{counters['function']}"
+                enumeration[label] = {
+                    "label": label,
+                    "type": "function",
+                    "chunk_id": chunk["id"],
+                    "content": chunk["content"],
+                    "language": chunk.get("language", "python"),
+                    "start_line": chunk["start_line"],
+                    "end_line": chunk["end_line"],
+                    "name": chunk.get("parent_route", [""])[-1],
+                }
+
+            elif chunk["node_type"] == "class_definition":
+                counters["class"] += 1
+                label = f"C{counters['class']}"
+                enumeration[label] = {
+                    "label": label,
+                    "type": "class",
+                    "chunk_id": chunk["id"],
+                    "content": chunk["content"],
+                    "language": chunk.get("language", "python"),
+                    "start_line": chunk["start_line"],
+                    "end_line": chunk["end_line"],
+                    "name": chunk.get("parent_route", [""])[-1],
+                }
+
+        # Enumerate AST nodes
+        def enumerate_nodes(node: dict, parent_label: str = ""):
+            nonlocal counters
+            counters["node"] += 1
+            label = f"N{counters['node']}"
+            enumeration[label] = {
+                "label": label,
+                "type": "node",
+                "node_id": node.get("id"),
+                "node_type": node.get("type"),
+                "start_line": node.get("start_point", [0])[0] + 1,
+                "end_line": node.get("end_point", [0])[0] + 1,
+                "text": node.get("text", "")[:50],
+            }
+
+            for child in node.get("children", []):
+                enumerate_nodes(child, label)
+
+        if ast_root:
+            enumerate_nodes(ast_root)
+
+        # Enumerate edges
+        for edge in edges:
+            counters["edge"] += 1
+            label = f"E{counters['edge']}"
+            enumeration[label] = {
+                "label": label,
+                "type": "edge",
+                "edge_id": edge.get("id"),
+                "source": edge.get("source"),
+                "target": edge.get("target"),
+                "edge_type": edge.get("type"),
+            }
+
+        # Store for session
+        self._session_enumerations[session_id] = enumeration
+
+        return enumeration
+
+    async def get_visible_elements_description(self, session_id: str) -> str:
+        """Get a text description of visible elements for LLM context."""
+        enumeration = self._session_enumerations.get(session_id, {})
+
+        lines = ["Currently visible elements:"]
+
+        # Group by type
+        functions = [e for e in enumeration.values() if e["type"] == "function"]
+        classes = [e for e in enumeration.values() if e["type"] == "class"]
+        nodes = [e for e in enumeration.values() if e["type"] == "node"]
+        edges = [e for e in enumeration.values() if e["type"] == "edge"]
+
+        if functions:
+            lines.append("\nFunctions:")
+            for f in functions:
+                lines.append(f"  [{f['label']}] {f.get('name', 'unnamed')} (lines {f['start_line']}-{f['end_line']})")
+
+        if classes:
+            lines.append("\nClasses:")
+            for c in classes:
+                lines.append(f"  [{c['label']}] {c.get('name', 'unnamed')} (lines {c['start_line']}-{c['end_line']})")
+
+        if nodes:
+            lines.append(f"\nAST Nodes: N1-N{len(nodes)}")
+
+        if edges:
+            lines.append("\nEdges:")
+            for e in edges:
+                lines.append(f"  [{e['label']}] {e.get('edge_type', 'UNKNOWN')}")
+
+        return "\n".join(lines)
+
+    def expand_range(self, element_type: str, range_spec: str) -> list[str]:
+        """Expand a range like '1-5' or '1,3,5' to individual labels."""
+        prefix = {
+            "FUNCTION": "F",
+            "CLASS": "C",
+            "NODE": "N",
+            "EDGE": "E",
+        }.get(element_type, "N")
+
+        labels = []
+
+        if "-" in range_spec:
+            # Range: "1-5"
+            start, end = map(int, range_spec.split("-"))
+            labels = [f"{prefix}{i}" for i in range(start, end + 1)]
+        elif "," in range_spec:
+            # List: "1,3,5"
+            numbers = [int(n.strip()) for n in range_spec.split(",")]
+            labels = [f"{prefix}{n}" for n in numbers]
+        else:
+            # Single number
+            labels = [f"{prefix}{range_spec}"]
+
+        return labels
+
+    async def get_element_by_label(
+        self,
+        session_id: str,
+        label: str,
+    ) -> dict | None:
+        """Get element data by its label."""
+        enumeration = self._session_enumerations.get(session_id, {})
+        return enumeration.get(label.upper())
+
+    async def get_current_selection(self, session_id: str) -> list[dict]:
+        """Get currently selected elements."""
+        # This would integrate with the frontend selection state
+        # For now, return empty
+        return []
+```
+
+#### Frontend Voice Integration
+
+```tsx
+// frontend/src/components/Voice/VoiceInput.tsx
+
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useASTStore } from '../../stores/astStore';
+import { useEnumerationStore } from '../../stores/enumerationStore';
+
+interface VoiceInputProps {
+  onCommand: (result: VoiceCommandResult) => void;
+  isEnabled: boolean;
+}
+
+export function VoiceInput({ onCommand, isEnabled }: VoiceInputProps) {
+  const [isListening, setIsListening] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const [interimTranscript, setInterimTranscript] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const { sessionId } = useASTStore();
+  const { visibleElements } = useEnumerationStore();
+
+  // Initialize speech recognition
+  useEffect(() => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      console.warn('Speech recognition not supported');
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onresult = (event) => {
+      let interim = '';
+      let final = '';
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        if (result.isFinal) {
+          final += result[0].transcript;
+        } else {
+          interim += result[0].transcript;
+        }
+      }
+
+      setInterimTranscript(interim);
+
+      if (final) {
+        setTranscript(prev => prev + ' ' + final);
+        handleFinalTranscript(final.trim());
+      }
+    };
+
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error:', event.error);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      if (isListening) {
+        recognition.start(); // Restart if still supposed to be listening
+      }
+    };
+
+    recognitionRef.current = recognition;
+
+    return () => {
+      recognition.stop();
+    };
+  }, [isListening]);
+
+  const handleFinalTranscript = useCallback(async (text: string) => {
+    if (!text || isProcessing) return;
+
+    setIsProcessing(true);
+
+    try {
+      const response = await fetch('/api/voice/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transcript: text,
+          session_id: sessionId,
+        }),
+      });
+
+      const result = await response.json();
+      onCommand(result);
+
+      // Text-to-speech response
+      if (result.response_text) {
+        speak(result.response_text);
+      }
+    } catch (error) {
+      console.error('Failed to process voice command:', error);
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [sessionId, isProcessing, onCommand]);
+
+  const speak = (text: string) => {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.1;
+    speechSynthesis.speak(utterance);
+  };
+
+  const toggleListening = () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+    } else {
+      recognitionRef.current?.start();
+      setIsListening(true);
+      setTranscript('');
+    }
+  };
+
+  if (!isEnabled) return null;
+
+  return (
+    <div className="voice-input">
+      <button
+        className={`voice-button ${isListening ? 'listening' : ''} ${isProcessing ? 'processing' : ''}`}
+        onClick={toggleListening}
+        disabled={isProcessing}
+      >
+        {isListening ? '🎤' : '🎙️'}
+      </button>
+
+      {(transcript || interimTranscript) && (
+        <div className="voice-transcript">
+          <span className="final">{transcript}</span>
+          <span className="interim">{interimTranscript}</span>
+        </div>
+      )}
+
+      {isProcessing && (
+        <div className="voice-processing">
+          Processing...
+        </div>
+      )}
+
+      <div className="voice-hints">
+        <p>Try saying:</p>
+        <ul>
+          <li>"Select function 1"</li>
+          <li>"Add nodes 1 through 5 to context"</li>
+          <li>"Show signatures only"</li>
+          <li>"Explain the selected code"</li>
+          <li>"What calls function 2?"</li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+```
+
+```tsx
+// frontend/src/stores/enumerationStore.ts
+
+import { create } from 'zustand';
+
+interface EnumeratedElement {
+  label: string;
+  type: 'function' | 'class' | 'node' | 'edge';
+  chunkId?: string;
+  nodeId?: string;
+  edgeId?: string;
+  startLine: number;
+  endLine: number;
+  name?: string;
+  content?: string;
+}
+
+interface EnumerationState {
+  // All enumerated elements
+  elements: Map<string, EnumeratedElement>;
+
+  // Currently highlighted (from voice reference)
+  highlightedLabels: Set<string>;
+
+  // Distillation level
+  distillationLevel: 'full' | 'signatures' | 'definitions' | 'references' | 'docstrings';
+
+  // Actions
+  setElements: (elements: Map<string, EnumeratedElement>) => void;
+  highlightLabels: (labels: string[]) => void;
+  clearHighlights: () => void;
+  setDistillationLevel: (level: EnumerationState['distillationLevel']) => void;
+
+  // Lookup
+  getElementByLabel: (label: string) => EnumeratedElement | undefined;
+  getLabelsInRange: (startLine: number, endLine: number) => string[];
+}
+
+export const useEnumerationStore = create<EnumerationState>((set, get) => ({
+  elements: new Map(),
+  highlightedLabels: new Set(),
+  distillationLevel: 'full',
+
+  setElements: (elements) => set({ elements }),
+
+  highlightLabels: (labels) => set({
+    highlightedLabels: new Set(labels.map(l => l.toUpperCase()))
+  }),
+
+  clearHighlights: () => set({ highlightedLabels: new Set() }),
+
+  setDistillationLevel: (level) => set({ distillationLevel: level }),
+
+  getElementByLabel: (label) => get().elements.get(label.toUpperCase()),
+
+  getLabelsInRange: (startLine, endLine) => {
+    const labels: string[] = [];
+    get().elements.forEach((element, label) => {
+      if (element.startLine >= startLine && element.endLine <= endLine) {
+        labels.push(label);
+      }
+    });
+    return labels;
+  },
+}));
+```
+
+```tsx
+// frontend/src/components/AST/EnumeratedTreeNode.tsx
+
+import { useEnumerationStore } from '../../stores/enumerationStore';
+
+interface EnumeratedTreeNodeProps {
+  node: ASTNode;
+  label: string;
+  depth: number;
+}
+
+export function EnumeratedTreeNode({ node, label, depth }: EnumeratedTreeNodeProps) {
+  const { highlightedLabels, distillationLevel } = useEnumerationStore();
+  const isHighlighted = highlightedLabels.has(label);
+
+  // Determine what to show based on distillation level
+  const shouldShowBody = distillationLevel === 'full';
+  const shouldShowSignature = ['full', 'signatures', 'docstrings'].includes(distillationLevel);
+  const shouldShowDocstring = ['full', 'docstrings'].includes(distillationLevel);
+
+  return (
+    <div
+      className={`tree-node ${isHighlighted ? 'highlighted' : ''}`}
+      style={{ paddingLeft: `${depth * 16}px` }}
+    >
+      {/* Enumeration label - always visible */}
+      <span className="enum-label">[{label}]</span>
+
+      {/* Node type */}
+      <span className="node-type">{node.type}</span>
+
+      {/* Name if available */}
+      {node.name && (
+        <span className="node-name">{node.name}</span>
+      )}
+
+      {/* Position indicator */}
+      <span className="node-position">
+        L{node.start_point[0] + 1}
+      </span>
+
+      {/* Expandable content based on distillation */}
+      {shouldShowSignature && node.signature && (
+        <div className="node-signature">
+          <code>{node.signature}</code>
+        </div>
+      )}
+
+      {shouldShowDocstring && node.docstring && (
+        <div className="node-docstring">
+          {node.docstring}
+        </div>
+      )}
+
+      {shouldShowBody && node.children && (
+        <div className="node-children">
+          {/* Render children */}
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+#### API Routes for Voice
+
+```python
+# api/voice_routes.py
+
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel
+
+from services.voice_service import VoiceInteractionService, VoiceCommandResult
+
+router = APIRouter(prefix="/voice", tags=["Voice Interaction"])
+
+
+class ProcessVoiceRequest(BaseModel):
+    transcript: str
+    session_id: str
+
+
+class VoiceCommandResponse(BaseModel):
+    intent: str
+    targets: list[str]
+    distillation: str | None
+    result: dict
+    response_text: str
+    confidence: float
+
+
+@router.post("/process", response_model=VoiceCommandResponse)
+async def process_voice_command(
+    request: ProcessVoiceRequest,
+    voice_service: VoiceInteractionService = Depends(),
+):
+    """
+    Process a voice transcript and execute the command.
+    """
+    result = await voice_service.process_voice_input(
+        transcript=request.transcript,
+        session_id=request.session_id,
+    )
+
+    return VoiceCommandResponse(
+        intent=result.command.intent.value,
+        targets=[t.label for t in result.command.targets if t.label],
+        distillation=result.command.distillation.value if result.command.distillation else None,
+        result=result.execution_result,
+        response_text=result.response_text,
+        confidence=result.command.confidence,
+    )
+
+
+@router.post("/enumerate")
+async def enumerate_visible_elements(
+    session_id: str,
+    ast_data: dict,
+    chunks: list[dict],
+    edges: list[dict],
+    enumeration_service: "EnumerationService" = Depends(),
+):
+    """
+    Enumerate all visible elements for voice reference.
+    """
+    enumeration = await enumeration_service.enumerate_visible_ast(
+        session_id=session_id,
+        ast_root=ast_data.get("ast"),
+        chunks=chunks,
+        edges=edges,
+    )
+
+    return {
+        "enumeration": {
+            label: {
+                "type": elem["type"],
+                "name": elem.get("name"),
+                "start_line": elem.get("start_line"),
+                "end_line": elem.get("end_line"),
+            }
+            for label, elem in enumeration.items()
+        },
+        "counts": {
+            "functions": len([e for e in enumeration.values() if e["type"] == "function"]),
+            "classes": len([e for e in enumeration.values() if e["type"] == "class"]),
+            "nodes": len([e for e in enumeration.values() if e["type"] == "node"]),
+            "edges": len([e for e in enumeration.values() if e["type"] == "edge"]),
+        },
+    }
+
+
+@router.post("/distill")
+async def distill_context(
+    session_id: str,
+    labels: list[str],
+    level: str,  # "full", "signatures", "definitions", "references", "docstrings"
+    voice_service: VoiceInteractionService = Depends(),
+):
+    """
+    Distill selected code elements to a specific level.
+    """
+    from baml_client.types import DistillationLevel
+
+    level_map = {
+        "full": DistillationLevel.FULL,
+        "signatures": DistillationLevel.SIGNATURES,
+        "definitions": DistillationLevel.DEFINITIONS,
+        "references": DistillationLevel.REFERENCES,
+        "docstrings": DistillationLevel.DOCSTRINGS,
+    }
+
+    distilled = []
+    for label in labels:
+        element = await voice_service.enumeration.get_element_by_label(session_id, label)
+        if element and element.get("content"):
+            from baml_client import baml
+            result = await baml.DistillCodeToLevel(
+                code=element["content"],
+                language=element.get("language", "python"),
+                target_level=level_map.get(level, DistillationLevel.FULL),
+            )
+            distilled.append({
+                "label": label,
+                "original_tokens": len(element["content"]) // 4,
+                "distilled_content": result.distilled_content,
+                "distilled_tokens": result.token_count,
+                "preserved": result.preserved_elements,
+            })
+
+    return {
+        "distilled": distilled,
+        "total_original_tokens": sum(d["original_tokens"] for d in distilled),
+        "total_distilled_tokens": sum(d["distilled_tokens"] for d in distilled),
+        "compression_ratio": (
+            sum(d["distilled_tokens"] for d in distilled) /
+            max(1, sum(d["original_tokens"] for d in distilled))
+        ),
+    }
+
+
+@router.post("/io-protocol")
+async def extract_io_protocol(
+    label: str,
+    session_id: str,
+    include_examples: bool = True,
+    voice_service: VoiceInteractionService = Depends(),
+):
+    """
+    Extract input/output protocol for a code element.
+    """
+    element = await voice_service.enumeration.get_element_by_label(session_id, label)
+
+    if not element or not element.get("content"):
+        return {"error": f"Element {label} not found or has no content"}
+
+    from baml_client import baml
+    protocol = await baml.ExtractIOProtocol(
+        code=element["content"],
+        language=element.get("language", "python"),
+        include_examples=include_examples,
+    )
+
+    return {
+        "label": label,
+        "protocol": {
+            "inputs": [p.__dict__ for p in protocol.inputs],
+            "outputs": [p.__dict__ for p in protocol.outputs],
+            "side_effects": protocol.side_effects,
+            "exceptions": protocol.exceptions,
+            "preconditions": protocol.preconditions,
+            "postconditions": protocol.postconditions,
+            "example_usage": protocol.example_usage,
+        },
+    }
+
+
+@router.post("/analyze-edge")
+async def analyze_edge(
+    edge_label: str,
+    session_id: str,
+    voice_service: VoiceInteractionService = Depends(),
+):
+    """
+    Analyze a relationship/edge between code elements.
+    """
+    edge = await voice_service.enumeration.get_element_by_label(session_id, edge_label)
+
+    if not edge or edge["type"] != "edge":
+        return {"error": f"Edge {edge_label} not found"}
+
+    # Get source and target elements
+    source = await voice_service.enumeration.get_element_by_label(
+        session_id, edge.get("source_label", "")
+    )
+    target = await voice_service.enumeration.get_element_by_label(
+        session_id, edge.get("target_label", "")
+    )
+
+    if not source or not target:
+        return {"error": "Could not resolve source or target of edge"}
+
+    from baml_client import baml
+    analysis = await baml.AnalyzeEdge(
+        source_code=source.get("content", ""),
+        target_code=target.get("content", ""),
+        edge_type=edge.get("edge_type", "UNKNOWN"),
+        context="",  # Could add surrounding context
+    )
+
+    return {
+        "edge_label": edge_label,
+        "source": source.get("label"),
+        "target": target.get("label"),
+        "analysis": {
+            "relationship": analysis.relationship.value,
+            "description": analysis.description,
+            "importance": analysis.importance,
+            "data_flow": analysis.data_flow,
+        },
+    }
+```
+
+#### Voice Command Quick Reference
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         VOICE COMMAND REFERENCE                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  SELECTION COMMANDS                                                         │
+│  ─────────────────                                                         │
+│  "Select function 1"                    → Selects F1                        │
+│  "Select nodes 1 through 5"             → Selects N1, N2, N3, N4, N5       │
+│  "Select class 2 and function 3"        → Selects C2 and F3                │
+│  "Deselect all"                         → Clears selection                 │
+│  "Select all functions"                 → Selects all Fn elements          │
+│                                                                             │
+│  CONTEXT MANAGEMENT                                                         │
+│  ──────────────────                                                        │
+│  "Add function 1 to context"            → Adds F1 (full code)              │
+│  "Add class 1 with signatures only"     → Adds C1 signature, no body       │
+│  "Add nodes 1 to 3 as definitions"      → Adds just names/types            │
+│  "Remove edge 2 from context"           → Removes E2                        │
+│  "Clear context"                        → Removes all context              │
+│  "Show me the current context"          → Lists what's in context          │
+│                                                                             │
+│  DISTILLATION LEVELS                                                        │
+│  ───────────────────                                                       │
+│  "Show full code"                       → Complete code with bodies         │
+│  "Show signatures only"                 → Function/class signatures         │
+│  "Show definitions only"                → Just names and types             │
+│  "Show with docstrings"                 → Signatures + documentation       │
+│  "Show references only"                 → What it uses/is used by          │
+│                                                                             │
+│  NAVIGATION & EXPLORATION                                                   │
+│  ────────────────────────                                                  │
+│  "Go to function 3"                     → Scrolls to F3 in editor          │
+│  "Expand node 5"                        → Expands N5 in tree               │
+│  "Collapse class 1"                     → Collapses C1 subtree             │
+│  "Show callers of function 2"           → Shows what calls F2              │
+│  "Show what function 1 calls"           → Shows callees of F1              │
+│  "Show edges for class 2"               → Shows all relationships          │
+│  "Trace data flow from node 3"          → Shows data dependencies          │
+│                                                                             │
+│  ANALYSIS & QUESTIONS                                                       │
+│  ────────────────────                                                      │
+│  "Explain the selected code"            → AI explanation                   │
+│  "What does function 1 do?"             → Explains F1                       │
+│  "How do function 1 and 2 interact?"    → Explains relationship            │
+│  "What are the inputs to function 3?"   → Shows I/O protocol               │
+│  "What are the side effects of class 1?"→ Lists mutations, etc.            │
+│                                                                             │
+│  ANNOTATION & TAGGING                                                       │
+│  ────────────────────                                                      │
+│  "Annotate node 5 with 'needs review'"  → Adds annotation                  │
+│  "Tag function 2 as security critical"  → Adds #security-critical          │
+│  "Mark class 1 as deprecated"           → Adds deprecation note            │
+│                                                                             │
+│  EDGE MANIPULATION                                                          │
+│  ─────────────────                                                         │
+│  "Analyze edge 1"                       → Describes the relationship        │
+│  "What data flows through edge 2?"      → Shows data flow                  │
+│  "Why does function 1 call function 2?" → Explains the call                │
+│  "Show the protocol for edge 3"         → Input/output across edge         │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### BAML Project Setup
+
+```bash
+# Install BAML
+pip install baml
+
+# Project structure
+project/
+├── baml_src/
+│   ├── voice_commands.baml    # Voice command parsing
+│   ├── clients.baml           # LLM client configuration
+│   └── generators.baml        # Code generation config
+├── baml_client/               # Generated Python client (auto-generated)
+└── ...
+```
+
+```baml
+// baml_src/generators.baml
+
+generator python {
+  output_dir "../baml_client"
+  version "0.1.0"
+}
+```
+
+Run `baml generate` to create the type-safe Python client from the BAML definitions.
+
 ### Summary: When to Use Each Architecture
 
 | Architecture | Use Case | Complexity |
