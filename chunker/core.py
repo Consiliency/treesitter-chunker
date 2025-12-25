@@ -22,6 +22,47 @@ if TYPE_CHECKING:
     from tree_sitter import Node
 
 
+def _extract_definition_name(node: "Node", source: bytes) -> str | None:
+    """Extract the definition name from an AST node.
+
+    Tries common field names used across languages:
+    - "name" (most common: Python, JS, TS, Go, Rust, etc.)
+    - "identifier" (some grammars)
+    - "declarator" then "name" (C/C++ style)
+
+    Returns None if no name can be extracted (anonymous definition).
+    """
+    # Try direct "name" field first (most common)
+    name_node = getattr(node, "child_by_field_name", lambda _: None)("name")
+    if name_node is not None:
+        return source[name_node.start_byte : name_node.end_byte].decode(
+            "utf-8", errors="ignore"
+        )
+
+    # Try "identifier" field (some grammars)
+    id_node = getattr(node, "child_by_field_name", lambda _: None)("identifier")
+    if id_node is not None:
+        return source[id_node.start_byte : id_node.end_byte].decode(
+            "utf-8", errors="ignore"
+        )
+
+    # Try declarator pattern (C/C++ style: type declarator { name })
+    declarator = getattr(node, "child_by_field_name", lambda _: None)("declarator")
+    if declarator is not None:
+        decl_name = getattr(declarator, "child_by_field_name", lambda _: None)("name")
+        if decl_name is not None:
+            return source[decl_name.start_byte : decl_name.end_byte].decode(
+                "utf-8", errors="ignore"
+            )
+        # Some declarators ARE the name directly (identifier type)
+        if getattr(declarator, "type", "") == "identifier":
+            return source[declarator.start_byte : declarator.end_byte].decode(
+                "utf-8", errors="ignore"
+            )
+
+    return None
+
+
 def _walk(
     node: Node,
     source: bytes,
@@ -31,6 +72,7 @@ def _walk(
     extractor=None,
     analyzer=None,
     parent_route: list[str] | None = None,
+    parent_qualified_route: list[str] | None = None,
 ) -> list[CodeChunk]:
     """Walk the AST and extract chunks based on language configuration."""
     # Get language configuration
@@ -108,13 +150,15 @@ def _walk(
 
     chunks: list[CodeChunk] = []
     current_chunk = None
+    current_qualified_route: list[str] | None = None
 
     # Skip ignored nodes
     if should_ignore(node.type):
         return chunks
 
-    # Ensure route list
+    # Ensure route lists
     parent_route = (parent_route or []).copy()
+    parent_qualified_route = (parent_qualified_route or []).copy()
 
     # R special-cases: treat setClass/setMethod calls as chunks
     force_chunk = False
@@ -303,11 +347,22 @@ def _walk(
             adjusted_node_type = r_call_name
         text = source[span_start:span_end].decode()
         current_route = [*parent_route, adjusted_node_type]
+
+        # Build qualified_route with definition names for content-insensitive ID
+        start_line = node.start_point[0] + 1
+        def_name = _extract_definition_name(node, source)
+        if def_name:
+            qualified_name = f"{adjusted_node_type}:{def_name}"
+        else:
+            # Anonymous definition - use line number as fallback
+            qualified_name = f"{adjusted_node_type}:anon@{start_line}"
+        current_qualified_route = [*(parent_qualified_route or []), qualified_name]
+
         current_chunk = CodeChunk(
             language=language,
             file_path="",
             node_type=adjusted_node_type,
-            start_line=node.start_point[0] + 1,
+            start_line=start_line,
             end_line=(
                 # Estimate end line from span_end by walking to end_point if same node
                 node.end_point[0] + 1
@@ -321,6 +376,7 @@ def _walk(
             content=text,
             parent_chunk_id=(parent_chunk.node_id if parent_chunk else None),
             parent_route=current_route,
+            qualified_route=current_qualified_route,
         )
 
         # Extract metadata if extractors are available
@@ -536,6 +592,7 @@ def _walk(
                 pass
         parent_ctx = node.type  # nested functions, etc.
         parent_route = current_route
+        parent_qualified_route = current_qualified_route
 
     # Walk children with current chunk as parent
     for child in node.children:
@@ -549,6 +606,7 @@ def _walk(
                 extractor,
                 analyzer,
                 parent_route=parent_route,
+                parent_qualified_route=parent_qualified_route,
             ),
         )
 

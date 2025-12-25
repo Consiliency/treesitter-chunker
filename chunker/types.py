@@ -8,6 +8,7 @@ from typing import Any
 
 __all__ = [
     "CodeChunk",
+    "compute_definition_id",
     "compute_file_id",
     "compute_node_id",
     "compute_symbol_id",
@@ -41,6 +42,32 @@ def compute_symbol_id(language: str, file_path: str, symbol_name: str) -> str:
     return hashlib.sha1(seed).hexdigest()
 
 
+def compute_definition_id(
+    file_path: str,
+    language: str,
+    qualified_route: list[str],
+) -> str:
+    """Compute a content-insensitive stable ID for a definition.
+
+    Unlike node_id/chunk_id which include a content hash, definition_id is
+    computed purely from structural/positional information:
+    - file_path: The source file
+    - language: The programming language
+    - qualified_route: Hierarchical path with names, e.g. ["class_definition:MyClass", "method_definition:foo"]
+
+    This ID remains stable when the definition's body changes but changes when:
+    - The definition is moved to a different structural location
+    - The definition is renamed
+    - The file path changes
+
+    For anonymous definitions, the implementation falls back to a positional
+    format like "function:anon@42", where 42 is the start line number.
+    """
+    route = "/".join(qualified_route or [])
+    to_hash = f"def:{file_path}|{language}|{route}".encode()
+    return hashlib.sha1(to_hash).hexdigest()
+
+
 @dataclass
 class CodeChunk:
     language: str
@@ -62,6 +89,9 @@ class CodeChunk:
     file_id: str = ""
     symbol_id: str | None = None
     parent_route: list[str] = field(default_factory=list)
+    # Content-insensitive identity for tracking definitions across code changes
+    qualified_route: list[str] = field(default_factory=list)
+    definition_id: str = ""
 
     def generate_id(self) -> str:
         """Generate a stable ID using file/language/route/text hash."""
@@ -80,6 +110,13 @@ class CodeChunk:
             self.chunk_id = self.generate_id()
         if not self.file_id and self.file_path:
             self.file_id = compute_file_id(self.file_path)
+        # Compute definition_id from qualified_route if not already set
+        if not self.definition_id and self.qualified_route and self.file_path:
+            self.definition_id = compute_definition_id(
+                self.file_path,
+                self.language,
+                self.qualified_route,
+            )
         # Do not auto-inject span/route into metadata; tests expect control over metadata presence
 
     def __eq__(self, other: object) -> bool:
