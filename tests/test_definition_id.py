@@ -152,7 +152,7 @@ class TestCodeChunkDefinitionId:
         assert chunk.definition_id == ""
 
     def test_definition_id_empty_without_qualified_route(self):
-        """definition_id is empty when qualified_route is not provided."""
+        """definition_id is empty when qualified_route is empty (default)."""
         chunk = CodeChunk(
             language="python",
             file_path="/file.py",
