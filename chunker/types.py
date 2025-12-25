@@ -60,8 +60,8 @@ def compute_definition_id(
     - The definition is renamed
     - The file path changes
 
-    For anonymous definitions, use a positional fallback like "function:anon@42"
-    where 42 is the start line number.
+    For anonymous definitions, the implementation falls back to a positional
+    format like "function:anon@42", where 42 is the start line number.
     """
     route = "/".join(qualified_route or [])
     to_hash = f"def:{file_path}|{language}|{route}".encode()
