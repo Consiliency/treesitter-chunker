@@ -116,12 +116,31 @@ def build_xref(
                         1.0,
                     )
 
-    # References (optional, if precomputed in metadata)
+    # References - check both c.references attribute and c.dependencies
+    # (REQ-TSC-008: reconcile dependencies vs references for REFERENCES edges)
     for c in chunks:
-        refs = []
+        # Collect references from multiple sources
+        refs: set[str] = set()
+
+        # 1. Direct references attribute on CodeChunk
+        if c.references:
+            refs.update(c.references)
+
+        # 2. Dependencies attribute on CodeChunk (often contains external refs)
+        if c.dependencies:
+            refs.update(c.dependencies)
+
+        # 3. Legacy: metadata["references"] for backwards compatibility
         if c.metadata and isinstance(c.metadata, dict):
-            refs = c.metadata.get("references") or []
+            metadata_refs = c.metadata.get("references") or []
+            refs.update(metadata_refs)
+            # Also check metadata["dependencies"] for backwards compatibility
+            metadata_deps = c.metadata.get("dependencies") or []
+            refs.update(metadata_deps)
+
         for ref in refs:
+            if not ref:
+                continue
             for t in chunks:
                 sig = (t.metadata or {}).get("signature") or {}
                 target_name = sig.get("name")
