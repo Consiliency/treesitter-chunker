@@ -5,7 +5,6 @@ definitions across code changes. Unlike chunk_id/node_id which include content
 hashes, definition_id is computed purely from structural/positional information.
 """
 
-import pytest
 from chunker.types import CodeChunk, compute_definition_id
 
 
