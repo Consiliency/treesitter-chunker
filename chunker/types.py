@@ -53,7 +53,7 @@ def compute_definition_id(
     computed purely from structural/positional information:
     - file_path: The source file
     - language: The programming language
-    - qualified_route: Hierarchical path with names, e.g. ["class:MyClass", "method:foo"]
+    - qualified_route: Hierarchical path with names, e.g. ["class_definition:MyClass", "method_definition:foo"]
 
     This ID remains stable when the definition's body changes but changes when:
     - The definition is moved to a different structural location
