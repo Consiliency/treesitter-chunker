@@ -1,4 +1,7 @@
 {
+  "enabledPlugins": {
+    "ai-dev-kit@ai-dev-kit": true
+  },
   "permissions": {
     "allow": [
       "Bash(python:*)",
