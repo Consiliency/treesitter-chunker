@@ -6,6 +6,7 @@ import pytest
 
 from chunker.exceptions import (
     ChunkerError,
+    ConfigurationError,
     LanguageError,
     LanguageLoadError,
     LanguageNotFoundError,
@@ -153,6 +154,58 @@ class TestLibraryErrors:
         assert "verify grammar files" in error_str
 
 
+class TestConfigurationError:
+    """Test ConfigurationError class."""
+
+    @classmethod
+    def test_configuration_error_basic(cls):
+        """Test basic ConfigurationError creation."""
+        err = ConfigurationError("Configuration file not found")
+        assert isinstance(err, ChunkerError)
+        assert isinstance(err, Exception)
+        assert err.message == "Configuration file not found"
+        assert err.path is None
+        assert err.details == {}
+        assert str(err) == "Configuration file not found"
+
+    @classmethod
+    def test_configuration_error_with_path(cls):
+        """Test ConfigurationError with file path."""
+        path = "/path/to/config.json"
+        err = ConfigurationError("Invalid JSON in config.json", path)
+        assert isinstance(err, ChunkerError)
+        assert err.message == "Invalid JSON in config.json"
+        assert err.path == path
+        assert err.details == {"path": path}
+        assert str(err) == "Invalid JSON in config.json (path=/path/to/config.json)"
+
+    @classmethod
+    def test_configuration_error_path_object(cls):
+        """Test ConfigurationError with Path object."""
+        path = Path("/etc/app/config.toml")
+        err = ConfigurationError("Permission denied", str(path))
+        assert err.path == str(path)
+        assert err.details["path"] == str(path)
+
+    @classmethod
+    def test_configuration_error_inheritance(cls):
+        """Test that ConfigurationError can be caught as ChunkerError."""
+        err = ConfigurationError("Test error", "/test/path.json")
+        assert isinstance(err, ChunkerError)
+        assert isinstance(err, Exception)
+
+    @classmethod
+    def test_configuration_error_catching(cls):
+        """Test exception catching patterns."""
+        with pytest.raises(ConfigurationError) as exc_info:
+            raise ConfigurationError("Test error", "/test/path.json")
+        assert exc_info.value.path == "/test/path.json"
+        assert exc_info.value.message == "Test error"
+
+        with pytest.raises(ChunkerError):
+            raise ConfigurationError("Test error", "/test/path.json")
+
+
 class TestExceptionHierarchy:
     """Test the overall exception hierarchy."""
 
@@ -167,6 +220,7 @@ class TestExceptionHierarchy:
             LibraryNotFoundError(Path("test.so")),
             LibraryLoadError(Path("test.so"), "reason"),
             LibrarySymbolError("symbol", Path("test.so")),
+            ConfigurationError("test error", "/test/path.json"),
         ]
         for exc in exceptions:
             assert isinstance(exc, ChunkerError)
@@ -208,6 +262,7 @@ class TestErrorMessages:
             LibraryNotFoundError(Path("/lib.so")),
             LibraryLoadError(Path("/lib.so"), "Permission denied"),
             LibrarySymbolError("tree_sitter_go", Path("/lib.so")),
+            ConfigurationError("Invalid JSON", "/path/to/config.json"),
         ]
         for err in errors:
             msg = str(err)

@@ -22,7 +22,7 @@ import psutil
 import pytest
 
 from chunker.config import StrategyConfig
-from chunker.exceptions import ChunkerError as ConfigurationError
+from chunker.exceptions import ConfigurationError
 from chunker.languages.base import LanguageConfig, PluginConfig
 
 try:

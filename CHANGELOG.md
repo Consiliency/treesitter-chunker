@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.4] - 2025-12-27
+
+### ✨ Features
+
+- **Content-insensitive definition_id (REQ-TSC-011)**: Added `definition_id` field to `CodeChunk` that provides a stable identifier based on symbol location and structure, independent of content changes. This enables reliable tracking of code entities across versions.
+- **Enhanced cross-reference graph (REQ-TSC-008)**: Improved `build_xref` to better reconcile dependencies vs references for REFERENCES edges, providing more accurate relationship mapping in code graphs.
+
+### 🧪 Testing
+
+- **ConfigurationError test coverage**: Added comprehensive test suite for `ConfigurationError` exception class in `tests/test_exceptions.py`
+- **Fixed test imports**: Updated `tests/test_config_advanced_scenarios.py` to use the real `ConfigurationError` class instead of workaround
+
+### 🔧 Workflow Improvements
+
+- **Updated CI/CD workflows**: Removed Python 3.10 from test matrices to match `requires-python = ">=3.11"` requirement
+- **Improved linting**: Scoped ruff checks to production code and tests, excluding archive and logs directories
+- **Enhanced test coverage**: Added `ConfigurationError` to exception hierarchy and error message formatting tests
+
+---
+
 ## [2.0.3] - 2025-11-28
 
 ### 🐛 Bug Fix

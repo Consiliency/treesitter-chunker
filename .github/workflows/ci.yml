@@ -28,9 +28,9 @@ jobs:
 
       - name: Ruff
         run: |
-          # Run ruff focusing on critical errors only
+          # Run ruff on production code and tests only (exclude archive, logs, etc.)
           # Using project's pyproject.toml configuration for consistency
-          ruff check .
+          ruff check chunker/ cli/ tests/ --exclude archive --exclude logs --exclude site
 
       - name: Black
         run: black --check .
