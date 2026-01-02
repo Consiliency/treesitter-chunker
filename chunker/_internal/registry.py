@@ -363,6 +363,12 @@ class LanguageRegistry:
     def get_language(self, name: str) -> Language:
         """Get a specific language, with lazy loading.
 
+        Resolution order:
+        1. Compiled grammar in package data directory
+        2. Compiled grammar in user cache
+        3. tree-sitter-language-pack (if available)
+        4. Raise LanguageNotFoundError with guidance
+
         Args:
                 name: Language name (e.g., 'python', 'rust')
 
@@ -379,29 +385,77 @@ class LanguageRegistry:
             # Try to load from a per-language library as a fallback
             language = self._try_load_from_individual_library(name)
             if language is None:
-                available = list(self._languages.keys())
+                # Try language pack as final fallback
+                language = self._try_load_from_language_pack(name)
+            if language is None:
+                available = self._get_all_available_languages()
                 raise LanguageNotFoundError(name, available)
             return language
         language, metadata = self._languages[name]
         if language is None:
             # Attempt lazy load from individual library when combined library is unavailable
             language = self._try_load_from_individual_library(name)
+            if language is None:
+                # Try language pack as final fallback
+                language = self._try_load_from_language_pack(name)
             if language is not None:
                 self._languages[name] = (language, metadata)
             else:
-                available = list(self._languages.keys())
+                available = self._get_all_available_languages()
                 raise LanguageNotFoundError(name, available)
         return language
+
+    def _try_load_from_language_pack(self, name: str) -> Language | None:
+        """Attempt to load a language from tree-sitter-language-pack.
+
+        This provides a fallback when no local compiled grammar is available.
+        The language pack provides pre-compiled grammars for 165+ languages.
+
+        Args:
+            name: Language name (e.g., "python", "typescript")
+
+        Returns:
+            Language object if found in pack, None otherwise
+        """
+        try:
+            from chunker._internal.language_pack import get_language_from_pack
+
+            language = get_language_from_pack(name)
+            if language is not None:
+                logger.info("Loaded '%s' from tree-sitter-language-pack", name)
+            return language
+        except ImportError:
+            # language_pack module not available (shouldn't happen with our deps)
+            logger.debug("language_pack module not available")
+            return None
+
+    def _get_all_available_languages(self) -> list[str]:
+        """Get all available languages including those from the language pack.
+
+        Returns:
+            Combined list of all available language names
+        """
+        available = list(self._languages.keys())
+        try:
+            from chunker._internal.language_pack import list_pack_languages
+
+            pack_languages = list_pack_languages()
+            for lang in pack_languages:
+                if lang not in available:
+                    available.append(lang)
+        except ImportError:
+            pass
+        return sorted(available)
 
     def list_languages(self) -> list[str]:
         """List all available language names.
 
         Returns:
-                Sorted list of language names
+                Sorted list of language names including those from the language pack
         """
         if not self._discovered:
             self.discover_languages()
-        return sorted(self._languages.keys())
+        return self._get_all_available_languages()
 
     def get_metadata(self, name: str) -> LanguageMetadata:
         """Get metadata for a specific language.
@@ -442,9 +496,15 @@ class LanguageRegistry:
             loaded = self._try_load_from_individual_library(name)
             if loaded is not None:
                 return True
-            return False
+            # Try language pack as final fallback
+            loaded = self._try_load_from_language_pack(name)
+            return loaded is not None
         # Attempt to lazily load from individual per-language library when not discovered yet
         loaded = self._try_load_from_individual_library(name)
+        if loaded is not None:
+            return True
+        # Try language pack as final fallback
+        loaded = self._try_load_from_language_pack(name)
         return loaded is not None
 
     def get_all_metadata(self) -> dict[str, LanguageMetadata]:
