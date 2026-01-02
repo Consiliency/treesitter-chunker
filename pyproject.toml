@@ -186,7 +186,7 @@ skip_glob = ["*/grammars/*", "*/build/*"]
 [tool.ruff]
 target-version = "py312"
 line-length = 88
-fix = true
+fix = false  # CI should only check, not fix; run `ruff check --fix` locally
 unsafe-fixes = false
 preview = true
 exclude = [
