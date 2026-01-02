@@ -19,42 +19,12 @@ TreeSitter Chunker is a powerful Python library for semantically chunking source
 
 .. toctree::
    :maxdepth: 2
-   :caption: Getting Started
-
-   installation
-   quickstart
-   tutorial
-
-.. toctree::
-   :maxdepth: 2
-   :caption: User Guide
-
-   basic_usage
-   advanced_usage
-   configuration
-   cli_reference
-
-.. toctree::
-   :maxdepth: 2
    :caption: API Reference
 
    api/chunker
-   api/parser
-   api/languages
-   api/export
-   api/plugins
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Developer Guide
-
-   architecture
-   plugin_development
-   contributing
-   changelog
 
 Key Features
------------
+------------
 
 * **Semantic Understanding**: Extracts functions, classes, methods based on AST
 * **High Performance**: Efficient parser caching and pooling (11.9x speedup)
@@ -65,14 +35,14 @@ Key Features
 * **Universal Language Support**: Auto-download 100+ languages
 
 Quick Example
-------------
+-------------
 
 .. code-block:: python
 
-   from chunker.chunker import chunk_file
+   from chunker import chunk_file
 
    # Chunk a Python file
-   chunks = chunk_file("example.py", "python")
+   chunks = chunk_file("example.py", language="python")
 
    # Process results
    for chunk in chunks:
@@ -80,7 +50,7 @@ Quick Example
        print(f"  {chunk.content.split(chr(10))[0]}...")
 
 Installation
------------
+------------
 
 .. code-block:: bash
 
