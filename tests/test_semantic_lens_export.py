@@ -53,7 +53,10 @@ def sample_chunks() -> list[CodeChunk]:
                 "class_definition:UserService",
                 "method_definition:getUser",
             ],
-            metadata={"visibility": "public", "signature": "(id: string) => Promise<User>"},
+            metadata={
+                "visibility": "public",
+                "signature": "(id: string) => Promise<User>",
+            },
         ),
     ]
 
@@ -173,16 +176,29 @@ class TestSemanticLensExporter:
         """Verify all mapped node types produce valid kinds."""
         for node_type, kind in NODE_KIND_MAP.items():
             assert kind in (
-                "module", "class", "interface", "trait",
-                "function", "method", "field", "property",
+                "module",
+                "class",
+                "interface",
+                "trait",
+                "function",
+                "method",
+                "field",
+                "property",
             ), f"Invalid kind '{kind}' for node_type '{node_type}'"
 
     def test_all_edge_kinds_mapped(self):
         """Verify all mapped relationship types produce valid kinds."""
         for rel_type, kind in EDGE_KIND_MAP.items():
             assert kind in (
-                "defines", "imports", "calls", "inherits",
-                "implements", "uses", "reads", "writes", "throws",
+                "defines",
+                "imports",
+                "calls",
+                "inherits",
+                "implements",
+                "uses",
+                "reads",
+                "writes",
+                "throws",
             ), f"Invalid kind '{kind}' for relationship '{rel_type}'"
 
     def test_repo_metadata(self, sample_chunks):

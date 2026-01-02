@@ -1101,7 +1101,11 @@ class UserActionGuidanceEngine:
                 estimated_total_time=self._calculate_total_time(personalized_actions),
                 difficulty_level=user_profile.experience_level,
                 success_rate=sequence.success_rate,
-                tags=[*sequence.tags, "personalized", user_profile.experience_level.value],
+                tags=[
+                    *sequence.tags,
+                    "personalized",
+                    user_profile.experience_level.value,
+                ],
             )
 
             logger.info(

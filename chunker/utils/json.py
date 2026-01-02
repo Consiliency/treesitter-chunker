@@ -41,14 +41,23 @@ def load_json_file(path: Path | str) -> dict[str, Any]:
             return json.load(f)
     except FileNotFoundError:
         logger.error("Configuration file not found: %s", path)
-        raise ConfigurationError(f"Configuration file not found: {path}", path) from None
+        raise ConfigurationError(
+            f"Configuration file not found: {path}", path
+        ) from None
     except PermissionError:
         logger.error("Permission denied reading configuration file: %s", path)
         raise ConfigurationError(
-            f"Permission denied reading configuration file: {path}", path,
+            f"Permission denied reading configuration file: {path}",
+            path,
         ) from None
     except json.JSONDecodeError as e:
-        logger.error("Invalid JSON in %s: %s (line %d, column %d)", path, e.msg, e.lineno, e.colno)
+        logger.error(
+            "Invalid JSON in %s: %s (line %d, column %d)",
+            path,
+            e.msg,
+            e.lineno,
+            e.colno,
+        )
         raise ConfigurationError(
             f"Invalid JSON in {path}: {e.msg} (line {e.lineno}, column {e.colno})",
             path,
@@ -74,13 +83,21 @@ def load_json_string(content: str, source: str = "<string>") -> dict[str, Any]:
     try:
         return json.loads(content)
     except json.JSONDecodeError as e:
-        logger.error("Invalid JSON from %s: %s (line %d, column %d)", source, e.msg, e.lineno, e.colno)
+        logger.error(
+            "Invalid JSON from %s: %s (line %d, column %d)",
+            source,
+            e.msg,
+            e.lineno,
+            e.colno,
+        )
         raise ConfigurationError(
             f"Invalid JSON from {source}: {e.msg} (line {e.lineno}, column {e.colno})",
         ) from e
 
 
-def safe_json_loads(content: str, default: dict[str, Any] | None = None) -> dict[str, Any]:
+def safe_json_loads(
+    content: str, default: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """Parse JSON with a default fallback for invalid content.
 
     Unlike load_json_string, this function returns a default value instead of

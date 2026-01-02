@@ -155,7 +155,9 @@ class ZigPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 container_expr = None
                 for child in n.children:
                     if child.type == "identifier":
-                        name = safe_decode_bytes(source[child.start_byte : child.end_byte])
+                        name = safe_decode_bytes(
+                            source[child.start_byte : child.end_byte]
+                        )
                     elif child.type == "struct_expression":
                         chunk_type = "struct"
                         container_expr = child

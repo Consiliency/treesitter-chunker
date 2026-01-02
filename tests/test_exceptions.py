@@ -120,7 +120,9 @@ class TestLibraryErrors:
         assert "build_lib.py" in err.details["recovery"]
         error_str = str(err)
         # The error message should mention build_lib.py for recovery
-        assert "build_lib.py" in error_str or "build_lib.py" in err.details.get("recovery", "")
+        assert "build_lib.py" in error_str or "build_lib.py" in err.details.get(
+            "recovery", ""
+        )
 
     @classmethod
     def test_library_load_error(cls):

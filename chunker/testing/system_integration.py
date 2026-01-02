@@ -2320,7 +2320,9 @@ class SystemIntegrationTester:
                     failure["status"],
                 )
             if len(overall["critical_failures"]) > 5:
-                logger.warning("   ... and %s more", len(overall["critical_failures"]) - 5)
+                logger.warning(
+                    "   ... and %s more", len(overall["critical_failures"]) - 5
+                )
 
         # Performance metrics
         if overall.get("performance_metrics"):
@@ -2393,7 +2395,9 @@ def run_comprehensive_system_integration_tests(
             logger.info("   JSON: %s", json_path)
             logger.info("   HTML: %s", html_path)
 
-        logger.info("\nComprehensive system integration testing completed successfully!")
+        logger.info(
+            "\nComprehensive system integration testing completed successfully!"
+        )
         return tester
 
     except Exception as e:

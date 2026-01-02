@@ -180,11 +180,7 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
             problematic_grammars = {"wat"}
             if language in problematic_grammars:
                 # Only include essential files for problematic grammars
-                c_files = [
-                    f
-                    for f in c_files
-                    if f.endswith(("parser.c", "scanner.c"))
-                ]
+                c_files = [f for f in c_files if f.endswith(("parser.c", "scanner.c"))]
                 cc_files = []
 
             # Choose compiler - prefer clang for better C99 support

@@ -183,7 +183,9 @@ def setup_grammars(
         console.print(
             f"[red]Unknown language(s): {', '.join(invalid_langs)}[/red]",
         )
-        console.print(f"[yellow]Available: {', '.join(sorted(GRAMMAR_REPOS.keys()))}[/yellow]")
+        console.print(
+            f"[yellow]Available: {', '.join(sorted(GRAMMAR_REPOS.keys()))}[/yellow]"
+        )
         raise typer.Exit(1)
 
     # Get directories
@@ -192,7 +194,9 @@ def setup_grammars(
         grammars_dir = grammars_dir or default_grammars
         build_dir = build_dir or default_build
 
-    console.print(f"[cyan]Setting up grammars for: {', '.join(target_languages)}[/cyan]")
+    console.print(
+        f"[cyan]Setting up grammars for: {', '.join(target_languages)}[/cyan]"
+    )
     console.print(f"[dim]Grammar sources: {grammars_dir}[/dim]")
     console.print(f"[dim]Build output: {build_dir}[/dim]")
     console.print()
@@ -236,7 +240,8 @@ def setup_grammars(
                         else:
                             results[lang]["error"] = "Build failed"
                             progress.update(
-                                task, description=f"[yellow]Build failed: {lang}",
+                                task,
+                                description=f"[yellow]Build failed: {lang}",
                             )
                 else:
                     results[lang]["error"] = "Fetch failed"
@@ -261,8 +266,10 @@ def setup_grammars(
     success_count = 0
     for lang, result in results.items():
         fetched = "[green]✓[/green]" if result["fetched"] else "[red]✗[/red]"
-        built = "[green]✓[/green]" if result["built"] else (
-            "[dim]-[/dim]" if fetch_only else "[red]✗[/red]"
+        built = (
+            "[green]✓[/green]"
+            if result["built"]
+            else ("[dim]-[/dim]" if fetch_only else "[red]✗[/red]")
         )
 
         if result["error"]:
@@ -289,7 +296,9 @@ def setup_grammars(
     # Show next steps
     console.print("\n[dim]Next steps:[/dim]")
     console.print("  [dim]• Verify installation:[/dim] treesitter-chunker languages")
-    console.print("  [dim]• Test parsing:[/dim] treesitter-chunker chunk example.py -l python")
+    console.print(
+        "  [dim]• Test parsing:[/dim] treesitter-chunker chunk example.py -l python"
+    )
 
     if success_count < total:
         raise typer.Exit(1)
@@ -328,7 +337,9 @@ def setup_status(
     # Check directories exist
     if not grammars_dir.exists():
         console.print("[yellow]No grammar sources found.[/yellow]")
-        console.print("[dim]Run 'treesitter-chunker setup grammars' to set up grammars.[/dim]")
+        console.print(
+            "[dim]Run 'treesitter-chunker setup grammars' to set up grammars.[/dim]"
+        )
         return
 
     # List installed grammars
@@ -343,7 +354,9 @@ def setup_status(
 
     if not grammar_dirs:
         console.print("[yellow]No grammar sources found.[/yellow]")
-        console.print("[dim]Run 'treesitter-chunker setup grammars' to set up grammars.[/dim]")
+        console.print(
+            "[dim]Run 'treesitter-chunker setup grammars' to set up grammars.[/dim]"
+        )
         return
 
     for grammar_path in sorted(grammar_dirs):
@@ -382,7 +395,9 @@ def setup_status(
 
         available = list_languages()
         if available:
-            console.print(f"\n[green]Languages available for parsing:[/green] {', '.join(sorted(available))}")
+            console.print(
+                f"\n[green]Languages available for parsing:[/green] {', '.join(sorted(available))}"
+            )
     except Exception:
         pass
 
@@ -484,19 +499,35 @@ def list_available():
 
     # Categorize languages
     official = [
-        "python", "javascript", "typescript", "rust", "c", "cpp",
-        "go", "java", "ruby", "php", "bash", "html", "css", "json",
+        "python",
+        "javascript",
+        "typescript",
+        "rust",
+        "c",
+        "cpp",
+        "go",
+        "java",
+        "ruby",
+        "php",
+        "bash",
+        "html",
+        "css",
+        "json",
     ]
     community = ["yaml", "toml", "markdown", "sql", "kotlin", "swift"]
 
     for lang in sorted(GRAMMAR_REPOS.keys()):
         repo = GRAMMAR_REPOS[lang]
-        category = "[green]Official[/green]" if lang in official else "[blue]Community[/blue]"
+        category = (
+            "[green]Official[/green]" if lang in official else "[blue]Community[/blue]"
+        )
         table.add_row(lang, repo, category)
 
     console.print(table)
     console.print(f"\n[dim]Total: {len(GRAMMAR_REPOS)} languages available[/dim]")
-    console.print("[dim]Install with: treesitter-chunker setup grammars <language>[/dim]")
+    console.print(
+        "[dim]Install with: treesitter-chunker setup grammars <language>[/dim]"
+    )
 
 
 if __name__ == "__main__":

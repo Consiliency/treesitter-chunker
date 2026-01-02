@@ -49,7 +49,11 @@ class TestLanguageNotFoundErrorMessages:
         error = LanguageNotFoundError("unknown_lang", [])
         error_str = str(error)
         # Should include a link to documentation
-        assert "github.com" in error_str.lower() or "docs" in error_str.lower() or "http" in error_str.lower()
+        assert (
+            "github.com" in error_str.lower()
+            or "docs" in error_str.lower()
+            or "http" in error_str.lower()
+        )
 
     def test_error_message_is_actionable(self):
         """Test that error message provides clear next steps."""

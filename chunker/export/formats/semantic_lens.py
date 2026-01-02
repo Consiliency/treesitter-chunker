@@ -69,16 +69,33 @@ EDGE_KIND_MAP: dict[RelationshipType, str] = {
 }
 
 # Valid semantic-lens node kinds (for validation)
-VALID_NODE_KINDS = frozenset([
-    "module", "class", "interface", "trait",
-    "function", "method", "field", "property",
-])
+VALID_NODE_KINDS = frozenset(
+    [
+        "module",
+        "class",
+        "interface",
+        "trait",
+        "function",
+        "method",
+        "field",
+        "property",
+    ]
+)
 
 # Valid semantic-lens edge kinds (for validation)
-VALID_EDGE_KINDS = frozenset([
-    "defines", "imports", "calls", "inherits",
-    "implements", "uses", "reads", "writes", "throws",
-])
+VALID_EDGE_KINDS = frozenset(
+    [
+        "defines",
+        "imports",
+        "calls",
+        "inherits",
+        "implements",
+        "uses",
+        "reads",
+        "writes",
+        "throws",
+    ]
+)
 
 
 class SemanticLensExporter(StructuredExporter):
@@ -233,9 +250,9 @@ class SemanticLensExporter(StructuredExporter):
                     node_id_map[chunk.node_id] = node["node_id"]
 
         edges = [
-            edge for edge in (
-                self._relationship_to_edge(rel, node_id_map)
-                for rel in relationships
+            edge
+            for edge in (
+                self._relationship_to_edge(rel, node_id_map) for rel in relationships
             )
             if edge is not None
         ]
@@ -388,7 +405,8 @@ class SemanticLensExporter(StructuredExporter):
         # Include relationship metadata if present
         if rel.metadata:
             edge["meta"] = {
-                k: v for k, v in rel.metadata.items()
+                k: v
+                for k, v in rel.metadata.items()
                 if k != "confidence"  # Already used above
             }
 

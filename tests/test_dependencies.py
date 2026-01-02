@@ -17,6 +17,7 @@ class TestDependencyImport:
         # This test will initially fail before the dependency is added
         try:
             import tree_sitter_language_pack
+
             assert tree_sitter_language_pack is not None
         except ImportError as e:
             pytest.fail(f"Failed to import tree-sitter-language-pack: {e}")
@@ -25,6 +26,7 @@ class TestDependencyImport:
         """Test that language pack provides get_language function."""
         try:
             from tree_sitter_language_pack import get_language
+
             assert callable(get_language)
         except ImportError as e:
             pytest.fail(f"Failed to import get_language: {e}")
@@ -33,6 +35,7 @@ class TestDependencyImport:
         """Test that language pack version is compatible."""
         try:
             import tree_sitter_language_pack
+
             # Check that the module has the expected version attribute
             # tree-sitter-language-pack should be >= 0.4.0
             if hasattr(tree_sitter_language_pack, "__version__"):
@@ -41,7 +44,9 @@ class TestDependencyImport:
                 parts = version.split(".")
                 major = int(parts[0])
                 minor = int(parts[1]) if len(parts) > 1 else 0
-                assert major >= 0 and minor >= 4, f"Version {version} is too old, need >= 0.4.0"
+                assert (
+                    major >= 0 and minor >= 4
+                ), f"Version {version} is too old, need >= 0.4.0"
         except ImportError as e:
             pytest.fail(f"Failed to import tree-sitter-language-pack: {e}")
 
@@ -53,6 +58,7 @@ class TestLanguagePackFunctionality:
         """Test that get_language returns a valid Language object."""
         try:
             from tree_sitter_language_pack import get_language
+
             # Try to get a common language (Python)
             lang = get_language("python")
             assert lang is not None

@@ -22,41 +22,60 @@ try:
     )
     from chunker.debug.interactive.repl import DebugREPL
     from chunker.parser import get_parser
+
     HAS_DEBUG_MODULES = True
 except ImportError as e:
     if "graphviz" in str(e):
         # Create stub classes when graphviz is missing
         class ASTVisualizer:
             def __init__(self, *args, **kwargs):
-                raise ImportError("ASTVisualizer requires graphviz. Install with: pip install treesitter-chunker[viz]")
+                raise ImportError(
+                    "ASTVisualizer requires graphviz. Install with: pip install treesitter-chunker[viz]"
+                )
 
         class ChunkDebugger:
             def __init__(self, *args, **kwargs):
-                raise ImportError("ChunkDebugger requires graphviz. Install with: pip install treesitter-chunker[viz]")
+                raise ImportError(
+                    "ChunkDebugger requires graphviz. Install with: pip install treesitter-chunker[viz]"
+                )
 
         class NodeExplorer:
             def __init__(self, *args, **kwargs):
-                raise ImportError("NodeExplorer requires graphviz. Install with: pip install treesitter-chunker[viz]")
+                raise ImportError(
+                    "NodeExplorer requires graphviz. Install with: pip install treesitter-chunker[viz]"
+                )
 
         class QueryDebugger:
             def __init__(self, *args, **kwargs):
-                raise ImportError("QueryDebugger requires graphviz. Install with: pip install treesitter-chunker[viz]")
+                raise ImportError(
+                    "QueryDebugger requires graphviz. Install with: pip install treesitter-chunker[viz]"
+                )
 
         def highlight_chunk_boundaries(*args, **kwargs):
-            raise ImportError("highlight_chunk_boundaries requires graphviz. Install with: pip install treesitter-chunker[viz]")
+            raise ImportError(
+                "highlight_chunk_boundaries requires graphviz. Install with: pip install treesitter-chunker[viz]"
+            )
 
         def print_ast_tree(*args, **kwargs):
-            raise ImportError("print_ast_tree requires graphviz. Install with: pip install treesitter-chunker[viz]")
+            raise ImportError(
+                "print_ast_tree requires graphviz. Install with: pip install treesitter-chunker[viz]"
+            )
 
         def render_ast_graph(*args, **kwargs):
-            raise ImportError("render_ast_graph requires graphviz. Install with: pip install treesitter-chunker[viz]")
+            raise ImportError(
+                "render_ast_graph requires graphviz. Install with: pip install treesitter-chunker[viz]"
+            )
 
         class DebugREPL:
             def __init__(self, *args, **kwargs):
-                raise ImportError("DebugREPL requires graphviz. Install with: pip install treesitter-chunker[viz]")
+                raise ImportError(
+                    "DebugREPL requires graphviz. Install with: pip install treesitter-chunker[viz]"
+                )
 
         def get_parser(*args, **kwargs):
-            raise ImportError("get_parser requires graphviz. Install with: pip install treesitter-chunker[viz]")
+            raise ImportError(
+                "get_parser requires graphviz. Install with: pip install treesitter-chunker[viz]"
+            )
 
         HAS_DEBUG_MODULES = False
     else:
@@ -83,7 +102,9 @@ def repl(
 ):
     """Start interactive debugging REPL."""
     if not HAS_DEBUG_MODULES:
-        console.print("[red]Debug commands require graphviz. Install with: pip install treesitter-chunker[viz][/red]")
+        console.print(
+            "[red]Debug commands require graphviz. Install with: pip install treesitter-chunker[viz][/red]"
+        )
         raise typer.Exit(1)
 
     console.print("[bold cyan]Starting Tree-sitter Debug REPL...[/bold cyan]")
@@ -145,7 +166,9 @@ def ast(
 ):
     """Visualize AST for a source file_path."""
     if not HAS_DEBUG_MODULES:
-        console.print("[red]Debug commands require graphviz. Install with: pip install treesitter-chunker[viz][/red]")
+        console.print(
+            "[red]Debug commands require graphviz. Install with: pip install treesitter-chunker[viz][/red]"
+        )
         raise typer.Exit(1)
 
     # Auto-detect language
@@ -321,7 +344,9 @@ def chunks(
 ):
     """Analyze and debug chunking decisions."""
     if not HAS_DEBUG_MODULES:
-        console.print("[red]Debug commands require graphviz. Install with: pip install treesitter-chunker[viz][/red]")
+        console.print(
+            "[red]Debug commands require graphviz. Install with: pip install treesitter-chunker[viz][/red]"
+        )
         raise typer.Exit(1)
 
     # Auto-detect language
@@ -383,7 +408,9 @@ def explore(
 ):
     """Interactively explore AST nodes."""
     if not HAS_DEBUG_MODULES:
-        console.print("[red]Debug commands require graphviz. Install with: pip install treesitter-chunker[viz][/red]")
+        console.print(
+            "[red]Debug commands require graphviz. Install with: pip install treesitter-chunker[viz][/red]"
+        )
         raise typer.Exit(1)
 
     # Get source code
@@ -426,7 +453,9 @@ def validate(
 ):
     """Validate parsing and identify errors."""
     if not HAS_DEBUG_MODULES:
-        console.print("[red]Debug commands require graphviz. Install with: pip install treesitter-chunker[viz][/red]")
+        console.print(
+            "[red]Debug commands require graphviz. Install with: pip install treesitter-chunker[viz][/red]"
+        )
         raise typer.Exit(1)
 
     # Auto-detect language

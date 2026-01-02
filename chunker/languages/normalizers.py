@@ -166,7 +166,8 @@ class RNormalizer(NodeNormalizer):
 
         try:
             ident = source[callee.start_byte : callee.end_byte].decode(
-                "utf-8", errors="ignore",
+                "utf-8",
+                errors="ignore",
             )
             return ident in self.FORCE_CHUNK_CALLS
         except (AttributeError, IndexError):

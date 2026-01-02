@@ -103,7 +103,9 @@ class TestFreshInstallExperience:
                 available_count += 1
 
         # At least 10 common languages should be available
-        assert available_count >= 10, f"Only {available_count} common languages available"
+        assert (
+            available_count >= 10
+        ), f"Only {available_count} common languages available"
 
     def test_list_languages_not_empty(self):
         """Test that list_languages returns languages from the pack."""
@@ -131,7 +133,10 @@ class TestFreshInstallExperience:
 
         error_str = str(exc_info.value)
         # Should include guidance about tree-sitter-language-pack
-        assert "tree-sitter-language-pack" in error_str or "language-pack" in error_str.lower()
+        assert (
+            "tree-sitter-language-pack" in error_str
+            or "language-pack" in error_str.lower()
+        )
         # Should include documentation link
         assert "github.com" in error_str or "http" in error_str
 
@@ -210,7 +215,16 @@ class TestLanguagePackAvailability:
         import tree_sitter_language_pack
 
         supported = get_args(tree_sitter_language_pack.SupportedLanguage)
-        common = ["python", "javascript", "typescript", "rust", "go", "java", "c", "cpp"]
+        common = [
+            "python",
+            "javascript",
+            "typescript",
+            "rust",
+            "go",
+            "java",
+            "c",
+            "cpp",
+        ]
 
         for lang in common:
             assert lang in supported, f"Language {lang} missing from pack"

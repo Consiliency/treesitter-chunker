@@ -163,9 +163,13 @@ extend-exclude = '''
   | \.mypy_cache
   | \.tox
   | \.venv
+  | \.ai-dev-kit
   | build
   | dist
   | grammars
+  | archive
+  | worktrees
+  | node_modules
 )/
 '''
 

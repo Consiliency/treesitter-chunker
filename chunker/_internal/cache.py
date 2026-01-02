@@ -167,20 +167,26 @@ class ASTCache:
             ).fetchone()
 
             if result:
-                cached_hash, cached_mtime, chunks_data, data_checksum, cache_version = result
+                cached_hash, cached_mtime, chunks_data, data_checksum, cache_version = (
+                    result
+                )
                 # Check if file has changed
                 if cached_hash == metadata.hash and cached_mtime == metadata.mtime:
                     # Verify cache version compatibility
                     if cache_version and cache_version != CACHE_VERSION:
                         logger.warning(
                             "Cache version mismatch for %s: got %s, expected %s",
-                            path, cache_version, CACHE_VERSION,
+                            path,
+                            cache_version,
+                            CACHE_VERSION,
                         )
                         self.invalidate_cache(path)
                         return None
 
                     # Verify data integrity with checksum
-                    if data_checksum and not _verify_checksum(chunks_data, data_checksum):
+                    if data_checksum and not _verify_checksum(
+                        chunks_data, data_checksum
+                    ):
                         logger.warning(
                             "Cache checksum mismatch for %s - data may be corrupted",
                             path,

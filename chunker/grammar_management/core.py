@@ -693,7 +693,11 @@ class GrammarInstaller:
             # Clone repository
             cmd = ["git", "clone", repository_url, str(download_dir)]
             result = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=300, check=False,
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=300,
+                check=False,
             )
 
             if result.returncode != 0:
@@ -1592,7 +1596,11 @@ class GrammarManager:
                         cache_data = json.load(f)
 
                     # Remove old entries
-                    cleaned_cache = {key: value for key, value in cache_data.items() if value.get("timestamp", 0) > cutoff_time}
+                    cleaned_cache = {
+                        key: value
+                        for key, value in cache_data.items()
+                        if value.get("timestamp", 0) > cutoff_time
+                    }
 
                     # Write back cleaned cache
                     with validation_cache.open("w") as f:

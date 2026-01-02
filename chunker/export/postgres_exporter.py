@@ -383,18 +383,20 @@ ON CONFLICT (source_id, target_id, relationship_type) DO UPDATE SET
                     if chunk_data["metadata"]
                     else "{}"
                 )
-                params_list.append((
-                    chunk_data["id"],
-                    chunk_data["file_path"],
-                    chunk_data["start_line"],
-                    chunk_data["end_line"],
-                    chunk_data["start_byte"],
-                    chunk_data["end_byte"],
-                    chunk_data["content"],
-                    chunk_data["chunk_type"],
-                    chunk_data["language"],
-                    metadata_json,
-                ))
+                params_list.append(
+                    (
+                        chunk_data["id"],
+                        chunk_data["file_path"],
+                        chunk_data["start_line"],
+                        chunk_data["end_line"],
+                        chunk_data["start_byte"],
+                        chunk_data["end_byte"],
+                        chunk_data["content"],
+                        chunk_data["chunk_type"],
+                        chunk_data["language"],
+                        metadata_json,
+                    )
+                )
 
             # Build parameterized query with numbered placeholders
             placeholders = []
@@ -432,12 +434,14 @@ ON CONFLICT (id) DO UPDATE SET
                     props_json = (
                         json.dumps(rel["properties"]) if rel["properties"] else "{}"
                     )
-                    params_list.append((
-                        rel["source_id"],
-                        rel["target_id"],
-                        rel["relationship_type"],
-                        props_json,
-                    ))
+                    params_list.append(
+                        (
+                            rel["source_id"],
+                            rel["target_id"],
+                            rel["relationship_type"],
+                            props_json,
+                        )
+                    )
 
                 placeholders = []
                 for idx in range(len(batch)):

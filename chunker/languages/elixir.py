@@ -233,9 +233,7 @@ class ElixirPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         if node.type == "call":
             for child in node.children:
                 if child.type == "identifier":
-                    fn_type = (
-                        safe_decode(child.text) if hasattr(child, "text") else ""
-                    )
+                    fn_type = safe_decode(child.text) if hasattr(child, "text") else ""
                     if fn_type in {"def", "defp", "defmacro", "defmacrop"}:
                         return True
         if node.type in self.default_chunk_types:

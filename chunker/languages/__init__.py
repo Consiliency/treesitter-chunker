@@ -2,7 +2,6 @@
 Per-language helpers live here (e.g. node-type mappings, heuristics).
 """
 
-
 # Phase 2.1 exports (LanguageConfig system)
 
 from . import (

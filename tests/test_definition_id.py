@@ -30,8 +30,12 @@ class TestComputeDefinitionId:
 
     def test_different_names_different_ids(self):
         """Different definition names produce different IDs."""
-        id_foo = compute_definition_id("/file.py", "python", ["function_definition:foo"])
-        id_bar = compute_definition_id("/file.py", "python", ["function_definition:bar"])
+        id_foo = compute_definition_id(
+            "/file.py", "python", ["function_definition:foo"]
+        )
+        id_bar = compute_definition_id(
+            "/file.py", "python", ["function_definition:bar"]
+        )
 
         assert id_foo != id_bar
 
