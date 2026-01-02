@@ -20,8 +20,8 @@ This phase fixes the broken PyPI install experience where fresh installs fail wi
 ## Interface Freeze Gates
 
 ### Core Interfaces (IF-0)
-- [ ] IF-0-P20-REGISTRY: LanguageRegistry interface for tree-sitter-language-pack integration
-- [ ] IF-0-P20-ERRORS: Error message format for grammar-related failures
+- [x] IF-0-P20-REGISTRY: LanguageRegistry interface for tree-sitter-language-pack integration
+- [x] IF-0-P20-ERRORS: Error message format for grammar-related failures
 
 ### External Dependencies (IF-XR)
 - [x] IF-XR-P20-LANGPACK: tree-sitter-language-pack available on PyPI (verified: v0.4.0+)
