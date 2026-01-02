@@ -48,16 +48,18 @@ jobs:
 
       - name: Pytest
         run: |
-          # Exclude tests with missing dependencies or broken imports
-          # Run only essential tests for CI (non-integration, with timeout)
+          # Run quick core tests for CI with parallel execution
+          # Full test suite runs in separate Test Suite workflow
           pytest --cov=chunker --cov-report=xml \
-            -m "not integration and not slow" \
-            --timeout=60 \
+            -n auto \
+            --timeout=30 \
+            --ignore=tests/integration/ \
             --ignore=tests/test_phase3_integration.py \
             --ignore=tests/test_api_endpoints_extended.py \
-            --ignore=tests/integration/  # Skip all integration tests for CI
-            -x  # Stop after first failure
-        timeout-minutes: 30
+            --ignore=tests/test_observability_system.py \
+            --ignore=tests/test_nasm_language.py \
+            -q  # Quiet output for faster CI
+        timeout-minutes: 15
 
       - name: Upload coverage
         uses: codecov/codecov-action@v3
