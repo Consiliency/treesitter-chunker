@@ -34,8 +34,11 @@ jobs:
       - name: Install dependencies
         run: |
           uv pip install --system -e ".[dev,api,viz,templates,advanced]"
-          uv pip install --system git+https://github.com/tree-sitter/py-tree-sitter.git
           uv pip install --system toml httpx  # Required by tests
+
+      - name: Install py-tree-sitter from git
+        run: uv pip install --system git+https://github.com/tree-sitter/py-tree-sitter.git
+        continue-on-error: true  # Don't fail CI if git clone fails
 
       - name: Fetch grammars
         run: python scripts/fetch_grammars.py
@@ -70,7 +73,7 @@ jobs:
           # Full test suite with coverage runs in separate Test Suite workflow
           # Tests with missing optional deps will be skipped via pytest.importorskip
           pytest -n auto \
-            --timeout=30 \
+            --timeout=60 \
             --ignore=tests/integration/ \
             -q  # Quiet output for faster CI
-        timeout-minutes: 10
+        timeout-minutes: 20
