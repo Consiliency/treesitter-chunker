@@ -1844,3 +1844,47 @@ This phase uses heuristics and patterns, not ML, maintaining the deterministic a
 - ✅ Updated language registration in __init__.py
 - ✅ No performance regression on existing languages
 
+### Phase 20: PyPI Install Experience 📦 **[CRITICAL - BLOCKING]**
+
+**Objective**: Fix the broken PyPI install experience where fresh installs fail with "No languages available" error
+
+**Issue**: [#51](https://github.com/Consiliency/treesitter-chunker/issues/51)
+
+**Problem Statement**:
+After installing `treesitter-chunker` from PyPI, attempting to chunk any file fails with:
+```
+Language 'typescript' not found. No languages available (check library compilation)
+```
+
+The `LanguageRegistry` expects compiled grammar files that don't exist in the distributed wheel.
+
+**Components**:
+- [ ] **Grammar Distribution**
+  - [ ] Add `tree-sitter-language-pack` as dependency
+  - [ ] Update registry.py to use pre-compiled grammars
+  - [ ] Remove reliance on local grammar compilation
+  - [ ] Verify wheel includes correct dependencies
+
+- [ ] **Registry Integration**
+  - [ ] Integrate tree-sitter-language-pack with LanguageRegistry
+  - [ ] Add fallback to UniversalLanguageRegistry if available
+  - [ ] Maintain backward compatibility with existing grammar paths
+  - [ ] Update language detection logic
+
+- [ ] **Error Handling**
+  - [ ] Improve error messages with actionable instructions
+  - [ ] Add grammar setup command if auto-install fails
+  - [ ] Documentation for manual grammar installation
+
+- [ ] **Testing**
+  - [ ] Test fresh PyPI install in clean virtualenv
+  - [ ] Verify all 36+ languages work out of the box
+  - [ ] Platform testing (Linux, macOS, Windows)
+  - [ ] CI integration for install verification
+
+**Success Criteria**:
+- Fresh `pip install treesitter-chunker` works immediately
+- All supported languages available without additional setup
+- Clear error messages if grammar unavailable
+- No regression for existing users
+
