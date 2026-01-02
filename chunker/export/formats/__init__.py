@@ -4,6 +4,7 @@ from .database import PostgreSQLExporter, SQLiteExporter
 from .graph import DOTExporter, GraphMLExporter
 from .json import StructuredJSONExporter, StructuredJSONLExporter
 from .neo4j import Neo4jExporter
+from .semantic_lens import SemanticLensExporter
 
 # Make Parquet optional at import time to avoid heavy dependency import errors
 try:  # pragma: no cover
@@ -19,6 +20,7 @@ __all__ = [
     "GraphMLExporter",
     "Neo4jExporter",
     "PostgreSQLExporter",
+    "SemanticLensExporter",
     "SQLiteExporter",
     "StructuredJSONExporter",
     "StructuredJSONLExporter",

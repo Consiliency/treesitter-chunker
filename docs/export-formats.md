@@ -1031,6 +1031,114 @@ def create_beam_pipeline(input_files, language):
         )
 ```
 
+## SemanticGraphBundle (semantic-lens)
+
+Export to SemanticGraphBundle format for visualization in [semantic-lens](https://github.com/semantic-lens/semantic-lens), a code analysis and visualization platform.
+
+### File Extensions
+
+- `.slb` - SemanticLens Bundle (primary extension)
+
+### Usage
+
+```python
+from chunker.export import SemanticLensExporter
+
+exporter = SemanticLensExporter(
+    indent=2,                                    # JSON indentation (None for compact)
+    include_content=False,                       # Include source code in annotations
+    repo_url="https://github.com/org/repo",     # Optional repo metadata
+    repo_commit="abc1234",                       # Optional commit hash
+    repo_branch="main",                          # Optional branch
+)
+
+exporter.export(chunks, relationships, "output.slb")
+```
+
+### Output Structure
+
+```json
+{
+  "version": "v1.0",
+  "generated_at": "2024-01-01T00:00:00Z",
+  "repo": {
+    "url": "https://github.com/org/repo",
+    "commit": "abc1234",
+    "branch": "main"
+  },
+  "nodes": [
+    {
+      "node_id": "abc12345678",
+      "kind": "class",
+      "name": "UserService",
+      "language": "typescript",
+      "file": "src/user.ts",
+      "span": [0, 1000],
+      "visibility": "public",
+      "route": "module:user::class_definition:UserService"
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "e_abc12345678",
+      "kind": "calls",
+      "src": "method_abc",
+      "dst": "function_def",
+      "confidence": 0.95,
+      "evidence": ["chunker"]
+    }
+  ],
+  "annotations": [
+    {
+      "target_id": "abc12345678",
+      "tags": ["type:class_definition"]
+    }
+  ],
+  "patterns": []
+}
+```
+
+### Node Kind Mapping
+
+The following treesitter-chunker node types are mapped to semantic-lens node kinds:
+
+| treesitter-chunker | semantic-lens |
+|-------------------|---------------|
+| class_definition, class_declaration | class |
+| function_definition, function_declaration, arrow_function | function |
+| method_definition, method_declaration | method |
+| interface_declaration, interface_definition | interface |
+| trait_definition, trait_declaration | trait |
+| field_definition, field_declaration | field |
+| property_definition, property_declaration, property_signature | property |
+| module | module |
+| lexical_declaration, variable_declaration | property |
+| type_alias_declaration | interface |
+| enum_declaration | class |
+
+### Edge Kind Mapping
+
+| RelationshipType | semantic-lens |
+|-----------------|---------------|
+| CALLS | calls |
+| IMPORTS | imports |
+| INHERITS | inherits |
+| IMPLEMENTS | implements |
+| DEFINES, HAS_METHOD, PARENT_CHILD | defines |
+| USES, REFERENCES, DEPENDS_ON | uses |
+
+### Integration with semantic-lens
+
+After exporting, use the bundle with semantic-lens:
+
+```bash
+# Start semantic-lens visualization server
+cd /path/to/semantic-lens
+node dist/cli/index.js serve --port 3000 --bundle path/to/output.slb
+
+# Open http://localhost:3000 in browser
+```
+
 ## See Also
 
 - [API Reference](api-reference.md) - Export API documentation

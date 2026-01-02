@@ -25,6 +25,7 @@ class ExportFormat(Enum):
     DOT = "dot"
     SQLITE = "sqlite"
     POSTGRESQL = "postgresql"
+    SEMANTIC_LENS = "semantic_lens"
 
 
 class RelationshipType(Enum):
