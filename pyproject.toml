@@ -361,6 +361,7 @@ ignore = [
     "RUF059",  # unused unpacked variable - interface compatibility
     "RUF039",  # unraw pattern - false positives
     "COM812",  # trailing comma - handled by black, conflicts with some formatting
+    "UP046",   # use type parameters - needed for Python 3.11 compatibility
 ]
 
 [tool.ruff.lint.per-file-ignores]

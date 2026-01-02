@@ -210,7 +210,7 @@ class MemoryPool:
             }
 
 
-class LRUCache[K, V]:
+class LRUCache(Generic[K, V]):
     """Thread-safe LRU cache with TTL support."""
 
     def __init__(self, max_size: int = 1000, default_ttl: timedelta | None = None):
