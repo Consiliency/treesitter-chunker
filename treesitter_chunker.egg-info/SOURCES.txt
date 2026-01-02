@@ -473,6 +473,7 @@ tests/test_export_jsonl.py
 tests/test_extraction_framework.py
 tests/test_factory.py
 tests/test_fallback_chunking.py
+tests/test_fresh_install.py
 tests/test_gc_tuning.py
 tests/test_go_language.py
 tests/test_grammar_discovery.py
