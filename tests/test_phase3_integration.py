@@ -39,7 +39,7 @@ from chunker.integration.phase3_integration import (
 class TestPhase3IntegrationOrchestrator:
     """Test suite for Phase3IntegrationOrchestrator."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def orchestrator(self):
         """Create a Phase3IntegrationOrchestrator instance for testing."""
         return Phase3IntegrationOrchestrator()
@@ -245,7 +245,7 @@ class TestPhase3IntegrationOrchestrator:
 class TestIntegrationValidator:
     """Test suite for IntegrationValidator."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def validator(self):
         """Create an IntegrationValidator instance for testing."""
         return IntegrationValidator()
@@ -388,7 +388,7 @@ class TestIntegrationValidator:
 class TestProductionReadinessChecker:
     """Test suite for ProductionReadinessChecker."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def checker(self):
         """Create a ProductionReadinessChecker instance for testing."""
         return ProductionReadinessChecker()
@@ -525,7 +525,7 @@ class TestProductionReadinessChecker:
 class TestIntegrationReporter:
     """Test suite for IntegrationReporter."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def reporter(self):
         """Create an IntegrationReporter instance for testing."""
         return IntegrationReporter()
@@ -673,7 +673,7 @@ class TestIntegrationReporter:
 class TestEndToEndIntegration:
     """End-to-end integration tests for the complete Phase 3 system."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def integration_components(self):
         """Create all integration components for end-to-end testing."""
         return {

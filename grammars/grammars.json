@@ -1,0 +1,18 @@
+{
+  "csharp": {
+    "repository_url": "https://github.com/tree-sitter/tree-sitter-c-sharp.git",
+    "commit_hash": null,
+    "abi_version": null,
+    "status": "ready",
+    "path": "grammars/tree-sitter-csharp",
+    "error": null
+  },
+  "nasm": {
+    "repository_url": "https://github.com/naclsn/tree-sitter-nasm.git",
+    "commit_hash": null,
+    "abi_version": null,
+    "status": "ready",
+    "path": "grammars/tree-sitter-nasm",
+    "error": null
+  }
+}

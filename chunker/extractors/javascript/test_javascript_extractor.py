@@ -979,7 +979,7 @@ class TestJavaScriptExtractorEdgeCases(unittest.TestCase):
 
         finally:
             # Clean up
-            os.unlink(temp_file)
+            Path(temp_file).unlink()
 
     def test_validate_source_no_js_indicators(self):
         """Test validation with code that has no JavaScript indicators."""

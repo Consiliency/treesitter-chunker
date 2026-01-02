@@ -129,7 +129,7 @@ class WASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     for name_child in child.children:
                         if name_child.type == "string":
                             name = safe_decode_bytes(
-                                source[name_child.start_byte : name_child.end_byte]
+                                source[name_child.start_byte : name_child.end_byte],
                             )
                             return name.strip('"')
         elif node.type == "module_field_import":
@@ -140,7 +140,7 @@ class WASMPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     for name_child in child.children:
                         if name_child.type == "string":
                             name = safe_decode_bytes(
-                                source[name_child.start_byte : name_child.end_byte]
+                                source[name_child.start_byte : name_child.end_byte],
                             )
                             names.append(name.strip('"'))
             if len(names) >= 2:

@@ -20,8 +20,8 @@ __all__ = [
     "GraphMLExporter",
     "Neo4jExporter",
     "PostgreSQLExporter",
-    "SemanticLensExporter",
     "SQLiteExporter",
+    "SemanticLensExporter",
     "StructuredJSONExporter",
     "StructuredJSONLExporter",
     # Parquet exporter is exported only if available

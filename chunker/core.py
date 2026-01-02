@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from tree_sitter import Node
 
 
-def _extract_definition_name(node: "Node", source: bytes) -> str | None:
+def _extract_definition_name(node: Node, source: bytes) -> str | None:
     """Extract the definition name from an AST node.
 
     Tries common field names used across languages:
@@ -36,14 +36,14 @@ def _extract_definition_name(node: "Node", source: bytes) -> str | None:
     name_node = getattr(node, "child_by_field_name", lambda _: None)("name")
     if name_node is not None:
         return source[name_node.start_byte : name_node.end_byte].decode(
-            "utf-8", errors="ignore"
+            "utf-8", errors="ignore",
         )
 
     # Try "identifier" field (some grammars)
     id_node = getattr(node, "child_by_field_name", lambda _: None)("identifier")
     if id_node is not None:
         return source[id_node.start_byte : id_node.end_byte].decode(
-            "utf-8", errors="ignore"
+            "utf-8", errors="ignore",
         )
 
     # Try declarator pattern (C/C++ style: type declarator { name })
@@ -52,12 +52,12 @@ def _extract_definition_name(node: "Node", source: bytes) -> str | None:
         decl_name = getattr(declarator, "child_by_field_name", lambda _: None)("name")
         if decl_name is not None:
             return source[decl_name.start_byte : decl_name.end_byte].decode(
-                "utf-8", errors="ignore"
+                "utf-8", errors="ignore",
             )
         # Some declarators ARE the name directly (identifier type)
         if getattr(declarator, "type", "") == "identifier":
             return source[declarator.start_byte : declarator.end_byte].decode(
-                "utf-8", errors="ignore"
+                "utf-8", errors="ignore",
             )
 
     return None

@@ -671,13 +671,13 @@ class CompatibilityChecker:
         weighted_score = base_score
 
         # Performance requirements
-        if requirements.get("performance_critical", False):
+        if requirements.get("performance_critical"):
             if result.performance_impact:
                 impact = result.performance_impact.get("impact_level", 0.0)
                 weighted_score *= 1.0 - impact
 
         # Reliability requirements
-        if requirements.get("reliability_critical", False):
+        if requirements.get("reliability_critical"):
             if result.test_results:
                 success_rate = result.test_results.get("success_rate", 1.0)
                 weighted_score *= success_rate

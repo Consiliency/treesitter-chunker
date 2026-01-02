@@ -98,13 +98,13 @@ class ASTCache:
                 # Add columns if they don't exist (migration for existing databases)
                 try:
                     conn.execute(
-                        "ALTER TABLE file_cache ADD COLUMN data_checksum TEXT"
+                        "ALTER TABLE file_cache ADD COLUMN data_checksum TEXT",
                     )
                 except sqlite3.OperationalError:
                     pass  # Column already exists
                 try:
                     conn.execute(
-                        "ALTER TABLE file_cache ADD COLUMN cache_version TEXT DEFAULT '1.0'"
+                        "ALTER TABLE file_cache ADD COLUMN cache_version TEXT DEFAULT '1.0'",
                     )
                 except sqlite3.OperationalError:
                     pass  # Column already exists
@@ -174,7 +174,7 @@ class ASTCache:
                     if cache_version and cache_version != CACHE_VERSION:
                         logger.warning(
                             "Cache version mismatch for %s: got %s, expected %s",
-                            path, cache_version, CACHE_VERSION
+                            path, cache_version, CACHE_VERSION,
                         )
                         self.invalidate_cache(path)
                         return None
@@ -183,7 +183,7 @@ class ASTCache:
                     if data_checksum and not _verify_checksum(chunks_data, data_checksum):
                         logger.warning(
                             "Cache checksum mismatch for %s - data may be corrupted",
-                            path
+                            path,
                         )
                         self.invalidate_cache(path)
                         return None

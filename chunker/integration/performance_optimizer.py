@@ -1108,7 +1108,7 @@ class IOOptimizer:
         self.shutdown_event = Event()
         self._start_batch_processors()
 
-    def __enter__(self) -> "IOOptimizer":
+    def __enter__(self) -> IOOptimizer:
         """Enter context manager."""
         return self
 

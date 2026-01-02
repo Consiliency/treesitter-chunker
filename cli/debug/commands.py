@@ -29,35 +29,35 @@ except ImportError as e:
         class ASTVisualizer:
             def __init__(self, *args, **kwargs):
                 raise ImportError("ASTVisualizer requires graphviz. Install with: pip install treesitter-chunker[viz]")
-        
+
         class ChunkDebugger:
             def __init__(self, *args, **kwargs):
                 raise ImportError("ChunkDebugger requires graphviz. Install with: pip install treesitter-chunker[viz]")
-        
+
         class NodeExplorer:
             def __init__(self, *args, **kwargs):
                 raise ImportError("NodeExplorer requires graphviz. Install with: pip install treesitter-chunker[viz]")
-        
+
         class QueryDebugger:
             def __init__(self, *args, **kwargs):
                 raise ImportError("QueryDebugger requires graphviz. Install with: pip install treesitter-chunker[viz]")
-        
+
         def highlight_chunk_boundaries(*args, **kwargs):
             raise ImportError("highlight_chunk_boundaries requires graphviz. Install with: pip install treesitter-chunker[viz]")
-        
+
         def print_ast_tree(*args, **kwargs):
             raise ImportError("print_ast_tree requires graphviz. Install with: pip install treesitter-chunker[viz]")
-        
+
         def render_ast_graph(*args, **kwargs):
             raise ImportError("render_ast_graph requires graphviz. Install with: pip install treesitter-chunker[viz]")
-        
+
         class DebugREPL:
             def __init__(self, *args, **kwargs):
                 raise ImportError("DebugREPL requires graphviz. Install with: pip install treesitter-chunker[viz]")
-        
+
         def get_parser(*args, **kwargs):
             raise ImportError("get_parser requires graphviz. Install with: pip install treesitter-chunker[viz]")
-        
+
         HAS_DEBUG_MODULES = False
     else:
         raise
@@ -85,7 +85,7 @@ def repl(
     if not HAS_DEBUG_MODULES:
         console.print("[red]Debug commands require graphviz. Install with: pip install treesitter-chunker[viz][/red]")
         raise typer.Exit(1)
-    
+
     console.print("[bold cyan]Starting Tree-sitter Debug REPL...[/bold cyan]")
 
     # Start REPL

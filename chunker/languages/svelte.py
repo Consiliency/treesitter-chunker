@@ -115,10 +115,10 @@ class SveltePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         if node.type == "slot_element":
             for child in node.children:
                 if child.type == "attribute" and "name=" in safe_decode_bytes(
-                    source[child.start_byte : child.end_byte]
+                    source[child.start_byte : child.end_byte],
                 ):
                     attr_content = safe_decode_bytes(
-                        source[child.start_byte : child.end_byte]
+                        source[child.start_byte : child.end_byte],
                     )
                     match = re.search(r'name="([^"]+)"', attr_content)
                     if match:

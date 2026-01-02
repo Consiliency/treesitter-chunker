@@ -4,10 +4,11 @@ import json
 import logging
 import shutil
 import sqlite3
+from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from .grammar_analyzer import GrammarAnalyzer
 from .schema import (
@@ -79,7 +80,7 @@ class CompatibilityDatabase:
         if self._conn is None:
             raise RuntimeError(
                 "Database connection not available. "
-                "Use context manager: with CompatibilityDatabase(path) as db: ..."
+                "Use context manager: with CompatibilityDatabase(path) as db: ...",
             )
         return self._conn
 

@@ -1168,7 +1168,7 @@ class TestIntegration:
 
 
 # Fixtures for testing
-@pytest.fixture()
+@pytest.fixture
 def sample_metric():
     """Create a sample performance metric for testing."""
     return PerformanceMetric(
@@ -1182,7 +1182,7 @@ def sample_metric():
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_profile():
     """Create a sample performance profile for testing."""
     metrics = [

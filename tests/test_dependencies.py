@@ -35,10 +35,10 @@ class TestDependencyImport:
             import tree_sitter_language_pack
             # Check that the module has the expected version attribute
             # tree-sitter-language-pack should be >= 0.4.0
-            if hasattr(tree_sitter_language_pack, '__version__'):
+            if hasattr(tree_sitter_language_pack, "__version__"):
                 version = tree_sitter_language_pack.__version__
                 # Basic version check - should be 0.4.0 or higher
-                parts = version.split('.')
+                parts = version.split(".")
                 major = int(parts[0])
                 minor = int(parts[1]) if len(parts) > 1 else 0
                 assert major >= 0 and minor >= 4, f"Version {version} is too old, need >= 0.4.0"
@@ -60,7 +60,7 @@ class TestLanguagePackFunctionality:
             # The exact interface depends on tree-sitter version
         except ImportError as e:
             pytest.fail(f"Failed to import or use language pack: {e}")
-        except Exception as e:
+        except Exception:
             # Language may not be available in pack, which is acceptable
             # The import itself working is the key test
             pass
@@ -72,8 +72,8 @@ class TestLanguagePackFunctionality:
             from tree_sitter_language_pack import get_language
 
             # Verify tree-sitter version
-            assert hasattr(tree_sitter, 'Language')
-            assert hasattr(tree_sitter, 'Parser')
+            assert hasattr(tree_sitter, "Language")
+            assert hasattr(tree_sitter, "Parser")
 
             # Try to use a language with parser
             try:

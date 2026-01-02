@@ -99,7 +99,7 @@ class ZigPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             for child in node.children:
                 if child.type == "string_literal":
                     test_name = safe_decode_bytes(
-                        source[child.start_byte : child.end_byte]
+                        source[child.start_byte : child.end_byte],
                     )
                     return test_name.strip('"')
             return None
@@ -245,7 +245,7 @@ class ZigPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 if i + 1 < len(children) and children[i + 1].type == "identifier":
                     # We found a function pattern, now find the end
                     func_name = safe_decode_bytes(
-                        source[children[i + 1].start_byte : children[i + 1].end_byte]
+                        source[children[i + 1].start_byte : children[i + 1].end_byte],
                     )
 
                     # Find the function body by looking for balanced braces
@@ -255,7 +255,7 @@ class ZigPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                         start_node = children[fn_start_idx]
                         end_node = children[func_end_idx]
                         content = safe_decode_bytes(
-                            source[start_node.start_byte : end_node.end_byte]
+                            source[start_node.start_byte : end_node.end_byte],
                         )
 
                         # Create a synthetic node ID for deduplication

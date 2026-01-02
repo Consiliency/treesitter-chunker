@@ -1988,7 +1988,7 @@ class GuidancePersonalizer:
             user_profile.feedback_history.append(feedback_entry)
 
             # Update completed/failed actions
-            if feedback.get("success", False):
+            if feedback.get("success"):
                 if action_id not in user_profile.completed_actions:
                     user_profile.completed_actions.append(action_id)
                 # Remove from failed if previously failed
@@ -2533,7 +2533,7 @@ class GuidanceQualityAssessor:
                 "cat",
                 "grep",
             ]
-            first_word = command.split()[0].lower()
+            first_word = command.split(maxsplit=1)[0].lower()
 
             return any(cmd in first_word for cmd in common_commands)
 

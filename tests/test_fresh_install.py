@@ -17,9 +17,11 @@ class TestFreshInstallExperience:
 
     def test_python_works_without_setup(self):
         """Test that Python parsing works immediately after install."""
-        from chunker._internal.registry import LanguageRegistry
         from pathlib import Path
+
         from tree_sitter import Parser
+
+        from chunker._internal.registry import LanguageRegistry
 
         # Use a non-existent library path to simulate fresh install
         registry = LanguageRegistry(Path("/nonexistent/lib.so"))
@@ -37,9 +39,11 @@ class TestFreshInstallExperience:
 
     def test_javascript_works_without_setup(self):
         """Test that JavaScript parsing works immediately after install."""
-        from chunker._internal.registry import LanguageRegistry
         from pathlib import Path
+
         from tree_sitter import Parser
+
+        from chunker._internal.registry import LanguageRegistry
 
         registry = LanguageRegistry(Path("/nonexistent/lib.so"))
         lang = registry.get_language("javascript")
@@ -52,9 +56,11 @@ class TestFreshInstallExperience:
 
     def test_typescript_works_without_setup(self):
         """Test that TypeScript parsing works immediately after install."""
-        from chunker._internal.registry import LanguageRegistry
         from pathlib import Path
+
         from tree_sitter import Parser
+
+        from chunker._internal.registry import LanguageRegistry
 
         registry = LanguageRegistry(Path("/nonexistent/lib.so"))
         lang = registry.get_language("typescript")
@@ -67,8 +73,9 @@ class TestFreshInstallExperience:
 
     def test_common_languages_available(self):
         """Test that common languages are available via fallback."""
-        from chunker._internal.registry import LanguageRegistry
         from pathlib import Path
+
+        from chunker._internal.registry import LanguageRegistry
 
         registry = LanguageRegistry(Path("/nonexistent/lib.so"))
 
@@ -100,8 +107,9 @@ class TestFreshInstallExperience:
 
     def test_list_languages_not_empty(self):
         """Test that list_languages returns languages from the pack."""
-        from chunker._internal.registry import LanguageRegistry
         from pathlib import Path
+
+        from chunker._internal.registry import LanguageRegistry
 
         registry = LanguageRegistry(Path("/nonexistent/lib.so"))
         languages = registry.list_languages()
@@ -111,9 +119,10 @@ class TestFreshInstallExperience:
 
     def test_language_not_found_has_helpful_message(self):
         """Test that LanguageNotFoundError has helpful guidance."""
+        from pathlib import Path
+
         from chunker._internal.registry import LanguageRegistry
         from chunker.exceptions import LanguageNotFoundError
-        from pathlib import Path
 
         registry = LanguageRegistry(Path("/nonexistent/lib.so"))
 
@@ -149,9 +158,11 @@ class TestFreshInstallExperience:
 
     def test_language_pack_integration_chain(self):
         """Test the complete fallback chain works end-to-end."""
-        from chunker._internal.registry import LanguageRegistry
         from pathlib import Path
+
         from tree_sitter import Parser
+
+        from chunker._internal.registry import LanguageRegistry
 
         # Simulate fresh install with no local grammars
         registry = LanguageRegistry(Path("/nonexistent/lib.so"))
@@ -194,8 +205,9 @@ class TestLanguagePackAvailability:
 
     def test_pack_has_common_languages(self):
         """Test that the pack includes all common languages."""
-        import tree_sitter_language_pack
         from typing import get_args
+
+        import tree_sitter_language_pack
 
         supported = get_args(tree_sitter_language_pack.SupportedLanguage)
         common = ["python", "javascript", "typescript", "rust", "go", "java", "c", "cpp"]

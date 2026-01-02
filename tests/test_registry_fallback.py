@@ -25,8 +25,9 @@ class TestRegistryFallback:
 
     def test_registry_fallback_returns_valid_language(self):
         """Test that fallback language can be used for parsing."""
-        from chunker._internal.registry import LanguageRegistry
         from tree_sitter import Parser
+
+        from chunker._internal.registry import LanguageRegistry
 
         fake_lib_path = Path("/nonexistent/path/to/library.so")
         registry = LanguageRegistry(fake_lib_path)
@@ -106,6 +107,6 @@ class TestRegistryFallback:
             try:
                 lang = registry.get_language(lang_name)
                 assert lang is not None, f"Failed to get {lang_name}"
-            except Exception as e:
+            except Exception:
                 # Some languages might not be in the pack, that's OK
                 pass

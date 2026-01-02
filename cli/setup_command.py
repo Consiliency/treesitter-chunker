@@ -181,7 +181,7 @@ def setup_grammars(
     invalid_langs = [lang for lang in target_languages if lang not in GRAMMAR_REPOS]
     if invalid_langs:
         console.print(
-            f"[red]Unknown language(s): {', '.join(invalid_langs)}[/red]"
+            f"[red]Unknown language(s): {', '.join(invalid_langs)}[/red]",
         )
         console.print(f"[yellow]Available: {', '.join(sorted(GRAMMAR_REPOS.keys()))}[/yellow]")
         raise typer.Exit(1)
@@ -236,7 +236,7 @@ def setup_grammars(
                         else:
                             results[lang]["error"] = "Build failed"
                             progress.update(
-                                task, description=f"[yellow]Build failed: {lang}"
+                                task, description=f"[yellow]Build failed: {lang}",
                             )
                 else:
                     results[lang]["error"] = "Fetch failed"
@@ -283,7 +283,7 @@ def setup_grammars(
         console.print(f"\n[green]✓ All {total} grammars set up successfully![/green]")
     else:
         console.print(
-            f"\n[yellow]⚠ {success_count}/{total} grammars set up successfully[/yellow]"
+            f"\n[yellow]⚠ {success_count}/{total} grammars set up successfully[/yellow]",
         )
 
     # Show next steps
@@ -320,7 +320,7 @@ def setup_status(
         grammars_dir = grammars_dir or default_grammars
         build_dir = build_dir or default_build
 
-    console.print(f"[cyan]Grammar Setup Status[/cyan]")
+    console.print("[cyan]Grammar Setup Status[/cyan]")
     console.print(f"[dim]Grammar sources: {grammars_dir}[/dim]")
     console.print(f"[dim]Build output: {build_dir}[/dim]")
     console.print()
@@ -485,7 +485,7 @@ def list_available():
     # Categorize languages
     official = [
         "python", "javascript", "typescript", "rust", "c", "cpp",
-        "go", "java", "ruby", "php", "bash", "html", "css", "json"
+        "go", "java", "ruby", "php", "bash", "html", "css", "json",
     ]
     community = ["yaml", "toml", "markdown", "sql", "kotlin", "swift"]
 

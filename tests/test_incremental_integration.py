@@ -21,7 +21,7 @@ class TestIncrementalIntegration:
     """Integration tests for incremental processing."""
 
     @classmethod
-    @pytest.fixture()
+    @pytest.fixture
     def temp_project(cls):
         """Create a temporary project structure."""
         temp_dir = tempfile.mkdtemp()

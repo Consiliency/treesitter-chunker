@@ -10,7 +10,7 @@ except ImportError as e:
         # Create a stub module when graphviz is missing
         import sys
         from types import ModuleType
-        
+
         stub = ModuleType("debug_commands")
         stub.app = None  # Will be handled in main.py
         sys.modules[__name__ + ".commands"] = stub

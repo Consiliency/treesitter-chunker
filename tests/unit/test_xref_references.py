@@ -1,7 +1,7 @@
 """Tests for REQ-TSC-008: Reconcile dependencies vs references for REFERENCES edges."""
 
-from chunker.types import CodeChunk
 from chunker.graph.xref import build_xref
+from chunker.types import CodeChunk
 
 
 def make_chunk(

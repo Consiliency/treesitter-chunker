@@ -902,7 +902,7 @@ class GrammarInstaller:
             shutil.copy2(source_path, final_path)
 
             # Set appropriate permissions
-            os.chmod(final_path, 0o755)
+            Path(final_path).chmod(0o755)
 
             return True, final_path, None
 

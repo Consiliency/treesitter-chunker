@@ -163,7 +163,7 @@ class ExampleValidator:
             )
 
             # Clean up
-            os.unlink(temp_file)
+            Path(temp_file).unlink()
 
             if result.returncode == 0:
                 return True

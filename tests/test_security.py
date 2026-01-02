@@ -86,7 +86,7 @@ class TestShellInjectionPrevention:
                                         # String command without shell=True is still risky
                                         pytest.fail(
                                             f"Found string argument to subprocess in {name}.py "
-                                            f"at line {node.lineno}. Use list arguments."
+                                            f"at line {node.lineno}. Use list arguments.",
                                         )
 
 

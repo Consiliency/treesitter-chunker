@@ -114,7 +114,7 @@ class HaskellPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     for grandchild in child.children:
                         if grandchild.type == "module_id":
                             return safe_decode_bytes(
-                                source[grandchild.start_byte : grandchild.end_byte]
+                                source[grandchild.start_byte : grandchild.end_byte],
                             )
         elif node.type == "import":
             # Extract imported module name
@@ -284,7 +284,7 @@ class HaskellPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     combined_start = prev_sibling.start_byte
                     combined_end = node.end_byte
                     combined_content = safe_decode_bytes(
-                        source[combined_start:combined_end]
+                        source[combined_start:combined_end],
                     )
                     chunk = self.create_chunk(node, source, file_path, parent_context)
                     if chunk:

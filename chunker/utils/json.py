@@ -45,7 +45,7 @@ def load_json_file(path: Path | str) -> dict[str, Any]:
     except PermissionError:
         logger.error("Permission denied reading configuration file: %s", path)
         raise ConfigurationError(
-            f"Permission denied reading configuration file: {path}", path
+            f"Permission denied reading configuration file: {path}", path,
         ) from None
     except json.JSONDecodeError as e:
         logger.error("Invalid JSON in %s: %s (line %d, column %d)", path, e.msg, e.lineno, e.colno)

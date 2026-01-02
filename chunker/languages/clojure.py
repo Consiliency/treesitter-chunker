@@ -113,7 +113,7 @@ class ClojurePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 first_child = children[0]
                 if first_child.type == "sym_lit":
                     form_name = safe_decode_bytes(
-                        source[first_child.start_byte : first_child.end_byte]
+                        source[first_child.start_byte : first_child.end_byte],
                     )
                     if form_name in {
                         "defn",
@@ -129,7 +129,7 @@ class ClojurePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                         name_child = children[1]
                         if name_child.type == "sym_lit":
                             return safe_decode_bytes(
-                                source[name_child.start_byte : name_child.end_byte]
+                                source[name_child.start_byte : name_child.end_byte],
                             )
         elif node.type == "ns_form":
             children = list(node.children)
@@ -149,7 +149,7 @@ class ClojurePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
             first_child = children[0]
             if first_child.type == "sym_lit":
                 form_name = safe_decode_bytes(
-                    source[first_child.start_byte : first_child.end_byte]
+                    source[first_child.start_byte : first_child.end_byte],
                 )
                 if form_name in {
                     "defn",

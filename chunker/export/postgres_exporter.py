@@ -403,7 +403,7 @@ ON CONFLICT (source_id, target_id, relationship_type) DO UPDATE SET
                 placeholders.append(
                     f"(${base + 1}, ${base + 2}, ${base + 3}, ${base + 4}, "
                     f"${base + 5}, ${base + 6}, ${base + 7}, ${base + 8}, "
-                    f"${base + 9}, ${base + 10}::jsonb)"
+                    f"${base + 9}, ${base + 10}::jsonb)",
                 )
 
             query = f"""
@@ -443,7 +443,7 @@ ON CONFLICT (id) DO UPDATE SET
                 for idx in range(len(batch)):
                     base = idx * 4
                     placeholders.append(
-                        f"(${base + 1}, ${base + 2}, ${base + 3}, ${base + 4}::jsonb)"
+                        f"(${base + 1}, ${base + 2}, ${base + 3}, ${base + 4}::jsonb)",
                     )
 
                 query = f"""

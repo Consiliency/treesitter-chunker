@@ -78,3 +78,4 @@ Thumbs.db
 .claude/run-logs/
 .claude/ai-dev-kit/
 logs/
+.pubenv/

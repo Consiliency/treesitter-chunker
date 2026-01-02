@@ -79,7 +79,7 @@ class RustPlugin(LanguagePlugin):
                     impl_type = self._safe_decode(
                         chunk.content.encode("utf-8")[
                             child.start_byte : child.end_byte
-                        ]
+                        ],
                     )
                     break
             if impl_type:
@@ -103,7 +103,7 @@ class RustPlugin(LanguagePlugin):
             prev_sibling = node.prev_named_sibling
             if prev_sibling and prev_sibling.type == "attribute_item":
                 attr_content = self._safe_decode(
-                    source[prev_sibling.start_byte : prev_sibling.end_byte]
+                    source[prev_sibling.start_byte : prev_sibling.end_byte],
                 )
                 if "#[test]" in attr_content or "#[cfg(test)]" in attr_content:
                     return None

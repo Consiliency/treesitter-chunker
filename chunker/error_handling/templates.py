@@ -632,7 +632,7 @@ class TemplateRenderer:
         text = re.sub(r"<[^>]+>", "", content)
 
         # Add metadata if requested in variables
-        if variables.get("include_metadata", False):
+        if variables.get("include_metadata"):
             metadata_lines = [
                 f"Template: {template.name}",
                 f"Type: {template.type.value}",
@@ -671,7 +671,7 @@ class TemplateRenderer:
         ]
 
         # Add metadata if requested
-        if variables.get("include_metadata", False):
+        if variables.get("include_metadata"):
             html_parts.insert(
                 -1,
                 f"""
@@ -712,7 +712,7 @@ class TemplateRenderer:
             result = content
 
         # Add metadata if requested
-        if variables.get("include_metadata", False):
+        if variables.get("include_metadata"):
             metadata = f"""
 ---
 **Template:** {template.name}  
@@ -758,7 +758,7 @@ class TemplateRenderer:
             "variables_used": list(variables.keys()),
         }
 
-        if variables.get("include_metadata", False):
+        if variables.get("include_metadata"):
             result["metadata"] = template.metadata
             result["version"] = template.version
             result["locale"] = template.locale
@@ -802,7 +802,7 @@ class TemplateRenderer:
             UTC,
         ).isoformat()
 
-        if variables.get("include_metadata", False):
+        if variables.get("include_metadata"):
             ET.SubElement(metadata_elem, "version").text = template.version
             ET.SubElement(metadata_elem, "locale").text = template.locale
 

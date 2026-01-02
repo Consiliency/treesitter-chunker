@@ -120,7 +120,7 @@ class ChunkerConfig:
                 if not HAS_TOMLI_W:
                     raise ImportError(
                         "Writing TOML files requires 'tomli-w'. "
-                        "Install with: pip install tomli-w"
+                        "Install with: pip install tomli-w",
                     )
                 with Path(config_path).open("wb") as f:
                     tomli_w.dump(save_data, f)

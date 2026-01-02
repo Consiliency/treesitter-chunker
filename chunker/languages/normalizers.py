@@ -44,7 +44,6 @@ class NodeNormalizer(ABC):
         Returns:
             tuple of (normalized_type, span_start, span_end)
         """
-        pass
 
     @abstractmethod
     def should_force_chunk(self, node: Node, source: bytes) -> bool:
@@ -57,7 +56,6 @@ class NodeNormalizer(ABC):
         Returns:
             True if node should become a chunk regardless of type.
         """
-        pass
 
 
 class DartNormalizer(NodeNormalizer):
@@ -168,7 +166,7 @@ class RNormalizer(NodeNormalizer):
 
         try:
             ident = source[callee.start_byte : callee.end_byte].decode(
-                "utf-8", errors="ignore"
+                "utf-8", errors="ignore",
             )
             return ident in self.FORCE_CHUNK_CALLS
         except (AttributeError, IndexError):
@@ -218,10 +216,10 @@ def get_normalizer(language: str) -> NodeNormalizer:
 
 
 __all__ = [
-    "NodeNormalizer",
-    "DartNormalizer",
-    "RNormalizer",
-    "DefaultNormalizer",
     "NORMALIZERS",
+    "DartNormalizer",
+    "DefaultNormalizer",
+    "NodeNormalizer",
+    "RNormalizer",
     "get_normalizer",
 ]

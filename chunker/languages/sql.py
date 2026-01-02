@@ -107,7 +107,7 @@ class SQLPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     for subchild in child.children:
                         if subchild.type == "identifier":
                             return safe_decode_bytes(
-                                source[subchild.start_byte : subchild.end_byte]
+                                source[subchild.start_byte : subchild.end_byte],
                             )
         elif node.type in {"function_definition", "procedure_definition"}:
             for child in node.children:
@@ -229,7 +229,7 @@ class SQLPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     for subchild in child.children:
                         if subchild.type == "relation":
                             table_name = safe_decode_bytes(
-                                source[subchild.start_byte : subchild.end_byte]
+                                source[subchild.start_byte : subchild.end_byte],
                             )
                             return f"SELECT FROM {table_name}"
             return "SELECT statement"

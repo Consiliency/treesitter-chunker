@@ -175,11 +175,11 @@ class ElixirPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 for child in n.children:
                     if child.type == "identifier":
                         fn_type = safe_decode_bytes(
-                            source[child.start_byte : child.end_byte]
+                            source[child.start_byte : child.end_byte],
                         )
                         if fn_type in {"def", "defp", "defmacro", "defmacrop"}:
                             content = safe_decode_bytes(
-                                source[n.start_byte : n.end_byte]
+                                source[n.start_byte : n.end_byte],
                             )
                             chunk = {
                                 "type": "function_definition",

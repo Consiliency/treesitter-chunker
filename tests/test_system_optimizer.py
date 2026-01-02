@@ -685,7 +685,7 @@ class TestIOOptimizer(unittest.TestCase):
             self.assertGreater(self.optimizer._file_cache["hits"], 0)
 
         finally:
-            os.unlink(temp_file)
+            Path(temp_file).unlink()
 
     @patch("chunker.performance.optimization.system_optimizer.HAS_PSUTIL", True)
     @patch("chunker.performance.optimization.system_optimizer.psutil")
@@ -1051,7 +1051,7 @@ class TestEdgeCases(unittest.TestCase):
             # Clean up temp files
             for temp_file in temp_files:
                 try:
-                    os.unlink(temp_file)
+                    Path(temp_file).unlink()
                 except Exception:
                     pass
 
@@ -1381,7 +1381,7 @@ class TestComprehensiveCoverage(unittest.TestCase):
             self.assertGreater(optimizer._file_cache["hits"], initial_hits)
 
         finally:
-            os.unlink(temp_file)
+            Path(temp_file).unlink()
 
     def test_io_optimizer_connection_pool_update(self):
         """Test connection pool configuration update."""

@@ -28,6 +28,7 @@ Integration with Task E1:
 from __future__ import annotations
 
 import asyncio
+import builtins
 import json
 import logging
 import os
@@ -419,7 +420,7 @@ class ComprehensiveGrammarCLI:
                 "suggested_commands": [],
             }
 
-    def _extract_guidance_messages(self, result) -> List[str]:
+    def _extract_guidance_messages(self, result) -> builtins.list[str]:
         """Extract guidance messages from pipeline result."""
         messages = []
         if hasattr(result, "guidance_sequence") and result.guidance_sequence:
@@ -429,7 +430,7 @@ class ComprehensiveGrammarCLI:
             messages.extend(result.fallback_response.get("general_guidance", []))
         return messages
 
-    def _extract_quick_fixes(self, result) -> List[str]:
+    def _extract_quick_fixes(self, result) -> builtins.list[str]:
         """Extract quick fixes from pipeline result."""
         fixes = []
         if hasattr(result, "guidance_sequence") and result.guidance_sequence:
@@ -438,7 +439,7 @@ class ComprehensiveGrammarCLI:
                     fixes.append(action.command)
         return fixes[:3]  # Limit to 3 quick fixes
 
-    def _extract_commands(self, result) -> List[str]:
+    def _extract_commands(self, result) -> builtins.list[str]:
         """Extract suggested CLI commands from pipeline result."""
         commands = []
         if hasattr(result, "guidance_sequence") and result.guidance_sequence:
@@ -451,7 +452,7 @@ class ComprehensiveGrammarCLI:
                     commands.append(action.command)
         return commands
 
-    def _get_grammar_priority_order(self) -> List[tuple[Path, str, Any]]:
+    def _get_grammar_priority_order(self) -> builtins.list[tuple[Path, str, Any]]:
         """Get grammar search paths in priority order (Phase 1.8 specification).
 
         Returns:
@@ -584,7 +585,7 @@ class ComprehensiveGrammarCLI:
 
     def _run_command(
         self,
-        cmd: List[str],
+        cmd: builtins.list[str],
         cwd: Path | None = None,
         timeout: int = 300,
     ) -> tuple[int, str, str]:
@@ -1096,7 +1097,7 @@ class ComprehensiveGrammarCLI:
         self,
         language: str,
         metadata: dict[str, Any],
-    ) -> List[str]:
+    ) -> builtins.list[str]:
         """Get enhanced recommendations based on grammar metadata.
 
         Args:
@@ -1111,7 +1112,7 @@ class ComprehensiveGrammarCLI:
         validation = metadata.get("validation", {})
 
         if not validation.get("is_valid", False):
-            if not metadata.get("exists", False):
+            if not metadata.get("exists"):
                 recommendations.append(
                     f"Download grammar: treesitter-chunker grammar fetch {language}",
                 )
@@ -1162,7 +1163,7 @@ class ComprehensiveGrammarCLI:
         language: str,
         status: str,
         path: Path,
-    ) -> List[str]:
+    ) -> builtins.list[str]:
         """Get recommendations for grammar improvement.
 
         Args:

@@ -90,8 +90,9 @@ def list_pack_languages() -> list[str]:
         return []
 
     try:
-        import tree_sitter_language_pack
         from typing import get_args
+
+        import tree_sitter_language_pack
 
         # The package exposes SupportedLanguage as a Literal type with all language names
         if hasattr(tree_sitter_language_pack, "SupportedLanguage"):

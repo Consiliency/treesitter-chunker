@@ -86,7 +86,7 @@ class TestGrammarCompatibility:
 class TestSmartGrammarManager:
     """Test SmartGrammarManager class."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def temp_dirs(self):
         """Create temporary directories for testing."""
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -96,7 +96,7 @@ class TestSmartGrammarManager:
             grammars_dir.mkdir()
             yield build_dir, grammars_dir
 
-    @pytest.fixture()
+    @pytest.fixture
     def manager(self, temp_dirs):
         """Create a SmartGrammarManager instance."""
         build_dir, grammars_dir = temp_dirs
@@ -272,7 +272,7 @@ class TestSmartGrammarManager:
 class TestUserGrammarTools:
     """Test UserGrammarTools class."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def temp_dirs(self):
         """Create temporary directories for testing."""
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -282,7 +282,7 @@ class TestUserGrammarTools:
             grammars_dir.mkdir()
             yield build_dir, grammars_dir
 
-    @pytest.fixture()
+    @pytest.fixture
     def tools(self, temp_dirs):
         """Create a UserGrammarTools instance."""
         build_dir, grammars_dir = temp_dirs
@@ -492,7 +492,7 @@ class TestUserGrammarTools:
 class TestCLICommands:
     """Test CLI command functions."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def mock_args(self):
         """Create mock command line arguments."""
         args = Mock()

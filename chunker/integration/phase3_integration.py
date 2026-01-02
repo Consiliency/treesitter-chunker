@@ -3202,7 +3202,7 @@ class IntegrationReporter:
                         "memory_usage": psutil.virtual_memory().percent,
                         "disk_usage": (
                             psutil.disk_usage("/").percent
-                            if os.path.exists("/")
+                            if Path("/").exists()
                             else None
                         ),
                     }

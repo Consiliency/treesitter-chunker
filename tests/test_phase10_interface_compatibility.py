@@ -34,7 +34,7 @@ class TestPhase10InterfaceCompatibility:
     """Test that Phase 10 interfaces work together correctly."""
 
     @staticmethod
-    @pytest.fixture()
+    @pytest.fixture
     def sample_chunks(tmp_path) -> list[CodeChunk]:
         """Create sample chunks for testing."""
         test_file = tmp_path / "test.py"
