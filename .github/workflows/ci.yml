@@ -48,10 +48,9 @@ jobs:
 
       - name: Pytest
         run: |
-          # Run quick core tests for CI with parallel execution
-          # Full test suite runs in separate Test Suite workflow
-          pytest --cov=chunker --cov-report=xml \
-            -n auto \
+          # Run quick core tests for CI (no coverage - faster)
+          # Full test suite with coverage runs in separate Test Suite workflow
+          pytest -n auto \
             --timeout=30 \
             --ignore=tests/integration/ \
             --ignore=tests/test_phase3_integration.py \
@@ -59,10 +58,4 @@ jobs:
             --ignore=tests/test_observability_system.py \
             --ignore=tests/test_nasm_language.py \
             -q  # Quiet output for faster CI
-        timeout-minutes: 15
-
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./coverage.xml
-          fail_ci_if_error: true
+        timeout-minutes: 10
