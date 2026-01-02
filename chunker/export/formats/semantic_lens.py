@@ -303,9 +303,42 @@ class SemanticLensExporter(StructuredExporter):
         # Extract signature from metadata if available
         signature = chunk.metadata.get("signature")
         if signature:
-            node["signature"] = signature
+            formatted_sig = self._format_signature(signature)
+            if formatted_sig:
+                node["signature"] = formatted_sig
 
         return node
+
+    def _format_signature(self, sig: dict | str | None) -> str | None:
+        """Convert signature dict to string representation.
+
+        Args:
+            sig: Signature as dict or string
+
+        Returns:
+            Formatted signature string or None
+        """
+        if sig is None:
+            return None
+        if isinstance(sig, str):
+            return sig
+        if not isinstance(sig, dict):
+            return str(sig)
+
+        # Build parameter list
+        params = []
+        for p in sig.get("parameters", []):
+            param_str = p.get("name", "?")
+            if p.get("type"):
+                param_str += f": {p['type']}"
+            if p.get("default") is not None:
+                param_str += f" = {p['default']}"
+            params.append(param_str)
+
+        param_list = ", ".join(params)
+        return_type = sig.get("return_type") or "void"
+
+        return f"({param_list}) => {return_type}"
 
     def _relationship_to_edge(
         self,
@@ -396,10 +429,22 @@ class SemanticLensExporter(StructuredExporter):
             if chunk.metadata:
                 if "tags" in chunk.metadata:
                     tags.extend(chunk.metadata["tags"])
-                # Copy select metadata to kv
-                for key in ("complexity", "lines", "tokens"):
+                # Copy select metadata to kv (must be scalar values)
+                for key in ("lines", "tokens"):
                     if key in chunk.metadata:
-                        kv[key] = chunk.metadata[key]
+                        val = chunk.metadata[key]
+                        # Only include scalar values (string, number, boolean, null)
+                        if isinstance(val, (str, int, float, bool)) or val is None:
+                            kv[key] = val
+
+                # Handle complexity specially - extract cyclomatic as primary metric
+                if "complexity" in chunk.metadata:
+                    complexity = chunk.metadata["complexity"]
+                    if isinstance(complexity, dict):
+                        # Extract cyclomatic complexity as the primary metric
+                        kv["complexity"] = complexity.get("cyclomatic", 0)
+                    elif isinstance(complexity, (int, float)):
+                        kv["complexity"] = complexity
 
             if tags or kv:
                 annotation: dict[str, Any] = {
