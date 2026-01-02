@@ -65,15 +65,12 @@ jobs:
 
     - name: Run core tests
       run: |
-        pytest -xvs -m "not integration" \
-          --ignore=tests/test_phase3_integration.py \
-          --ignore=tests/test_api_endpoints_extended.py
-    
+        # Tests with missing optional deps will be skipped via pytest.importorskip
+        pytest -xvs -m "not integration"
+
     - name: Run integration tests (allowed to fail)
       run: |
-        pytest -xvs -m "integration" \
-          --ignore=tests/test_phase3_integration.py \
-          --ignore=tests/test_api_endpoints_extended.py || true
+        pytest -xvs -m "integration" || true
       continue-on-error: true
 
     # Coverage upload disabled until coverage module issues are resolved

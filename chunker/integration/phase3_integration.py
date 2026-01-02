@@ -68,6 +68,23 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+# Custom exceptions for Phase 3 integration
+class IntegrationError(Exception):
+    """Exception raised for integration failures."""
+
+
+class ValidationError(Exception):
+    """Exception raised for validation failures."""
+
+
+class ReportingError(Exception):
+    """Exception raised for reporting failures."""
+
+
+class ReadinessError(Exception):
+    """Exception raised for readiness check failures."""
+
+
 @dataclass
 class IntegrationResult:
     """Represents the result of an integration operation."""

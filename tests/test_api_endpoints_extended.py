@@ -1,5 +1,10 @@
 from pathlib import Path
 
+import pytest
+
+pytest.importorskip("fastapi", reason="fastapi required for API tests")
+pytest.importorskip("httpx", reason="httpx required for API tests")
+
 from fastapi.testclient import TestClient
 
 from api.server import app

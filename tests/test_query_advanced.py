@@ -1,7 +1,8 @@
 """Tests for advanced query functionality."""
 
-import numpy as np
 import pytest
+
+np = pytest.importorskip("numpy", reason="numpy required for advanced query tests")
 
 from chunker.interfaces.query_advanced import QueryType
 from chunker.query_advanced import (
