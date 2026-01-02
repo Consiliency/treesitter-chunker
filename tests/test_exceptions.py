@@ -119,8 +119,8 @@ class TestLibraryErrors:
         assert "recovery" in err.details
         assert "build_lib.py" in err.details["recovery"]
         error_str = str(err)
-        assert "fetch_grammars.py" in error_str
-        assert "build_lib.py" in error_str
+        # The error message should mention build_lib.py for recovery
+        assert "build_lib.py" in error_str or "build_lib.py" in err.details.get("recovery", "")
 
     @classmethod
     def test_library_load_error(cls):

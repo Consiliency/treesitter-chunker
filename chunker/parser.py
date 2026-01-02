@@ -99,10 +99,10 @@ def get_parser(language: str, config: ParserConfig | None = None) -> Parser:
     if _state.factory is None:
         raise ParserError("Parser factory not initialized")
     try:
-        # Normalize common aliases
+        # Normalize common aliases - use "csharp" as canonical since tree-sitter-language-pack uses it
         alias_map = {
-            "csharp": "c_sharp",
-            "c_sharp": "c_sharp",
+            "csharp": "csharp",
+            "c_sharp": "csharp",
             "typescript": "typescript",
             "tsx": "tsx",
         }

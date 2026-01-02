@@ -2,13 +2,17 @@
 
 import pytest
 
-from chunker import chunk_text
+from chunker import chunk_text, list_languages
 from chunker.languages import language_config_registry
 
 
 class TestCSharpLanguage:
     """Test C# language chunking."""
 
+    @pytest.mark.skipif(
+        "csharp" not in list_languages(),
+        reason="C# grammar not available",
+    )
     @staticmethod
     def test_csharp_basic_chunking():
         """Test basic C# chunking."""

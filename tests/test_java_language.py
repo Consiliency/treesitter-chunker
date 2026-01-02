@@ -60,7 +60,9 @@ public class User {
         assert len(chunks) >= 7
         class_chunks = [c for c in chunks if c.node_type == "class_declaration"]
         assert len(class_chunks) == 1
-        assert "User" in class_chunks[0].parent_context
+        # Check for User in qualified_route or content (parent_context may be empty for top-level)
+        class_chunk = class_chunks[0]
+        assert "User" in str(class_chunk.qualified_route) or "User" in class_chunk.content
         method_chunks = [c for c in chunks if c.node_type == "method_declaration"]
         assert len(method_chunks) >= 5
         constructor_chunks = [

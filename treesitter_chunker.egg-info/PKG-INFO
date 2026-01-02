@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: treesitter-chunker
-Version: 2.1.0
+Version: 2.2.0
 Summary: Semantic code chunker using Tree-sitter for intelligent code analysis
 Author-email: Consiliency <dev@consiliency.com>
 Maintainer-email: Consiliency <dev@consiliency.com>
