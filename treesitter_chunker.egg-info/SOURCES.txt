@@ -464,6 +464,7 @@ tests/test_edge_cases.py
 tests/test_elixir_language.py
 tests/test_end_to_end.py
 tests/test_env_config.py
+tests/test_error_messages.py
 tests/test_exception_serialization.py
 tests/test_exceptions.py
 tests/test_export_integration_advanced.py
@@ -550,6 +551,7 @@ tests/test_query_advanced.py
 tests/test_r_language.py
 tests/test_recovery.py
 tests/test_registry.py
+tests/test_registry_fallback.py
 tests/test_relationship_tracker.py
 tests/test_relationships.py
 tests/test_repo_processing.py

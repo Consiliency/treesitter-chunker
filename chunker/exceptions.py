@@ -47,8 +47,30 @@ class LanguageNotFoundError(LanguageError):
         self.available = available
 
     def _get_user_guidance(self, language: str, available: list[str]) -> str:
-        """Provide user guidance based on the error context."""
+        """Provide user guidance based on the error context.
+
+        Follows the IF-0-P20-ERRORS interface contract:
+        - Include fix instructions for tree-sitter-language-pack
+        - Include grammar compilation alternative
+        - Show available language count
+        - Include documentation link
+        """
         guidance_parts = []
+
+        # Show available language count if any
+        if available:
+            guidance_parts.append(f"Available languages: {len(available)}")
+        else:
+            guidance_parts.append("Available languages: 0 (fresh install detected)")
+
+        # Primary fix: Install tree-sitter-language-pack
+        guidance_parts.append("\n🔧 To fix this:")
+        guidance_parts.append(
+            "   1. Install tree-sitter-language-pack: pip install tree-sitter-language-pack",
+        )
+        guidance_parts.append(
+            f"   2. Or compile grammars: chunker-grammar setup {language}",
+        )
 
         # Check if this is a common language that should be available
         common_languages = {
@@ -71,39 +93,11 @@ class LanguageNotFoundError(LanguageError):
         if language.lower() in common_languages:
             if not available:
                 guidance_parts.append(
-                    "💡 This appears to be a common language that should be available.",
+                    "\n💡 This appears to be a common language that should be available.",
                 )
                 guidance_parts.append(
-                    "   The grammar libraries may not be compiled yet.",
+                    "   The tree-sitter-language-pack includes support for this language.",
                 )
-                guidance_parts.append(
-                    "   Try running the grammar compilation process first.",
-                )
-            else:
-                guidance_parts.append(
-                    "💡 This language is not currently compiled but may be available.",
-                )
-                guidance_parts.append(
-                    "   Check if the grammar source is available in the grammars/ directory.",
-                )
-
-        # Provide specific guidance for missing grammars
-        if not available:
-            guidance_parts.append("\n🔧 To resolve this issue:")
-            guidance_parts.append("   1. Check that grammar libraries are compiled")
-            guidance_parts.append(
-                "   2. Verify the grammars/ directory contains source repositories",
-            )
-            guidance_parts.append("   3. Run grammar compilation scripts if needed")
-        else:
-            guidance_parts.append(f"\n🔧 To add support for '{language}':")
-            guidance_parts.append(
-                "   1. Check if grammar source exists in grammars/ directory",
-            )
-            guidance_parts.append("   2. Compile the grammar to a .so library")
-            guidance_parts.append(
-                "   3. Place the .so file in chunker/data/grammars/build/",
-            )
 
         # Add troubleshooting tips
         guidance_parts.append("\n💡 Troubleshooting tips:")
@@ -115,6 +109,11 @@ class LanguageNotFoundError(LanguageError):
         )
         guidance_parts.append(
             "   - Ensure the grammar is compatible with your tree-sitter version",
+        )
+
+        # Add documentation link
+        guidance_parts.append(
+            "\nSee: https://github.com/Consiliency/treesitter-chunker#grammars",
         )
 
         return "\n".join(guidance_parts)
