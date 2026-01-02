@@ -33,7 +33,9 @@ jobs:
           ruff check chunker/ cli/ tests/ --exclude archive --exclude logs --exclude site
 
       - name: Black
-        run: black --check .
+        run: |
+          black --version
+          black --check .
 
       - name: isort
         run: isort --check .
