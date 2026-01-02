@@ -35,6 +35,7 @@ chunker/_internal/factory.py
 chunker/_internal/file_utils.py
 chunker/_internal/gc_tuning.py
 chunker/_internal/grammar_management.py
+chunker/_internal/language_pack.py
 chunker/_internal/registry.py
 chunker/_internal/user_grammar_tools.py
 chunker/_internal/vfs.py
@@ -493,6 +494,7 @@ tests/test_julia_language.py
 tests/test_kotlin_language.py
 tests/test_language_config.py
 tests/test_language_integration.py
+tests/test_language_pack.py
 tests/test_log_processor.py
 tests/test_log_processor_integration.py
 tests/test_markdown_processor.py
