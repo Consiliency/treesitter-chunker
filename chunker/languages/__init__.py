@@ -32,12 +32,12 @@ from . import (
     yaml,
     zig,
 )
+from .base import PluginConfig  # For backward compatibility
 from .base import (
     ChunkRule,
     CompositeLanguageConfig,
     LanguageConfig,
     LanguageConfigRegistry,
-    PluginConfig,  # For backward compatibility
     language_config_registry,
     validate_language_config,
 )

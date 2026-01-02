@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import multiprocessing as mp
 import time
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeout
+from concurrent.futures import as_completed
 from pathlib import Path
 from typing import TYPE_CHECKING
 
