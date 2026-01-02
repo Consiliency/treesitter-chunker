@@ -1,16 +1,17 @@
-chardet
-gitpython>=3.1.0
+tree_sitter<1.0.0,>=0.20.0
+tree-sitter-language-pack>=0.4.0
+rich>=13.0.0
+typer>=0.9.0
+pyarrow>=15.0.0
+pyyaml>=6.0
+pygments>=2.15.0
+chardet>=5.0.0
+python-dateutil>=2.9.0
+gitpython>=3.1.40
 pathspec>=0.11.0
-pyarrow>=11.0.0
-pygments
-python-dateutil>=2.8.2
-pyyaml
-rich
-tiktoken>=0.5.0
-toml
-tqdm>=4.65.0
-tree_sitter
-typer
+tqdm>=4.66.0
+tiktoken>=0.7.0
+tomli-w>=1.0.0
 
 [advanced]
 numpy>=1.20.0
@@ -20,40 +21,39 @@ treesitter-chunker[advanced,api,dev,docs,profile,templates,viz]
 
 [api]
 fastapi>=0.100.0
-pydantic>=2.0.0
 uvicorn[standard]>=0.23.0
+pydantic>=2.0.0
 
 [dev]
-bandit[toml]>=1.7.8
-black>=24.3.0
-build
-isort>=5.13.0
-mypy>=1.9.0
-pre-commit>=3.5.0
-psutil>=5.9.0
-pytest-cov>=4.1.0
-pytest-timeout>=2.1.0
-pytest-xdist>=3.3.1
 pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-xdist>=3.3.1
+pytest-timeout>=2.1.0
+psutil>=5.9.0
+black>=24.3.0
 ruff>=0.3.4
-twine
-types-pyyaml
+mypy>=1.9.0
+isort>=5.13.0
+pre-commit>=3.5.0
+bandit[toml]>=1.7.8
 types-setuptools
-types-toml
+types-pyyaml
+build
 wheel
+twine
 
 [docs]
 sphinx
-sphinx-autodoc-typehints
 sphinx-rtd-theme
+sphinx-autodoc-typehints
 
 [full]
 jinja2>=3.0.0
 numpy>=1.20.0
 
 [profile]
-line-profiler>=4.1.0
 memory-profiler>=0.61.0
+line-profiler>=4.1.0
 
 [templates]
 jinja2>=3.0.0
