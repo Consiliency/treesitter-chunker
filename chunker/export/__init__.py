@@ -5,6 +5,7 @@ from .formats import (
     GraphMLExporter,
     Neo4jExporter,
     PostgreSQLExporter,
+    SemanticLensExporter,
     SQLiteExporter,
     StructuredJSONExporter,
     StructuredJSONLExporter,
@@ -28,6 +29,7 @@ __all__ = [
     "JSONLExporter",
     "Neo4jExporter",
     "PostgreSQLExporter",
+    "SemanticLensExporter",
     "SQLiteExporter",
     "SchemaType",
     # Structured exports

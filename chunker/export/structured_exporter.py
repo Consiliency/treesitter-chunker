@@ -170,6 +170,7 @@ class StructuredExportOrchestrator(StructuredExporter):
                 ".sqlite3": ExportFormat.SQLITE,
                 ".cypher": ExportFormat.NEO4J,
                 ".cql": ExportFormat.NEO4J,
+                ".slb": ExportFormat.SEMANTIC_LENS,
             }
             if ext in format_map:
                 return format_map[ext]
