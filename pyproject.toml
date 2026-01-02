@@ -360,6 +360,7 @@ ignore = [
     "A004",    # builtin shadowing in import - following conventions
     "RUF059",  # unused unpacked variable - interface compatibility
     "RUF039",  # unraw pattern - false positives
+    "COM812",  # trailing comma - handled by black, conflicts with some formatting
 ]
 
 [tool.ruff.lint.per-file-ignores]

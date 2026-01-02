@@ -33,10 +33,7 @@ jobs:
           ruff check chunker/ cli/ tests/ --exclude archive --exclude logs --exclude site
 
       - name: Black
-        run: |
-          black --version
-          black --diff chunker/_internal/cache.py || echo "cache.py diff shown above"
-          black --check .
+        run: black --check .
 
       - name: isort
         run: isort --check .

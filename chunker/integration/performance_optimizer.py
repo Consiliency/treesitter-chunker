@@ -136,8 +136,11 @@ class PerformanceAlert:
     recommendations: list[str] = field(default_factory=list)
 
 
+T = TypeVar("T")
+
+
 @dataclass
-class CacheEntry[T]:
+class CacheEntry(Generic[T]):
     """Cache entry with metadata."""
 
     key: str
