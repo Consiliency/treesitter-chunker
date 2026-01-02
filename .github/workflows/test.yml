@@ -44,8 +44,9 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install uv
-        uv pip install --system -e ".[dev]"
+        uv pip install --system -e ".[dev,api,viz,templates]"
         uv pip install --system git+https://github.com/tree-sitter/py-tree-sitter.git
+        uv pip install --system toml  # Required by tests
 
     - name: Fetch grammars
       run: python scripts/fetch_grammars.py
