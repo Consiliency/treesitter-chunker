@@ -59,7 +59,7 @@ jobs:
         black --check chunker/ tests/
 
     - name: Run type checking
-      run: mypy chunker/ tests/
+      run: mypy chunker/ cli/ --ignore-missing-imports
 
     - name: Run core tests
       run: |

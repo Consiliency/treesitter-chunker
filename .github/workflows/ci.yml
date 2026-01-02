@@ -33,10 +33,10 @@ jobs:
           ruff check chunker/ cli/ tests/ --exclude archive --exclude logs --exclude site
 
       - name: Black
-        run: black --check .
+        run: black --check chunker/ cli/ tests/ scripts/
 
       - name: isort
-        run: isort --check .
+        run: isort --check chunker/ cli/ tests/ scripts/
 
 
       - name: Mypy
