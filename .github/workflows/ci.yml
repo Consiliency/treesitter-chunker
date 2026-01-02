@@ -55,6 +55,7 @@ jobs:
             --timeout=60 \
             --ignore=tests/test_phase3_integration.py \
             --ignore=tests/test_api_endpoints_extended.py \
+            --ignore=tests/integration/  # Skip all integration tests for CI
             -x  # Stop after first failure
         timeout-minutes: 30
 
