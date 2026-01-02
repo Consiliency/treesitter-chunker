@@ -1,0 +1,15 @@
+{
+  "name": "observability-server",
+  "version": "1.0.0",
+  "description": "WebSocket server for ai-dev-kit agent observability",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.0.0"
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "version": "1.0.0",
+  "updated": "2025-12-10",
+  "task_types": {
+    "complex_reasoning": {
+      "description": "Tasks requiring deep analysis, architecture decisions, debugging complex issues",
+      "patterns": ["analyz", "architect", "design", "debug.*complex", "refactor.*large", "explain.*why"],
+      "priority": ["claude", "openai", "gemini"]
+    },
+    "sandboxed_execution": {
+      "description": "Tasks that should run in isolation for safety",
+      "patterns": ["sandbox", "isolated", "safe.*execut", "test.*run", "untrusted"],
+      "priority": ["openai", "cursor", "claude"]
+    },
+    "large_context": {
+      "description": "Tasks involving large files or entire codebases",
+      "patterns": ["entire.*codebase", "all.*files", "whole.*repo", "large.*context", "many.*files"],
+      "priority": ["gemini", "claude", "openai"]
+    },
+    "multimodal": {
+      "description": "Tasks involving images, screenshots, diagrams, video, or audio",
+      "patterns": ["image", "screenshot", "diagram", "visual", "video", "audio", "picture", "photo"],
+      "priority": ["gemini", "claude", "openai"]
+    },
+    "quick_codegen": {
+      "description": "Fast code generation tasks",
+      "patterns": ["quick", "simple.*function", "small.*change", "add.*method", "create.*class"],
+      "priority": ["claude", "cursor", "openai"]
+    },
+    "extended_reasoning": {
+      "description": "Tasks requiring extended thinking time",
+      "patterns": ["think.*through", "step.*by.*step", "detailed.*analysis", "comprehensive"],
+      "priority": ["openai", "gemini", "claude"]
+    },
+    "web_search": {
+      "description": "Tasks requiring current web information",
+      "patterns": ["search.*web", "find.*online", "latest", "current.*news", "recent"],
+      "priority": ["gemini", "openai", "claude"]
+    },
+    "privacy_offline": {
+      "description": "Tasks requiring offline or privacy-preserving execution",
+      "patterns": ["offline", "air[- ]gapped", "private", "sensitive", "local model"],
+      "priority": ["ollama", "claude", "openai"]
+    },
+    "ide_integration": {
+      "description": "Tasks best done with IDE context",
+      "patterns": ["inline.*edit", "quick.*fix", "refactor.*function", "rename"],
+      "priority": ["cursor", "claude", "openai"]
+    },
+    "default": {
+      "description": "Default routing for unclassified tasks",
+      "patterns": [],
+      "priority": ["claude", "openai", "gemini", "cursor", "opencode", "ollama"]
+    }
+  },
+  "provider_capabilities": {
+    "claude": {
+      "strengths": ["complex_reasoning", "quick_codegen", "multi_file_ops"],
+      "context_limit": 200000,
+      "multimodal": true
+    },
+    "openai": {
+      "strengths": ["sandboxed_execution", "extended_reasoning", "coding"],
+      "context_limit": 128000,
+      "multimodal": true
+    },
+    "gemini": {
+      "strengths": ["large_context", "multimodal", "web_search"],
+      "context_limit": 2000000,
+      "multimodal": true
+    },
+    "cursor": {
+      "strengths": ["ide_integration", "quick_codegen"],
+      "context_limit": 128000,
+      "multimodal": false
+    },
+    "opencode": {
+      "strengths": ["provider_agnostic", "quick_codegen", "fallback"],
+      "context_limit": 128000,
+      "multimodal": false
+    },
+    "ollama": {
+      "strengths": ["privacy_offline", "local_execution"],
+      "context_limit": 32768,
+      "multimodal": false
+    }
+  }
+}

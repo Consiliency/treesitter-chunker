@@ -1,0 +1,79 @@
+#!/usr/bin/env npx ts-node
+/**
+ * Tool: tool_name
+ * Description: Brief description of what this tool does
+ *
+ * Args:
+ *   param1 (string): Description of the first parameter
+ *   param2 (number): Description of the second parameter (default: 10)
+ *
+ * Returns:
+ *   object: Description of the return value
+ *
+ * Example:
+ *   const result = await run({ param1: "hello", param2: 5 });
+ *   console.log(result);
+ *   // { status: "success", data: "..." }
+ *
+ * Environment Variables:
+ *   API_KEY: Optional API key for external service
+ */
+
+// Configuration from environment
+const API_KEY = process.env.API_KEY || "";
+
+interface ToolInput {
+  param1: string;
+  param2?: number;
+}
+
+interface ToolOutput {
+  status: "success" | "error";
+  input: ToolInput;
+  output: string;
+  error?: string;
+}
+
+/**
+ * Main entry point for this tool.
+ *
+ * @param input - The input parameters
+ * @returns A promise resolving to the result
+ * @throws Error if param1 is empty
+ */
+export async function run(input: ToolInput): Promise<ToolOutput> {
+  const { param1, param2 = 10 } = input;
+
+  if (!param1) {
+    throw new Error("param1 cannot be empty");
+  }
+
+  // Your implementation here
+  const result: ToolOutput = {
+    status: "success",
+    input: { param1, param2 },
+    output: `Processed: ${param1} with factor ${param2}`,
+  };
+
+  return result;
+}
+
+// CLI support for testing
+if (require.main === module) {
+  const args = process.argv.slice(2);
+
+  if (args.length < 1) {
+    console.log(`Usage: ${process.argv[1]} <param1> [param2]`);
+    process.exit(1);
+  }
+
+  const param1 = args[0];
+  const param2 = args[1] ? parseInt(args[1], 10) : undefined;
+
+  run({ param1, param2 })
+    .then((result) => console.log(JSON.stringify(result, null, 2)))
+    .catch((error) => {
+      console.error("Error:", error.message);
+      process.exit(1);
+    });
+}

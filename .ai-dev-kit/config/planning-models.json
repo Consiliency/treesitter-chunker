@@ -1,0 +1,126 @@
+{
+  "version": "1.0.0",
+  "updated": "2025-12-31",
+  "comment": "Centralized model configuration for planning agents. Update here when new models are released.",
+
+  "planning_agents": {
+    "default_provider": "claude",
+    "default_model_tier": "heavy",
+    "extended_thinking": "maximum",
+
+    "providers": {
+      "claude": {
+        "default": "claude-opus-4-5",
+        "fast": "claude-sonnet-4-5",
+        "heavy": "claude-opus-4-5",
+        "extended_thinking_flag": "extended_thinking",
+        "extended_thinking_values": {
+          "maximum": "maximum",
+          "high": "high",
+          "default": "default",
+          "off": null
+        }
+      },
+      "openai": {
+        "default": "gpt-5.2-codex",
+        "fast": "gpt-5.2-mini",
+        "heavy": "gpt-5.2-codex",
+        "extended_thinking_flag": "full-auto",
+        "extended_thinking_values": {
+          "maximum": "full-auto",
+          "high": "auto",
+          "default": "assisted",
+          "off": null
+        }
+      },
+      "gemini": {
+        "default": "gemini-3-pro",
+        "fast": "gemini-3-flash-lite",
+        "heavy": "gemini-3-deep-think",
+        "extended_thinking_flag": "yolo",
+        "extended_thinking_values": {
+          "maximum": "yolo",
+          "high": "auto",
+          "default": "assisted",
+          "off": null
+        }
+      },
+      "cursor": {
+        "default": "composer",
+        "fast": "composer",
+        "heavy": "composer",
+        "extended_thinking_flag": "extended",
+        "extended_thinking_values": {
+          "maximum": "extended",
+          "high": "extended",
+          "default": "normal",
+          "off": null
+        }
+      }
+    }
+  },
+
+  "map_reduce_planning": {
+    "comment": "Multi-provider MapReduce configuration for planning commands",
+    "enabled_providers": ["claude", "openai", "gemini"],
+    "iterations": {
+      "roadmap": 3,
+      "phase": 2,
+      "lane": 1
+    },
+    "consolidation_timeout_ms": 300000,
+    "provider_models": {
+      "claude": "heavy",
+      "openai": "heavy",
+      "gemini": "heavy"
+    }
+  },
+
+  "agent_overrides": {
+    "comment": "Per-agent model overrides. Planning agents use heavy (Opus), execution agents use fast (Sonnet).",
+
+    "_section_planning": "Planning agents - require heavy models for architecture decisions",
+    "plan-reducer": {
+      "provider": "claude",
+      "model_tier": "heavy",
+      "extended_thinking": "maximum"
+    },
+    "roadmap-planner": {
+      "provider": "claude",
+      "model_tier": "heavy",
+      "extended_thinking": "maximum"
+    },
+    "roadmap-builder": {
+      "provider": "claude",
+      "model_tier": "heavy",
+      "extended_thinking": "maximum"
+    },
+    "architecture-explorer": {
+      "provider": "claude",
+      "model_tier": "heavy",
+      "extended_thinking": "maximum"
+    },
+    "integration-coordinator": {
+      "provider": "claude",
+      "model_tier": "heavy",
+      "extended_thinking": "maximum"
+    },
+
+    "_section_execution": "Execution agents - use fast models (Sonnet) for cost efficiency. Interfaces are frozen, files are scoped, patterns are explicit.",
+    "lane-lead": {
+      "provider": "claude",
+      "model_tier": "fast",
+      "extended_thinking": "high"
+    },
+    "lane-executor": {
+      "provider": "claude",
+      "model_tier": "fast",
+      "extended_thinking": "default"
+    },
+    "test-engineer": {
+      "provider": "claude",
+      "model_tier": "fast",
+      "extended_thinking": "default"
+    }
+  }
+}

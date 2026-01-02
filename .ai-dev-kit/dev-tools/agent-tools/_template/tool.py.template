@@ -1,0 +1,72 @@
+#!/usr/bin/env python3
+"""
+Tool: tool_name
+Description: Brief description of what this tool does
+
+Args:
+    param1 (str): Description of the first parameter
+    param2 (int): Description of the second parameter (default: 10)
+
+Returns:
+    dict: Description of the return value
+
+Example:
+    >>> result = run(param1="hello", param2=5)
+    >>> print(result)
+    {"status": "success", "data": "..."}
+
+Environment Variables:
+    API_KEY: Optional API key for external service
+"""
+
+import os
+from typing import Any
+
+# Configuration from environment
+API_KEY = os.environ.get("API_KEY", "")
+
+
+def run(param1: str, param2: int = 10) -> dict[str, Any]:
+    """
+    Main entry point for this tool.
+
+    Args:
+        param1: The first parameter
+        param2: The second parameter (default: 10)
+
+    Returns:
+        A dictionary containing the result
+
+    Raises:
+        ValueError: If param1 is empty
+    """
+    if not param1:
+        raise ValueError("param1 cannot be empty")
+
+    # Your implementation here
+    result = {
+        "status": "success",
+        "input": {
+            "param1": param1,
+            "param2": param2,
+        },
+        "output": f"Processed: {param1} with factor {param2}",
+    }
+
+    return result
+
+
+# Optional: CLI support for testing
+if __name__ == "__main__":
+    import sys
+    import json
+
+    if len(sys.argv) < 2:
+        print(f"Usage: {sys.argv[0]} <param1> [param2]")
+        sys.exit(1)
+
+    p1 = sys.argv[1]
+    p2 = int(sys.argv[2]) if len(sys.argv) > 2 else 10
+
+    result = run(p1, p2)
+    print(json.dumps(result, indent=2))

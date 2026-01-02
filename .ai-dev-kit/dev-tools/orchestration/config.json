@@ -1,0 +1,116 @@
+{
+  "version": "1.0.0",
+  "updated": "2025-12-10",
+  "providers": {
+    "claude": {
+      "enabled": true,
+      "daily_max": 500,
+      "cli_command": "claude",
+      "models": {
+        "flagship": "claude-opus-4-5",
+        "fast": "claude-haiku-4-5",
+        "balanced": "claude-sonnet-4-5"
+      },
+      "auth": {
+        "subscription_env": null,
+        "api_key_env": "ANTHROPIC_API_KEY",
+        "credentials_path": "~/.claude/.credentials.json"
+      }
+    },
+    "openai": {
+      "enabled": true,
+      "daily_max": 800,
+      "cli_command": "codex",
+      "models": {
+        "flagship": "gpt-5.2",
+        "fast": "gpt-5.2-mini",
+        "coding": "gpt-5.2-codex",
+        "coding_fast": "gpt-5.2-codex-mini"
+      },
+      "auth": {
+        "subscription_env": null,
+        "api_key_env": "CODEX_API_KEY",
+        "credentials_path": "~/.codex/credentials"
+      }
+    },
+    "gemini": {
+      "enabled": true,
+      "daily_max": 1000,
+      "cli_command": "gemini",
+      "models": {
+        "flagship": "gemini-3-pro",
+        "fast": "gemini-3-flash-lite",
+        "reasoning": "gemini-3-deep-think"
+      },
+      "auth": {
+        "subscription_env": null,
+        "api_key_env": "GEMINI_API_KEY",
+        "credentials_path": "~/.config/gemini/credentials"
+      }
+    },
+    "cursor": {
+      "enabled": true,
+      "daily_max": 50,
+      "cli_command": "cursor-agent",
+      "models": {
+        "default": "composer"
+      },
+      "auth": {
+        "subscription_env": null,
+        "api_key_env": "CURSOR_API_KEY",
+        "credentials_path": null
+      }
+    },
+    "opencode": {
+      "enabled": false,
+      "daily_max": 300,
+      "cli_command": "opencode",
+      "models": {
+        "default": "anthropic/claude-sonnet-4-5",
+        "fast": "anthropic/claude-haiku-4-5",
+        "heavy": "anthropic/claude-opus-4-5"
+      },
+      "auth": {
+        "subscription_env": null,
+        "api_key_env": "OPENCODE_API_KEY",
+        "credentials_path": null
+      }
+    },
+    "ollama": {
+      "enabled": false,
+      "daily_max": 0,
+      "cli_command": "ollama",
+      "models": {
+        "default": "llama3.2",
+        "fast": "phi3.5:latest",
+        "heavy": "llama3.3:70b"
+      },
+      "auth": {
+        "subscription_env": null,
+        "api_key_env": null,
+        "credentials_path": null
+      }
+    }
+  },
+  "routing": {
+    "default_provider": "claude",
+    "fallback_enabled": true,
+    "fallback_order": ["claude", "openai", "gemini", "cursor", "opencode", "ollama"],
+    "rate_limit_threshold_pct": 80
+  },
+  "priority_matrix": {
+    "complex_reasoning": ["claude", "openai", "gemini"],
+    "sandboxed_execution": ["openai", "cursor", "claude"],
+    "large_context": ["gemini", "claude", "openai"],
+    "multimodal": ["gemini", "claude", "openai"],
+    "quick_codegen": ["claude", "cursor", "openai"],
+    "extended_reasoning": ["openai", "gemini", "claude"],
+    "web_search": ["gemini", "openai", "claude"],
+    "privacy_offline": ["ollama", "claude", "openai"]
+  },
+  "logging": {
+    "enabled": true,
+    "log_dir": "~/.ai-dev-kit/logs",
+    "retention_days": 30
+  }
+}
