@@ -72,3 +72,9 @@ __pycache__/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Phase execution artifacts
+.worktrees/
+.claude/run-logs/
+.claude/ai-dev-kit/
+logs/
