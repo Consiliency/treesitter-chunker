@@ -9,12 +9,10 @@ from typing import Any
 from chunker.interfaces.fallback import (
     FALLBACK_WARNING_TEMPLATE,
     ChunkingMethod,
-)
-from chunker.interfaces.fallback import FallbackChunker as IFallbackChunker
-from chunker.interfaces.fallback import (
     FallbackConfig,
     FallbackReason,
 )
+from chunker.interfaces.fallback import FallbackChunker as IFallbackChunker
 from chunker.types import CodeChunk
 
 logger = logging.getLogger(__name__)

@@ -35,8 +35,7 @@ jobs:
       - name: Black
         run: black --check chunker/ cli/ tests/ scripts/
 
-      - name: isort
-        run: isort --check chunker/ cli/ tests/ scripts/
+      # Note: isort check removed - ruff handles import sorting (I001)
 
 
       - name: Mypy
