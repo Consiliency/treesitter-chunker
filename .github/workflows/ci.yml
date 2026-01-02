@@ -35,6 +35,7 @@ jobs:
       - name: Black
         run: |
           black --version
+          black --diff chunker/_internal/cache.py || echo "cache.py diff shown above"
           black --check .
 
       - name: isort
