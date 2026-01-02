@@ -68,7 +68,7 @@ intersphinx_mapping = {
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "sphinx_rtd_theme"
+html_theme = "alabaster"  # Using default theme - sphinx_rtd_theme incompatible with Sphinx 9
 html_static_path = ["_static"]
 html_title = "TreeSitter Chunker Documentation"
 html_short_title = "TreeSitter Chunker"
