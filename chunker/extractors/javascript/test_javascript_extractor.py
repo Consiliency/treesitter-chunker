@@ -32,7 +32,7 @@ class MyClass {
         super();
         this.data = [];
     }
-    
+
     processData() {
         this.data.map(item => item.process());
         return this.helper.doSomething();
@@ -734,7 +734,7 @@ const UserProfile = ({ userId }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    
+
     useEffect(() => {
         const loadUser = async () => {
             try {
@@ -752,30 +752,30 @@ const UserProfile = ({ userId }) => {
                 setLoading(false);
             }
         };
-        
+
         loadUser();
     }, [userId]);
-    
+
     const handleUpdate = (field, value) => {
         const updatedUser = { ...user, [field]: value };
         setUser(updatedUser);
         saveUserData(updatedUser);
     };
-    
+
     if (loading) {
         return <LoadingSpinner />;
     }
-    
+
     if (error) {
         return <ErrorMessage message={error} onRetry={() => window.location.reload()} />;
     }
-    
+
     return (
         <div className="user-profile">
             <Avatar src={user.avatar} alt={`${user.name}'s avatar`} />
             <h1>{user.name}</h1>
             <p>{user.email}</p>
-            <EditableField 
+            <EditableField
                 value={user.bio}
                 onChange={(value) => handleUpdate('bio', value)}
             />
@@ -828,16 +828,16 @@ interface User {
 
 class UserService {
     private apiClient: ApiClient;
-    
+
     constructor(apiClient: ApiClient) {
         this.apiClient = apiClient;
     }
-    
+
     async getUser(id: number): Promise<User> {
         const response = await this.apiClient.get<User>(`/users/${id}`);
         return this.transformUser(response.data);
     }
-    
+
     private transformUser(data: any): User {
         return {
             id: parseInt(data.id),
@@ -911,7 +911,7 @@ function function{i}() {{
 function broken() {
     // Missing closing brace
     normalFunction();
-    
+
 // Unclosed comment
 function another() {
     stillWorks();
@@ -948,7 +948,7 @@ class TestJavaScriptExtractorEdgeCases(unittest.TestCase):
         function test() {
             // This should still work
             normalCall();
-            
+
             // Complex patterns that might cause regex issues
             weird...syntax.here();
             invalid\\escape\\sequences();
@@ -998,11 +998,11 @@ class TestJavaScriptExtractorEdgeCases(unittest.TestCase):
             // Unicode characters
             função();
             методCall();
-            
+
             // Unusual spacing
             func     (     );
             obj    .    method    (    );
-            
+
             // Complex expressions
             (complex ? expression : alternative)();
             obj[computed.property]();

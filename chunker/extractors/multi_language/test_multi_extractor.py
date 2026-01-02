@@ -186,12 +186,12 @@ int main() {
     printf("Hello World\\n");
     malloc(100);
     free(ptr);
-    
+
     struct MyStruct s;
     s.func_ptr(42);
-    
+
     MACRO_CALL(arg);
-    
+
     return 0;
 }
 
@@ -290,7 +290,7 @@ namespace std {
             MyClass::staticMethod();
             vector<int> v;
         }
-        
+
         static void staticMethod() {
             std::vector<int> data;
         }
@@ -308,9 +308,9 @@ int main() {
     MyClass::staticMethod();
     templateFunc<int>();
     std::cout << "Done" << std::endl;
-    
+
     new MyClass();
-    
+
     return 0;
 }
 """
@@ -441,27 +441,27 @@ package com.example;
 import java.util.List;
 
 public class MyClass extends BaseClass {
-    
+
     public MyClass() {
         super();
         this.init();
     }
-    
+
     public void method() {
         System.out.println("Hello");
         obj.someMethod();
         StaticClass.staticMethod();
         new ArrayList<>();
-        
+
         list.stream()
             .filter(x -> x.isValid())
             .collect(Collectors.toList());
     }
-    
+
     private void init() {
         this.value = 42;
     }
-    
+
     public static void staticMethod() {
         System.gc();
     }
@@ -590,7 +590,7 @@ class MyClass
     SomeModule.class_method()
     array.each() { |item| item.process() }
   end
-  
+
   def some_method
     helper_function()
     other.call_me()
@@ -879,7 +879,7 @@ package main
 func main() {
     if()  // This should be filtered as keyword
     obj.for()  // for is keyword, should be filtered
-    defer if()  // if is keyword, should be filtered  
+    defer if()  // if is keyword, should be filtered
     go func()  // func is keyword, should be filtered
     pkg.if()   // if is keyword, should be filtered
 }
@@ -923,7 +923,7 @@ public class Test {
     public void method() {
         // These should be filtered out as keywords
         obj.class();  // class is keyword
-        obj.new();    // new is keyword  
+        obj.new();    // new is keyword
         obj.if();     // if is keyword
         obj.for();    // for is keyword
     }

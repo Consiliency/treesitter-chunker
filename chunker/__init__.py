@@ -63,9 +63,9 @@ try:
 
     _ADV_QUERY_AVAILABLE = True
 except Exception:  # pragma: no cover - keep import lightweight during build tests
-    AdvancedQueryIndex = None  # type: ignore
-    NaturalLanguageQueryEngine = None  # type: ignore
-    SmartQueryOptimizer = None  # type: ignore
+    AdvancedQueryIndex = None  # type: ignore[assignment]
+    NaturalLanguageQueryEngine = None  # type: ignore[assignment]
+    SmartQueryOptimizer = None  # type: ignore[assignment]
     _ADV_QUERY_AVAILABLE = False
 
 # Optional system integration (Phase 1.7 + 1.8 integration)
@@ -82,11 +82,11 @@ try:
 except (
     Exception
 ):  # pragma: no cover - graceful degradation when integration not available
-    SystemIntegrator = None  # type: ignore
-    get_system_integrator = None  # type: ignore
-    initialize_treesitter_system = None  # type: ignore
-    process_grammar_error = None  # type: ignore
-    get_system_health = None  # type: ignore
+    SystemIntegrator = None  # type: ignore[assignment]
+    get_system_integrator = None  # type: ignore[assignment]
+    initialize_treesitter_system = None  # type: ignore[assignment]
+    process_grammar_error = None  # type: ignore[assignment]
+    get_system_health = None  # type: ignore[assignment]
     _SYSTEM_INTEGRATION_AVAILABLE = False
 from .smart_context import InMemoryContextCache, TreeSitterSmartContextProvider
 from .streaming import chunk_file_streaming

@@ -8,11 +8,11 @@ from .semantic_lens import SemanticLensExporter
 
 # Make Parquet optional at import time to avoid heavy dependency import errors
 try:  # pragma: no cover
-    from .parquet import StructuredParquetExporter  # type: ignore
+    from .parquet import StructuredParquetExporter  # type: ignore[attr-defined]
 
     _PARQUET_AVAILABLE = True
 except Exception:  # pyarrow/numpy may be absent or broken in some envs
-    StructuredParquetExporter = None  # type: ignore
+    StructuredParquetExporter = None  # type: ignore[assignment]
     _PARQUET_AVAILABLE = False
 
 __all__ = [

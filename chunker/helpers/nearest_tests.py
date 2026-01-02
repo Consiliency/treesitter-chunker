@@ -14,10 +14,7 @@ TEST_PATTERNS = [
 
 def _is_test_file(path: Path) -> bool:
     name = path.name
-    for pat in TEST_PATTERNS:
-        if pat.match(name):
-            return True
-    return False
+    return any(pat.match(name) for pat in TEST_PATTERNS)
 
 
 def _score_test_file(path: Path, symbols: Iterable[str]) -> float:

@@ -36,7 +36,7 @@ class MockExtractor(BaseExtractor):
     def extract_calls(
         self,
         source_code: str,
-        file_path: Path = None,
+        file_path: Path | None = None,
     ) -> ExtractionResult:
         """Mock extract_calls method."""
         self._call_count += 1

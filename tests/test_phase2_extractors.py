@@ -16,7 +16,7 @@ def test_function():
     print("hello")
     result = len([1, 2, 3])
     obj.method()
-    
+
 @decorator()
 def decorated():
     pass

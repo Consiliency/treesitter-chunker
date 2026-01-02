@@ -19,7 +19,9 @@ from . import builder as _builder
 
 # Provide a local alias to support test monkeypatching via chunker.grammar.manager.get_parser
 try:
-    from chunker.parser import get_parser as _get_parser  # type: ignore
+    from chunker.parser import (
+        get_parser as _get_parser,  # type: ignore[import-not-found]
+    )
 
     def get_parser(language: str):  # type: ignore[no-redef]
         return _get_parser(language)

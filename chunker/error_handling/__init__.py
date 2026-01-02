@@ -1,6 +1,6 @@
 """Error handling and user guidance system for Phase 1.7.
 
-This package provides intelligent error handling that detects language version 
+This package provides intelligent error handling that detects language version
 compatibility issues and provides clear user guidance for the treesitter-chunker.
 
 Components:

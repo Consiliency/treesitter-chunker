@@ -269,9 +269,9 @@ class CMetadataExtractor(BaseMetadataExtractor):
                 "typename",
                 "auto",
             }
-            c_builtins = c_builtins | cpp_builtins
+            c_builtins |= cpp_builtins
 
-        dependencies = dependencies - c_builtins
+        dependencies -= c_builtins
 
         return dependencies
 

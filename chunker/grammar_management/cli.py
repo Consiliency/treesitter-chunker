@@ -1478,7 +1478,7 @@ class ComprehensiveGrammarCLI:
             if version:
                 progress.update(f"Checking out version {version}...")
                 checkout_cmd = ["git", "checkout", version]
-                returncode, stdout, stderr = self._run_command(
+                returncode, _stdout, stderr = self._run_command(
                     checkout_cmd,
                     cwd=target_dir,
                 )
@@ -1779,14 +1779,14 @@ class BuildExt(build_ext):
     def build_extension(self, ext):
         # Build the extension
         build_ext.build_extension(self, ext)
-        
+
         # Move to target location
         built_path = self.get_ext_fullpath(ext.name)
         target_path = Path("{output_path}")
-        
+
         # Ensure target directory exists
         target_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         # Copy built file to target
         import shutil
         shutil.copy2(built_path, target_path)
@@ -1955,7 +1955,7 @@ if __name__ == "__main__":
                     click.echo(f"💡 Try: treesitter-chunker grammar fetch {language}")
                 return 1
 
-            grammar_path, source, priority = grammar_info
+            grammar_path, source, _priority = grammar_info
 
             click.echo(f"Test file: {file_path}")
             click.echo(f"Grammar: {grammar_path} ({source})")
@@ -2482,7 +2482,7 @@ if __name__ == "__main__":
                             f"    🔧 Attempting to generate parser for {language}...",
                         )
                         generate_cmd = ["npx", "tree-sitter", "generate"]
-                        returncode, stdout, stderr = self._run_command(
+                        returncode, _stdout, stderr = self._run_command(
                             generate_cmd,
                             cwd=source_path,
                         )

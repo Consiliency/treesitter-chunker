@@ -665,7 +665,7 @@ class TroubleshootingDatabase:
                     updated_at TEXT,
                     created_by TEXT
                 );
-                
+
                 CREATE TABLE IF NOT EXISTS solutions (
                     solution_id TEXT PRIMARY KEY,
                     entry_id TEXT,
@@ -688,7 +688,7 @@ class TroubleshootingDatabase:
                     language_specific TEXT,
                     FOREIGN KEY (entry_id) REFERENCES entries (entry_id)
                 );
-                
+
                 CREATE INDEX IF NOT EXISTS idx_entries_category ON entries(category);
                 CREATE INDEX IF NOT EXISTS idx_entries_severity ON entries(severity);
                 CREATE INDEX IF NOT EXISTS idx_entries_view_count ON entries(view_count);
@@ -1429,7 +1429,7 @@ class TroubleshootingAnalytics:
 
         # Coverage score (0-25 points)
         category_coverage = len(
-            set(entry.category for entry in self.database.entries.values()),
+            {entry.category for entry in self.database.entries.values()},
         )
         max_categories = len(TroubleshootingCategory)
         coverage_score = (category_coverage / max_categories) * 25

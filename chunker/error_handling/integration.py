@@ -380,7 +380,7 @@ class ErrorHandlingPipeline:
         # Create fallback components if needed
         if self.template_manager is None and create_template_system:
             try:
-                library, renderer, validator = create_template_system()
+                library, _renderer, _validator = create_template_system()
                 self.template_manager = library.manager
                 logger.info("Created fallback template system")
             except Exception as e:
@@ -1623,7 +1623,7 @@ def create_error_handling_system(
         template_manager = None
         if create_template_system:
             try:
-                library, renderer, validator = create_template_system()
+                library, _renderer, _validator = create_template_system()
                 template_manager = library.manager
                 logger.info("Initialized TemplateManager")
             except Exception as e:

@@ -7,7 +7,7 @@ This test suite covers all components of the observability system:
 - MonitoringSystem
 - MetricsCollector
 - TracingManager
-- LogAggregator  
+- LogAggregator
 - DashboardGenerator
 
 Achieves 95%+ test coverage with realistic scenarios and edge cases.
@@ -2147,7 +2147,7 @@ class TestEdgeCasesAndErrorHandling:
         # Test invalid alert rule
         try:
             aggregator.add_alert_rule({"invalid": "rule"})
-            assert False, "Should have raised ValueError"
+            raise AssertionError("Should have raised ValueError")
         except ValueError:
             pass
 
@@ -2194,13 +2194,13 @@ class TestEdgeCasesAndErrorHandling:
         # Test export/import errors
         try:
             generator.export_dashboard("nonexistent", "json")
-            assert False, "Should raise ValueError"
+            raise AssertionError("Should raise ValueError")
         except ValueError:
             pass
 
         try:
             generator.import_dashboard("invalid json", "json")
-            assert False, "Should raise exception"
+            raise AssertionError("Should raise exception")
         except:
             pass
 

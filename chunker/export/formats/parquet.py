@@ -223,7 +223,7 @@ class StructuredParquetExporter(StructuredExporter):
                 for partition_values, row_indices in partitions.items():
                     partition_dir = root_path
                     for i, col in enumerate(valid_partitions):
-                        partition_dir = partition_dir / f"{col}={partition_values[i]}"
+                        partition_dir /= f"{col}={partition_values[i]}"
 
                     partition_dir.mkdir(parents=True, exist_ok=True)
                     subset_table = table.take(row_indices)

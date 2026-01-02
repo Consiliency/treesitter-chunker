@@ -249,8 +249,8 @@ class SmartGrammarManager:
 
         if health.status == "missing":
             plan["recovery_steps"] = [
-                "Clone grammar repository: git clone <repo_url> grammars/tree-sitter-{language}",
-                "Navigate to grammar directory: cd grammars/tree-sitter-{language}",
+                f"Clone grammar repository: git clone <repo_url> grammars/tree-sitter-{language}",
+                f"Navigate to grammar directory: cd grammars/tree-sitter-{language}",
                 "Install dependencies: npm install (if package.json exists)",
                 "Generate grammar: tree-sitter generate",
                 "Copy .so file to build directory: cp *.so ../../chunker/data/grammars/build/",
@@ -260,8 +260,8 @@ class SmartGrammarManager:
 
         elif health.status == "corrupted":
             plan["recovery_steps"] = [
-                "Remove corrupted .so file: rm chunker/data/grammars/build/{language}.so",
-                "Clean grammar source: cd grammars/tree-sitter-{language} && git clean -fd",
+                f"Remove corrupted .so file: rm chunker/data/grammars/build/{language}.so",
+                f"Clean grammar source: cd grammars/tree-sitter-{language} && git clean -fd",
                 "Pull latest changes: git pull origin main",
                 "Recompile grammar: tree-sitter generate",
                 "Copy new .so file to build directory",

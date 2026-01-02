@@ -232,7 +232,7 @@ class CompatibilityDatabase:
 
             cursor.execute(
                 """
-                INSERT OR REPLACE INTO language_versions 
+                INSERT OR REPLACE INTO language_versions
                 (language, version, edition, build, features, release_date, end_of_life)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
@@ -279,8 +279,8 @@ class CompatibilityDatabase:
 
             cursor.execute(
                 """
-                INSERT OR REPLACE INTO grammar_versions 
-                (language, version, grammar_file, supported_features, 
+                INSERT OR REPLACE INTO grammar_versions
+                (language, version, grammar_file, supported_features,
                  min_language_version, max_language_version, breaking_changes, release_date)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
@@ -324,8 +324,8 @@ class CompatibilityDatabase:
 
             cursor.execute(
                 """
-                INSERT INTO compatibility_rules 
-                (language, language_version_constraint, grammar_version_constraint, 
+                INSERT INTO compatibility_rules
+                (language, language_version_constraint, grammar_version_constraint,
                  compatibility_level, notes, created_at)
                 VALUES (?, ?, ?, ?, ?, ?)
             """,
@@ -363,8 +363,8 @@ class CompatibilityDatabase:
 
             cursor.execute(
                 """
-                INSERT INTO breaking_changes 
-                (language, from_version, to_version, change_type, description, 
+                INSERT INTO breaking_changes
+                (language, from_version, to_version, change_type, description,
                  impact_level, migration_guide, affected_features, detected_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
@@ -536,8 +536,8 @@ class CompatibilityDatabase:
             cursor = self.conn.cursor()
             cursor.execute(
                 """
-                SELECT * FROM breaking_changes 
-                WHERE language = ? 
+                SELECT * FROM breaking_changes
+                WHERE language = ?
                 ORDER BY from_version, to_version
             """,
                 (language.lower(),),
@@ -675,7 +675,7 @@ class CompatibilityDatabase:
             for data in import_data.get("language_versions", []):
                 cursor.execute(
                     """
-                    INSERT INTO language_versions 
+                    INSERT INTO language_versions
                     (language, version, edition, build, features, release_date, end_of_life)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
@@ -694,8 +694,8 @@ class CompatibilityDatabase:
             for data in import_data.get("grammar_versions", []):
                 cursor.execute(
                     """
-                    INSERT INTO grammar_versions 
-                    (language, version, grammar_file, supported_features, 
+                    INSERT INTO grammar_versions
+                    (language, version, grammar_file, supported_features,
                      min_language_version, max_language_version, breaking_changes, release_date)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
@@ -715,8 +715,8 @@ class CompatibilityDatabase:
             for data in import_data.get("compatibility_rules", []):
                 cursor.execute(
                     """
-                    INSERT INTO compatibility_rules 
-                    (language, language_version_constraint, grammar_version_constraint, 
+                    INSERT INTO compatibility_rules
+                    (language, language_version_constraint, grammar_version_constraint,
                      compatibility_level, notes, created_at)
                     VALUES (?, ?, ?, ?, ?, ?)
                 """,
@@ -734,8 +734,8 @@ class CompatibilityDatabase:
             for data in import_data.get("breaking_changes", []):
                 cursor.execute(
                     """
-                    INSERT INTO breaking_changes 
-                    (language, from_version, to_version, change_type, description, 
+                    INSERT INTO breaking_changes
+                    (language, from_version, to_version, change_type, description,
                      impact_level, migration_guide, affected_features, detected_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
@@ -787,9 +787,9 @@ class CompatibilityDatabase:
             # Check for duplicate entries
             cursor.execute(
                 """
-                SELECT language, version, COUNT(*) as count 
-                FROM language_versions 
-                GROUP BY language, version 
+                SELECT language, version, COUNT(*) as count
+                FROM language_versions
+                GROUP BY language, version
                 HAVING count > 1
             """,
             )

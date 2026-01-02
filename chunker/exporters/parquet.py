@@ -138,7 +138,7 @@ class ParquetExporter:
                 partition_dir = root_path
                 for i, col in enumerate(self.partition_by):
                     if col in table.schema.names:
-                        partition_dir = partition_dir / f"{col}={partition_values[i]}"
+                        partition_dir /= f"{col}={partition_values[i]}"
 
                 partition_dir.mkdir(parents=True, exist_ok=True)
 

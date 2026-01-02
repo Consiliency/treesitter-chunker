@@ -6,7 +6,7 @@ generation, breaking change detection, performance benchmarking, and database pe
 
 Key Components:
 - CompatibilityChecker: Grammar-language version compatibility validation
-- GrammarTester: Grammar functionality and performance testing  
+- GrammarTester: Grammar functionality and performance testing
 - SmartSelector: Intelligent grammar selection with conflict resolution
 - CompatibilityDatabase: Persistent compatibility data storage
 
@@ -1038,7 +1038,7 @@ class GrammarTester:
                 test_code = self._generate_test_code(result.language, size)
 
                 start_time = time.time()
-                success, errors = self.validator.test_parse_samples(
+                success, _errors = self.validator.test_parse_samples(
                     result.language,
                     [test_code],
                 )
@@ -1085,7 +1085,7 @@ class GrammarTester:
             # Test with large code sample
             large_code = self._generate_test_code(result.language, 5000)
 
-            success, errors = self.validator.test_parse_samples(
+            success, _errors = self.validator.test_parse_samples(
                 result.language,
                 [large_code],
             )
@@ -1849,7 +1849,7 @@ class CompatibilityDatabase:
                         timestamp REAL NOT NULL,
                         UNIQUE(language, grammar_version, language_version)
                     );
-                    
+
                     CREATE TABLE IF NOT EXISTS test_results (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         language TEXT NOT NULL,
@@ -1863,14 +1863,14 @@ class CompatibilityDatabase:
                         performance_metrics TEXT,  -- JSON encoded
                         timestamp REAL NOT NULL
                     );
-                    
+
                     CREATE TABLE IF NOT EXISTS grammar_metadata (
                         language TEXT PRIMARY KEY,
                         last_updated REAL,
                         available_versions TEXT,  -- JSON encoded
                         metadata TEXT  -- JSON encoded
                     );
-                    
+
                     CREATE INDEX IF NOT EXISTS idx_compatibility_language ON compatibility_results(language);
                     CREATE INDEX IF NOT EXISTS idx_compatibility_timestamp ON compatibility_results(timestamp);
                     CREATE INDEX IF NOT EXISTS idx_test_results_language ON test_results(language);
@@ -1949,7 +1949,7 @@ class CompatibilityDatabase:
                     SELECT level, score, issues, warnings, breaking_changes,
                            performance_impact, test_results, timestamp
                     FROM compatibility_results
-                    WHERE language = ? AND grammar_version = ? 
+                    WHERE language = ? AND grammar_version = ?
                     AND (language_version = ? OR language_version IS NULL)
                     ORDER BY timestamp DESC
                     LIMIT 1

@@ -305,7 +305,7 @@ class LibraryLoadError(LibraryError):
 class ParsingError(ChunkerError):
     """Raised when code parsing fails due to grammar compatibility issues."""
 
-    def __init__(self, language: str, reason: str, code_sample: str = None):
+    def __init__(self, language: str, reason: str, code_sample: str | None = None):
         message = f"Failed to parse {language} code: {reason}"
 
         # Add user guidance for parsing failures
@@ -325,7 +325,7 @@ class ParsingError(ChunkerError):
         self,
         language: str,
         reason: str,
-        code_sample: str = None,
+        code_sample: str | None = None,
     ) -> str:
         """Provide user guidance for parsing failures."""
         guidance_parts = []

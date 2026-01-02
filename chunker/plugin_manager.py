@@ -391,7 +391,7 @@ class PluginManager:
                     inferred = stem[: -len("_plugin")]
                     # Dynamically create a minimal stub plugin class
 
-                    class _StubPlugin(LanguagePlugin):  # type: ignore
+                    class _StubPlugin(LanguagePlugin):  # type: ignore[misc]
                         @property
                         def language_name(self):  # type: ignore[override]
                             return inferred

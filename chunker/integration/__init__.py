@@ -1,7 +1,7 @@
 """Core System Integration for treesitter-chunker - Task 1.9.
 
 This package provides the core system integration that unifies Phase 1.7 (Error Handling & User Guidance)
-with Phase 1.8 (Grammar Management & CLI Tools) and Phase 1.9 (Performance Optimization & Production Validation) 
+with Phase 1.8 (Grammar Management & CLI Tools) and Phase 1.9 (Performance Optimization & Production Validation)
 into a production-ready system.
 
 The integration provides:

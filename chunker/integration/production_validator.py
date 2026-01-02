@@ -306,7 +306,7 @@ class ValidationReport:
         recommendations = set()
         for result in self.results:
             recommendations.update(result.recommendations)
-        return sorted(list(recommendations))
+        return sorted(recommendations)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
@@ -1813,7 +1813,7 @@ class PerformanceValidator:
         # Perform memory-intensive operation
         try:
             # Create some data structures
-            large_list = [i for i in range(100000)]
+            large_list = list(range(100000))
             large_dict = {i: f"value_{i}" for i in range(10000)}
 
             # Check peak memory

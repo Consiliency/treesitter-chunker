@@ -53,7 +53,7 @@ else:
             console.print("  macOS: brew install graphviz")
             console.print("  Windows: choco install graphviz")
         else:
-            console.print("[red]Debug commands failed to load: {DEBUG_ERROR}[/red]")
+            console.print(f"[red]Debug commands failed to load: {DEBUG_ERROR}[/red]")
         raise typer.Exit(1)
 
 if TYPE_CHECKING:

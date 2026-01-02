@@ -39,40 +39,40 @@ class DataProcessor:
     def __init__(self, name):
         self.name = name
         self.logger = self._get_logger()
-    
+
     def _get_logger(self):
         import logging
         return logging.getLogger(self.name)
-    
+
     def process(self, data, **kwargs):
         # Various call patterns
         validated = self.validate_data(data)
         transformed = self._transform(validated)
-        
+
         # Chained calls
         result = str(transformed).strip().lower()
-        
+
         # Complex expressions
         final = self._finalize(
             self._clean(transformed, mode='strict'),
             output=kwargs.get('output', 'default')
         )
-        
+
         # Built-in functions
         items = list(final.items())
         count = len(items)
-        
+
         return final
-    
+
     def validate_data(self, data):
         return data
-    
+
     def _transform(self, data):
         return data
-    
+
     def _clean(self, data, mode='normal'):
         return data
-    
+
     def _finalize(self, data, output='json'):
         return data
 
@@ -402,10 +402,10 @@ def func():
         arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10,
         key1=value1, key2=value2, key3=value3, key4=value4, key5=value5
     )
-    
+
     # Deeply nested call
     nested = func1(func2(func3(func4(func5()))))
-    
+
     return result
 """
 

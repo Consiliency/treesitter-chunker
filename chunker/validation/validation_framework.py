@@ -884,7 +884,7 @@ class LoadTester:
         start_time = time.time()
 
         # Simulate memory allocation
-        data = [i for i in range(10000)]  # Allocate some memory
+        data = list(range(10000))  # Allocate some memory
         time.sleep(0.02)  # 20ms of work
 
         return {
@@ -1465,7 +1465,7 @@ class RegressionTester:
         try:
             # Memory allocation benchmark
             start_time = time.time()
-            data = [i for i in range(100000)]
+            data = list(range(100000))
             benchmarks["memory_allocation_100k_items"] = time.time() - start_time
 
             # CPU intensive benchmark

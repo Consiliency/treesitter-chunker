@@ -501,7 +501,7 @@ def _walk(
                 parent_context=current_chunk.parent_context,
                 content=current_chunk.content,
                 parent_chunk_id=current_chunk.parent_chunk_id,
-                parent_route=current_route + ["widget_class"],
+                parent_route=[*current_route, "widget_class"],
             )
             chunks.append(widget_chunk)
         # Vue: synthesize a component_definition from script contents
@@ -522,7 +522,7 @@ def _walk(
                         parent_context="script_element",
                         content=current_chunk.content,
                         parent_chunk_id=current_chunk.parent_chunk_id,
-                        parent_route=current_route + ["component_definition"],
+                        parent_route=[*current_route, "component_definition"],
                     )
                     chunks.append(comp_chunk)
             except Exception:
@@ -552,7 +552,7 @@ def _walk(
                             parent_context="script_element",
                             content=line,
                             parent_chunk_id=current_chunk.parent_chunk_id,
-                            parent_route=current_route + ["reactive_statement"],
+                            parent_route=[*current_route, "reactive_statement"],
                         )
                         chunks.append(reactive_chunk)
             except Exception:

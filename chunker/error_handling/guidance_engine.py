@@ -1101,8 +1101,7 @@ class UserActionGuidanceEngine:
                 estimated_total_time=self._calculate_total_time(personalized_actions),
                 difficulty_level=user_profile.experience_level,
                 success_rate=sequence.success_rate,
-                tags=sequence.tags
-                + ["personalized", user_profile.experience_level.value],
+                tags=[*sequence.tags, "personalized", user_profile.experience_level.value],
             )
 
             logger.info(
@@ -1647,7 +1646,7 @@ class GuidancePersonalizer:
                 ),
                 difficulty_level=user_profile.experience_level,
                 success_rate=sequence.success_rate,
-                tags=sequence.tags + ["personalized", f"user_{user_id}"],
+                tags=[*sequence.tags, "personalized", f"user_{user_id}"],
             )
 
             logger.info(f"Personalized sequence for user {user_id}")
@@ -2442,7 +2441,7 @@ class GuidanceQualityAssessor:
                 score += 0.25
 
             # Comprehensive coverage
-            categories_covered = set(action.category for action in sequence.actions)
+            categories_covered = {action.category for action in sequence.actions}
             expected_categories = {
                 GuidanceType.IMMEDIATE_ACTION,
                 GuidanceType.DIAGNOSTIC_STEPS,

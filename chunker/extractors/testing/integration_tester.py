@@ -113,11 +113,11 @@ class Calculator:
     def __init__(self):
         super().__init__()
         self.value = 0
-    
+
     def add(self, x):
         self.value += x
         return math.sqrt(self.value)
-        
+
 calc = Calculator()
 calc.add(5)
 """,
@@ -135,16 +135,16 @@ async def complex_function():
 class DataProcessor:
     def __init__(self, **kwargs):
         self.config = dict(**kwargs)
-        
+
     def process(self):
         with open("file.txt") as f:
             data = json.loads(f.read())
-        
+
         return {
             'result': self.transform(data),
             'metadata': self.get_metadata()
         }
-        
+
 processor = DataProcessor(timeout=30)
 result = processor.process()
 """,
@@ -153,17 +153,17 @@ result = processor.process()
 def test_edge_cases():
     # Nested function calls
     result = func1(func2(func3()))
-    
+
     # Method chaining
     obj.method1().method2().method3()
-    
+
     # Complex expressions
     value = (lambda x: x*2)(func_call())
-    
+
     # Dictionary/list operations
     data = {"key": func_value()}
     items = [process(x) for x in get_data()]
-    
+
     # Try/except with calls
     try:
         risky_operation()
@@ -171,7 +171,7 @@ def test_edge_cases():
         handle_error(e)
     finally:
         cleanup_resources()
-        
+
     return validate_result(result)
 """,
             },
@@ -189,7 +189,7 @@ class Calculator {
         super();
         this.value = 0;
     }
-    
+
     add(x) {
         this.value += x;
         return Math.sqrt(this.value);
@@ -209,7 +209,7 @@ const AsyncComponent = async () => {
         cache.get('key'),
         db.query('SELECT * FROM table')
     ]);
-    
+
     return results.map(r => r.process());
 };
 
@@ -218,11 +218,11 @@ class DataProcessor extends Component {
         super(props);
         this.state = { data: [] };
     }
-    
+
     componentDidMount() {
         this.loadData();
     }
-    
+
     async loadData() {
         try {
             const response = await fetch('/api/data');
@@ -233,7 +233,7 @@ class DataProcessor extends Component {
             this.handleError(error);
         }
     }
-    
+
     render() {
         return <div>{this.renderData()}</div>;
     }
@@ -284,7 +284,7 @@ impl Calculator {
     fn new() -> Self {
         Self { value: 0 }
     }
-    
+
     fn add(&mut self, x: i32) {
         self.value += x;
         std::println!("Value: {}", self.value);
@@ -311,10 +311,10 @@ impl DataProcessor {
             .buffer_unordered(10)
             .collect::<Vec<_>>()
             .await;
-        
+
         Ok(results.into_iter().collect::<Result<Vec<_>, _>>()?)
     }
-    
+
     async fn load_data(&self) -> Result<Vec<String>, std::io::Error> {
         tokio::fs::read_to_string("data.txt")
             .await
@@ -356,7 +356,7 @@ let mapped = data.iter().map(|&x| closure(x)).collect();
 // Trait method calls
 impl Iterator for MyStruct {
     type Item = i32;
-    
+
     fn next(&mut self) -> Option<Self::Item> {
         self.generate_next()
     }
@@ -413,10 +413,10 @@ func (dp *DataProcessor) Process(ctx context.Context) ([]int, error) {
     if err != nil {
         return nil, handleError(err)
     }
-    
+
     var wg sync.WaitGroup
     results := make([]int, len(data))
-    
+
     for i, item := range data {
         wg.Add(1)
         go func(idx int, val string) {
@@ -424,7 +424,7 @@ func (dp *DataProcessor) Process(ctx context.Context) ([]int, error) {
             results[idx] = dp.transform(val)
         }(i, item)
     }
-    
+
     wg.Wait()
     return validateResults(results), nil
 }
@@ -432,13 +432,13 @@ func (dp *DataProcessor) Process(ctx context.Context) ([]int, error) {
 func main() {
     ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
     defer cancel()
-    
+
     processor := &DataProcessor{config: make(map[string]string)}
     results, err := processor.Process(ctx)
     if err != nil {
         log.Fatal(handleFatalError(err))
     }
-    
+
     fmt.Printf("Processed %d items\\n", len(results))
 }
 """,
@@ -447,23 +447,23 @@ func main() {
 func complexFunction() {
     defer cleanup()
     defer func() { recover() }()
-    
+
     go backgroundProcess()
     go func() {
         processAsync()
     }()
-    
+
     // Channel operations
     ch := make(chan int)
     go sender(ch)
     result := <-ch
-    
+
     // Interface calls
     var processor interface{} = &DataProcessor{}
     if p, ok := processor.(Processor); ok {
         p.Process()
     }
-    
+
     // Method expressions
     fn := (*Calculator).Add
     fn(calc, 10)
@@ -520,17 +520,17 @@ int main() {
         .process = process_function,
         .cleanup = cleanup_function
     };
-    
+
     pthread_t thread;
     pthread_create(&thread, NULL, worker_thread, &processor);
     pthread_join(thread, NULL);
-    
+
     FILE* file = fopen("output.txt", "w");
     if (file) {
         fprintf(file, "Result: %d\\n", calculate_final_result());
         fclose(file);
     }
-    
+
     return 0;
 }
 """,
@@ -549,14 +549,14 @@ void register_callback(callback_t cb) {
 int complex_main() {
     CALL_FUNC(process, 42);
     LOG("Processing started");
-    
+
     // Function pointer calls
     int (*operation)(int, int) = &add_numbers;
     int result = operation(10, 20);
-    
+
     // Variadic function calls
     printf("Values: %d, %s, %f\\n", result, "test", 3.14);
-    
+
     return validate_and_exit(result);
 }
 """,
@@ -569,17 +569,17 @@ int complex_main() {
 class Calculator {
 private:
     int value;
-    
+
 public:
     Calculator() : value(0) {
         initialize();
     }
-    
+
     void add(int x) {
         value += x;
         std::cout << "Value: " << value << std::endl;
     }
-    
+
     ~Calculator() {
         cleanup();
     }
@@ -589,10 +589,10 @@ int main() {
     std::cout << "Hello World" << std::endl;
     auto calc = std::make_unique<Calculator>();
     calc->add(5);
-    
+
     int result = calculateSum(10, 20);
     processData(result);
-    
+
     return 0;
 }
 """,
@@ -606,21 +606,21 @@ template<typename T>
 class DataProcessor {
 private:
     std::vector<T> data;
-    
+
 public:
     template<typename Func>
     auto process(Func transformer) -> std::vector<decltype(transformer(T{}))> {
         std::vector<decltype(transformer(T{}))> results;
-        
-        std::transform(data.begin(), data.end(), 
+
+        std::transform(data.begin(), data.end(),
                       std::back_inserter(results),
                       [&](const T& item) {
                           return transformer(item);
                       });
-        
+
         return results;
     }
-    
+
     std::future<void> async_process() {
         return std::async(std::launch::async, [this]() {
             for (auto& item : data) {
@@ -633,19 +633,19 @@ public:
 
 int main() {
     DataProcessor<int> processor;
-    
-    auto results = processor.process([](int x) { 
-        return std::to_string(x); 
+
+    auto results = processor.process([](int x) {
+        return std::to_string(x);
     });
-    
+
     auto future = processor.async_process();
     future.wait();
-    
-    std::for_each(results.begin(), results.end(), 
+
+    std::for_each(results.begin(), results.end(),
                   [](const std::string& s) {
                       std::cout << s << std::endl;
                   });
-    
+
     return 0;
 }
 """,
@@ -665,7 +665,7 @@ public:
     ResourceManager() : resource(acquire_resource()) {
         register_cleanup(std::bind(&ResourceManager::cleanup, this));
     }
-    
+
     ~ResourceManager() {
         release_resource(resource);
     }
@@ -674,12 +674,12 @@ public:
 // STL algorithm usage
 void stl_example() {
     std::vector<int> data = {1, 2, 3, 4, 5};
-    
+
     std::sort(data.begin(), data.end(), std::greater<int>());
-    
-    auto it = std::find_if(data.begin(), data.end(), 
+
+    auto it = std::find_if(data.begin(), data.end(),
                           [](int x) { return x > 3; });
-    
+
     if (it != data.end()) {
         process_found_element(*it);
     }
@@ -696,7 +696,7 @@ public class Main {
         calc.add(5);
         processData(result);
     }
-    
+
     private static int calculateSum(int a, int b) {
         return Math.addExact(a, b);
     }
@@ -704,13 +704,13 @@ public class Main {
 
 class Calculator {
     private int value;
-    
+
     public Calculator() {
         super();
         this.value = 0;
         initialize();
     }
-    
+
     public void add(int x) {
         this.value += x;
         System.out.println("Value: " + this.value);
@@ -723,7 +723,7 @@ import java.util.stream.*;
 
 public class DataProcessor {
     private final ExecutorService executor = Executors.newFixedThreadPool(10);
-    
+
     public CompletableFuture<List<String>> processAsync(List<Integer> data) {
         return CompletableFuture.supplyAsync(() -> {
             return data.stream()
@@ -733,7 +733,7 @@ public class DataProcessor {
                       .collect(Collectors.toList());
         }, executor);
     }
-    
+
     private String transform(Integer value) {
         try {
             Thread.sleep(100);
@@ -744,7 +744,7 @@ public class DataProcessor {
             return null;
         }
     }
-    
+
     public void cleanup() {
         executor.shutdown();
         try {
@@ -758,14 +758,14 @@ public class DataProcessor {
                 "edge_cases": """
 // Generics, lambdas, and method references
 public class GenericProcessor<T extends Comparable<T>> {
-    
+
     public <R> Stream<R> process(List<T> data, Function<T, R> mapper) {
         return data.stream()
                    .sorted(T::compareTo)
                    .map(mapper)
                    .filter(Objects::nonNull);
     }
-    
+
     // Anonymous inner classes
     private final Comparator<T> customComparator = new Comparator<T>() {
         @Override
@@ -773,7 +773,7 @@ public class GenericProcessor<T extends Comparable<T>> {
             return o1.compareTo(o2);
         }
     };
-    
+
     // Method chaining with builder pattern
     public static Builder builder() {
         return new Builder()
@@ -787,7 +787,7 @@ public class GenericProcessor<T extends Comparable<T>> {
 public void reflectionExample() throws Exception {
     Class<?> clazz = Class.forName("com.example.Calculator");
     Object instance = clazz.getDeclaredConstructor().newInstance();
-    
+
     Method method = clazz.getMethod("add", int.class);
     method.invoke(instance, 42);
 }
@@ -2544,7 +2544,7 @@ def test_function():
         mixed_code = """
 def valid_function():
     print("this works")
-    
+
 def invalid syntax here {
     broken code
 }
@@ -2822,7 +2822,7 @@ function valid2() { call2(); }
                     "successful_threads": sum(1 for r in lang_results if r is not None),
                     "failed_threads": sum(1 for e in lang_errors if e is not None),
                     "consistent_results": len(
-                        set(len(r.call_sites) for r in lang_results if r),
+                        {len(r.call_sites) for r in lang_results if r},
                     )
                     <= 1,
                 }

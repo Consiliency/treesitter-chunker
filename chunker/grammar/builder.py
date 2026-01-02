@@ -183,7 +183,7 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
                 c_files = [
                     f
                     for f in c_files
-                    if f.endswith("parser.c") or f.endswith("scanner.c")
+                    if f.endswith(("parser.c", "scanner.c"))
                 ]
                 cc_files = []
 

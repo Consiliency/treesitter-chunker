@@ -1,13 +1,13 @@
 """Comprehensive System Integration Testing for Phase 1.7 - Task E3.
 
-This module implements comprehensive system integration testing that validates the complete Phase 1.7 
-system with all groups working together. It tests error handling pipeline integration, grammar 
+This module implements comprehensive system integration testing that validates the complete Phase 1.7
+system with all groups working together. It tests error handling pipeline integration, grammar
 management CLI functionality, end-to-end workflows, and Phase 1.8 readiness.
 
 Key Features:
 - Complete system integration test suite
 - Error handling pipeline validation
-- Grammar management CLI testing  
+- Grammar management CLI testing
 - End-to-end workflow testing across all groups
 - Performance testing and benchmarking
 - Phase 1.8 alignment validation
@@ -1060,9 +1060,7 @@ class SystemIntegrationTester:
         results["grammar_sources"] = {
             "count": len(grammar_sources),
             "languages": list(grammar_sources.keys())[:10],  # First 10 languages
-            "sample_urls": {
-                lang: url for lang, url in list(grammar_sources.items())[:3]
-            },
+            "sample_urls": dict(list(grammar_sources.items())[:3]),
         }
 
         # Test CLI error handling integration
@@ -1220,7 +1218,7 @@ class SystemIntegrationTester:
 
         # Calculate overall workflow success
         successful_steps = sum(
-            1 for step in workflow_steps if step.get("success", True) != False
+            1 for step in workflow_steps if step.get("success", True)
         )
         results["workflow_success_rate"] = successful_steps / len(workflow_steps)
         results["total_steps"] = len(workflow_steps)
@@ -2181,7 +2179,7 @@ class SystemIntegrationTester:
 </head>
 <body>
     <h1>System Integration Test Report</h1>
-    
+
     <div class="summary">
         <h2>Summary</h2>
         <div class="metrics">
@@ -2199,17 +2197,17 @@ class SystemIntegrationTester:
             </div>
         </div>
     </div>
-    
+
     {test_suites_html}
-    
+
     <div class="summary">
         <h2>Phase 1.8 Readiness</h2>
         <p><strong>Status:</strong> {readiness_status}</p>
         <p><strong>Success Rate:</strong> {phase18_success_rate:.1f}%</p>
     </div>
-    
+
     {recommendations_html}
-    
+
 </body>
 </html>
         """

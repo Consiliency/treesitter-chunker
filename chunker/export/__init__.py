@@ -12,9 +12,9 @@ from .formats import (
 )
 
 try:  # optional parquet
-    from .formats import StructuredParquetExporter  # type: ignore
+    from .formats import StructuredParquetExporter  # type: ignore[attr-defined]
 except Exception:
-    StructuredParquetExporter = None  # type: ignore
+    StructuredParquetExporter = None  # type: ignore[assignment]
 from .formatters import SchemaType, get_formatter
 from .json_export import JSONExporter, JSONLExporter
 from .relationships import ASTRelationshipTracker
@@ -29,9 +29,9 @@ __all__ = [
     "JSONLExporter",
     "Neo4jExporter",
     "PostgreSQLExporter",
-    "SemanticLensExporter",
     "SQLiteExporter",
     "SchemaType",
+    "SemanticLensExporter",
     # Structured exports
     "StructuredExportOrchestrator",
     "StructuredJSONExporter",

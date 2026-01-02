@@ -327,21 +327,21 @@ def complex_func(a, b=None):
         result2 = obj.method()
         result3 = getattr(obj, 'dynamic_method')()
         result4 = print("test")
-        
+
         return [result1, result2, result3, result4]
-    
+
     return inner()
 
-# Class with simple inheritance 
+# Class with simple inheritance
 class ComplexClass:
     attr = "default"
-    
+
     def computed(self):
         return sum(range(10))
-    
+
     def factory(self):
         return self
-    
+
     def __call__(self, *args):
         return f"Called with {len(args)}"
 

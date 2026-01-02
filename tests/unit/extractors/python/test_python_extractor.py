@@ -31,7 +31,7 @@ def greet(name):
 class Calculator:
     def add(self, a, b):
         return a + b
-    
+
     def multiply(self, x, y):
         result = self.add(x * y, 0)
         return result
@@ -52,40 +52,40 @@ class DataProcessor:
     def __init__(self, config):
         self.config = config
         self.logger = self._setup_logger()
-    
+
     def _setup_logger(self):
         import logging
         return logging.getLogger(__name__)
-    
+
     def process_data(self, data, **kwargs):
         # Method calls with various patterns
         processed = self._transform(data)
         validated = self.validate(processed, strict=True)
-        
+
         # Chained method calls
         result = self.config.get('output', {}).get('format', 'json')
-        
+
         # Function calls with complex arguments
         output = json.dumps(validated, default=str, indent=2)
-        
+
         # Built-in functions
         items = list(validated.items())
         count = len(items)
-        
+
         # Nested calls
         final = self._finalize(self._cleanup(validated))
-        
+
         return final
-    
+
     def _transform(self, data):
         return data
-    
+
     def validate(self, data, strict=False):
         return data
-    
+
     def _cleanup(self, data):
         return data
-    
+
     def _finalize(self, data):
         return data
 
@@ -264,7 +264,7 @@ class MathUtils:
     @staticmethod
     def multiply(a, b):
         return a * b
-    
+
     def divide(self, a, b):
         if b == 0:
             raise ValueError("Division by zero")
@@ -282,7 +282,7 @@ quotient = utils.divide(10, 2)
 def broken_function(
     # Missing closing parenthesis and other syntax errors
     print "Hello World"  # Python 2 style print
-    return 
+    return
 """
 
     def test_initialization(self):
@@ -425,7 +425,7 @@ try:
     result = int(input("Enter number: "))
 except ValueError as e:
     print(f"Error: {e}")
-    
+
 # Async calls (if supported)
 async def async_func():
     await some_async_call()
@@ -540,55 +540,55 @@ class Config:
     debug: bool = False
     max_workers: int = 4
     output_dir: Path = Path("output")
-    
+
     def __post_init__(self):
         """Post-initialization validation."""
         if not isinstance(self.output_dir, Path):
             self.output_dir = Path(self.output_dir)
-        
+
         if not self.output_dir.exists():
             self.output_dir.mkdir(parents=True, exist_ok=True)
 
 class DataProcessor:
     """Process data with various operations."""
-    
+
     def __init__(self, config: Config):
         self.config = config
         self.logger = logging.getLogger(self.__class__.__name__)
         self._setup_logging()
-        
+
     def _setup_logging(self):
         """Set up logging configuration."""
         level = logging.DEBUG if self.config.debug else logging.INFO
         logging.basicConfig(level=level)
-        
+
     def process_files(self, file_paths: List[Path]) -> Dict[str, any]:
         """Process multiple files."""
         results = {}
-        
+
         for file_path in file_paths:
             try:
                 self.logger.info(f"Processing {file_path}")
                 data = self._read_file(file_path)
                 processed = self._process_data(data)
                 results[str(file_path)] = processed
-                
+
             except Exception as e:
                 self.logger.error(f"Error processing {file_path}: {e}")
                 results[str(file_path)] = None
-                
+
         return results
-        
+
     def _read_file(self, file_path: Path) -> Dict:
         """Read and parse JSON file."""
         with open(file_path, 'r', encoding='utf-8') as f:
             return json.load(f)
-            
+
     def _process_data(self, data: Dict) -> Dict:
         """Process data with transformations."""
         # Various data transformations
         processed = {}
-        
+
         for key, value in data.items():
             if isinstance(value, str):
                 processed[key] = value.strip().lower()
@@ -598,43 +598,43 @@ class DataProcessor:
                 processed[key] = [self._normalize_item(item) for item in value]
             else:
                 processed[key] = str(value)
-                
+
         return processed
-        
+
     def _normalize_item(self, item):
         """Normalize individual items."""
         if hasattr(item, 'strip'):
             return item.strip()
         return item
-        
+
     def save_results(self, results: Dict, output_file: Optional[Path] = None):
         """Save processing results."""
         if output_file is None:
             output_file = self.config.output_dir / "results.json"
-            
+
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(results, f, indent=2, default=str)
-            
+
         self.logger.info(f"Results saved to {output_file}")
 
 def main():
     """Main entry point."""
     config = Config(debug=True)
     processor = DataProcessor(config)
-    
+
     # Get files from command line or default
     if len(sys.argv) > 1:
         file_paths = [Path(arg) for arg in sys.argv[1:]]
     else:
         file_paths = list(Path.cwd().glob("*.json"))
-        
+
     if not file_paths:
         print("No files to process")
         return
-        
+
     results = processor.process_files(file_paths)
     processor.save_results(results)
-    
+
     print(f"Processed {len(results)} files")
 
 if __name__ == "__main__":

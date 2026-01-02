@@ -99,7 +99,7 @@ class ExtractionResult:
         """Add an error to the result."""
         if exception:
             error_msg = f"{error}: {exception!s}"
-            logger.error(error_msg, exc_info=True)
+            logger.error(error_msg)
         else:
             error_msg = error
             logger.error(error_msg)
@@ -640,7 +640,7 @@ class ExtractionUtils:
                 errors.append("invalid byte offsets")
 
             # Verify line/column matches byte offsets
-            calc_line, calc_col = ExtractionUtils.calculate_line_column(
+            calc_line, _calc_col = ExtractionUtils.calculate_line_column(
                 source_code,
                 call_site.byte_start,
             )

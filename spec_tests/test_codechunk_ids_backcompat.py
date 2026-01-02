@@ -31,7 +31,8 @@ def test_chunk_id_aliases_node_id_and_exporter_prefers_node_id():
         pathlib.Path(__file__).parents[1] / "chunker/export/database_exporter_base.py"
     )
     spec = importlib.util.spec_from_file_location("db_exp_base_local", mod_path)
-    assert spec and spec.loader
+    assert spec
+    assert spec.loader
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)  # type: ignore[attr-defined]
     DatabaseExporterBase = mod.DatabaseExporterBase

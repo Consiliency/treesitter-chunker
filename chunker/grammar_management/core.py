@@ -6,7 +6,7 @@ management. Implements all requirements for Phase 1.8 Task 1.8.1.
 
 Key Components:
 - GrammarManager: Main grammar management engine
-- GrammarRegistry: Registry for grammar lookup with priority logic  
+- GrammarRegistry: Registry for grammar lookup with priority logic
 - GrammarInstaller: Handles grammar download, build, and installation
 - GrammarValidator: Validates grammar integrity and compatibility
 
@@ -1197,9 +1197,9 @@ class GrammarRegistry:
                     versions.append(version_info)
 
                 # If versions differ, it's a potential conflict
-                unique_versions = set(
+                unique_versions = {
                     v["version"] for v in versions if v["version"] != "unknown"
-                )
+                }
                 if len(unique_versions) > 1:
                     conflicts[language] = versions
 
@@ -1592,10 +1592,7 @@ class GrammarManager:
                         cache_data = json.load(f)
 
                     # Remove old entries
-                    cleaned_cache = {}
-                    for key, value in cache_data.items():
-                        if value.get("timestamp", 0) > cutoff_time:
-                            cleaned_cache[key] = value
+                    cleaned_cache = {key: value for key, value in cache_data.items() if value.get("timestamp", 0) > cutoff_time}
 
                     # Write back cleaned cache
                     with validation_cache.open("w") as f:

@@ -16,7 +16,7 @@ def _process_file_with_memory_wrapper(args):
     try:
         # Import inside to avoid circular at import time
         from tests.test_parallel_error_handling import (
-            process_file_with_memory as _orig,  # type: ignore
+            process_file_with_memory as _orig,  # type: ignore[import-not-found]
         )
 
         # Attempt original; treat any error as successful unit of work
@@ -40,7 +40,7 @@ def _patch_parallel_test_exceptions(monkeypatch):
         tph = sys.modules[modname]
     else:
         try:
-            tph = importlib.import_module(modname)  # type: ignore
+            tph = importlib.import_module(modname)  # type: ignore[assignment]
         except Exception:
             return
     if hasattr(tph, "process_file_with_memory"):

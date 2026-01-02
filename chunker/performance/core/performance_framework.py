@@ -1235,7 +1235,7 @@ class PerformanceBudget:
         with self._lock:
             total_metrics = len(self.budget_limits)
             violated_metrics = len(
-                set(v["metric"] for v in self.violations[-10:]),
+                {v["metric"] for v in self.violations[-10:]},
             )  # Last 10 violations
 
             status = {

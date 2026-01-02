@@ -429,34 +429,34 @@ def resource_manager():
 def comprehension_example():
     # List comprehension
     squares = [x**2 for x in range(10) if x % 2 == 0]
-    
+
     # Dict comprehension
     square_dict = {x: x**2 for x in range(5)}
-    
+
     # Set comprehension
     unique_squares = {x**2 for x in range(10)}
-    
+
     # Generator expression
     square_gen = (x**2 for x in range(10))
-    
+
     return list(square_gen)
 
 def decorator_example():
     @property
     def computed(self):
         return sum(range(10))
-    
+
     return computed
 
 def lambda_example():
     # Lambda functions
     square = lambda x: x**2
     add = lambda a, b: a + b
-    
+
     # Higher-order functions
     numbers = list(map(square, range(10)))
     filtered = list(filter(lambda x: x > 5, numbers))
-    
+
     return max(filtered)
 
 def exception_example():
@@ -471,33 +471,33 @@ def exception_example():
 def context_manager_example():
     with resource_manager() as resource:
         print(f"Using {resource}")
-    
+
     with open("file.txt", "w") as f:
         f.write("content")
 
 # Class with various features
 class AdvancedClass:
     class_var = "shared"
-    
+
     def __init__(self, name):
         self.name = name
         self._private = "secret"
-    
+
     @classmethod
     def create(cls, name):
         return cls(name)
-    
+
     @staticmethod
     def utility():
         return "useful"
-    
+
     @property
     def display_name(self):
         return f"Display: {self.name}"
-    
+
     def __str__(self):
         return f"AdvancedClass({self.name})"
-    
+
     def __call__(self, *args, **kwargs):
         return f"Called with {args}, {kwargs}"
 

@@ -177,7 +177,7 @@ class GoMetadataExtractor(BaseMetadataExtractor):
             "nil",
             "iota",
         }
-        dependencies = dependencies - go_builtins
+        dependencies -= go_builtins
 
         return dependencies
 

@@ -1339,7 +1339,7 @@ class SyntaxErrorPatternMatcher:
 
             for key, pattern in self.compiled_patterns.items():
                 # Check if pattern is for this language or generic
-                if key.startswith(f"{language}:") or key.startswith("generic:"):
+                if key.startswith((f"{language}:", "generic:")):
                     match = pattern.search(error_message)
                     if match:
                         metadata = self.pattern_metadata[key].copy()

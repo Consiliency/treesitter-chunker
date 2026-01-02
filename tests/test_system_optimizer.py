@@ -18,6 +18,8 @@ from unittest.mock import MagicMock, Mock, patch
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+import contextlib
+
 from chunker.performance.optimization.system_optimizer import (
     CPUOptimizer,
     IOOptimizer,
@@ -73,10 +75,8 @@ class TestSystemOptimizer(unittest.TestCase):
     def tearDown(self):
         """Clean up after tests."""
         # Stop any monitoring that might be running
-        try:
+        with contextlib.suppress(Exception):
             self.optimizer.performance_manager.stop_monitoring()
-        except Exception:
-            pass
 
     def test_system_optimizer_initialization(self):
         """Test SystemOptimizer initialization."""
@@ -274,10 +274,8 @@ class TestCPUOptimizer(unittest.TestCase):
     def tearDown(self):
         """Clean up thread pools."""
         for pool in self.optimizer.thread_pools.values():
-            try:
+            with contextlib.suppress(Exception):
                 pool.shutdown(wait=False)
-            except Exception:
-                pass
 
     def test_cpu_optimizer_initialization(self):
         """Test CPUOptimizer initialization."""
@@ -573,10 +571,8 @@ class TestIOOptimizer(unittest.TestCase):
     def tearDown(self):
         """Clean up timers."""
         for timer in self.optimizer._batch_timers.values():
-            try:
+            with contextlib.suppress(Exception):
                 timer.cancel()
-            except Exception:
-                pass
 
     def test_io_optimizer_initialization(self):
         """Test IOOptimizer initialization."""
@@ -634,7 +630,7 @@ class TestIOOptimizer(unittest.TestCase):
         self.optimizer.implement_batching()
 
         # Add operations to a batch
-        batch_name = list(self.optimizer.batch_operations.keys())[0]
+        batch_name = next(iter(self.optimizer.batch_operations.keys()))
         self.optimizer.add_to_batch(batch_name, "test_operation")
 
         batch = self.optimizer.batch_operations[batch_name]
@@ -649,7 +645,7 @@ class TestIOOptimizer(unittest.TestCase):
         """Test batch flushing."""
         # Create batches and add operation
         self.optimizer.implement_batching()
-        batch_name = list(self.optimizer.batch_operations.keys())[0]
+        batch_name = next(iter(self.optimizer.batch_operations.keys()))
         self.optimizer.add_to_batch(batch_name, "test_operation")
 
         # Flush the batch
@@ -748,10 +744,8 @@ class TestIntegration(unittest.TestCase):
 
         finally:
             # Clean up
-            try:
+            with contextlib.suppress(Exception):
                 optimizer.performance_manager.stop_monitoring()
-            except Exception:
-                pass
 
     def test_individual_optimizer_integration(self):
         """Test individual optimizers work together."""
@@ -992,7 +986,7 @@ class TestEdgeCases(unittest.TestCase):
         optimizer.create_memory_pools()
 
         # Get a pool and verify structure
-        pool_name = list(optimizer.memory_pools.keys())[0]
+        pool_name = next(iter(optimizer.memory_pools.keys()))
         pool = optimizer.memory_pools[pool_name]
 
         # Simulate using all buffers
@@ -1010,7 +1004,7 @@ class TestEdgeCases(unittest.TestCase):
         optimizer = IOOptimizer()
         optimizer.implement_batching()
 
-        batch_name = list(optimizer.batch_operations.keys())[0]
+        batch_name = next(iter(optimizer.batch_operations.keys()))
         batch = optimizer.batch_operations[batch_name]
         batch_size = batch["config"]["batch_size"]
 
@@ -1050,10 +1044,8 @@ class TestEdgeCases(unittest.TestCase):
         finally:
             # Clean up temp files
             for temp_file in temp_files:
-                try:
+                with contextlib.suppress(Exception):
                     Path(temp_file).unlink()
-                except Exception:
-                    pass
 
     def test_system_optimizer_category_improvement_no_metrics(self):
         """Test category improvement calculation with no metrics."""
@@ -1344,7 +1336,7 @@ class TestComprehensiveCoverage(unittest.TestCase):
         optimizer = IOOptimizer()
         optimizer.implement_batching()
 
-        batch_name = list(optimizer.batch_operations.keys())[0]
+        batch_name = next(iter(optimizer.batch_operations.keys()))
 
         # Schedule initial timer
         optimizer._schedule_batch_flush(batch_name)

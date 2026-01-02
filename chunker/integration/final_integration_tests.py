@@ -1,7 +1,7 @@
 """Final Integration Testing System for treesitter-chunker - Task 1.9.5.
 
-This module implements the final integration testing system that validates the complete Phase 1.9 
-system with all components working together. It provides comprehensive testing across all Phase 1.9 
+This module implements the final integration testing system that validates the complete Phase 1.9
+system with all components working together. It provides comprehensive testing across all Phase 1.9
 components including Core Integration, Performance Optimizer, User Experience, and Production Validator.
 
 Key Features:

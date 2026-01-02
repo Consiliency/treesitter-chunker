@@ -111,10 +111,10 @@ class LanguageVersion:
                 return (int(parts[0]), int(parts[1]))
             if len(parts) == 1:
                 return (int(parts[0]), 0)
-            return tuple()
+            return ()
         except (ValueError, IndexError) as e:
             logger.error(f"Error parsing version {self.version}: {e}")
-            return tuple()
+            return ()
 
 
 @dataclass

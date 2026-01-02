@@ -72,7 +72,7 @@ class RustMetadataExtractor(BaseMetadataExtractor):
         """Extract doc comment from a node."""
         # Rust uses /// or //! for doc comments
         comment = self._extract_leading_comment(node, source)
-        if comment and (comment.startswith("///") or comment.startswith("//!")):
+        if comment and (comment.startswith(("///", "//!"))):
             return comment.strip("/").strip()
         return None
 
@@ -223,7 +223,7 @@ class RustMetadataExtractor(BaseMetadataExtractor):
             "Debug",
             "Display",
         }
-        dependencies = dependencies - rust_builtins
+        dependencies -= rust_builtins
 
         return dependencies
 

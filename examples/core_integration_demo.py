@@ -14,6 +14,7 @@ Key Features Demonstrated:
 - Thread-safe singleton pattern
 """
 
+import sys
 import time
 from pathlib import Path
 
@@ -32,7 +33,7 @@ except ImportError:
         "Core integration not available. Install treesitter-chunker with integration support.",
     )
     INTEGRATION_AVAILABLE = False
-    exit(1)
+    sys.exit(1)
 
 
 def demo_system_initialization():

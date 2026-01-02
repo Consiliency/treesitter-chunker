@@ -137,7 +137,7 @@ class PerformanceAlert:
 
 
 @dataclass
-class CacheEntry(Generic[T]):
+class CacheEntry[T]:
     """Cache entry with metadata."""
 
     key: str
@@ -207,7 +207,7 @@ class MemoryPool:
             }
 
 
-class LRUCache(Generic[K, V]):
+class LRUCache[K, V]:
     """Thread-safe LRU cache with TTL support."""
 
     def __init__(self, max_size: int = 1000, default_ttl: timedelta | None = None):
@@ -511,7 +511,7 @@ class CacheOptimizer:
             try:
                 # Get warming task with timeout
                 try:
-                    priority, key, value_factory = self.warming_queue.get(timeout=1.0)
+                    _priority, key, value_factory = self.warming_queue.get(timeout=1.0)
                 except Empty:
                     continue
 
@@ -720,7 +720,7 @@ class MemoryOptimizer:
             thresholds = gc.get_threshold()
 
             # Adjust thresholds based on memory pressure
-            memory_mb, pressure_level = self.check_memory_pressure()
+            _memory_mb, pressure_level = self.check_memory_pressure()
 
             if pressure_level == "critical":
                 # More aggressive GC

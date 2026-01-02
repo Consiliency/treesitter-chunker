@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from chunker.types import CodeChunk
+if TYPE_CHECKING:
+    from chunker.types import CodeChunk
 
 
 def _normalize(value: float, low: float, high: float) -> float:

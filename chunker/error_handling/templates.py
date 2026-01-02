@@ -677,8 +677,8 @@ class TemplateRenderer:
                 f"""
             <div class="template-metadata">
                 <small>
-                    Template: {self._escape_html(template.name)} | 
-                    Type: {template.type.value} | 
+                    Template: {self._escape_html(template.name)} |
+                    Type: {template.type.value} |
                     Generated: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}
                 </small>
             </div>
@@ -715,8 +715,8 @@ class TemplateRenderer:
         if variables.get("include_metadata"):
             metadata = f"""
 ---
-**Template:** {template.name}  
-**Type:** {template.type.value}  
+**Template:** {template.name}
+**Type:** {template.type.value}
 **Generated:** {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}
 ---
 
@@ -1492,7 +1492,7 @@ For more information, visit: ${documentation_url}
             if category:
                 categories.add(category)
 
-        return sorted(list(categories))
+        return sorted(categories)
 
     def list_tags(self) -> list[str]:
         """Get list of all template tags.
@@ -1510,7 +1510,7 @@ For more information, visit: ${documentation_url}
             template_tags = template.metadata.get("tags", [])
             tags.update(template_tags)
 
-        return sorted(list(tags))
+        return sorted(tags)
 
     def get_statistics(self) -> dict[str, Any]:
         """Get library statistics.

@@ -277,7 +277,7 @@ print(message)
 # Test with walrus operator (Python 3.8+)
 if (n := len(message)) > 5:
     print(f"Long message: {n}")
-    
+
 # Test with match statement (Python 3.10+)
 def handle_value(value):
     match value:

@@ -851,7 +851,7 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
 
             from chunker.graph.xref import build_xref
 
-            nodes, edges = build_xref(all_chunks)
+            _nodes, edges = build_xref(all_chunks)
             spans = [
                 {
                     "file_id": getattr(c, "file_id", ""),

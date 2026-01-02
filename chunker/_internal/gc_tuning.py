@@ -15,9 +15,9 @@ from dataclasses import dataclass
 from typing import Any
 
 try:
-    import psutil  # type: ignore
+    import psutil  # type: ignore[import-untyped]
 except Exception:  # pragma: no cover
-    psutil = None  # type: ignore
+    psutil = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 

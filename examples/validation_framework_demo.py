@@ -4,7 +4,7 @@ Demonstration of the comprehensive validation framework for treesitter-chunker.
 
 This demo shows how to use the validation framework for:
 1. Performance validation and benchmarking
-2. Load testing and stress testing  
+2. Load testing and stress testing
 3. Regression detection and prevention
 4. Full system validation
 
@@ -351,4 +351,4 @@ def main():
 
 
 if __name__ == "__main__":
-    exit(main())
+    sys.exit(main())

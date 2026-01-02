@@ -817,7 +817,7 @@ class TestPerformanceUtils:
         @PerformanceUtils.profile_memory_usage
         def test_function():
             # Allocate some memory
-            data = [i for i in range(1000)]
+            data = list(range(1000))
             return data
 
         result = test_function()

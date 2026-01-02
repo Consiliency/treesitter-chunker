@@ -18,8 +18,6 @@ from chunker.exceptions import (
     LibraryNotFoundError,
 )
 
-if TYPE_CHECKING:
-    from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
@@ -213,13 +211,13 @@ class LanguageRegistry:
                     # Try to load from individual library instead of just creating placeholder
                     language = self._try_load_from_individual_library(lang_name)
                     if language is not None:
-                        has_scanner = True if lang_name == "cpp" else False
+                        has_scanner = lang_name == "cpp"
                         is_compatible = True
                         language_version = "14"
                     else:
                         # Fall back to placeholder metadata when individual library not available
                         language = None
-                        has_scanner = True if lang_name == "cpp" else False
+                        has_scanner = lang_name == "cpp"
                         is_compatible = True
                         language_version = "14"
                 else:
