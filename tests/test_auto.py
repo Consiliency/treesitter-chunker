@@ -139,8 +139,12 @@ class TestZeroConfigAPI:
             f.write("#!/usr/bin/env python3\n")
             f.write("print('hello')")
             f.flush()
-            assert api.detect_language(Path(f.name)) == "python"
-            Path(f.name).unlink()
+            temp_path = Path(f.name)
+
+        try:
+            assert api.detect_language(temp_path) == "python"
+        finally:
+            temp_path.unlink(missing_ok=True)
 
     @classmethod
     def test_detect_language_special_files(cls, api):
@@ -171,6 +175,7 @@ class TestZeroConfigAPI:
         ) as f:
             f.write("def hello():\n    print('world')")
             f.flush()
+            temp_path = Path(f.name)
             mock_chunks = [
                 CodeChunk(
                     language="python",
@@ -186,14 +191,17 @@ class TestZeroConfigAPI:
                     metadata={"name": "hello"},
                 ),
             ]
+
+        try:
             with patch("chunker.auto.chunk_file", return_value=mock_chunks):
-                result = api.auto_chunk_file(f.name)
+                result = api.auto_chunk_file(str(temp_path))
             assert isinstance(result, AutoChunkResult)
             assert result.language == "python"
             assert result.fallback_used is False
             assert len(result.chunks) == 1
             assert result.chunks[0]["type"] == "function_definition"
-            Path(f.name).unlink()
+        finally:
+            temp_path.unlink(missing_ok=True)
 
     @classmethod
     def test_auto_chunk_file_fallback(cls, api):
@@ -206,12 +214,16 @@ class TestZeroConfigAPI:
         ) as f:
             f.write("This is some text content\nthat should be chunked")
             f.flush()
-            result = api.auto_chunk_file(f.name)
+            temp_path = Path(f.name)
+
+        try:
+            result = api.auto_chunk_file(str(temp_path))
             assert isinstance(result, AutoChunkResult)
             assert result.language == "unknown"
             assert result.fallback_used is True
             assert len(result.chunks) > 0
-            Path(f.name).unlink()
+        finally:
+            temp_path.unlink(missing_ok=True)
 
     @classmethod
     def test_auto_chunk_file_with_language_override(cls, api):
@@ -224,6 +236,7 @@ class TestZeroConfigAPI:
         ) as f:
             f.write("def hello():\n    print('world')")
             f.flush()
+            temp_path = Path(f.name)
             mock_chunks = [
                 CodeChunk(
                     language="python",
@@ -238,11 +251,14 @@ class TestZeroConfigAPI:
     print('world')""",
                 ),
             ]
+
+        try:
             with patch("chunker.auto.chunk_file", return_value=mock_chunks):
-                result = api.auto_chunk_file(f.name, language="python")
+                result = api.auto_chunk_file(str(temp_path), language="python")
             assert result.language == "python"
             assert result.fallback_used is False
-            Path(f.name).unlink()
+        finally:
+            temp_path.unlink(missing_ok=True)
 
     @classmethod
     def test_chunk_text_success(cls, api):
