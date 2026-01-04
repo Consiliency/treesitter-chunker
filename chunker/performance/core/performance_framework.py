@@ -663,32 +663,31 @@ class MetricsCollector:
                 except (AttributeError, OSError):
                     pass
 
-            else:
-                # Fallback: basic CPU monitoring using resource module
-                if HAS_RESOURCE:
-                    try:
-                        # Get process CPU time
-                        cpu_time = resource.getrusage(resource.RUSAGE_SELF)
-                        metrics["process_cpu_time"] = (
-                            cpu_time.ru_utime + cpu_time.ru_stime
+            # Fallback: basic CPU monitoring using resource module
+            elif HAS_RESOURCE:
+                try:
+                    # Get process CPU time
+                    cpu_time = resource.getrusage(resource.RUSAGE_SELF)
+                    metrics["process_cpu_time"] = (
+                        cpu_time.ru_utime + cpu_time.ru_stime
+                    )
+
+                    # Estimate CPU usage (basic approximation)
+                    if hasattr(self, "_last_cpu_time"):
+                        time_delta = time.time() - self._last_cpu_check
+                        cpu_delta = (
+                            metrics["process_cpu_time"] - self._last_cpu_time
                         )
+                        if time_delta > 0:
+                            metrics["cpu_percent_estimate"] = (
+                                cpu_delta / time_delta
+                            ) * 100
 
-                        # Estimate CPU usage (basic approximation)
-                        if hasattr(self, "_last_cpu_time"):
-                            time_delta = time.time() - self._last_cpu_check
-                            cpu_delta = (
-                                metrics["process_cpu_time"] - self._last_cpu_time
-                            )
-                            if time_delta > 0:
-                                metrics["cpu_percent_estimate"] = (
-                                    cpu_delta / time_delta
-                                ) * 100
+                    self._last_cpu_time = metrics["process_cpu_time"]
+                    self._last_cpu_check = time.time()
 
-                        self._last_cpu_time = metrics["process_cpu_time"]
-                        self._last_cpu_check = time.time()
-
-                    except Exception:
-                        metrics["cpu_percent_estimate"] = 0.0
+                except Exception:
+                    metrics["cpu_percent_estimate"] = 0.0
 
         except Exception as e:
             self.logger.error(f"Error collecting CPU metrics: {e}")
@@ -724,23 +723,22 @@ class MetricsCollector:
                 metrics["process_memory_vms"] = pmem.vms
                 metrics["process_memory_percent"] = process.memory_percent()
 
-            else:
-                # Fallback: basic memory monitoring
-                if HAS_RESOURCE:
-                    try:
-                        mem_usage = resource.getrusage(resource.RUSAGE_SELF)
-                        metrics["process_memory_peak"] = (
-                            mem_usage.ru_maxrss * 1024
-                        )  # Convert to bytes
+            # Fallback: basic memory monitoring
+            elif HAS_RESOURCE:
+                try:
+                    mem_usage = resource.getrusage(resource.RUSAGE_SELF)
+                    metrics["process_memory_peak"] = (
+                        mem_usage.ru_maxrss * 1024
+                    )  # Convert to bytes
 
-                        # Use tracemalloc if available
-                        if tracemalloc.is_tracing():
-                            current, peak = tracemalloc.get_traced_memory()
-                            metrics["tracemalloc_current"] = current
-                            metrics["tracemalloc_peak"] = peak
+                    # Use tracemalloc if available
+                    if tracemalloc.is_tracing():
+                        current, peak = tracemalloc.get_traced_memory()
+                        metrics["tracemalloc_current"] = current
+                        metrics["tracemalloc_peak"] = peak
 
-                    except Exception:
-                        pass
+                except Exception:
+                    pass
 
         except Exception as e:
             self.logger.error(f"Error collecting memory metrics: {e}")
@@ -790,17 +788,16 @@ class MetricsCollector:
                 except Exception:
                     pass  # May not be available on all platforms
 
-            else:
-                # Fallback: basic I/O monitoring
-                if HAS_RESOURCE:
-                    try:
-                        io_stats = resource.getrusage(resource.RUSAGE_SELF)
-                        metrics["process_block_input"] = io_stats.ru_inblock
-                        metrics["process_block_output"] = io_stats.ru_oublock
-                        metrics["process_voluntary_switches"] = io_stats.ru_nvcsw
-                        metrics["process_involuntary_switches"] = io_stats.ru_nivcsw
-                    except Exception:
-                        pass
+            # Fallback: basic I/O monitoring
+            elif HAS_RESOURCE:
+                try:
+                    io_stats = resource.getrusage(resource.RUSAGE_SELF)
+                    metrics["process_block_input"] = io_stats.ru_inblock
+                    metrics["process_block_output"] = io_stats.ru_oublock
+                    metrics["process_voluntary_switches"] = io_stats.ru_nvcsw
+                    metrics["process_involuntary_switches"] = io_stats.ru_nivcsw
+                except Exception:
+                    pass
 
         except Exception as e:
             self.logger.error(f"Error collecting I/O metrics: {e}")
