@@ -204,7 +204,7 @@ class IntegrationCoordinator(ErrorPropagationMixin):
             resource_id=resource_id,
         )
 
-        start_time = time.time()
+        start_time = time.perf_counter()
 
         try:
             # Run the test using uv
@@ -217,7 +217,7 @@ class IntegrationCoordinator(ErrorPropagationMixin):
                 timeout=scenario.timeout,
             )
 
-            duration = time.time() - start_time
+            duration = time.perf_counter() - start_time
 
             # Determine status
             status = "passed" if result.returncode == 0 else "failed"
@@ -231,7 +231,7 @@ class IntegrationCoordinator(ErrorPropagationMixin):
             )
 
         except subprocess.TimeoutExpired:
-            duration = time.time() - start_time
+            duration = time.perf_counter() - start_time
             test_result = TestResult(
                 scenario=scenario,
                 status="error",
@@ -241,7 +241,7 @@ class IntegrationCoordinator(ErrorPropagationMixin):
             )
 
         except (OSError, subprocess.SubprocessError) as e:
-            duration = time.time() - start_time
+            duration = time.perf_counter() - start_time
             error_context = self.capture_cross_module_error(
                 source_module="coordinator.runner",
                 target_module="coordinator.main",

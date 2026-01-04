@@ -242,9 +242,6 @@ def create_default_manager() -> TaskManager:
                 assert "lines_of_code" in complexity
 
     @staticmethod
-    @pytest.mark.xfail(
-        reason="Docstring extraction not finding class docstrings - tracked in issue"
-    )
     def test_docstring_extraction_with_rules(sample_python_file_with_todos):
         """Test docstring extraction combined with docstring rules."""
         chunks = chunk_file(

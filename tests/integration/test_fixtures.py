@@ -259,9 +259,6 @@ class TestFileGeneratorFixtures:
         assert "def process_100" in content
 
     @staticmethod
-    @pytest.mark.xfail(
-        sys.platform == "win32", reason="Unicode encoding issue on Windows"
-    )
     def test_error_file_generation(test_file_generator):
         """Test error pattern file generation."""
         syntax_file = test_file_generator.create_error_file(
@@ -269,14 +266,14 @@ class TestFileGeneratorFixtures:
             error_type="syntax",
             language="python",
         )
-        content = syntax_file.read_text()
+        content = syntax_file.read_text(encoding="utf-8")
         assert "def broken(" in content
         unicode_file = test_file_generator.create_error_file(
             "unicode_error.js",
             error_type="unicode",
             language="javascript",
         )
-        content = unicode_file.read_text()
+        content = unicode_file.read_text(encoding="utf-8")
         assert "🚨" in content
         binary_file = test_file_generator.create_error_file(
             "binary.py",

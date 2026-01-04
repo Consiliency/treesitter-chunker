@@ -385,7 +385,7 @@ def test_file_generator(temp_workspace):
             else:
                 target_dir = self.workspace
             file_path = target_dir / name
-            file_path.write_text(content)
+            file_path.write_text(content, encoding="utf-8")
             self.generated_files.append(file_path)
             return file_path
 
