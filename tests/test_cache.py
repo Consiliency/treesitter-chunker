@@ -69,8 +69,30 @@ def temp_cache_dir():
     """Create a temporary cache directory."""
     cache_dir = Path(tempfile.mkdtemp()) / "cache"
     yield cache_dir
+    # Clean up with retries for Windows file locking
     if cache_dir.parent.exists():
-        shutil.rmtree(cache_dir.parent)
+        import gc
+        import sys
+
+        # Force garbage collection to close any open handles
+        gc.collect()
+
+        # Retry cleanup on Windows
+        max_attempts = 3
+        for attempt in range(max_attempts):
+            try:
+                shutil.rmtree(cache_dir.parent)
+                break
+            except (PermissionError, OSError) as e:
+                if attempt < max_attempts - 1:
+                    time.sleep(0.1 * (2 ** attempt))  # Exponential backoff
+                else:
+                    # Log the failure but don't fail the test
+                    if sys.platform == "win32":
+                        # Windows file locking is known to cause issues
+                        pass
+                    else:
+                        raise
 
 
 @pytest.fixture
@@ -149,16 +171,20 @@ class TestCacheBasics:
     def test_cache_initialization(cls, temp_cache_dir):
         """Test cache initialization creates proper directory structure."""
         cache = ASTCache(cache_dir=temp_cache_dir)
-        assert temp_cache_dir.exists()
-        assert (temp_cache_dir / "ast_cache.db").exists()
-        with sqlite3.connect(cache.db_path) as conn:
-            cursor = conn.execute(
-                "SELECT sql FROM sqlite_master WHERE type='table' AND name='file_cache'",
-            )
-            schema = cursor.fetchone()[0]
-            assert "file_path" in schema
-            assert "file_hash" in schema
-            assert "chunks_data" in schema
+        try:
+            assert temp_cache_dir.exists()
+            assert (temp_cache_dir / "ast_cache.db").exists()
+            with sqlite3.connect(cache.db_path) as conn:
+                cursor = conn.execute(
+                    "SELECT sql FROM sqlite_master WHERE type='table' AND name='file_cache'",
+                )
+                schema = cursor.fetchone()[0]
+                assert "file_path" in schema
+                assert "file_hash" in schema
+                assert "chunks_data" in schema
+        finally:
+            # Ensure cache object is deleted to release any handles
+            del cache
 
     @staticmethod
     def test_cache_and_retrieve_chunks(cache, temp_python_file):
