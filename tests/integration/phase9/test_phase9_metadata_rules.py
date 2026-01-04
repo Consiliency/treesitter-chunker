@@ -10,6 +10,7 @@ from chunker.rules.custom import MetadataRule
 from chunker.rules.engine import DefaultRuleEngine
 
 
+@pytest.mark.integration
 class TestMetadataRulesIntegration:
     """Test metadata extraction integrated with custom rules."""
 
