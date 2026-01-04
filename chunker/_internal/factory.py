@@ -156,6 +156,7 @@ class ParserFactory:
                 # Try using tree-sitter-language-pack as a fallback
                 try:
                     from tree_sitter_language_pack import get_parser as get_pack_parser
+
                     logger.info(
                         "Grammar version incompatible, falling back to tree-sitter-language-pack for '%s'",
                         language,
