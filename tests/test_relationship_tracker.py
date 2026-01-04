@@ -353,9 +353,9 @@ def process():
 
         # Should detect at least 3 cross-file calls:
         # main() -> helper_func(), main() -> another_helper(), process() -> helper_func()
-        assert len(call_rels) >= 3, (
-            f"Expected at least 3 cross-file calls, got {len(call_rels)}"
-        )
+        assert (
+            len(call_rels) >= 3
+        ), f"Expected at least 3 cross-file calls, got {len(call_rels)}"
 
         # Verify relationships span across files
         source_files = {
@@ -418,16 +418,14 @@ class Cat(Animal):
 
         # Verify cross-file inheritance is detected
         inherit_rels = [
-            r
-            for r in relationships
-            if r.relationship_type == RelationshipType.INHERITS
+            r for r in relationships if r.relationship_type == RelationshipType.INHERITS
         ]
 
         # Should detect at least 3 inheritance relationships:
         # Mammal -> Animal (same file), Dog -> Mammal (cross-file), Cat -> Animal (cross-file)
-        assert len(inherit_rels) >= 3, (
-            f"Expected at least 3 inheritance relationships, got {len(inherit_rels)}"
-        )
+        assert (
+            len(inherit_rels) >= 3
+        ), f"Expected at least 3 inheritance relationships, got {len(inherit_rels)}"
 
         # Verify at least one cross-file inheritance
         cross_file_inherit = [
@@ -493,9 +491,9 @@ function analyze(values) {
         # Should detect at least 3 cross-file calls:
         # processData() -> calculateSum(), processData() -> formatResult(),
         # analyze() -> calculateSum()
-        assert len(call_rels) >= 3, (
-            f"Expected at least 3 cross-file calls, got {len(call_rels)}"
-        )
+        assert (
+            len(call_rels) >= 3
+        ), f"Expected at least 3 cross-file calls, got {len(call_rels)}"
 
         # Verify relationships span across files
         cross_file_calls = [
@@ -504,6 +502,6 @@ function analyze(values) {
             if tracker._chunk_index[r.source_chunk_id].file_path
             != tracker._chunk_index[r.target_chunk_id].file_path
         ]
-        assert len(cross_file_calls) >= 2, (
-            f"Expected at least 2 cross-file calls, got {len(cross_file_calls)}"
-        )
+        assert (
+            len(cross_file_calls) >= 2
+        ), f"Expected at least 2 cross-file calls, got {len(cross_file_calls)}"
