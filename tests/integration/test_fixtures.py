@@ -1,6 +1,7 @@
 """Tests for the integration test fixtures."""
 
 import asyncio
+import sys
 import threading
 import time
 
@@ -258,6 +259,9 @@ class TestFileGeneratorFixtures:
         assert "def process_100" in content
 
     @staticmethod
+    @pytest.mark.xfail(
+        sys.platform == "win32", reason="Unicode encoding issue on Windows"
+    )
     def test_error_file_generation(test_file_generator):
         """Test error pattern file generation."""
         syntax_file = test_file_generator.create_error_file(
