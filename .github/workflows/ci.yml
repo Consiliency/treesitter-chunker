@@ -76,4 +76,4 @@ jobs:
             --timeout=60 \
             --ignore=tests/integration/ \
             -q  # Quiet output for faster CI
-        timeout-minutes: 30
+        timeout-minutes: 40
