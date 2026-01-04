@@ -153,16 +153,35 @@ class ParserFactory:
             return parser
         except ValueError as e:
             if "Incompatible Language version" in str(e):
-                match = re.search(
-                    r"version (\\d+)\\. Must be between (\\d+) and (\\d+)",
-                    str(e),
-                )
-                if match:
-                    grammar_ver, min_ver, max_ver = match.groups()
-                    raise ParserInitError(
+                # Try using tree-sitter-language-pack as a fallback
+                try:
+                    from tree_sitter_language_pack import get_parser as get_pack_parser
+
+                    logger.info(
+                        "Grammar version incompatible, falling back to tree-sitter-language-pack for '%s'",
                         language,
-                        f"Grammar compiled with language version {grammar_ver}, but tree-sitter library supports versions {min_ver}-{max_ver}. Consider updating tree-sitter library or recompiling grammars.",
-                    ) from e
+                    )
+                    parser = get_pack_parser(language)
+                    self._parser_count += 1
+                    logger.debug(
+                        "Created parser from language pack for '%s' (total: %d)",
+                        language,
+                        self._parser_count,
+                    )
+                    return parser
+                except (ImportError, Exception) as pack_error:
+                    match = re.search(
+                        r"version (\\d+)\\. Must be between (\\d+) and (\\d+)",
+                        str(e),
+                    )
+                    if match:
+                        grammar_ver, min_ver, max_ver = match.groups()
+                        raise ParserInitError(
+                            language,
+                            f"Grammar compiled with language version {grammar_ver}, but tree-sitter library supports versions {min_ver}-{max_ver}. "
+                            f"Fallback to tree-sitter-language-pack also failed: {pack_error}",
+                        ) from e
+                    raise ParserInitError(language, str(e)) from e
             raise ParserInitError(language, str(e)) from e
         except (IndexError, KeyError, SyntaxError, Exception) as e:
             raise ParserInitError(language, str(e)) from e

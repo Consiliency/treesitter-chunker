@@ -3,7 +3,6 @@
 import gc
 import logging
 import os
-import resource
 import threading
 import time
 import weakref
@@ -14,6 +13,15 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 # Conditional imports
+try:
+    import resource
+
+    HAS_RESOURCE = True
+except ImportError:
+    # resource module is Unix-only, not available on Windows
+    resource = None
+    HAS_RESOURCE = False
+
 try:
     import psutil
 

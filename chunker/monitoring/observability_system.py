@@ -13,7 +13,6 @@ import json
 import logging
 import os
 import queue
-import resource
 import sys
 import threading
 import time
@@ -32,6 +31,15 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 # Conditional imports
+try:
+    import resource
+
+    HAS_RESOURCE = True
+except ImportError:
+    # resource module is Unix-only, not available on Windows
+    resource = None
+    HAS_RESOURCE = False
+
 try:
     import psutil
 
@@ -502,17 +510,18 @@ class MetricsCollector:
             else:
                 # Fallback metrics without psutil
                 try:
-                    rusage = resource.getrusage(resource.RUSAGE_SELF)
-                    self._store_metric(
-                        "process_cpu_time",
-                        rusage.ru_utime + rusage.ru_stime,
-                        timestamp,
-                    )
-                    self._store_metric(
-                        "process_max_memory",
-                        rusage.ru_maxrss * 1024,
-                        timestamp,
-                    )  # Convert to bytes
+                    if HAS_RESOURCE:
+                        rusage = resource.getrusage(resource.RUSAGE_SELF)
+                        self._store_metric(
+                            "process_cpu_time",
+                            rusage.ru_utime + rusage.ru_stime,
+                            timestamp,
+                        )
+                        self._store_metric(
+                            "process_max_memory",
+                            rusage.ru_maxrss * 1024,
+                            timestamp,
+                        )  # Convert to bytes
 
                     if tracemalloc.is_tracing():
                         current, peak = tracemalloc.get_traced_memory()

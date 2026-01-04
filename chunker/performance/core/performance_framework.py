@@ -5,7 +5,6 @@ import gc
 import json
 import logging
 import os
-import resource
 import sys
 import threading
 import time
@@ -20,6 +19,15 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Protocol, Tuple, Union
 
 # Conditional imports
+try:
+    import resource
+
+    HAS_RESOURCE = True
+except ImportError:
+    # resource module is Unix-only, not available on Windows
+    resource = None
+    HAS_RESOURCE = False
+
 try:
     import psutil
 
@@ -655,8 +663,8 @@ class MetricsCollector:
                 except (AttributeError, OSError):
                     pass
 
-            else:
-                # Fallback: basic CPU monitoring using resource module
+            # Fallback: basic CPU monitoring using resource module
+            elif HAS_RESOURCE:
                 try:
                     # Get process CPU time
                     cpu_time = resource.getrusage(resource.RUSAGE_SELF)
@@ -711,8 +719,8 @@ class MetricsCollector:
                 metrics["process_memory_vms"] = pmem.vms
                 metrics["process_memory_percent"] = process.memory_percent()
 
-            else:
-                # Fallback: basic memory monitoring
+            # Fallback: basic memory monitoring
+            elif HAS_RESOURCE:
                 try:
                     mem_usage = resource.getrusage(resource.RUSAGE_SELF)
                     metrics["process_memory_peak"] = (
@@ -776,8 +784,8 @@ class MetricsCollector:
                 except Exception:
                     pass  # May not be available on all platforms
 
-            else:
-                # Fallback: basic I/O monitoring
+            # Fallback: basic I/O monitoring
+            elif HAS_RESOURCE:
                 try:
                     io_stats = resource.getrusage(resource.RUSAGE_SELF)
                     metrics["process_block_input"] = io_stats.ru_inblock
