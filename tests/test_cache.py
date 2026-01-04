@@ -85,7 +85,7 @@ def temp_cache_dir():
                 break
             except (PermissionError, OSError) as e:
                 if attempt < max_attempts - 1:
-                    time.sleep(0.1 * (2 ** attempt))  # Exponential backoff
+                    time.sleep(0.1 * (2**attempt))  # Exponential backoff
                 # Log the failure but don't fail the test
                 elif sys.platform == "win32":
                     # Windows file locking is known to cause issues
