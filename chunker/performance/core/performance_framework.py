@@ -668,16 +668,12 @@ class MetricsCollector:
                 try:
                     # Get process CPU time
                     cpu_time = resource.getrusage(resource.RUSAGE_SELF)
-                    metrics["process_cpu_time"] = (
-                        cpu_time.ru_utime + cpu_time.ru_stime
-                    )
+                    metrics["process_cpu_time"] = cpu_time.ru_utime + cpu_time.ru_stime
 
                     # Estimate CPU usage (basic approximation)
                     if hasattr(self, "_last_cpu_time"):
                         time_delta = time.time() - self._last_cpu_check
-                        cpu_delta = (
-                            metrics["process_cpu_time"] - self._last_cpu_time
-                        )
+                        cpu_delta = metrics["process_cpu_time"] - self._last_cpu_time
                         if time_delta > 0:
                             metrics["cpu_percent_estimate"] = (
                                 cpu_delta / time_delta
