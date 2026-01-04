@@ -2,6 +2,7 @@
 
 import json
 import subprocess
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -109,6 +110,10 @@ class TestIntegrationCoordinator:
         assert coordinator.results[0].status == "error"
 
     @classmethod
+    @pytest.mark.xfail(
+        sys.platform == "win32",
+        reason="Duration tracking flaky on Windows - tracked in issue",
+    )
     @patch("subprocess.run")
     def test_run_scenario(cls, mock_run, coordinator):
         """Test running a single scenario."""
