@@ -6,6 +6,7 @@ from chunker.context import ContextFactory
 from chunker.parser import get_parser
 
 
+@pytest.mark.integration
 class TestPythonContextExtraction:
     """Test full context extraction for Python code."""
 
@@ -201,6 +202,7 @@ def create_manager(name: str = "default") -> DatabaseManager:
         assert isinstance(visible, set)
 
 
+@pytest.mark.integration
 class TestJavaScriptContextExtraction:
     """Test full context extraction for JavaScript code."""
 

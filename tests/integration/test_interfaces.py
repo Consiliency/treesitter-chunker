@@ -12,6 +12,9 @@ from tests.integration.interfaces import (
     ResourceTracker,
 )
 
+# Mark all tests in this module as integration tests
+pytestmark = pytest.mark.integration
+
 
 class TestErrorPropagationMixin:
     """Test the ErrorPropagationMixin interface."""

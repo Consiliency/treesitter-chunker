@@ -9,6 +9,9 @@ import pytest
 
 from tests.integration.fixtures import ErrorTrackingContext
 
+# Mark all tests in this module as integration tests
+pytestmark = pytest.mark.integration
+
 
 class TestBasicFixtures:
     """Test basic fixtures like temp_workspace and sample_code_files."""

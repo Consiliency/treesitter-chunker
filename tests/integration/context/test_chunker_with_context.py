@@ -7,6 +7,7 @@ from chunker.core import chunk_text
 from chunker.parser import get_parser
 
 
+@pytest.mark.integration
 class TestChunkerWithContext:
     """Test integrating context extraction with chunking."""
 

@@ -15,6 +15,7 @@ from tests.integration.coordinator import (
 )
 
 
+@pytest.mark.integration
 class TestIntegrationCoordinator:
     """Test the IntegrationCoordinator class."""
 

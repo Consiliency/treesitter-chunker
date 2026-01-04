@@ -7,6 +7,7 @@ from chunker.hierarchy.builder import ChunkHierarchyBuilder
 from chunker.token.counter import TiktokenCounter
 
 
+@pytest.mark.integration
 class TestTokenHierarchyIntegrationSimple:
     """Test token counting integrated with hierarchy building."""
 
