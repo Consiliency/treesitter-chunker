@@ -92,7 +92,7 @@ class ASTRelationshipTracker(RelationshipTracker):
             chunks_by_file[chunk.file_path].append(chunk)
         for file_chunks in chunks_by_file.values():
             if file_chunks:
-                self._analyze_file_chunks(file_chunks)
+                self._analyze_file_chunks(file_chunks, chunks)
         return self._relationships
 
     def clear(self) -> None:
@@ -112,71 +112,84 @@ class ASTRelationshipTracker(RelationshipTracker):
             self._parsers[language] = get_parser(language)
         return self._parsers[language]
 
-    def _analyze_file_chunks(self, chunks: list[CodeChunk]) -> None:
-        """Analyze chunks from a single file."""
-        if not chunks:
+    def _analyze_file_chunks(
+        self,
+        file_chunks: list[CodeChunk],
+        all_chunks: list[CodeChunk],
+    ) -> None:
+        """Analyze chunks from a single file.
+
+        Args:
+            file_chunks: Chunks from the current file being analyzed
+            all_chunks: All chunks from all files for cross-file lookups
+        """
+        if not file_chunks:
             return
-        first_chunk = chunks[0]
+        first_chunk = file_chunks[0]
         language = first_chunk.language
         try:
             parser = self._get_parser(language)
         except (FileNotFoundError, IndexError, KeyError):
             return
         if language == "python":
-            self._analyze_python_chunks(chunks, parser)
+            self._analyze_python_chunks(file_chunks, parser, all_chunks)
         elif language == "javascript":
-            self._analyze_javascript_chunks(chunks, parser)
+            self._analyze_javascript_chunks(file_chunks, parser, all_chunks)
         elif language in {"c", "cpp"}:
-            self._analyze_c_cpp_chunks(chunks, parser)
+            self._analyze_c_cpp_chunks(file_chunks, parser, all_chunks)
         elif language == "rust":
-            self._analyze_rust_chunks(chunks, parser)
+            self._analyze_rust_chunks(file_chunks, parser, all_chunks)
 
     def _analyze_python_chunks(
         self,
         chunks: list[CodeChunk],
         parser: Parser,
+        all_chunks: list[CodeChunk],
     ) -> None:
         """Analyze Python chunks for relationships."""
         for chunk in chunks:
             tree = parser.parse(chunk.content.encode())
             self._find_python_imports(chunk, tree.root_node)
-            self._find_python_calls(chunk, tree.root_node, chunks)
-            self._find_python_inheritance(chunk, tree.root_node, chunks)
+            self._find_python_calls(chunk, tree.root_node, all_chunks)
+            self._find_python_inheritance(chunk, tree.root_node, all_chunks)
 
     def _analyze_javascript_chunks(
         self,
         chunks: list[CodeChunk],
         parser: Parser,
+        all_chunks: list[CodeChunk],
     ) -> None:
         """Analyze JavaScript chunks for relationships."""
         for chunk in chunks:
             tree = parser.parse(chunk.content.encode())
             self._find_javascript_imports(chunk, tree.root_node)
-            self._find_javascript_calls(chunk, tree.root_node, chunks)
-            self._find_javascript_inheritance(chunk, tree.root_node, chunks)
+            self._find_javascript_calls(chunk, tree.root_node, all_chunks)
+            self._find_javascript_inheritance(chunk, tree.root_node, all_chunks)
 
     def _analyze_c_cpp_chunks(
         self,
         chunks: list[CodeChunk],
         parser: Parser,
+        all_chunks: list[CodeChunk],
     ) -> None:
         """Analyze C/C++ chunks for relationships."""
         for chunk in chunks:
             tree = parser.parse(chunk.content.encode())
             self._find_c_includes(chunk, tree.root_node)
-            self._find_c_calls(chunk, tree.root_node, chunks)
+            self._find_c_calls(chunk, tree.root_node, all_chunks)
 
     def _analyze_rust_chunks(
         self,
         chunks: list[CodeChunk],
         parser: Parser,
+        all_chunks: list[CodeChunk],
     ) -> None:
         """Analyze Rust chunks for relationships."""
         for chunk in chunks:
             tree = parser.parse(chunk.content.encode())
             self._find_rust_uses(chunk, tree.root_node)
-            self._find_rust_calls(chunk, tree.root_node, chunks)
-            self._find_rust_impls(chunk, tree.root_node, chunks)
+            self._find_rust_calls(chunk, tree.root_node, all_chunks)
+            self._find_rust_impls(chunk, tree.root_node, all_chunks)
 
     def _find_python_imports(self, chunk: CodeChunk, node: Node) -> None:
         """Find import statements in Python code."""

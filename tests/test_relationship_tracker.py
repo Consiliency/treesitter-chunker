@@ -300,3 +300,210 @@ def process_file(filename):
             1 for r in relationships if r.relationship_type == RelationshipType.CALLS
         )
         assert call_count >= 2
+
+    @staticmethod
+    def test_cross_file_python_calls(tracker, tmp_path):
+        """Test that function calls across files are detected."""
+        # File 1: utility functions
+        utils_file = tmp_path / "utils.py"
+        utils_file.write_text(
+            """
+def helper_func(x):
+    '''Helper function.'''
+    return x * 2
+
+def another_helper():
+    '''Another helper.'''
+    return 42
+""",
+            encoding="utf-8",
+        )
+
+        # File 2: main code that calls utilities
+        main_file = tmp_path / "main.py"
+        main_file.write_text(
+            """
+from utils import helper_func, another_helper
+
+def main():
+    '''Main function.'''
+    result = helper_func(10)
+    value = another_helper()
+    return result + value
+
+def process():
+    '''Process function.'''
+    return helper_func(5)
+""",
+            encoding="utf-8",
+        )
+
+        # Create chunks from both files
+        utils_chunks = chunk_file(utils_file, "python")
+        main_chunks = chunk_file(main_file, "python")
+        all_chunks = utils_chunks + main_chunks
+
+        # Infer relationships
+        relationships = tracker.infer_relationships(all_chunks)
+
+        # Verify cross-file calls are detected
+        call_rels = [
+            r for r in relationships if r.relationship_type == RelationshipType.CALLS
+        ]
+
+        # Should detect at least 3 cross-file calls:
+        # main() -> helper_func(), main() -> another_helper(), process() -> helper_func()
+        assert len(call_rels) >= 3, (
+            f"Expected at least 3 cross-file calls, got {len(call_rels)}"
+        )
+
+        # Verify relationships span across files
+        source_files = {
+            tracker._chunk_index[r.source_chunk_id].file_path for r in call_rels
+        }
+        target_files = {
+            tracker._chunk_index[r.target_chunk_id].file_path for r in call_rels
+        }
+
+        # Should have calls from main.py to utils.py
+        assert str(main_file) in source_files
+        assert str(utils_file) in target_files
+
+    @staticmethod
+    def test_cross_file_python_inheritance(tracker, tmp_path):
+        """Test that class inheritance across files is detected."""
+        # File 1: base classes
+        base_file = tmp_path / "base.py"
+        base_file.write_text(
+            """
+class Animal:
+    '''Base animal class.'''
+    def speak(self):
+        pass
+
+class Mammal(Animal):
+    '''Mammal class.'''
+    def breathe(self):
+        pass
+""",
+            encoding="utf-8",
+        )
+
+        # File 2: derived classes
+        derived_file = tmp_path / "derived.py"
+        derived_file.write_text(
+            """
+from base import Animal, Mammal
+
+class Dog(Mammal):
+    '''Dog class inherits from Mammal.'''
+    def speak(self):
+        return 'Woof!'
+
+class Cat(Animal):
+    '''Cat class inherits from Animal.'''
+    def speak(self):
+        return 'Meow!'
+""",
+            encoding="utf-8",
+        )
+
+        # Create chunks from both files
+        base_chunks = chunk_file(base_file, "python")
+        derived_chunks = chunk_file(derived_file, "python")
+        all_chunks = base_chunks + derived_chunks
+
+        # Infer relationships
+        relationships = tracker.infer_relationships(all_chunks)
+
+        # Verify cross-file inheritance is detected
+        inherit_rels = [
+            r
+            for r in relationships
+            if r.relationship_type == RelationshipType.INHERITS
+        ]
+
+        # Should detect at least 3 inheritance relationships:
+        # Mammal -> Animal (same file), Dog -> Mammal (cross-file), Cat -> Animal (cross-file)
+        assert len(inherit_rels) >= 3, (
+            f"Expected at least 3 inheritance relationships, got {len(inherit_rels)}"
+        )
+
+        # Verify at least one cross-file inheritance
+        cross_file_inherit = [
+            r
+            for r in inherit_rels
+            if tracker._chunk_index[r.source_chunk_id].file_path
+            != tracker._chunk_index[r.target_chunk_id].file_path
+        ]
+        assert len(cross_file_inherit) >= 2, (
+            f"Expected at least 2 cross-file inheritance relationships, "
+            f"got {len(cross_file_inherit)}"
+        )
+
+    @staticmethod
+    def test_cross_file_javascript_calls(tracker, tmp_path):
+        """Test that JavaScript function calls across files are detected."""
+        # File 1: utility functions
+        utils_file = tmp_path / "utils.js"
+        utils_file.write_text(
+            """
+function calculateSum(numbers) {
+    return numbers.reduce((a, b) => a + b, 0);
+}
+
+function formatResult(value) {
+    return `Result: ${value}`;
+}
+""",
+            encoding="utf-8",
+        )
+
+        # File 2: main code
+        main_file = tmp_path / "main.js"
+        main_file.write_text(
+            """
+import { calculateSum, formatResult } from './utils.js';
+
+function processData(data) {
+    const sum = calculateSum(data);
+    return formatResult(sum);
+}
+
+function analyze(values) {
+    return calculateSum(values);
+}
+""",
+            encoding="utf-8",
+        )
+
+        # Create chunks from both files
+        utils_chunks = chunk_file(utils_file, "javascript")
+        main_chunks = chunk_file(main_file, "javascript")
+        all_chunks = utils_chunks + main_chunks
+
+        # Infer relationships
+        relationships = tracker.infer_relationships(all_chunks)
+
+        # Verify cross-file calls are detected
+        call_rels = [
+            r for r in relationships if r.relationship_type == RelationshipType.CALLS
+        ]
+
+        # Should detect at least 3 cross-file calls:
+        # processData() -> calculateSum(), processData() -> formatResult(),
+        # analyze() -> calculateSum()
+        assert len(call_rels) >= 3, (
+            f"Expected at least 3 cross-file calls, got {len(call_rels)}"
+        )
+
+        # Verify relationships span across files
+        cross_file_calls = [
+            r
+            for r in call_rels
+            if tracker._chunk_index[r.source_chunk_id].file_path
+            != tracker._chunk_index[r.target_chunk_id].file_path
+        ]
+        assert len(cross_file_calls) >= 2, (
+            f"Expected at least 2 cross-file calls, got {len(cross_file_calls)}"
+        )
