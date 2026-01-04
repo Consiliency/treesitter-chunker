@@ -191,7 +191,12 @@ class TreeSitterGrammarBuilder(GrammarBuilder):
                 compiler = "clang" if shutil.which("clang") else "gcc"
 
             sources = c_files + cc_files
-            cmd = [compiler, "-shared", "-fPIC", "-O2", "-o", str(lib_path), *sources]
+            cmd = [compiler, "-shared", "-O2", "-o", str(lib_path), *sources]
+
+            # Add -fPIC for position-independent code on Unix-like systems
+            # Windows/MSVC doesn't support this flag
+            if self._platform != "Windows":
+                cmd.insert(2, "-fPIC")
 
             # Language standards to support generated parsers
             if use_cxx:
