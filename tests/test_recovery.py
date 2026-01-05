@@ -26,6 +26,9 @@ from chunker.exceptions import ParserError
 from chunker.parser import get_parser
 from chunker.streaming import chunk_file_streaming
 
+# Mark all tests in this module as integration tests
+pytestmark = pytest.mark.integration
+
 
 class TestCrashRecovery:
     """Test recovery from crashes and failures."""

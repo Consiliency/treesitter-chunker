@@ -24,6 +24,9 @@ import pytest
 
 from chunker.parallel import ParallelChunker, chunk_directory_parallel
 
+# Mark all tests in this module as integration tests
+pytestmark = pytest.mark.integration
+
 PYTHON_FUNCTION_TEMPLATE = """
 def function_{idx}():
     ""\"Function {idx} docstring.""\"
