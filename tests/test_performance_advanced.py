@@ -10,12 +10,16 @@ import threading
 import time
 
 import psutil
+import pytest
 
 from chunker import chunk_file
 from chunker._internal.cache import ASTCache
 from chunker.export import JSONExporter, JSONLExporter, SchemaType
 from chunker.parallel import ParallelChunker, chunk_files_parallel
 from chunker.streaming import chunk_file_streaming
+
+# Mark all tests in this module as integration tests
+pytestmark = pytest.mark.integration
 
 
 class TestConcurrentPerformance:

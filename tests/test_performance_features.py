@@ -17,6 +17,9 @@ from chunker.performance.optimization.memory_pool import MemoryPool
 from chunker.performance.optimization.monitor import PerformanceMonitor
 from chunker.types import CodeChunk
 
+# Mark all tests in this module as integration tests
+pytestmark = pytest.mark.integration
+
 
 class TestLRUCache:
     """Test LRU cache implementation."""

@@ -20,6 +20,9 @@ from chunker.performance.core import (
     PerformanceUtils,
 )
 
+# Mark all tests in this module as integration tests
+pytestmark = pytest.mark.integration
+
 
 class TestPerformanceMetric:
     """Test PerformanceMetric class."""

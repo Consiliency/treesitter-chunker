@@ -8,6 +8,9 @@ from chunker import chunk_file, chunk_file_streaming
 from chunker._internal.cache import ASTCache
 from chunker.parallel import chunk_files_parallel
 
+# Mark all tests in this module as integration tests
+pytestmark = pytest.mark.integration
+
 # Sample Python code for testing
 SAMPLE_PYTHON_CODE = '''
 def hello_world():
