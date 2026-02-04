@@ -5,10 +5,20 @@ This module provides specialized functionality for extracting function and metho
 call sites from Python source code using AST parsing.
 """
 
-from .python_extractor import PythonCallVisitor, PythonExtractor, PythonPatterns
+from .python_extractor import (
+    ImportDefinition,
+    PythonCallVisitor,
+    PythonExtractor,
+    PythonPatterns,
+    SymbolDefinition,
+    SymbolRelationship,
+)
 
 __all__ = [
+    "ImportDefinition",
     "PythonCallVisitor",
     "PythonExtractor",
     "PythonPatterns",
+    "SymbolDefinition",
+    "SymbolRelationship",
 ]

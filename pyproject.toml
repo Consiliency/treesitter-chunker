@@ -43,6 +43,9 @@ dependencies = [
     "tqdm>=4.66.0",
     "tiktoken>=0.7.0",
     "tomli-w>=1.0.0",  # For writing TOML files (tomllib is read-only in stdlib)
+    "networkx>=3.0",
+    "leidenalg>=0.10.0",
+    "igraph>=0.11.0",  # Required by leidenalg
 ]
 
 [project.optional-dependencies]
