@@ -79,3 +79,4 @@ Thumbs.db
 .claude/ai-dev-kit/
 logs/
 .pubenv/
+.stow-symbols.json
