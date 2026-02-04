@@ -146,18 +146,29 @@ class SemanticLensExporter(StructuredExporter):
     def export(
         self,
         chunks: list[CodeChunk],
-        relationships: list[ChunkRelationship],
-        output: Path | io.IOBase,
+        relationships: list[ChunkRelationship] | None = None,
+        output: Path | io.IOBase = None,
         metadata: ExportMetadata | None = None,
     ) -> None:
         """Export chunks and relationships to SemanticGraphBundle JSON.
 
+        If no relationships are provided, automatically infers them using
+        ASTRelationshipTracker.
+
         Args:
             chunks: List of code chunks to export as nodes
-            relationships: List of relationships to export as edges
+            relationships: List of relationships to export as edges. If None
+                or empty, relationships will be auto-extracted from chunks.
             output: Output file path or stream
             metadata: Optional export metadata
         """
+        # Auto-extract relationships if none provided (fixes #54)
+        if not relationships:
+            from chunker.export.relationships.tracker import ASTRelationshipTracker
+
+            tracker = ASTRelationshipTracker()
+            relationships = tracker.infer_relationships(chunks)
+
         bundle = self._build_bundle(chunks, relationships, metadata)
         json_str = json.dumps(bundle, indent=self.indent, ensure_ascii=False)
 
