@@ -166,7 +166,9 @@ class PythonCallVisitor(NodeVisitor):
         # Remove 'level' components from the end to get the base package
         # For level=1 (from .foo), we want the parent of current module
         # For level=2 (from ..foo), we want grandparent, etc.
-        base_parts = module_parts[:-node.level] if node.level <= len(module_parts) else []
+        base_parts = (
+            module_parts[: -node.level] if node.level <= len(module_parts) else []
+        )
 
         if node.module:
             # from .foo import bar -> package.foo
@@ -228,7 +230,11 @@ class PythonCallVisitor(NodeVisitor):
                         # "from . import sibling" - import sibling module(s)
                         for alias in node.names:
                             # For "from . import X", X is a sibling module
-                            full_import = f"{resolved_module}.{alias.name}" if resolved_module else alias.name
+                            full_import = (
+                                f"{resolved_module}.{alias.name}"
+                                if resolved_module
+                                else alias.name
+                            )
                             if alias.asname:
                                 self.current_context["imports"].add(alias.asname)
                             else:
@@ -259,7 +265,9 @@ class PythonCallVisitor(NodeVisitor):
                         self.imports.append(
                             ImportDefinition(
                                 module=resolved_module,
-                                names=[alias.asname or alias.name for alias in node.names],
+                                names=[
+                                    alias.asname or alias.name for alias in node.names
+                                ],
                                 alias="",
                                 line=getattr(node, "lineno", 0),
                                 is_from_import=True,
@@ -355,9 +363,10 @@ class PythonCallVisitor(NodeVisitor):
                 from_symbol = self._get_current_qualified_name()
 
                 # Resolve self.method calls to fully qualified names
-                if function_name.startswith("self.") and self.current_context[
-                    "class_stack"
-                ]:
+                if (
+                    function_name.startswith("self.")
+                    and self.current_context["class_stack"]
+                ):
                     method_name = function_name[5:]  # Remove "self."
                     class_name = self.current_context["class_stack"][-1]["name"]
                     to_symbol = f"{self.module_name}:{class_name}.{method_name}"
@@ -425,7 +434,7 @@ class PythonCallVisitor(NodeVisitor):
 
         # Check import map first
         # Handle cases like "os.path.join" -> check "os"
-        first_part = raw_name.split(".")[0]
+        first_part = raw_name.split(".", maxsplit=1)[0]
         if first_part in self.import_map:
             res = self.import_map[first_part]
             if "." in raw_name:
