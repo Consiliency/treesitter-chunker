@@ -781,7 +781,7 @@ class ReadmeGenerator:
                     header.append(f"\n{docstring}")
         
         # Add badges (placeholder)
-        header.append("\n![Python](https://img.shields.io/badge/python-3.8+-blue.svg)")
+        header.append("\n![Python](https://img.shields.io/badge/python-3.11+-blue.svg)")
         header.append("![License](https://img.shields.io/badge/license-MIT-green.svg)")
         
         return '\n'.join(header)

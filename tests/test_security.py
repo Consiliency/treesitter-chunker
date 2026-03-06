@@ -17,60 +17,62 @@ import pytest
 class TestShellInjectionPrevention:
     """Test shell injection prevention in subprocess calls."""
 
-    def test_builder_no_shell_true(self):
-        """Verify build commands don't use shell=True."""
-        from chunker.build import builder
-
-        source = inspect.getsource(builder)
+    @staticmethod
+    def _assert_no_shell_true(source: str, label: str):
         tree = ast.parse(source)
 
         shell_true_calls = []
         for node in ast.walk(tree):
-            if isinstance(node, ast.Call):
-                # Check for subprocess.run or subprocess.check_call
-                if isinstance(node.func, ast.Attribute):
-                    if node.func.attr in ("run", "check_call", "call", "Popen"):
-                        for keyword in node.keywords:
-                            if keyword.arg == "shell":
-                                if isinstance(keyword.value, ast.Constant):
-                                    if keyword.value.value is True:
-                                        shell_true_calls.append(node.lineno)
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+                if node.func.attr in ("run", "check_call", "call", "Popen"):
+                    for keyword in node.keywords:
+                        if (
+                            keyword.arg == "shell"
+                            and isinstance(keyword.value, ast.Constant)
+                            and keyword.value.value is True
+                        ):
+                            shell_true_calls.append(node.lineno)
 
         assert len(shell_true_calls) == 0, (
-            f"Found shell=True in builder.py at lines: {shell_true_calls}. "
+            f"Found shell=True in {label} at lines: {shell_true_calls}. "
             "Use list arguments instead of shell=True for security."
         )
+
+    def test_release_scripts_no_shell_true(self):
+        """Verify release/build scripts don't use shell=True."""
+        scripts = {
+            "scripts/package.py": Path("scripts/package.py"),
+            "scripts/build_wheels.py": Path("scripts/build_wheels.py"),
+        }
+
+        for label, path in scripts.items():
+            source = path.read_text(encoding="utf-8")
+            self._assert_no_shell_true(source, label)
 
     def test_verifier_no_shell_true(self):
         """Verify verification commands don't use shell=True."""
         from chunker.distribution import verifier
 
         source = inspect.getsource(verifier)
-        tree = ast.parse(source)
-
-        shell_true_calls = []
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Call):
-                if isinstance(node.func, ast.Attribute):
-                    if node.func.attr in ("run", "check_call", "call", "Popen"):
-                        for keyword in node.keywords:
-                            if keyword.arg == "shell":
-                                if isinstance(keyword.value, ast.Constant):
-                                    if keyword.value.value is True:
-                                        shell_true_calls.append(node.lineno)
-
-        assert len(shell_true_calls) == 0, (
-            f"Found shell=True in verifier.py at lines: {shell_true_calls}. "
-            "Use list arguments instead of shell=True for security."
-        )
+        self._assert_no_shell_true(source, "chunker.distribution.verifier")
 
     def test_subprocess_uses_list_arguments(self):
         """Verify subprocess calls use list arguments, not strings."""
-        from chunker.build import builder
         from chunker.distribution import verifier
 
-        for module, name in [(builder, "builder"), (verifier, "verifier")]:
-            source = inspect.getsource(module)
+        script_modules = [
+            (
+                Path("scripts/package.py").read_text(encoding="utf-8"),
+                "scripts/package.py",
+            ),
+            (
+                Path("scripts/build_wheels.py").read_text(encoding="utf-8"),
+                "scripts/build_wheels.py",
+            ),
+            (inspect.getsource(verifier), "chunker.distribution.verifier"),
+        ]
+
+        for source, name in script_modules:
             tree = ast.parse(source)
 
             for node in ast.walk(tree):
@@ -85,7 +87,7 @@ class TestShellInjectionPrevention:
                                     if isinstance(first_arg.value, str):
                                         # String command without shell=True is still risky
                                         pytest.fail(
-                                            f"Found string argument to subprocess in {name}.py "
+                                            f"Found string argument to subprocess in {name} "
                                             f"at line {node.lineno}. Use list arguments.",
                                         )
 

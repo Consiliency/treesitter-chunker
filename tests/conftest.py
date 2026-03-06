@@ -4,6 +4,8 @@ pytest_plugins = [
 
 import pytest
 
+from tests.integration.fixtures import error_tracking_context, temp_workspace
+
 
 def pytest_collection_modifyitems(config, items):
     """Auto-mark grammar-dependent and known-flaky tests as xfail.
@@ -42,13 +44,8 @@ def pytest_collection_modifyitems(config, items):
         "test_registry.py::TestLanguageRegistry::test_scanner_detection": "Environment-specific",
         # Universal registry tests - download/install dependent
         "test_universal_registry.py::TestUniversalLanguageRegistry": "Requires network/install capabilities",
-        # Phase 13 integration tests - infrastructure dependent
-        "test_phase13_integration.py": "Phase 13 integration tests require full setup",
-        "test_phase13_distribution_real.py": "Distribution tests require build artifacts",
-        "test_phase13_real_integration.py": "Real integration tests require full setup",
         # Other flaky tests
         "test_devenv_integration.py::TestQualityAssuranceIntegration::test_test_coverage_check": "Coverage check may vary",
-        "test_distribution_adapter.py::TestDistributionAdapter::test_verification_routing": "Distribution adapter test",
         "test_parallel.py::TestCancellationAndTimeout::test_timeout_handling": "Timing-dependent test",
         "test_streaming.py::TestMemoryEfficiency": "Memory measurements may vary",
         "test_streaming.py::TestBufferOptimization": "Buffer optimization timing varies",
@@ -144,60 +141,3 @@ def _patch_parallel_test_exceptions(monkeypatch):
             _process_file_with_memory_wrapper,
             raising=True,
         )
-
-
-"""
-Test configuration and fixtures for phase13 tests
-"""
-
-from unittest.mock import Mock
-
-import pytest
-
-from chunker.build import BuildSystem, PlatformSupport
-from tests.integration.fixtures import error_tracking_context, temp_workspace
-
-
-@pytest.fixture
-def build_system():
-    """Provide real BuildSystem instance"""
-    return BuildSystem()
-
-
-@pytest.fixture
-def platform_support():
-    """Provide real PlatformSupport instance"""
-    return PlatformSupport()
-
-
-# Monkey-patch the integration tests to use real implementations
-def pytest_runtest_setup(item):
-    """Setup test to use real implementations instead of mocks"""
-    node_id = getattr(item, "nodeid", "")
-    if "test_phase13_integration" in node_id:
-        # Import here to avoid circular imports
-
-        # Patch Mock to return real instances for our contracts
-        original_mock = (
-            item.session.config._mock_class
-            if hasattr(item.session.config, "_mock_class")
-            else None
-        )
-
-        def mock_side_effect(*args, **kwargs):
-            # Check if we're mocking one of our contracts
-            if args and hasattr(args[0], "__name__"):
-                class_name = (
-                    args[0].__name__ if hasattr(args[0], "__name__") else str(args[0])
-                )
-
-                if "BuildSystemContract" in class_name:
-                    return BuildSystem()
-                if "PlatformSupportContract" in class_name:
-                    return PlatformSupport()
-
-            # Otherwise use original Mock
-            if original_mock:
-                return original_mock(*args, **kwargs)
-
-            return Mock(*args, **kwargs)

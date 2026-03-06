@@ -102,7 +102,7 @@ def fix_file(file_path: Path) -> bool:
                     else:
                         new_line = (
                             " " * indent
-                            + f"""except ({', '.join(exceptions)}) as {var_name}:
+                            + f"""except ({", ".join(exceptions)}) as {var_name}:
 """
                         )
                     lines[i] = new_line

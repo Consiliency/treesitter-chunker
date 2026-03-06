@@ -13,6 +13,7 @@ Welcome to the Tree-sitter Chunker documentation! Tree-sitter Chunker is a power
 - **[Export Formats](export-formats.md)** - JSON, JSONL, and Parquet export options
 - **[Cookbook](cookbook.md)** - Practical recipes and examples
 - **[Architecture](architecture.md)** - System design and internals
+- **[Packaging & Releases](packaging.md)** - Build, tag, and publish workflow
 
 ### Text Processing
 - **[Intelligent Fallback](intelligent_fallback.md)** - Automatic chunking method selection
@@ -175,6 +176,7 @@ for chunk in chunks:
 1. Study the **[Architecture](architecture.md)** document
 2. Understand the plugin system and extension points
 3. Review the troubleshooting guide
+4. Use **[Packaging & Releases](packaging.md)** plus `docs/development/RELEASE_CHECKLIST.md` for maintainership and release tasks
 
 ## Common Tasks
 

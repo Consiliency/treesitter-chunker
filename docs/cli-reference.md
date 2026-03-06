@@ -2,6 +2,8 @@
 
 This page summarizes the command-line interface for Tree-sitter Chunker.
 
+For packaging and release operations, see `docs/packaging.md` and `docs/development/RELEASE_CHECKLIST.md`.
+
 ## Installation
 
 Install the CLI from PyPI:

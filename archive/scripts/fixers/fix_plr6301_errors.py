@@ -45,7 +45,6 @@ class MethodAnalyzer(ast.NodeVisitor):
         """Check if self/cls parameter is used in method body."""
 
         class SelfChecker(ast.NodeVisitor):
-
             def __init__(self, param_name):
                 self.param_name = param_name
                 self.uses_self = False
@@ -63,7 +62,6 @@ class MethodAnalyzer(ast.NodeVisitor):
         """Check if method uses class-level features (suggesting classmethod)."""
 
         class ClassFeatureChecker(ast.NodeVisitor):
-
             def __init__(self):
                 self.uses_class_features = False
 

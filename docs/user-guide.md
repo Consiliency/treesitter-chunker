@@ -42,7 +42,7 @@ Tree-sitter Chunker is ideal for:
 
 ### Prerequisites
 
-- Python 3.8 or higher
+- Python 3.11 or higher
 - ~~uv package manager (recommended) or pip~~ **pip is sufficient for PyPI installation**
 - ~~C compiler (for building tree-sitter grammars)~~ **No longer required for basic usage!**
 - ~~Git (for fetching grammar repositories)~~ **No longer required for basic usage!**

@@ -29,7 +29,9 @@ class UndefinedNameFixer(ast.NodeTransformer):
                     (
                         d.id
                         if isinstance(d, ast.Name)
-                        else d.attr if isinstance(d, ast.Attribute) else None
+                        else d.attr
+                        if isinstance(d, ast.Attribute)
+                        else None
                     )
                     for d in item.decorator_list
                 ]

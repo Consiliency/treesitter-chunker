@@ -2,9 +2,9 @@
 
 - File: specs/agent-platform-integration-spec.md
 - Owner: Core Chunker Team
-- Status: Proposal
+- Status: Partially implemented; requires periodic reconciliation with shipped behavior
 - Scope: Implement requested changes in `docs/requested-changes-dfrom-chunger-lib.md` with full test coverage
-- Non-goal: No code changes in this MR; this is the implementation spec only
+- Non-goal: This file is a planning reference, not the live API contract
 
 ### Objectives
 

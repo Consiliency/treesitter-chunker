@@ -17,7 +17,7 @@ Tree-sitter Chunker is designed as a library that can be deployed in various way
 ### **Minimum Requirements**
 
 - **OS**: Linux (Ubuntu 18.04+), macOS 10.15+, Windows 10+
-- **Python**: 3.8 or higher
+- **Python**: 3.11 or higher
 - **Memory**: 2GB RAM (4GB recommended)
 - **Storage**: 1GB free space (5GB recommended)
 - **CPU**: 2 cores (4+ cores recommended)
@@ -52,37 +52,22 @@ pip install treesitter-chunker
 pip install "treesitter-chunker[api,viz,profile]"
 
 # Install specific version
-pip install treesitter-chunker==1.0.9
+pip install treesitter-chunker==2.2.2
 ```
 
-### **Method 2: System Package Installation**
+### **Method 2: Source Installation**
 
-#### **Ubuntu/Debian**
 ```bash
-# Download .deb package
-wget https://github.com/Consiliency/treesitter-chunker/releases/download/v1.0.9/python3-treesitter-chunker_1.0.9-1_all.deb
+# Clone repository
+git clone https://github.com/Consiliency/treesitter-chunker.git
+cd treesitter-chunker
 
-# Install package
-sudo dpkg -i python3-treesitter-chunker_1.0.9-1_all.deb
+# Install in development mode
+pip install -e ".[all]"
 
-# Fix dependencies if needed
-sudo apt-get install -f
-```
-
-#### **RHEL/CentOS/Fedora**
-```bash
-# Download .rpm package
-wget https://github.com/Consiliency/treesitter-chunker/releases/download/v1.0.9/python-treesitter-chunker-1.0.9-1.noarch.rpm
-
-# Install package
-sudo rpm -i python-treesitter-chunker-1.0.9-1.noarch.rpm
-```
-
-#### **macOS (Homebrew)**
-```bash
-# Add tap and install
-brew tap consiliency/treesitter-chunker
-brew install treesitter-chunker
+# Build grammars for local/source usage
+python scripts/fetch_grammars.py
+python scripts/build_lib.py
 ```
 
 ### **Method 3: Docker Deployment**
@@ -100,20 +85,12 @@ docker run -v $(pwd):/workspace \
   treesitter-chunker chunk /workspace/ -l python
 ```
 
-### **Method 4: Source Installation**
+## Release and Packaging Notes
 
-```bash
-# Clone repository
-git clone https://github.com/Consiliency/treesitter-chunker.git
-cd treesitter-chunker
-
-# Install in development mode
-pip install -e ".[all]"
-
-# Build grammars
-python scripts/fetch_grammars.py
-python scripts/build_lib.py
-```
+- Production PyPI releases are published only from `.github/workflows/release.yml`
+- Ordinary `main` CI runs do not publish to PyPI
+- Release tags must match the version in `pyproject.toml`
+- Use `docs/packaging.md` and `docs/development/RELEASE_CHECKLIST.md` for the current maintainer flow
 
 ## ⚙️ Configuration Management
 

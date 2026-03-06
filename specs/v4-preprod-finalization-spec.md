@@ -1,10 +1,10 @@
-## v4 Pre‑Production Finalization and Consistency Spec
+## v4 Consistency Cleanup Spec
 
 - **File**: `specs/v4-preprod-finalization-spec.md`
 - **Owner**: Core Chunker Team
-- **Status**: Draft
+- **Status**: Active cleanup backlog
 - **Scope**:
-  - Finish remaining consistency work from v2/v3 specs before first production deployment.
+  - Finish remaining consistency work from earlier cleanup specs on the live codebase.
   - Tighten failure semantics for configs and data paths.
   - Clean up remaining direct `.decode("utf-8")` and `json.load(...)` in core library code.
   - Clarify and, where reasonable, narrow the “public” API surface before committing to backward compatibility.
@@ -15,7 +15,7 @@
 ## 0. Design Principles
 
 - **Reuse over duplication**: Prefer `chunker/utils/text.py` and `chunker/utils/json.py` rather than local helpers.
-- **Fail fast while pre‑prod**: Surface invalid configs/data as explicit exceptions; only use silent fallbacks where strongly justified.
+- **Fail fast where practical**: Surface invalid configs/data as explicit exceptions; only use silent fallbacks where strongly justified.
 - **Backwards compatible by default**: Do not change signatures of exported functions/classes in `chunker/__init__.py` or HTTP endpoints unless necessary; add deprecations instead of silent removals.
 - **Security first**: Preserve guarantees from `tests/test_security.py` (no `shell=True`, no bare `except:`, presence of escape/parameterization helpers).
 
@@ -425,5 +425,4 @@ elif path.suffix in {".yaml", ".yml"}:
 - If a regression is observed in a particular language plugin or config reader:
   - Revert that file only.
   - Re‑run targeted tests for that module plus `tests/test_security.py` to ensure no regressions on hardening guarantees.
-
 

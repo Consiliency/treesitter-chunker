@@ -1,263 +1,80 @@
-# Packaging and Distribution Guide
+# Packaging and Release Guide
 
-This guide covers the packaging and distribution process for treesitter-chunker.
+This document is the source of truth for packaging and PyPI publishing.
 
-## Overview
+## Current Release Model
 
-TreeSitter Chunker is distributed through multiple channels:
-- PyPI (Python Package Index)
-- Conda/Conda-forge
-- Homebrew (macOS/Linux)
-- Docker Hub / GitHub Container Registry
-- Direct downloads (GitHub Releases)
+- `main` CI validates code, docs, and tests only; it does not publish to PyPI
+- `.github/workflows/release.yml` is the only workflow that publishes to PyPI
+- `.github/workflows/build-wheels.yml` builds wheel artifacts but does not publish them
+- Production publishing uses GitHub trusted publishing
+- A release tag must match the version in `pyproject.toml`
 
-## Building Packages
+## Version Source of Truth
 
-### Prerequisites
+- Package version lives in `pyproject.toml`
+- Release tags must use the form `vX.Y.Z`
+- `release.yml` fails if the tag and package version differ
+- `release.yml` also fails if that version already exists on PyPI
 
-Install build dependencies:
-```bash
-pip install -r requirements-build.txt
-```
+## Standard Release Flow
 
-### Quick Build
+1. Make sure `main` is green
+2. Bump `pyproject.toml` to the target version
+3. Update `CHANGELOG.md` if needed
+4. Commit the release prep
+5. Create and push a tag such as `v2.2.3`
+6. Let `release.yml` build distributions, create the GitHub Release, and publish to PyPI
 
-Use the automated packaging script:
-```bash
-python scripts/package.py --clean --release
-```
+See `docs/development/RELEASE_CHECKLIST.md` for the maintainer checklist.
 
-### Manual Build Process
+## Manual Release Dispatch
 
-#### 1. Build Grammars
+`release.yml` also supports `workflow_dispatch`.
+
+- Use manual dispatch when you need a controlled release run without pushing a tag first
+- The entered version must still match `pyproject.toml`
+- Prerelease runs may create GitHub release artifacts without publishing to production PyPI, depending on the selected prerelease input
+
+## Local Packaging Commands
+
+Local package building is still useful for validation and troubleshooting.
+
 ```bash
 python scripts/fetch_grammars.py
 python scripts/build_lib.py
+python -m build
+python -m twine check dist/*
 ```
 
-#### 2. Build Source Distribution
-```bash
-python -m build --sdist
-```
+Optional wheel helper:
 
-#### 3. Build Wheels
-
-Standard wheel:
-```bash
-python -m build --wheel
-```
-
-Platform-specific wheels:
 ```bash
 python scripts/build_wheels.py --platform auto
 ```
 
-Cross-platform wheels using cibuildwheel:
-```bash
-cibuildwheel --platform auto
-```
+These local commands do not publish to PyPI.
 
-### Platform-Specific Builds
+## What Publishes to PyPI
 
-#### Windows
-```bash
-scripts\build_windows.bat
-```
+Only this path publishes production packages:
 
-#### macOS
-```bash
-./scripts/build_macos.sh
-```
+- trigger: `push` tag `v*` or approved manual release dispatch
+- workflow: `.github/workflows/release.yml`
+- auth: trusted publishing
 
-#### Linux (manylinux)
-```bash
-python scripts/build_wheels.py --platform manylinux
-```
-
-## Publishing
-
-### PyPI
-
-Test PyPI first:
-```bash
-python scripts/package.py --test-upload
-```
-
-Production PyPI:
-```bash
-python scripts/package.py --upload
-```
-
-Manual upload:
-```bash
-twine upload --repository testpypi dist/*
-twine upload dist/*
-```
-
-### Docker
-
-Build images:
-```bash
-docker build -t treesitter-chunker:latest .
-docker build -f Dockerfile.alpine -t treesitter-chunker:alpine .
-```
-
-Push to registry:
-```bash
-docker push ghcr.io/consiliency/treesitter-chunker:latest
-docker push ghcr.io/consiliency/treesitter-chunker:alpine
-```
-
-### Homebrew
-
-Update formula with new version and SHA256:
-```bash
-# Calculate SHA256
-shasum -a 256 dist/treesitter-chunker-*.tar.gz
-
-# Update homebrew/treesitter-chunker.rb
-# Submit PR to homebrew tap
-```
-
-### Conda
-
-Update meta.yaml and submit to conda-forge:
-```bash
-# Update conda/meta.yaml with new version
-# Submit PR to conda-forge/staged-recipes
-```
-
-## Release Process
-
-### 1. Update Version
-
-Update version in:
-- `pyproject.toml`
-- `chunker/__init__.py` (if applicable)
-- `conda/meta.yaml`
-- `homebrew/treesitter-chunker.rb`
-
-### 2. Update Changelog
-
-Update `CHANGELOG.md` with release notes.
-
-### 3. Create Git Tag
-
-```bash
-git tag -a v0.1.0 -m "Release v0.1.0"
-git push origin v0.1.0
-```
-
-### 4. GitHub Release
-
-The GitHub Actions workflow will automatically:
-1. Build all wheels and distributions
-2. Create Docker images
-3. Create GitHub release with artifacts
-4. Upload to PyPI (if configured)
-
-### 5. Post-Release
-
-1. Update Homebrew formula
-2. Submit conda-forge PR
-3. Update documentation
-4. Announce release
-
-## Testing Packages
-
-### Local Testing
-
-```bash
-./scripts/test_packaging.sh
-```
-
-### Test Installation
-
-PyPI:
-```bash
-pip install -i https://test.pypi.org/simple/ treesitter-chunker
-```
-
-Docker:
-```bash
-docker run --rm treesitter-chunker:latest --version
-```
-
-### Verification
-
-```bash
-# Check imports
-python -c "import chunker; print(chunker.__version__)"
-
-# Check CLI
-treesitter-chunker --version
-treesitter-chunker list-languages
-
-# Test functionality
-echo "def test(): pass" | treesitter-chunker chunk - -l python
-```
+The repository no longer has a second token-based publish path in `build-wheels.yml`.
 
 ## Troubleshooting
 
-### Common Issues
+- Tag/version mismatch: update `pyproject.toml` or retag before rerunning
+- Version already on PyPI: bump the version; do not reuse an existing release number
+- Build failure: reproduce locally with `python -m build` and `python -m twine check dist/*`
+- Wheel issues: use `python scripts/build_wheels.py --platform auto` for local diagnosis
 
-1. **Grammar compilation fails**
-   - Ensure C/C++ compiler is installed
-   - Check tree-sitter version compatibility
+## Related Docs
 
-2. **Wheel building fails**
-   - Install Visual Studio Build Tools (Windows)
-   - Install Xcode Command Line Tools (macOS)
-   - Use manylinux Docker image (Linux)
-
-3. **Import errors after installation**
-   - Verify grammars are included in wheel
-   - Check platform compatibility
-   - Reinstall with `--force-reinstall`
-
-### Debug Commands
-
-```bash
-# Check wheel contents
-unzip -l dist/*.whl | grep -E "\.so|\.dll|\.dylib"
-
-# Verify package metadata
-python -m pip show treesitter-chunker
-
-# Test in isolated environment
-python -m venv test_env
-source test_env/bin/activate
-pip install dist/*.whl
-python -m chunker.parser
-```
-
-## Maintenance
-
-### Updating Dependencies
-
-1. Update `pyproject.toml`
-2. Update `conda/meta.yaml`
-3. Update `homebrew/treesitter-chunker.rb`
-4. Test all installation methods
-
-### Adding New Languages
-
-1. Add grammar to `scripts/fetch_grammars.py`
-2. Update language list in documentation
-3. Add tests for new language
-4. Rebuild all packages
-
-### Security
-
-- Sign releases with GPG
-- Use 2FA for PyPI account
-- Verify checksums in all distribution methods
-- Regular dependency updates
-
-## Resources
-
-- [Python Packaging Guide](https://packaging.python.org/)
-- [cibuildwheel Documentation](https://cibuildwheel.readthedocs.io/)
-- [Homebrew Formula Cookbook](https://docs.brew.sh/Formula-Cookbook)
-- [Conda-forge Documentation](https://conda-forge.org/docs/)
-- [Docker Best Practices](https://docs.docker.com/develop/dev-best-practices/)
+- `docs/development/RELEASE_CHECKLIST.md`
+- `specs/release-process-spec.md`
+- `.github/workflows/release.yml`
+- `.github/workflows/build-wheels.yml`

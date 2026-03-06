@@ -1,5 +1,7 @@
 # Tree-sitter Chunker Roadmap
 
+> Note: large parts of this roadmap are historical. Release workflow behavior and current packaging policy are documented in `docs/packaging.md` and `specs/release-process-spec.md`.
+
 This document outlines the development roadmap for the tree-sitter-chunker project. Each item is a checkbox for tracking progress.
 
 ## 📊 Current Status (As of 2025-07-28)
@@ -1887,4 +1889,3 @@ The `LanguageRegistry` expects compiled grammar files that don't exist in the di
 - All supported languages available without additional setup
 - Clear error messages if grammar unavailable
 - No regression for existing users
-

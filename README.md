@@ -2,16 +2,16 @@
 
 A high-performance semantic code chunker that leverages [Tree-sitter](https://tree-sitter.github.io/) parsers to intelligently split source code into meaningful chunks like functions, classes, and methods.
 
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Tree-sitter](https://img.shields.io/badge/tree--sitter-latest-green.svg)](https://tree-sitter.github.io/)
-[![PyPI](https://img.shields.io/badge/PyPI-2.0.1-blue.svg)](https://pypi.org/project/treesitter-chunker/)
+[![PyPI](https://img.shields.io/badge/PyPI-2.2.2-blue.svg)](https://pypi.org/project/treesitter-chunker/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
 [![Test Coverage](https://img.shields.io/badge/coverage-95%25-brightgreen.svg)]()
 [![Code Quality](https://img.shields.io/badge/quality-A-brightgreen.svg)]()
 [![Platforms](https://img.shields.io/badge/platforms-Linux%20%7C%20macOS%20%7C%20Windows-blue.svg)]()
 
-**🚀 Production Ready**: Version 2.0.1 is now available on PyPI with prebuilt wheels, no local compilation required for basic usage!
+**PyPI Release Flow**: Published releases come from the GitHub release workflow, not from ordinary `main` CI runs. See `docs/packaging.md` and `docs/development/RELEASE_CHECKLIST.md`.
 
 ## 🏗️ Architecture Overview
 
@@ -149,7 +149,7 @@ Tree-sitter Chunker is designed for high-performance code analysis:
 ## 📦 Installation
 
 ### Prerequisites
-- Python 3.8+ (for Python usage)
+- Python 3.11+ (for Python usage)
 - C compiler (for building Tree-sitter grammars - only needed if using languages not included in prebuilt wheels)
 
 ### Installation Methods
@@ -191,7 +191,7 @@ uv pip install "treesitter-chunker[all]"
 
 ### No Local Builds Required
 
-Starting with version 1.0.7+, `treesitter-chunker` wheels include precompiled Tree-sitter grammars for common languages. This means:
+Current PyPI releases include precompiled Tree-sitter grammars for common languages. This means:
 
 - ✅ **Immediate Use**: No C compiler or build tools required for basic languages
 - ✅ **Faster Installation**: Wheels install instantly without compilation

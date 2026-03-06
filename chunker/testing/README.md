@@ -287,7 +287,7 @@ The framework gracefully handles various error scenarios:
 - **No External Dependencies**: Self-contained testing framework
 
 ### Compatibility
-- **Python 3.8+**: Full compatibility with modern Python versions
+- **Python 3.11+**: Full compatibility with modern Python versions
 - **Cross-Platform**: Works on Windows, macOS, and Linux
 - **Virtual Environment**: Compatible with Python virtual environments
 

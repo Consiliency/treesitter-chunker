@@ -25,7 +25,6 @@ class NestedIfSimplifier(ast.NodeTransformer):
             and not node.body[0].orelse
             and not node.orelse
         ):
-
             inner_if = node.body[0]
 
             # Combine the conditions with 'and'
@@ -108,7 +107,6 @@ def fix_file_with_text(file_path: Path) -> list[str]:
                     and next_stripped.endswith(":")
                     and next_indent > indent
                 ):
-
                     # Look for the body of the inner if
                     k = j + 1
                     while k < len(lines) and not lines[k].strip():
