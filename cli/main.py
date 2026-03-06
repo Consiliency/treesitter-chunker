@@ -657,8 +657,8 @@ def batch(
                 print(
                     f"{result['file_path']},{result['language']},{result['node_type']},{result['start_line']},{result['end_line']},{result['size']},{parent}",
                 )
-    elif not quiet:
-        # Summary table (default)
+    else:
+        # Summary table (default). Quiet suppresses progress only.
         summary = {}
         total_chunks = len(all_results)
 
