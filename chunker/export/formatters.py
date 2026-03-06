@@ -32,7 +32,7 @@ class FlatFormatter:
 
     @staticmethod
     def _chunk_to_dict(chunk: CodeChunk) -> dict[str, Any]:
-        return {
+        chunk_dict = {
             "chunk_id": chunk.chunk_id,
             "language": chunk.language,
             "file_path": chunk.file_path,
@@ -47,6 +47,9 @@ class FlatFormatter:
             "dependencies": chunk.dependencies,
             "content": chunk.content,
         }
+        if chunk.metadata:
+            chunk_dict["metadata"] = chunk.metadata
+        return chunk_dict
 
 
 class NestedFormatter:
@@ -80,6 +83,8 @@ class NestedFormatter:
             "content": chunk.content,
             "children": [],
         }
+        if chunk.metadata:
+            result["metadata"] = chunk.metadata
         if chunk.chunk_id in children_map:
             result["children"] = [
                 self._build_tree(child, children_map)
@@ -124,7 +129,7 @@ class FullFormatter:
 
     @staticmethod
     def _chunk_to_dict(chunk: CodeChunk) -> dict[str, Any]:
-        return {
+        chunk_dict = {
             "chunk_id": chunk.chunk_id,
             "language": chunk.language,
             "file_path": chunk.file_path,
@@ -139,6 +144,9 @@ class FullFormatter:
             "dependencies": chunk.dependencies,
             "content": chunk.content,
         }
+        if chunk.metadata:
+            chunk_dict["metadata"] = chunk.metadata
+        return chunk_dict
 
     @staticmethod
     def _extract_relationships(chunks: list[CodeChunk]) -> dict[str, Any]:

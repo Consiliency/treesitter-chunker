@@ -185,9 +185,9 @@ def large_python_file():
         f.write(large_code)
         temp_path = Path(f.name)
     actual_size_mb = temp_path.stat().st_size / (1024 * 1024)
-    assert (
-        actual_size_mb > 100
-    ), f"Generated file is only {actual_size_mb:.1f}MB, need 100MB+"
+    assert actual_size_mb > 100, (
+        f"Generated file is only {actual_size_mb:.1f}MB, need 100MB+"
+    )
     yield temp_path
     temp_path.unlink()
 
@@ -250,9 +250,9 @@ class TestStreamingLargeFiles:
         assert chunk_count > 0
         file_size_mb = large_python_file.stat().st_size / (1024 * 1024)
         max_allowed_mb = file_size_mb * 30
-        assert (
-            memory_stats["increase_mb"] < max_allowed_mb
-        ), f"Memory increase too high: {memory_stats['increase_mb']}MB for {file_size_mb}MB file"
+        assert memory_stats["increase_mb"] < max_allowed_mb, (
+            f"Memory increase too high: {memory_stats['increase_mb']}MB for {file_size_mb}MB file"
+        )
         file_size_mb = large_python_file.stat().st_size / (1024 * 1024)
         assert file_size_mb > 100, f"Test file too small: {file_size_mb}MB"
 
@@ -269,6 +269,43 @@ class TestStreamingLargeFiles:
         streaming_stats = monitor_streaming.stop()
         assert len(regular_chunks) == len(streaming_chunks)
         assert streaming_stats["peak_mb"] <= regular_stats["peak_mb"] * 2.0
+
+    @classmethod
+    def test_streaming_retrieval_metadata_matches_regular(cls, medium_python_file):
+        """Streaming chunks should include the same retrieval metadata contract."""
+        regular_chunks = chunk_file(
+            medium_python_file,
+            "python",
+            include_retrieval_metadata=True,
+        )
+        streaming_chunks = list(
+            chunk_file_streaming(
+                medium_python_file,
+                "python",
+                include_retrieval_metadata=True,
+            )
+        )
+
+        regular_by_route = {
+            tuple(chunk.qualified_route): chunk for chunk in regular_chunks
+        }
+        streaming_by_route = {
+            tuple(chunk.qualified_route): chunk for chunk in streaming_chunks
+        }
+
+        shared_routes = set(regular_by_route) & set(streaming_by_route)
+        assert shared_routes
+
+        sample_route = next(iter(shared_routes))
+        regular_chunk = regular_by_route[sample_route]
+        streaming_chunk = streaming_by_route[sample_route]
+
+        assert streaming_chunk.metadata["kind"] == regular_chunk.metadata["kind"]
+        assert streaming_chunk.metadata["symbol"] == regular_chunk.metadata["symbol"]
+        assert (
+            streaming_chunk.metadata["qualified_name"]
+            == regular_chunk.metadata["qualified_name"]
+        )
 
 
 class TestMemoryEfficiency:
@@ -315,9 +352,9 @@ class TestMemoryEfficiency:
             initial_checkpoint = memory_checkpoints[0]
             final_checkpoint = memory_checkpoints[-1]
             memory_growth = final_checkpoint - initial_checkpoint
-            assert (
-                memory_growth < 200
-            ), f"Memory grew by {memory_growth}MB during streaming"
+            assert memory_growth < 200, (
+                f"Memory grew by {memory_growth}MB during streaming"
+            )
 
 
 class TestStreamingErrorRecovery:
@@ -471,7 +508,6 @@ class TestProgressCallbacks:
             )
 
         class ProgressStreamingChunker(StreamingChunker):
-
             def __init__(
                 self,
                 language: str,
@@ -481,9 +517,16 @@ class TestProgressCallbacks:
                 self.progress_callback = progress_callback
                 self._chunk_count = 0
 
-            def chunk_file_streaming(self, path: Path) -> Iterator[CodeChunk]:
+            def chunk_file_streaming(
+                self,
+                path: Path,
+                include_retrieval_metadata: bool = False,
+            ) -> Iterator[CodeChunk]:
                 file_size = path.stat().st_size
-                for chunk in super().chunk_file_streaming(path):
+                for chunk in super().chunk_file_streaming(
+                    path,
+                    include_retrieval_metadata=include_retrieval_metadata,
+                ):
                     self._chunk_count += 1
                     if self.progress_callback:
                         self.progress_callback(
@@ -503,13 +546,19 @@ class TestProgressCallbacks:
         """Test ability to cancel streaming operation."""
 
         class CancellableStreamingChunker(StreamingChunker):
-
             def __init__(self, language: str):
                 super().__init__(language)
                 self.cancelled = False
 
-            def chunk_file_streaming(self, path: Path) -> Iterator[CodeChunk]:
-                for chunk in super().chunk_file_streaming(path):
+            def chunk_file_streaming(
+                self,
+                path: Path,
+                include_retrieval_metadata: bool = False,
+            ) -> Iterator[CodeChunk]:
+                for chunk in super().chunk_file_streaming(
+                    path,
+                    include_retrieval_metadata=include_retrieval_metadata,
+                ):
                     if self.cancelled:
                         break
                     yield chunk

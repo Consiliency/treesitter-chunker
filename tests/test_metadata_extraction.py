@@ -523,6 +523,80 @@ class Calculator:
         assert chunks[0].metadata == {}
 
     @staticmethod
+    def test_chunk_with_retrieval_metadata_opt_in():
+        """Test retrieval metadata is only added when requested."""
+        code = """
+class Calculator:
+    def add(self, a, b):
+        return a + b
+"""
+        default_chunks = chunk_text(code, "python", extract_metadata=True)
+        enriched_chunks = chunk_text(
+            code,
+            "python",
+            extract_metadata=True,
+            include_retrieval_metadata=True,
+        )
+
+        default_chunk = next(
+            c
+            for c in default_chunks
+            if c.metadata.get("signature", {}).get("name") == "add"
+        )
+        enriched_chunk = next(
+            c
+            for c in enriched_chunks
+            if c.metadata.get("signature", {}).get("name") == "add"
+        )
+
+        assert "semantic_text" not in default_chunk.metadata
+        assert enriched_chunk.metadata["kind"] == "method"
+        assert enriched_chunk.metadata["symbol"] == "add"
+        assert enriched_chunk.metadata["parent_symbol"] == "Calculator"
+        assert enriched_chunk.metadata["qualified_name"] == "Calculator.add"
+        assert "content:" in enriched_chunk.metadata["semantic_text"]
+
+    @staticmethod
+    def test_chunk_with_retrieval_metadata_cross_language():
+        """Test retrieval metadata uses shared normalization across languages."""
+        javascript_code = """
+function greet(name) {
+    return `hello ${name}`;
+}
+"""
+        go_code = """
+package main
+
+func Greet(name string) string {
+    return name
+}
+"""
+
+        javascript_chunks = chunk_text(
+            javascript_code,
+            "javascript",
+            extract_metadata=True,
+            include_retrieval_metadata=True,
+        )
+        go_chunks = chunk_text(
+            go_code,
+            "go",
+            extract_metadata=True,
+            include_retrieval_metadata=True,
+        )
+
+        js_chunk = next(
+            c for c in javascript_chunks if c.node_type == "function_declaration"
+        )
+        go_chunk = next(c for c in go_chunks if c.node_type == "function_declaration")
+
+        for chunk in (js_chunk, go_chunk):
+            assert chunk.metadata["kind"] == "function"
+            assert chunk.metadata["symbol"]
+            assert chunk.metadata["semantic_path"]
+            assert chunk.metadata["semantic_text"]
+
+    @staticmethod
     def test_chunk_with_metadata_javascript():
         """Test chunking JavaScript code with metadata."""
         code = """

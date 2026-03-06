@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from .core import _build_retrieval_metadata, _extract_definition_name
 from .parser import get_parser
 from .types import CodeChunk, compute_node_id
 
@@ -80,6 +81,8 @@ class StreamingChunker:
         parent_ctx: str | None = None,
         parent_chunk: CodeChunk | None = None,
         parent_route: list[str] | None = None,
+        parent_qualified_route: list[str] | None = None,
+        include_retrieval_metadata: bool = False,
     ) -> Iterator[CodeChunk]:
         """
         Yield chunks as they're found without building full list in memory.
@@ -91,6 +94,7 @@ class StreamingChunker:
         }
 
         parent_route = (parent_route or []).copy()
+        parent_qualified_route = (parent_qualified_route or []).copy()
 
         if node.type in chunk_types:
             # Extract content from memory-mapped data
@@ -99,11 +103,18 @@ class StreamingChunker:
                 errors="replace",
             )
             current_route = [*parent_route, node.type]
+            start_line = node.start_point[0] + 1
+            def_name = _extract_definition_name(node, mmap_data)
+            if def_name:
+                qualified_name = f"{node.type}:{def_name}"
+            else:
+                qualified_name = f"{node.type}:anon@{start_line}"
+            current_qualified_route = [*parent_qualified_route, qualified_name]
             chunk = CodeChunk(
                 language=self.language,
                 file_path=file_path,
                 node_type=node.type,
-                start_line=node.start_point[0] + 1,
+                start_line=start_line,
                 end_line=node.end_point[0] + 1,
                 byte_start=node.start_byte,
                 byte_end=node.end_byte,
@@ -111,6 +122,7 @@ class StreamingChunker:
                 content=text,
                 parent_chunk_id=(parent_chunk.node_id if parent_chunk else None),
                 parent_route=current_route,
+                qualified_route=current_qualified_route,
             )
             # Ensure node_id reflects file path
             chunk.node_id = compute_node_id(
@@ -119,10 +131,13 @@ class StreamingChunker:
                 chunk.parent_route,
                 chunk.content,
             )
+            if include_retrieval_metadata:
+                chunk.metadata = _build_retrieval_metadata(chunk)
             yield chunk
             parent_ctx = node.type
             parent_chunk = chunk
             parent_route = current_route
+            parent_qualified_route = current_qualified_route
 
         for child in node.children:
             yield from self._walk_streaming(
@@ -132,9 +147,15 @@ class StreamingChunker:
                 parent_ctx,
                 parent_chunk,
                 parent_route,
+                parent_qualified_route,
+                include_retrieval_metadata,
             )
 
-    def chunk_file_streaming(self, path: Path) -> Iterator[CodeChunk]:
+    def chunk_file_streaming(
+        self,
+        path: Path,
+        include_retrieval_metadata: bool = False,
+    ) -> Iterator[CodeChunk]:
         """Stream chunks from a file using memory-mapped I/O."""
         # Check if file is empty
         if path.stat().st_size == 0:
@@ -154,13 +175,18 @@ class StreamingChunker:
                 root,
                 mmap_data,
                 str(path),
+                include_retrieval_metadata=include_retrieval_metadata,
             )
 
 
 def chunk_file_streaming(
     path: str | Path,
     language: str,
+    include_retrieval_metadata: bool = False,
 ) -> Iterator[CodeChunk]:
     """Stream chunks from a file without loading everything into memory."""
     chunker = StreamingChunker(language)
-    yield from chunker.chunk_file_streaming(Path(path))
+    yield from chunker.chunk_file_streaming(
+        Path(path),
+        include_retrieval_metadata=include_retrieval_metadata,
+    )

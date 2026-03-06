@@ -27,6 +27,7 @@ def sample_chunks():
             content="class TestClass:\n    pass",
             chunk_id="chunk1",
             parent_chunk_id=None,
+            metadata={"kind": "class", "semantic_text": "class TestClass"},
         ),
         CodeChunk(
             language="python",
@@ -40,6 +41,7 @@ def sample_chunks():
             content="def method(self):\n        pass",
             chunk_id="chunk2",
             parent_chunk_id="chunk1",
+            metadata={"kind": "method", "semantic_text": "method TestClass.method"},
         ),
     ]
     return chunks
@@ -186,3 +188,18 @@ def test_jsonl_minimal_schema(sample_chunks):
     assert "type" in chunk1
     assert "content" in chunk1
     assert "chunk_id" not in chunk1  # Minimal schema
+
+
+def test_jsonl_export_preserves_metadata(sample_chunks):
+    """Test JSONL export retains chunk metadata when present."""
+    exporter = JSONLExporter(SchemaType.FLAT)
+    output = StringIO()
+
+    exporter.export(sample_chunks, output)
+
+    lines = output.getvalue().strip().split("\n")
+    chunk1 = json.loads(lines[0])
+    chunk2 = json.loads(lines[1])
+
+    assert chunk1["metadata"]["kind"] == "class"
+    assert chunk2["metadata"]["semantic_text"] == "method TestClass.method"

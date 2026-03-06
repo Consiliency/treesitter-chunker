@@ -67,6 +67,194 @@ def _extract_definition_name(node: Node, source: bytes) -> str | None:
     return None
 
 
+def _parse_route_segment(segment: str) -> tuple[str, str]:
+    """Split a qualified route segment into node type and name."""
+    if ":" not in segment:
+        return segment, segment
+    node_type, name = segment.split(":", 1)
+    return node_type, name
+
+
+def _normalize_kind(node_type: str) -> str:
+    """Normalize language-specific node types to retrieval-friendly kinds."""
+    lowered = (node_type or "").lower()
+
+    if "constructor" in lowered:
+        return "constructor"
+    if "method" in lowered:
+        return "method"
+    if any(token in lowered for token in {"function", "func", "procedure"}):
+        return "function"
+    if "class" in lowered:
+        return "class"
+    if "interface" in lowered:
+        return "interface"
+    if "trait" in lowered:
+        return "trait"
+    if "enum" in lowered:
+        return "enum"
+    if "struct" in lowered:
+        return "struct"
+    if any(token in lowered for token in {"module", "namespace", "package"}):
+        return "module"
+    if "type" in lowered:
+        return "type"
+    return node_type
+
+
+def _route_symbol_name(segment: str) -> str | None:
+    """Extract a readable symbol name from a route segment."""
+    _node_type, name = _parse_route_segment(segment)
+    if not name or name.startswith("anon@"):
+        return None
+    return name
+
+
+def _format_signature_text(signature: object) -> str | None:
+    """Format signature metadata into a normalized string."""
+    if signature is None:
+        return None
+    if isinstance(signature, str):
+        return signature
+    if not isinstance(signature, dict):
+        return str(signature)
+
+    name = signature.get("name")
+    params = []
+    for param in signature.get("parameters", []):
+        if isinstance(param, dict):
+            param_text = param.get("name", "?")
+            if param.get("type"):
+                param_text += f": {param['type']}"
+            if param.get("default") is not None:
+                param_text += f" = {param['default']}"
+        else:
+            param_text = str(param)
+        params.append(param_text)
+
+    signature_text = f"({', '.join(params)})"
+    if name:
+        signature_text = f"{name}{signature_text}"
+    if signature.get("return_type"):
+        signature_text += f" -> {signature['return_type']}"
+    return signature_text
+
+
+def _normalize_text_list(value: object) -> list[str]:
+    """Normalize metadata values into a stable string list."""
+    if value is None:
+        return []
+    if isinstance(value, str):
+        values = [value]
+    elif isinstance(value, (list, tuple, set)):
+        values = [str(item) for item in value if item is not None]
+    else:
+        values = [str(value)]
+    return sorted(
+        dict.fromkeys(item.strip() for item in values if item and item.strip())
+    )
+
+
+def _build_semantic_text(
+    chunk: CodeChunk, retrieval_metadata: dict[str, object]
+) -> str:
+    """Build retrieval-oriented semantic text for a chunk."""
+    lines = [
+        f"language: {chunk.language}",
+        f"file: {chunk.file_path or '<memory>'}",
+        f"kind: {retrieval_metadata['kind']}",
+    ]
+
+    for key in (
+        "symbol",
+        "qualified_name",
+        "parent_symbol",
+        "semantic_path",
+        "signature_text",
+    ):
+        value = retrieval_metadata.get(key)
+        if value:
+            label = key.replace("_", " ")
+            lines.append(f"{label}: {value}")
+
+    for key in ("imports", "exports", "dependencies"):
+        values = _normalize_text_list(retrieval_metadata.get(key))
+        if values:
+            lines.append(f"{key}: {', '.join(values)}")
+
+    docstring = chunk.metadata.get("docstring") if chunk.metadata else None
+    if docstring:
+        lines.append(f"docstring: {docstring}")
+
+    if chunk.content:
+        lines.append("content:")
+        lines.append(chunk.content)
+
+    return "\n".join(lines)
+
+
+def _build_retrieval_metadata(chunk: CodeChunk) -> dict[str, object]:
+    """Derive language-agnostic retrieval metadata from a chunk."""
+    metadata = chunk.metadata or {}
+    route_symbols = [
+        name
+        for name in (_route_symbol_name(segment) for segment in chunk.qualified_route)
+        if name
+    ]
+    signature = metadata.get("signature")
+    symbol = None
+    if isinstance(signature, dict):
+        symbol = signature.get("name")
+    elif isinstance(metadata.get("symbol"), str):
+        symbol = metadata.get("symbol")
+    if not symbol and route_symbols:
+        symbol = route_symbols[-1]
+    if not symbol and chunk.parent_context:
+        symbol = chunk.parent_context.split(".")[-1]
+    symbol = str(symbol) if symbol else None
+
+    parent_symbol = route_symbols[-2] if len(route_symbols) > 1 else None
+    kind = _normalize_kind(chunk.node_type)
+    parent_node_types = [
+        _parse_route_segment(segment)[0] for segment in chunk.qualified_route[:-1]
+    ]
+    if kind == "function" and any(
+        _normalize_kind(node_type) in {"class", "struct", "interface", "trait"}
+        for node_type in parent_node_types
+    ):
+        kind = "method"
+    qualified_name = ".".join(route_symbols) if route_symbols else symbol
+    semantic_path = chunk.file_path or "<memory>"
+    if qualified_name:
+        semantic_path = f"{semantic_path}::{qualified_name}"
+
+    retrieval_metadata: dict[str, object] = {
+        "kind": kind,
+        "symbol": symbol,
+        "qualified_name": qualified_name,
+        "parent_symbol": parent_symbol,
+        "semantic_path": semantic_path,
+        "signature_text": _format_signature_text(signature),
+        "imports": _normalize_text_list(metadata.get("imports")),
+        "exports": _normalize_text_list(metadata.get("exports")),
+        "dependencies": _normalize_text_list(
+            metadata.get("dependencies", chunk.dependencies)
+        ),
+    }
+    retrieval_metadata["semantic_text"] = _build_semantic_text(
+        chunk, retrieval_metadata
+    )
+    return retrieval_metadata
+
+
+def _apply_retrieval_metadata(chunks: list[CodeChunk]) -> None:
+    """Attach normalized retrieval metadata to each chunk in-place."""
+    for chunk in chunks:
+        if chunk.metadata is None:
+            chunk.metadata = {}
+        chunk.metadata.update(_build_retrieval_metadata(chunk))
+
+
 def _walk(
     node: Node,
     source: bytes,
@@ -103,15 +291,15 @@ def _walk(
                 "method_definition",
             }
 
-        def should_chunk(node_type):
+        def should_chunk(node_type: str) -> bool:
             return node_type in chunk_types
 
-        def should_ignore(_node_type):
+        def should_ignore(_node_type: str) -> bool:
             return False
 
     else:
         should_chunk = config.should_chunk_node
-        should_ignore = config.should_ignore_node
+        should_ignore = config.should_ignore_node  # type: ignore[assignment]
         # Go: ensure common declaration node types are chunked even if rules are minimal
         if language == "go":
             go_decl_like = {
@@ -170,7 +358,7 @@ def _walk(
     if language == "r" and node.type == "call":
         try:
             callee = (getattr(node, "children", None) or [None])[0]
-            if getattr(callee, "type", None) == "identifier":
+            if callee is not None and getattr(callee, "type", None) == "identifier":
                 ident = source[callee.start_byte : callee.end_byte].decode(
                     "utf-8",
                     errors="ignore",
@@ -369,9 +557,7 @@ def _walk(
             start_line=start_line,
             end_line=(
                 # Estimate end line from span_end by walking to end_point if same node
-                node.end_point[0] + 1
-                if span_end == node.end_byte
-                else None  # type: ignore[truthy-bool]
+                node.end_point[0] + 1 if span_end == node.end_byte else None  # type: ignore[truthy-bool]
             )
             or (node.end_point[0] + 1),
             byte_start=span_start,
@@ -659,7 +845,6 @@ def _merge_julia_comments_with_definitions(chunks: list[CodeChunk]) -> list[Code
                 current_chunk.end_line + 1 == next_chunk.start_line
                 or current_chunk.end_line == next_chunk.start_line
             ):
-
                 # Merge the comment content with the definition content
                 merged_content = current_chunk.content + "\n" + next_chunk.content
 
@@ -744,6 +929,7 @@ def chunk_text(
     language: str,
     file_path: str = "",
     extract_metadata: bool = True,
+    include_retrieval_metadata: bool = False,
 ) -> list[CodeChunk]:
     """Parse text and return a list of `CodeChunk`.
 
@@ -752,6 +938,7 @@ def chunk_text(
         language: Programming language
         file_path: Path to the file (optional)
         extract_metadata: Whether to extract metadata (default: True)
+        include_retrieval_metadata: Whether to add retrieval-oriented metadata
 
     Returns:
         List of CodeChunk objects with optional metadata
@@ -805,6 +992,12 @@ def chunk_text(
         sig = c.metadata.get("signature") if c.metadata else None
         if sig and sig.get("name"):
             c.symbol_id = compute_symbol_id(language, file_path, sig["name"])
+    if include_retrieval_metadata:
+        _apply_retrieval_metadata(chunks)
+        for c in chunks:
+            symbol = c.metadata.get("symbol") if c.metadata else None
+            if symbol:
+                c.symbol_id = compute_symbol_id(language, file_path, str(symbol))
     return chunks
 
 
@@ -812,6 +1005,7 @@ def chunk_file(
     path: str | Path,
     language: str,
     extract_metadata: bool = True,
+    include_retrieval_metadata: bool = False,
 ) -> list[CodeChunk]:
     """Parse the file and return a list of `CodeChunk`.
 
@@ -819,6 +1013,7 @@ def chunk_file(
         path: Path to the file to chunk
         language: Programming language
         extract_metadata: Whether to extract metadata (default: True)
+        include_retrieval_metadata: Whether to add retrieval-oriented metadata
 
     Returns:
         List of CodeChunk objects with optional metadata
@@ -858,6 +1053,7 @@ def chunk_file(
                     "r",
                     pseudo_path,
                     extract_metadata=extract_metadata,
+                    include_retrieval_metadata=include_retrieval_metadata,
                 ),
             )
         return all_chunks
@@ -867,4 +1063,5 @@ def chunk_file(
         language,
         str(path),
         extract_metadata=extract_metadata,
+        include_retrieval_metadata=include_retrieval_metadata,
     )

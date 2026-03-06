@@ -188,7 +188,11 @@ class TestCacheBasics:
     @staticmethod
     def test_cache_and_retrieve_chunks(cache, temp_python_file):
         """Test basic cache and retrieve operations."""
-        chunks = chunk_file(temp_python_file, "python")
+        chunks = chunk_file(
+            temp_python_file,
+            "python",
+            include_retrieval_metadata=True,
+        )
         cache.cache_chunks(temp_python_file, "python", chunks)
         cached_chunks = cache.get_cached_chunks(temp_python_file, "python")
         assert cached_chunks is not None
@@ -200,6 +204,9 @@ class TestCacheBasics:
         assert all(
             c1.content == c2.content
             for c1, c2 in zip(chunks, cached_chunks, strict=False)
+        )
+        assert all(
+            c2.metadata.get("semantic_text") for c2 in cached_chunks if c2.metadata
         )
 
     @classmethod
@@ -528,7 +535,6 @@ class TestMemoryVsDiskCache:
         """Test hybrid caching with memory layer over disk cache."""
 
         class HybridCache:
-
             def __init__(self, disk_cache, max_memory_items=10):
                 self.disk_cache = disk_cache
                 self.memory_cache = OrderedDict()
@@ -621,7 +627,6 @@ class TestCacheErrorHandling:
         chunks = chunk_file(temp_python_file, "python")
 
         class MockConnection:
-
             def __init__(self, real_conn):
                 self.real_conn = real_conn
 

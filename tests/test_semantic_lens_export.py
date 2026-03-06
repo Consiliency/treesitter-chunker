@@ -36,7 +36,12 @@ def sample_chunks() -> list[CodeChunk]:
             parent_context="UserService",
             content="class UserService { ... }",
             qualified_route=["module:user", "class_definition:UserService"],
-            metadata={"visibility": "public"},
+            metadata={
+                "visibility": "public",
+                "symbol": "UserService",
+                "qualified_name": "user.UserService",
+                "kind": "class",
+            },
         ),
         CodeChunk(
             language="typescript",
@@ -56,6 +61,11 @@ def sample_chunks() -> list[CodeChunk]:
             metadata={
                 "visibility": "public",
                 "signature": "(id: string) => Promise<User>",
+                "signature_text": "getUser(id: string) -> Promise<User>",
+                "symbol": "getUser",
+                "qualified_name": "user.UserService.getUser",
+                "parent_symbol": "UserService",
+                "semantic_path": "src/user.ts::user.UserService.getUser",
             },
         ),
     ]
@@ -75,7 +85,7 @@ def sample_relationships(sample_chunks: list[CodeChunk]) -> list[ChunkRelationsh
             source_chunk_id=sample_chunks[1].chunk_id,
             target_chunk_id=sample_chunks[0].chunk_id,
             relationship_type=RelationshipType.CALLS,
-            metadata=None,
+            metadata={},
         ),
     ]
 
@@ -151,7 +161,26 @@ class TestSemanticLensExporter:
         # Check method node
         method_node = next(n for n in bundle["nodes"] if n["kind"] == "method")
         assert method_node["name"] == "getUser"
-        assert method_node["signature"] == "(id: string) => Promise<User>"
+        assert method_node["signature"] == "getUser(id: string) -> Promise<User>"
+        assert method_node["route"] == "user.UserService.getUser"
+
+    def test_annotations_include_retrieval_metadata(self, sample_chunks):
+        """Test retrieval metadata is surfaced in semantic-lens annotations."""
+        exporter = SemanticLensExporter()
+        output = io.StringIO()
+
+        exporter.export(sample_chunks, [], output)
+
+        output.seek(0)
+        bundle = json.load(output)
+        annotation = next(
+            a
+            for a in bundle["annotations"]
+            if a.get("kv", {}).get("qualified_name") == "user.UserService.getUser"
+        )
+
+        assert annotation["kv"]["symbol"] == "getUser"
+        assert annotation["kv"]["parent_symbol"] == "UserService"
 
     def test_edge_mapping(self, sample_chunks, sample_relationships):
         """Test relationship to edge conversion."""

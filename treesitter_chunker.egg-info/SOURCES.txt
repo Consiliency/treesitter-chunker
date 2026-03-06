@@ -51,7 +51,16 @@ chunker/build/system.py
 chunker/cicd/__init__.py
 chunker/cicd/pipeline.py
 chunker/cicd/workflow_validator.py
+chunker/cli/__init__.py
+chunker/cli/__main__.py
+chunker/cli/cluster_commands.py
 chunker/cli/grammar_commands.py
+chunker/cli/symbol_commands.py
+chunker/clustering/__init__.py
+chunker/clustering/engine.py
+chunker/clustering/hierarchy.py
+chunker/clustering/metrics.py
+chunker/clustering/weights.py
 chunker/config/__init__.py
 chunker/config/profiles.py
 chunker/config/strategy_config.py

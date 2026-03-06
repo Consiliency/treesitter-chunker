@@ -324,6 +324,7 @@ class ZeroConfigAPI(ZeroConfigContract):
         text: str,
         language: str,
         token_limit: int | None = None,
+        include_retrieval_metadata: bool = False,
     ) -> AutoChunkResult:
         """Chunk text content with automatic setup.
 
@@ -349,9 +350,14 @@ class ZeroConfigAPI(ZeroConfigContract):
                         text,
                         language,
                         max_tokens=token_limit,
+                        include_retrieval_metadata=include_retrieval_metadata,
                     )
                 else:
-                    chunks = chunk_text(text, language)
+                    chunks = chunk_text(
+                        text,
+                        language,
+                        include_retrieval_metadata=include_retrieval_metadata,
+                    )
                 chunk_dicts = []
                 for chunk in chunks:
                     chunk_dict = {
@@ -434,15 +440,30 @@ class ZeroConfigAPI(ZeroConfigContract):
             raise ChunkerError(f"No parser available for language: {language}")
 
         class LanguageChunker:
-
             def __init__(self, lang: str):
                 self.language = lang
 
-            def chunk_file(self, file_path: str | Path) -> list[Any]:
-                return chunk_file(file_path, self.language)
+            def chunk_file(
+                self,
+                file_path: str | Path,
+                include_retrieval_metadata: bool = False,
+            ) -> list[Any]:
+                return chunk_file(
+                    file_path,
+                    self.language,
+                    include_retrieval_metadata=include_retrieval_metadata,
+                )
 
-            def chunk_text(self, text: str) -> list[Any]:
-                return chunk_text(text, self.language)
+            def chunk_text(
+                self,
+                text: str,
+                include_retrieval_metadata: bool = False,
+            ) -> list[Any]:
+                return chunk_text(
+                    text,
+                    self.language,
+                    include_retrieval_metadata=include_retrieval_metadata,
+                )
 
         return LanguageChunker(language)
 

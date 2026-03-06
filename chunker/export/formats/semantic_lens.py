@@ -69,33 +69,29 @@ EDGE_KIND_MAP: dict[RelationshipType, str] = {
 }
 
 # Valid semantic-lens node kinds (for validation)
-VALID_NODE_KINDS = frozenset(
-    [
-        "module",
-        "class",
-        "interface",
-        "trait",
-        "function",
-        "method",
-        "field",
-        "property",
-    ]
-)
+VALID_NODE_KINDS = frozenset([
+    "module",
+    "class",
+    "interface",
+    "trait",
+    "function",
+    "method",
+    "field",
+    "property",
+])
 
 # Valid semantic-lens edge kinds (for validation)
-VALID_EDGE_KINDS = frozenset(
-    [
-        "defines",
-        "imports",
-        "calls",
-        "inherits",
-        "implements",
-        "uses",
-        "reads",
-        "writes",
-        "throws",
-    ]
-)
+VALID_EDGE_KINDS = frozenset([
+    "defines",
+    "imports",
+    "calls",
+    "inherits",
+    "implements",
+    "uses",
+    "reads",
+    "writes",
+    "throws",
+])
 
 
 class SemanticLensExporter(StructuredExporter):
@@ -303,7 +299,7 @@ class SemanticLensExporter(StructuredExporter):
             node_id = f"{node_id}_{uuid.uuid4().hex[:8]}"
 
         # Extract name from qualified_route or parent_context
-        name = self._extract_name(chunk)
+        name = str(chunk.metadata.get("symbol") or self._extract_name(chunk))
 
         node: dict[str, Any] = {
             "node_id": node_id,
@@ -318,7 +314,10 @@ class SemanticLensExporter(StructuredExporter):
         if chunk.parent_chunk_id:
             node["parent"] = chunk.parent_chunk_id
 
-        if chunk.qualified_route:
+        route = chunk.metadata.get("qualified_name") if chunk.metadata else None
+        if route:
+            node["route"] = str(route)
+        elif chunk.qualified_route:
             node["route"] = "::".join(chunk.qualified_route)
 
         # Extract visibility from metadata if available
@@ -329,7 +328,9 @@ class SemanticLensExporter(StructuredExporter):
             node["visibility"] = "unknown"
 
         # Extract signature from metadata if available
-        signature = chunk.metadata.get("signature")
+        signature = chunk.metadata.get("signature_text") or chunk.metadata.get(
+            "signature"
+        )
         if signature:
             formatted_sig = self._format_signature(signature)
             if formatted_sig:
@@ -459,7 +460,16 @@ class SemanticLensExporter(StructuredExporter):
                 if "tags" in chunk.metadata:
                     tags.extend(chunk.metadata["tags"])
                 # Copy select metadata to kv (must be scalar values)
-                for key in ("lines", "tokens"):
+                for key in (
+                    "lines",
+                    "tokens",
+                    "kind",
+                    "symbol",
+                    "qualified_name",
+                    "parent_symbol",
+                    "semantic_path",
+                    "signature_text",
+                ):
                     if key in chunk.metadata:
                         val = chunk.metadata[key]
                         # Only include scalar values (string, number, boolean, null)

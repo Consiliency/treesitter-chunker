@@ -28,6 +28,7 @@ def chunk_text_with_token_limit(
     file_path: str = "",
     model: str = "gpt-4",
     extract_metadata: bool = True,
+    include_retrieval_metadata: bool = False,
 ) -> list[CodeChunk]:
     """Parse text and return chunks that respect token limits.
 
@@ -42,12 +43,19 @@ def chunk_text_with_token_limit(
         file_path: Path to the file (optional)
         model: Tokenizer model to use (default: "gpt-4")
         extract_metadata: Whether to extract metadata (default: True)
+        include_retrieval_metadata: Whether to add retrieval-oriented metadata
 
     Returns:
         List of CodeChunk objects with token counts in metadata
     """
     # First get regular chunks
-    chunks = chunk_text(text, language, file_path, extract_metadata)
+    chunks = chunk_text(
+        text,
+        language,
+        file_path,
+        extract_metadata,
+        include_retrieval_metadata,
+    )
 
     # Create token-aware chunker
     token_chunker = TreeSitterTokenAwareChunker()
@@ -76,6 +84,7 @@ def chunk_file_with_token_limit(
     max_tokens: int,
     model: str = "gpt-4",
     extract_metadata: bool = True,
+    include_retrieval_metadata: bool = False,
 ) -> list[CodeChunk]:
     """Parse file and return chunks that respect token limits.
 
@@ -89,6 +98,7 @@ def chunk_file_with_token_limit(
         max_tokens: Maximum tokens per chunk
         model: Tokenizer model to use (default: "gpt-4")
         extract_metadata: Whether to extract metadata (default: True)
+        include_retrieval_metadata: Whether to add retrieval-oriented metadata
 
     Returns:
         List of CodeChunk objects with token counts in metadata
@@ -101,6 +111,7 @@ def chunk_file_with_token_limit(
         str(path),
         model,
         extract_metadata,
+        include_retrieval_metadata,
     )
 
 

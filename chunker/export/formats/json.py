@@ -140,7 +140,7 @@ class StructuredJSONExporter(StructuredExporter):
     @staticmethod
     def _chunk_to_dict(chunk: CodeChunk) -> dict[str, Any]:
         """Convert chunk to dictionary."""
-        return {
+        chunk_dict = {
             "chunk_id": chunk.chunk_id,
             "language": chunk.language,
             "file_path": chunk.file_path,
@@ -155,6 +155,9 @@ class StructuredJSONExporter(StructuredExporter):
             "references": chunk.references,
             "dependencies": chunk.dependencies,
         }
+        if chunk.metadata:
+            chunk_dict["metadata"] = chunk.metadata
+        return chunk_dict
 
     @staticmethod
     def _relationship_to_dict(rel: ChunkRelationship) -> dict[str, Any]:

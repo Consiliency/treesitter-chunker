@@ -26,6 +26,7 @@ def sample_chunks():
             content="class TestClass:\n    pass",
             chunk_id="chunk1",
             parent_chunk_id=None,
+            metadata={"kind": "class", "semantic_text": "class TestClass"},
         ),
         CodeChunk(
             language="python",
@@ -39,6 +40,7 @@ def sample_chunks():
             content="def method(self):\n        pass",
             chunk_id="chunk2",
             parent_chunk_id="chunk1",
+            metadata={"kind": "method", "semantic_text": "method TestClass.method"},
         ),
     ]
     return chunks
@@ -97,6 +99,16 @@ def test_json_export_full_schema(sample_chunks):
     assert data["metadata"]["total_chunks"] == 2
     assert len(data["chunks"]) == 2
     assert len(data["relationships"]["parent_child"]) == 1
+
+
+def test_json_export_preserves_metadata(sample_chunks):
+    """Test JSON export retains chunk metadata when present."""
+    exporter = JSONExporter(SchemaType.FLAT)
+    result = exporter.export_to_string(sample_chunks)
+    data = json.loads(result)
+
+    assert data[0]["metadata"]["kind"] == "class"
+    assert data[1]["metadata"]["semantic_text"] == "method TestClass.method"
 
 
 def test_json_export_to_file(sample_chunks, tmp_path):
