@@ -13,12 +13,15 @@ try:
     import networkx as nx
     import igraph
     import leidenalg
+
     HAS_CLUSTERING_DEPS = True
 except ImportError:
     HAS_CLUSTERING_DEPS = False
 
 
-@pytest.mark.skipif(not HAS_CLUSTERING_DEPS, reason="clustering dependencies not installed")
+@pytest.mark.skipif(
+    not HAS_CLUSTERING_DEPS, reason="clustering dependencies not installed"
+)
 class TestClusteringIntegration:
     """Integration tests for clustering pipeline."""
 
@@ -34,7 +37,8 @@ class TestClusteringIntegration:
         )
 
         # auth/user.py
-        (tmp_path / "auth" / "user.py").write_text('''
+        (tmp_path / "auth" / "user.py").write_text(
+            '''
 class User:
     """User model."""
     def __init__(self, name: str):
@@ -42,10 +46,12 @@ class User:
 
     def greet(self) -> str:
         return f"Hello, {self.name}"
-''')
+'''
+        )
 
         # auth/login.py
-        (tmp_path / "auth" / "login.py").write_text('''
+        (tmp_path / "auth" / "login.py").write_text(
+            '''
 from .user import User
 
 def login(username: str) -> User:
@@ -55,14 +61,17 @@ def login(username: str) -> User:
 def validate(user: User) -> bool:
     """Validate user."""
     return user.name is not None
-''')
+'''
+        )
 
         # utils.py (infrastructure-like)
-        (tmp_path / "utils.py").write_text('''
+        (tmp_path / "utils.py").write_text(
+            '''
 def log(message: str) -> None:
     """Log a message."""
     print(message)
-''')
+'''
+        )
 
         return tmp_path
 
@@ -167,14 +176,17 @@ def log(message: str) -> None:
         assert fine_result["hierarchy"]["level"] == "container"
 
 
-@pytest.mark.skipif(not HAS_CLUSTERING_DEPS, reason="clustering dependencies not installed")
+@pytest.mark.skipif(
+    not HAS_CLUSTERING_DEPS, reason="clustering dependencies not installed"
+)
 class TestCLIIntegration:
     """Integration tests for CLI commands."""
 
     @pytest.fixture
     def sample_project(self, tmp_path: Path) -> Path:
         """Create a sample Python project for testing."""
-        (tmp_path / "sample.py").write_text('''
+        (tmp_path / "sample.py").write_text(
+            """
 class Foo:
     def bar(self):
         return "bar"
@@ -182,7 +194,8 @@ class Foo:
 def baz():
     f = Foo()
     return f.bar()
-''')
+"""
+        )
         return tmp_path
 
     def test_cli_cluster_infer(self, sample_project: Path, tmp_path: Path):
@@ -191,10 +204,14 @@ def baz():
 
         result = subprocess.run(
             [
-                sys.executable, "-m", "chunker.cli",
-                "cluster", "infer",
+                sys.executable,
+                "-m",
+                "chunker.cli",
+                "cluster",
+                "infer",
                 str(sample_project),
-                "-o", str(output_file),
+                "-o",
+                str(output_file),
             ],
             capture_output=True,
             text=True,
@@ -220,10 +237,14 @@ def baz():
         """Test CLI with summary output format."""
         result = subprocess.run(
             [
-                sys.executable, "-m", "chunker.cli",
-                "cluster", "infer",
+                sys.executable,
+                "-m",
+                "chunker.cli",
+                "cluster",
+                "infer",
                 str(sample_project),
-                "--format", "summary",
+                "--format",
+                "summary",
             ],
             capture_output=True,
             text=True,

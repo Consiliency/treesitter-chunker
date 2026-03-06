@@ -92,7 +92,9 @@ class ClusterNode:
             reconstruct the ClusterMetrics object without its class definition.
             Callers should handle metrics reconstruction separately if needed.
         """
-        children = [cls.from_dict(child_data) for child_data in data.get("children", [])]
+        children = [
+            cls.from_dict(child_data) for child_data in data.get("children", [])
+        ]
 
         return cls(
             id=data["id"],
@@ -196,9 +198,7 @@ class HierarchyBuilder:
 
         for cluster_id, symbol_ids in self.coarse_clusters.items():
             # Filter to only valid symbol IDs
-            valid_symbol_ids = [
-                sid for sid in symbol_ids if sid in self.symbols
-            ]
+            valid_symbol_ids = [sid for sid in symbol_ids if sid in self.symbols]
 
             if not valid_symbol_ids:
                 continue
@@ -253,7 +253,8 @@ class HierarchyBuilder:
         for cluster_id, symbol_ids in self.fine_clusters.items():
             # Find symbols that belong to both this fine cluster and the component
             overlapping_symbols = [
-                sid for sid in symbol_ids
+                sid
+                for sid in symbol_ids
                 if sid in component_member_set and sid in self.symbols
             ]
 
@@ -283,7 +284,8 @@ class HierarchyBuilder:
 
         # Handle any symbols not assigned to fine clusters
         unassigned_symbols = [
-            sid for sid in component.members
+            sid
+            for sid in component.members
             if sid not in assigned_symbols and sid in self.symbols
         ]
 
@@ -412,6 +414,7 @@ class HierarchyBuilder:
 
         # Fallback: use the most common module
         from collections import Counter
+
         counter = Counter(modules)
         most_common = counter.most_common(1)
         if most_common:

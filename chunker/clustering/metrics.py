@@ -354,7 +354,8 @@ class MetricsCalculator:
 
         # Find nodes above the threshold
         infrastructure_nodes = [
-            node for node, centrality in betweenness.items()
+            node
+            for node, centrality in betweenness.items()
             if centrality >= threshold_value and centrality > 0
         ]
 

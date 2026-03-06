@@ -211,10 +211,7 @@ class ClusteringEngine:
         # Handle no-edges case
         if self._graph.number_of_edges() == 0:
             # Each node is its own cluster
-            return {
-                str(i): [node]
-                for i, node in enumerate(self._graph.nodes())
-            }
+            return {str(i): [node] for i, node in enumerate(self._graph.nodes())}
 
         # Convert NetworkX graph to igraph
         # Create mapping from node names to indices
@@ -354,9 +351,7 @@ class ClusteringEngine:
 
         # Calculate average cluster size
         avg_cluster_size = (
-            sum(len(m) for m in coarse.values()) / len(coarse)
-            if coarse
-            else 0.0
+            sum(len(m) for m in coarse.values()) / len(coarse) if coarse else 0.0
         )
 
         # Count isolated nodes (not in any cluster)
@@ -424,12 +419,14 @@ class ClusteringEngine:
         # Convert to list of dicts
         cluster_edges = []
         for (from_cluster, to_cluster), data in edge_counts.items():
-            cluster_edges.append({
-                "from_cluster": from_cluster,
-                "to_cluster": to_cluster,
-                "weight": int(data["weight"]),  # Round to int
-                "types": list(data["types"]),
-            })
+            cluster_edges.append(
+                {
+                    "from_cluster": from_cluster,
+                    "to_cluster": to_cluster,
+                    "weight": int(data["weight"]),  # Round to int
+                    "types": list(data["types"]),
+                }
+            )
 
         # Sort by weight descending
         cluster_edges.sort(key=lambda e: e["weight"], reverse=True)
@@ -479,11 +476,13 @@ class ClusteringEngine:
                 }
             module_deps[key]["count"] += 1
             if len(module_deps[key]["examples"]) < 3:
-                module_deps[key]["examples"].append({
-                    "from": rel["from"],
-                    "to": rel["to"],
-                    "type": rel.get("type", "calls"),
-                })
+                module_deps[key]["examples"].append(
+                    {
+                        "from": rel["from"],
+                        "to": rel["to"],
+                        "type": rel.get("type", "calls"),
+                    }
+                )
 
         return sorted(
             module_deps.values(),

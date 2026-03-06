@@ -50,7 +50,7 @@ class EdgeWeightCalculator:
         self,
         relationship: Dict[str, Any],
         from_symbol: Dict[str, Any],
-        to_symbol: Dict[str, Any]
+        to_symbol: Dict[str, Any],
     ) -> float:
         """Calculate the weight for a relationship between two symbols.
 
@@ -105,10 +105,7 @@ class EdgeWeightCalculator:
         return weight_mapping.get(kind, 0.0)
 
     def _apply_locality_bonus(
-        self,
-        base_weight: float,
-        from_symbol: Dict[str, Any],
-        to_symbol: Dict[str, Any]
+        self, base_weight: float, from_symbol: Dict[str, Any], to_symbol: Dict[str, Any]
     ) -> float:
         """Apply locality bonus if symbols are in the same file.
 

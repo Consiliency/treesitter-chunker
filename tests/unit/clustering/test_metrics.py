@@ -5,6 +5,7 @@ import pytest
 # We need to mock networkx if not installed
 try:
     import networkx as nx
+
     HAS_NETWORKX = True
 except ImportError:
     HAS_NETWORKX = False
@@ -255,12 +256,14 @@ class TestMetricsCalculator:
         """Test cluster with multiple external connections."""
         graph = nx.Graph()
         # Create a cluster of A, B with external connections
-        graph.add_edges_from([
-            ("A", "B"),  # Internal
-            ("A", "X"),  # External
-            ("A", "Y"),  # External
-            ("B", "Z"),  # External
-        ])
+        graph.add_edges_from(
+            [
+                ("A", "B"),  # Internal
+                ("A", "X"),  # External
+                ("A", "Y"),  # External
+                ("B", "Z"),  # External
+            ]
+        )
         calc = MetricsCalculator(graph)
         metrics = calc.calculate_cluster_metrics("multi_ext", ["A", "B"])
         assert metrics.size == 2
@@ -392,11 +395,13 @@ class TestMetricsCalculator:
     def test_calculate_coupling_high_external(self):
         """Test coupling with high external connectivity."""
         graph = nx.Graph()
-        graph.add_edges_from([
-            ("A", "X"),
-            ("A", "Y"),
-            ("A", "Z"),
-        ])
+        graph.add_edges_from(
+            [
+                ("A", "X"),
+                ("A", "Y"),
+                ("A", "Z"),
+            ]
+        )
         calc = MetricsCalculator(graph)
         # Cluster is just A, all edges are external
         coupling = calc.calculate_coupling(["A"])
@@ -518,10 +523,12 @@ class TestMetricsCalculatorEdgeCases:
     def test_unicode_node_names(self):
         """Test metrics with unicode node names."""
         graph = nx.Graph()
-        graph.add_edges_from([
-            ("alpha_alpha", "beta_beta"),
-            ("beta_beta", "gamma_gamma"),
-        ])
+        graph.add_edges_from(
+            [
+                ("alpha_alpha", "beta_beta"),
+                ("beta_beta", "gamma_gamma"),
+            ]
+        )
         calc = MetricsCalculator(graph)
         metrics = calc.calculate_cluster_metrics(
             "unicode", ["alpha_alpha", "beta_beta", "gamma_gamma"]

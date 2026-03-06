@@ -242,6 +242,7 @@ class TestHierarchyBuilder:
 
     def test_empty_clusters(self):
         """Test with empty clusters."""
+
         # Create a mock metrics calculator
         class MockMetricsCalculator:
             def calculate_cluster_metrics(self, cluster_id, members):
@@ -259,6 +260,7 @@ class TestHierarchyBuilder:
 
     def test_single_component(self):
         """Test with a single component."""
+
         class MockMetricsCalculator:
             def calculate(self, node):
                 return ClusterMetrics(
@@ -274,7 +276,12 @@ class TestHierarchyBuilder:
 
         symbols = {
             "mod:A": {"name": "A", "kind": "class", "module": "mod", "file": "mod.py"},
-            "mod:B": {"name": "B", "kind": "function", "module": "mod", "file": "mod.py"},
+            "mod:B": {
+                "name": "B",
+                "kind": "function",
+                "module": "mod",
+                "file": "mod.py",
+            },
         }
 
         builder = HierarchyBuilder(
@@ -299,6 +306,7 @@ class TestHierarchyBuilder:
 
     def test_multiple_components(self):
         """Test with multiple components."""
+
         class MockMetricsCalculator:
             def calculate(self, node):
                 return ClusterMetrics(
@@ -313,10 +321,30 @@ class TestHierarchyBuilder:
                 )
 
         symbols = {
-            "auth:User": {"name": "User", "kind": "class", "module": "auth", "file": "auth.py"},
-            "auth:login": {"name": "login", "kind": "function", "module": "auth", "file": "auth.py"},
-            "db:Connection": {"name": "Connection", "kind": "class", "module": "db", "file": "db.py"},
-            "db:query": {"name": "query", "kind": "function", "module": "db", "file": "db.py"},
+            "auth:User": {
+                "name": "User",
+                "kind": "class",
+                "module": "auth",
+                "file": "auth.py",
+            },
+            "auth:login": {
+                "name": "login",
+                "kind": "function",
+                "module": "auth",
+                "file": "auth.py",
+            },
+            "db:Connection": {
+                "name": "Connection",
+                "kind": "class",
+                "module": "db",
+                "file": "db.py",
+            },
+            "db:query": {
+                "name": "query",
+                "kind": "function",
+                "module": "db",
+                "file": "db.py",
+            },
         }
 
         builder = HierarchyBuilder(
@@ -339,6 +367,7 @@ class TestHierarchyBuilder:
 
     def test_with_fine_clusters(self):
         """Test hierarchy with fine-grained clusters nested in components."""
+
         class MockMetricsCalculator:
             def calculate(self, node):
                 return ClusterMetrics(
@@ -354,9 +383,19 @@ class TestHierarchyBuilder:
 
         symbols = {
             "mod:A": {"name": "A", "kind": "class", "module": "mod", "file": "mod.py"},
-            "mod:B": {"name": "B", "kind": "function", "module": "mod", "file": "mod.py"},
+            "mod:B": {
+                "name": "B",
+                "kind": "function",
+                "module": "mod",
+                "file": "mod.py",
+            },
             "mod:C": {"name": "C", "kind": "class", "module": "mod", "file": "mod.py"},
-            "mod:D": {"name": "D", "kind": "function", "module": "mod", "file": "mod.py"},
+            "mod:D": {
+                "name": "D",
+                "kind": "function",
+                "module": "mod",
+                "file": "mod.py",
+            },
         }
 
         builder = HierarchyBuilder(
@@ -381,13 +420,19 @@ class TestHierarchyBuilder:
 
     def test_component_members_populated(self):
         """Test that component members are correctly populated."""
+
         class MockMetricsCalculator:
             def calculate_cluster_metrics(self, cluster_id, members):
                 return None
 
         symbols = {
             "mod:A": {"name": "A", "kind": "class", "module": "mod", "file": "mod.py"},
-            "mod:B": {"name": "B", "kind": "function", "module": "mod", "file": "mod.py"},
+            "mod:B": {
+                "name": "B",
+                "kind": "function",
+                "module": "mod",
+                "file": "mod.py",
+            },
         }
 
         builder = HierarchyBuilder(
@@ -404,6 +449,7 @@ class TestHierarchyBuilder:
 
     def test_metrics_attached_to_nodes(self):
         """Test that metrics are properly attached to cluster nodes."""
+
         class MockMetricsCalculator:
             def calculate(self, node):
                 return ClusterMetrics(
@@ -419,7 +465,12 @@ class TestHierarchyBuilder:
 
         symbols = {
             "mod:A": {"name": "A", "kind": "class", "module": "mod", "file": "mod.py"},
-            "mod:B": {"name": "B", "kind": "function", "module": "mod", "file": "mod.py"},
+            "mod:B": {
+                "name": "B",
+                "kind": "function",
+                "module": "mod",
+                "file": "mod.py",
+            },
             "mod:C": {"name": "C", "kind": "class", "module": "mod", "file": "mod.py"},
         }
 
@@ -438,6 +489,7 @@ class TestHierarchyBuilder:
 
     def test_parent_id_assignment(self):
         """Test that parent_id is correctly assigned to children."""
+
         class MockMetricsCalculator:
             def calculate_cluster_metrics(self, cluster_id, members):
                 return None
@@ -460,14 +512,30 @@ class TestHierarchyBuilder:
 
     def test_label_generation(self):
         """Test that labels are generated for components."""
+
         class MockMetricsCalculator:
             def calculate_cluster_metrics(self, cluster_id, members):
                 return None
 
         symbols = {
-            "auth:User": {"name": "User", "kind": "class", "module": "auth", "file": "auth.py"},
-            "auth:login": {"name": "login", "kind": "function", "module": "auth", "file": "auth.py"},
-            "auth:logout": {"name": "logout", "kind": "function", "module": "auth", "file": "auth.py"},
+            "auth:User": {
+                "name": "User",
+                "kind": "class",
+                "module": "auth",
+                "file": "auth.py",
+            },
+            "auth:login": {
+                "name": "login",
+                "kind": "function",
+                "module": "auth",
+                "file": "auth.py",
+            },
+            "auth:logout": {
+                "name": "logout",
+                "kind": "function",
+                "module": "auth",
+                "file": "auth.py",
+            },
         }
 
         builder = HierarchyBuilder(
@@ -503,6 +571,7 @@ class TestHierarchyBuilder:
 
     def test_symbols_with_missing_keys(self):
         """Test handling of symbols with missing optional keys."""
+
         class MockMetricsCalculator:
             def calculate_cluster_metrics(self, cluster_id, members):
                 return None
@@ -525,6 +594,7 @@ class TestHierarchyBuilder:
 
     def test_large_cluster_count(self):
         """Test with many clusters to ensure scalability."""
+
         class MockMetricsCalculator:
             def calculate_cluster_metrics(self, cluster_id, members):
                 return ClusterMetrics(
@@ -568,13 +638,19 @@ class TestHierarchyBuilder:
 
     def test_overlapping_fine_clusters(self):
         """Test handling of fine clusters that may share members."""
+
         class MockMetricsCalculator:
             def calculate_cluster_metrics(self, cluster_id, members):
                 return None
 
         symbols = {
             "mod:A": {"name": "A", "kind": "class", "module": "mod", "file": "mod.py"},
-            "mod:B": {"name": "B", "kind": "function", "module": "mod", "file": "mod.py"},
+            "mod:B": {
+                "name": "B",
+                "kind": "function",
+                "module": "mod",
+                "file": "mod.py",
+            },
             "mod:C": {"name": "C", "kind": "class", "module": "mod", "file": "mod.py"},
         }
 
@@ -599,6 +675,7 @@ class TestHierarchyBuilderEdgeCases:
 
     def test_empty_symbol_table(self):
         """Test with empty symbol table but non-empty clusters."""
+
         class MockMetricsCalculator:
             def calculate_cluster_metrics(self, cluster_id, members):
                 return None
@@ -616,6 +693,7 @@ class TestHierarchyBuilderEdgeCases:
 
     def test_cluster_with_single_member(self):
         """Test cluster containing only one member."""
+
         class MockMetricsCalculator:
             def calculate_cluster_metrics(self, cluster_id, members):
                 return ClusterMetrics(
@@ -630,7 +708,12 @@ class TestHierarchyBuilderEdgeCases:
                 )
 
         symbols = {
-            "mod:lonely": {"name": "lonely", "kind": "function", "module": "mod", "file": "mod.py"},
+            "mod:lonely": {
+                "name": "lonely",
+                "kind": "function",
+                "module": "mod",
+                "file": "mod.py",
+            },
         }
 
         builder = HierarchyBuilder(
@@ -646,12 +729,18 @@ class TestHierarchyBuilderEdgeCases:
 
     def test_unicode_in_labels_and_ids(self):
         """Test handling of unicode characters in identifiers."""
+
         class MockMetricsCalculator:
             def calculate_cluster_metrics(self, cluster_id, members):
                 return None
 
         symbols = {
-            "mod:calculate": {"name": "calculate", "kind": "function", "module": "mod", "file": "mod.py"},
+            "mod:calculate": {
+                "name": "calculate",
+                "kind": "function",
+                "module": "mod",
+                "file": "mod.py",
+            },
         }
 
         builder = HierarchyBuilder(
@@ -665,18 +754,36 @@ class TestHierarchyBuilderEdgeCases:
 
     def test_special_characters_in_symbol_ids(self):
         """Test handling of special characters in symbol IDs."""
+
         class MockMetricsCalculator:
             def calculate_cluster_metrics(self, cluster_id, members):
                 return None
 
         symbols = {
-            "mod:__init__": {"name": "__init__", "kind": "function", "module": "mod", "file": "mod.py"},
-            "mod:_private": {"name": "_private", "kind": "function", "module": "mod", "file": "mod.py"},
-            "mod:Class.method": {"name": "Class.method", "kind": "method", "module": "mod", "file": "mod.py"},
+            "mod:__init__": {
+                "name": "__init__",
+                "kind": "function",
+                "module": "mod",
+                "file": "mod.py",
+            },
+            "mod:_private": {
+                "name": "_private",
+                "kind": "function",
+                "module": "mod",
+                "file": "mod.py",
+            },
+            "mod:Class.method": {
+                "name": "Class.method",
+                "kind": "method",
+                "module": "mod",
+                "file": "mod.py",
+            },
         }
 
         builder = HierarchyBuilder(
-            coarse_clusters={"comp_0": ["mod:__init__", "mod:_private", "mod:Class.method"]},
+            coarse_clusters={
+                "comp_0": ["mod:__init__", "mod:_private", "mod:Class.method"]
+            },
             fine_clusters={},
             symbols=symbols,
             metrics_calculator=MockMetricsCalculator(),
@@ -687,19 +794,26 @@ class TestHierarchyBuilderEdgeCases:
 
     def test_deeply_nested_fine_clusters(self):
         """Test with fine clusters that could create deep nesting."""
+
         class MockMetricsCalculator:
             def calculate_cluster_metrics(self, cluster_id, members):
                 return None
 
-        symbols = {f"mod:sym{i}": {"name": f"sym{i}", "kind": "function", "module": "mod", "file": "mod.py"}
-                   for i in range(20)}
+        symbols = {
+            f"mod:sym{i}": {
+                "name": f"sym{i}",
+                "kind": "function",
+                "module": "mod",
+                "file": "mod.py",
+            }
+            for i in range(20)
+        }
 
         # Multiple levels of fine clustering
         builder = HierarchyBuilder(
             coarse_clusters={"root": list(symbols.keys())},
             fine_clusters={
-                f"fine_{i}": [f"mod:sym{i*2}", f"mod:sym{i*2+1}"]
-                for i in range(10)
+                f"fine_{i}": [f"mod:sym{i*2}", f"mod:sym{i*2+1}"] for i in range(10)
             },
             symbols=symbols,
             metrics_calculator=MockMetricsCalculator(),
@@ -709,6 +823,7 @@ class TestHierarchyBuilderEdgeCases:
 
     def test_metrics_calculator_raises_exception(self):
         """Test graceful handling when metrics calculator raises."""
+
         class FailingMetricsCalculator:
             def calculate_cluster_metrics(self, cluster_id, members):
                 raise ValueError("Metrics calculation failed")
@@ -736,13 +851,19 @@ class TestHierarchyBuilderEdgeCases:
 
     def test_duplicate_cluster_ids(self):
         """Test that duplicate cluster IDs don't cause issues."""
+
         class MockMetricsCalculator:
             def calculate_cluster_metrics(self, cluster_id, members):
                 return None
 
         symbols = {
             "mod:A": {"name": "A", "kind": "class", "module": "mod", "file": "mod.py"},
-            "mod:B": {"name": "B", "kind": "function", "module": "mod", "file": "mod.py"},
+            "mod:B": {
+                "name": "B",
+                "kind": "function",
+                "module": "mod",
+                "file": "mod.py",
+            },
         }
 
         # Same cluster ID in both coarse and fine (edge case)
@@ -783,6 +904,7 @@ class TestHierarchyBuilderIntegration:
 
     def test_full_hierarchy_workflow(self):
         """Test complete workflow of building and serializing hierarchy."""
+
         class MockMetricsCalculator:
             def calculate_cluster_metrics(self, cluster_id, members):
                 return ClusterMetrics(
@@ -797,12 +919,42 @@ class TestHierarchyBuilderIntegration:
                 )
 
         symbols = {
-            "auth:User": {"name": "User", "kind": "class", "module": "auth", "file": "auth/models.py"},
-            "auth:login": {"name": "login", "kind": "function", "module": "auth", "file": "auth/views.py"},
-            "auth:logout": {"name": "logout", "kind": "function", "module": "auth", "file": "auth/views.py"},
-            "db:Connection": {"name": "Connection", "kind": "class", "module": "db", "file": "db/core.py"},
-            "db:query": {"name": "query", "kind": "function", "module": "db", "file": "db/core.py"},
-            "db:execute": {"name": "execute", "kind": "function", "module": "db", "file": "db/core.py"},
+            "auth:User": {
+                "name": "User",
+                "kind": "class",
+                "module": "auth",
+                "file": "auth/models.py",
+            },
+            "auth:login": {
+                "name": "login",
+                "kind": "function",
+                "module": "auth",
+                "file": "auth/views.py",
+            },
+            "auth:logout": {
+                "name": "logout",
+                "kind": "function",
+                "module": "auth",
+                "file": "auth/views.py",
+            },
+            "db:Connection": {
+                "name": "Connection",
+                "kind": "class",
+                "module": "db",
+                "file": "db/core.py",
+            },
+            "db:query": {
+                "name": "query",
+                "kind": "function",
+                "module": "db",
+                "file": "db/core.py",
+            },
+            "db:execute": {
+                "name": "execute",
+                "kind": "function",
+                "module": "db",
+                "file": "db/core.py",
+            },
         }
 
         builder = HierarchyBuilder(
@@ -835,13 +987,19 @@ class TestHierarchyBuilderIntegration:
 
     def test_hierarchy_traversal(self):
         """Test that hierarchy can be traversed correctly."""
+
         class MockMetricsCalculator:
             def calculate(self, node):
                 return None
 
         symbols = {
             "mod:A": {"name": "A", "kind": "class", "module": "mod", "file": "mod.py"},
-            "mod:B": {"name": "B", "kind": "function", "module": "mod", "file": "mod.py"},
+            "mod:B": {
+                "name": "B",
+                "kind": "function",
+                "module": "mod",
+                "file": "mod.py",
+            },
         }
 
         builder = HierarchyBuilder(

@@ -185,9 +185,9 @@ def large_python_file():
         f.write(large_code)
         temp_path = Path(f.name)
     actual_size_mb = temp_path.stat().st_size / (1024 * 1024)
-    assert actual_size_mb > 100, (
-        f"Generated file is only {actual_size_mb:.1f}MB, need 100MB+"
-    )
+    assert (
+        actual_size_mb > 100
+    ), f"Generated file is only {actual_size_mb:.1f}MB, need 100MB+"
     yield temp_path
     temp_path.unlink()
 
@@ -250,9 +250,9 @@ class TestStreamingLargeFiles:
         assert chunk_count > 0
         file_size_mb = large_python_file.stat().st_size / (1024 * 1024)
         max_allowed_mb = file_size_mb * 30
-        assert memory_stats["increase_mb"] < max_allowed_mb, (
-            f"Memory increase too high: {memory_stats['increase_mb']}MB for {file_size_mb}MB file"
-        )
+        assert (
+            memory_stats["increase_mb"] < max_allowed_mb
+        ), f"Memory increase too high: {memory_stats['increase_mb']}MB for {file_size_mb}MB file"
         file_size_mb = large_python_file.stat().st_size / (1024 * 1024)
         assert file_size_mb > 100, f"Test file too small: {file_size_mb}MB"
 
@@ -352,9 +352,9 @@ class TestMemoryEfficiency:
             initial_checkpoint = memory_checkpoints[0]
             final_checkpoint = memory_checkpoints[-1]
             memory_growth = final_checkpoint - initial_checkpoint
-            assert memory_growth < 200, (
-                f"Memory grew by {memory_growth}MB during streaming"
-            )
+            assert (
+                memory_growth < 200
+            ), f"Memory grew by {memory_growth}MB during streaming"
 
 
 class TestStreamingErrorRecovery:

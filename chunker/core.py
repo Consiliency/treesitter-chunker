@@ -557,7 +557,9 @@ def _walk(
             start_line=start_line,
             end_line=(
                 # Estimate end line from span_end by walking to end_point if same node
-                node.end_point[0] + 1 if span_end == node.end_byte else None  # type: ignore[truthy-bool]
+                node.end_point[0] + 1
+                if span_end == node.end_byte
+                else None  # type: ignore[truthy-bool]
             )
             or (node.end_point[0] + 1),
             byte_start=span_start,

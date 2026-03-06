@@ -7,6 +7,7 @@ try:
     import networkx as nx
     import igraph
     import leidenalg
+
     HAS_CLUSTERING_DEPS = True
 except ImportError:
     HAS_CLUSTERING_DEPS = False
@@ -14,13 +15,16 @@ except ImportError:
 from chunker.clustering.weights import EdgeWeightConfig
 
 
-@pytest.mark.skipif(not HAS_CLUSTERING_DEPS, reason="clustering dependencies not installed")
+@pytest.mark.skipif(
+    not HAS_CLUSTERING_DEPS, reason="clustering dependencies not installed"
+)
 class TestClusteringEngine:
     """Tests for ClusteringEngine class."""
 
     def test_init_default(self):
         """Test initialization with defaults."""
         from chunker.clustering.engine import ClusteringEngine
+
         engine = ClusteringEngine()
         assert engine.coarse_resolution == 0.5
         assert engine.fine_resolution == 1.5
@@ -30,6 +34,7 @@ class TestClusteringEngine:
     def test_init_custom_config(self):
         """Test initialization with custom config."""
         from chunker.clustering.engine import ClusteringEngine
+
         config = EdgeWeightConfig(import_weight=2.0)
         engine = ClusteringEngine(
             weight_config=config,
@@ -45,6 +50,7 @@ class TestClusteringEngine:
     def test_empty_symbols(self):
         """Test clustering with no symbols."""
         from chunker.clustering.engine import ClusteringEngine
+
         engine = ClusteringEngine()
         result = engine.cluster({}, [])
 
@@ -56,6 +62,7 @@ class TestClusteringEngine:
     def test_single_symbol(self):
         """Test clustering with a single symbol."""
         from chunker.clustering.engine import ClusteringEngine
+
         engine = ClusteringEngine()
 
         symbols = {
@@ -68,12 +75,18 @@ class TestClusteringEngine:
     def test_connected_symbols(self):
         """Test clustering with connected symbols."""
         from chunker.clustering.engine import ClusteringEngine
+
         engine = ClusteringEngine()
 
         symbols = {
             "mod:A": {"name": "A", "kind": "class", "module": "mod", "file": "mod.py"},
             "mod:B": {"name": "B", "kind": "class", "module": "mod", "file": "mod.py"},
-            "mod:C": {"name": "C", "kind": "function", "module": "mod", "file": "mod.py"},
+            "mod:C": {
+                "name": "C",
+                "kind": "function",
+                "module": "mod",
+                "file": "mod.py",
+            },
         }
         relationships = [
             {"from": "mod:A", "to": "mod:B", "type": "inherits"},
@@ -89,6 +102,7 @@ class TestClusteringEngine:
     def test_build_graph(self):
         """Test graph building from symbols."""
         from chunker.clustering.engine import ClusteringEngine
+
         engine = ClusteringEngine()
 
         symbols = {
@@ -111,7 +125,12 @@ class TestClusteringEngine:
 
         symbols = {
             "mod:A": {"name": "A", "kind": "class", "module": "mod", "file": "mod.py"},
-            "mod:util": {"name": "util", "kind": "function", "module": "mod", "file": "mod.py"},
+            "mod:util": {
+                "name": "util",
+                "kind": "function",
+                "module": "mod",
+                "file": "mod.py",
+            },
         }
         relationships = []
 
@@ -128,26 +147,35 @@ class TestClusteringEngine:
     def test_metadata_includes_parameters(self):
         """Test that metadata includes clustering parameters."""
         from chunker.clustering.engine import ClusteringEngine
+
         engine = ClusteringEngine(
             coarse_resolution=0.4,
             fine_resolution=1.2,
         )
 
-        symbols = {"mod:A": {"name": "A", "kind": "class", "module": "mod", "file": "mod.py"}}
+        symbols = {
+            "mod:A": {"name": "A", "kind": "class", "module": "mod", "file": "mod.py"}
+        }
         result = engine.cluster(symbols, [])
 
         assert result["metadata"]["coarse_resolution"] == 0.4
         assert result["metadata"]["fine_resolution"] == 1.2
-        assert "algorithm" not in result["metadata"] or result["metadata"].get("algorithm") == "leiden"
+        assert (
+            "algorithm" not in result["metadata"]
+            or result["metadata"].get("algorithm") == "leiden"
+        )
 
 
-@pytest.mark.skipif(not HAS_CLUSTERING_DEPS, reason="clustering dependencies not installed")
+@pytest.mark.skipif(
+    not HAS_CLUSTERING_DEPS, reason="clustering dependencies not installed"
+)
 class TestClusteringEngineEdgeCases:
     """Tests for edge cases in ClusteringEngine."""
 
     def test_self_referential_relationship(self):
         """Test that self-referential relationships are ignored."""
         from chunker.clustering.engine import ClusteringEngine
+
         engine = ClusteringEngine()
 
         symbols = {
@@ -165,6 +193,7 @@ class TestClusteringEngineEdgeCases:
     def test_relationship_with_missing_from_symbol(self):
         """Test that relationships with missing 'from' symbol are skipped."""
         from chunker.clustering.engine import ClusteringEngine
+
         engine = ClusteringEngine()
 
         symbols = {
@@ -184,6 +213,7 @@ class TestClusteringEngineEdgeCases:
     def test_relationship_with_missing_to_symbol(self):
         """Test that relationships with missing 'to' symbol are skipped."""
         from chunker.clustering.engine import ClusteringEngine
+
         engine = ClusteringEngine()
 
         symbols = {
@@ -201,6 +231,7 @@ class TestClusteringEngineEdgeCases:
     def test_relationship_with_empty_from(self):
         """Test that relationships with empty 'from' field are skipped."""
         from chunker.clustering.engine import ClusteringEngine
+
         engine = ClusteringEngine()
 
         symbols = {
@@ -218,6 +249,7 @@ class TestClusteringEngineEdgeCases:
     def test_relationship_with_empty_to(self):
         """Test that relationships with empty 'to' field are skipped."""
         from chunker.clustering.engine import ClusteringEngine
+
         engine = ClusteringEngine()
 
         symbols = {
@@ -235,6 +267,7 @@ class TestClusteringEngineEdgeCases:
     def test_multiple_relationships_same_pair(self):
         """Test that multiple relationships between same symbols accumulate weights."""
         from chunker.clustering.engine import ClusteringEngine
+
         engine = ClusteringEngine()
 
         symbols = {
@@ -257,6 +290,7 @@ class TestClusteringEngineEdgeCases:
     def test_unknown_relationship_type(self):
         """Test that unknown relationship types result in zero weight edges not being added."""
         from chunker.clustering.engine import ClusteringEngine
+
         engine = ClusteringEngine()
 
         symbols = {
@@ -275,6 +309,7 @@ class TestClusteringEngineEdgeCases:
     def test_disconnected_components(self):
         """Test clustering with disconnected components."""
         from chunker.clustering.engine import ClusteringEngine
+
         engine = ClusteringEngine()
 
         symbols = {
@@ -296,6 +331,7 @@ class TestClusteringEngineEdgeCases:
     def test_two_symbols_same_file(self):
         """Test that same-file bonus is applied correctly."""
         from chunker.clustering.engine import ClusteringEngine
+
         engine = ClusteringEngine()
 
         symbols = {
@@ -317,6 +353,7 @@ class TestClusteringEngineEdgeCases:
     def test_two_symbols_different_files(self):
         """Test weight without same-file bonus."""
         from chunker.clustering.engine import ClusteringEngine
+
         engine = ClusteringEngine()
 
         symbols = {
@@ -336,13 +373,16 @@ class TestClusteringEngineEdgeCases:
         assert edge_data["weight"] == pytest.approx(0.7)
 
 
-@pytest.mark.skipif(not HAS_CLUSTERING_DEPS, reason="clustering dependencies not installed")
+@pytest.mark.skipif(
+    not HAS_CLUSTERING_DEPS, reason="clustering dependencies not installed"
+)
 class TestClusteringEngineLeiden:
     """Tests for Leiden algorithm execution in ClusteringEngine."""
 
     def test_run_leiden_empty_graph(self):
         """Test Leiden with empty graph returns empty clusters."""
         from chunker.clustering.engine import ClusteringEngine
+
         engine = ClusteringEngine()
         engine._graph = None
 
@@ -403,13 +443,16 @@ class TestClusteringEngineLeiden:
         assert set(all_members) == {"A", "B", "C"}
 
 
-@pytest.mark.skipif(not HAS_CLUSTERING_DEPS, reason="clustering dependencies not installed")
+@pytest.mark.skipif(
+    not HAS_CLUSTERING_DEPS, reason="clustering dependencies not installed"
+)
 class TestClusteringEngineInfrastructure:
     """Tests for infrastructure detection in ClusteringEngine."""
 
     def test_detect_infrastructure_empty_graph(self):
         """Test infrastructure detection with no graph."""
         from chunker.clustering.engine import ClusteringEngine
+
         engine = ClusteringEngine()
         engine._graph = None
 
@@ -420,6 +463,7 @@ class TestClusteringEngineInfrastructure:
     def test_detect_infrastructure_disabled(self):
         """Test that infrastructure detection returns empty when disabled."""
         from chunker.clustering.engine import ClusteringEngine
+
         engine = ClusteringEngine(detect_infrastructure=False)
 
         symbols = {
@@ -454,13 +498,16 @@ class TestClusteringEngineInfrastructure:
         assert "hub" in result
 
 
-@pytest.mark.skipif(not HAS_CLUSTERING_DEPS, reason="clustering dependencies not installed")
+@pytest.mark.skipif(
+    not HAS_CLUSTERING_DEPS, reason="clustering dependencies not installed"
+)
 class TestClusteringEngineMetrics:
     """Tests for overall metrics calculation in ClusteringEngine."""
 
     def test_metrics_empty_graph(self):
         """Test metrics calculation with empty graph."""
         from chunker.clustering.engine import ClusteringEngine
+
         engine = ClusteringEngine()
 
         result = engine.cluster({}, [])
@@ -473,7 +520,10 @@ class TestClusteringEngineMetrics:
     def test_metrics_single_cluster(self):
         """Test metrics with all nodes in one cluster."""
         from chunker.clustering.engine import ClusteringEngine
-        engine = ClusteringEngine(coarse_resolution=0.1)  # Low resolution = fewer clusters
+
+        engine = ClusteringEngine(
+            coarse_resolution=0.1
+        )  # Low resolution = fewer clusters
 
         symbols = {
             "mod:A": {"name": "A", "kind": "class", "module": "mod", "file": "mod.py"},
@@ -491,27 +541,34 @@ class TestClusteringEngineMetrics:
     def test_metadata_timestamp(self):
         """Test that metadata includes a timestamp."""
         from chunker.clustering.engine import ClusteringEngine
+
         engine = ClusteringEngine()
 
-        symbols = {"mod:A": {"name": "A", "kind": "class", "module": "mod", "file": "mod.py"}}
+        symbols = {
+            "mod:A": {"name": "A", "kind": "class", "module": "mod", "file": "mod.py"}
+        }
         result = engine.cluster(symbols, [])
 
         assert "timestamp" in result["metadata"]
         # Timestamp should be ISO format
         from datetime import datetime
+
         try:
             datetime.fromisoformat(result["metadata"]["timestamp"])
         except ValueError:
             pytest.fail("Timestamp is not in valid ISO format")
 
 
-@pytest.mark.skipif(not HAS_CLUSTERING_DEPS, reason="clustering dependencies not installed")
+@pytest.mark.skipif(
+    not HAS_CLUSTERING_DEPS, reason="clustering dependencies not installed"
+)
 class TestClusteringEngineHierarchy:
     """Tests for hierarchy building in ClusteringEngine."""
 
     def test_hierarchy_structure(self):
         """Test that hierarchy has correct structure."""
         from chunker.clustering.engine import ClusteringEngine
+
         engine = ClusteringEngine()
 
         symbols = {
@@ -533,6 +590,7 @@ class TestClusteringEngineHierarchy:
     def test_hierarchy_root_contains_all_symbols(self):
         """Test that root node's members contain all symbols."""
         from chunker.clustering.engine import ClusteringEngine
+
         engine = ClusteringEngine()
 
         symbols = {
@@ -570,7 +628,9 @@ class TestClusteringEngineHierarchy:
         assert node.id == "root"
 
 
-@pytest.mark.skipif(not HAS_CLUSTERING_DEPS, reason="clustering dependencies not installed")
+@pytest.mark.skipif(
+    not HAS_CLUSTERING_DEPS, reason="clustering dependencies not installed"
+)
 class TestClusteringEngineCustomWeights:
     """Tests for ClusteringEngine with custom weight configurations."""
 
@@ -676,7 +736,9 @@ class TestClusteringEngineCustomWeights:
         assert edge_data["weight"] == pytest.approx(2.0)
 
 
-@pytest.mark.skipif(not HAS_CLUSTERING_DEPS, reason="clustering dependencies not installed")
+@pytest.mark.skipif(
+    not HAS_CLUSTERING_DEPS, reason="clustering dependencies not installed"
+)
 class TestClusteringEngineResolution:
     """Tests for different resolution parameters in ClusteringEngine."""
 
@@ -685,20 +747,33 @@ class TestClusteringEngineResolution:
         from chunker.clustering.engine import ClusteringEngine
 
         # Create a graph with clear community structure
-        symbols = {f"mod:node_{i}": {"name": f"node_{i}", "kind": "class", "module": "mod", "file": "mod.py"}
-                   for i in range(10)}
+        symbols = {
+            f"mod:node_{i}": {
+                "name": f"node_{i}",
+                "kind": "class",
+                "module": "mod",
+                "file": "mod.py",
+            }
+            for i in range(10)
+        }
         relationships = []
 
         # Create two cliques
         for i in range(5):
             for j in range(i + 1, 5):
-                relationships.append({"from": f"mod:node_{i}", "to": f"mod:node_{j}", "type": "calls"})
+                relationships.append(
+                    {"from": f"mod:node_{i}", "to": f"mod:node_{j}", "type": "calls"}
+                )
         for i in range(5, 10):
             for j in range(i + 1, 10):
-                relationships.append({"from": f"mod:node_{i}", "to": f"mod:node_{j}", "type": "calls"})
+                relationships.append(
+                    {"from": f"mod:node_{i}", "to": f"mod:node_{j}", "type": "calls"}
+                )
 
         # Connect the two cliques weakly
-        relationships.append({"from": "mod:node_0", "to": "mod:node_5", "type": "imports"})
+        relationships.append(
+            {"from": "mod:node_0", "to": "mod:node_5", "type": "imports"}
+        )
 
         low_res_engine = ClusteringEngine(coarse_resolution=0.1, fine_resolution=0.5)
         high_res_engine = ClusteringEngine(coarse_resolution=1.0, fine_resolution=3.0)
@@ -707,14 +782,22 @@ class TestClusteringEngineResolution:
         high_res_result = high_res_engine.cluster(symbols, relationships)
 
         # Lower resolution should produce fewer or equal number of coarse clusters
-        assert low_res_result["metadata"]["num_coarse_clusters"] <= high_res_result["metadata"]["num_coarse_clusters"]
+        assert (
+            low_res_result["metadata"]["num_coarse_clusters"]
+            <= high_res_result["metadata"]["num_coarse_clusters"]
+        )
 
     def test_infrastructure_threshold_parameter(self):
         """Test that infrastructure_threshold affects detection."""
         from chunker.clustering.engine import ClusteringEngine
 
         symbols = {
-            "mod:hub": {"name": "hub", "kind": "class", "module": "mod", "file": "mod.py"},
+            "mod:hub": {
+                "name": "hub",
+                "kind": "class",
+                "module": "mod",
+                "file": "mod.py",
+            },
             "mod:A": {"name": "A", "kind": "class", "module": "mod", "file": "mod.py"},
             "mod:B": {"name": "B", "kind": "class", "module": "mod", "file": "mod.py"},
             "mod:C": {"name": "C", "kind": "class", "module": "mod", "file": "mod.py"},
@@ -738,7 +821,9 @@ class TestClusteringEngineResolution:
         assert "infrastructure" in high_result
 
 
-@pytest.mark.skipif(not HAS_CLUSTERING_DEPS, reason="clustering dependencies not installed")
+@pytest.mark.skipif(
+    not HAS_CLUSTERING_DEPS, reason="clustering dependencies not installed"
+)
 class TestClusteringEngineLargeGraph:
     """Tests for ClusteringEngine with larger graphs."""
 
@@ -750,7 +835,12 @@ class TestClusteringEngineLargeGraph:
 
         # Create 50 symbols
         symbols = {
-            f"mod:node_{i}": {"name": f"node_{i}", "kind": "class", "module": "mod", "file": f"file_{i % 5}.py"}
+            f"mod:node_{i}": {
+                "name": f"node_{i}",
+                "kind": "class",
+                "module": "mod",
+                "file": f"file_{i % 5}.py",
+            }
             for i in range(50)
         }
 
@@ -759,11 +849,13 @@ class TestClusteringEngineLargeGraph:
         for i in range(50):
             for j in range(1, 4):
                 target = (i + j) % 50
-                relationships.append({
-                    "from": f"mod:node_{i}",
-                    "to": f"mod:node_{target}",
-                    "type": ["imports", "calls", "inherits"][j - 1]
-                })
+                relationships.append(
+                    {
+                        "from": f"mod:node_{i}",
+                        "to": f"mod:node_{target}",
+                        "type": ["imports", "calls", "inherits"][j - 1],
+                    }
+                )
 
         result = engine.cluster(symbols, relationships)
 
@@ -778,7 +870,12 @@ class TestClusteringEngineLargeGraph:
         engine = ClusteringEngine()
 
         symbols = {
-            f"mod:node_{i}": {"name": f"node_{i}", "kind": "class", "module": "mod", "file": "mod.py"}
+            f"mod:node_{i}": {
+                "name": f"node_{i}",
+                "kind": "class",
+                "module": "mod",
+                "file": "mod.py",
+            }
             for i in range(5)
         }
 
@@ -786,8 +883,12 @@ class TestClusteringEngineLargeGraph:
         relationships = []
         for i in range(5):
             for j in range(i + 1, 5):
-                relationships.append({"from": f"mod:node_{i}", "to": f"mod:node_{j}", "type": "calls"})
-                relationships.append({"from": f"mod:node_{i}", "to": f"mod:node_{j}", "type": "imports"})
+                relationships.append(
+                    {"from": f"mod:node_{i}", "to": f"mod:node_{j}", "type": "calls"}
+                )
+                relationships.append(
+                    {"from": f"mod:node_{i}", "to": f"mod:node_{j}", "type": "imports"}
+                )
 
         result = engine.cluster(symbols, relationships)
 
@@ -796,7 +897,9 @@ class TestClusteringEngineLargeGraph:
         assert result["metadata"]["num_relationships"] == 20
 
 
-@pytest.mark.skipif(not HAS_CLUSTERING_DEPS, reason="clustering dependencies not installed")
+@pytest.mark.skipif(
+    not HAS_CLUSTERING_DEPS, reason="clustering dependencies not installed"
+)
 class TestModuleDependencies:
     """Tests for module dependency computation (fixes #60)."""
 
@@ -812,10 +915,30 @@ class TestModuleDependencies:
 
         # Two modules with symbols
         symbols = {
-            "module_a:ClassA": {"name": "ClassA", "kind": "class", "module": "module_a", "file": "module_a.py"},
-            "module_a:func_a": {"name": "func_a", "kind": "function", "module": "module_a", "file": "module_a.py"},
-            "module_b:ClassB": {"name": "ClassB", "kind": "class", "module": "module_b", "file": "module_b.py"},
-            "module_b:func_b": {"name": "func_b", "kind": "function", "module": "module_b", "file": "module_b.py"},
+            "module_a:ClassA": {
+                "name": "ClassA",
+                "kind": "class",
+                "module": "module_a",
+                "file": "module_a.py",
+            },
+            "module_a:func_a": {
+                "name": "func_a",
+                "kind": "function",
+                "module": "module_a",
+                "file": "module_a.py",
+            },
+            "module_b:ClassB": {
+                "name": "ClassB",
+                "kind": "class",
+                "module": "module_b",
+                "file": "module_b.py",
+            },
+            "module_b:func_b": {
+                "name": "func_b",
+                "kind": "function",
+                "module": "module_b",
+                "file": "module_b.py",
+            },
         }
 
         # Cross-module relationships WITHOUT is_internal flag
@@ -847,7 +970,12 @@ class TestModuleDependencies:
         engine = ClusteringEngine()
 
         symbols = {
-            "module_a:ClassA": {"name": "ClassA", "kind": "class", "module": "module_a", "file": "module_a.py"},
+            "module_a:ClassA": {
+                "name": "ClassA",
+                "kind": "class",
+                "module": "module_a",
+                "file": "module_a.py",
+            },
         }
 
         # Relationship where 'to' symbol doesn't exist in symbols
@@ -867,14 +995,29 @@ class TestModuleDependencies:
         engine = ClusteringEngine()
 
         symbols = {
-            "module_a:ClassA": {"name": "ClassA", "kind": "class", "module": "module_a", "file": "module_a.py"},
-            "module_b:ClassB": {"name": "ClassB", "kind": "class", "module": "module_b", "file": "module_b.py"},
+            "module_a:ClassA": {
+                "name": "ClassA",
+                "kind": "class",
+                "module": "module_a",
+                "file": "module_a.py",
+            },
+            "module_b:ClassB": {
+                "name": "ClassB",
+                "kind": "class",
+                "module": "module_b",
+                "file": "module_b.py",
+            },
         }
 
         # Relationship WITH is_internal=False but both symbols exist
         # The fix should include this relationship since both endpoints exist
         relationships = [
-            {"from": "module_a:ClassA", "to": "module_b:ClassB", "type": "imports", "is_internal": False},
+            {
+                "from": "module_a:ClassA",
+                "to": "module_b:ClassB",
+                "type": "imports",
+                "is_internal": False,
+            },
         ]
 
         result = engine.cluster(symbols, relationships)

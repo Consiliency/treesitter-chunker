@@ -13,15 +13,13 @@ from chunker.extractors.python import PythonExtractor
 def setup_cluster_parser(subparsers: argparse._SubParsersAction) -> None:
     """Register clustering commands."""
     cluster_parser = subparsers.add_parser(
-        "cluster",
-        help="Infer architectural modules from code"
+        "cluster", help="Infer architectural modules from code"
     )
     cluster_subparsers = cluster_parser.add_subparsers(dest="cluster_command")
 
     # cluster infer
     infer_parser = cluster_subparsers.add_parser(
-        "infer",
-        help="Infer module hierarchy from symbols"
+        "infer", help="Infer module hierarchy from symbols"
     )
     infer_parser.add_argument("path", help="Path to analyze")
     infer_parser.add_argument("-o", "--output", help="Output JSON file")
@@ -29,30 +27,25 @@ def setup_cluster_parser(subparsers: argparse._SubParsersAction) -> None:
         "--resolution",
         choices=["coarse", "medium", "fine"],
         default="medium",
-        help="Clustering resolution"
+        help="Clustering resolution",
     )
     infer_parser.add_argument(
         "--coarse-resolution",
         type=float,
         default=None,
-        help="Leiden resolution for component level (overrides --resolution)"
+        help="Leiden resolution for component level (overrides --resolution)",
     )
     infer_parser.add_argument(
         "--fine-resolution",
         type=float,
         default=None,
-        help="Leiden resolution for sub-component level (overrides --resolution)"
+        help="Leiden resolution for sub-component level (overrides --resolution)",
     )
     infer_parser.add_argument(
-        "--no-infrastructure",
-        action="store_true",
-        help="Skip infrastructure detection"
+        "--no-infrastructure", action="store_true", help="Skip infrastructure detection"
     )
     infer_parser.add_argument(
-        "--format",
-        choices=["json", "summary"],
-        default="json",
-        help="Output format"
+        "--format", choices=["json", "summary"], default="json", help="Output format"
     )
     infer_parser.set_defaults(func=cmd_cluster_infer)
 
@@ -101,13 +94,25 @@ def cmd_cluster_infer(args: argparse.Namespace) -> int:
         files = [path]
     else:
         files = list(path.rglob("*.py"))
-        files = [f for f in files if not any(
-            part in f.parts for part in [
-                "__pycache__", ".git", ".venv", "venv",
-                "node_modules", ".tox", ".pytest_cache",
-                "build", "dist", ".eggs"
-            ]
-        )]
+        files = [
+            f
+            for f in files
+            if not any(
+                part in f.parts
+                for part in [
+                    "__pycache__",
+                    ".git",
+                    ".venv",
+                    "venv",
+                    "node_modules",
+                    ".tox",
+                    ".pytest_cache",
+                    "build",
+                    "dist",
+                    ".eggs",
+                ]
+            )
+        ]
 
     if not files:
         print(f"Error: No Python files found in {path}", file=sys.stderr)
@@ -149,7 +154,10 @@ def cmd_cluster_infer(args: argparse.Namespace) -> int:
         to_exists = rel["to"] in all_symbols
         rel["is_internal"] = from_exists and to_exists
 
-    print(f"Extracted {len(all_symbols)} symbols, {len(all_relationships)} relationships", file=sys.stderr)
+    print(
+        f"Extracted {len(all_symbols)} symbols, {len(all_relationships)} relationships",
+        file=sys.stderr,
+    )
 
     # 2. Run clustering
     print("Running hierarchical clustering...", file=sys.stderr)
@@ -185,16 +193,26 @@ def print_summary(result: dict[str, Any]) -> None:
     print("\n=== Clustering Summary ===\n")
     print(f"Total symbols: {metrics.get('total_symbols', 'N/A')}")
     print(f"Total components: {metrics.get('total_components', 'N/A')}")
-    print(f"Overall modularity: {metrics.get('overall_modularity', 'N/A'):.3f}" if isinstance(metrics.get('overall_modularity'), (int, float)) else f"Overall modularity: {metrics.get('overall_modularity', 'N/A')}")
+    print(
+        f"Overall modularity: {metrics.get('overall_modularity', 'N/A'):.3f}"
+        if isinstance(metrics.get("overall_modularity"), (int, float))
+        else f"Overall modularity: {metrics.get('overall_modularity', 'N/A')}"
+    )
     print(f"Infrastructure nodes: {len(infrastructure)}")
 
     print("\n--- Components ---")
     for i, child in enumerate(hierarchy.get("children", [])):
         size = len(child.get("members", []))
-        quality = child.get("metrics", {}).get("quality_score", "N/A") if child.get("metrics") else "N/A"
+        quality = (
+            child.get("metrics", {}).get("quality_score", "N/A")
+            if child.get("metrics")
+            else "N/A"
+        )
         if isinstance(quality, float):
             quality = f"{quality:.2f}"
-        print(f"  [{i}] {child.get('id', 'unknown')}: {size} symbols (quality: {quality})")
+        print(
+            f"  [{i}] {child.get('id', 'unknown')}: {size} symbols (quality: {quality})"
+        )
 
     if infrastructure:
         print("\n--- Infrastructure ---")
