@@ -345,7 +345,8 @@ class TestConfigFinding:
         config_path = temp_project_dir / "chunker.config.yaml"
         config_path.write_text("chunker:\n  enabled_languages: [python]\n")
         found = ChunkerConfig.find_config(temp_project_dir)
-        assert found == config_path
+        assert found is not None
+        assert found.resolve() == config_path.resolve()
 
     @staticmethod
     def test_find_config_in_parent_dir(temp_project_dir):

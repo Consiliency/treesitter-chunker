@@ -613,7 +613,7 @@ class TestCacheErrorHandling:
         cache = ASTCache(cache_dir=restricted_dir)
         restricted_dir.chmod(292)
         try:
-            test_file = Path("/tmp/test.py")
+            test_file = temp_cache_dir / "test.py"
             test_file.write_text(SAMPLE_PYTHON_CODE, encoding="utf-8")
             chunks = chunk_file(test_file, "python")
             with suppress(OSError, sqlite3.OperationalError):

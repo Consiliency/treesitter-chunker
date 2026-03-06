@@ -69,33 +69,29 @@ EDGE_KIND_MAP: dict[RelationshipType, str] = {
 }
 
 # Valid semantic-lens node kinds (for validation)
-VALID_NODE_KINDS = frozenset(
-    [
-        "module",
-        "class",
-        "interface",
-        "trait",
-        "function",
-        "method",
-        "field",
-        "property",
-    ]
-)
+VALID_NODE_KINDS = frozenset([
+    "module",
+    "class",
+    "interface",
+    "trait",
+    "function",
+    "method",
+    "field",
+    "property",
+])
 
 # Valid semantic-lens edge kinds (for validation)
-VALID_EDGE_KINDS = frozenset(
-    [
-        "defines",
-        "imports",
-        "calls",
-        "inherits",
-        "implements",
-        "uses",
-        "reads",
-        "writes",
-        "throws",
-    ]
-)
+VALID_EDGE_KINDS = frozenset([
+    "defines",
+    "imports",
+    "calls",
+    "inherits",
+    "implements",
+    "uses",
+    "reads",
+    "writes",
+    "throws",
+])
 
 
 class SemanticLensExporter(StructuredExporter):
@@ -319,7 +315,12 @@ class SemanticLensExporter(StructuredExporter):
             node["parent"] = chunk.parent_chunk_id
 
         route = chunk.metadata.get("qualified_name") if chunk.metadata else None
-        if route:
+        if chunk.qualified_route and chunk.node_type not in {
+            "function_definition",
+            "method_definition",
+        }:
+            node["route"] = "::".join(chunk.qualified_route)
+        elif route:
             node["route"] = str(route)
         elif chunk.qualified_route:
             node["route"] = "::".join(chunk.qualified_route)

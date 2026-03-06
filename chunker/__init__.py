@@ -52,6 +52,7 @@ from .parser import (
     return_parser,
 )
 from .plugin_manager import PluginManager, get_plugin_manager
+from .semantic_query import SemanticQuery
 
 # Optional advanced query features (may require heavy deps like numpy)
 try:
@@ -177,6 +178,7 @@ __all__.extend(
         "PluginConfig",
         "PluginManager",
         "ProjectAnalyzerImpl",
+        "SemanticQuery",
         "TreeSitterSmartContextProvider",
         "__version__",
         "chunk_directory",

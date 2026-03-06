@@ -16,6 +16,10 @@ from chunker.contracts.devenv_contract import QualityAssuranceContract
 class QualityAssurance(QualityAssuranceContract):
     """Implementation of code quality and standards enforcement"""
 
+    TYPE_COVERAGE_TARGET = "chunker/devenv"
+    TEST_COVERAGE_TARGET = "chunker/devenv"
+    TEST_COVERAGE_TESTS = "tests/unit/test_devenv.py"
+
     def __init__(self) -> None:
         """Initialize quality assurance manager"""
         self._mypy_path = self._find_executable("mypy")
@@ -65,7 +69,7 @@ class QualityAssurance(QualityAssuranceContract):
         try:
             cmd = [
                 self._mypy_path,
-                "chunker",
+                self.TYPE_COVERAGE_TARGET,
                 "--html-report",
                 ".mypy_coverage",
                 "--any-exprs-report",
@@ -76,7 +80,13 @@ class QualityAssurance(QualityAssuranceContract):
                 ".mypy_coverage",
                 "--no-error-summary",
             ]
-            result = subprocess.run(cmd, check=False, capture_output=True, text=True)
+            result = subprocess.run(
+                cmd,
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
             linecount_file = Path(".mypy_coverage/linecount.txt")
             if linecount_file.exists():
                 coverage_data = self._parse_mypy_linecount(linecount_file)
@@ -96,7 +106,12 @@ class QualityAssurance(QualityAssuranceContract):
                 }
                 return coverage_percentage, report
             return self._estimate_type_coverage(result.stdout)
-        except (AttributeError, FileNotFoundError, IndexError) as e:
+        except (
+            AttributeError,
+            FileNotFoundError,
+            IndexError,
+            subprocess.TimeoutExpired,
+        ) as e:
             return 0.0, {"error": str(e)}
 
     @classmethod
@@ -125,7 +140,9 @@ class QualityAssurance(QualityAssuranceContract):
         return coverage_data
 
     @staticmethod
-    def _estimate_type_coverage(mypy_output: str) -> tuple[
+    def _estimate_type_coverage(
+        mypy_output: str,
+    ) -> tuple[
         float,
         dict[str, Any],
     ]:
@@ -181,13 +198,20 @@ class QualityAssurance(QualityAssuranceContract):
         try:
             cmd = [
                 self._pytest_path,
-                "--cov=chunker",
+                f"--cov={self.TEST_COVERAGE_TARGET}",
                 "--cov-report=json",
                 "--cov-report=term",
                 "-q",
                 "--tb=no",
+                self.TEST_COVERAGE_TESTS,
             ]
-            result = subprocess.run(cmd, check=False, capture_output=True, text=True)
+            result = subprocess.run(
+                cmd,
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=180,
+            )
             coverage_json = Path("coverage.json")
             if coverage_json.exists():
                 # Use builtin open for better testability with patching
@@ -218,7 +242,12 @@ class QualityAssurance(QualityAssuranceContract):
                             report["uncovered_lines"][filename] = missing
                 return coverage_percentage, report
             return self._parse_coverage_text(result.stdout)
-        except (AttributeError, FileNotFoundError, IndexError) as e:
+        except (
+            AttributeError,
+            FileNotFoundError,
+            IndexError,
+            subprocess.TimeoutExpired,
+        ) as e:
             return 0.0, {"error": str(e)}
 
     @staticmethod

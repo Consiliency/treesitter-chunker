@@ -78,25 +78,12 @@ def log(message: str) -> None:
     def test_full_pipeline(self, sample_project: Path):
         """Test the full clustering pipeline on sample project."""
         from chunker.clustering import ClusteringEngine
-        from chunker.extractors.python import PythonExtractor
+        from chunker.symbol_graph import extract_symbol_graph
 
         # 1. Extract symbols
-        extractor = PythonExtractor()
-        all_symbols = {}
-        all_relationships = []
-
-        for py_file in sample_project.rglob("*.py"):
-            source = py_file.read_text()
-            rel_path = py_file.relative_to(sample_project)
-            module_parts = list(rel_path.parts)
-            if module_parts[-1].endswith(".py"):
-                module_parts[-1] = module_parts[-1][:-3]
-            module_name = ".".join(module_parts)
-
-            result = extractor.extract_symbols(source, py_file, module_name)
-            if result.get("symbol_lookup"):
-                all_symbols.update(result["symbol_lookup"])
-            all_relationships.extend(result["relationships"])
+        extraction = extract_symbol_graph(sample_project, "python")
+        all_symbols = extraction["symbol_lookup"]
+        all_relationships = extraction["relationships"]
 
         # 2. Run clustering
         engine = ClusteringEngine(
@@ -124,19 +111,11 @@ def log(message: str) -> None:
     def test_output_json_format(self, sample_project: Path):
         """Test that output is valid JSON."""
         from chunker.clustering import ClusteringEngine
-        from chunker.extractors.python import PythonExtractor
+        from chunker.symbol_graph import extract_symbol_graph
 
-        extractor = PythonExtractor()
-        all_symbols = {}
-        all_relationships = []
-
-        for py_file in sample_project.rglob("*.py"):
-            source = py_file.read_text()
-            module_name = py_file.stem
-            result = extractor.extract_symbols(source, py_file, module_name)
-            if result.get("symbol_lookup"):
-                all_symbols.update(result["symbol_lookup"])
-            all_relationships.extend(result["relationships"])
+        extraction = extract_symbol_graph(sample_project, "python")
+        all_symbols = extraction["symbol_lookup"]
+        all_relationships = extraction["relationships"]
 
         engine = ClusteringEngine()
         result = engine.cluster(all_symbols, all_relationships)
@@ -149,19 +128,11 @@ def log(message: str) -> None:
     def test_resolution_affects_clusters(self, sample_project: Path):
         """Test that resolution parameter affects cluster count."""
         from chunker.clustering import ClusteringEngine
-        from chunker.extractors.python import PythonExtractor
+        from chunker.symbol_graph import extract_symbol_graph
 
-        extractor = PythonExtractor()
-        all_symbols = {}
-        all_relationships = []
-
-        for py_file in sample_project.rglob("*.py"):
-            source = py_file.read_text()
-            module_name = py_file.stem
-            result = extractor.extract_symbols(source, py_file, module_name)
-            if result.get("symbol_lookup"):
-                all_symbols.update(result["symbol_lookup"])
-            all_relationships.extend(result["relationships"])
+        extraction = extract_symbol_graph(sample_project, "python")
+        all_symbols = extraction["symbol_lookup"]
+        all_relationships = extraction["relationships"]
 
         # Coarse resolution should produce fewer, larger clusters
         coarse_engine = ClusteringEngine(coarse_resolution=0.1, fine_resolution=0.3)

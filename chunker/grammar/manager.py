@@ -74,7 +74,6 @@ class TreeSitterGrammarManager(GrammarManager):
             Grammar information
         """
         if name in self._grammars:
-
             logger.warning("Grammar '%s' already exists, updating...", name)
 
         # Create grammar info
@@ -112,64 +111,36 @@ class TreeSitterGrammarManager(GrammarManager):
         grammar_path = self.grammars_dir / f"tree-sitter-{name}"
         try:
             if grammar_path.exists():
-                # Only update if it's a valid git repository
-                if (grammar_path / ".git").exists():
-                    logger.info("Updating grammar '%s'...", name)
-                    # Fetch updates
-                    result = subprocess.run(
-                        ["git", "fetch", "--all"],
-                        check=False,
-                        cwd=grammar_path,
-                        capture_output=True,
-                        text=True,
-                    )
-                    if result.returncode != 0:
+                logger.info("Updating grammar '%s'...", name)
+                result = subprocess.run(
+                    ["git", "pull"],
+                    check=False,
+                    cwd=grammar_path,
+                    capture_output=True,
+                    text=True,
+                )
+                if result.returncode != 0:
+                    if (grammar_path / ".git").exists():
                         logger.warning(
-                            "Git fetch failed for '%s': %s", name, result.stderr
+                            "Git pull failed for '%s': %s", name, result.stderr
                         )
-
-                    # Check if we're on a branch before pulling
-                    result = subprocess.run(
-                        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-                        check=False,
-                        cwd=grammar_path,
-                        capture_output=True,
-                        text=True,
-                    )
-                    if result.returncode == 0 and result.stdout.strip() != "HEAD":
-                        # We're on a branch, safe to pull
+                    else:
+                        # Existing directory is not a valid repo; replace it.
+                        logger.info(
+                            "Removing non-git directory for '%s' and recloning...",
+                            name,
+                        )
+                        shutil.rmtree(grammar_path)
                         result = subprocess.run(
-                            ["git", "pull"],
+                            ["git", "clone", grammar.repository_url, str(grammar_path)],
                             check=False,
-                            cwd=grammar_path,
                             capture_output=True,
                             text=True,
                         )
                         if result.returncode != 0:
-                            logger.warning(
-                                "Git pull failed for '%s': %s", name, result.stderr
+                            raise GrammarManagementError(
+                                f"Git clone failed: {result.stderr}"
                             )
-                    else:
-                        # Detached HEAD or error, just use what we have
-                        logger.info(
-                            "Grammar '%s' in detached HEAD state, skipping pull", name
-                        )
-                else:
-                    # Not a git repo, remove and reclone
-                    logger.info(
-                        "Removing non-git directory for '%s' and recloning...", name
-                    )
-                    shutil.rmtree(grammar_path)
-                    result = subprocess.run(
-                        ["git", "clone", grammar.repository_url, str(grammar_path)],
-                        check=False,
-                        capture_output=True,
-                        text=True,
-                    )
-                    if result.returncode != 0:
-                        raise GrammarManagementError(
-                            f"Git clone failed: {result.stderr}"
-                        )
             else:
                 # Clone new repository
                 logger.info("Cloning grammar '%s'...", name)

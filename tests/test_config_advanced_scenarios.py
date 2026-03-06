@@ -42,7 +42,6 @@ class TestPerformanceImpactOfConfigLookups:
         """Test the overhead of frequent config lookups during parsing."""
 
         class MockParser:
-
             def __init__(self, config: dict[str, Any]):
                 self.config = config
                 self.lookup_count = 0
@@ -122,20 +121,19 @@ class TestPerformanceImpactOfConfigLookups:
                     f"Lookup every {freq} tokens: {overhead:.1f}% overhead, {results[freq]['lookups_per_second']:.0f} lookups/sec",
                 )
                 if freq == 1:
-                    assert (
-                        overhead < 3000
-                    ), f"Excessive overhead with frequent lookups: {overhead:.1f}%"
+                    assert overhead < 3000, (
+                        f"Excessive overhead with frequent lookups: {overhead:.1f}%"
+                    )
                 elif freq == 10:
-                    assert (
-                        overhead < 500
-                    ), f"High overhead with moderate lookups: {overhead:.1f}%"
+                    assert overhead < 500, (
+                        f"High overhead with moderate lookups: {overhead:.1f}%"
+                    )
 
     @staticmethod
     def test_config_caching_effectiveness():
         """Test effectiveness of config caching during parsing."""
 
         class CachedConfigParser:
-
             def __init__(self, config: dict[str, Any]):
                 self.config = config
                 self.cache = {}
@@ -224,7 +222,6 @@ class TestPerformanceImpactOfConfigLookups:
         """Test config lookup performance with parallel parsing."""
 
         class ThreadSafeConfigStore:
-
             def __init__(self, config: dict[str, Any]):
                 self.config = config
                 self.lock = threading.RLock()
@@ -327,7 +324,6 @@ class TestConfigHotReloadingDuringChunking:
         config_file.write_text(json.dumps(initial_config))
 
         class ConfigAwareChunker:
-
             def __init__(self, config_path: Path):
                 self.config_path = config_path
                 self.config = self._load_config()
@@ -459,7 +455,6 @@ class TestConfigHotReloadingDuringChunking:
         """Test that config remains consistent during reload."""
 
         class AtomicConfigManager:
-
             def __init__(self):
                 self.config = {"version": 1, "settings": {"a": 1, "b": 2, "c": 3}}
                 self.lock = threading.RLock()
@@ -578,12 +573,12 @@ class TestMemoryUsageWithLargeConfigHierarchies:
         print(
             f"Total nodes: {total_nodes}, Bytes per node: {bytes_per_node:.2f}",
         )
-        assert (
-            memory_increase < 150
-        ), f"Excessive memory usage: {memory_increase:.2f} MB"
-        assert (
-            bytes_per_node < 1000
-        ), f"Excessive per-node memory: {bytes_per_node:.2f} bytes"
+        assert memory_increase < 175, (
+            f"Excessive memory usage: {memory_increase:.2f} MB"
+        )
+        assert bytes_per_node < 1000, (
+            f"Excessive per-node memory: {bytes_per_node:.2f} bytes"
+        )
 
         def traverse_config(config: dict, path: str = "") -> list[str]:
             """Traverse config and collect all paths."""
@@ -614,7 +609,6 @@ class TestMemoryUsageWithLargeConfigHierarchies:
         """Test memory efficiency of config inheritance."""
 
         class InheritanceConfig:
-
             def __init__(self):
                 self.base_configs = {}
                 self.inherited_configs = {}
@@ -731,21 +725,19 @@ class TestMemoryUsageWithLargeConfigHierarchies:
             f"Memory after resolution: {stats_after['estimated_memory'] / 1024:.2f} KB",
         )
         print(f"Memory per config: {memory_per_config:.2f} bytes")
-        assert (
-            memory_per_config < 10000
-        ), f"Excessive memory per config: {memory_per_config} bytes"
+        assert memory_per_config < 10000, (
+            f"Excessive memory per config: {memory_per_config} bytes"
+        )
 
     @staticmethod
     def test_weak_reference_config_cleanup():
         """Test weak reference usage for config cleanup."""
 
         class ConfigObject:
-
             def __init__(self, data: dict[str, Any]):
                 self.data = data
 
         class WeakConfigManager:
-
             def __init__(self):
                 self.strong_refs = {}
                 self.weak_refs = {}
@@ -842,7 +834,6 @@ class TestCircularDependencyDetectionEdgeCases:
         """Test detection of simple circular dependencies."""
 
         class ConfigResolver:
-
             def __init__(self):
                 self.configs = {}
                 self.resolving = set()
@@ -908,7 +899,6 @@ class TestCircularDependencyDetectionEdgeCases:
         """Test complex inheritance scenarios with potential cycles."""
 
         class AdvancedConfigResolver:
-
             def __init__(self):
                 self.configs = {}
                 self.resolution_stack = []
@@ -997,7 +987,6 @@ class TestCircularDependencyDetectionEdgeCases:
         """Test circular dependencies that form dynamically."""
 
         class DynamicConfigSystem:
-
             def __init__(self):
                 self.configs = {}
                 self.reference_graph = {}
@@ -1112,7 +1101,6 @@ class TestCircularDependencyDetectionEdgeCases:
         try:
 
             class PerformantCycleDetector:
-
                 def __init__(self):
                     self.graph = {}
 

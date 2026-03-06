@@ -3,11 +3,10 @@
 import argparse
 import json
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from chunker.extractors.python import PythonExtractor
+from chunker.symbol_graph import extract_symbol_graph
 
 
 def setup_cluster_parser(subparsers: argparse._SubParsersAction) -> None:
@@ -22,6 +21,12 @@ def setup_cluster_parser(subparsers: argparse._SubParsersAction) -> None:
         "infer", help="Infer module hierarchy from symbols"
     )
     infer_parser.add_argument("path", help="Path to analyze")
+    infer_parser.add_argument(
+        "-l",
+        "--language",
+        default="python",
+        help="Language to analyze (default: python)",
+    )
     infer_parser.add_argument("-o", "--output", help="Output JSON file")
     infer_parser.add_argument(
         "--resolution",
@@ -87,62 +92,9 @@ def cmd_cluster_infer(args: argparse.Namespace) -> int:
 
     # 1. Extract symbols
     print(f"Extracting symbols from {path}...", file=sys.stderr)
-    extractor = PythonExtractor()
-
-    # Collect files
-    if path.is_file():
-        files = [path]
-    else:
-        files = list(path.rglob("*.py"))
-        files = [
-            f
-            for f in files
-            if not any(
-                part in f.parts
-                for part in [
-                    "__pycache__",
-                    ".git",
-                    ".venv",
-                    "venv",
-                    "node_modules",
-                    ".tox",
-                    ".pytest_cache",
-                    "build",
-                    "dist",
-                    ".eggs",
-                ]
-            )
-        ]
-
-    if not files:
-        print(f"Error: No Python files found in {path}", file=sys.stderr)
-        return 1
-
-    # Extract from all files
-    all_symbols: dict[str, Any] = {}
-    all_relationships: list[dict] = []
-
-    for file_path in sorted(files):
-        try:
-            source_code = file_path.read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError) as e:
-            print(f"Warning: Skipping {file_path}: {e}", file=sys.stderr)
-            continue
-
-        try:
-            rel_path = file_path.relative_to(path if path.is_dir() else path.parent)
-            module_parts = list(rel_path.parts)
-            if module_parts[-1].endswith(".py"):
-                module_parts[-1] = module_parts[-1][:-3]
-            module_name = ".".join(module_parts)
-        except ValueError:
-            module_name = file_path.stem
-
-        result = extractor.extract_symbols(source_code, file_path, module_name)
-
-        if result.get("symbol_lookup"):
-            all_symbols.update(result["symbol_lookup"])
-        all_relationships.extend(result["relationships"])
+    extraction = extract_symbol_graph(path, args.language)
+    all_symbols = extraction["symbol_lookup"]
+    all_relationships = extraction["relationships"]
 
     if not all_symbols:
         print("Error: No symbols extracted", file=sys.stderr)
