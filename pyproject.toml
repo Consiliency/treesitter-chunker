@@ -386,7 +386,7 @@ ignore = [
 # Stub files
 "*.pyi" = ["E501"]
 # Module init files
-"**/__init__.py" = ["E402", "PLE0604", "F401", "F403"]  # init files have special import needs
+"**/__init__.py" = ["E402", "PLE0604", "F401", "F403", "RUF067"]  # init files have special import needs
 # Language modules
 "chunker/languages/*.py" = ["E402"]
 "chunker/**/*.py" = ["PLC0415", "SIM105"]  # Allow conditional imports, contextlib.suppress not always better
