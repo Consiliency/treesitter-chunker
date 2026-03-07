@@ -110,3 +110,57 @@ class TestRegistryFallback:
             except Exception:
                 # Some languages might not be in the pack, that's OK
                 pass
+
+    def test_discover_symbols_scans_configured_build_directory(self, tmp_path):
+        """Test dev checkout build dir is scanned for per-language libs."""
+        from chunker._internal.registry import LanguageRegistry
+
+        build_dir = tmp_path / "build"
+        build_dir.mkdir()
+        python_lib = build_dir / "python.so"
+        python_lib.write_bytes(b"fake")
+
+        registry = LanguageRegistry(build_dir / "my-languages.so")
+
+        with patch.object(registry, "_validate_language_library", return_value=True):
+            symbols = registry._discover_symbols()
+
+        assert ("python", "tree_sitter_python") in symbols
+
+    def test_discovery_summary_is_not_critical_when_fallback_languages_exist(
+        self, caplog
+    ):
+        """Test fallback-only availability does not log total failure."""
+        from chunker._internal.registry import LanguageRegistry
+
+        registry = LanguageRegistry(Path("/nonexistent/path/to/library.so"))
+
+        with caplog.at_level("INFO"):
+            languages = registry.list_languages()
+
+        assert "python" in languages
+        assert (
+            "No languages available - system will not function properly"
+            not in caplog.text
+        )
+        assert "fallback" in caplog.text.lower()
+
+    def test_discovery_summary_prefers_available_language_count_over_low_local_count(
+        self, caplog, tmp_path
+    ):
+        """Test partial local discovery does not imply broad failure when fallbacks exist."""
+        from chunker._internal.registry import LanguageRegistry
+
+        build_dir = tmp_path / "build"
+        build_dir.mkdir()
+        (build_dir / "python.so").write_bytes(b"fake")
+
+        registry = LanguageRegistry(build_dir / "my-languages.so")
+
+        with patch.object(registry, "_validate_language_library", return_value=True):
+            with caplog.at_level("INFO"):
+                languages = registry.list_languages()
+
+        assert "python" in languages
+        assert "Many expected languages are missing" not in caplog.text
+        assert "total available languages via fallbacks" in caplog.text
