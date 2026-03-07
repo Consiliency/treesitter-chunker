@@ -190,8 +190,14 @@ class TestSmartGrammarManager:
         assert compat.language == "test_lang"
         assert isinstance(compat.tree_sitter_version, str)
         assert compat.tree_sitter_version
-        assert compat.system_architecture in ["unknown", "x86_64"]  # May be available
-        assert compat.os_platform in ["unknown", "Linux"]  # May be available
+        assert compat.system_architecture in [
+            "unknown",
+            "x86_64",
+            "arm64",
+            "AMD64",
+            "aarch64",
+        ]
+        assert compat.os_platform in ["unknown", "Linux", "Darwin", "Windows"]
         assert compat.compatibility_score >= 0.0
         assert compat.compatibility_score <= 1.0
 
