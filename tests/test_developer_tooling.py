@@ -96,7 +96,7 @@ class TestDeveloperToolingImpl:
             assert "errors" in result
             assert "diff" in result
             if not fix:
-                assert len(result["formatted"]) > 0 or len(result["diff"]) == 0
+                assert len(result["formatted"]) > 0 or len(result["diff"]) > 0
                 with test_file.open(encoding="utf-8") as f:
                     content = f.read()
                 assert "def hello(  ):   print( 'hello'  )" in content

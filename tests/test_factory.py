@@ -265,13 +265,25 @@ class TestParserFactory:
     @classmethod
     def test_parser_config_application(cls, registry):
         """Test that configuration is applied to parsers."""
-        factory = ParserFactory(registry)
         config = ParserConfig(timeout_ms=500)
-        parser = factory.get_parser("python", config)
-        if hasattr(parser, "timeout_micros"):
-            assert parser.timeout_micros == 500000
-        else:
-            assert hasattr(parser, "set_timeout_micros")
+
+        parser_with_setter = Mock()
+        ParserFactory._apply_config(parser_with_setter, config)
+        parser_with_setter.set_timeout_micros.assert_called_once_with(500000)
+
+        class ParserWithProperty:
+            timeout_micros = None
+
+        parser_with_property = ParserWithProperty()
+        parser_with_property.timeout_micros = None
+        ParserFactory._apply_config(parser_with_property, config)
+        assert parser_with_property.timeout_micros == 500000
+
+        class ParserWithoutTimeoutApi:
+            pass
+
+        parser_without_timeout_api = ParserWithoutTimeoutApi()
+        ParserFactory._apply_config(parser_without_timeout_api, config)
 
 
 if __name__ == "__main__":

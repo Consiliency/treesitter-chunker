@@ -257,6 +257,7 @@ class TestInteractiveMode:
             assert "good" in result.stdout
 
     @classmethod
+    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX signals only")
     def test_interactive_cancellation(cls):
         """Test graceful cancellation."""
         with tempfile.TemporaryDirectory() as tmp_dir:
