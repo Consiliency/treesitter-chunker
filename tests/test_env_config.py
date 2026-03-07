@@ -214,7 +214,8 @@ class TestIntegration:
     @classmethod
     def test_complex_scenario(cls, tmp_path):
         """Test complex scenario with multiple environment variables and config."""
-        os.environ["BASE_DIR"] = "/base"
+        base_dir = (tmp_path / "base").resolve()
+        os.environ["BASE_DIR"] = str(base_dir)
         os.environ["CHUNKER_ENABLED_LANGUAGES"] = "python,rust,go"
         os.environ["CHUNKER_LANGUAGES_PYTHON_MIN_CHUNK_SIZE"] = "8"
         os.environ["CHUNKER_LANGUAGES_RUST_ENABLED"] = "false"
@@ -230,7 +231,7 @@ class TestIntegration:
         with Path(config_file).open("w", encoding="utf-8") as f:
             json.dump(config_data, f)
         config = ChunkerConfig(config_file)
-        assert Path("/base/plugins") in config.plugin_dirs
+        assert (base_dir / "plugins") in config.plugin_dirs
         assert config.enabled_languages == {"python", "rust", "go"}
         assert config.plugin_configs["python"].min_chunk_size == 8
         assert config.plugin_configs["rust"].enabled is False
