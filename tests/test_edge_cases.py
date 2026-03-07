@@ -211,6 +211,7 @@ class МойКласс:
 def emoji_🚀_function():
     return "rocket\"
 """,
+            encoding="utf-8",
         )
         chunks = chunk_file(unicode_file, language="python")
         assert len(chunks) >= 3

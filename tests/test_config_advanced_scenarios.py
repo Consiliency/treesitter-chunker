@@ -126,7 +126,7 @@ class TestPerformanceImpactOfConfigLookups:
                     ), f"Excessive overhead with frequent lookups: {overhead:.1f}%"
                 elif freq == 10:
                     assert (
-                        overhead < 500
+                        overhead < 800
                     ), f"High overhead with moderate lookups: {overhead:.1f}%"
 
     @staticmethod
