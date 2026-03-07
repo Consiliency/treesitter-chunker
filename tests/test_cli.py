@@ -149,10 +149,13 @@ class TestClass:
 """,
             )
             f.flush()
-            results = process_file(Path(f.name), language=None)
+            file_path = Path(f.name)
+        try:
+            results = process_file(file_path, language=None)
             assert len(results) > 0
             assert all(r["language"] == "python" for r in results)
-            Path(f.name).unlink()
+        finally:
+            file_path.unlink()
 
     @classmethod
     def test_process_file_with_filters(cls):
@@ -183,15 +186,18 @@ class TestClass:
 """,
             )
             f.flush()
+            file_path = Path(f.name)
+        try:
             results = process_file(
-                Path(f.name),
+                file_path,
                 language="python",
                 chunk_types=["class_definition"],
             )
             assert all(r["node_type"] == "class_definition" for r in results)
-            results = process_file(Path(f.name), language="python", min_size=5)
+            results = process_file(file_path, language="python", min_size=5)
             assert all(r["size"] >= 5 for r in results)
-            Path(f.name).unlink()
+        finally:
+            file_path.unlink()
 
 
 class TestCLICommands:
@@ -214,10 +220,13 @@ class TestCLICommands:
 """,
             )
             f.flush()
-            result = runner.invoke(app, ["chunk", str(f.name), "--lang", "python"])
+            file_path = Path(f.name)
+        try:
+            result = runner.invoke(app, ["chunk", str(file_path), "--lang", "python"])
             assert result.exit_code == 0
             assert "function_definition" in result.output
-            Path(f.name).unlink()
+        finally:
+            file_path.unlink()
 
     @classmethod
     def test_chunk_command_json_output(cls):
@@ -236,9 +245,11 @@ class TestCLICommands:
             )
 
             f.flush()
+            file_path = Path(f.name)
+        try:
             result = runner.invoke(
                 app,
-                ["chunk", str(f.name), "--lang", "python", "--json"],
+                ["chunk", str(file_path), "--lang", "python", "--json"],
             )
             assert result.exit_code == 0
             assert result.output.startswith("[")
@@ -254,7 +265,8 @@ class TestCLICommands:
                 assert data[0]["node_type"] == "function_definition"
             except json.JSONDecodeError:
                 pass
-            Path(f.name).unlink()
+        finally:
+            file_path.unlink()
 
     @classmethod
     def test_batch_command_directory(cls):

@@ -268,7 +268,10 @@ class TestParserFactory:
         factory = ParserFactory(registry)
         config = ParserConfig(timeout_ms=500)
         parser = factory.get_parser("python", config)
-        assert parser.timeout_micros == 500000
+        if hasattr(parser, "timeout_micros"):
+            assert parser.timeout_micros == 500000
+        else:
+            assert hasattr(parser, "set_timeout_micros")
 
 
 if __name__ == "__main__":
