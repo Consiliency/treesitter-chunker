@@ -197,7 +197,11 @@ class ParserFactory:
     def _apply_config(parser: Parser, config: ParserConfig) -> None:
         """Apply configuration to a parser instance."""
         if config.timeout_ms is not None:
-            parser.timeout_micros = config.timeout_ms * 1000
+            timeout_micros = config.timeout_ms * 1000
+            if hasattr(parser, "set_timeout_micros"):
+                parser.set_timeout_micros(timeout_micros)
+            elif hasattr(parser, "timeout_micros"):
+                parser.timeout_micros = timeout_micros
         if config.included_ranges is not None:
             parser.included_ranges = config.included_ranges
         if config.logger is not None:

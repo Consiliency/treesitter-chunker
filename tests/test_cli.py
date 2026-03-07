@@ -41,18 +41,21 @@ min_chunk_size = 5
 max_chunk_size = 100
 include_patterns = ["*.py"]
 exclude_patterns = ["test_*"]
-parallel_workers = 2
+                parallel_workers = 2
 """,
             )
             f.flush()
-            config = load_config(Path(f.name))
+            config_path = Path(f.name)
+        try:
+            config = load_config(config_path)
             assert config["chunk_types"] == ["function_definition"]
             assert config["min_chunk_size"] == 5
             assert config["max_chunk_size"] == 100
             assert config["include_patterns"] == ["*.py"]
             assert config["exclude_patterns"] == ["test_*"]
             assert config["parallel_workers"] == 2
-            Path(f.name).unlink()
+        finally:
+            config_path.unlink()
 
     @classmethod
     def test_load_config_nonexistent(cls):
@@ -71,9 +74,12 @@ parallel_workers = 2
         ) as f:
             f.write("invalid toml {")
             f.flush()
-            config = load_config(Path(f.name))
+            config_path = Path(f.name)
+        try:
+            config = load_config(config_path)
             assert config == {}
-            Path(f.name).unlink()
+        finally:
+            config_path.unlink()
 
 
 class TestFilePatterns:

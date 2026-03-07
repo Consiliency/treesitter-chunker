@@ -355,7 +355,8 @@ class TestConfigFinding:
         config_path.write_text("[chunker]\nenabled_languages = ['rust']\n")
         subdir = temp_project_dir / "src" / "subdir"
         found = ChunkerConfig.find_config(subdir)
-        assert found == config_path
+        assert found is not None
+        assert found.resolve() == config_path.resolve()
 
     @staticmethod
     def test_find_config_multiple_formats(temp_project_dir):
