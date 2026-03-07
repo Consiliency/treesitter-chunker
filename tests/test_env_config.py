@@ -66,7 +66,8 @@ class TestEnvironmentVariableExpansion:
     @classmethod
     def test_env_var_in_config_file(cls, tmp_path):
         """Test loading config file with environment variables."""
-        os.environ["CUSTOM_PLUGIN_DIR"] = "/custom/plugins"
+        custom_plugin_dir = (tmp_path / "custom_plugins").resolve()
+        os.environ["CUSTOM_PLUGIN_DIR"] = str(custom_plugin_dir)
         os.environ["MIN_SIZE"] = "5"
         config_data = {
             "chunker": {
@@ -78,7 +79,7 @@ class TestEnvironmentVariableExpansion:
         with Path(config_file).open("w", encoding="utf-8") as f:
             json.dump(config_data, f)
         config = ChunkerConfig(config_file)
-        assert Path("/custom/plugins") in config.plugin_dirs
+        assert custom_plugin_dir in config.plugin_dirs
         del os.environ["CUSTOM_PLUGIN_DIR"]
         del os.environ["MIN_SIZE"]
 
