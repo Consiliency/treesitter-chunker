@@ -294,7 +294,7 @@ class QueryDebugger:
             if line_no in match_map:
                 match_nums = match_map[line_no]
                 indicator = (
-                    f"[yellow]// ← Match {', '.join(map(str, match_nums))}[/yellow]"
+                    f"[yellow]// <- Match {', '.join(map(str, match_nums))}[/yellow]"
                 )
                 highlighted_lines.append(f"{line} {indicator}")
             else:
