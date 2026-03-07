@@ -570,7 +570,10 @@ class TestEnvironmentVariables:
         with Path(config_path).open("w", encoding="utf-8") as f:
             yaml.safe_dump(config_data, f)
         config = ChunkerConfig(config_path)
-        assert str(config.plugin_dirs[0]).endswith("$CHUNKER_PLUGINS/language_plugins")
+        assert config.plugin_dirs[0].parts[-2:] == (
+            "$CHUNKER_PLUGINS",
+            "language_plugins",
+        )
 
 
 class TestComplexScenarios:
