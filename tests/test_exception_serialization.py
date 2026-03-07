@@ -107,6 +107,14 @@ def worker_sometimes_fails(worker_id):
     return f"Worker {worker_id} succeeded"
 
 
+def worker_with_queue(q):
+    """Worker that sends an exception through a multiprocessing queue."""
+    try:
+        raise SimpleChunkerError("Queue test error", {"language": "python"})
+    except SimpleChunkerError as e:
+        q.put(("error", e, traceback.format_exc()))
+
+
 class TestExceptionSerialization:
     """Test exception serialization for IPC."""
 
@@ -210,13 +218,6 @@ class TestExceptionSerialization:
     def test_multiprocessing_queue_exception_passing(cls):
         """Test passing exceptions through multiprocessing Queue."""
         queue = multiprocessing.Queue()
-
-        def worker_with_queue(q):
-            try:
-                raise SimpleChunkerError("Queue test error", {"language": "python"})
-            except SimpleChunkerError as e:
-                q.put(("error", e, traceback.format_exc()))
-
         process = multiprocessing.Process(target=worker_with_queue, args=(queue,))
         process.start()
         process.join()

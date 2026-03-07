@@ -289,13 +289,13 @@ class TestPathResolution:
     def test_resolve_absolute_path(cls, temp_config_dir):
         """Test resolution of absolute paths."""
         config_path = temp_config_dir / "config.yaml"
-        abs_path = "/usr/local/plugins"
-        config_data = {"chunker": {"plugin_dirs": [abs_path]}}
+        abs_path = (temp_config_dir / "absolute_plugins").resolve()
+        config_data = {"chunker": {"plugin_dirs": [str(abs_path)]}}
         with Path(config_path).open("w", encoding="utf-8") as f:
             yaml.safe_dump(config_data, f)
         config = ChunkerConfig(config_path)
         assert len(config.plugin_dirs) == 1
-        assert str(config.plugin_dirs[0]) == abs_path
+        assert config.plugin_dirs[0] == abs_path
 
     @classmethod
     def test_resolve_home_path(cls, temp_config_dir):
