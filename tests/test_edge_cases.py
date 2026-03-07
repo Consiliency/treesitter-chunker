@@ -306,8 +306,12 @@ invalid_option = true
         """Test handling of circular configuration includes."""
         config1 = tmp_path / "config1.toml"
         config2 = tmp_path / "config2.toml"
-        config1.write_text(f'\n[general]\ninclude = "{config2}"\nvalue1 = true\n')
-        config2.write_text(f'\n[general]\ninclude = "{config1}"\nvalue2 = true\n')
+        config1.write_text(
+            f'\n[general]\ninclude = "{config2.as_posix()}"\nvalue1 = true\n',
+        )
+        config2.write_text(
+            f'\n[general]\ninclude = "{config1.as_posix()}"\nvalue2 = true\n',
+        )
         config = ChunkerConfig(str(config1))
         assert config is not None
 
