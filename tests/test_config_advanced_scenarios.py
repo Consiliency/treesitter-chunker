@@ -113,25 +113,28 @@ class TestPerformanceImpactOfConfigLookups:
         for freq in frequencies:
             if freq != 500:
                 baseline_time = baseline["parse_time"]
+                current_time = results[freq]["parse_time"]
                 if baseline_time <= 0:
                     overhead = 0.0
                 else:
-                    overhead = (
-                        (results[freq]["parse_time"] - baseline_time)
-                        / baseline_time
-                        * 100
-                    )
+                    overhead = ((current_time - baseline_time) / baseline_time) * 100
                 print(
                     f"Lookup every {freq} tokens: {overhead:.1f}% overhead, {results[freq]['lookups_per_second']:.0f} lookups/sec",
                 )
+                if baseline_time < 0.01:
+                    absolute_delta = current_time - baseline_time
+                    assert absolute_delta < 0.05, (
+                        f"Excessive absolute overhead with tiny baseline: {absolute_delta:.4f}s"
+                    )
+                    continue
                 if freq == 1:
-                    assert (
-                        overhead < 3000
-                    ), f"Excessive overhead with frequent lookups: {overhead:.1f}%"
+                    assert overhead < 3000, (
+                        f"Excessive overhead with frequent lookups: {overhead:.1f}%"
+                    )
                 elif freq == 10:
-                    assert (
-                        overhead < 800
-                    ), f"High overhead with moderate lookups: {overhead:.1f}%"
+                    assert overhead < 800, (
+                        f"High overhead with moderate lookups: {overhead:.1f}%"
+                    )
 
     @staticmethod
     def test_config_caching_effectiveness():
@@ -577,12 +580,12 @@ class TestMemoryUsageWithLargeConfigHierarchies:
         print(
             f"Total nodes: {total_nodes}, Bytes per node: {bytes_per_node:.2f}",
         )
-        assert (
-            memory_increase < 175
-        ), f"Excessive memory usage: {memory_increase:.2f} MB"
-        assert (
-            bytes_per_node < 1000
-        ), f"Excessive per-node memory: {bytes_per_node:.2f} bytes"
+        assert memory_increase < 175, (
+            f"Excessive memory usage: {memory_increase:.2f} MB"
+        )
+        assert bytes_per_node < 1000, (
+            f"Excessive per-node memory: {bytes_per_node:.2f} bytes"
+        )
 
         def traverse_config(config: dict, path: str = "") -> list[str]:
             """Traverse config and collect all paths."""
@@ -729,9 +732,9 @@ class TestMemoryUsageWithLargeConfigHierarchies:
             f"Memory after resolution: {stats_after['estimated_memory'] / 1024:.2f} KB",
         )
         print(f"Memory per config: {memory_per_config:.2f} bytes")
-        assert (
-            memory_per_config < 10000
-        ), f"Excessive memory per config: {memory_per_config} bytes"
+        assert memory_per_config < 10000, (
+            f"Excessive memory per config: {memory_per_config} bytes"
+        )
 
     @staticmethod
     def test_weak_reference_config_cleanup():
