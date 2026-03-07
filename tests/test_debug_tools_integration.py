@@ -191,18 +191,20 @@ def main():
         comparison = ChunkComparison()
         with pytest.raises(FileNotFoundError):
             debug_tools.visualize_ast("nonexistent.py", "python")
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py") as f:
+        with tempfile.NamedTemporaryFile(
+            encoding="utf-8",
+            mode="w",
+            suffix=".py",
+            delete=False,
+        ) as f:
             f.write("print('test')")
-            f.flush()
+            temp_file = f.name
+        try:
             with pytest.raises(ValueError):
-                debug_tools.visualize_ast(f.name, "python", "invalid")
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py") as f:
-            f.write("print('test')")
-            f.flush()
+                debug_tools.visualize_ast(temp_file, "python", "invalid")
             with pytest.raises(ValueError):
-                debug_tools.inspect_chunk(f.name, "invalid_chunk_id")
-        with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".py") as f:
-            f.write("print('test')")
-            f.flush()
+                debug_tools.inspect_chunk(temp_file, "invalid_chunk_id")
             with pytest.raises(ValueError):
-                comparison.compare_strategies(f.name, "python", ["invalid_strategy"])
+                comparison.compare_strategies(temp_file, "python", ["invalid_strategy"])
+        finally:
+            Path(temp_file).unlink(missing_ok=True)
