@@ -69,29 +69,33 @@ EDGE_KIND_MAP: dict[RelationshipType, str] = {
 }
 
 # Valid semantic-lens node kinds (for validation)
-VALID_NODE_KINDS = frozenset([
-    "module",
-    "class",
-    "interface",
-    "trait",
-    "function",
-    "method",
-    "field",
-    "property",
-])
+VALID_NODE_KINDS = frozenset(
+    [
+        "module",
+        "class",
+        "interface",
+        "trait",
+        "function",
+        "method",
+        "field",
+        "property",
+    ]
+)
 
 # Valid semantic-lens edge kinds (for validation)
-VALID_EDGE_KINDS = frozenset([
-    "defines",
-    "imports",
-    "calls",
-    "inherits",
-    "implements",
-    "uses",
-    "reads",
-    "writes",
-    "throws",
-])
+VALID_EDGE_KINDS = frozenset(
+    [
+        "defines",
+        "imports",
+        "calls",
+        "inherits",
+        "implements",
+        "uses",
+        "reads",
+        "writes",
+        "throws",
+    ]
+)
 
 
 class SemanticLensExporter(StructuredExporter):
