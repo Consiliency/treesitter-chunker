@@ -209,7 +209,9 @@ class TestConfigSaving:
         save_path = temp_config_dir / "saved.toml"
         config.save(save_path)
         loaded_data = toml.loads(save_path.read_text())
-        assert loaded_data["chunker"]["plugin_dirs"] == ["/usr/local/plugins"]
+        assert [Path(path) for path in loaded_data["chunker"]["plugin_dirs"]] == [
+            Path("/usr/local/plugins"),
+        ]
         assert loaded_data["languages"]["c"]["enabled"] is False
 
     @classmethod

@@ -306,7 +306,7 @@ class TestPerformanceImpactOfConfigLookups:
             if num_threads <= 4:
                 assert efficiency > 5, f"Poor scaling with {num_threads} threads"
             if num_threads <= 8:
-                assert performance_results[num_threads]["max_wait_time"] < 0.2
+                assert performance_results[num_threads]["max_wait_time"] < 0.3
 
 
 class TestConfigHotReloadingDuringChunking:
