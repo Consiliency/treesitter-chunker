@@ -160,22 +160,54 @@ def _get_general_guidance(language: str, details: dict[str, Any]) -> str:
 def log_grammar_discovery_summary(
     discovered_languages: list[str],
     total_expected: int = 30,
+    available_languages: list[str] | None = None,
 ) -> None:
     """Log a summary of grammar discovery results with user guidance.
 
     Args:
         discovered_languages: List of successfully discovered languages
         total_expected: Total number of languages expected to be available
+        available_languages: Languages available via any fallback path
     """
     discovered_count = len(discovered_languages)
+    available_count = len(available_languages or [])
 
-    if discovered_count == 0:
+    if discovered_count == 0 and available_count == 0:
         logger.warning(
             "❌ No language grammars discovered!",
             extra={"discovered": 0, "expected": total_expected, "status": "critical"},
         )
         logger.warning(
             "This indicates a critical issue with grammar compilation or discovery.",
+        )
+    elif discovered_count == 0 and available_count > 0:
+        logger.info(
+            "ℹ️  No local grammar libraries discovered; using %d fallback languages",
+            available_count,
+            extra={
+                "discovered": 0,
+                "available": available_count,
+                "expected": total_expected,
+                "status": "fallback",
+            },
+        )
+        logger.info(
+            "Local grammar discovery did not find compiled artifacts, but fallback language support is available.",
+        )
+    elif available_count >= total_expected * 0.5 and available_count > discovered_count:
+        logger.info(
+            "ℹ️  Discovered %d local grammars and %d total available languages via fallbacks",
+            discovered_count,
+            available_count,
+            extra={
+                "discovered": discovered_count,
+                "available": available_count,
+                "expected": total_expected,
+                "status": "fallback-mixed",
+            },
+        )
+        logger.info(
+            "Local grammar discovery is partial, but fallback language support covers most expected languages.",
         )
     elif discovered_count < total_expected * 0.5:
         logger.warning(
@@ -215,7 +247,8 @@ def log_grammar_discovery_summary(
         )
 
     # Always log the discovered languages for debugging
-    if discovered_languages:
-        logger.info("Available languages: %s", ", ".join(sorted(discovered_languages)))
+    languages_to_log = available_languages or discovered_languages
+    if languages_to_log:
+        logger.info("Available languages: %s", ", ".join(sorted(languages_to_log)))
     else:
         logger.error("No languages available - system will not function properly")

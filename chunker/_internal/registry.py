@@ -77,7 +77,14 @@ class LanguageRegistry:
         """
         symbols = []
 
-        # PRIMARY SOURCE: Package grammar directory (deterministic location)
+        # PRIMARY SOURCE FOR DEV CHECKOUTS: sibling build directory next to the
+        # configured combined library path (e.g. build/python.so, build/rust.so).
+        build_dir = self._library_path.parent
+        if build_dir.exists():
+            logger.info("Scanning configured build directory: %s", build_dir)
+            symbols.extend(self._scan_directory_for_languages(build_dir))
+
+        # SECONDARY SOURCE: Package grammar directory (deterministic location)
         package_grammar_build = (
             Path(__file__).parent.parent / "data" / "grammars" / "build"
         )
@@ -85,7 +92,7 @@ class LanguageRegistry:
             logger.info("Scanning package grammar directory: %s", package_grammar_build)
             symbols.extend(self._scan_directory_for_languages(package_grammar_build))
 
-        # SECONDARY SOURCE: User cache directory (if configured)
+        # TERTIARY SOURCE: User cache directory (if configured)
         user_cache = Path.home() / ".cache" / "treesitter-chunker" / "build"
         if user_cache.exists():
             logger.info("Scanning user cache directory: %s", user_cache)
@@ -276,7 +283,11 @@ class LanguageRegistry:
         self._discovered = True
 
         # Use enhanced error logging for discovery summary
-        log_grammar_discovery_summary(list(discovered.keys()), total_expected=30)
+        log_grammar_discovery_summary(
+            list(discovered.keys()),
+            total_expected=30,
+            available_languages=self._get_all_available_languages(),
+        )
 
         return discovered
 
