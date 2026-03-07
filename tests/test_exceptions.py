@@ -115,7 +115,7 @@ class TestLibraryErrors:
         assert isinstance(err, LibraryError)
         assert isinstance(err, ChunkerError)
         assert err.path == path
-        assert "Shared library not found at /path/to/missing.so" in str(err)
+        assert f"Shared library not found at {path}" in str(err)
         assert "recovery" in err.details
         assert "build_lib.py" in err.details["recovery"]
         error_str = str(err)
