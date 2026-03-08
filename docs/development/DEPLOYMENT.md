@@ -52,7 +52,7 @@ pip install treesitter-chunker
 pip install "treesitter-chunker[api,viz,profile]"
 
 # Install specific version
-pip install treesitter-chunker==2.2.3
+pip install treesitter-chunker==2.2.4
 ```
 
 ### **Method 2: Source Installation**

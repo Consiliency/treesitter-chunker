@@ -23,7 +23,7 @@ This document is the source of truth for packaging and PyPI publishing.
 2. Bump `pyproject.toml` to the target version
 3. Update `CHANGELOG.md` if needed
 4. Commit the release prep
-5. Create and push a tag such as `v2.2.3`
+5. Create and push a tag such as `v2.2.4`
 6. Let `release.yml` build distributions, create the GitHub Release, and publish to PyPI
 
 See `docs/development/RELEASE_CHECKLIST.md` for the maintainer checklist.
