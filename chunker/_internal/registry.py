@@ -57,6 +57,14 @@ class LanguageRegistry:
     def _load_library(self) -> ctypes.CDLL:
         """Load the shared library."""
         if self._library is None:
+            if not self._library_path.exists():
+                logger.info(
+                    "Combined library %s is unavailable; relying on fallback discovery",
+                    self._library_path,
+                )
+                raise LibraryLoadError(
+                    self._library_path, "combined library not present"
+                )
             try:
                 self._library = ctypes.CDLL(str(self._library_path))
                 logger.info("Loaded library from %s", self._library_path)
