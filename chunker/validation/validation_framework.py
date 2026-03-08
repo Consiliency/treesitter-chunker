@@ -1709,9 +1709,7 @@ class RegressionTester:
             severity = (
                 "high"
                 if change_percent > 100
-                else "medium"
-                if change_percent > 50
-                else "low"
+                else "medium" if change_percent > 50 else "low"
             )
 
             return {
