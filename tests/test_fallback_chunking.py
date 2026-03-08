@@ -99,9 +99,12 @@ class TestFileTypeDetection:
             f.write("2024-01-15 10:30:45 ERROR Something went wrong\n")
             f.write("2024-01-15 10:30:46 INFO Process started\n")
             f.flush()
-            file_type = detector.detect_file_type(f.name)
+            temp_path = Path(f.name)
+        try:
+            file_type = detector.detect_file_type(str(temp_path))
             assert file_type == FileType.LOG
-            Path(f.name).unlink()
+        finally:
+            temp_path.unlink(missing_ok=True)
 
     @classmethod
     def test_encoding_detection(cls):
