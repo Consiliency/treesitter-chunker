@@ -112,12 +112,17 @@ class TestFileTypeDetection:
         with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False) as f:
             f.write("Hello, world! 你好世界")
             f.flush()
-            encoding, _confidence = EncodingDetector.detect_encoding(f.name)
+            temp_path = Path(f.name)
+        try:
+            encoding, _confidence = EncodingDetector.detect_encoding(str(temp_path))
             assert encoding.lower() in {"utf-8", "utf8"}
-            content, _used_encoding = EncodingDetector.read_with_encoding(f.name)
+            content, _used_encoding = EncodingDetector.read_with_encoding(
+                str(temp_path)
+            )
             assert "Hello, world!" in content
             assert "你好世界" in content
-            Path(f.name).unlink()
+        finally:
+            temp_path.unlink(missing_ok=True)
 
 
 class TestLogChunker:
@@ -272,16 +277,19 @@ class TestFallbackManager:
             f.write("2024-01-15 10:30:00 INFO Test log entry\n")
             f.write("2024-01-15 10:30:01 ERROR Something failed\n")
             f.flush()
-            assert manager.can_chunk(f.name) is True
+            temp_path = Path(f.name)
+        try:
+            assert manager.can_chunk(str(temp_path)) is True
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter("always")
-                chunks = manager.chunk_file(f.name)
+                chunks = manager.chunk_file(str(temp_path))
                 assert len(chunks) > 0
                 assert any("Test log entry" in chunk.content for chunk in chunks)
                 assert any(
                     issubclass(warning.category, FallbackWarning) for warning in w
                 )
-            Path(f.name).unlink()
+        finally:
+            temp_path.unlink(missing_ok=True)
 
     @classmethod
     def test_manager_fallback_info(cls):
@@ -296,12 +304,15 @@ class TestFallbackManager:
             f.write("name,age,city\n")
             f.write("Alice,30,NYC\n")
             f.flush()
-            info = manager.get_fallback_info(f.name)
+            temp_path = Path(f.name)
+        try:
+            info = manager.get_fallback_info(str(temp_path))
             assert info["file_type"] == "csv"
             assert info["can_chunk"] is True
             assert info["should_use_fallback"] is True
             assert info["fallback_reason"] == FallbackReason.NO_GRAMMAR.value
-            Path(f.name).unlink()
+        finally:
+            temp_path.unlink(missing_ok=True)
 
     @classmethod
     def test_csv_chunking(cls):
@@ -317,7 +328,9 @@ class TestFallbackManager:
             for i in range(60):
                 f.write(f"{i},User{i},{i * 10}\n")
             f.flush()
-            chunks = manager.chunk_file(f.name)
+            temp_path = Path(f.name)
+        try:
+            chunks = manager.chunk_file(str(temp_path))
             assert len(chunks) > 0
             assert (
                 len(
@@ -329,4 +342,5 @@ class TestFallbackManager:
             assert "id,name,score" not in chunks[0].content
             for i, chunk in enumerate(chunks[1:], 1):
                 assert "id,name,score" in chunk.content, f"Chunk {i} missing header"
-            Path(f.name).unlink()
+        finally:
+            temp_path.unlink(missing_ok=True)
