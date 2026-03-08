@@ -199,9 +199,8 @@ jobs:
         name: distribution-artifacts
         path: dist
 
+    - name: Remove non-package artifacts
+      run: rm -f dist/checksums.txt
+
     - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        packages-dir: |
-          dist/*.whl
-          dist/*.tar.gz
