@@ -70,10 +70,17 @@ jobs:
       - name: Pytest
         run: |
           # Run quick core tests for CI (no coverage - faster)
-          # Full test suite with coverage runs in separate Test Suite workflow
+          # Full test suite with coverage runs in separate Test Suite workflow.
+          # Exclude heavier validation/performance/recovery suites that are
+          # better exercised in the serial matrix workflow.
           # Tests with missing optional deps will be skipped via pytest.importorskip
           pytest -n auto \
             --timeout=60 \
             --ignore=tests/integration/ \
+            --ignore=tests/test_validation_framework.py \
+            --ignore=tests/test_validation_integration.py \
+            --ignore=tests/test_performance_advanced.py \
+            --ignore=tests/test_phase15_integration.py \
+            --ignore=tests/test_recovery.py \
             -q  # Quiet output for faster CI
         timeout-minutes: 60
