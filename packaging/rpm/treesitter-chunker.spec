@@ -82,7 +82,7 @@ done
 %license LICENSE
 %doc README.md CHANGELOG.md
 %{python3_sitelib}/chunker/
-%{python3_sitelib}/treesitter_chunker-%{version}.dist-info/
+%{python3_sitelib}/treesitter_chunker-*.dist-info/
 
 %changelog
 * Wed Jul 24 2025 Consiliency <dev@consiliency.com> - 1.0.0-1
