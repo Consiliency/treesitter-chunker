@@ -5,8 +5,78 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+---
 
+## [2.2.18] - 2026-03-13
 
+### 🐛 Bug Fixes
+
+- **Suppress spurious WARNING log messages on import** (closes #65): Downgraded 15 `logging.warning()` calls to `logging.debug()` in optional-component try/except blocks across `production_validator.py`, `final_integration_tests.py`, and `grammar_management/cli.py`. These warnings fired on every import even when all primary APIs worked correctly, polluting server logs.
+
+### 🔧 CI/CD
+
+- **Full CI/CD pipeline repair**: Fixed all broken workflows across 14 patch releases (v2.2.5–v2.2.18):
+  - `build-wheels.yml`: Replaced `cibuildwheel`+`auditwheel` with `python -m build --wheel` (pure-Python package; `auditwheel` rejects `py3-none-any` wheels)
+  - `release.yml`: Excluded `checksums.txt` from distribution artifact — `pypa/gh-action-pypi-publish` rejected non-distribution files
+  - `packages.yml` RPM: Fixed `python3-tree-sitter` (not in Fedora DNF → pip); replaced deprecated `%py3_build`/`%py3_install` with `%pyproject_wheel`/`%pyproject_install`; installed grammar script deps via `pip3 install .`; fixed artifact upload using absolute paths; suppressed empty debug package error
+  - `packages.yml` DEB: Replaced broken pybuild approach (no `pybuild-plugin-pyproject` in Debian bookworm) with manual pip-based `debian/rules`; removed conflicting `debian/compat` file; fixed version extraction from `pyproject.toml` instead of `git describe`; fixed `.deb` artifact upload path
+  - Removed broken `build-homebrew` job (Homebrew requires formulae in a registered tap)
+
+---
+
+## [2.2.4] - 2026-03-08
+
+### 🐛 Bug Fixes
+
+- **Grammar registry**: Detect dev-build grammars correctly in local/development checkouts (`fix(registry): detect dev build grammars`)
+- **Grammar fallback**: Soften missing combined-library fallback log level to avoid noise in normal operation
+
+---
+
+## [2.2.3] - 2026-03-07
+
+### ✨ Features
+
+- **Symbol extraction and import resolution**: Python extractor now produces a full symbol graph with import tracking; symbol metadata included in chunk output for code search and RAG use cases
+- **CLI module**: New `treesitter-chunker` CLI with `symbol`, `cluster`, and `repo` subcommands for batch processing, symbol extraction, and hierarchical clustering
+- **Hierarchical clustering**: Leiden-algorithm-based clustering module for grouping related code symbols across a repository
+- **Retrieval enrichment**: Chunk output enriched with semantic metadata to improve LLM retrieval quality (closes #62)
+
+### 🐛 Bug Fixes
+
+- **Cross-platform test stabilization**: Extensive hardening across Windows, macOS, and Linux for path handling, timing baselines, encoding defaults, and temp-file cleanup
+
+---
+
+## [2.2.2] - 2026-03-05
+
+### 🐛 Bug Fixes
+
+- **Cross-file relationship detection** (closes #58): Fixed `ASTRelationshipTracker` to correctly detect and emit cross-file relationships — previously all files appeared as isolated nodes in the dependency graph
+
+---
+
+## [2.2.1] - 2026-03-04
+
+### 🐛 Bug Fixes
+
+- **ABI compatibility**: Fallback to `tree-sitter-language-pack` when compiled grammar ABI mismatches the installed `tree-sitter` version, enabling resilient language support across environments
+
+### 🔧 CI/CD
+
+- Hardened CI against infrastructure failures; isolated git operations; added parallel test execution; improved timeout configuration
+
+---
+
+## [2.2.0] - 2026-03-03
+
+### ✨ Features
+
+- **tree-sitter-language-pack integration**: Added `tree-sitter-language-pack` as a pre-compiled grammar dependency, enabling out-of-box language support without grammar compilation on fresh installs (closes #51)
+- **Language pack fallback registry**: Automatic fallback to language pack when compiled grammars are unavailable or incompatible
+- **Actionable error messages**: Improved error messages with install guidance when language support is missing
+
+---
 
 ## [1.0.0] - 2026-01-02
 
