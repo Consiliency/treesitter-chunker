@@ -12,7 +12,7 @@ override_dh_auto_clean:
 	:
 
 override_dh_auto_build:
-	pip3 install --break-system-packages build tree_sitter
+	pip3 install --break-system-packages build .
 	python3 scripts/fetch_grammars.py
 	python3 scripts/build_lib.py
 	python3 -m build --wheel --no-isolation --outdir dist/

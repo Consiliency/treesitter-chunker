@@ -1,3 +1,5 @@
+%global debug_package %{nil}
+
 Name:           python-treesitter-chunker
 Version:        1.0.0
 Release:        1%{?dist}
