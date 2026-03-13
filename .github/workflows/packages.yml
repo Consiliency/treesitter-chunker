@@ -19,8 +19,8 @@ jobs:
         apt-get update
         apt-get install -y debhelper dh-python python3-all python3-setuptools \
           python3-wheel python3-pip git cmake build-essential devscripts
-        pip3 install tree_sitter
-    
+        pip3 install --break-system-packages tree_sitter
+
     - name: Prepare source package
       run: |
         cp -r packaging/debian debian/
