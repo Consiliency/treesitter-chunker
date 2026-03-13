@@ -18,7 +18,8 @@ jobs:
       run: |
         apt-get update
         apt-get install -y debhelper dh-python python3-all python3-setuptools \
-          python3-wheel python3-tree-sitter git cmake build-essential devscripts
+          python3-wheel python3-pip git cmake build-essential devscripts
+        pip3 install tree_sitter
     
     - name: Prepare source package
       run: |
@@ -69,27 +70,6 @@ jobs:
       with:
         name: rpm-packages
         path: ~/rpmbuild/RPMS/**/*.rpm
-
-  build-homebrew:
-    runs-on: macos-latest
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Test Homebrew formula
-      run: |
-        brew install --build-from-source treesitter-chunker.rb
-        brew test treesitter-chunker.rb
-    
-    - name: Create bottle
-      run: |
-        brew bottle treesitter-chunker.rb
-    
-    - name: Upload Homebrew bottle
-      uses: actions/upload-artifact@v4
-      with:
-        name: homebrew-bottle
-        path: '*.bottle.tar.gz'
 
   release-packages:
     needs: [build-deb, build-rpm]

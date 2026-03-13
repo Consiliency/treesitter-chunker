@@ -54,6 +54,9 @@ BuildArch:      noarch
 %autosetup -n treesitter-chunker-%{version}
 
 %build
+# Install tree-sitter bindings needed by build scripts (not in Fedora DNF repos)
+pip3 install tree_sitter
+
 # Fetch and build grammars (PYTHONPATH=. so scripts can import chunker without install)
 PYTHONPATH=. python3 scripts/fetch_grammars.py
 PYTHONPATH=. python3 scripts/build_lib.py
