@@ -8,8 +8,9 @@ URL:            https://github.com/Consiliency/treesitter-chunker
 Source0:        https://pypi.io/packages/source/t/treesitter-chunker/treesitter-chunker-%{version}.tar.gz
 
 BuildRequires:  python3-devel
-BuildRequires:  python3-setuptools
+BuildRequires:  python3-pip
 BuildRequires:  python3-wheel
+BuildRequires:  pyproject-rpm-macros
 BuildRequires:  gcc
 BuildRequires:  gcc-c++
 BuildRequires:  cmake
@@ -61,11 +62,10 @@ pip3 install .
 python3 scripts/fetch_grammars.py
 python3 scripts/build_lib.py
 
-# Build the Python package
-%py3_build
+%pyproject_wheel
 
 %install
-%py3_install
+%pyproject_install
 
 # Install the grammar library
 mkdir -p %{buildroot}%{python3_sitelib}/chunker/build
@@ -95,7 +95,7 @@ ln -s treesitter-chunker %{buildroot}%{_bindir}/tsc
 %{_bindir}/tsc
 %{python3_sitelib}/chunker/
 %{python3_sitelib}/cli/
-%{python3_sitelib}/treesitter_chunker-%{version}-py%{python3_version}.egg-info/
+%{python3_sitelib}/treesitter_chunker-%{version}.dist-info/
 
 %changelog
 * Wed Jul 24 2025 Consiliency <dev@consiliency.com> - 1.0.0-1

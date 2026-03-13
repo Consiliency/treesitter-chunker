@@ -26,7 +26,8 @@ jobs:
     - name: Prepare source package
       run: |
         cp -r packaging/debian debian/
-        dch -v $(git describe --tags --abbrev=0 | sed 's/v//') -D unstable "Automated build"
+        VERSION=$(python3 -c "import re; print(re.search(r'version = \"([^\"]+)\"', open('pyproject.toml').read()).group(1))")
+        dch --newversion "${VERSION}" --distribution unstable "Automated build"
     
     - name: Build package
       run: |
@@ -49,8 +50,8 @@ jobs:
 
     - name: Install build dependencies
       run: |
-        dnf install -y rpm-build python3-devel python3-setuptools python3-wheel \
-          gcc gcc-c++ cmake git python3-pip
+        dnf install -y rpm-build python3-devel python3-pip python3-wheel \
+          pyproject-rpm-macros gcc gcc-c++ cmake git
     
     - name: Setup build environment
       run: |
