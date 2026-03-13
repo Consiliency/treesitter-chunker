@@ -1,3 +1,8 @@
+## [2.2.21] - 2026-03-13
+
+### 📚 Documentation
+
+- *(changelog)* Update for v2.2.20
 ## [2.2.4] - 2026-03-08
 
 ### 🐛 Bug Fixes
