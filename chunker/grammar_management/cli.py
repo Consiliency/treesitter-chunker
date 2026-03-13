@@ -59,7 +59,7 @@ try:
 
     ERROR_HANDLING_AVAILABLE = True
 except ImportError as e:
-    logging.warning(f"Error handling integration not available: {e}")
+    logging.debug(f"Error handling integration not available: {e}")
     ERROR_HANDLING_AVAILABLE = False
 
     # Create stub classes for graceful fallback
@@ -109,7 +109,7 @@ try:
 
     GRAMMAR_COMPONENTS_AVAILABLE = True
 except ImportError as e:
-    logging.warning(f"Grammar core components not available: {e}")
+    logging.debug(f"Grammar core components not available: {e}")
     GRAMMAR_COMPONENTS_AVAILABLE = False
 
     # Create stub classes for graceful fallback
@@ -141,7 +141,7 @@ try:
 
     COMPATIBILITY_AVAILABLE = True
 except ImportError as e:
-    logging.warning(f"Compatibility components not available: {e}")
+    logging.debug(f"Compatibility components not available: {e}")
     COMPATIBILITY_AVAILABLE = False
 
 logger = logging.getLogger(__name__)

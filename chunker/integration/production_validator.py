@@ -72,7 +72,7 @@ try:
 
     CORE_INTEGRATION_AVAILABLE = True
 except ImportError as e:
-    logging.warning(f"Core integration not available: {e}")
+    logging.debug(f"Core integration not available: {e}")
     CORE_INTEGRATION_AVAILABLE = False
     SystemIntegrator = None
     get_system_integrator = None
@@ -88,7 +88,7 @@ try:
 
     PERFORMANCE_OPTIMIZER_AVAILABLE = True
 except ImportError as e:
-    logging.warning(f"Performance optimizer not available: {e}")
+    logging.debug(f"Performance optimizer not available: {e}")
     PERFORMANCE_OPTIMIZER_AVAILABLE = False
     PerformanceOptimizer = None
     PerformanceMetric = None
@@ -99,7 +99,7 @@ try:
 
     USER_EXPERIENCE_AVAILABLE = True
 except ImportError as e:
-    logging.warning(f"User experience manager not available: {e}")
+    logging.debug(f"User experience manager not available: {e}")
     USER_EXPERIENCE_AVAILABLE = False
     UserExperienceManager = None
     InteractionMode = None
@@ -112,7 +112,7 @@ try:
 
     GRAMMAR_COMPONENTS_AVAILABLE = True
 except ImportError as e:
-    logging.warning(f"Grammar components not available: {e}")
+    logging.debug(f"Grammar components not available: {e}")
     GRAMMAR_COMPONENTS_AVAILABLE = False
     GrammarManager = None
     GrammarRegistry = None
@@ -129,7 +129,7 @@ try:
 
     ERROR_HANDLING_AVAILABLE = True
 except ImportError as e:
-    logging.warning(f"Error handling not available: {e}")
+    logging.debug(f"Error handling not available: {e}")
     ERROR_HANDLING_AVAILABLE = False
     ErrorHandlingPipeline = None
     ErrorClassifier = None
@@ -143,7 +143,7 @@ try:
 
     CORE_CHUNKING_AVAILABLE = True
 except ImportError as e:
-    logging.warning(f"Core chunking not available: {e}")
+    logging.debug(f"Core chunking not available: {e}")
     CORE_CHUNKING_AVAILABLE = False
     chunk_file = None
     chunk_text = None
