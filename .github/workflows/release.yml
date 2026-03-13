@@ -219,15 +219,14 @@ jobs:
         fetch-depth: 0
         ref: main
 
-    - name: Install git-cliff
-      run: |
-        curl -sSL https://github.com/orhun/git-cliff/releases/latest/download/git-cliff-x86_64-unknown-linux-gnu.tar.gz \
-          | tar -xz --strip-components=1 -C /usr/local/bin git-cliff-*/git-cliff
-
     - name: Update CHANGELOG.md
+      uses: orhun/git-cliff-action@v4
+      with:
+        config: cliff.toml
+        args: --tag ${{ needs.build-distributions.outputs.tag_name }}
       env:
-        TAG: ${{ needs.build-distributions.outputs.tag_name }}
-      run: git cliff --tag "$TAG" -o CHANGELOG.md
+        OUTPUT: CHANGELOG.md
+        GITHUB_REPO: ${{ github.repository }}
 
     - name: Commit and push
       env:
