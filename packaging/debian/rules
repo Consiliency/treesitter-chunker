@@ -2,21 +2,21 @@
 
 export DH_VERBOSE = 1
 export PYBUILD_NAME = treesitter-chunker
+export PYBUILD_SYSTEM = pyproject
 
 %:
 	dh $@ --with python3 --buildsystem=pybuild
 
 override_dh_auto_build:
-	# Fetch and build grammars
+	pip3 install --break-system-packages tree_sitter
 	python3 scripts/fetch_grammars.py
 	python3 scripts/build_lib.py
 	dh_auto_build
 
 override_dh_auto_install:
 	dh_auto_install
-	# Install the built grammar library
 	mkdir -p debian/python3-treesitter-chunker/usr/lib/python3/dist-packages/chunker/build
-	cp build/my-languages.so debian/python3-treesitter-chunker/usr/lib/python3/dist-packages/chunker/build/
+	cp build/*.so debian/python3-treesitter-chunker/usr/lib/python3/dist-packages/chunker/build/
 
 override_dh_auto_test:
 	# Run tests if available

@@ -67,9 +67,11 @@ python3 scripts/build_lib.py
 %install
 %pyproject_install
 
-# Install the grammar library
+# Install grammar libraries (one .so per language)
 mkdir -p %{buildroot}%{python3_sitelib}/chunker/build
-install -m 644 build/languages.so %{buildroot}%{python3_sitelib}/chunker/build/
+for lib in build/*.so; do
+  install -m 644 "$lib" %{buildroot}%{python3_sitelib}/chunker/build/
+done
 
 # Install CLI executable
 mkdir -p %{buildroot}%{_bindir}
