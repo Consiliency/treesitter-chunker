@@ -54,9 +54,9 @@ BuildArch:      noarch
 %autosetup -n treesitter-chunker-%{version}
 
 %build
-# Fetch and build grammars
-python3 scripts/fetch_grammars.py
-python3 scripts/build_lib.py
+# Fetch and build grammars (PYTHONPATH=. so scripts can import chunker without install)
+PYTHONPATH=. python3 scripts/fetch_grammars.py
+PYTHONPATH=. python3 scripts/build_lib.py
 
 # Build the Python package
 %py3_build

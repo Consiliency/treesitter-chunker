@@ -121,7 +121,9 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: distribution-artifacts
-        path: dist/*
+        path: |
+          dist/*.whl
+          dist/*.tar.gz
 
   create-release:
     name: Create GitHub Release
