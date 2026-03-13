@@ -73,18 +73,6 @@ for lib in build/*.so; do
   install -m 644 "$lib" %{buildroot}%{python3_sitelib}/chunker/build/
 done
 
-# Install CLI executable
-mkdir -p %{buildroot}%{_bindir}
-cat > %{buildroot}%{_bindir}/treesitter-chunker << 'EOF'
-#!/usr/bin/env python3
-from cli.main import app
-if __name__ == "__main__":
-    app()
-EOF
-chmod +x %{buildroot}%{_bindir}/treesitter-chunker
-
-# Create tsc symlink
-ln -s treesitter-chunker %{buildroot}%{_bindir}/tsc
 
 %check
 # Run tests if available
@@ -93,10 +81,7 @@ ln -s treesitter-chunker %{buildroot}%{_bindir}/tsc
 %files -n python3-treesitter-chunker
 %license LICENSE
 %doc README.md CHANGELOG.md
-%{_bindir}/treesitter-chunker
-%{_bindir}/tsc
 %{python3_sitelib}/chunker/
-%{python3_sitelib}/cli/
 %{python3_sitelib}/treesitter_chunker-%{version}.dist-info/
 
 %changelog
