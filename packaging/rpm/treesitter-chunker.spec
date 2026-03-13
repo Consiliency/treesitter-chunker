@@ -83,7 +83,10 @@ done
 %files -n python3-treesitter-chunker
 %license LICENSE
 %doc README.md CHANGELOG.md
+%{_bindir}/treesitter-chunker
+%{_bindir}/tsc
 %{python3_sitelib}/chunker/
+%{python3_sitelib}/cli/
 %{python3_sitelib}/treesitter_chunker-*.dist-info/
 
 %changelog
