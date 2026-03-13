@@ -70,12 +70,14 @@ jobs:
       run: |
         cd ~/rpmbuild
         rpmbuild -ba SPECS/treesitter-chunker.spec
-    
+        mkdir -p /tmp/rpms
+        find ~/rpmbuild/RPMS -name "*.rpm" -exec cp {} /tmp/rpms/ \;
+
     - name: Upload RPM packages
       uses: actions/upload-artifact@v4
       with:
         name: rpm-packages
-        path: ~/rpmbuild/RPMS/**/*.rpm
+        path: /tmp/rpms/*.rpm
 
   release-packages:
     needs: [build-deb, build-rpm]
