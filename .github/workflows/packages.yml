@@ -51,7 +51,7 @@ jobs:
     - name: Install build dependencies
       run: |
         dnf install -y rpm-build python3-devel python3-pip python3-wheel \
-          pyproject-rpm-macros gcc gcc-c++ cmake git
+          python3-setuptools pyproject-rpm-macros gcc gcc-c++ cmake git
     
     - name: Setup build environment
       run: |
