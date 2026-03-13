@@ -10,9 +10,11 @@ jobs:
   build-deb:
     runs-on: ubuntu-latest
     container: debian:bookworm
-    
+
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
     
     - name: Install build dependencies
       run: |
@@ -39,15 +41,16 @@ jobs:
   build-rpm:
     runs-on: ubuntu-latest
     container: fedora:latest
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+      with:
+        fetch-depth: 0
+
     - name: Install build dependencies
       run: |
         dnf install -y rpm-build python3-devel python3-setuptools python3-wheel \
           gcc gcc-c++ cmake git python3-pip
-        pip3 install tree_sitter
     
     - name: Setup build environment
       run: |

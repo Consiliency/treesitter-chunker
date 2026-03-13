@@ -54,12 +54,12 @@ BuildArch:      noarch
 %autosetup -n treesitter-chunker-%{version}
 
 %build
-# Install Python deps needed by build scripts (not available via DNF)
-pip3 install tree_sitter pyyaml
+# Install package and all declared deps so build scripts can import chunker
+pip3 install .
 
-# Fetch and build grammars (PYTHONPATH=. so scripts can import chunker without install)
-PYTHONPATH=. python3 scripts/fetch_grammars.py
-PYTHONPATH=. python3 scripts/build_lib.py
+# Fetch and build grammars
+python3 scripts/fetch_grammars.py
+python3 scripts/build_lib.py
 
 # Build the Python package
 %py3_build
