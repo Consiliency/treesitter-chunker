@@ -113,17 +113,20 @@ class TestPerformanceImpactOfConfigLookups:
         for freq in frequencies:
             if freq != 500:
                 baseline_time = baseline["parse_time"]
+                current_time = results[freq]["parse_time"]
                 if baseline_time <= 0:
                     overhead = 0.0
                 else:
-                    overhead = (
-                        (results[freq]["parse_time"] - baseline_time)
-                        / baseline_time
-                        * 100
-                    )
+                    overhead = ((current_time - baseline_time) / baseline_time) * 100
                 print(
                     f"Lookup every {freq} tokens: {overhead:.1f}% overhead, {results[freq]['lookups_per_second']:.0f} lookups/sec",
                 )
+                if baseline_time < 0.01:
+                    absolute_delta = current_time - baseline_time
+                    assert (
+                        absolute_delta < 0.05
+                    ), f"Excessive absolute overhead with tiny baseline: {absolute_delta:.4f}s"
+                    continue
                 if freq == 1:
                     assert overhead < 3000, (
                         f"Excessive overhead with frequent lookups: {overhead:.1f}%"

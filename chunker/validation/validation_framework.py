@@ -869,8 +869,8 @@ class LoadTester:
         # Simulate some processing work
         time.sleep(0.01)  # 10ms of work
 
-        # Occasionally simulate an error (5% chance)
-        if time.time() % 100 < 5:
+        # Allow tests to request a deterministic failure path explicitly.
+        if isinstance(test_data, dict) and test_data.get("force_error"):
             raise Exception("Simulated processing error")
 
         return {

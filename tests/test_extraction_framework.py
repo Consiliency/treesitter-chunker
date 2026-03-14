@@ -52,6 +52,7 @@ class TestCallSite:
 
     def test_callsite_string_path_conversion(self):
         """Test that string file paths are converted to Path objects."""
+        expected_path = Path("/test/file.py")
         call_site = CallSite(
             function_name="test_func",
             line_number=1,
@@ -61,11 +62,11 @@ class TestCallSite:
             call_type="function",
             context={},
             language="python",
-            file_path="/test/file.py",  # String path
+            file_path=str(expected_path),
         )
 
         assert isinstance(call_site.file_path, Path)
-        assert str(call_site.file_path) == "/test/file.py"
+        assert call_site.file_path == expected_path
 
     def test_callsite_validation_errors(self):
         """Test CallSite validation for invalid inputs."""
@@ -183,19 +184,15 @@ class TestCallSite:
         )
 
         result = call_site.to_dict()
-        expected = {
-            "function_name": "test_func",
-            "line_number": 10,
-            "column_number": 5,
-            "byte_start": 100,
-            "byte_end": 110,
-            "call_type": "function",
-            "context": {"key": "value"},
-            "language": "python",
-            "file_path": "/test/file.py",
-        }
-
-        assert result == expected
+        assert result["function_name"] == "test_func"
+        assert result["line_number"] == 10
+        assert result["column_number"] == 5
+        assert result["byte_start"] == 100
+        assert result["byte_end"] == 110
+        assert result["call_type"] == "function"
+        assert result["context"] == {"key": "value"}
+        assert result["language"] == "python"
+        assert Path(result["file_path"]) == Path("/test/file.py")
 
     def test_callsite_from_dict(self):
         """Test CallSite creation from dictionary."""
@@ -849,8 +846,12 @@ class TestExtractionUtils:
 
         assert metadata["filename"] == "file.py"
         assert metadata["extension"] == ".py"
-        assert metadata["directory"] == "/test/path"
-        assert "/test/path/file.py" in metadata["absolute_path"]
+        assert Path(metadata["directory"]) == Path("/test/path")
+        assert Path(metadata["absolute_path"]).parts[-3:] == (
+            "test",
+            "path",
+            "file.py",
+        )
 
     def test_extract_file_metadata_existing_file(self):
         """Test metadata extraction for existing file."""

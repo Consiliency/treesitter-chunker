@@ -164,3 +164,18 @@ class TestRegistryFallback:
         assert "python" in languages
         assert "Many expected languages are missing" not in caplog.text
         assert "total available languages via fallbacks" in caplog.text
+
+    def test_missing_combined_library_logs_info_not_error_when_fallback_works(
+        self, caplog
+    ):
+        """Test missing dev combined library does not log a fallback-success path as an error."""
+        from chunker._internal.registry import LanguageRegistry
+
+        registry = LanguageRegistry(Path("/nonexistent/path/to/library.so"))
+
+        with caplog.at_level("INFO"):
+            languages = registry.list_languages()
+
+        assert "python" in languages
+        assert "Failed to load shared library" not in caplog.text
+        assert "No combined library available" in caplog.text
