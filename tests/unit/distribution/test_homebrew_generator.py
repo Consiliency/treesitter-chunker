@@ -146,9 +146,7 @@ end"""
         """Test package info extraction from pyproject.toml"""
         mock_exists.return_value = True
         with patch("builtins.open", create=True) as mock_open:
-            (mock_open.return_value.__enter__.return_value.read.return_value) = (
-                b'\n[project]\ndescription = "Custom description"\nlicense = {text = "Apache-2.0"}\n'
-            )
+            mock_open.return_value.__enter__.return_value.read.return_value = b'\n[project]\ndescription = "Custom description"\nlicense = {text = "Apache-2.0"}\n'
             with patch("tomllib.load") as mock_load:
                 mock_load.return_value = {
                     "project": {

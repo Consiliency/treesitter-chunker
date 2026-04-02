@@ -37,8 +37,7 @@ class TestClusteringIntegration:
         )
 
         # auth/user.py
-        (tmp_path / "auth" / "user.py").write_text(
-            '''
+        (tmp_path / "auth" / "user.py").write_text('''
 class User:
     """User model."""
     def __init__(self, name: str):
@@ -46,12 +45,10 @@ class User:
 
     def greet(self) -> str:
         return f"Hello, {self.name}"
-'''
-        )
+''')
 
         # auth/login.py
-        (tmp_path / "auth" / "login.py").write_text(
-            '''
+        (tmp_path / "auth" / "login.py").write_text('''
 from .user import User
 
 def login(username: str) -> User:
@@ -61,17 +58,14 @@ def login(username: str) -> User:
 def validate(user: User) -> bool:
     """Validate user."""
     return user.name is not None
-'''
-        )
+''')
 
         # utils.py (infrastructure-like)
-        (tmp_path / "utils.py").write_text(
-            '''
+        (tmp_path / "utils.py").write_text('''
 def log(message: str) -> None:
     """Log a message."""
     print(message)
-'''
-        )
+''')
 
         return tmp_path
 
@@ -156,8 +150,7 @@ class TestCLIIntegration:
     @pytest.fixture
     def sample_project(self, tmp_path: Path) -> Path:
         """Create a sample Python project for testing."""
-        (tmp_path / "sample.py").write_text(
-            """
+        (tmp_path / "sample.py").write_text("""
 class Foo:
     def bar(self):
         return "bar"
@@ -165,8 +158,7 @@ class Foo:
 def baz():
     f = Foo()
     return f.bar()
-"""
-        )
+""")
         return tmp_path
 
     def test_cli_cluster_infer(self, sample_project: Path, tmp_path: Path):

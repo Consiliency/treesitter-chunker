@@ -827,10 +827,8 @@ def test_comprehensive_recovery_scenario(tmp_path):
     files = {
         "good.py": "def good(): return 'ok'",
         "syntax_error.py": "def bad(: error",
-        "large.py": "def large():\n"
-        + """    x = 'a' * 1000000
-"""
-        * 100,
+        "large.py": "def large():\n" + """    x = 'a' * 1000000
+""" * 100,
         "nested/deep.py": "def deep(): pass",
         "binary.bin": b"\x00\x01\x02\x03",
     }

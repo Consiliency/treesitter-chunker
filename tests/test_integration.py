@@ -348,8 +348,7 @@ class TestErrorScenarios:
     def test_large_file_parsing():
         """Test parsing large files."""
         code_parts = ['"""Large test file."""\n']
-        code_parts.extend(
-            f"""
+        code_parts.extend(f"""
 def function_{i}(param_{i}: int) -> int:
     ""\"Function {i} docstring.""\"
     result = param_{i} * 2
@@ -363,9 +362,7 @@ class Class_{i}:
     def method_{i}(self, value: int) -> str:
         ""\"Method {i} docstring.""\"
         return f"Value: {{value}}\"
-"""
-            for i in range(1000)
-        )
+""" for i in range(1000))
         large_code = "\n".join(code_parts)
         parser = get_parser("python")
         start_time = time.time()
