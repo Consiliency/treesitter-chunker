@@ -62,7 +62,11 @@ class TestChunkOptimizer:
                 byte_end=800,
                 parent_context="module",
                 content="""class LargeClass:
-""" + "    " * 50 + "def method1(self):\n" + "        " * 100 + "pass\n" * 20,
+"""
+                + "    " * 50
+                + "def method1(self):\n"
+                + "        " * 100
+                + "pass\n" * 20,
                 chunk_id="chunk3",
             ),
         ]
@@ -247,9 +251,11 @@ class TestChunkOptimizer:
             byte_start=0,
             byte_end=2000,
             parent_context="module",
-            content="class Large:\n" + """    def method1(self):
+            content="class Large:\n"
+            + """    def method1(self):
         pass
-""" * 30,
+"""
+            * 30,
             chunk_id="large",
         )
 
@@ -660,7 +666,8 @@ class TestOptimizationIntegration:
             byte_end=1000,
             parent_context="module",
             content="""def large_function():
-""" + "    x = 1\n" * 100,
+"""
+            + "    x = 1\n" * 100,
             chunk_id="large",
         )
         optimized_small, _ = real_optimizer.optimize_for_llm(
