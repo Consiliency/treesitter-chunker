@@ -323,7 +323,7 @@ class TestPythonPatterns(unittest.TestCase):
             # Create a call node and then break it
             broken_call = self.function_call
             # Remove required attributes to trigger errors
-            delattr(broken_call, "args")
+            del broken_call.args
 
             context = PythonPatterns.extract_call_context(broken_call, {})
             self.assertIn("extraction_error", context)

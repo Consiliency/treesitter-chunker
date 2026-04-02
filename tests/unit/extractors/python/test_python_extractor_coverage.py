@@ -56,9 +56,9 @@ from ..package import other
         )
         # Remove line/col attributes to test fallback
         if hasattr(call_node, "lineno"):
-            delattr(call_node, "lineno")
+            del call_node.lineno
         if hasattr(call_node, "col_offset"):
-            delattr(call_node, "col_offset")
+            del call_node.col_offset
 
         # Should handle missing attributes gracefully
         visitor.visit_Call(call_node)
