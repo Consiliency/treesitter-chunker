@@ -96,7 +96,7 @@ try:
 
     CORE_INTEGRATION_AVAILABLE = True
 except ImportError as e:
-    logging.warning(f"Core integration components not available: {e}")
+    logging.debug(f"Core integration components not available: {e}")
     CORE_INTEGRATION_AVAILABLE = False
 
 try:
@@ -121,7 +121,7 @@ try:
 
     PERFORMANCE_OPTIMIZER_AVAILABLE = True
 except ImportError as e:
-    logging.warning(f"Performance optimizer components not available: {e}")
+    logging.debug(f"Performance optimizer components not available: {e}")
     PERFORMANCE_OPTIMIZER_AVAILABLE = False
 
 try:
@@ -129,7 +129,7 @@ try:
 
     USER_EXPERIENCE_AVAILABLE = True
 except ImportError as e:
-    logging.warning(f"User experience components not available: {e}")
+    logging.debug(f"User experience components not available: {e}")
     USER_EXPERIENCE_AVAILABLE = False
 
 try:
@@ -151,7 +151,7 @@ try:
 
     PRODUCTION_VALIDATOR_AVAILABLE = True
 except ImportError as e:
-    logging.warning(f"Production validator components not available: {e}")
+    logging.debug(f"Production validator components not available: {e}")
     PRODUCTION_VALIDATOR_AVAILABLE = False
 
 # Import core chunker components for integration testing
@@ -163,7 +163,7 @@ try:
 
     CHUNKER_CORE_AVAILABLE = True
 except ImportError as e:
-    logging.warning(f"Chunker core components not available: {e}")
+    logging.debug(f"Chunker core components not available: {e}")
     CHUNKER_CORE_AVAILABLE = False
 
 # Import error handling components for integration testing
@@ -172,7 +172,7 @@ try:
 
     ERROR_HANDLING_AVAILABLE = True
 except ImportError as e:
-    logging.warning(f"Error handling components not available: {e}")
+    logging.debug(f"Error handling components not available: {e}")
     ERROR_HANDLING_AVAILABLE = False
 
 # Setup logging

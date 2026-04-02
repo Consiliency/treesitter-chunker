@@ -49,7 +49,7 @@ class LanguageRegistry:
         # Do not raise if the combined library is missing; discovery will fall back to
         # nm or per-language libraries and allow on-demand builds.
         if not self._library_path.exists():
-            logger.warning(
+            logger.debug(
                 "Shared library not found at %s; will use fallbacks",
                 self._library_path,
             )
@@ -69,7 +69,7 @@ class LanguageRegistry:
                 self._library = ctypes.CDLL(str(self._library_path))
                 logger.info("Loaded library from %s", self._library_path)
             except OSError as e:
-                logger.error(
+                logger.debug(
                     "Failed to load shared library %s: %s",
                     self._library_path,
                     e,
@@ -353,28 +353,12 @@ class LanguageRegistry:
                         )
                         return language
                     except (AttributeError, OSError, ValueError) as e:
-                        logger.error(
+                        logger.debug(
                             "Failed loading '%s' from %s: %s",
                             name,
                             path_candidate,
                             e,
                         )
-                        # Provide more specific error guidance
-                        if "symbol" in str(e).lower():
-                            logger.error(
-                                "This appears to be a symbol/library issue. "
-                                "The grammar may be corrupted or incompatible.",
-                            )
-                        elif "version" in str(e).lower():
-                            logger.error(
-                                "This appears to be a version compatibility issue. "
-                                "The grammar may not be compatible with your tree-sitter version.",
-                            )
-                        else:
-                            logger.error(
-                                "Unknown error loading grammar. "
-                                "Try recompiling the grammar from source.",
-                            )
         return None
 
     def get_language(self, name: str) -> Language:

@@ -7,7 +7,7 @@ Build-Depends: debhelper-compat (= 13),
                python3-all,
                python3-setuptools,
                python3-wheel,
-               python3-tree-sitter,
+               python3-pip,
                git,
                cmake,
                build-essential

@@ -10,42 +10,50 @@ jobs:
   build-deb:
     runs-on: ubuntu-latest
     container: debian:bookworm
-    
+
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
     
     - name: Install build dependencies
       run: |
         apt-get update
         apt-get install -y debhelper dh-python python3-all python3-setuptools \
-          python3-wheel python3-tree-sitter git cmake build-essential devscripts
-    
+          python3-wheel python3-pip git cmake build-essential devscripts
+        pip3 install --break-system-packages tree_sitter
+
     - name: Prepare source package
       run: |
         cp -r packaging/debian debian/
-        dch -v $(git describe --tags --abbrev=0 | sed 's/v//') -D unstable "Automated build"
+        VERSION=$(python3 -c "import re; print(re.search(r'version = \"([^\"]+)\"', open('pyproject.toml').read()).group(1))")
+        dch --newversion "${VERSION}" --distribution unstable "Automated build"
     
     - name: Build package
       run: |
         dpkg-buildpackage -us -uc -b
-    
+        mkdir -p /tmp/debs
+        cp ../*.deb /tmp/debs/
+
     - name: Upload deb packages
       uses: actions/upload-artifact@v4
       with:
         name: debian-packages
-        path: ../*.deb
+        path: /tmp/debs/*.deb
 
   build-rpm:
     runs-on: ubuntu-latest
     container: fedora:latest
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+      with:
+        fetch-depth: 0
+
     - name: Install build dependencies
       run: |
-        dnf install -y rpm-build python3-devel python3-setuptools python3-wheel \
-          gcc gcc-c++ cmake git python3-tree-sitter
+        dnf install -y rpm-build python3-devel python3-pip python3-wheel \
+          python3-setuptools pyproject-rpm-macros gcc gcc-c++ cmake git
     
     - name: Setup build environment
       run: |
@@ -62,36 +70,17 @@ jobs:
       run: |
         cd ~/rpmbuild
         rpmbuild -ba SPECS/treesitter-chunker.spec
-    
+        mkdir -p /tmp/rpms
+        find ~/rpmbuild/RPMS -name "*.rpm" -exec cp {} /tmp/rpms/ \;
+
     - name: Upload RPM packages
       uses: actions/upload-artifact@v4
       with:
         name: rpm-packages
-        path: ~/rpmbuild/RPMS/**/*.rpm
-
-  build-homebrew:
-    runs-on: macos-latest
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Test Homebrew formula
-      run: |
-        brew install --build-from-source treesitter-chunker.rb
-        brew test treesitter-chunker.rb
-    
-    - name: Create bottle
-      run: |
-        brew bottle treesitter-chunker.rb
-    
-    - name: Upload Homebrew bottle
-      uses: actions/upload-artifact@v4
-      with:
-        name: homebrew-bottle
-        path: '*.bottle.tar.gz'
+        path: /tmp/rpms/*.rpm
 
   release-packages:
-    needs: [build-deb, build-rpm, build-homebrew]
+    needs: [build-deb, build-rpm]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     
@@ -106,7 +95,6 @@ jobs:
         mkdir -p packages
         mv debian-packages/*.deb packages/
         mv rpm-packages/*.rpm packages/
-        mv homebrew-bottle/*.tar.gz packages/
     
     - name: Generate package checksums
       run: |

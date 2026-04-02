@@ -101,8 +101,12 @@ jobs:
     - name: Audit wheels
       run: |
         for wheel in dist/*.whl; do
-          auditwheel repair "$wheel" -w dist/
-          rm "$wheel"
+          if [[ "$wheel" == *"none-any"* ]]; then
+            echo "Skipping pure-Python wheel (no native code): $wheel"
+          else
+            auditwheel repair "$wheel" -w dist/
+            rm "$wheel"
+          fi
         done
 
     - name: Upload manylinux wheels
