@@ -120,12 +120,13 @@ class TreeSitterGrammarManager(GrammarManager):
                     text=True,
                 )
                 if result.returncode != 0:
-                    if (grammar_path / ".git").exists():
+                    if (grammar_path / ".git").is_dir():
                         logger.warning(
                             "Git pull failed for '%s': %s", name, result.stderr
                         )
                     else:
-                        # Existing directory is not a valid repo; replace it.
+                        # Existing directory is not a valid repo (e.g. a git
+                        # submodule placeholder with a .git file); replace it.
                         logger.info(
                             "Removing non-git directory for '%s' and recloning...",
                             name,
