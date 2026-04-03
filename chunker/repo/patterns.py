@@ -25,7 +25,7 @@ class GitignorePattern:
         # Parse the pattern
         self._parse_pattern()
 
-    def _parse_pattern(self):
+    def _parse_pattern(self) -> None:
         """Parse the gitignore pattern and set flags."""
         pattern = self.original.strip()
 
@@ -54,7 +54,7 @@ class GitignorePattern:
         # Convert gitignore pattern to regex
         self.pattern = self._gitignore_to_regex(pattern)
 
-    def _gitignore_to_regex(self, pattern: str) -> re.Pattern:
+    def _gitignore_to_regex(self, pattern: str) -> re.Pattern[str]:
         """Convert gitignore pattern to regex pattern."""
         # Escape special regex characters except * and ?
         pattern = re.escape(pattern)
@@ -116,7 +116,7 @@ class GitignoreMatcher:
         """
         self.base_dir = Path(base_dir) if base_dir else Path.cwd()
         self.patterns: list[GitignorePattern] = []
-        self._cache = {}
+        self._cache: dict[tuple[str, bool], bool] = {}
 
         if patterns:
             self.add_patterns(patterns)
@@ -124,7 +124,7 @@ class GitignoreMatcher:
         # Add default patterns
         self._add_default_patterns()
 
-    def _add_default_patterns(self):
+    def _add_default_patterns(self) -> None:
         """Add default patterns that should always be ignored."""
         default_patterns = [
             ".git/",
@@ -151,7 +151,7 @@ class GitignoreMatcher:
         for pattern in default_patterns:
             self.patterns.append(GitignorePattern(pattern, self.base_dir))
 
-    def add_patterns(self, patterns: list[str], base_dir: Path | None = None):
+    def add_patterns(self, patterns: list[str], base_dir: Path | None = None) -> None:
         """
         Add patterns from a list.
 
@@ -166,7 +166,7 @@ class GitignoreMatcher:
             if pattern_obj.pattern is not None:
                 self.patterns.append(pattern_obj)
 
-    def load_gitignore_file(self, gitignore_path: Path):
+    def load_gitignore_file(self, gitignore_path: Path) -> None:
         """
         Load patterns from a gitignore file.
 
@@ -245,7 +245,7 @@ class GitignoreMatcher:
                 result.append(path)
         return result
 
-    def clear_cache(self):
+    def clear_cache(self) -> None:
         """Clear the pattern matching cache."""
         self._cache.clear()
 
