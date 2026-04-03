@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+
+_LIB_EXT = {"darwin": ".dylib", "win32": ".dll"}.get(sys.platform, ".so")
 
 
 class TestRegistryFallback:
@@ -125,10 +128,10 @@ class TestRegistryFallback:
 
         build_dir = tmp_path / "build"
         build_dir.mkdir()
-        python_lib = build_dir / "python.so"
+        python_lib = build_dir / f"python{_LIB_EXT}"
         python_lib.write_bytes(b"fake")
 
-        registry = LanguageRegistry(build_dir / "my-languages.so")
+        registry = LanguageRegistry(build_dir / f"my-languages{_LIB_EXT}")
 
         with patch.object(registry, "_validate_language_library", return_value=True):
             symbols = registry._discover_symbols()
@@ -177,9 +180,9 @@ class TestRegistryFallback:
 
         build_dir = tmp_path / "build"
         build_dir.mkdir()
-        (build_dir / "python.so").write_bytes(b"fake")
+        (build_dir / f"python{_LIB_EXT}").write_bytes(b"fake")
 
-        registry = LanguageRegistry(build_dir / "my-languages.so")
+        registry = LanguageRegistry(build_dir / f"my-languages{_LIB_EXT}")
 
         with patch.object(registry, "_validate_language_library", return_value=True):
             with caplog.at_level("INFO"):
