@@ -63,31 +63,31 @@ except ImportError as e:
     ERROR_HANDLING_AVAILABLE = False
 
     # Create stub classes for graceful fallback
-    class ErrorHandlingPipeline:
-        def __init__(self, **kwargs):
+    class ErrorHandlingPipeline:  # type: ignore[no-redef]
+        def __init__(self, **kwargs: Any) -> None:
             pass
 
-        def process_error(self, *args, **kwargs):
+        def process_error(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
             return {"success": False}
 
-    class ErrorHandlingOrchestrator:
-        def __init__(self, *args, **kwargs):
+    class ErrorHandlingOrchestrator:  # type: ignore[no-redef]
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
             pass
 
-        def create_session(self, *args, **kwargs):
+        def create_session(self, *args: Any, **kwargs: Any) -> None:
             return None
 
-        def close_session(self, *args):
+        def close_session(self, *args: Any) -> bool:
             return True
 
-    class CLIErrorIntegration:
-        def __init__(self, *args):
+    class CLIErrorIntegration:  # type: ignore[no-redef]
+        def __init__(self, *args: Any) -> None:
             pass
 
-        def handle_grammar_validation_error(self, *args, **kwargs):
+        def handle_grammar_validation_error(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
             return {"success": False, "guidance": [], "quick_fixes": []}
 
-        def handle_grammar_download_error(self, *args, **kwargs):
+        def handle_grammar_download_error(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
             return {"success": False, "guidance": [], "troubleshooting_steps": []}
 
 
@@ -113,23 +113,23 @@ except ImportError as e:
     GRAMMAR_COMPONENTS_AVAILABLE = False
 
     # Create stub classes for graceful fallback
-    class GrammarManager:
-        def __init__(self, **kwargs):
+    class GrammarManager:  # type: ignore[no-redef]
+        def __init__(self, **kwargs: Any) -> None:
             pass
 
-        def discover_available_grammars(self):
+        def discover_available_grammars(self) -> dict[str, Any]:
             return {}
 
-        def install_grammar(self, *args, **kwargs):
+        def install_grammar(self, *args: Any, **kwargs: Any) -> tuple[bool, str]:
             return False, "GrammarManager not available"
 
-        def remove_grammar(self, *args, **kwargs):
+        def remove_grammar(self, *args: Any, **kwargs: Any) -> tuple[bool, str]:
             return False, "GrammarManager not available"
 
-        def validate_grammar(self, *args, **kwargs):
+        def validate_grammar(self, *args: Any, **kwargs: Any) -> None:
             return None
 
-    class ValidationLevel:
+    class ValidationLevel:  # type: ignore[no-redef]
         BASIC = "basic"
         STANDARD = "standard"
         EXTENSIVE = "extensive"
@@ -137,7 +137,7 @@ except ImportError as e:
 
 # Import optional compatibility components
 try:
-    from .compatibility import CompatibilityManager
+    from .compatibility import CompatibilityManager  # type: ignore[attr-defined]
 
     COMPATIBILITY_AVAILABLE = True
 except ImportError as e:
@@ -150,7 +150,7 @@ logger = logging.getLogger(__name__)
 # Use GrammarPriority from core if available, otherwise define fallback
 if not GRAMMAR_COMPONENTS_AVAILABLE:
 
-    class GrammarPriority:
+    class GrammarPriority:  # type: ignore[no-redef]
         """Grammar selection priority levels (fallback)."""
 
         USER = 1
@@ -186,7 +186,7 @@ class ProgressIndicator:
         self.spinner_chars = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
         self.spinner_index = 0
         self.running = False
-        self.thread = None
+        self.thread: threading.Thread | None = None
 
     def start(self) -> None:
         """Start the progress indicator."""
@@ -394,6 +394,13 @@ class ComprehensiveGrammarCLI:
                     context.get("url") if context else None,
                 )
             # General error handling
+            if self.orchestrator is None:
+                return {
+                    "success": False,
+                    "guidance": [f"Error: {error_msg}"],
+                    "quick_fixes": [],
+                    "suggested_commands": [],
+                }
             session = self.orchestrator.create_session(
                 context={"cli_operation": True},
             )
@@ -420,7 +427,7 @@ class ComprehensiveGrammarCLI:
                 "suggested_commands": [],
             }
 
-    def _extract_guidance_messages(self, result) -> builtins.list[str]:
+    def _extract_guidance_messages(self, result: Any) -> builtins.list[str]:
         """Extract guidance messages from pipeline result."""
         messages = []
         if hasattr(result, "guidance_sequence") and result.guidance_sequence:
@@ -430,7 +437,7 @@ class ComprehensiveGrammarCLI:
             messages.extend(result.fallback_response.get("general_guidance", []))
         return messages
 
-    def _extract_quick_fixes(self, result) -> builtins.list[str]:
+    def _extract_quick_fixes(self, result: Any) -> builtins.list[str]:
         """Extract quick fixes from pipeline result."""
         fixes = []
         if hasattr(result, "guidance_sequence") and result.guidance_sequence:
@@ -439,7 +446,7 @@ class ComprehensiveGrammarCLI:
                     fixes.append(action.command)
         return fixes[:3]  # Limit to 3 quick fixes
 
-    def _extract_commands(self, result) -> builtins.list[str]:
+    def _extract_commands(self, result: Any) -> builtins.list[str]:
         """Extract suggested CLI commands from pipeline result."""
         commands = []
         if hasattr(result, "guidance_sequence") and result.guidance_sequence:
@@ -666,7 +673,7 @@ class ComprehensiveGrammarCLI:
                 click.echo(json.dumps(grammars, indent=2, default=str))
             elif output_format == "yaml":
                 try:
-                    import yaml
+                    import yaml  # type: ignore[import-untyped]
 
                     click.echo(yaml.dump(grammars, default_flow_style=False))
                 except ImportError:
@@ -718,7 +725,7 @@ class ComprehensiveGrammarCLI:
         click.echo()
 
         # Group by priority for display
-        priority_groups = {}
+        priority_groups: dict[Any, builtins.list[Any]] = {}
         for lang, grammar in grammars.items():
             priority = grammar.get("priority", "unknown")
             if priority not in priority_groups:
@@ -727,7 +734,7 @@ class ComprehensiveGrammarCLI:
             priority_groups[priority].append(grammar)
 
         # Display by priority
-        priority_order = (
+        priority_order: builtins.list[Any] = (
             ["USER", "PACKAGE", "FALLBACK"]
             if GRAMMAR_COMPONENTS_AVAILABLE
             else [1, 2, 3]
@@ -753,11 +760,11 @@ class ComprehensiveGrammarCLI:
                 key=lambda g: g.get("language", ""),
             ):
                 # Determine status and emoji
-                is_valid = grammar.get("validation", {}).get(
+                is_valid: Any = grammar.get("validation", {}).get(
                     "is_valid",
                     grammar.get("exists", False),
                 )
-                status = grammar.get("status", "unknown")
+                status: Any = grammar.get("status", "unknown")
 
                 if is_valid or status in ["healthy", "HEALTHY"]:
                     status_emoji = "✅"
@@ -770,13 +777,13 @@ class ComprehensiveGrammarCLI:
                 if "type" in grammar and grammar["type"] == "source":
                     type_indicator = "📁"
 
-                lang_name = grammar.get("language", "unknown")
+                lang_name: Any = grammar.get("language", "unknown")
                 click.echo(
                     f"  {status_emoji} {type_indicator} {lang_name} ({status_text})",
                 )
 
                 if self.verbose:
-                    path = grammar.get("path", "unknown")
+                    path: Any = grammar.get("path", "unknown")
                     click.echo(f"    Path: {path}")
                     if "version" in grammar:
                         click.echo(f"    Version: {grammar['version']}")
@@ -855,7 +862,7 @@ class ComprehensiveGrammarCLI:
                 click.echo(json.dumps(metadata, indent=2, default=str))
             elif output_format == "yaml":
                 try:
-                    import yaml
+                    import yaml  # noqa: F811
 
                     click.echo(yaml.dump(metadata, default_flow_style=False))
                 except ImportError:
@@ -2066,9 +2073,9 @@ if __name__ == "__main__":
                 import tree_sitter
 
                 # Load the language
-                language_lib = tree_sitter.Language(str(grammar_path), language)
+                language_lib = tree_sitter.Language(str(grammar_path), language)  # type: ignore[call-overload]
                 parser = tree_sitter.Parser()
-                parser.set_language(language_lib)
+                parser.set_language(language_lib)  # type: ignore[attr-defined]
 
                 # Read test file
                 with open(test_file, "rb") as f:
@@ -2080,7 +2087,7 @@ if __name__ == "__main__":
                 parse_time = time.time() - start_time
 
                 # Count nodes
-                def count_nodes(node):
+                def count_nodes(node: Any) -> int:
                     count = 1
                     for child in node.children:
                         count += count_nodes(child)
@@ -2096,11 +2103,11 @@ if __name__ == "__main__":
                 }
 
                 if show_ast:
-                    result["ast"] = tree.root_node.sexp()
+                    result["ast"] = tree.root_node.sexp()  # type: ignore[attr-defined]
 
                 # Check for parse errors
-                def find_errors(node):
-                    errors = []
+                def find_errors(node: Any) -> builtins.list[str]:
+                    errors: builtins.list[str] = []
                     if node.type == "ERROR":
                         errors.append(
                             f"Parse error at {node.start_point}: {node.text[:50]}",
@@ -2328,7 +2335,7 @@ if __name__ == "__main__":
         Returns:
             Dictionary with validation results
         """
-        result = {
+        result: dict[str, Any] = {
             "valid": False,
             "status": "unknown",
             "issues": [],
@@ -2374,7 +2381,7 @@ if __name__ == "__main__":
         Returns:
             Validation results
         """
-        result = {
+        result: dict[str, Any] = {
             "valid": False,
             "status": "unknown",
             "issues": [],
@@ -2440,7 +2447,7 @@ if __name__ == "__main__":
         Returns:
             Validation results
         """
-        result = {
+        result: dict[str, Any] = {
             "valid": False,
             "status": "unknown",
             "issues": [],
@@ -2552,7 +2559,7 @@ if __name__ == "__main__":
                     json.dump(export_data, f, indent=2, default=str)
             elif format == "yaml":
                 try:
-                    import yaml
+                    import yaml  # noqa: F811
 
                     with output_path.open("w") as f:
                         yaml.dump(export_data, f, default_flow_style=False)
@@ -2623,7 +2630,7 @@ if __name__ == "__main__":
         Returns:
             Cleanup statistics
         """
-        stats = {
+        stats: dict[str, Any] = {
             "files_removed": 0,
             "bytes_freed": 0,
             "directories_cleaned": [],
@@ -2677,7 +2684,7 @@ if __name__ == "__main__":
 @click.option("--cache-dir", type=click.Path(), help="Grammar cache directory")
 @click.option("--verbose", is_flag=True, help="Enable verbose output")
 @click.pass_context
-def grammar_cli(ctx, cache_dir, verbose):
+def grammar_cli(ctx: Any, cache_dir: Any, verbose: Any) -> None:
     """Comprehensive grammar management for treesitter-chunker."""
     ctx.ensure_object(dict)
     ctx.obj["cache_dir"] = Path(cache_dir) if cache_dir else None
@@ -2692,7 +2699,7 @@ def grammar_cli(ctx, cache_dir, verbose):
 @click.option("--language", help="Filter by language")
 @click.option("--all", "show_all", is_flag=True, help="Show all priority levels")
 @click.pass_context
-def list(ctx, language, show_all):
+def list(ctx: Any, language: Any, show_all: Any) -> None:
     """List available and user-installed grammars."""
     cli = ctx.obj["cli"]
     sys.exit(cli.list_grammars(language, show_all))
@@ -2701,7 +2708,7 @@ def list(ctx, language, show_all):
 @grammar_cli.command()
 @click.argument("language")
 @click.pass_context
-def info(ctx, language):
+def info(ctx: Any, language: Any) -> None:
     """Show grammar details and compatibility information."""
     cli = ctx.obj["cli"]
     sys.exit(cli.info_grammar(language))
@@ -2710,7 +2717,7 @@ def info(ctx, language):
 @grammar_cli.command()
 @click.argument("language")
 @click.pass_context
-def versions(ctx, language):
+def versions(ctx: Any, language: Any) -> None:
     """List available versions for a language."""
     cli = ctx.obj["cli"]
     sys.exit(cli.versions_grammar(language))
@@ -2722,7 +2729,7 @@ def versions(ctx, language):
 @click.option("--branch", default="main", help="Branch to fetch")
 @click.option("--force", is_flag=True, help="Force re-download")
 @click.pass_context
-def fetch(ctx, language, version, branch, force):
+def fetch(ctx: Any, language: Any, version: Any, branch: Any, force: Any) -> None:
     """Download specific grammar version."""
     cli = ctx.obj["cli"]
     sys.exit(cli.fetch_grammar(language, version, branch, force))
@@ -2732,7 +2739,7 @@ def fetch(ctx, language, version, branch, force):
 @click.argument("language")
 @click.option("--force", is_flag=True, help="Force rebuild")
 @click.pass_context
-def build(ctx, language, force):
+def build(ctx: Any, language: Any, force: Any) -> None:
     """Build grammar from source."""
     cli = ctx.obj["cli"]
     sys.exit(cli.build_grammar(language, force))
@@ -2742,7 +2749,7 @@ def build(ctx, language, force):
 @click.argument("language")
 @click.option("--no-confirm", is_flag=True, help="Skip confirmation")
 @click.pass_context
-def remove(ctx, language, no_confirm):
+def remove(ctx: Any, language: Any, no_confirm: Any) -> None:
     """Remove user-installed grammar."""
     cli = ctx.obj["cli"]
     sys.exit(cli.remove_grammar(language, not no_confirm))
@@ -2753,7 +2760,7 @@ def remove(ctx, language, no_confirm):
 @click.argument("file_path")
 @click.option("--ast", is_flag=True, help="Show AST output")
 @click.pass_context
-def test(ctx, language, file_path, ast):
+def test(ctx: Any, language: Any, file_path: Any, ast: Any) -> None:
     """Test grammar with specific file."""
     cli = ctx.obj["cli"]
     sys.exit(cli.test_grammar(language, file_path, ast))
@@ -2776,7 +2783,7 @@ def test(ctx, language, file_path, ast):
     help="Output format",
 )
 @click.pass_context
-def validate(ctx, language, fix, level, output_format):
+def validate(ctx: Any, language: Any, fix: Any, level: Any, output_format: Any) -> None:
     """Validate grammar installation with comprehensive testing."""
     cli = ctx.obj["cli"]
     sys.exit(cli.validate_grammar(language, fix, level, output_format))
@@ -2791,7 +2798,7 @@ def validate(ctx, language, fix, level, output_format):
     help="Export format",
 )
 @click.pass_context
-def export(ctx, output_file, format):
+def export(ctx: Any, output_file: Any, format: Any) -> None:
     """Export grammar configurations to file."""
     cli = ctx.obj["cli"]
     sys.exit(cli.export_grammars(output_file, format))
@@ -2805,7 +2812,7 @@ def export(ctx, output_file, format):
     help="Remove cache files older than N days",
 )
 @click.pass_context
-def cleanup_cmd(ctx, days):
+def cleanup_cmd(ctx: Any, days: Any) -> None:
     """Clean up old cache files."""
     cli = ctx.obj["cli"]
     sys.exit(cli.cleanup_cache(days))

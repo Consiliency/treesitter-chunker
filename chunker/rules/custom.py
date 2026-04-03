@@ -2,6 +2,7 @@
 
 import re
 from re import Pattern
+from typing import Any
 
 from tree_sitter import Node
 
@@ -17,13 +18,13 @@ class BaseCustomRule(CustomRule):
         self._description = description
         self._priority = priority
 
-    def get_name(self) -> str:
+    def get_name(self) -> str:  # type: ignore[override]
         return self._name
 
-    def get_description(self) -> str:
+    def get_description(self) -> str:  # type: ignore[override]
         return self._description
 
-    def get_priority(self) -> int:
+    def get_priority(self) -> int:  # type: ignore[override]
         return self._priority
 
 
@@ -45,22 +46,22 @@ class BaseRegexRule(RegexRule):
         self._cross_boundaries = cross_boundaries
         self._pattern = re.compile(pattern, re.MULTILINE if multiline else 0)
 
-    def get_name(self) -> str:
+    def get_name(self) -> str:  # type: ignore[override]
         return self._name
 
-    def get_description(self) -> str:
+    def get_description(self) -> str:  # type: ignore[override]
         return self._description
 
-    def get_priority(self) -> int:
+    def get_priority(self) -> int:  # type: ignore[override]
         return self._priority
 
-    def get_pattern(self) -> Pattern:
+    def get_pattern(self) -> Pattern[Any]:  # type: ignore[override]
         return self._pattern
 
-    def should_cross_node_boundaries(self) -> bool:
+    def should_cross_node_boundaries(self) -> bool:  # type: ignore[override]
         return self._cross_boundaries
 
-    def matches(self, node: Node, source: bytes) -> bool:
+    def matches(self, node: Node, source: bytes) -> bool:  # type: ignore[override]
         """Check if pattern matches within node text."""
         if not self._cross_boundaries:
             node_text = source[node.start_byte : node.end_byte]
@@ -69,7 +70,7 @@ class BaseRegexRule(RegexRule):
             )
         return False
 
-    def extract_chunk(
+    def extract_chunk(  # type: ignore[override]
         self,
         node: Node,
         source: bytes,
@@ -162,16 +163,16 @@ class BaseCommentBlockRule(CommentBlockRule):
         self._priority = priority
         self._merge_adjacent = merge_adjacent
 
-    def get_name(self) -> str:
+    def get_name(self) -> str:  # type: ignore[override]
         return self._name
 
-    def get_description(self) -> str:
+    def get_description(self) -> str:  # type: ignore[override]
         return self._description
 
-    def get_priority(self) -> int:
+    def get_priority(self) -> int:  # type: ignore[override]
         return self._priority
 
-    def should_merge_adjacent_comments(self) -> bool:
+    def should_merge_adjacent_comments(self) -> bool:  # type: ignore[override]
         return self._merge_adjacent
 
     @staticmethod
@@ -186,7 +187,7 @@ class BaseCommentBlockRule(CommentBlockRule):
         ]
         return node.type in comment_types
 
-    def extract_chunk(
+    def extract_chunk(  # type: ignore[override]
         self,
         node: Node,
         source: bytes,
@@ -252,7 +253,7 @@ class MetadataRule(BaseCustomRule):
         """Match root node for file metadata."""
         return node.parent is None
 
-    def extract_chunk(
+    def extract_chunk(  # type: ignore[override]
         self,
         node: Node,
         source: bytes,

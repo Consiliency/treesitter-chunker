@@ -29,7 +29,7 @@ class NaturalLanguageQueryEngine(ChunkQueryAdvanced):
         """Initialize the query engine with language models and patterns."""
         self.query_patterns = self._initialize_query_patterns()
         self.code_patterns = self._initialize_code_patterns()
-        self.embeddings_cache = {}
+        self.embeddings_cache: dict[str, Any] = {}
         self.chunks = chunks or []
 
     def set_chunks(self, chunks: list[CodeChunk]) -> None:
@@ -41,7 +41,7 @@ class NaturalLanguageQueryEngine(ChunkQueryAdvanced):
         self.chunks.append(chunk)
 
     @staticmethod
-    def _initialize_query_patterns() -> dict[str, list[re.Pattern]]:
+    def _initialize_query_patterns() -> dict[str, list[re.Pattern[str]]]:
         """Initialize patterns for understanding natural language queries."""
         return {
             "error_handling": [
@@ -114,7 +114,7 @@ class NaturalLanguageQueryEngine(ChunkQueryAdvanced):
         }
 
     @staticmethod
-    def _initialize_code_patterns() -> dict[str, list[re.Pattern]]:
+    def _initialize_code_patterns() -> dict[str, list[re.Pattern[str]]]:
         """Initialize patterns for matching code constructs."""
         return {
             "error_handling": [
@@ -154,7 +154,7 @@ class NaturalLanguageQueryEngine(ChunkQueryAdvanced):
             ],
         }
 
-    def search(
+    def search(  # type: ignore[override]
         self,
         query: str,
         chunks: list[CodeChunk] | None = None,
@@ -200,7 +200,7 @@ class NaturalLanguageQueryEngine(ChunkQueryAdvanced):
         for chunk in chunks:
             score = 0.0
             highlights = []
-            metadata = {"matched_intents": []}
+            metadata: dict[str, Any] = {"matched_intents": []}
             for intent in intents:
                 if self._chunk_matches_intent(chunk, intent):
                     score += 0.4
@@ -283,7 +283,7 @@ class NaturalLanguageQueryEngine(ChunkQueryAdvanced):
         for chunk in chunks:
             if self._chunk_matches_ast_pattern(chunk, pattern_type, pattern_details):
                 score = 0.8
-                highlights = []
+                highlights: list[tuple[int, int]] = []
                 results.append(
                     QueryResult(
                         chunk=chunk,
@@ -294,7 +294,7 @@ class NaturalLanguageQueryEngine(ChunkQueryAdvanced):
                 )
         return results
 
-    def filter(
+    def filter(  # type: ignore[override]
         self,
         chunks: list[CodeChunk],
         node_types: list[str] | None = None,
@@ -323,7 +323,7 @@ class NaturalLanguageQueryEngine(ChunkQueryAdvanced):
             ]
         return filtered
 
-    def find_similar(
+    def find_similar(  # type: ignore[override]
         self,
         chunk: CodeChunk,
         chunks: list[CodeChunk],
@@ -337,7 +337,7 @@ class NaturalLanguageQueryEngine(ChunkQueryAdvanced):
                 continue
             score = self._calculate_chunk_similarity(chunk, candidate)
             if score >= threshold:
-                highlights = []
+                highlights: list[tuple[int, int]] = []
                 metadata = {
                     "similarity_factors": self._get_similarity_factors(
                         chunk,
@@ -449,7 +449,7 @@ class NaturalLanguageQueryEngine(ChunkQueryAdvanced):
     @staticmethod
     def _parse_structured_query(query: str) -> dict[str, Any]:
         """Parse structured query syntax."""
-        criteria = {"keywords": []}
+        criteria: dict[str, Any] = {"keywords": []}
         pattern = re.compile(r"(\w+):(\S+)")
         matches = pattern.findall(query)
         for key, value in matches:
@@ -608,7 +608,7 @@ class NaturalLanguageQueryEngine(ChunkQueryAdvanced):
         chunk2: CodeChunk,
     ) -> dict[str, Any]:
         """Get factors contributing to similarity."""
-        factors = {}
+        factors: dict[str, Any] = {}
         if chunk1.language == chunk2.language:
             factors["same_language"] = True
         if chunk1.node_type == chunk2.node_type:
@@ -627,28 +627,17 @@ class NaturalLanguageQueryEngine(ChunkQueryAdvanced):
 class AdvancedQueryIndex(QueryIndexAdvanced):
     """Advanced index for fast chunk queries with multiple index types."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the multi-index system."""
         self.chunks: dict[str, CodeChunk] = {}
         self.text_index: dict[str, set[str]] = defaultdict(set)
         self.type_index: dict[str, set[str]] = defaultdict(set)
         self.file_index: dict[str, set[str]] = defaultdict(set)
         self.language_index: dict[str, set[str]] = defaultdict(set)
-        self.embeddings: dict[str, np.ndarray] = {}
+        self.embeddings: dict[str, np.ndarray[Any, np.dtype[Any]]] = {}
         self.query_engine = NaturalLanguageQueryEngine()
 
-    def build_index(self, chunks: list[CodeChunk]) -> None:
-        """Build search index from chunks."""
-        self.chunks.clear()
-        self.text_index.clear()
-        self.type_index.clear()
-        self.file_index.clear()
-        self.language_index.clear()
-        self.embeddings.clear()
-        for chunk in chunks:
-            self.add_chunk(chunk)
-
-    def add_chunk(self, chunk: CodeChunk) -> None:
+    def add_chunk(self, chunk: CodeChunk) -> None:  # type: ignore[override]
         """Add a single chunk to the index."""
         chunk_id = chunk.chunk_id
         self.chunks[chunk_id] = chunk
@@ -662,7 +651,7 @@ class AdvancedQueryIndex(QueryIndexAdvanced):
         # Also populate module-level default pool for engines without explicit chunks
         DEFAULT_QUERY_CHUNKS.append(chunk)
 
-    def build_index(self, chunks: list[CodeChunk]) -> None:
+    def build_index(self, chunks: list[CodeChunk]) -> None:  # type: ignore[override]
         """Build search index from chunks and reset default pool accordingly."""
         self.chunks.clear()
         self.text_index.clear()
@@ -676,7 +665,7 @@ class AdvancedQueryIndex(QueryIndexAdvanced):
         for chunk in chunks:
             self.add_chunk(chunk)
 
-    def remove_chunk(self, chunk_id: str) -> None:
+    def remove_chunk(self, chunk_id: str) -> None:  # type: ignore[override]
         """Remove a chunk from the index."""
         if chunk_id not in self.chunks:
             return
@@ -699,12 +688,12 @@ class AdvancedQueryIndex(QueryIndexAdvanced):
             del self.embeddings[chunk_id]
         del self.chunks[chunk_id]
 
-    def update_chunk(self, chunk: CodeChunk) -> None:
+    def update_chunk(self, chunk: CodeChunk) -> None:  # type: ignore[override]
         """Update an existing chunk in the index."""
         self.remove_chunk(chunk.chunk_id)
         self.add_chunk(chunk)
 
-    def query(
+    def query(  # type: ignore[override]
         self,
         query: str,
         query_type: QueryType = QueryType.NATURAL_LANGUAGE,
@@ -721,7 +710,7 @@ class AdvancedQueryIndex(QueryIndexAdvanced):
         )
         return results
 
-    def get_statistics(self) -> dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:  # type: ignore[override]
         """Get index statistics."""
         return {
             "total_chunks": len(self.chunks),
@@ -756,7 +745,7 @@ class AdvancedQueryIndex(QueryIndexAdvanced):
                             tokens.add(part.lower())
         return tokens
 
-    def _generate_embedding(self, chunk: CodeChunk) -> np.ndarray:
+    def _generate_embedding(self, chunk: CodeChunk) -> np.ndarray[Any, np.dtype[Any]]:
         """Generate embedding vector for chunk."""
         tokens = self._tokenize(chunk.content)
         embedding = np.zeros(128)
@@ -815,7 +804,7 @@ class AdvancedQueryIndex(QueryIndexAdvanced):
 class SmartQueryOptimizer(QueryOptimizer):
     """Optimize queries for better performance and results."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the optimizer with language models and patterns."""
         self.common_typos = self._load_common_typos()
         self.synonyms = self._load_programming_synonyms()
@@ -869,7 +858,7 @@ class SmartQueryOptimizer(QueryOptimizer):
             "api": ["endpoint", "service", "interface"],
         }
 
-    def optimize_query(self, query: str, query_type: QueryType) -> str:
+    def optimize_query(self, query: str, query_type: QueryType) -> str:  # type: ignore[override]
         """Optimize a query for better results."""
         if query_type == QueryType.NATURAL_LANGUAGE:
             return self._optimize_natural_language(query)
@@ -945,8 +934,8 @@ class SmartQueryOptimizer(QueryOptimizer):
         """Suggest query completions based on indexed content."""
         suggestions = []
         partial_lower = partial_query.lower()
-        term_freq = Counter()
-        type_freq = Counter()
+        term_freq: Counter[str] = Counter()
+        type_freq: Counter[str] = Counter()
         for chunk in chunks[:100]:
             type_freq[chunk.node_type] += 1
             tokens = set(re.findall(r"\w+", chunk.content.lower()))
