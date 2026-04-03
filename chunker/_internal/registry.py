@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import ctypes
 import logging
+import os
 import re
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -173,7 +175,17 @@ class LanguageRegistry:
             True if the library contains the expected symbol
         """
         try:
-            lib = ctypes.CDLL(str(library_path))
+            # On Windows, ctypes.CDLL() won't find a DLL's dependencies unless the
+            # containing directory is registered. os.add_dll_directory() (Python 3.8+)
+            # fixes WinError 126 "The specified module could not be found".
+            dll_ctx = None
+            if sys.platform == "win32" and hasattr(os, "add_dll_directory"):
+                dll_ctx = os.add_dll_directory(str(library_path.parent))
+            try:
+                lib = ctypes.CDLL(str(library_path))
+            finally:
+                if dll_ctx is not None:
+                    dll_ctx.__exit__(None, None, None)
             # Check if the symbol exists
             if hasattr(lib, symbol_name):
                 # Additional validation: try to create a Language object

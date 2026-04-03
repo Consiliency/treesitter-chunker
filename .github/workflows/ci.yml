@@ -37,7 +37,7 @@ jobs:
           uv pip install --system toml httpx  # Required by tests
 
       - name: Install py-tree-sitter from git
-        run: uv pip install --system git+https://github.com/tree-sitter/py-tree-sitter.git
+        run: uv pip install --system git+https://github.com/tree-sitter/py-tree-sitter.git@v0.25.2
         continue-on-error: true  # Don't fail CI if git clone fails
 
       - name: Fetch grammars

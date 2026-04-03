@@ -422,10 +422,10 @@ def test_function():
 
     @staticmethod
     @pytest.mark.xfail(
-        condition=__import__("sys").platform in ("darwin", "win32"),
+        condition=__import__("sys").platform == "win32",
         reason=(
-            "macOS/Windows: ctypes grammar validation fails to detect built grammars; "
-            "pre-existing issue unrelated to this change."
+            "Windows: ctypes DLL search path requires os.add_dll_directory(); "
+            "fix in progress in chunker/_internal/registry.py."
         ),
         strict=False,
     )

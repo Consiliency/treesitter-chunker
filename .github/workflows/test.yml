@@ -50,7 +50,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install uv
         uv pip install --system -e ".[dev,api,viz,templates,advanced]"
-        uv pip install --system git+https://github.com/tree-sitter/py-tree-sitter.git
+        uv pip install --system git+https://github.com/tree-sitter/py-tree-sitter.git@v0.25.2
         uv pip install --system toml httpx  # Required by tests
 
     - name: Fetch grammars
@@ -72,11 +72,11 @@ jobs:
       run: |
         python scripts/run_platform_core.py --platform ${{ matrix.platform-family }}
 
-    # Coverage upload disabled until coverage module issues are resolved
-    # - name: Upload coverage
-    #   if: matrix.platform == 'ubuntu-latest' && matrix.python-version == '3.11'
-    #   uses: codecov/codecov-action@v3
-    #   with:
-    #     file: ./coverage.xml
-    #     fail_ci_if_error: false
-    #     verbose: true
+
+    - name: Upload coverage
+      if: matrix.platform-family == 'linux' && matrix.python-version == '3.11'
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.xml
+        fail_ci_if_error: false
+        verbose: true

@@ -57,6 +57,8 @@ def main() -> int:
 
     tests = tests_for_platform(args.platform)
     cmd = [sys.executable, "-m", "pytest", "-xq", *tests]
+    if args.platform == "linux":
+        cmd += ["--cov=chunker", "--cov-report=xml"]
     print(f"Running platform core batch for {args.platform}:")
     for test in tests:
         print(f"- {test}")
