@@ -13,7 +13,7 @@ import zipfile
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -32,50 +32,43 @@ class VirtualFile:
 class VirtualFileSystem(ABC):
     """Abstract base class for virtual file systems."""
 
-    @staticmethod
     @abstractmethod
-    def open(path: str, mode: str = "r") -> io.IOBase:
+    def open(self, path: str, mode: str = "r") -> io.IOBase:
         """Open a file in the virtual file system."""
 
-    @staticmethod
     @abstractmethod
-    def exists(path: str) -> bool:
+    def exists(self, path: str) -> bool:
         """Check if a path exists in the virtual file system."""
 
-    @staticmethod
     @abstractmethod
-    def is_file(path: str) -> bool:
+    def is_file(self, path: str) -> bool:
         """Check if a path is a file."""
 
-    @staticmethod
     @abstractmethod
-    def is_dir(path: str) -> bool:
+    def is_dir(self, path: str) -> bool:
         """Check if a path is a directory."""
 
-    @staticmethod
     @abstractmethod
-    def list_dir(path: str = "/") -> Iterator[VirtualFile]:
+    def list_dir(self, path: str = "/") -> Iterator[VirtualFile]:
         """List contents of a directory."""
 
-    @staticmethod
     @abstractmethod
-    def get_size(path: str) -> int:
+    def get_size(self, path: str) -> int:
         """Get the size of a file."""
 
     def read_text(self, path: str, encoding: str = "utf-8") -> str:
         """Read text content of a file."""
         with self.open(path, "r") as f:
-            if hasattr(f, "read"):
-                content = f.read()
-                if isinstance(content, bytes):
-                    return content.decode(encoding)
-                return content
-            return f.read().decode(encoding)
+            content: Any = f.read()
+            if isinstance(content, bytes):
+                return content.decode(encoding)
+            return str(content)
 
     def read_bytes(self, path: str) -> bytes:
         """Read binary content of a file."""
         with self.open(path, "rb") as f:
-            return f.read()
+            data: Any = f.read()
+            return data if isinstance(data, bytes) else data.encode()
 
 
 class LocalFileSystem(VirtualFileSystem):
@@ -87,7 +80,7 @@ class LocalFileSystem(VirtualFileSystem):
         # Expose Path for tests that access LocalFileSystem.Path, rooted to self.root
         self.Path = self._resolve_path
 
-    def _resolve_path(self, path: str) -> Path:
+    def _resolve_path(self, path: str) -> Path:  # noqa: D102
         """Resolve a virtual path to actual path."""
         if Path(path).is_absolute():
             return Path(path)
@@ -96,7 +89,7 @@ class LocalFileSystem(VirtualFileSystem):
     def open(self, path: str, mode: str = "r") -> io.IOBase:
         """Open a local file."""
         resolved = self._resolve_path(path)
-        return resolved.open(mode)
+        return resolved.open(mode)  # type: ignore[return-value]
 
     def exists(self, path: str) -> bool:
         """Check if a local path exists."""
@@ -134,14 +127,14 @@ class LocalFileSystem(VirtualFileSystem):
 class InMemoryFileSystem(VirtualFileSystem):
     """Virtual file system that stores files in memory."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize empty in-memory file system."""
         self.files: dict[str, bytes | str] = {}
         self.metadata: dict[str, VirtualFile] = {}
         # Provide Path-like factory for tests
         self.Path = lambda p: _InMemoryPath(self, p)
 
-    def add_file(self, path: str, content: str | bytes, is_text: bool = True):
+    def add_file(self, path: str, content: str | bytes, is_text: bool = True) -> None:
         """Add a file to the in-memory file system."""
         self.files[path] = content
         size = len(content) if isinstance(content, bytes) else len(content.encode())
@@ -214,7 +207,7 @@ class _InMemoryPath:
         self._vfs = vfs
         self._path = path
 
-    def open(self, mode: str = "r"):
+    def open(self, mode: str = "r") -> io.IOBase:
         return self._vfs.open(self._path, mode)
 
 
@@ -227,7 +220,7 @@ class ZipFileSystem(VirtualFileSystem):
         self.zip_file = zipfile.ZipFile(self.zip_path, "r")
         self._build_index()
 
-    def _build_index(self):
+    def _build_index(self) -> None:
         """Build an index of files in the ZIP."""
         self.files = {}
         self.dirs = set()
@@ -291,14 +284,14 @@ class ZipFileSystem(VirtualFileSystem):
             return self.files[path].file_size
         raise FileNotFoundError(f"File not found in ZIP: {path}")
 
-    def close(self):
+    def close(self) -> None:
         """Close the ZIP file."""
         self.zip_file.close()
 
-    def __enter__(self):
+    def __enter__(self) -> "ZipFileSystem":
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()
 
 
@@ -308,7 +301,7 @@ class HTTPFileSystem(VirtualFileSystem):
     def __init__(self, base_url: str):
         """Initialize with base URL."""
         self.base_url = base_url.rstrip("/")
-        self._cache = {}
+        self._cache: dict[str, bytes] = {}
 
     def _make_url(self, path: str) -> str:
         """Construct full URL from path."""
@@ -349,7 +342,7 @@ class HTTPFileSystem(VirtualFileSystem):
             with urllib.request.urlopen(
                 req,
             ) as response:
-                return response.status == 200
+                return bool(response.status == 200)
         except (FileNotFoundError, OSError):
             return False
 
@@ -357,13 +350,11 @@ class HTTPFileSystem(VirtualFileSystem):
         """Assume all accessible paths are files in HTTP."""
         return self.exists(path)
 
-    @staticmethod
-    def is_dir(_path: str) -> bool:
+    def is_dir(self, _path: str) -> bool:
         """HTTP doesn't have directories in the traditional sense."""
         return False
 
-    @staticmethod
-    def list_dir(_path: str = "/") -> Iterator[VirtualFile]:
+    def list_dir(self, _path: str = "/") -> Iterator[VirtualFile]:
         """HTTP doesn't support directory listing."""
         return iter([])
 
@@ -386,11 +377,11 @@ class HTTPFileSystem(VirtualFileSystem):
 class CompositeFileSystem(VirtualFileSystem):
     """Composite file system that can overlay multiple file systems."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize empty composite file system."""
         self.filesystems: list[tuple[str, VirtualFileSystem]] = []
 
-    def mount(self, prefix: str, filesystem: VirtualFileSystem):
+    def mount(self, prefix: str, filesystem: VirtualFileSystem) -> None:
         """Mount a file system at a given prefix."""
         prefix = prefix.rstrip("/")
         self.filesystems.append((prefix, filesystem))
@@ -472,4 +463,4 @@ def create_vfs(path_or_url: str) -> VirtualFileSystem:
         return HTTPFileSystem(path_or_url)
     if path_or_url.endswith(".zip"):
         return ZipFileSystem(path_or_url)
-    return LocalFileSystem(path_or_url)
+    return LocalFileSystem(Path(path_or_url))
