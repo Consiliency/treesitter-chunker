@@ -111,37 +111,66 @@ class TreeSitterGrammarManager(GrammarManager):
         grammar_path = self.grammars_dir / f"tree-sitter-{name}"
         try:
             if grammar_path.exists():
-                logger.info("Updating grammar '%s'...", name)
-                result = subprocess.run(
-                    ["git", "pull"],
-                    check=False,
-                    cwd=grammar_path,
-                    capture_output=True,
-                    text=True,
-                )
-                if result.returncode != 0:
-                    if (grammar_path / ".git").is_dir():
-                        logger.warning(
-                            "Git pull failed for '%s': %s", name, result.stderr
+                # Check whether the directory has actual grammar source content.
+                # Git submodule placeholder dirs (created by checkout without
+                # --recurse-submodules) and uninitialized submodule dirs are
+                # physically present but completely empty; detect and replace them.
+                has_content = self._grammar_path_has_content(grammar_path)
+                if not has_content:
+                    logger.warning(
+                        "Grammar '%s' directory exists but has no source content "
+                        "(empty submodule placeholder?); recloning from %s",
+                        name,
+                        grammar.repository_url,
+                    )
+                    shutil.rmtree(grammar_path)
+                    result = subprocess.run(
+                        ["git", "clone", grammar.repository_url, str(grammar_path)],
+                        check=False,
+                        capture_output=True,
+                        text=True,
+                    )
+                    if result.returncode != 0:
+                        raise GrammarManagementError(
+                            f"Git clone failed: {result.stderr}"
                         )
-                    else:
-                        # Existing directory is not a valid repo (e.g. a git
-                        # submodule placeholder with a .git file); replace it.
-                        logger.info(
-                            "Removing non-git directory for '%s' and recloning...",
-                            name,
-                        )
-                        shutil.rmtree(grammar_path)
-                        result = subprocess.run(
-                            ["git", "clone", grammar.repository_url, str(grammar_path)],
-                            check=False,
-                            capture_output=True,
-                            text=True,
-                        )
-                        if result.returncode != 0:
-                            raise GrammarManagementError(
-                                f"Git clone failed: {result.stderr}"
+                else:
+                    logger.info("Updating grammar '%s'...", name)
+                    result = subprocess.run(
+                        ["git", "pull"],
+                        check=False,
+                        cwd=grammar_path,
+                        capture_output=True,
+                        text=True,
+                    )
+                    if result.returncode != 0:
+                        if (grammar_path / ".git").is_dir():
+                            logger.warning(
+                                "Git pull failed for '%s': %s", name, result.stderr
                             )
+                        else:
+                            # Existing directory is not a valid repo (e.g. a git
+                            # submodule placeholder with a .git file); replace it.
+                            logger.warning(
+                                "Removing non-git directory for '%s' and recloning...",
+                                name,
+                            )
+                            shutil.rmtree(grammar_path)
+                            result = subprocess.run(
+                                [
+                                    "git",
+                                    "clone",
+                                    grammar.repository_url,
+                                    str(grammar_path),
+                                ],
+                                check=False,
+                                capture_output=True,
+                                text=True,
+                            )
+                            if result.returncode != 0:
+                                raise GrammarManagementError(
+                                    f"Git clone failed: {result.stderr}"
+                                )
             else:
                 # Clone new repository
                 logger.info("Cloning grammar '%s'...", name)
@@ -174,7 +203,7 @@ class TreeSitterGrammarManager(GrammarManager):
 
             logger.info("Successfully fetched grammar '%s'", name)
             return True
-        except (FileNotFoundError, OSError, TypeError) as e:
+        except (FileNotFoundError, OSError, TypeError, GrammarManagementError) as e:
             logger.error("Failed to fetch grammar '%s': %s", name, e)
             grammar.status = GrammarStatus.ERROR
             grammar.error = str(e)
@@ -399,6 +428,18 @@ class TreeSitterGrammarManager(GrammarManager):
             logger.debug("Saved grammar config")
         except (FileNotFoundError, OSError) as e:
             logger.error("Failed to save grammar config: %s", e)
+
+    @staticmethod
+    def _grammar_path_has_content(path: Path) -> bool:
+        """Return True if *path* contains recognisable grammar source files.
+
+        An uninitialized git-submodule placeholder is an empty directory; this
+        check distinguishes it from a real clone that has at least one file.
+        """
+        try:
+            return any(True for _ in path.iterdir())
+        except OSError:
+            return False
 
     @staticmethod
     def _get_test_code(language: str) -> str:
