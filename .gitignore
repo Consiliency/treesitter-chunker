@@ -28,6 +28,10 @@ generated_config.toml
 generated_config.json
 worktrees/
 
+# Grammar repos (cloned fresh by scripts/fetch_grammars.py, not tracked)
+grammars/
+tree-sitter-headers/
+
 # Test repositories (downloaded for testing)
 TypeScript/
 click/
