@@ -423,6 +423,7 @@ class ProjectAnalyzerImpl(ProjectAnalyzer):
 
         # Check project types in priority order
         from typing import Callable
+
         type_checks: list[tuple[Callable[[], bool], str]] = [
             # Fullstack first
             (

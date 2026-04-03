@@ -84,10 +84,14 @@ except ImportError as e:
         def __init__(self, *args: Any) -> None:
             pass
 
-        def handle_grammar_validation_error(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        def handle_grammar_validation_error(
+            self, *args: Any, **kwargs: Any
+        ) -> dict[str, Any]:
             return {"success": False, "guidance": [], "quick_fixes": []}
 
-        def handle_grammar_download_error(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        def handle_grammar_download_error(
+            self, *args: Any, **kwargs: Any
+        ) -> dict[str, Any]:
             return {"success": False, "guidance": [], "troubleshooting_steps": []}
 
 
