@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -39,12 +40,13 @@ class _ParserState:
         self.registry: LanguageRegistry | None = None
         self.factory: ParserFactory | None = None
         # Prefer in-package built artifacts when present (for wheels with prebuilt grammars)
+        _lib_ext = {"darwin": ".dylib", "win32": ".dll"}.get(sys.platform, ".so")
         package_build = Path(__file__).parent / "data" / "grammars" / "build"
-        combined_lib = package_build / "languages.so"
+        combined_lib = package_build / f"languages{_lib_ext}"
         self.default_library_path = (
             combined_lib
             if combined_lib.exists()
-            else Path(__file__).parent.parent / "build" / "my-languages.so"
+            else Path(__file__).parent.parent / "build" / f"my-languages{_lib_ext}"
         )
 
     def initialize(self, library_path: Path | None = None) -> None:

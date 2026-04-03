@@ -139,7 +139,14 @@ class LanguageRegistry:
             List of (language_name, symbol_name) tuples found in this directory
         """
         symbols = []
-        combined_suffix = Path(self._library_path).suffix or ".so"
+        # Use the platform-native shared library extension so that .dylib files
+        # on macOS and .dll files on Windows are found even when _library_path
+        # was constructed with a ".so" fallback extension.
+        _platform_suffix = {
+            "darwin": ".dylib",
+            "win32": ".dll",
+        }.get(sys.platform, ".so")
+        combined_suffix = _platform_suffix
 
         for file_path in directory.glob(f"*{combined_suffix}"):
             if file_path.is_file():
