@@ -146,3 +146,18 @@ Run tests:
 ```bash
 python -m pytest tests/test_grammar_discovery.py -xvs
 ```
+
+## Platform Notes
+
+### Platform-Native Library Extensions
+
+The grammar scanner automatically uses the correct shared library extension for the current
+platform: `.so` on Linux, `.dylib` on macOS, and `.dll` on Windows (as of v2.2.22). Grammars
+built on any supported platform are discovered without any configuration.
+
+### Empty Submodule Placeholders
+
+If a grammar source directory exists but contains no files (e.g., from an uninitialized git
+submodule), `fetch_grammar()` automatically detects the empty state and re-clones the grammar
+repository. This handles the common case of cloning a repo that previously tracked grammars as
+submodules.

@@ -7,9 +7,31 @@
 #### ABI Version Mismatch
 **Error**: `RuntimeError: Cannot create language version 15, expected 13-14`
 
-**Solution**: Install py-tree-sitter from GitHub to get ABI 15 support:
+**Solution**: Install the pinned py-tree-sitter version used by treesitter-chunker:
 ```bash
-uv pip install git+https://github.com/tree-sitter/py-tree-sitter.git
+uv pip install git+https://github.com/tree-sitter/py-tree-sitter.git@v0.25.2
+```
+
+#### Windows: Grammar Library Fails to Load (WinError 126)
+**Error**: `OSError: [WinError 126] The specified module could not be found`
+
+**Cause**: On Windows, `ctypes.CDLL()` does not automatically search the DLL's own directory
+for its dependencies. This was fixed in v2.2.22 via `os.add_dll_directory()`.
+
+**Solution**: Upgrade to v2.2.22 or later:
+```bash
+pip install --upgrade treesitter-chunker
+```
+
+#### macOS: `languages` Command Shows Empty Table
+**Symptom**: Running `chunker languages` returns a table with no rows despite grammars being built.
+
+**Cause**: On macOS, compiled grammars use the `.dylib` extension. Versions before v2.2.22
+scanned for `.so` files only, so no grammars were found. Fixed in v2.2.22.
+
+**Solution**: Upgrade to v2.2.22 or later:
+```bash
+pip install --upgrade treesitter-chunker
 ```
 
 #### Grammar Compilation Failed

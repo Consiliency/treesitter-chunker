@@ -50,7 +50,7 @@ cd treesitter-chunker
 uv pip install -e ".[dev]"
 
 # Install py-tree-sitter with ABI 15 support
-uv pip install git+https://github.com/tree-sitter/py-tree-sitter.git
+uv pip install git+https://github.com/tree-sitter/py-tree-sitter.git@v0.25.2
 
 # Build language grammars (only needed for development)
 python scripts/fetch_grammars.py

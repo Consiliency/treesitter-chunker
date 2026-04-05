@@ -4,11 +4,10 @@ A high-performance semantic code chunker that leverages [Tree-sitter](https://tr
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Tree-sitter](https://img.shields.io/badge/tree--sitter-latest-green.svg)](https://tree-sitter.github.io/)
-[![PyPI](https://img.shields.io/badge/PyPI-2.2.4-blue.svg)](https://pypi.org/project/treesitter-chunker/)
+[![PyPI](https://img.shields.io/pypi/v/treesitter-chunker.svg)](https://pypi.org/project/treesitter-chunker/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
-[![Test Coverage](https://img.shields.io/badge/coverage-95%25-brightgreen.svg)]()
-[![Code Quality](https://img.shields.io/badge/quality-A-brightgreen.svg)]()
+[![Test Suite](https://github.com/Consiliency/treesitter-chunker/actions/workflows/test.yml/badge.svg)](https://github.com/Consiliency/treesitter-chunker/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/Consiliency/treesitter-chunker/branch/main/graph/badge.svg)](https://codecov.io/gh/Consiliency/treesitter-chunker)
 [![Platforms](https://img.shields.io/badge/platforms-Linux%20%7C%20macOS%20%7C%20Windows-blue.svg)]()
 
 **PyPI Release Flow**: Published releases come from the GitHub release workflow, not from ordinary `main` CI runs. See `docs/packaging.md` and `docs/development/RELEASE_CHECKLIST.md`.
@@ -243,13 +242,13 @@ brew install treesitter-chunker
 #### For Debian/Ubuntu
 ```bash
 # Download .deb package from releases
-sudo dpkg -i python3-treesitter-chunker_1.0.0-1_all.deb
+sudo dpkg -i python3-treesitter-chunker_2.2.22-1_all.deb
 ```
 
 #### For Fedora/RHEL
 ```bash
 # Download .rpm package from releases
-sudo rpm -i python-treesitter-chunker-1.0.0-1.noarch.rpm
+sudo rpm -i python-treesitter-chunker-2.2.22-1.noarch.rpm
 ```
 
 ### Quick Install (Development)
@@ -263,7 +262,7 @@ cd treesitter-chunker
 uv venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 uv pip install -e ".[dev]"
-uv pip install git+https://github.com/tree-sitter/py-tree-sitter.git
+uv pip install git+https://github.com/tree-sitter/py-tree-sitter.git@v0.25.2
 
 # Build language grammars
 python scripts/fetch_grammars.py

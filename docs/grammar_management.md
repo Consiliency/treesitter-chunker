@@ -92,6 +92,10 @@ Lists all installed grammars with their health status.
       💡 Check if grammar source exists in grammars/ directory
 ```
 
+> **Empty submodule placeholders:** If a grammar directory exists but is empty (e.g., from an
+> uninitialized git submodule), `fetch_grammar()` automatically detects this and re-clones the
+> grammar source. No manual intervention is required.
+
 ### `grammar info <language>`
 Provides detailed information about a specific grammar.
 
@@ -338,12 +342,16 @@ project_root/
 ├── chunker/
 │   └── data/
 │       └── grammars/
-│           └── build/          # Compiled .so files
+│           └── build/          # Compiled grammar libraries
 └── grammars/                   # Grammar source repositories
     ├── tree-sitter-python/
     ├── tree-sitter-rust/
     └── ...
 ```
+
+> **Platform-native extensions:** Compiled grammar libraries use the extension appropriate for
+> the current platform — `.so` on Linux, `.dylib` on macOS, and `.dll` on Windows. The grammar
+> scanner automatically detects the correct extension. Examples in this guide show `.so` for brevity.
 
 ## Best Practices
 

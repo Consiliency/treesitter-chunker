@@ -13,7 +13,7 @@ sys.path.insert(0, Path("../..").resolve())
 project = "TreeSitter Chunker"
 copyright = "2025, Consiliency"
 author = "Consiliency"
-release = "1.0.0"
+release = "2.2.22"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
