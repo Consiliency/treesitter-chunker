@@ -204,11 +204,11 @@ ENTRYPOINT ["treesitter-chunker"]
   include Language::Python::Virtualenv
 
   desc "Semantic code chunker using Tree-sitter for intelligent code analysis"
-  homepage "https://github.com/Consiliency/treesitter-chunker"
+  homepage "https://github.com/ViperJuice/treesitter-chunker"
   url "https://files.pythonhosted.org/packages/source/t/treesitter-chunker/treesitter-chunker-{version}.tar.gz"
   sha256 "{sha256}"
   license "MIT"
-  head "https://github.com/Consiliency/treesitter-chunker.git", branch: "main"
+  head "https://github.com/ViperJuice/treesitter-chunker.git", branch: "main"
 
   depends_on "python@3.11"
   depends_on "tree-sitter"

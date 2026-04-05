@@ -59,7 +59,7 @@ pip install treesitter-chunker==2.2.4
 
 ```bash
 # Clone repository
-git clone https://github.com/Consiliency/treesitter-chunker.git
+git clone https://github.com/ViperJuice/treesitter-chunker.git
 cd treesitter-chunker
 
 # Install in development mode

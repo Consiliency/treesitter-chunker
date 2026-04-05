@@ -113,7 +113,7 @@ class LanguageNotFoundError(LanguageError):
 
         # Add documentation link
         guidance_parts.append(
-            "\nSee: https://github.com/Consiliency/treesitter-chunker#grammars",
+            "\nSee: https://github.com/ViperJuice/treesitter-chunker#grammars",
         )
 
         return "\n".join(guidance_parts)

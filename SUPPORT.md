@@ -7,9 +7,9 @@ Welcome to the Tree-sitter Chunker community! This document provides information
 ### **Quick Help Options**
 
 1. **📚 Documentation**: Start with our [comprehensive documentation](https://treesitter-chunker.readthedocs.io/)
-2. **🔍 Search**: Search existing [issues](https://github.com/Consiliency/treesitter-chunker/issues) and [discussions](https://github.com/Consiliency/treesitter-chunker/discussions)
-3. **💬 Discussions**: Ask questions in [GitHub Discussions](https://github.com/Consiliency/treesitter-chunker/discussions)
-4. **🐛 Issues**: Report bugs in [GitHub Issues](https://github.com/Consiliency/treesitter-chunker/issues)
+2. **🔍 Search**: Search existing [issues](https://github.com/ViperJuice/treesitter-chunker/issues) and [discussions](https://github.com/ViperJuice/treesitter-chunker/discussions)
+3. **💬 Discussions**: Ask questions in [GitHub Discussions](https://github.com/ViperJuice/treesitter-chunker/discussions)
+4. **🐛 Issues**: Report bugs in [GitHub Issues](https://github.com/ViperJuice/treesitter-chunker/issues)
 
 ### **Before Asking for Help**
 
@@ -73,16 +73,16 @@ Any other relevant information
 
 ### **GitHub Discussions**
 
-- **General Questions**: [Q&A](https://github.com/Consiliency/treesitter-chunker/discussions/categories/q-a)
-- **Show & Tell**: [Show & Tell](https://github.com/Consiliency/treesitter-chunker/discussions/categories/show-and-tell)
-- **Ideas**: [Ideas](https://github.com/Consiliency/treesitter-chunker/discussions/categories/ideas)
-- **Announcements**: [Announcements](https://github.com/Consiliency/treesitter-chunker/discussions/categories/announcements)
+- **General Questions**: [Q&A](https://github.com/ViperJuice/treesitter-chunker/discussions/categories/q-a)
+- **Show & Tell**: [Show & Tell](https://github.com/ViperJuice/treesitter-chunker/discussions/categories/show-and-tell)
+- **Ideas**: [Ideas](https://github.com/ViperJuice/treesitter-chunker/discussions/categories/ideas)
+- **Announcements**: [Announcements](https://github.com/ViperJuice/treesitter-chunker/discussions/categories/announcements)
 
 ### **GitHub Issues**
 
-- **Bug Reports**: [Bug Reports](https://github.com/Consiliency/treesitter-chunker/issues?q=is%3Aissue+is%3Aopen+label%3Abug)
-- **Feature Requests**: [Feature Requests](https://github.com/Consiliency/treesitter-chunker/issues?q=is%3Aissue+is%3Aopen+label%3Aenhancement)
-- **Documentation**: [Documentation Issues](https://github.com/Consiliency/treesitter-chunker/issues?q=is%3Aissue+is%3Aopen+label%3Adocumentation)
+- **Bug Reports**: [Bug Reports](https://github.com/ViperJuice/treesitter-chunker/issues?q=is%3Aissue+is%3Aopen+label%3Abug)
+- **Feature Requests**: [Feature Requests](https://github.com/ViperJuice/treesitter-chunker/issues?q=is%3Aissue+is%3Aopen+label%3Aenhancement)
+- **Documentation**: [Documentation Issues](https://github.com/ViperJuice/treesitter-chunker/issues?q=is%3Aissue+is%3Aopen+label%3Adocumentation)
 
 ## 🔧 Common Issues & Solutions
 
@@ -232,7 +232,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ### **Maintainers**
 
-- **Primary Contact**: [GitHub Issues](https://github.com/Consiliency/treesitter-chunker/issues)
+- **Primary Contact**: [GitHub Issues](https://github.com/ViperJuice/treesitter-chunker/issues)
 - **Security Issues**: security@consiliency.com
 - **General Inquiries**: dev@consiliency.com
 
@@ -248,7 +248,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 ### **Contributors**
 
 We recognize contributors in:
-- **GitHub Contributors**: [Contributors page](https://github.com/Consiliency/treesitter-chunker/graphs/contributors)
+- **GitHub Contributors**: [Contributors page](https://github.com/ViperJuice/treesitter-chunker/graphs/contributors)
 - **Changelog**: [CHANGELOG.md](CHANGELOG.md)
 - **Release Notes**: Each version release
 - **Documentation**: For major features

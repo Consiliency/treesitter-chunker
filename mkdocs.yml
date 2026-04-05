@@ -1,5 +1,5 @@
 site_name: Tree-sitter Chunker
-repo_url: https://github.com/Consiliency/treesitter-chunker
+repo_url: https://github.com/ViperJuice/treesitter-chunker
 theme:
   name: material
   features:

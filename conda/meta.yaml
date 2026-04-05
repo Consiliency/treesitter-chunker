@@ -63,7 +63,7 @@ test:
     - psutil
 
 about:
-  home: https://github.com/Consiliency/treesitter-chunker
+  home: https://github.com/ViperJuice/treesitter-chunker
   license: MIT
   license_family: MIT
   license_file: LICENSE
@@ -84,7 +84,7 @@ about:
     - CLI and programmatic interfaces
 
   doc_url: https://treesitter-chunker.readthedocs.io
-  dev_url: https://github.com/Consiliency/treesitter-chunker
+  dev_url: https://github.com/ViperJuice/treesitter-chunker
 
 extra:
   recipe-maintainers:

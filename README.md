@@ -6,8 +6,8 @@ A high-performance semantic code chunker that leverages [Tree-sitter](https://tr
 [![Tree-sitter](https://img.shields.io/badge/tree--sitter-latest-green.svg)](https://tree-sitter.github.io/)
 [![PyPI](https://img.shields.io/pypi/v/treesitter-chunker.svg)](https://pypi.org/project/treesitter-chunker/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Test Suite](https://github.com/Consiliency/treesitter-chunker/actions/workflows/test.yml/badge.svg)](https://github.com/Consiliency/treesitter-chunker/actions/workflows/test.yml)
-[![codecov](https://codecov.io/gh/Consiliency/treesitter-chunker/branch/main/graph/badge.svg)](https://codecov.io/gh/Consiliency/treesitter-chunker)
+[![Test Suite](https://github.com/ViperJuice/treesitter-chunker/actions/workflows/test.yml/badge.svg)](https://github.com/ViperJuice/treesitter-chunker/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/ViperJuice/treesitter-chunker/branch/main/graph/badge.svg)](https://codecov.io/gh/ViperJuice/treesitter-chunker)
 [![Platforms](https://img.shields.io/badge/platforms-Linux%20%7C%20macOS%20%7C%20Windows-blue.svg)]()
 
 **PyPI Release Flow**: Published releases come from the GitHub release workflow, not from ordinary `main` CI runs. See `docs/packaging.md` and `docs/development/RELEASE_CHECKLIST.md`.
@@ -255,7 +255,7 @@ sudo rpm -i python-treesitter-chunker-2.2.22-1.noarch.rpm
 
 ```bash
 # Clone the repository
-git clone https://github.com/Consiliency/treesitter-chunker.git
+git clone https://github.com/ViperJuice/treesitter-chunker.git
 cd treesitter-chunker
 
 # Install with uv (recommended)
@@ -689,8 +689,8 @@ cache = ASTCache(max_size=1000)
 ### Getting Help
 
 - **Documentation**: [Full documentation](https://treesitter-chunker.readthedocs.io/)
-- **Issues**: [GitHub Issues](https://github.com/Consiliency/treesitter-chunker/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/Consiliency/treesitter-chunker/discussions)
+- **Issues**: [GitHub Issues](https://github.com/ViperJuice/treesitter-chunker/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/ViperJuice/treesitter-chunker/discussions)
 - **Examples**: [Cookbook](docs/cookbook.md) with working examples
 
 ## 📚 API Overview
@@ -749,7 +749,7 @@ We welcome contributions! Tree-sitter Chunker is built by the community for the 
 
 ```bash
 # Clone and setup development environment
-git clone https://github.com/Consiliency/treesitter-chunker.git
+git clone https://github.com/ViperJuice/treesitter-chunker.git
 cd treesitter-chunker
 uv venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
@@ -771,8 +771,8 @@ mkdocs serve
 
 ### Getting Help
 
-- **Issues**: [GitHub Issues](https://github.com/Consiliency/treesitter-chunker/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/Consiliency/treesitter-chunker/discussions)
+- **Issues**: [GitHub Issues](https://github.com/ViperJuice/treesitter-chunker/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/ViperJuice/treesitter-chunker/discussions)
 - **Documentation**: [Contributing Guide](CONTRIBUTING.md)
 
 ## 🔐 Stable IDs & Spans

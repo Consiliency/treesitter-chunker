@@ -11,8 +11,8 @@ sys.path.insert(0, Path("../..").resolve())
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "TreeSitter Chunker"
-copyright = "2025, Consiliency"
-author = "Consiliency"
+copyright = "2025, ViperJuice"
+author = "ViperJuice"
 release = "2.2.22"
 
 # -- General configuration ---------------------------------------------------
@@ -91,7 +91,7 @@ latex_documents = [
         "index",
         "treesitter-chunker.tex",
         "TreeSitter Chunker Documentation",
-        "Consiliency",
+        "ViperJuice",
         "manual",
     ),
 ]
