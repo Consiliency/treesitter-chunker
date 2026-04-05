@@ -5,8 +5,8 @@ description     = "Semantic code chunker using Tree-sitter for intelligent code 
 readme          = "README.md"
 requires-python = ">=3.11"
 license         = { text = "MIT" }
-authors         = [{ name = "Consiliency", email = "dev@consiliency.com" }]
-maintainers     = [{ name = "Consiliency", email = "dev@consiliency.com" }]
+authors         = [{ name = "ViperJuice", email = "jenner@consiliency.io" }]
+maintainers     = [{ name = "ViperJuice", email = "jenner@consiliency.io" }]
 keywords        = ["tree-sitter", "code-analysis", "chunking", "parsing", "ast", "semantic-analysis", "llm", "embeddings", "rag"]
 classifiers     = [
     "Development Status :: 5 - Production/Stable",
@@ -77,11 +77,11 @@ full = ["jinja2>=3.0.0", "numpy>=1.20.0"]
 all = ["treesitter-chunker[dev,viz,docs,profile,api,templates,advanced]"]
 
 [project.urls]
-Homepage = "https://github.com/Consiliency/treesitter-chunker"
+Homepage = "https://github.com/ViperJuice/treesitter-chunker"
 Documentation = "https://treesitter-chunker.readthedocs.io"
-Repository = "https://github.com/Consiliency/treesitter-chunker"
-Issues = "https://github.com/Consiliency/treesitter-chunker/issues"
-Changelog = "https://github.com/Consiliency/treesitter-chunker/blob/main/CHANGELOG.md"
+Repository = "https://github.com/ViperJuice/treesitter-chunker"
+Issues = "https://github.com/ViperJuice/treesitter-chunker/issues"
+Changelog = "https://github.com/ViperJuice/treesitter-chunker/blob/main/CHANGELOG.md"
 
 [project.scripts]
 treesitter-chunker = "cli.main:app"
