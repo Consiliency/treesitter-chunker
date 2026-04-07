@@ -1,0 +1,12 @@
+version: v1
+name: treesitter-chunker
+type: library
+business_unit: frontier-strategies
+system: fs-toolchain
+upstream: github.com/ViperJuice/treesitter-chunker
+description: "High-performance semantic code chunker using Tree-sitter parsers, 48-language AST support"
+specs:
+  active: specs/active/
+  archive: specs/archive/
+generated:
+  output: generated/
