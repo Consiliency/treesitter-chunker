@@ -1,7 +1,7 @@
 # Agent Interface Ownership Readiness (Repository Assessment)
 
 > This document is a readiness assessment.
-> The implementation-facing specification lives in:
+> The implementation-facing specification now lives in the Greenfield repository:
 > `docs/interface-boundary-spec.md`.
 > The execution plan lives in:
 > `docs/interface-boundary-roadmap.md`.
