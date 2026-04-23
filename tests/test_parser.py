@@ -8,7 +8,6 @@ from tree_sitter import Parser
 import chunker.parser
 from chunker import (
     LanguageNotFoundError,
-    LibraryNotFoundError,
     ParserConfig,
     ParserError,
     clear_cache,
@@ -134,16 +133,14 @@ class TestErrorHandling:
 
     @staticmethod
     @patch("chunker.parser._state.default_library_path")
-    def test_missing_library(mock_path):
-        """Test error when library file is missing."""
+    def test_missing_library_uses_language_pack_fallback(mock_path):
+        """Test missing combined library still allows language-pack fallback."""
         mock_path.exists.return_value = False
         mock_path.__str__.return_value = "/fake/path/lib.so"
         chunker.parser._state.registry = None
         chunker.parser._state.factory = None
-        with pytest.raises(LibraryNotFoundError) as exc_info:
-            get_parser("python")
-        assert "/fake/path/lib.so" in str(exc_info.value)
-        assert "build_lib.py" in str(exc_info.value)
+        parser = get_parser("python")
+        assert isinstance(parser, Parser)
 
     @staticmethod
     def test_language_metadata_not_found():

@@ -1,8 +1,9 @@
 """Tests for fallback chunking functionality."""
 
 import tempfile
-import warnings
 from pathlib import Path
+
+import pytest
 
 from chunker.fallback import (
     FallbackWarning,
@@ -25,12 +26,8 @@ class TestFallbackBase:
         chunker = LineBasedChunker()
         chunker.set_fallback_reason(FallbackReason.NO_GRAMMAR)
         content = "Line 1\nLine 2\nLine 3\nLine 4\nLine 5"
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
+        with pytest.warns(FallbackWarning, match="WARNING: Using fallback chunking"):
             chunker.chunk_text(content, "test.txt")
-            assert len(w) == 1
-            assert issubclass(w[0].category, FallbackWarning)
-            assert "WARNING: Using fallback chunking" in str(w[0].message)
 
     @classmethod
     def test_line_based_chunking(cls):
@@ -280,14 +277,10 @@ class TestFallbackManager:
             temp_path = Path(f.name)
         try:
             assert manager.can_chunk(str(temp_path)) is True
-            with warnings.catch_warnings(record=True) as w:
-                warnings.simplefilter("always")
+            with pytest.warns(FallbackWarning, match="Using fallback chunking"):
                 chunks = manager.chunk_file(str(temp_path))
-                assert len(chunks) > 0
-                assert any("Test log entry" in chunk.content for chunk in chunks)
-                assert any(
-                    issubclass(warning.category, FallbackWarning) for warning in w
-                )
+            assert len(chunks) > 0
+            assert any("Test log entry" in chunk.content for chunk in chunks)
         finally:
             temp_path.unlink(missing_ok=True)
 
@@ -330,7 +323,8 @@ class TestFallbackManager:
             f.flush()
             temp_path = Path(f.name)
         try:
-            chunks = manager.chunk_file(str(temp_path))
+            with pytest.warns(FallbackWarning, match="Using fallback chunking"):
+                chunks = manager.chunk_file(str(temp_path))
             assert len(chunks) > 0
             assert (
                 len(

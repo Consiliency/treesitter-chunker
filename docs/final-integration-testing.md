@@ -1,5 +1,8 @@
 # Final Integration Testing System
 
+> Maintainer/internal documentation. This page is intentionally omitted from
+> public navigation because it documents legacy integration validation internals.
+
 The Final Integration Testing System for treesitter-chunker provides comprehensive validation of the complete Phase 1.9 system with all components working together. This system represents the culmination of the integration testing capabilities and ensures production readiness.
 
 ## Overview

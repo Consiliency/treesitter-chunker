@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.23] - 2026-04-23
+
+### Added
+
+- Boundary IR observability with CLI output controls, run summaries, optional timing metadata, and strict failure handling for extraction diagnostics.
+- Incremental Boundary IR extraction support with persistent cache controls, cache refresh behavior, and changed-file processing paths.
+- Optional semantic enrichment hooks for language plugins, including supplemental semantic edge provenance, confidence filtering, deterministic resolver ordering, and semantic cache-key separation.
+
+### Changed
+
+- Release hygiene now keeps public docs navigation explicit, documents intentionally internal pages, and enforces the no-xfail policy for focused release gates.
+- Registry compatibility hardening now treats deprecation warnings as errors across the registry, parser, factory, CLI, chunking, and Boundary IR snapshot gates.
+- Release preparation now validates changelog/version alignment, release workflow guards, non-publishing wheel artifacts, and local package artifacts before tag or publish actions.
+
 ## [2.2.22] - 2026-04-03
 
 ### 🎨 Style

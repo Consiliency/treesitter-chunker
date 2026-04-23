@@ -17,11 +17,15 @@ nav:
   - GraphML Export: graphml_export.md
   - Performance Guide: performance-guide.md
   - Grammar Discovery: grammar_discovery.md
+  - Grammar Management: grammar_management.md
   - Zero-Config API: zero_config_api.md
   - Cookbook: cookbook.md
   - Plugin Development: plugin-development.md
   - Architecture: architecture.md
-  - Interface Boundary Spec: interface-boundary-spec.md
+  - Boundary IR:
+    - Interface Boundary Spec: interface-boundary-spec.md
+    - Interface Boundary Roadmap: interface-boundary-roadmap.md
+    - Agent Interface Readiness: agent-interface-readiness.md
   - Troubleshooting: troubleshooting.md
   - Advanced Topics:
     - Intelligent Fallback: intelligent_fallback.md
@@ -35,6 +39,10 @@ nav:
     - Environment Variables: environment_variables.md
     - Internal API: internal-api.md
     - Packaging: packaging.md
+not_in_nav: |
+  /development/DEPLOYMENT.md
+  /development/RELEASE_CHECKLIST.md
+  /final-integration-testing.md
 plugins:
   - search
   - mkdocstrings:

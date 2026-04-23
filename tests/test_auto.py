@@ -9,6 +9,7 @@ import pytest
 from chunker.auto import ZeroConfigAPI
 from chunker.contracts.auto_contract import AutoChunkResult
 from chunker.exceptions import ChunkerError
+from chunker.fallback import FallbackWarning
 from chunker.types import CodeChunk
 
 
@@ -217,7 +218,8 @@ class TestZeroConfigAPI:
             temp_path = Path(f.name)
 
         try:
-            result = api.auto_chunk_file(str(temp_path))
+            with pytest.warns(FallbackWarning, match="Using fallback chunking"):
+                result = api.auto_chunk_file(str(temp_path))
             assert isinstance(result, AutoChunkResult)
             assert result.language == "unknown"
             assert result.fallback_used is True

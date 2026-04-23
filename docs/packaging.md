@@ -20,11 +20,14 @@ This document is the source of truth for packaging and PyPI publishing.
 ## Standard Release Flow
 
 1. Make sure `main` is green
-2. Bump `pyproject.toml` to the target version
-3. Update `CHANGELOG.md` if needed
-4. Commit the release prep
-5. Create and push a tag such as `v2.2.4`
-6. Let `release.yml` build distributions, create the GitHub Release, and publish to PyPI
+2. Choose one `TARGET_VERSION` in `X.Y.Z` form
+3. Bump `pyproject.toml` to `TARGET_VERSION`
+4. Update the top `CHANGELOG.md` entry to `TARGET_VERSION`
+5. Run the focused release tests and local package checks
+6. Commit the release prep
+7. Confirm the working tree is clean
+8. Create and push a tag such as `v2.2.23`
+9. Let `release.yml` build distributions, create the GitHub Release, and publish to PyPI
 
 See `docs/development/RELEASE_CHECKLIST.md` for the maintainer checklist.
 
@@ -41,10 +44,10 @@ See `docs/development/RELEASE_CHECKLIST.md` for the maintainer checklist.
 Local package building is still useful for validation and troubleshooting.
 
 ```bash
-python scripts/fetch_grammars.py
-python scripts/build_lib.py
-python -m build
-python -m twine check dist/*
+TARGET_VERSION=2.2.23
+OUTDIR="dist/phase9-release-check-${TARGET_VERSION}"
+uv run --with toml --all-extras python -m build --outdir "$OUTDIR"
+uv run --with toml --all-extras python -m twine check "$OUTDIR"/*
 ```
 
 Optional wheel helper:
@@ -69,7 +72,7 @@ The repository no longer has a second token-based publish path in `build-wheels.
 
 - Tag/version mismatch: update `pyproject.toml` or retag before rerunning
 - Version already on PyPI: bump the version; do not reuse an existing release number
-- Build failure: reproduce locally with `python -m build` and `python -m twine check dist/*`
+- Build failure: reproduce locally with `uv run --with toml --all-extras python -m build` and `uv run --with toml --all-extras python -m twine check`
 - Wheel issues: use `python scripts/build_wheels.py --platform auto` for local diagnosis
 
 ## Related Docs

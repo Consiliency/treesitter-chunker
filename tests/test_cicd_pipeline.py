@@ -1,12 +1,56 @@
 """Unit tests for CI/CD Pipeline implementation"""
 
+import re
 import tempfile
+import tomllib
 from pathlib import Path
 
 import yaml
 
 from chunker.cicd.pipeline import CICDPipelineImpl
 from scripts.run_ci_smoke import CI_SMOKE_TESTS
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _project_version() -> str:
+    pyproject = tomllib.loads(
+        (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    )
+    return pyproject["project"]["version"]
+
+
+def _first_changelog_version() -> str:
+    changelog = (REPO_ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    match = re.search(r"^## \[([^\]]+)\] - \d{4}-\d{2}-\d{2}$", changelog, re.M)
+    assert match is not None
+    return match.group(1)
+
+
+def test_changelog_top_release_matches_project_version():
+    assert _first_changelog_version() == _project_version()
+
+
+def test_release_workflow_guards_tag_version_and_pypi_duplicate():
+    workflow = (REPO_ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
+
+    assert 'if [ "$TAG_NAME" != "v$PACKAGE_VERSION" ]; then' in workflow
+    assert "Version {version} already exists on PyPI" in workflow
+    assert "https://pypi.org/pypi/{package}/json" in workflow
+    assert "pypa/gh-action-pypi-publish@release/v1" in workflow
+    assert "id-token: write" in workflow
+
+
+def test_build_wheels_workflow_uploads_artifacts_without_publishing():
+    workflow = (REPO_ROOT / ".github/workflows/build-wheels.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert "actions/upload-artifact@" in workflow
+    assert "pypa/gh-action-pypi-publish" not in workflow
+    assert "twine upload" not in workflow
+    assert "id-token: write" not in workflow
+    assert "environment:" not in workflow
 
 
 def test_ci_smoke_includes_boundary_ir_conformance_gate_once():

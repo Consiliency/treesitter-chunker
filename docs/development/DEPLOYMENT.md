@@ -1,5 +1,8 @@
 # Production Deployment Guide
 
+> Maintainer/internal documentation. This page is intentionally omitted from
+> public navigation and is linked from release-facing maintainer docs.
+
 This guide covers deploying Tree-sitter Chunker in production environments, including system requirements, configuration, monitoring, and troubleshooting.
 
 ## 🎯 Deployment Overview

@@ -45,6 +45,9 @@ The IR surface should be deterministic by default: identical repository snapshot
 - IF-0-OBSERVABILITY-5 - Structured metrics, diagnostics, parse failure handling, and `fail_fast` contract are frozen.
 - IF-0-INCREMENTAL-6 - Boundary cache key format, warm-run invalidation rules, and impacted-neighbor recomputation contract are frozen.
 - IF-0-SEMANTIC-7 - Optional semantic enrichment plugin interface, provenance, confidence, and schema migration contract are frozen.
+- IF-0-HYGIENE-8 - Release hygiene policy for docs navigation, expected warnings, and explicit test skips is frozen.
+- IF-0-REGISTRY-9 - Tree-sitter registry compatibility contract avoids deprecated local grammar construction paths while preserving language-pack fallback.
+- IF-0-RELEASE-10 - Version bump, release notes, packaging metadata, and pre-push validation gate are frozen.
 
 ## Phases
 
@@ -346,6 +349,140 @@ Likely lanes:
 **Produces**
 - IF-0-SEMANTIC-7 - Optional semantic enrichment plugin interface, provenance, confidence, and schema migration contract are frozen.
 
+### Phase 7 — Release Hygiene Baseline (HYGIENE)
+
+**Objective**
+
+Make pre-release validation output intentional and reviewable by removing avoidable documentation and test-warning noise without changing parser runtime behavior.
+
+**Exit criteria**
+- [ ] MkDocs strict build has no broken-link warnings introduced by documented pages.
+- [ ] Docs outside `mkdocs.yml` navigation are either added to an explicit nav section or documented as intentionally internal.
+- [ ] Fallback-warning tests locally assert expected `FallbackWarning` behavior instead of leaking incidental warning noise into CI summaries.
+- [ ] Explicit platform skips remain only where the test cannot be made deterministic on that platform, with reasons in the test body or marker.
+- [ ] CI smoke and Windows preflight remain green with no xfail/xpass results.
+
+**Scope notes**
+
+Likely lanes:
+- Docs lane: classify `agent-interface-readiness.md`, `interface-boundary-roadmap.md`, `grammar_management.md`, release/deployment docs, and final integration docs as public nav or internal docs.
+- Warning-test lane: update fallback tests that intentionally trigger `FallbackWarning` to use local `pytest.warns()` or scoped warning captures.
+- Test-policy lane: keep skips explicit and local; do not reintroduce centralized collection-time xfail policy.
+
+**Non-goals**
+
+- Changing fallback behavior or warning text unless tests expose a real product issue.
+- Reworking parser registry loading.
+- Publishing a release.
+
+**Key files**
+
+- `mkdocs.yml`
+- `docs/index.md`
+- `docs/agent-interface-readiness.md`
+- `docs/interface-boundary-roadmap.md`
+- `docs/grammar_management.md`
+- `docs/development/DEPLOYMENT.md`
+- `docs/development/RELEASE_CHECKLIST.md`
+- `docs/final-integration-testing.md`
+- `tests/test_fallback_chunking.py`
+- `tests/test_auto.py`
+- `tests/test_overlapping_fallback.py`
+- `tests/conftest.py`
+
+**Depends on**
+- IF-0-CONFORMANCE-4
+- IF-0-OBSERVABILITY-5
+
+**Produces**
+- IF-0-HYGIENE-8 - Release hygiene policy for docs navigation, expected warnings, and explicit test skips is frozen.
+
+### Phase 8 — Tree-Sitter Registry Compatibility Hardening (REGISTRY)
+
+**Objective**
+
+Remove the local compiled-grammar `DeprecationWarning` path and harden parser registry loading across current and future `tree_sitter` versions without weakening language-pack fallback.
+
+**Exit criteria**
+- [ ] All local compiled grammar `Language` construction goes through one compatibility helper.
+- [ ] Registry and factory tests pass with `-W error::DeprecationWarning`.
+- [ ] Local compiled grammar validation does not mark a language unavailable solely because a deprecated construction path was attempted.
+- [ ] `tree-sitter-language-pack` remains the final fallback for available languages and invalid languages still raise `LanguageNotFoundError`.
+- [ ] Linux platform-core and Windows preflight pass after registry changes.
+
+**Scope notes**
+
+Likely lanes:
+- Compatibility lane: inventory supported `tree_sitter.Language` construction APIs and add a helper such as `_language_from_ctypes_symbol()`.
+- Fallback lane: ensure local compiled grammar failure falls through to `tree-sitter-language-pack` without poisoning `_languages` metadata.
+- Test lane: add focused deprecation-as-error coverage for `LanguageRegistry`, `ParserFactory`, parser creation, CLI chunking, and golden Boundary IR snapshots.
+
+**Non-goals**
+
+- Rebuilding grammar artifacts as part of normal tests.
+- Removing `tree-sitter-language-pack`.
+- Broad parser-management rewrite beyond compatibility and warning containment.
+
+**Key files**
+
+- `chunker/_internal/registry.py`
+- `chunker/_internal/language_pack.py`
+- `chunker/_internal/factory.py`
+- `chunker/parser.py`
+- `tests/test_registry_fallback.py`
+- `tests/test_factory.py`
+- `tests/test_chunking.py`
+- `tests/test_cli.py`
+- `tests/test_boundary_ir_golden_snapshots.py`
+
+**Depends on**
+- IF-0-HYGIENE-8
+
+**Produces**
+- IF-0-REGISTRY-9 - Tree-sitter registry compatibility contract avoids deprecated local grammar construction paths while preserving language-pack fallback.
+
+### Phase 9 — Version Bump And Release Gate (RELEASE)
+
+**Objective**
+
+Prepare and validate the version bump so pushing and tagging a release is a mechanical follow-through rather than another debugging phase.
+
+**Exit criteria**
+- [ ] Package version is bumped in the configured source of truth and matches the planned release tag.
+- [ ] Release notes or changelog summarize Boundary IR observability, incremental extraction, semantic enrichment, and release-hygiene changes.
+- [ ] Local smoke, formatting, lint, docs build, Linux platform core, and Windows preflight pass after the version bump.
+- [ ] Packaging metadata can build and pass artifact checks locally or through the documented release workflow.
+- [ ] Working tree is clean before push.
+
+**Scope notes**
+
+Likely lanes:
+- Version lane: update `pyproject.toml` and any generated/version docs required by the repository.
+- Release-notes lane: update `CHANGELOG.md` or the current release notes target if present.
+- Packaging lane: run the package build/check commands from `docs/packaging.md` or document why CI release workflow owns a specific artifact check.
+
+**Non-goals**
+
+- Adding new Boundary IR functionality.
+- Changing release workflow credentials or publishing paths.
+- Tagging or pushing unless explicitly requested during execution.
+
+**Key files**
+
+- `pyproject.toml`
+- `CHANGELOG.md` if present
+- `docs/packaging.md`
+- `docs/development/RELEASE_CHECKLIST.md`
+- `.github/workflows/release.yml`
+- `.github/workflows/build-wheels.yml`
+
+**Depends on**
+- IF-0-HYGIENE-8
+- IF-0-REGISTRY-9
+
+**Produces**
+- IF-0-RELEASE-10 - Version bump, release notes, packaging metadata, and pre-push validation gate are frozen.
+
 ## Phase Dependency DAG
 
 ```text
@@ -356,6 +493,9 @@ Phase 0 (SCHEMA)
               -> Phase 4 (OBSERVABILITY)
                   -> Phase 5 (INCREMENTAL)
           -> Phase 6 (SEMANTIC)
+          -> Phase 7 (HYGIENE)
+              -> Phase 8 (REGISTRY)
+                  -> Phase 9 (RELEASE)
 ```
 
 ## Execution Notes
@@ -368,9 +508,13 @@ Phase 4 should wait until the conformance harness exists, because diagnostics an
 
 Phase 6 can be planned after Phase 2 and Phase 3. It does not need to wait for incremental recomputation, as long as it preserves baseline syntax-only output and the schema compatibility rules from Phase 0.
 
+Phase 7 can be planned after the conformance and observability gates because it is a release-hardening pass over docs, expected warnings, and test policy. Phase 8 should follow Phase 7 so parser-registry changes are validated against the cleaned warning policy. Phase 9 should wait for Phase 8 if the release should include tree-sitter deprecation hardening; if that hardening is deferred, Phase 9 can depend only on Phase 7 by explicit release decision.
+
 Within each implementation phase, use `codex-plan-phase` to split lanes by owned files before editing. Good first selectors are:
 - `Phase 0 (SCHEMA)` for the interface-freeze plan.
 - `Phase 1 (ADAPTER)` once schema is frozen.
+- `Phase 7 (HYGIENE)` for the next release-hardening plan.
+- `Phase 8 (REGISTRY)` once the warning policy is clean.
 
 ## Verification
 
@@ -393,4 +537,14 @@ Phase-specific verification should include targeted tests before the broader smo
 ```bash
 uv run --with toml --all-extras pytest tests/test_definition_id.py tests/test_metadata_extraction.py tests/test_symbol_graph.py
 uv run --with toml --all-extras pytest <boundary-ir-tests>
+```
+
+Release-hardening phases should also use these targeted checks:
+
+```bash
+uv run --with toml --all-extras --with mkdocs --with mkdocs-material --with mkdocstrings-python mkdocs build --strict
+uv run --with toml --all-extras pytest tests/test_auto.py tests/test_fallback_chunking.py tests/test_overlapping_fallback.py -q
+uv run --with toml --all-extras pytest tests/test_registry_fallback.py tests/test_factory.py tests/test_chunking.py tests/test_cli.py tests/test_boundary_ir_golden_snapshots.py -q
+uv run --with toml --all-extras pytest tests/test_registry_fallback.py tests/test_factory.py tests/test_chunking.py tests/test_cli.py tests/test_boundary_ir_golden_snapshots.py -q -W error::DeprecationWarning
+uv run --with toml --all-extras python scripts/run_platform_core.py --platform linux
 ```

@@ -13,6 +13,7 @@ Welcome to the Tree-sitter Chunker documentation! Tree-sitter Chunker is a power
 - **[Export Formats](export-formats.md)** - JSON, JSONL, and Parquet export options
 - **[Cookbook](cookbook.md)** - Practical recipes and examples
 - **[Architecture](architecture.md)** - System design and internals
+- **[Boundary IR](interface-boundary-spec.md)** - Deterministic interface boundary schema and roadmap
 - **[Packaging & Releases](packaging.md)** - Build, tag, and publish workflow
 
 ### Text Processing
@@ -28,6 +29,7 @@ Welcome to the Tree-sitter Chunker documentation! Tree-sitter Chunker is a power
 
 ### Language Support
 - **[Grammar Discovery](grammar_discovery.md)** - Automatic grammar discovery from GitHub
+- **[Grammar Management](grammar_management.md)** - Maintainer and CLI workflows for grammar health
 - **[Zero-Config API](zero_config_api.md)** - Simple API that requires no setup
 
 ## What is Tree-sitter Chunker?
@@ -174,9 +176,10 @@ for chunk in chunks:
 ### For Contributors
 
 1. Study the **[Architecture](architecture.md)** document
-2. Understand the plugin system and extension points
-3. Review the troubleshooting guide
-4. Use **[Packaging & Releases](packaging.md)** plus `docs/development/RELEASE_CHECKLIST.md` for maintainership and release tasks
+2. Review the **[Boundary IR spec](interface-boundary-spec.md)** and **[roadmap](interface-boundary-roadmap.md)** for interface extraction contracts
+3. Understand the plugin system and extension points
+4. Review the troubleshooting guide
+5. Use **[Packaging & Releases](packaging.md)** plus `docs/development/RELEASE_CHECKLIST.md` for maintainership and release tasks
 
 ## Common Tasks
 

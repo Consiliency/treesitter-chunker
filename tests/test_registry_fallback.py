@@ -14,6 +14,7 @@ _LIB_EXT = {"darwin": ".dylib", "win32": ".dll"}.get(sys.platform, ".so")
 class TestRegistryFallback:
     """Tests for the language pack fallback chain in LanguageRegistry."""
 
+    @pytest.mark.filterwarnings("error::DeprecationWarning")
     def test_registry_uses_language_pack_fallback(self):
         """Test that registry falls back to language pack when local grammars unavailable."""
         from chunker._internal.registry import LanguageRegistry
@@ -26,6 +27,7 @@ class TestRegistryFallback:
         lang = registry.get_language("python")
         assert lang is not None
 
+    @pytest.mark.filterwarnings("error::DeprecationWarning")
     def test_registry_fallback_returns_valid_language(self):
         """Test that fallback language can be used for parsing."""
         from tree_sitter import Parser
@@ -45,6 +47,7 @@ class TestRegistryFallback:
         assert tree.root_node is not None
         assert tree.root_node.type == "module"
 
+    @pytest.mark.filterwarnings("error::DeprecationWarning")
     def test_registry_has_language_with_fallback(self):
         """Test has_language works with language pack fallback."""
         from chunker._internal.registry import LanguageRegistry
@@ -56,6 +59,32 @@ class TestRegistryFallback:
         assert registry.has_language("python") is True
         assert registry.has_language("javascript") is True
         assert registry.has_language("typescript") is True
+
+    @pytest.mark.filterwarnings("error::DeprecationWarning")
+    def test_local_construction_failure_falls_back_to_language_pack(self, tmp_path):
+        """Test local construction failures do not poison language-pack fallback."""
+        from chunker._internal.registry import LanguageMetadata, LanguageRegistry
+
+        lib_path = tmp_path / f"languages{_LIB_EXT}"
+        lib_path.write_bytes(b"fake")
+        registry = LanguageRegistry(lib_path)
+        metadata = LanguageMetadata(name="python", symbol_name="tree_sitter_python")
+        registry._languages["python"] = (None, metadata)
+        registry._discovered = True
+
+        with (
+            patch.object(
+                registry,
+                "_try_load_from_individual_library",
+                side_effect=DeprecationWarning("deprecated local grammar"),
+            ),
+            patch.object(registry, "_try_load_from_language_pack") as mock_pack,
+        ):
+            pack_language = object()
+            mock_pack.return_value = pack_language
+            assert registry.get_language("python") is pack_language
+
+        assert registry._languages["python"] == (pack_language, metadata)
 
     def test_registry_list_languages_includes_pack(self):
         """Test that list_languages includes languages from the pack."""

@@ -197,13 +197,12 @@ class LanguageRegistry:
             if hasattr(lib, symbol_name):
                 # Additional validation: try to create a Language object
                 try:
-                    func = getattr(lib, symbol_name)
-                    func.restype = ctypes.c_void_p
-                    lang_ptr = func()
-                    # Test if we can create a Language object (this validates the library)
-                    from tree_sitter import Language
-
-                    Language(lang_ptr)
+                    self._language_from_ctypes_symbol(
+                        lib,
+                        symbol_name,
+                        library_path,
+                        library_path.stem,
+                    )
                     return True
                 except Exception as e:
                     logger.warning(
@@ -217,6 +216,32 @@ class LanguageRegistry:
         except (OSError, AttributeError) as e:
             logger.debug("Failed to validate library %s: %s", library_path.name, e)
             return False
+
+    @staticmethod
+    def _language_from_ctypes_symbol(
+        lib: ctypes.CDLL,
+        symbol_name: str,
+        library_path: Path,
+        language_name: str,
+    ) -> Language:
+        """Construct a tree-sitter Language from a loaded ctypes grammar symbol."""
+        func = getattr(lib, symbol_name)
+        func.restype = ctypes.c_void_p
+        lang_ptr = func()
+        if not lang_ptr:
+            raise ValueError(
+                f"{library_path} symbol {symbol_name} returned null for {language_name}"
+            )
+
+        py_capsule_new = ctypes.pythonapi.PyCapsule_New
+        py_capsule_new.restype = ctypes.py_object
+        py_capsule_new.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_void_p]
+        capsule = py_capsule_new(
+            ctypes.c_void_p(lang_ptr),
+            b"tree_sitter.Language",
+            None,
+        )
+        return Language(capsule)
 
     def discover_languages(self) -> dict[str, LanguageMetadata]:
         """Dynamically discover all available languages in the library.
@@ -243,7 +268,7 @@ class LanguageRegistry:
             try:
                 if lib is None:
                     # Try to load from individual library instead of just creating placeholder
-                    language = self._try_load_from_individual_library(lang_name)
+                    language = self._try_load_from_individual_library_safely(lang_name)
                     if language is not None:
                         has_scanner = lang_name == "cpp"
                         is_compatible = True
@@ -256,10 +281,12 @@ class LanguageRegistry:
                         language_version = "14"
                 else:
                     try:
-                        func = getattr(lib, symbol_name)
-                        func.restype = ctypes.c_void_p
-                        lang_ptr = func()
-                        language = Language(lang_ptr)
+                        language = self._language_from_ctypes_symbol(
+                            lib,
+                            symbol_name,
+                            self._library_path,
+                            lang_name,
+                        )
                         has_scanner = hasattr(
                             lib,
                             f"{symbol_name}_external_scanner_create",
@@ -273,9 +300,11 @@ class LanguageRegistry:
                             is_compatible = False
                             match = re.search(r"version (\d+)", str(e))
                             language_version = match.group(1) if match else "unknown"
-                    except (AttributeError, OSError, ValueError):
+                    except (AttributeError, OSError, ValueError, DeprecationWarning):
                         # Combined library missing symbol; try individual per-language library
-                        language = self._try_load_from_individual_library(lang_name)
+                        language = self._try_load_from_individual_library_safely(
+                            lang_name
+                        )
                         if language is None:
                             raise
                         has_scanner = True
@@ -361,17 +390,24 @@ class LanguageRegistry:
                     try:
                         lib = ctypes.CDLL(str(path_candidate))
                         symbol_name = f"tree_sitter_{name}"
-                        func = getattr(lib, symbol_name)
-                        func.restype = ctypes.c_void_p
-                        lang_ptr = func()
-                        language = Language(lang_ptr)
+                        language = self._language_from_ctypes_symbol(
+                            lib,
+                            symbol_name,
+                            path_candidate,
+                            name,
+                        )
                         logger.info(
                             "Loaded '%s' from individual library %s",
                             name,
                             path_candidate,
                         )
                         return language
-                    except (AttributeError, OSError, ValueError) as e:
+                    except (
+                        AttributeError,
+                        OSError,
+                        ValueError,
+                        DeprecationWarning,
+                    ) as e:
                         logger.debug(
                             "Failed loading '%s' from %s: %s",
                             name,
@@ -379,6 +415,14 @@ class LanguageRegistry:
                             e,
                         )
         return None
+
+    def _try_load_from_individual_library_safely(self, name: str) -> Language | None:
+        """Attempt individual-library loading without making local failures terminal."""
+        try:
+            return self._try_load_from_individual_library(name)
+        except (AttributeError, OSError, ValueError, DeprecationWarning) as e:
+            logger.debug("Failed loading '%s' from individual library: %s", name, e)
+            return None
 
     def get_language(self, name: str) -> Language:
         """Get a specific language, with lazy loading.
@@ -403,7 +447,7 @@ class LanguageRegistry:
             self.discover_languages()
         if name not in self._languages:
             # Try to load from a per-language library as a fallback
-            language = self._try_load_from_individual_library(name)
+            language = self._try_load_from_individual_library_safely(name)
             if language is None:
                 # Try language pack as final fallback
                 language = self._try_load_from_language_pack(name)
@@ -414,7 +458,7 @@ class LanguageRegistry:
         language, metadata = self._languages[name]
         if language is None:
             # Attempt lazy load from individual library when combined library is unavailable
-            language = self._try_load_from_individual_library(name)
+            language = self._try_load_from_individual_library_safely(name)
             if language is None:
                 # Try language pack as final fallback
                 language = self._try_load_from_language_pack(name)
@@ -513,14 +557,14 @@ class LanguageRegistry:
             if language is not None:
                 return True
             # Try to load from a per-language library if we only have metadata
-            loaded = self._try_load_from_individual_library(name)
+            loaded = self._try_load_from_individual_library_safely(name)
             if loaded is not None:
                 return True
             # Try language pack as final fallback
             loaded = self._try_load_from_language_pack(name)
             return loaded is not None
         # Attempt to lazily load from individual per-language library when not discovered yet
-        loaded = self._try_load_from_individual_library(name)
+        loaded = self._try_load_from_individual_library_safely(name)
         if loaded is not None:
             return True
         # Try language pack as final fallback

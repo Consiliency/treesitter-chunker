@@ -242,13 +242,13 @@ brew install treesitter-chunker
 #### For Debian/Ubuntu
 ```bash
 # Download .deb package from releases
-sudo dpkg -i python3-treesitter-chunker_2.2.22-1_all.deb
+sudo dpkg -i python3-treesitter-chunker_2.2.23-1_all.deb
 ```
 
 #### For Fedora/RHEL
 ```bash
 # Download .rpm package from releases
-sudo rpm -i python-treesitter-chunker-2.2.22-1.noarch.rpm
+sudo rpm -i python-treesitter-chunker-2.2.23-1.noarch.rpm
 ```
 
 ### Quick Install (Development)
