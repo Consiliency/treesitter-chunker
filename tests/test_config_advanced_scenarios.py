@@ -604,6 +604,7 @@ class TestMemoryUsageWithLargeConfigHierarchies:
             f"Traversal time: {traversal_time:.3f}s for {len(all_paths)} paths",
         )
         assert traversal_time < 1.0, f"Slow traversal: {traversal_time:.3f}s"
+        del all_paths
         del large_config
         gc.collect()
         final_memory = get_memory_usage()
