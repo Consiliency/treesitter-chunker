@@ -3,12 +3,32 @@
 from __future__ import annotations
 
 import sys
+import types
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
 _LIB_EXT = {"darwin": ".dylib", "win32": ".dll"}.get(sys.platform, ".so")
+
+
+def test_language_pack_list_probes_common_languages_when_enumeration_is_empty(
+    monkeypatch,
+):
+    """Pack APIs can load languages even when no list API is available."""
+    from chunker._internal import language_pack
+
+    fake_pack = types.SimpleNamespace(
+        SupportedLanguage=object(),
+        get_language=lambda name: (
+            object() if name in {"python", "javascript"} else None
+        ),
+    )
+
+    monkeypatch.setattr(language_pack, "_pack_available", True)
+    monkeypatch.setitem(sys.modules, "tree_sitter_language_pack", fake_pack)
+
+    assert language_pack.list_pack_languages() == ["python", "javascript"]
 
 
 class TestRegistryFallback:

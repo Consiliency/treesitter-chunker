@@ -26,6 +26,39 @@ logger = logging.getLogger(__name__)
 _pack_available: bool | None = None
 _pack_module: object | None = None
 
+_COMMON_LANGUAGE_NAMES = (
+    "python",
+    "javascript",
+    "typescript",
+    "tsx",
+    "rust",
+    "go",
+    "java",
+    "c",
+    "cpp",
+    "csharp",
+    "ruby",
+    "php",
+    "bash",
+    "html",
+    "css",
+    "json",
+    "yaml",
+    "toml",
+    "markdown",
+    "sql",
+    "swift",
+    "kotlin",
+    "scala",
+    "dart",
+    "lua",
+    "elixir",
+    "haskell",
+    "ocaml",
+    "r",
+    "julia",
+)
+
 
 def is_language_pack_available() -> bool:
     """Check if tree-sitter-language-pack is installed and functional.
@@ -96,11 +129,21 @@ def list_pack_languages() -> list[str]:
 
         # The package exposes SupportedLanguage as a Literal type with all language names
         if hasattr(tree_sitter_language_pack, "SupportedLanguage"):
-            return list(get_args(tree_sitter_language_pack.SupportedLanguage))
+            languages = list(get_args(tree_sitter_language_pack.SupportedLanguage))
+            if languages:
+                return languages
         # Fallback: try to import and list from the internal module
         if hasattr(tree_sitter_language_pack, "LANGUAGES"):
-            return list(tree_sitter_language_pack.LANGUAGES.keys())
-        # If we can't list them, return empty list
+            languages = list(tree_sitter_language_pack.LANGUAGES.keys())
+            if languages:
+                return languages
+        languages = [
+            language
+            for language in _COMMON_LANGUAGE_NAMES
+            if get_language_from_pack(language) is not None
+        ]
+        if languages:
+            return languages
         logger.debug("Cannot enumerate languages from pack, API not available")
         return []
     except Exception as e:
