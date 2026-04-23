@@ -32,7 +32,7 @@ jobs:
       prerelease: ${{ steps.version.outputs.prerelease }}
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         fetch-depth: 0
 
@@ -64,9 +64,11 @@ jobs:
           exit 1
         fi
 
-        echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
-        echo "package_version=$PACKAGE_VERSION" >> "$GITHUB_OUTPUT"
-        echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+        {
+          echo "tag_name=$TAG_NAME"
+          echo "package_version=$PACKAGE_VERSION"
+          echo "prerelease=$PRERELEASE"
+        } >> "$GITHUB_OUTPUT"
 
     - name: Check PyPI for existing version
       if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.prerelease != 'true')
@@ -94,7 +96,7 @@ jobs:
         PY
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: '3.12'
 
@@ -115,10 +117,10 @@ jobs:
     - name: Generate checksums
       run: |
         cd dist
-        sha256sum * > checksums.txt
+        sha256sum -- * > checksums.txt
 
     - name: Upload distribution artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: distribution-artifacts
         path: |
@@ -134,7 +136,7 @@ jobs:
       contents: write
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         fetch-depth: 0
 
@@ -145,7 +147,7 @@ jobs:
         if [ -z "$PREV_TAG" ]; then
           CHANGELOG=$(git log --pretty=format:"- %s" | head -20)
         else
-          CHANGELOG=$(git log --pretty=format:"- %s" $PREV_TAG..HEAD)
+          CHANGELOG=$(git log --pretty=format:"- %s" "$PREV_TAG"..HEAD)
         fi
         
         cat > RELEASE_NOTES.md << EOF
@@ -156,19 +158,21 @@ jobs:
         **Full Changelog**: https://github.com/${{ github.repository }}/compare/$PREV_TAG...${{ needs.build-distributions.outputs.tag_name }}
         EOF
         
-        echo "changelog<<EOF" >> $GITHUB_OUTPUT
-        cat RELEASE_NOTES.md >> $GITHUB_OUTPUT
-        echo "EOF" >> $GITHUB_OUTPUT
+        {
+          echo "changelog<<EOF"
+          cat RELEASE_NOTES.md
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
 
     - name: Download build artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       continue-on-error: true
       with:
         name: distribution-artifacts
         path: ./dist
 
     - name: Create release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v3
       with:
         tag_name: ${{ needs.build-distributions.outputs.tag_name }}
         name: Release ${{ needs.build-distributions.outputs.tag_name }}
@@ -196,7 +200,7 @@ jobs:
 
     steps:
     - name: Download distribution artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: distribution-artifacts
         path: dist
@@ -217,7 +221,7 @@ jobs:
       contents: write
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         fetch-depth: 0
         ref: main

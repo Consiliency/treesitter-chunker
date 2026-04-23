@@ -21,10 +21,10 @@ jobs:
         python-version: ['3.11', '3.12']
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -41,7 +41,7 @@ jobs:
         else
           VERSION=${{ github.event.inputs.version }}
         fi
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
       shell: bash
 
     - name: Build wheel
@@ -49,7 +49,7 @@ jobs:
         python -m build --wheel --outdir dist/
 
     - name: Upload wheel artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: wheels-${{ matrix.os }}-py${{ matrix.python-version }}
         path: dist/*.whl
@@ -59,10 +59,10 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: '3.11'
 
@@ -75,7 +75,7 @@ jobs:
       run: python -m build --sdist --outdir dist/
 
     - name: Upload sdist artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: sdist
         path: dist/*.tar.gz
@@ -91,7 +91,7 @@ jobs:
         python: ['cp311-cp311', 'cp312-cp312']
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Build wheels
       run: |
@@ -110,7 +110,7 @@ jobs:
         done
 
     - name: Upload manylinux wheels
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: manylinux-wheels-${{ matrix.python }}
         path: dist/*.whl
@@ -122,7 +122,7 @@ jobs:
     
     steps:
     - name: Download all artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         path: dist/
 
@@ -133,11 +133,11 @@ jobs:
     - name: Create checksums
       run: |
         cd dist
-        sha256sum **/*.whl **/*.tar.gz > checksums.txt
+        sha256sum -- **/*.whl **/*.tar.gz > checksums.txt
         cat checksums.txt
 
     - name: Upload final artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: distribution-artifacts
         path: |

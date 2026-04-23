@@ -12,7 +12,7 @@ jobs:
     container: debian:bookworm
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         fetch-depth: 0
     
@@ -36,7 +36,7 @@ jobs:
         cp ../*.deb /tmp/debs/
 
     - name: Upload deb packages
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: debian-packages
         path: /tmp/debs/*.deb
@@ -46,7 +46,7 @@ jobs:
     container: fedora:latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         fetch-depth: 0
 
@@ -62,7 +62,7 @@ jobs:
         
         # Create source tarball
         version=$(grep "^Version:" packaging/rpm/treesitter-chunker.spec | awk '{print $2}')
-        tar czf ~/rpmbuild/SOURCES/treesitter-chunker-${version}.tar.gz \
+        tar czf "$HOME/rpmbuild/SOURCES/treesitter-chunker-${version}.tar.gz" \
           --transform "s,^,treesitter-chunker-${version}/," \
           --exclude=.git --exclude=__pycache__ .
     
@@ -74,7 +74,7 @@ jobs:
         find ~/rpmbuild/RPMS -name "*.rpm" -exec cp {} /tmp/rpms/ \;
 
     - name: Upload RPM packages
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: rpm-packages
         path: /tmp/rpms/*.rpm
@@ -85,10 +85,10 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     
     - name: Download all artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
     
     - name: Create package directory
       run: |
@@ -99,10 +99,10 @@ jobs:
     - name: Generate package checksums
       run: |
         cd packages
-        sha256sum * > checksums.txt
+        sha256sum -- * > checksums.txt
     
     - name: Upload packages to release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v3
       with:
         files: packages/*
       env:
