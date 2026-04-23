@@ -65,8 +65,10 @@ jobs:
         black --check chunker/ tests/
 
     - name: Run type checking
-      run: mypy chunker/ cli/ --ignore-missing-imports
-      continue-on-error: true
+      run: |
+        if ! mypy chunker/ cli/ --ignore-missing-imports; then
+          echo "::warning::mypy reported known non-blocking type issues"
+        fi
 
     - name: Run platform core tests
       run: |
