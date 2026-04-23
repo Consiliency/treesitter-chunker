@@ -75,8 +75,8 @@ jobs:
 
     - name: Upload coverage
       if: matrix.platform-family == 'linux' && matrix.python-version == '3.11'
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v6
       with:
-        file: ./coverage.xml
+        files: ./coverage.xml
         fail_ci_if_error: false
         verbose: true
