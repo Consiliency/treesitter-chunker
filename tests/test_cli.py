@@ -421,14 +421,6 @@ def test_function():
                 os.chdir(old_cwd)
 
     @staticmethod
-    @pytest.mark.xfail(
-        condition=__import__("sys").platform == "win32",
-        reason=(
-            "Windows: ctypes DLL search path requires os.add_dll_directory(); "
-            "fix in progress in chunker/_internal/registry.py."
-        ),
-        strict=False,
-    )
     def test_languages_command():
         """Test languages command."""
         result = runner.invoke(app, ["languages"])
