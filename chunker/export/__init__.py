@@ -16,12 +16,14 @@ try:  # optional parquet
 except Exception:
     StructuredParquetExporter = None  # type: ignore[assignment]
 from .formatters import SchemaType, get_formatter
+from .boundary_ir import BoundaryIRExporter, write_boundary_ir
 from .json_export import JSONExporter, JSONLExporter
 from .relationships import ASTRelationshipTracker
 from .structured_exporter import StructuredExportOrchestrator
 
 __all__ = [
     "ASTRelationshipTracker",
+    "BoundaryIRExporter",
     "DOTExporter",
     "GraphMLExporter",
     # Legacy exports
@@ -37,6 +39,7 @@ __all__ = [
     "StructuredJSONExporter",
     "StructuredJSONLExporter",
     "get_formatter",
+    "write_boundary_ir",
 ]
 
 # Only expose Parquet if available

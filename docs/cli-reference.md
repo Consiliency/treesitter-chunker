@@ -54,6 +54,39 @@ treesitter-chunker auto-batch path/to/repo
 treesitter-chunker languages
 ```
 
+### Boundary IR
+
+```bash
+# Generate canonical Boundary IR; strict resolution is the default
+treesitter-chunker boundary src/ --lang python --output boundary.json
+
+# Preserve discovery-oriented relationship references
+treesitter-chunker boundary src/ --lang python --resolution-mode permissive
+
+# Stop on the first extraction failure
+treesitter-chunker boundary src/ --lang python --fail-fast
+
+# Include measured stage timings in JSON
+treesitter-chunker boundary src/ --lang python --include-timings
+
+# Print a concise run summary without polluting stdout JSON
+treesitter-chunker boundary src/ --lang python --summary
+```
+
+When `--output` is used, the boundary command prints the output path and summary
+unless `--quiet` is set. Without `--output`, JSON is written to stdout; `--summary`
+uses stderr so stdout remains parseable JSON.
+
+### Symbol graph extraction
+
+```bash
+# Extract symbols and relationships; permissive resolution is the default
+python -m chunker.cli symbols extract src/ --language python --output symbols.json
+
+# Request strict relationship classification in symbol JSON
+python -m chunker.cli symbols extract src/ --language python --resolution-mode strict
+```
+
 ### Debug and visualization
 
 ```bash

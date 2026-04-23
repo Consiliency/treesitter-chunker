@@ -1,0 +1,2490 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Production Deployment Guide - Tree-sitter Chunker</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#production-deployment-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Tree-sitter Chunker" class="md-header__button md-logo" aria-label="Tree-sitter Chunker" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Tree-sitter Chunker
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Production Deployment Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ViperJuice/treesitter-chunker" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Overview
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../getting-started/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../user-guide/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  User Guide
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../configuration/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Configuration
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../cli-reference/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  CLI Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../api-reference/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  API Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../export-formats/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Export Formats
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../graphml_export/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  GraphML Export
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../performance-guide/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Performance Guide
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../grammar_discovery/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Grammar Discovery
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../zero_config_api/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Zero-Config API
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../cookbook/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Cookbook
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../plugin-development/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Plugin Development
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../architecture/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../interface-boundary-spec/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Interface Boundary Spec
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../troubleshooting/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Troubleshooting
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../intelligent_fallback/" class="md-tabs__link">
+          
+  
+  
+  Advanced Topics
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Tree-sitter Chunker" class="md-nav__button md-logo" aria-label="Tree-sitter Chunker" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Tree-sitter Chunker
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ViperJuice/treesitter-chunker" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../export-formats/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Export Formats
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../graphml_export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GraphML Export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../performance-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../grammar_discovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Grammar Discovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../zero_config_api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Zero-Config API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cookbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cookbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../plugin-development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plugin Development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../interface-boundary-spec/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interface Boundary Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_17" >
+        
+          
+          <label class="md-nav__link" for="__nav_17" id="__nav_17_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advanced Topics
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_17_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_17">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Advanced Topics
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../intelligent_fallback/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intelligent Fallback
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../token_limits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Token Limits
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../markdown_processor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Markdown Processor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../config_processor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Config Processor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../log_processor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Log Processor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../metadata-extraction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metadata Extraction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overlapping-fallback/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overlapping Fallback
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cross-language-usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cross-Language Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../environment_variables/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../internal-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Internal API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../packaging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Packaging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#deployment-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🎯 Deployment Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#system-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🖥️ System Requirements
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🖥️ System Requirements">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#minimum-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Minimum Requirements
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#recommended-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommended Requirements
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#production-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Production Requirements
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installation-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📦 Installation Methods
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="📦 Installation Methods">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#method-1-pypi-installation-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Method 1: PyPI Installation (Recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#method-2-source-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Method 2: Source Installation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#method-3-docker-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Method 3: Docker Deployment
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#release-and-packaging-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Release and Packaging Notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ⚙️ Configuration Management
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="⚙️ Configuration Management">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration-file-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration File Setup
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Variables
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-tuning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🚀 Performance Tuning
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🚀 Performance Tuning">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#memory-optimization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Memory Optimization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cpu-optimization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CPU Optimization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#caching-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Caching Strategy
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#monitoring-observability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📊 Monitoring &amp; Observability
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="📊 Monitoring &amp; Observability">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#health-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Health Checks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#performance-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#logging-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Logging Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔒 Security Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔒 Security Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#file-access-controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File Access Controls
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#network-security" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Network Security
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resource-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resource Limits
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#docker-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🐳 Docker Deployment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🐳 Docker Deployment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dockerfile-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dockerfile Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#docker-compose-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker Compose Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cicd-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔄 CI/CD Integration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔄 CI/CD Integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#github-actions-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GitHub Actions Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#jenkins-pipeline-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Jenkins Pipeline Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🚨 Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🚨 Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#common-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Common Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#memory-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Memory Issues
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#grammar-build-failures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Grammar Build Failures
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#performance-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Issues
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#debug-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Debug Mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scaling-strategies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📈 Scaling Strategies
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="📈 Scaling Strategies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#horizontal-scaling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Horizontal Scaling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vertical-scaling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Vertical Scaling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#caching-strategies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Caching Strategies
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#monitoring-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔍 Monitoring Tools
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔍 Monitoring Tools">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#system-monitoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        System Monitoring
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#application-monitoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Application Monitoring
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#log-aggregation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Log Aggregation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="production-deployment-guide">Production Deployment Guide<a class="headerlink" href="#production-deployment-guide" title="Permanent link">&para;</a></h1>
+<p>This guide covers deploying Tree-sitter Chunker in production environments, including system requirements, configuration, monitoring, and troubleshooting.</p>
+<h2 id="deployment-overview">🎯 Deployment Overview<a class="headerlink" href="#deployment-overview" title="Permanent link">&para;</a></h2>
+<p>Tree-sitter Chunker is designed as a library that can be deployed in various ways:</p>
+<ul>
+<li><strong>Library Integration</strong>: Direct import into Python applications</li>
+<li><strong>CLI Application</strong>: Command-line interface for batch processing</li>
+<li><strong>REST API</strong>: HTTP API for remote access</li>
+<li><strong>Docker Container</strong>: Containerized deployment</li>
+<li><strong>System Package</strong>: Native system installation</li>
+</ul>
+<h2 id="system-requirements">🖥️ System Requirements<a class="headerlink" href="#system-requirements" title="Permanent link">&para;</a></h2>
+<h3 id="minimum-requirements"><strong>Minimum Requirements</strong><a class="headerlink" href="#minimum-requirements" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>OS</strong>: Linux (Ubuntu 18.04+), macOS 10.15+, Windows 10+</li>
+<li><strong>Python</strong>: 3.11 or higher</li>
+<li><strong>Memory</strong>: 2GB RAM (4GB recommended)</li>
+<li><strong>Storage</strong>: 1GB free space (5GB recommended)</li>
+<li><strong>CPU</strong>: 2 cores (4+ cores recommended)</li>
+</ul>
+<h3 id="recommended-requirements"><strong>Recommended Requirements</strong><a class="headerlink" href="#recommended-requirements" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>OS</strong>: Ubuntu 22.04 LTS, macOS 13+, Windows 11</li>
+<li><strong>Python</strong>: 3.11 or higher</li>
+<li><strong>Memory</strong>: 8GB RAM</li>
+<li><strong>Storage</strong>: 10GB free space (SSD recommended)</li>
+<li><strong>CPU</strong>: 8+ cores</li>
+<li><strong>Network</strong>: Stable internet connection for grammar downloads</li>
+</ul>
+<h3 id="production-requirements"><strong>Production Requirements</strong><a class="headerlink" href="#production-requirements" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>OS</strong>: Ubuntu 22.04 LTS, RHEL 9+, CentOS Stream 9+</li>
+<li><strong>Python</strong>: 3.11+ (LTS version)</li>
+<li><strong>Memory</strong>: 16GB+ RAM</li>
+<li><strong>Storage</strong>: 50GB+ SSD storage</li>
+<li><strong>CPU</strong>: 16+ cores</li>
+<li><strong>Network</strong>: High-bandwidth, low-latency connection</li>
+</ul>
+<h2 id="installation-methods">📦 Installation Methods<a class="headerlink" href="#installation-methods" title="Permanent link">&para;</a></h2>
+<h3 id="method-1-pypi-installation-recommended"><strong>Method 1: PyPI Installation (Recommended)</strong><a class="headerlink" href="#method-1-pypi-installation-recommended" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Install latest stable version</span>
+pip<span class="w"> </span>install<span class="w"> </span>treesitter-chunker
+
+<span class="c1"># Install with specific extras</span>
+pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;treesitter-chunker[api,viz,profile]&quot;</span>
+
+<span class="c1"># Install specific version</span>
+pip<span class="w"> </span>install<span class="w"> </span>treesitter-chunker<span class="o">==</span><span class="m">2</span>.2.4
+</code></pre></div>
+
+<h3 id="method-2-source-installation"><strong>Method 2: Source Installation</strong><a class="headerlink" href="#method-2-source-installation" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Clone repository</span>
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/ViperJuice/treesitter-chunker.git
+<span class="nb">cd</span><span class="w"> </span>treesitter-chunker
+
+<span class="c1"># Install in development mode</span>
+pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;.[all]&quot;</span>
+
+<span class="c1"># Build grammars for local/source usage</span>
+python<span class="w"> </span>scripts/fetch_grammars.py
+python<span class="w"> </span>scripts/build_lib.py
+</code></pre></div>
+
+<h3 id="method-3-docker-deployment"><strong>Method 3: Docker Deployment</strong><a class="headerlink" href="#method-3-docker-deployment" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Pull latest image</span>
+docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/consiliency/treesitter-chunker:latest
+
+<span class="c1"># Run container</span>
+docker<span class="w"> </span>run<span class="w"> </span>-v<span class="w"> </span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>:/workspace<span class="w"> </span>treesitter-chunker<span class="w"> </span>chunk<span class="w"> </span>/workspace/example.py<span class="w"> </span>-l<span class="w"> </span>python
+
+<span class="c1"># Run with custom configuration</span>
+docker<span class="w"> </span>run<span class="w"> </span>-v<span class="w"> </span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>:/workspace<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-e<span class="w"> </span><span class="nv">CHUNKER_CONFIG_FILE</span><span class="o">=</span>/workspace/.chunkerrc<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>treesitter-chunker<span class="w"> </span>chunk<span class="w"> </span>/workspace/<span class="w"> </span>-l<span class="w"> </span>python
+</code></pre></div>
+
+<h2 id="release-and-packaging-notes">Release and Packaging Notes<a class="headerlink" href="#release-and-packaging-notes" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Production PyPI releases are published only from <code>.github/workflows/release.yml</code></li>
+<li>Ordinary <code>main</code> CI runs do not publish to PyPI</li>
+<li>Release tags must match the version in <code>pyproject.toml</code></li>
+<li>Use <code>docs/packaging.md</code> and <code>docs/development/RELEASE_CHECKLIST.md</code> for the current maintainer flow</li>
+</ul>
+<h2 id="configuration-management">⚙️ Configuration Management<a class="headerlink" href="#configuration-management" title="Permanent link">&para;</a></h2>
+<h3 id="configuration-file-setup"><strong>Configuration File Setup</strong><a class="headerlink" href="#configuration-file-setup" title="Permanent link">&para;</a></h3>
+<p>Create <code>.chunkerrc</code> in your project directory or home directory:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># .chunkerrc</span>
+<span class="c1"># Global configuration for Tree-sitter Chunker</span>
+
+<span class="c1"># Performance settings</span>
+<span class="n">max_workers</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">8</span>
+<span class="n">chunk_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1000</span>
+<span class="n">cache_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1000</span>
+
+<span class="c1"># Memory limits</span>
+<span class="n">max_memory_usage</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1073741824</span><span class="w">  </span><span class="c1"># 1GB</span>
+<span class="n">max_file_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">100000000</span><span class="w">      </span><span class="c1"># 100MB</span>
+
+<span class="c1"># Grammar settings</span>
+<span class="n">auto_download_grammars</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">grammar_cache_dir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;~/.cache/treesitter-chunker/grammars&quot;</span>
+<span class="n">grammar_build_dir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;~/.cache/treesitter-chunker/build&quot;</span>
+
+<span class="c1"># Export settings</span>
+<span class="n">default_export_format</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;json&quot;</span>
+<span class="n">export_compression</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+
+<span class="c1"># Logging</span>
+<span class="n">log_level</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;INFO&quot;</span>
+<span class="n">log_file</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;~/.cache/treesitter-chunker/logs/chunker.log&quot;</span>
+
+<span class="c1"># Language-specific settings</span>
+<span class="k">[languages.python]</span>
+<span class="n">chunk_types</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;function_definition&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;class_definition&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;async_function_definition&quot;</span><span class="p">]</span>
+<span class="n">min_chunk_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5</span>
+<span class="n">max_chunk_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">500</span>
+
+<span class="k">[languages.javascript]</span>
+<span class="n">chunk_types</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;function_declaration&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;class_declaration&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;method_definition&quot;</span><span class="p">]</span>
+<span class="n">min_chunk_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3</span>
+<span class="n">max_chunk_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">300</span>
+</code></pre></div>
+
+<h3 id="environment-variables"><strong>Environment Variables</strong><a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Performance</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHUNKER_MAX_WORKERS</span><span class="o">=</span><span class="m">8</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHUNKER_CACHE_SIZE</span><span class="o">=</span><span class="m">1000</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHUNKER_CHUNK_SIZE</span><span class="o">=</span><span class="m">1000</span>
+
+<span class="c1"># Memory limits</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHUNKER_MAX_MEMORY_USAGE</span><span class="o">=</span><span class="m">1073741824</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHUNKER_MAX_FILE_SIZE</span><span class="o">=</span><span class="m">100000000</span>
+
+<span class="c1"># Grammar management</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHUNKER_GRAMMARS_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$HOME</span><span class="s2">/.cache/treesitter-chunker/grammars&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHUNKER_GRAMMAR_BUILD_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$HOME</span><span class="s2">/.cache/treesitter-chunker/build&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHUNKER_AUTO_DOWNLOAD_GRAMMARS</span><span class="o">=</span><span class="nb">true</span>
+
+<span class="c1"># Logging</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHUNKER_LOG_LEVEL</span><span class="o">=</span>INFO
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHUNKER_LOG_FILE</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$HOME</span><span class="s2">/.cache/treesitter-chunker/logs/chunker.log&quot;</span>
+
+<span class="c1"># Export settings</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHUNKER_DEFAULT_EXPORT_FORMAT</span><span class="o">=</span>json
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHUNKER_EXPORT_COMPRESSION</span><span class="o">=</span><span class="nb">true</span>
+</code></pre></div>
+
+<h2 id="performance-tuning">🚀 Performance Tuning<a class="headerlink" href="#performance-tuning" title="Permanent link">&para;</a></h2>
+<h3 id="memory-optimization"><strong>Memory Optimization</strong><a class="headerlink" href="#memory-optimization" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Configure memory limits</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;CHUNKER_MAX_MEMORY_USAGE&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;1073741824&#39;</span>  <span class="c1"># 1GB</span>
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;CHUNKER_MAX_FILE_SIZE&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;100000000&#39;</span>      <span class="c1"># 100MB</span>
+
+<span class="c1"># Use streaming for large files</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">chunk_file_streaming</span>
+<span class="n">chunks</span> <span class="o">=</span> <span class="n">chunk_file_streaming</span><span class="p">(</span><span class="s2">&quot;large_file.py&quot;</span><span class="p">,</span> <span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="n">chunk_size</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="cpu-optimization"><strong>CPU Optimization</strong><a class="headerlink" href="#cpu-optimization" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Configure worker count</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;CHUNKER_MAX_WORKERS&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">())</span>
+
+<span class="c1"># Use parallel processing</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">chunk_files_parallel</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">chunk_files_parallel</span><span class="p">([</span><span class="s2">&quot;file1.py&quot;</span><span class="p">,</span> <span class="s2">&quot;file2.py&quot;</span><span class="p">,</span> <span class="s2">&quot;file3.py&quot;</span><span class="p">],</span> <span class="s2">&quot;python&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="caching-strategy"><strong>Caching Strategy</strong><a class="headerlink" href="#caching-strategy" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Configure cache size</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;CHUNKER_CACHE_SIZE&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;1000&#39;</span>
+
+<span class="c1"># Use AST caching</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">ASTCache</span>
+<span class="n">cache</span> <span class="o">=</span> <span class="n">ASTCache</span><span class="p">(</span><span class="n">max_size</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
+<span class="c1"># Cache is automatically used by chunk_file()</span>
+</code></pre></div>
+
+<h2 id="monitoring-observability">📊 Monitoring &amp; Observability<a class="headerlink" href="#monitoring-observability" title="Permanent link">&para;</a></h2>
+<h3 id="health-checks"><strong>Health Checks</strong><a class="headerlink" href="#health-checks" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Basic health check</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">list_languages</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">languages</span> <span class="o">=</span> <span class="n">list_languages</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Service healthy - </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">languages</span><span class="p">)</span><span class="si">}</span><span class="s2"> languages available&quot;</span><span class="p">)</span>
+<span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ Service unhealthy - </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="performance-metrics"><strong>Performance Metrics</strong><a class="headerlink" href="#performance-metrics" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Monitor performance</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chunker</span><span class="w"> </span><span class="kn">import</span> <span class="n">chunk_file</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">monitor_chunking_performance</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">language</span><span class="p">):</span>
+    <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="n">start_memory</span> <span class="o">=</span> <span class="n">get_memory_usage</span><span class="p">()</span>
+
+    <span class="n">chunks</span> <span class="o">=</span> <span class="n">chunk_file</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">language</span><span class="p">)</span>
+
+    <span class="n">end_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="n">end_memory</span> <span class="o">=</span> <span class="n">get_memory_usage</span><span class="p">()</span>
+
+    <span class="n">duration</span> <span class="o">=</span> <span class="n">end_time</span> <span class="o">-</span> <span class="n">start_time</span>
+    <span class="n">memory_used</span> <span class="o">=</span> <span class="n">end_memory</span> <span class="o">-</span> <span class="n">start_memory</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Performance: </span><span class="si">{</span><span class="n">duration</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s, Memory: </span><span class="si">{</span><span class="n">memory_used</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">MB&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">chunks</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_memory_usage</span><span class="p">():</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">psutil</span>
+    <span class="k">return</span> <span class="n">psutil</span><span class="o">.</span><span class="n">Process</span><span class="p">()</span><span class="o">.</span><span class="n">memory_info</span><span class="p">()</span><span class="o">.</span><span class="n">rss</span> <span class="o">/</span> <span class="mi">1024</span> <span class="o">/</span> <span class="mi">1024</span>  <span class="c1"># MB</span>
+</code></pre></div>
+
+<h3 id="logging-configuration"><strong>Logging Configuration</strong><a class="headerlink" href="#logging-configuration" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Configure logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="c1"># Create logs directory</span>
+<span class="n">log_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="o">.</span><span class="n">home</span><span class="p">()</span> <span class="o">/</span> <span class="s2">&quot;.cache&quot;</span> <span class="o">/</span> <span class="s2">&quot;treesitter-chunker&quot;</span> <span class="o">/</span> <span class="s2">&quot;logs&quot;</span>
+<span class="n">log_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Configure logging</span>
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span>
+    <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span>
+    <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%(asctime)s</span><span class="s1"> - </span><span class="si">%(name)s</span><span class="s1"> - </span><span class="si">%(levelname)s</span><span class="s1"> - </span><span class="si">%(message)s</span><span class="s1">&#39;</span><span class="p">,</span>
+    <span class="n">handlers</span><span class="o">=</span><span class="p">[</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">FileHandler</span><span class="p">(</span><span class="n">log_dir</span> <span class="o">/</span> <span class="s2">&quot;chunker.log&quot;</span><span class="p">),</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">StreamHandler</span><span class="p">()</span>
+    <span class="p">]</span>
+<span class="p">)</span>
+
+<span class="c1"># Use in your application</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;chunker&quot;</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Tree-sitter Chunker initialized&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h2 id="security-configuration">🔒 Security Configuration<a class="headerlink" href="#security-configuration" title="Permanent link">&para;</a></h2>
+<h3 id="file-access-controls"><strong>File Access Controls</strong><a class="headerlink" href="#file-access-controls" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Restrict file access</span>
+chmod<span class="w"> </span><span class="m">644</span><span class="w"> </span>source_files/*.py
+chmod<span class="w"> </span><span class="m">755</span><span class="w"> </span>source_directories/
+
+<span class="c1"># Use appropriate user permissions</span>
+sudo<span class="w"> </span>chown<span class="w"> </span>-R<span class="w"> </span>appuser:appuser<span class="w"> </span>/app/source
+</code></pre></div>
+
+<h3 id="network-security"><strong>Network Security</strong><a class="headerlink" href="#network-security" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Configure firewall for grammar downloads</span>
+sudo<span class="w"> </span>ufw<span class="w"> </span>allow<span class="w"> </span>out<span class="w"> </span><span class="m">443</span>/tcp<span class="w">  </span><span class="c1"># HTTPS for GitHub</span>
+sudo<span class="w"> </span>ufw<span class="w"> </span>allow<span class="w"> </span>out<span class="w"> </span><span class="m">80</span>/tcp<span class="w">   </span><span class="c1"># HTTP fallback</span>
+
+<span class="c1"># Or restrict to specific domains</span>
+sudo<span class="w"> </span>ufw<span class="w"> </span>allow<span class="w"> </span>out<span class="w"> </span>to<span class="w"> </span>github.com<span class="w"> </span>port<span class="w"> </span><span class="m">443</span>
+sudo<span class="w"> </span>ufw<span class="w"> </span>allow<span class="w"> </span>out<span class="w"> </span>to<span class="w"> </span>raw.githubusercontent.com<span class="w"> </span>port<span class="w"> </span><span class="m">443</span>
+</code></pre></div>
+
+<h3 id="resource-limits"><strong>Resource Limits</strong><a class="headerlink" href="#resource-limits" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Set system limits</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;appuser soft nofile 4096&quot;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>/etc/security/limits.conf
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;appuser hard nofile 8192&quot;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>/etc/security/limits.conf
+
+<span class="c1"># Or use systemd</span>
+<span class="o">[</span>Service<span class="o">]</span>
+<span class="nv">LimitNOFILE</span><span class="o">=</span><span class="m">8192</span>
+<span class="nv">LimitNPROC</span><span class="o">=</span><span class="m">1024</span>
+</code></pre></div>
+
+<h2 id="docker-deployment">🐳 Docker Deployment<a class="headerlink" href="#docker-deployment" title="Permanent link">&para;</a></h2>
+<h3 id="dockerfile-example"><strong>Dockerfile Example</strong><a class="headerlink" href="#dockerfile-example" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="k">FROM</span><span class="w"> </span><span class="s">python:3.11-slim</span>
+
+<span class="c"># Install system dependencies</span>
+<span class="k">RUN</span><span class="w"> </span>apt-get<span class="w"> </span>update<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>build-essential<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>git<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="o">&amp;&amp;</span><span class="w"> </span>rm<span class="w"> </span>-rf<span class="w"> </span>/var/lib/apt/lists/*
+
+<span class="c"># Install Python dependencies</span>
+<span class="k">COPY</span><span class="w"> </span>requirements.txt<span class="w"> </span>.
+<span class="k">RUN</span><span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>--no-cache-dir<span class="w"> </span>-r<span class="w"> </span>requirements.txt
+
+<span class="c"># Install Tree-sitter Chunker</span>
+<span class="k">RUN</span><span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>treesitter-chunker<span class="o">[</span>all<span class="o">]</span>
+
+<span class="c"># Create app directory</span>
+<span class="k">WORKDIR</span><span class="w"> </span><span class="s">/app</span>
+
+<span class="c"># Copy application code</span>
+<span class="k">COPY</span><span class="w"> </span>.<span class="w"> </span>.
+
+<span class="c"># Create cache directories</span>
+<span class="k">RUN</span><span class="w"> </span>mkdir<span class="w"> </span>-p<span class="w"> </span>/app/.cache/treesitter-chunker/<span class="o">{</span>grammars,build,logs<span class="o">}</span>
+
+<span class="c"># Set environment variables</span>
+<span class="k">ENV</span><span class="w"> </span><span class="nv">CHUNKER_GRAMMARS_DIR</span><span class="o">=</span>/app/.cache/treesitter-chunker/grammars
+<span class="k">ENV</span><span class="w"> </span><span class="nv">CHUNKER_GRAMMAR_BUILD_DIR</span><span class="o">=</span>/app/.cache/treesitter-chunker/build
+<span class="k">ENV</span><span class="w"> </span><span class="nv">CHUNKER_LOG_FILE</span><span class="o">=</span>/app/.cache/treesitter-chunker/logs/chunker.log
+
+<span class="c"># Expose port (if using API)</span>
+<span class="k">EXPOSE</span><span class="w"> </span><span class="s">8000</span>
+
+<span class="c"># Run application</span>
+<span class="k">CMD</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;python&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;app.py&quot;</span><span class="p">]</span>
+</code></pre></div>
+
+<h3 id="docker-compose-example"><strong>Docker Compose Example</strong><a class="headerlink" href="#docker-compose-example" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;3.8&#39;</span>
+
+<span class="nt">services</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">treesitter-chunker</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">build</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.</span>
+<span class="w">    </span><span class="nt">ports</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;8000:8000&quot;</span>
+<span class="w">    </span><span class="nt">volumes</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./source:/app/source:ro</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./output:/app/output</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">chunker-cache:/app/.cache</span>
+<span class="w">    </span><span class="nt">environment</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CHUNKER_MAX_WORKERS=8</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CHUNKER_CACHE_SIZE=1000</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CHUNKER_LOG_LEVEL=INFO</span>
+<span class="w">    </span><span class="nt">restart</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unless-stopped</span>
+
+<span class="nt">volumes</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">chunker-cache</span><span class="p">:</span>
+</code></pre></div>
+
+<h2 id="cicd-integration">🔄 CI/CD Integration<a class="headerlink" href="#cicd-integration" title="Permanent link">&para;</a></h2>
+<h3 id="github-actions-example"><strong>GitHub Actions Example</strong><a class="headerlink" href="#github-actions-example" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Deploy Tree-sitter Chunker</span>
+
+<span class="nt">on</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">push</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">tags</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&#39;v*&#39;</span><span class="p p-Indicator">]</span>
+
+<span class="nt">jobs</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">deploy</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/checkout@v3</span>
+
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Set up Python</span>
+<span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/setup-python@v4</span>
+<span class="w">        </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">python-version</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;3.11&#39;</span>
+
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Install dependencies</span>
+<span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">          </span><span class="no">pip install treesitter-chunker[all]</span>
+<span class="w">          </span><span class="no">pip install pytest</span>
+
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Run tests</span>
+<span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">          </span><span class="no">python -c &quot;from chunker import list_languages; print(list_languages())&quot;</span>
+
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Deploy to production</span>
+<span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">          </span><span class="no"># Your deployment script here</span>
+<span class="w">          </span><span class="no">echo &quot;Deploying version ${{ github.ref_name }}&quot;</span>
+</code></pre></div>
+
+<h3 id="jenkins-pipeline-example"><strong>Jenkins Pipeline Example</strong><a class="headerlink" href="#jenkins-pipeline-example" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="n">pipeline</span><span class="w"> </span><span class="o">{</span>
+<span class="w">    </span><span class="n">agent</span><span class="w"> </span><span class="n">any</span>
+
+<span class="w">    </span><span class="n">stages</span><span class="w"> </span><span class="o">{</span>
+<span class="w">        </span><span class="n">stage</span><span class="o">(</span><span class="s1">&#39;Build&#39;</span><span class="o">)</span><span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="n">steps</span><span class="w"> </span><span class="o">{</span>
+<span class="w">                </span><span class="n">sh</span><span class="w"> </span><span class="s1">&#39;pip install treesitter-chunker[all]&#39;</span>
+<span class="w">            </span><span class="o">}</span>
+<span class="w">        </span><span class="o">}</span>
+
+<span class="w">        </span><span class="n">stage</span><span class="o">(</span><span class="s1">&#39;Test&#39;</span><span class="o">)</span><span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="n">steps</span><span class="w"> </span><span class="o">{</span>
+<span class="w">                </span><span class="n">sh</span><span class="w"> </span><span class="s1">&#39;python -c &quot;from chunker import list_languages; print(list_languages())&quot;&#39;</span>
+<span class="w">            </span><span class="o">}</span>
+<span class="w">        </span><span class="o">}</span>
+
+<span class="w">        </span><span class="n">stage</span><span class="o">(</span><span class="s1">&#39;Deploy&#39;</span><span class="o">)</span><span class="w"> </span><span class="o">{</span>
+<span class="w">            </span><span class="n">steps</span><span class="w"> </span><span class="o">{</span>
+<span class="w">                </span><span class="n">sh</span><span class="w"> </span><span class="s1">&#39;echo &quot;Deploying to production&quot;&#39;</span>
+<span class="w">                </span><span class="c1">// Your deployment commands</span>
+<span class="w">            </span><span class="o">}</span>
+<span class="w">        </span><span class="o">}</span>
+<span class="w">    </span><span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div>
+
+<h2 id="troubleshooting">🚨 Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="common-issues"><strong>Common Issues</strong><a class="headerlink" href="#common-issues" title="Permanent link">&para;</a></h3>
+<h4 id="memory-issues"><strong>Memory Issues</strong><a class="headerlink" href="#memory-issues" title="Permanent link">&para;</a></h4>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Check memory usage</span>
+free<span class="w"> </span>-h
+ps<span class="w"> </span>aux<span class="w"> </span>--sort<span class="o">=</span>-%mem<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-10
+
+<span class="c1"># Increase swap if needed</span>
+sudo<span class="w"> </span>fallocate<span class="w"> </span>-l<span class="w"> </span>2G<span class="w"> </span>/swapfile
+sudo<span class="w"> </span>chmod<span class="w"> </span><span class="m">600</span><span class="w"> </span>/swapfile
+sudo<span class="w"> </span>mkswap<span class="w"> </span>/swapfile
+sudo<span class="w"> </span>swapon<span class="w"> </span>/swapfile
+</code></pre></div>
+
+<h4 id="grammar-build-failures"><strong>Grammar Build Failures</strong><a class="headerlink" href="#grammar-build-failures" title="Permanent link">&para;</a></h4>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Check build directory permissions</span>
+ls<span class="w"> </span>-la<span class="w"> </span>~/.cache/treesitter-chunker/build/
+
+<span class="c1"># Rebuild grammars</span>
+rm<span class="w"> </span>-rf<span class="w"> </span>~/.cache/treesitter-chunker/build/*
+python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;from chunker.grammar.manager import TreeSitterGrammarManager; gm = TreeSitterGrammarManager(); gm.build_grammar(&#39;python&#39;)&quot;</span>
+</code></pre></div>
+
+<h4 id="performance-issues"><strong>Performance Issues</strong><a class="headerlink" href="#performance-issues" title="Permanent link">&para;</a></h4>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Check CPU usage</span>
+htop
+iostat<span class="w"> </span>-x<span class="w"> </span><span class="m">1</span>
+
+<span class="c1"># Check disk I/O</span>
+iotop
+</code></pre></div>
+
+<h3 id="debug-mode"><strong>Debug Mode</strong><a class="headerlink" href="#debug-mode" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Enable debug logging</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHUNKER_LOG_LEVEL</span><span class="o">=</span>DEBUG
+
+<span class="c1"># Run with verbose output</span>
+python<span class="w"> </span>-v<span class="w"> </span>your_script.py
+
+<span class="c1"># Use Python debugger</span>
+python<span class="w"> </span>-m<span class="w"> </span>pdb<span class="w"> </span>your_script.py
+</code></pre></div>
+
+<h2 id="scaling-strategies">📈 Scaling Strategies<a class="headerlink" href="#scaling-strategies" title="Permanent link">&para;</a></h2>
+<h3 id="horizontal-scaling"><strong>Horizontal Scaling</strong><a class="headerlink" href="#horizontal-scaling" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Load Balancing</strong>: Use multiple instances behind a load balancer</li>
+<li><strong>Microservices</strong>: Split functionality into separate services</li>
+<li><strong>Queue Systems</strong>: Use message queues for batch processing</li>
+</ul>
+<h3 id="vertical-scaling"><strong>Vertical Scaling</strong><a class="headerlink" href="#vertical-scaling" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Memory</strong>: Increase RAM for larger file processing</li>
+<li><strong>CPU</strong>: Use more powerful processors</li>
+<li><strong>Storage</strong>: Use faster storage (SSD/NVMe)</li>
+</ul>
+<h3 id="caching-strategies"><strong>Caching Strategies</strong><a class="headerlink" href="#caching-strategies" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Redis</strong>: Cache parsed ASTs and results</li>
+<li><strong>CDN</strong>: Cache grammar files and documentation</li>
+<li><strong>Local Cache</strong>: Use local file system caching</li>
+</ul>
+<h2 id="monitoring-tools">🔍 Monitoring Tools<a class="headerlink" href="#monitoring-tools" title="Permanent link">&para;</a></h2>
+<h3 id="system-monitoring"><strong>System Monitoring</strong><a class="headerlink" href="#system-monitoring" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Prometheus</strong>: Metrics collection</li>
+<li><strong>Grafana</strong>: Visualization and dashboards</li>
+<li><strong>AlertManager</strong>: Alerting and notifications</li>
+</ul>
+<h3 id="application-monitoring"><strong>Application Monitoring</strong><a class="headerlink" href="#application-monitoring" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Sentry</strong>: Error tracking and performance monitoring</li>
+<li><strong>DataDog</strong>: Application performance monitoring</li>
+<li><strong>New Relic</strong>: Full-stack observability</li>
+</ul>
+<h3 id="log-aggregation"><strong>Log Aggregation</strong><a class="headerlink" href="#log-aggregation" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>ELK Stack</strong>: Elasticsearch, Logstash, Kibana</li>
+<li><strong>Fluentd</strong>: Log collection and forwarding</li>
+<li><strong>Splunk</strong>: Enterprise log management</li>
+</ul>
+<hr />
+<p><strong>For additional support, see <a href="https://github.com/ViperJuice/treesitter-chunker/blob/main/SUPPORT.md">SUPPORT.md</a> or create an issue on GitHub.</strong></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

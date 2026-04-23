@@ -92,7 +92,11 @@ def cmd_cluster_infer(args: argparse.Namespace) -> int:
 
     # 1. Extract symbols
     print(f"Extracting symbols from {path}...", file=sys.stderr)
-    extraction = extract_symbol_graph(path, args.language)
+    extraction = extract_symbol_graph(
+        path,
+        args.language,
+        resolution_mode="permissive",
+    )
     all_symbols = extraction["symbol_lookup"]
     all_relationships = extraction["relationships"]
 

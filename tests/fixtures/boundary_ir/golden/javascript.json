@@ -1,0 +1,1017 @@
+{
+  "diagnostics": [],
+  "edges": [
+    {
+      "candidates": [],
+      "id": "edge:41c0fd3741b27592",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 1,
+        "start_line": 1
+      },
+      "metadata": {
+        "file": "format.js",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "value.trim",
+      "resolution": "unresolved",
+      "source": "3259abf65ed857b2e9f06afa3170021f6c71b61c",
+      "target": "value.trim",
+      "type": "calls"
+    },
+    {
+      "candidates": [
+        "3259abf65ed857b2e9f06afa3170021f6c71b61c"
+      ],
+      "id": "edge:44451a6bd5fea4ae",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 4,
+        "start_line": 4
+      },
+      "metadata": {
+        "file": "service.js",
+        "is_internal": true
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "formatName",
+      "resolution": "resolved",
+      "source": "4812d0fd561a90d5e67e534629b734744f453663",
+      "target": "3259abf65ed857b2e9f06afa3170021f6c71b61c",
+      "type": "calls"
+    },
+    {
+      "candidates": [
+        "3259abf65ed857b2e9f06afa3170021f6c71b61c"
+      ],
+      "id": "edge:dc5813871593964f",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 4,
+        "start_line": 4
+      },
+      "metadata": {
+        "file": "service.js",
+        "is_internal": true
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "formatName",
+      "resolution": "resolved",
+      "source": "4812d0fd561a90d5e67e534629b734744f453663",
+      "target": "3259abf65ed857b2e9f06afa3170021f6c71b61c",
+      "type": "dependencies"
+    },
+    {
+      "candidates": [],
+      "id": "edge:c6a2c92931d5716b",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 1,
+        "start_line": 1
+      },
+      "metadata": {
+        "file": "alpha.js",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "value.toLowerCase",
+      "resolution": "unresolved",
+      "source": "4efcc76af1457279a57d4a7d8c45e394821130e0",
+      "target": "value.toLowerCase",
+      "type": "calls"
+    },
+    {
+      "candidates": [
+        "3259abf65ed857b2e9f06afa3170021f6c71b61c"
+      ],
+      "id": "edge:d0600e0b69c5ec35",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 9,
+        "start_line": 9
+      },
+      "metadata": {
+        "file": "service.js",
+        "is_internal": true
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "formatName",
+      "resolution": "resolved",
+      "source": "57004cdc6c66281504819eb98ea5b1efa62e144a",
+      "target": "3259abf65ed857b2e9f06afa3170021f6c71b61c",
+      "type": "calls"
+    },
+    {
+      "candidates": [
+        "3259abf65ed857b2e9f06afa3170021f6c71b61c"
+      ],
+      "id": "edge:0ffc733657595560",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 9,
+        "start_line": 9
+      },
+      "metadata": {
+        "file": "service.js",
+        "is_internal": true
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "formatName",
+      "resolution": "resolved",
+      "source": "57004cdc6c66281504819eb98ea5b1efa62e144a",
+      "target": "3259abf65ed857b2e9f06afa3170021f6c71b61c",
+      "type": "dependencies"
+    },
+    {
+      "candidates": [
+        "4efcc76af1457279a57d4a7d8c45e394821130e0",
+        "b53e6ab203d0a33ed12306d63fe87288e3a66169"
+      ],
+      "id": "edge:7e383198b83e96c0",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 9,
+        "start_line": 9
+      },
+      "metadata": {
+        "file": "service.js",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "helper",
+      "resolution": "ambiguous",
+      "source": "57004cdc6c66281504819eb98ea5b1efa62e144a",
+      "target": "helper",
+      "type": "calls"
+    },
+    {
+      "candidates": [
+        "4efcc76af1457279a57d4a7d8c45e394821130e0",
+        "b53e6ab203d0a33ed12306d63fe87288e3a66169"
+      ],
+      "id": "edge:e07f41af44ceea6f",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 9,
+        "start_line": 9
+      },
+      "metadata": {
+        "file": "service.js",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "helper",
+      "resolution": "ambiguous",
+      "source": "57004cdc6c66281504819eb98ea5b1efa62e144a",
+      "target": "helper",
+      "type": "dependencies"
+    },
+    {
+      "candidates": [],
+      "id": "edge:c403e117cda49fdd",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 9,
+        "start_line": 9
+      },
+      "metadata": {
+        "file": "service.js",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "missingCall",
+      "resolution": "unresolved",
+      "source": "57004cdc6c66281504819eb98ea5b1efa62e144a",
+      "target": "missingCall",
+      "type": "calls"
+    },
+    {
+      "candidates": [],
+      "id": "edge:973a3893a9b936df",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 9,
+        "start_line": 9
+      },
+      "metadata": {
+        "file": "service.js",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "missingCall",
+      "resolution": "unresolved",
+      "source": "57004cdc6c66281504819eb98ea5b1efa62e144a",
+      "target": "missingCall",
+      "type": "dependencies"
+    },
+    {
+      "candidates": [
+        "3259abf65ed857b2e9f06afa3170021f6c71b61c"
+      ],
+      "id": "edge:fa4ead388c6eca68",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 3,
+        "start_line": 3
+      },
+      "metadata": {
+        "file": "service.js",
+        "is_internal": true
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "formatName",
+      "resolution": "resolved",
+      "source": "a31f7d0d98b9d472efd500c92d4b675b1b20348c",
+      "target": "3259abf65ed857b2e9f06afa3170021f6c71b61c",
+      "type": "calls"
+    },
+    {
+      "candidates": [
+        "3259abf65ed857b2e9f06afa3170021f6c71b61c"
+      ],
+      "id": "edge:bb19cb90d4a5429e",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 3,
+        "start_line": 3
+      },
+      "metadata": {
+        "file": "service.js",
+        "is_internal": true
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "formatName",
+      "resolution": "resolved",
+      "source": "a31f7d0d98b9d472efd500c92d4b675b1b20348c",
+      "target": "3259abf65ed857b2e9f06afa3170021f6c71b61c",
+      "type": "dependencies"
+    },
+    {
+      "candidates": [],
+      "id": "edge:557e4fe789d374ec",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 1,
+        "start_line": 1
+      },
+      "metadata": {
+        "file": "beta.js",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "value.toUpperCase",
+      "resolution": "unresolved",
+      "source": "b53e6ab203d0a33ed12306d63fe87288e3a66169",
+      "target": "value.toUpperCase",
+      "type": "calls"
+    }
+  ],
+  "files": [
+    {
+      "content_hash": "sha1:75ed541e196edfbf2aec0fa363d48487cc2962e6",
+      "diagnostics": [],
+      "id": "9a917cc034379c454177040f005a999867c85f10",
+      "language": "javascript",
+      "parser": "tree-sitter-javascript",
+      "path": "alpha.js",
+      "status": "parsed"
+    },
+    {
+      "content_hash": "sha1:51b9a1bdc115f2bf2b91bed9d1b8caf2a5fbd4a2",
+      "diagnostics": [],
+      "id": "4048fea87cf32cce65e4eccb8f06acba84fa338f",
+      "language": "javascript",
+      "parser": "tree-sitter-javascript",
+      "path": "beta.js",
+      "status": "parsed"
+    },
+    {
+      "content_hash": "sha1:d67b38023de221a74f581105a6d3db557cbd0172",
+      "diagnostics": [],
+      "id": "aaa15dfdc948da42c2c49f46de2c445d0b55c54e",
+      "language": "javascript",
+      "parser": "tree-sitter-javascript",
+      "path": "format.js",
+      "status": "parsed"
+    },
+    {
+      "content_hash": "sha1:9114dc29d406692d45ba73974cca8af2160a099e",
+      "diagnostics": [],
+      "id": "a582224675fd0146c1d2574ab6b49293737796db",
+      "language": "javascript",
+      "parser": "tree-sitter-javascript",
+      "path": "service.js",
+      "status": "parsed"
+    }
+  ],
+  "metrics": {
+    "ambiguous_edges": 2,
+    "diagnostics_total": 0,
+    "edges_total": 13,
+    "failure_buckets": {},
+    "files_failed": 0,
+    "files_parsed": 4,
+    "files_processed": 4,
+    "files_skipped": 0,
+    "files_total": 4,
+    "graph_failures": 0,
+    "metadata_failures": 0,
+    "nodes_total": 14,
+    "parse_failures": 0,
+    "resolved_edges": 6,
+    "serialization_failures": 0,
+    "unresolved_edges": 5
+  },
+  "nodes": [
+    {
+      "definition_id": "1e7c239daf8610d26f01b575e676adf291c61106",
+      "file_id": "a582224675fd0146c1d2574ab6b49293737796db",
+      "id": "1e7c239daf8610d26f01b575e676adf291c61106",
+      "identity": {
+        "source": "definition_id",
+        "value": "1e7c239daf8610d26f01b575e676adf291c61106"
+      },
+      "kind": "variable_declarator",
+      "language": "javascript",
+      "metadata": {
+        "dependencies": [
+          "formatName",
+          "value"
+        ],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": "run",
+        "semantic_text": "language: javascript\nfile: tests/fixtures/boundary_ir/repos/javascript/service.js\nkind: variable_declarator\nsymbol: cleaned\nqualified name: run.cleaned\nparent symbol: run\nsemantic path: tests/fixtures/boundary_ir/repos/javascript/service.js::run.cleaned\ndependencies: formatName, value\ncontent:\ncleaned = formatName(value)"
+      },
+      "node_id": "89c1a7f001367236185d07da4ae9f78b87381c21",
+      "parent": "9ee6f8c45786007268b21e77fa85d637bc93a56e",
+      "path": "service.js",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "run.cleaned",
+      "relationships": [],
+      "semantic_path": "tests/fixtures/boundary_ir/repos/javascript/service.js::run.cleaned",
+      "signature": null,
+      "span": {
+        "byte_end": 186,
+        "byte_start": 159,
+        "end_line": 10,
+        "start_line": 10
+      },
+      "symbol": "cleaned",
+      "symbol_id": "b4011a7d4c9224600b871f0be96fb43493f1a711"
+    },
+    {
+      "definition_id": "3259abf65ed857b2e9f06afa3170021f6c71b61c",
+      "file_id": "aaa15dfdc948da42c2c49f46de2c445d0b55c54e",
+      "id": "3259abf65ed857b2e9f06afa3170021f6c71b61c",
+      "identity": {
+        "source": "definition_id",
+        "value": "3259abf65ed857b2e9f06afa3170021f6c71b61c"
+      },
+      "kind": "function",
+      "language": "javascript",
+      "metadata": {
+        "dependencies": [],
+        "exports": [
+          "formatName"
+        ],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: javascript\nfile: tests/fixtures/boundary_ir/repos/javascript/format.js\nkind: function\nsymbol: formatName\nqualified name: formatName\nsemantic path: tests/fixtures/boundary_ir/repos/javascript/format.js::formatName\nsignature text: formatName(value)\nexports: formatName\ncontent:\nfunction formatName(value) {\n  return value.trim();\n}"
+      },
+      "node_id": "c1745a37fac207c65756f897908f907332fb703e",
+      "parent": "4966d913577467fd790d4f5ca66bf8f949d0bdeb",
+      "path": "format.js",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "formatName",
+      "relationships": [
+        "edge:41c0fd3741b27592"
+      ],
+      "semantic_path": "tests/fixtures/boundary_ir/repos/javascript/format.js::formatName",
+      "signature": "formatName(value)",
+      "span": {
+        "byte_end": 60,
+        "byte_start": 7,
+        "end_line": 3,
+        "start_line": 1
+      },
+      "symbol": "formatName",
+      "symbol_id": "9fcf55e4fbdc5a233803ea857385f6aaa1e0a057"
+    },
+    {
+      "definition_id": "3e9775a7d997a10d69f3cb10e69283319d0d3d5a",
+      "file_id": "4048fea87cf32cce65e4eccb8f06acba84fa338f",
+      "id": "3e9775a7d997a10d69f3cb10e69283319d0d3d5a",
+      "identity": {
+        "source": "definition_id",
+        "value": "3e9775a7d997a10d69f3cb10e69283319d0d3d5a"
+      },
+      "kind": "export_statement",
+      "language": "javascript",
+      "metadata": {
+        "dependencies": [],
+        "exports": [
+          "helper"
+        ],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: javascript\nfile: tests/fixtures/boundary_ir/repos/javascript/beta.js\nkind: export_statement\nsemantic path: tests/fixtures/boundary_ir/repos/javascript/beta.js\nexports: helper\ncontent:\nexport function helper(value) {\n  return value.toUpperCase();\n}"
+      },
+      "node_id": "863c01c32c503600b6f80ccd18df8fd4702f10a5",
+      "parent": null,
+      "path": "beta.js",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": null,
+      "relationships": [],
+      "semantic_path": "tests/fixtures/boundary_ir/repos/javascript/beta.js",
+      "signature": null,
+      "span": {
+        "byte_end": 63,
+        "byte_start": 0,
+        "end_line": 3,
+        "start_line": 1
+      },
+      "symbol": null,
+      "symbol_id": null
+    },
+    {
+      "definition_id": "4812d0fd561a90d5e67e534629b734744f453663",
+      "file_id": "a582224675fd0146c1d2574ab6b49293737796db",
+      "id": "4812d0fd561a90d5e67e534629b734744f453663",
+      "identity": {
+        "source": "definition_id",
+        "value": "4812d0fd561a90d5e67e534629b734744f453663"
+      },
+      "kind": "method",
+      "language": "javascript",
+      "metadata": {
+        "dependencies": [
+          "formatName"
+        ],
+        "exports": [
+          "render"
+        ],
+        "imports": [],
+        "parent_symbol": "Renderer",
+        "semantic_text": "language: javascript\nfile: tests/fixtures/boundary_ir/repos/javascript/service.js\nkind: method\nsymbol: render\nqualified name: Renderer.render\nparent symbol: Renderer\nsemantic path: tests/fixtures/boundary_ir/repos/javascript/service.js::Renderer.render\nsignature text: render(value)\nexports: render\ndependencies: formatName\ncontent:\nrender(value) {\n    return formatName(value);\n  }"
+      },
+      "node_id": "935bf5a4a7b943a66b334c9b7bc47c1ca01f1896",
+      "parent": "37a91f3c36ef8c17b887ff4c36bbaaa0cdfa25c3",
+      "path": "service.js",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Renderer.render",
+      "relationships": [
+        "edge:44451a6bd5fea4ae",
+        "edge:dc5813871593964f"
+      ],
+      "semantic_path": "tests/fixtures/boundary_ir/repos/javascript/service.js::Renderer.render",
+      "signature": "render(value)",
+      "span": {
+        "byte_end": 118,
+        "byte_start": 69,
+        "end_line": 6,
+        "start_line": 4
+      },
+      "symbol": "render",
+      "symbol_id": "0c5d349a2188e9be1ca8a2495d95bc1bbe2e31d5"
+    },
+    {
+      "definition_id": "4efcc76af1457279a57d4a7d8c45e394821130e0",
+      "file_id": "9a917cc034379c454177040f005a999867c85f10",
+      "id": "4efcc76af1457279a57d4a7d8c45e394821130e0",
+      "identity": {
+        "source": "definition_id",
+        "value": "4efcc76af1457279a57d4a7d8c45e394821130e0"
+      },
+      "kind": "function",
+      "language": "javascript",
+      "metadata": {
+        "dependencies": [],
+        "exports": [
+          "helper"
+        ],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: javascript\nfile: tests/fixtures/boundary_ir/repos/javascript/alpha.js\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: tests/fixtures/boundary_ir/repos/javascript/alpha.js::helper\nsignature text: helper(value)\nexports: helper\ncontent:\nfunction helper(value) {\n  return value.toLowerCase();\n}"
+      },
+      "node_id": "63be99499c85dbb27a1fd7ecf30158f3b801e1dc",
+      "parent": "6c0a2663718c4bd95ff534fd9639fb5713f14bff",
+      "path": "alpha.js",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "helper",
+      "relationships": [
+        "edge:c6a2c92931d5716b"
+      ],
+      "semantic_path": "tests/fixtures/boundary_ir/repos/javascript/alpha.js::helper",
+      "signature": "helper(value)",
+      "span": {
+        "byte_end": 63,
+        "byte_start": 7,
+        "end_line": 3,
+        "start_line": 1
+      },
+      "symbol": "helper",
+      "symbol_id": "c9f58681d4556e51b3b6bc985cb7e8c3d43cdcb4"
+    },
+    {
+      "definition_id": "57004cdc6c66281504819eb98ea5b1efa62e144a",
+      "file_id": "a582224675fd0146c1d2574ab6b49293737796db",
+      "id": "57004cdc6c66281504819eb98ea5b1efa62e144a",
+      "identity": {
+        "source": "definition_id",
+        "value": "57004cdc6c66281504819eb98ea5b1efa62e144a"
+      },
+      "kind": "function",
+      "language": "javascript",
+      "metadata": {
+        "dependencies": [
+          "formatName",
+          "helper",
+          "missingCall"
+        ],
+        "exports": [
+          "run"
+        ],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: javascript\nfile: tests/fixtures/boundary_ir/repos/javascript/service.js\nkind: function\nsymbol: run\nqualified name: run\nsemantic path: tests/fixtures/boundary_ir/repos/javascript/service.js::run\nsignature text: run(value)\nexports: run\ndependencies: formatName, helper, missingCall\ncontent:\nfunction run(value) {\n  const cleaned = formatName(value);\n  const duplicate = helper(cleaned);\n  return missingCall(duplicate);\n}"
+      },
+      "node_id": "9ee6f8c45786007268b21e77fa85d637bc93a56e",
+      "parent": "fee72e89bc1f9d0d35028260430bcb8d1fc576cf",
+      "path": "service.js",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "run",
+      "relationships": [
+        "edge:0ffc733657595560",
+        "edge:7e383198b83e96c0",
+        "edge:973a3893a9b936df",
+        "edge:c403e117cda49fdd",
+        "edge:d0600e0b69c5ec35",
+        "edge:e07f41af44ceea6f"
+      ],
+      "semantic_path": "tests/fixtures/boundary_ir/repos/javascript/service.js::run",
+      "signature": "run(value)",
+      "span": {
+        "byte_end": 259,
+        "byte_start": 129,
+        "end_line": 13,
+        "start_line": 9
+      },
+      "symbol": "run",
+      "symbol_id": "73a66d46936e2bc6dac8afa39846184e9a027152"
+    },
+    {
+      "definition_id": "a31f7d0d98b9d472efd500c92d4b675b1b20348c",
+      "file_id": "a582224675fd0146c1d2574ab6b49293737796db",
+      "id": "a31f7d0d98b9d472efd500c92d4b675b1b20348c",
+      "identity": {
+        "source": "definition_id",
+        "value": "a31f7d0d98b9d472efd500c92d4b675b1b20348c"
+      },
+      "kind": "class",
+      "language": "javascript",
+      "metadata": {
+        "dependencies": [
+          "formatName"
+        ],
+        "exports": [
+          "Renderer"
+        ],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: javascript\nfile: tests/fixtures/boundary_ir/repos/javascript/service.js\nkind: class\nsymbol: Renderer\nqualified name: Renderer\nsemantic path: tests/fixtures/boundary_ir/repos/javascript/service.js::Renderer\nexports: Renderer\ndependencies: formatName\ncontent:\nclass Renderer {\n  render(value) {\n    return formatName(value);\n  }\n}"
+      },
+      "node_id": "37a91f3c36ef8c17b887ff4c36bbaaa0cdfa25c3",
+      "parent": "fff010c9be63ef49e896b3b2681ed1c4fd9b8fb1",
+      "path": "service.js",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Renderer",
+      "relationships": [
+        "edge:bb19cb90d4a5429e",
+        "edge:fa4ead388c6eca68"
+      ],
+      "semantic_path": "tests/fixtures/boundary_ir/repos/javascript/service.js::Renderer",
+      "signature": null,
+      "span": {
+        "byte_end": 120,
+        "byte_start": 50,
+        "end_line": 7,
+        "start_line": 3
+      },
+      "symbol": "Renderer",
+      "symbol_id": "84482e54d49bcaa5564c02ea78eb9375c311d2ea"
+    },
+    {
+      "definition_id": "a7df3e6ec08e44dbdeaec19fbd47909ba41201aa",
+      "file_id": "a582224675fd0146c1d2574ab6b49293737796db",
+      "id": "a7df3e6ec08e44dbdeaec19fbd47909ba41201aa",
+      "identity": {
+        "source": "definition_id",
+        "value": "a7df3e6ec08e44dbdeaec19fbd47909ba41201aa"
+      },
+      "kind": "import_statement",
+      "language": "javascript",
+      "metadata": {
+        "dependencies": [
+          "formatName"
+        ],
+        "exports": [],
+        "imports": [
+          "import { formatName } from './format.js';",
+          "{ formatName }"
+        ],
+        "parent_symbol": null,
+        "semantic_text": "language: javascript\nfile: tests/fixtures/boundary_ir/repos/javascript/service.js\nkind: import_statement\nsemantic path: tests/fixtures/boundary_ir/repos/javascript/service.js\nimports: import { formatName } from './format.js';, { formatName }\ndependencies: formatName\ncontent:\nimport { formatName } from './format.js';"
+      },
+      "node_id": "1dd38589405d84d51db1d44d7afe90ed5da9edc8",
+      "parent": null,
+      "path": "service.js",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": null,
+      "relationships": [],
+      "semantic_path": "tests/fixtures/boundary_ir/repos/javascript/service.js",
+      "signature": null,
+      "span": {
+        "byte_end": 41,
+        "byte_start": 0,
+        "end_line": 1,
+        "start_line": 1
+      },
+      "symbol": null,
+      "symbol_id": null
+    },
+    {
+      "definition_id": "a9bf9e1914fbfc0f47d8a6e89e5c45df095a3961",
+      "file_id": "9a917cc034379c454177040f005a999867c85f10",
+      "id": "a9bf9e1914fbfc0f47d8a6e89e5c45df095a3961",
+      "identity": {
+        "source": "definition_id",
+        "value": "a9bf9e1914fbfc0f47d8a6e89e5c45df095a3961"
+      },
+      "kind": "export_statement",
+      "language": "javascript",
+      "metadata": {
+        "dependencies": [],
+        "exports": [
+          "helper"
+        ],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: javascript\nfile: tests/fixtures/boundary_ir/repos/javascript/alpha.js\nkind: export_statement\nsemantic path: tests/fixtures/boundary_ir/repos/javascript/alpha.js\nexports: helper\ncontent:\nexport function helper(value) {\n  return value.toLowerCase();\n}"
+      },
+      "node_id": "6c0a2663718c4bd95ff534fd9639fb5713f14bff",
+      "parent": null,
+      "path": "alpha.js",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": null,
+      "relationships": [],
+      "semantic_path": "tests/fixtures/boundary_ir/repos/javascript/alpha.js",
+      "signature": null,
+      "span": {
+        "byte_end": 63,
+        "byte_start": 0,
+        "end_line": 3,
+        "start_line": 1
+      },
+      "symbol": null,
+      "symbol_id": null
+    },
+    {
+      "definition_id": "b53e6ab203d0a33ed12306d63fe87288e3a66169",
+      "file_id": "4048fea87cf32cce65e4eccb8f06acba84fa338f",
+      "id": "b53e6ab203d0a33ed12306d63fe87288e3a66169",
+      "identity": {
+        "source": "definition_id",
+        "value": "b53e6ab203d0a33ed12306d63fe87288e3a66169"
+      },
+      "kind": "function",
+      "language": "javascript",
+      "metadata": {
+        "dependencies": [],
+        "exports": [
+          "helper"
+        ],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: javascript\nfile: tests/fixtures/boundary_ir/repos/javascript/beta.js\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: tests/fixtures/boundary_ir/repos/javascript/beta.js::helper\nsignature text: helper(value)\nexports: helper\ncontent:\nfunction helper(value) {\n  return value.toUpperCase();\n}"
+      },
+      "node_id": "2ede36cc9f71fc09bda333fd937e0ed1f5716e7f",
+      "parent": "863c01c32c503600b6f80ccd18df8fd4702f10a5",
+      "path": "beta.js",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "helper",
+      "relationships": [
+        "edge:557e4fe789d374ec"
+      ],
+      "semantic_path": "tests/fixtures/boundary_ir/repos/javascript/beta.js::helper",
+      "signature": "helper(value)",
+      "span": {
+        "byte_end": 63,
+        "byte_start": 7,
+        "end_line": 3,
+        "start_line": 1
+      },
+      "symbol": "helper",
+      "symbol_id": "91f7b8db0fc975eb755fd5a7555007a52b85249d"
+    },
+    {
+      "definition_id": "bbaaaa1f1d7e4cc2673c787ee4da39a3f95beb1e",
+      "file_id": "aaa15dfdc948da42c2c49f46de2c445d0b55c54e",
+      "id": "bbaaaa1f1d7e4cc2673c787ee4da39a3f95beb1e",
+      "identity": {
+        "source": "definition_id",
+        "value": "bbaaaa1f1d7e4cc2673c787ee4da39a3f95beb1e"
+      },
+      "kind": "export_statement",
+      "language": "javascript",
+      "metadata": {
+        "dependencies": [],
+        "exports": [
+          "formatName"
+        ],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: javascript\nfile: tests/fixtures/boundary_ir/repos/javascript/format.js\nkind: export_statement\nsemantic path: tests/fixtures/boundary_ir/repos/javascript/format.js\nexports: formatName\ncontent:\nexport function formatName(value) {\n  return value.trim();\n}"
+      },
+      "node_id": "4966d913577467fd790d4f5ca66bf8f949d0bdeb",
+      "parent": null,
+      "path": "format.js",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": null,
+      "relationships": [],
+      "semantic_path": "tests/fixtures/boundary_ir/repos/javascript/format.js",
+      "signature": null,
+      "span": {
+        "byte_end": 60,
+        "byte_start": 0,
+        "end_line": 3,
+        "start_line": 1
+      },
+      "symbol": null,
+      "symbol_id": null
+    },
+    {
+      "definition_id": "c89bc8774ef3cb97c4d952fead04232244607912",
+      "file_id": "a582224675fd0146c1d2574ab6b49293737796db",
+      "id": "c89bc8774ef3cb97c4d952fead04232244607912",
+      "identity": {
+        "source": "definition_id",
+        "value": "c89bc8774ef3cb97c4d952fead04232244607912"
+      },
+      "kind": "export_statement",
+      "language": "javascript",
+      "metadata": {
+        "dependencies": [
+          "formatName",
+          "helper",
+          "missingCall"
+        ],
+        "exports": [
+          "run"
+        ],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: javascript\nfile: tests/fixtures/boundary_ir/repos/javascript/service.js\nkind: export_statement\nsemantic path: tests/fixtures/boundary_ir/repos/javascript/service.js\nexports: run\ndependencies: formatName, helper, missingCall\ncontent:\nexport function run(value) {\n  const cleaned = formatName(value);\n  const duplicate = helper(cleaned);\n  return missingCall(duplicate);\n}"
+      },
+      "node_id": "fee72e89bc1f9d0d35028260430bcb8d1fc576cf",
+      "parent": null,
+      "path": "service.js",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": null,
+      "relationships": [],
+      "semantic_path": "tests/fixtures/boundary_ir/repos/javascript/service.js",
+      "signature": null,
+      "span": {
+        "byte_end": 259,
+        "byte_start": 122,
+        "end_line": 13,
+        "start_line": 9
+      },
+      "symbol": null,
+      "symbol_id": null
+    },
+    {
+      "definition_id": "e6dd30b610650f94194520505d5ffa4efccf146e",
+      "file_id": "a582224675fd0146c1d2574ab6b49293737796db",
+      "id": "e6dd30b610650f94194520505d5ffa4efccf146e",
+      "identity": {
+        "source": "definition_id",
+        "value": "e6dd30b610650f94194520505d5ffa4efccf146e"
+      },
+      "kind": "export_statement",
+      "language": "javascript",
+      "metadata": {
+        "dependencies": [
+          "formatName"
+        ],
+        "exports": [
+          "Renderer"
+        ],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: javascript\nfile: tests/fixtures/boundary_ir/repos/javascript/service.js\nkind: export_statement\nsemantic path: tests/fixtures/boundary_ir/repos/javascript/service.js\nexports: Renderer\ndependencies: formatName\ncontent:\nexport class Renderer {\n  render(value) {\n    return formatName(value);\n  }\n}"
+      },
+      "node_id": "fff010c9be63ef49e896b3b2681ed1c4fd9b8fb1",
+      "parent": null,
+      "path": "service.js",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": null,
+      "relationships": [],
+      "semantic_path": "tests/fixtures/boundary_ir/repos/javascript/service.js",
+      "signature": null,
+      "span": {
+        "byte_end": 120,
+        "byte_start": 43,
+        "end_line": 7,
+        "start_line": 3
+      },
+      "symbol": null,
+      "symbol_id": null
+    },
+    {
+      "definition_id": "e6f6e0e2bf1d689d55dcacddb5e13fd85e2d23d7",
+      "file_id": "a582224675fd0146c1d2574ab6b49293737796db",
+      "id": "e6f6e0e2bf1d689d55dcacddb5e13fd85e2d23d7",
+      "identity": {
+        "source": "definition_id",
+        "value": "e6f6e0e2bf1d689d55dcacddb5e13fd85e2d23d7"
+      },
+      "kind": "variable_declarator",
+      "language": "javascript",
+      "metadata": {
+        "dependencies": [
+          "cleaned",
+          "helper"
+        ],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": "run",
+        "semantic_text": "language: javascript\nfile: tests/fixtures/boundary_ir/repos/javascript/service.js\nkind: variable_declarator\nsymbol: duplicate\nqualified name: run.duplicate\nparent symbol: run\nsemantic path: tests/fixtures/boundary_ir/repos/javascript/service.js::run.duplicate\ndependencies: cleaned, helper\ncontent:\nduplicate = helper(cleaned)"
+      },
+      "node_id": "3ff4b15739bf50c9817abd584f8a508d94eea8a2",
+      "parent": "9ee6f8c45786007268b21e77fa85d637bc93a56e",
+      "path": "service.js",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "run.duplicate",
+      "relationships": [],
+      "semantic_path": "tests/fixtures/boundary_ir/repos/javascript/service.js::run.duplicate",
+      "signature": null,
+      "span": {
+        "byte_end": 223,
+        "byte_start": 196,
+        "end_line": 11,
+        "start_line": 11
+      },
+      "symbol": "duplicate",
+      "symbol_id": "443e78f9469cb2116332934ef8c3977e39bc007c"
+    }
+  ],
+  "run": {
+    "canonical": true,
+    "created_at": null,
+    "options": {
+      "fail_fast": false,
+      "include_retrieval_metadata": true,
+      "include_timings": false,
+      "language": "javascript",
+      "resolution_mode": "strict"
+    },
+    "root": "tests/fixtures/boundary_ir/repos/javascript",
+    "timings": {
+      "graph_assembly_ms": null,
+      "metadata_normalization_ms": null,
+      "parse_ms": null,
+      "resolution_ms": null,
+      "serialization_ms": null,
+      "total_ms": null
+    },
+    "tool": "treesitter-chunker",
+    "tool_version": "<tool-version>"
+  },
+  "schema_version": "1.0",
+  "source": {
+    "kind": "repository",
+    "path": "tests/fixtures/boundary_ir/repos/javascript"
+  }
+}

@@ -1,7 +1,7 @@
 # Agent Interface Ownership Readiness (Repository Assessment)
 
 > This document is a readiness assessment.
-> The implementation-facing specification now lives in the Greenfield repository:
+> The implementation-facing Boundary IR contract now lives in this repository:
 > `docs/interface-boundary-spec.md`.
 > The execution plan lives in:
 > `docs/interface-boundary-roadmap.md`.
@@ -137,7 +137,7 @@ If the goal is to make this package maximally ready as a dependency for determin
 
 ### 2) First-class IR export mode
 
-- Promote current normalized metadata + symbol graph into a documented, versioned interface IR schema.
+- Promote current normalized metadata + symbol graph into the documented, versioned Boundary IR schema in `docs/interface-boundary-spec.md`.
 - Add schema versioning and compatibility checks for downstream consumers.
 - Guarantee canonical ordering of nodes/edges in output for reproducible diffs.
 
@@ -155,9 +155,13 @@ If the goal is to make this package maximally ready as a dependency for determin
 
 ### 5) Better observability for large-repo runs
 
-- Add timing spans around parse, metadata normalization, graph assembly, and resolution passes.
-- Emit counters for skipped files, parse failures, unresolved edges, and ambiguous edges.
-- Provide structured run summaries suitable for policy pipeline SLIs/SLOs.
+- Boundary IR now emits deterministic counters for skipped files, failed files,
+  parse failures, graph failures, unresolved edges, ambiguous edges, and failure
+  buckets.
+- Boundary IR now includes fixed `run.timings` keys with `null` defaults and
+  opt-in measured values through `include_timings=True`.
+- The `boundary` CLI now provides `--summary`, `--include-timings`, and
+  `--fail-fast` for policy pipeline diagnostics without polluting stdout JSON.
 
 ### 6) Optional semantic augmentation hooks
 

@@ -11,9 +11,9 @@ sys.path.insert(0, Path("../..").resolve())
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "TreeSitter Chunker"
-copyright = "2025, Consiliency"
-author = "Consiliency"
-release = "1.0.0"
+copyright = "2025, ViperJuice"
+author = "ViperJuice"
+release = "2.2.22"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -68,7 +68,9 @@ intersphinx_mapping = {
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "sphinx_rtd_theme"
+html_theme = (
+    "alabaster"  # Using default theme - sphinx_rtd_theme incompatible with Sphinx 9
+)
 html_static_path = ["_static"]
 html_title = "TreeSitter Chunker Documentation"
 html_short_title = "TreeSitter Chunker"
@@ -89,7 +91,7 @@ latex_documents = [
         "index",
         "treesitter-chunker.tex",
         "TreeSitter Chunker Documentation",
-        "Consiliency",
+        "ViperJuice",
         "manual",
     ),
 ]

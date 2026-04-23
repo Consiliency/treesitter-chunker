@@ -6,6 +6,11 @@ from pathlib import Path
 import yaml
 
 from chunker.cicd.pipeline import CICDPipelineImpl
+from scripts.run_ci_smoke import CI_SMOKE_TESTS
+
+
+def test_ci_smoke_includes_boundary_ir_conformance_gate_once():
+    assert CI_SMOKE_TESTS.count("tests/test_boundary_ir_golden_snapshots.py") == 1
 
 
 class TestCICDPipelineImpl:

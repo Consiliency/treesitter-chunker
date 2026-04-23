@@ -22,6 +22,7 @@ import psutil
 import pytest
 
 from chunker import chunk_file
+from chunker.boundary import extract_boundary_ir
 from chunker.exceptions import ParserError
 from chunker.parser import get_parser
 from chunker.streaming import chunk_file_streaming
@@ -177,6 +178,34 @@ print("processed")
                 timeouts += 1
         assert timeouts >= 1
         assert True
+
+    @staticmethod
+    def test_boundary_ir_preserves_partial_results_on_chunk_failure(
+        tmp_path,
+        monkeypatch,
+    ):
+        good = tmp_path / "good.py"
+        bad = tmp_path / "bad.py"
+        good.write_text("def ok():\n    return 1\n", encoding="utf-8")
+        bad.write_text("def broken():\n    return 2\n", encoding="utf-8")
+
+        from chunker.boundary import adapter
+
+        original_chunk_file = adapter.chunk_file
+
+        def fail_one_file(file_path, *args, **kwargs):
+            if Path(file_path).name == "bad.py":
+                raise RuntimeError("forced chunk failure")
+            return original_chunk_file(file_path, *args, **kwargs)
+
+        monkeypatch.setattr(adapter, "chunk_file", fail_one_file)
+
+        ir = extract_boundary_ir(tmp_path, "python")
+
+        assert any(node["path"] == "good.py" for node in ir["nodes"])
+        failed_file = next(file for file in ir["files"] if file["path"] == "bad.py")
+        assert failed_file["status"] == "error"
+        assert failed_file["diagnostics"]
 
 
 class TestStatePersistence:

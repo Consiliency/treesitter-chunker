@@ -1,0 +1,882 @@
+{
+  "diagnostics": [],
+  "edges": [
+    {
+      "candidates": [
+        "514ea25c032c544bfcb5cec28f107cd30478a06a"
+      ],
+      "id": "edge:c85504b1e934b821",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 9,
+        "start_line": 9
+      },
+      "metadata": {
+        "file": "app/service.py",
+        "is_internal": true
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "format_name",
+      "resolution": "resolved",
+      "source": "29f1e4121b74d63ccd8defb574ec8452bf142b4b",
+      "target": "514ea25c032c544bfcb5cec28f107cd30478a06a",
+      "type": "calls"
+    },
+    {
+      "candidates": [
+        "514ea25c032c544bfcb5cec28f107cd30478a06a"
+      ],
+      "id": "edge:c939173996241d72",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 9,
+        "start_line": 9
+      },
+      "metadata": {
+        "file": "app/service.py",
+        "is_internal": true
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "format_name",
+      "resolution": "resolved",
+      "source": "29f1e4121b74d63ccd8defb574ec8452bf142b4b",
+      "target": "514ea25c032c544bfcb5cec28f107cd30478a06a",
+      "type": "dependencies"
+    },
+    {
+      "candidates": [
+        "514ea25c032c544bfcb5cec28f107cd30478a06a"
+      ],
+      "id": "edge:924e099328a9558f",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 9,
+        "start_line": 9
+      },
+      "metadata": {
+        "file": "app/service.py",
+        "is_internal": true
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "from app.formatting import format_name",
+      "resolution": "resolved",
+      "source": "29f1e4121b74d63ccd8defb574ec8452bf142b4b",
+      "target": "514ea25c032c544bfcb5cec28f107cd30478a06a",
+      "type": "imports"
+    },
+    {
+      "candidates": [],
+      "id": "edge:61ca7cdb4d803711",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 9,
+        "start_line": 9
+      },
+      "metadata": {
+        "file": "app/service.py",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "app",
+      "resolution": "unresolved",
+      "source": "29f1e4121b74d63ccd8defb574ec8452bf142b4b",
+      "target": "app",
+      "type": "dependencies"
+    },
+    {
+      "candidates": [],
+      "id": "edge:be494a8a4c5a3356",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 9,
+        "start_line": 9
+      },
+      "metadata": {
+        "file": "app/service.py",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "formatting",
+      "resolution": "unresolved",
+      "source": "29f1e4121b74d63ccd8defb574ec8452bf142b4b",
+      "target": "formatting",
+      "type": "dependencies"
+    },
+    {
+      "candidates": [
+        "64d77146b1952a48a00557eda87ad157160c62fd",
+        "bcc5782f607322036ce36c5389e40ad8fc121e50"
+      ],
+      "id": "edge:e486738be6b910eb",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 9,
+        "start_line": 9
+      },
+      "metadata": {
+        "file": "app/service.py",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "helper",
+      "resolution": "ambiguous",
+      "source": "29f1e4121b74d63ccd8defb574ec8452bf142b4b",
+      "target": "helper",
+      "type": "calls"
+    },
+    {
+      "candidates": [
+        "64d77146b1952a48a00557eda87ad157160c62fd",
+        "bcc5782f607322036ce36c5389e40ad8fc121e50"
+      ],
+      "id": "edge:0444f45405c91a6a",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 9,
+        "start_line": 9
+      },
+      "metadata": {
+        "file": "app/service.py",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "helper",
+      "resolution": "ambiguous",
+      "source": "29f1e4121b74d63ccd8defb574ec8452bf142b4b",
+      "target": "helper",
+      "type": "dependencies"
+    },
+    {
+      "candidates": [],
+      "id": "edge:9e9767c502c37795",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 9,
+        "start_line": 9
+      },
+      "metadata": {
+        "file": "app/service.py",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "missing_call",
+      "resolution": "unresolved",
+      "source": "29f1e4121b74d63ccd8defb574ec8452bf142b4b",
+      "target": "missing_call",
+      "type": "calls"
+    },
+    {
+      "candidates": [],
+      "id": "edge:8f5d77d8f49d8dc9",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 9,
+        "start_line": 9
+      },
+      "metadata": {
+        "file": "app/service.py",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "missing_call",
+      "resolution": "unresolved",
+      "source": "29f1e4121b74d63ccd8defb574ec8452bf142b4b",
+      "target": "missing_call",
+      "type": "dependencies"
+    },
+    {
+      "candidates": [
+        "514ea25c032c544bfcb5cec28f107cd30478a06a"
+      ],
+      "id": "edge:b74e98f096722241",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 5,
+        "start_line": 5
+      },
+      "metadata": {
+        "file": "app/service.py",
+        "is_internal": true
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "format_name",
+      "resolution": "resolved",
+      "source": "43ddb130bf1b413b1406b1685ca631ef9f660f73",
+      "target": "514ea25c032c544bfcb5cec28f107cd30478a06a",
+      "type": "calls"
+    },
+    {
+      "candidates": [
+        "514ea25c032c544bfcb5cec28f107cd30478a06a"
+      ],
+      "id": "edge:83e166bd1932e35e",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 5,
+        "start_line": 5
+      },
+      "metadata": {
+        "file": "app/service.py",
+        "is_internal": true
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "format_name",
+      "resolution": "resolved",
+      "source": "43ddb130bf1b413b1406b1685ca631ef9f660f73",
+      "target": "514ea25c032c544bfcb5cec28f107cd30478a06a",
+      "type": "dependencies"
+    },
+    {
+      "candidates": [
+        "514ea25c032c544bfcb5cec28f107cd30478a06a"
+      ],
+      "id": "edge:c79637284d27493d",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 4,
+        "start_line": 4
+      },
+      "metadata": {
+        "file": "app/service.py",
+        "is_internal": true
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "format_name",
+      "resolution": "resolved",
+      "source": "4597ccd545a95379c4793630374d4c9ec080f210",
+      "target": "514ea25c032c544bfcb5cec28f107cd30478a06a",
+      "type": "calls"
+    },
+    {
+      "candidates": [
+        "514ea25c032c544bfcb5cec28f107cd30478a06a"
+      ],
+      "id": "edge:1ae962a1d50bc8dd",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 4,
+        "start_line": 4
+      },
+      "metadata": {
+        "file": "app/service.py",
+        "is_internal": true
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "format_name",
+      "resolution": "resolved",
+      "source": "4597ccd545a95379c4793630374d4c9ec080f210",
+      "target": "514ea25c032c544bfcb5cec28f107cd30478a06a",
+      "type": "dependencies"
+    },
+    {
+      "candidates": [],
+      "id": "edge:ec7887dd18fc0294",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 1,
+        "start_line": 1
+      },
+      "metadata": {
+        "file": "app/formatting.py",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "strip",
+      "resolution": "unresolved",
+      "source": "514ea25c032c544bfcb5cec28f107cd30478a06a",
+      "target": "strip",
+      "type": "calls"
+    },
+    {
+      "candidates": [],
+      "id": "edge:11c0685beb40588a",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 1,
+        "start_line": 1
+      },
+      "metadata": {
+        "file": "app/formatting.py",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "strip",
+      "resolution": "unresolved",
+      "source": "514ea25c032c544bfcb5cec28f107cd30478a06a",
+      "target": "strip",
+      "type": "dependencies"
+    },
+    {
+      "candidates": [],
+      "id": "edge:3f1d3f247d2d7e4d",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 1,
+        "start_line": 1
+      },
+      "metadata": {
+        "file": "app/beta.py",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "upper",
+      "resolution": "unresolved",
+      "source": "64d77146b1952a48a00557eda87ad157160c62fd",
+      "target": "upper",
+      "type": "calls"
+    },
+    {
+      "candidates": [],
+      "id": "edge:aa9ebb52708d20b8",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 1,
+        "start_line": 1
+      },
+      "metadata": {
+        "file": "app/beta.py",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "upper",
+      "resolution": "unresolved",
+      "source": "64d77146b1952a48a00557eda87ad157160c62fd",
+      "target": "upper",
+      "type": "dependencies"
+    },
+    {
+      "candidates": [],
+      "id": "edge:0aeddf939ef8fe99",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 1,
+        "start_line": 1
+      },
+      "metadata": {
+        "file": "app/alpha.py",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "lower",
+      "resolution": "unresolved",
+      "source": "bcc5782f607322036ce36c5389e40ad8fc121e50",
+      "target": "lower",
+      "type": "calls"
+    },
+    {
+      "candidates": [],
+      "id": "edge:0612480fc79d07fd",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 1,
+        "start_line": 1
+      },
+      "metadata": {
+        "file": "app/alpha.py",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "lower",
+      "resolution": "unresolved",
+      "source": "bcc5782f607322036ce36c5389e40ad8fc121e50",
+      "target": "lower",
+      "type": "dependencies"
+    }
+  ],
+  "files": [
+    {
+      "content_hash": "sha1:0807fd1efeb51815aa512ef384795e535bd21a51",
+      "diagnostics": [],
+      "id": "3a195c2b299c36c1461e62bb8a78128ef6ae317f",
+      "language": "python",
+      "parser": "tree-sitter-python",
+      "path": "app/__init__.py",
+      "status": "parsed"
+    },
+    {
+      "content_hash": "sha1:dc48ef1f337bc2a0745eb34565a29e09c1a16498",
+      "diagnostics": [],
+      "id": "2f713775bf9c7e4a5b3cbafa5bd2dc94fdf62798",
+      "language": "python",
+      "parser": "tree-sitter-python",
+      "path": "app/alpha.py",
+      "status": "parsed"
+    },
+    {
+      "content_hash": "sha1:a5b8afc0112926963c018a1292a7df92925c179c",
+      "diagnostics": [],
+      "id": "54f1b800b1fe7d1850b33da1a70a7de46afa3df0",
+      "language": "python",
+      "parser": "tree-sitter-python",
+      "path": "app/beta.py",
+      "status": "parsed"
+    },
+    {
+      "content_hash": "sha1:38d820465d2d42b4ce3582b5d272d81d36c06d18",
+      "diagnostics": [],
+      "id": "f29136a4e78daeb8bbf61c0ebfb9681ebd0a437e",
+      "language": "python",
+      "parser": "tree-sitter-python",
+      "path": "app/formatting.py",
+      "status": "parsed"
+    },
+    {
+      "content_hash": "sha1:c69fe3e2555e3f4c24d387bb007f7d0fe5f2b60a",
+      "diagnostics": [],
+      "id": "1902932438cd9238f3cd2d665d1f14cf2295e0fb",
+      "language": "python",
+      "parser": "tree-sitter-python",
+      "path": "app/service.py",
+      "status": "parsed"
+    }
+  ],
+  "metrics": {
+    "ambiguous_edges": 2,
+    "diagnostics_total": 0,
+    "edges_total": 19,
+    "failure_buckets": {},
+    "files_failed": 0,
+    "files_parsed": 5,
+    "files_processed": 5,
+    "files_skipped": 0,
+    "files_total": 5,
+    "graph_failures": 0,
+    "metadata_failures": 0,
+    "nodes_total": 6,
+    "parse_failures": 0,
+    "resolved_edges": 7,
+    "serialization_failures": 0,
+    "unresolved_edges": 10
+  },
+  "nodes": [
+    {
+      "definition_id": "29f1e4121b74d63ccd8defb574ec8452bf142b4b",
+      "file_id": "1902932438cd9238f3cd2d665d1f14cf2295e0fb",
+      "id": "29f1e4121b74d63ccd8defb574ec8452bf142b4b",
+      "identity": {
+        "source": "definition_id",
+        "value": "29f1e4121b74d63ccd8defb574ec8452bf142b4b"
+      },
+      "kind": "function",
+      "language": "python",
+      "metadata": {
+        "dependencies": [
+          "app",
+          "format_name",
+          "formatting",
+          "helper",
+          "missing_call"
+        ],
+        "exports": [
+          "cleaned",
+          "duplicate",
+          "render_report",
+          "value"
+        ],
+        "imports": [
+          "from app.formatting import format_name"
+        ],
+        "parent_symbol": null,
+        "semantic_text": "language: python\nfile: tests/fixtures/boundary_ir/repos/python/app/service.py\nkind: function\nsymbol: render_report\nqualified name: render_report\nsemantic path: tests/fixtures/boundary_ir/repos/python/app/service.py::render_report\nsignature text: render_report(value: str) -> str\nimports: from app.formatting import format_name\nexports: cleaned, duplicate, render_report, value\ndependencies: app, format_name, formatting, helper, missing_call\ncontent:\ndef render_report(value: str) -> str:\n    from app.formatting import format_name\n\n    cleaned = format_name(value)\n    duplicate = helper(cleaned)\n    return missing_call(duplicate)"
+      },
+      "node_id": "3bf04a9618cf539f4695d3498876870f9cb277bd",
+      "parent": null,
+      "path": "app/service.py",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "render_report",
+      "relationships": [
+        "edge:0444f45405c91a6a",
+        "edge:61ca7cdb4d803711",
+        "edge:8f5d77d8f49d8dc9",
+        "edge:924e099328a9558f",
+        "edge:9e9767c502c37795",
+        "edge:be494a8a4c5a3356",
+        "edge:c85504b1e934b821",
+        "edge:c939173996241d72",
+        "edge:e486738be6b910eb"
+      ],
+      "semantic_path": "tests/fixtures/boundary_ir/repos/python/app/service.py::render_report",
+      "signature": "render_report(value: str) -> str",
+      "span": {
+        "byte_end": 315,
+        "byte_start": 134,
+        "end_line": 14,
+        "start_line": 9
+      },
+      "symbol": "render_report",
+      "symbol_id": "651827073930839f2df70237291968ae9348f4e2"
+    },
+    {
+      "definition_id": "43ddb130bf1b413b1406b1685ca631ef9f660f73",
+      "file_id": "1902932438cd9238f3cd2d665d1f14cf2295e0fb",
+      "id": "43ddb130bf1b413b1406b1685ca631ef9f660f73",
+      "identity": {
+        "source": "definition_id",
+        "value": "43ddb130bf1b413b1406b1685ca631ef9f660f73"
+      },
+      "kind": "method",
+      "language": "python",
+      "metadata": {
+        "dependencies": [
+          "format_name"
+        ],
+        "exports": [
+          "render",
+          "self",
+          "value"
+        ],
+        "imports": [],
+        "parent_symbol": "Renderer",
+        "semantic_text": "language: python\nfile: tests/fixtures/boundary_ir/repos/python/app/service.py\nkind: method\nsymbol: render\nqualified name: Renderer.render\nparent symbol: Renderer\nsemantic path: tests/fixtures/boundary_ir/repos/python/app/service.py::Renderer.render\nsignature text: render(self, value: str) -> str\nexports: render, self, value\ndependencies: format_name\ncontent:\ndef render(self, value: str) -> str:\n        return format_name(value)"
+      },
+      "node_id": "4c9f788d64a8f60b5336cdb110c049df2a958f98",
+      "parent": "c33bb72c5d141687a224f19d60aada2809d0e279",
+      "path": "app/service.py",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Renderer.render",
+      "relationships": [
+        "edge:83e166bd1932e35e",
+        "edge:b74e98f096722241"
+      ],
+      "semantic_path": "tests/fixtures/boundary_ir/repos/python/app/service.py::Renderer.render",
+      "signature": "render(self, value: str) -> str",
+      "span": {
+        "byte_end": 131,
+        "byte_start": 61,
+        "end_line": 6,
+        "start_line": 5
+      },
+      "symbol": "render",
+      "symbol_id": "d41453681d9251301cbaa98ac81b6296b0ca638f"
+    },
+    {
+      "definition_id": "4597ccd545a95379c4793630374d4c9ec080f210",
+      "file_id": "1902932438cd9238f3cd2d665d1f14cf2295e0fb",
+      "id": "4597ccd545a95379c4793630374d4c9ec080f210",
+      "identity": {
+        "source": "definition_id",
+        "value": "4597ccd545a95379c4793630374d4c9ec080f210"
+      },
+      "kind": "class",
+      "language": "python",
+      "metadata": {
+        "dependencies": [
+          "format_name"
+        ],
+        "exports": [
+          "Renderer",
+          "render",
+          "self",
+          "value"
+        ],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: python\nfile: tests/fixtures/boundary_ir/repos/python/app/service.py\nkind: class\nsymbol: Renderer\nqualified name: Renderer\nsemantic path: tests/fixtures/boundary_ir/repos/python/app/service.py::Renderer\nexports: Renderer, render, self, value\ndependencies: format_name\ncontent:\nclass Renderer:\n    def render(self, value: str) -> str:\n        return format_name(value)"
+      },
+      "node_id": "c33bb72c5d141687a224f19d60aada2809d0e279",
+      "parent": null,
+      "path": "app/service.py",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Renderer",
+      "relationships": [
+        "edge:1ae962a1d50bc8dd",
+        "edge:c79637284d27493d"
+      ],
+      "semantic_path": "tests/fixtures/boundary_ir/repos/python/app/service.py::Renderer",
+      "signature": null,
+      "span": {
+        "byte_end": 131,
+        "byte_start": 41,
+        "end_line": 6,
+        "start_line": 4
+      },
+      "symbol": "Renderer",
+      "symbol_id": "725ff603dfdc648802565c16d13bb5bbd7a68b0e"
+    },
+    {
+      "definition_id": "514ea25c032c544bfcb5cec28f107cd30478a06a",
+      "file_id": "f29136a4e78daeb8bbf61c0ebfb9681ebd0a437e",
+      "id": "514ea25c032c544bfcb5cec28f107cd30478a06a",
+      "identity": {
+        "source": "definition_id",
+        "value": "514ea25c032c544bfcb5cec28f107cd30478a06a"
+      },
+      "kind": "function",
+      "language": "python",
+      "metadata": {
+        "dependencies": [
+          "strip"
+        ],
+        "exports": [
+          "format_name",
+          "value"
+        ],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: python\nfile: tests/fixtures/boundary_ir/repos/python/app/formatting.py\nkind: function\nsymbol: format_name\nqualified name: format_name\nsemantic path: tests/fixtures/boundary_ir/repos/python/app/formatting.py::format_name\nsignature text: format_name(value: str) -> str\nexports: format_name, value\ndependencies: strip\ncontent:\ndef format_name(value: str) -> str:\n    return value.strip()"
+      },
+      "node_id": "8a6dba12b4eb390f2c478eef00880fec1cb71c9a",
+      "parent": null,
+      "path": "app/formatting.py",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "format_name",
+      "relationships": [
+        "edge:11c0685beb40588a",
+        "edge:ec7887dd18fc0294"
+      ],
+      "semantic_path": "tests/fixtures/boundary_ir/repos/python/app/formatting.py::format_name",
+      "signature": "format_name(value: str) -> str",
+      "span": {
+        "byte_end": 60,
+        "byte_start": 0,
+        "end_line": 2,
+        "start_line": 1
+      },
+      "symbol": "format_name",
+      "symbol_id": "6c42022dd99db52d902697e7a94925a77c26bd42"
+    },
+    {
+      "definition_id": "64d77146b1952a48a00557eda87ad157160c62fd",
+      "file_id": "54f1b800b1fe7d1850b33da1a70a7de46afa3df0",
+      "id": "64d77146b1952a48a00557eda87ad157160c62fd",
+      "identity": {
+        "source": "definition_id",
+        "value": "64d77146b1952a48a00557eda87ad157160c62fd"
+      },
+      "kind": "function",
+      "language": "python",
+      "metadata": {
+        "dependencies": [
+          "upper"
+        ],
+        "exports": [
+          "helper",
+          "value"
+        ],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: python\nfile: tests/fixtures/boundary_ir/repos/python/app/beta.py\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: tests/fixtures/boundary_ir/repos/python/app/beta.py::helper\nsignature text: helper(value: str) -> str\nexports: helper, value\ndependencies: upper\ncontent:\ndef helper(value: str) -> str:\n    return value.upper()"
+      },
+      "node_id": "b4becbb15df979b4932c7a606e0ca359a3cda8fc",
+      "parent": null,
+      "path": "app/beta.py",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "helper",
+      "relationships": [
+        "edge:3f1d3f247d2d7e4d",
+        "edge:aa9ebb52708d20b8"
+      ],
+      "semantic_path": "tests/fixtures/boundary_ir/repos/python/app/beta.py::helper",
+      "signature": "helper(value: str) -> str",
+      "span": {
+        "byte_end": 55,
+        "byte_start": 0,
+        "end_line": 2,
+        "start_line": 1
+      },
+      "symbol": "helper",
+      "symbol_id": "3bc086274fc57df40adcf28ad8d88016fa24a5ca"
+    },
+    {
+      "definition_id": "bcc5782f607322036ce36c5389e40ad8fc121e50",
+      "file_id": "2f713775bf9c7e4a5b3cbafa5bd2dc94fdf62798",
+      "id": "bcc5782f607322036ce36c5389e40ad8fc121e50",
+      "identity": {
+        "source": "definition_id",
+        "value": "bcc5782f607322036ce36c5389e40ad8fc121e50"
+      },
+      "kind": "function",
+      "language": "python",
+      "metadata": {
+        "dependencies": [
+          "lower"
+        ],
+        "exports": [
+          "helper",
+          "value"
+        ],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: python\nfile: tests/fixtures/boundary_ir/repos/python/app/alpha.py\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: tests/fixtures/boundary_ir/repos/python/app/alpha.py::helper\nsignature text: helper(value: str) -> str\nexports: helper, value\ndependencies: lower\ncontent:\ndef helper(value: str) -> str:\n    return value.lower()"
+      },
+      "node_id": "2f19a554b944833cb15535653d100528a86578f2",
+      "parent": null,
+      "path": "app/alpha.py",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "helper",
+      "relationships": [
+        "edge:0612480fc79d07fd",
+        "edge:0aeddf939ef8fe99"
+      ],
+      "semantic_path": "tests/fixtures/boundary_ir/repos/python/app/alpha.py::helper",
+      "signature": "helper(value: str) -> str",
+      "span": {
+        "byte_end": 55,
+        "byte_start": 0,
+        "end_line": 2,
+        "start_line": 1
+      },
+      "symbol": "helper",
+      "symbol_id": "27f7bff0a7b67b7d6edaf353c57e3553a01d176d"
+    }
+  ],
+  "run": {
+    "canonical": true,
+    "created_at": null,
+    "options": {
+      "fail_fast": false,
+      "include_retrieval_metadata": true,
+      "include_timings": false,
+      "language": "python",
+      "resolution_mode": "strict"
+    },
+    "root": "tests/fixtures/boundary_ir/repos/python",
+    "timings": {
+      "graph_assembly_ms": null,
+      "metadata_normalization_ms": null,
+      "parse_ms": null,
+      "resolution_ms": null,
+      "serialization_ms": null,
+      "total_ms": null
+    },
+    "tool": "treesitter-chunker",
+    "tool_version": "<tool-version>"
+  },
+  "schema_version": "1.0",
+  "source": {
+    "kind": "repository",
+    "path": "tests/fixtures/boundary_ir/repos/python"
+  }
+}

@@ -530,4 +530,4 @@ python -m pdb your_script.py
 
 ---
 
-**For additional support, see [SUPPORT.md](SUPPORT.md) or create an issue on GitHub.**
+**For additional support, see [SUPPORT.md](https://github.com/ViperJuice/treesitter-chunker/blob/main/SUPPORT.md) or create an issue on GitHub.**

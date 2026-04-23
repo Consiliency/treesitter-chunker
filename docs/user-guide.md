@@ -135,6 +135,13 @@ python cli/main.py chunk src/main.rs -l rust --json
 
 # Process JavaScript file
 python cli/main.py chunk app.js -l javascript
+
+# Generate Boundary IR
+treesitter-chunker boundary src/ --lang python --output boundary.json
+
+# Include observability timings or stop on the first extraction failure
+treesitter-chunker boundary src/ --lang python --include-timings
+treesitter-chunker boundary src/ --lang python --fail-fast
 ```
 
 ### Python API - Simple
@@ -151,6 +158,22 @@ for chunk in chunks:
     if chunk.parent_context:
         print(f"  Parent: {chunk.parent_context}")
     print(f"  Preview: {chunk.content.split(chr(10))[0]}...")
+```
+
+### Boundary IR
+
+```python
+from chunker import extract_boundary_ir
+from chunker.boundary import dumps_boundary_ir
+
+ir = extract_boundary_ir("src/", language="python")
+json_text = dumps_boundary_ir(ir)
+
+observed_ir = extract_boundary_ir(
+    "src/",
+    language="python",
+    include_timings=True,
+)
 ```
 
 ### Python API - Advanced

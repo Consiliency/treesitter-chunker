@@ -6,7 +6,7 @@ import re
 from collections import defaultdict
 from fnmatch import fnmatchcase
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from .auto import ZeroConfigAPI
 from .core import chunk_file
@@ -39,6 +39,9 @@ _IMPORT_KEYWORDS = {
     "static",
     "new",
 }
+ResolutionMode = Literal["strict", "permissive"]
+ResolutionStatus = Literal["resolved", "ambiguous", "unresolved"]
+RESOLUTION_MODES = ("strict", "permissive")
 
 
 def _candidate_extensions(language: str | None) -> set[str]:
@@ -149,31 +152,39 @@ def _reference_candidates(reference: str) -> list[str]:
 
 def _build_resolution_indexes(
     symbol_lookup: dict[str, dict[str, Any]],
-) -> tuple[dict[str, str], dict[str, str]]:
-    by_qualified: dict[str, str] = {}
+) -> tuple[dict[str, set[str]], dict[str, set[str]]]:
+    by_qualified: defaultdict[str, set[str]] = defaultdict(set)
     by_name: defaultdict[str, set[str]] = defaultdict(set)
     for symbol_id, symbol in symbol_lookup.items():
         qualified_name = symbol.get("qualified_name")
         if qualified_name:
-            by_qualified[str(qualified_name)] = symbol_id
+            by_qualified[str(qualified_name)].add(symbol_id)
         name = symbol.get("name")
         if name:
             by_name[str(name)].add(symbol_id)
-    unique_names = {
-        name: next(iter(ids)) for name, ids in by_name.items() if len(ids) == 1
-    }
-    return by_qualified, unique_names
+    return dict(by_qualified), dict(by_name)
 
 
-def _resolve_reference(
-    reference: str, by_qualified: dict[str, str], unique_names: dict[str, str]
-) -> str | None:
+def _resolve_reference_candidates(
+    reference: str,
+    by_qualified: dict[str, set[str]],
+    by_name: dict[str, set[str]],
+) -> list[str]:
     for candidate in _reference_candidates(reference):
         if candidate in by_qualified:
-            return by_qualified[candidate]
-        if candidate in unique_names:
-            return unique_names[candidate]
-    return None
+            return sorted(by_qualified[candidate])
+    candidates: set[str] = set()
+    for candidate in _reference_candidates(reference):
+        candidates.update(by_name.get(candidate, set()))
+    return sorted(candidates)
+
+
+def _resolution_status(candidates: list[str]) -> ResolutionStatus:
+    if len(candidates) == 1:
+        return "resolved"
+    if candidates:
+        return "ambiguous"
+    return "unresolved"
 
 
 def _import_record(import_text: str, line: int) -> dict[str, Any]:
@@ -192,9 +203,15 @@ def _import_record(import_text: str, line: int) -> dict[str, Any]:
 
 
 def extract_symbol_graph(
-    path: str | Path, language: str | None = None
+    path: str | Path,
+    language: str | None = None,
+    resolution_mode: ResolutionMode = "permissive",
+    fail_fast: bool = False,
 ) -> dict[str, Any]:
     """Extract a language-agnostic symbol graph from chunk metadata."""
+    if resolution_mode not in RESOLUTION_MODES:
+        msg = f"Unsupported resolution_mode: {resolution_mode}"
+        raise ValueError(msg)
     root = Path(path)
     files = collect_source_files(root, language)
     if not files:
@@ -234,6 +251,8 @@ def extract_symbol_graph(
                 include_retrieval_metadata=True,
             )
         except Exception as exc:  # pragma: no cover - defensive around parser failures
+            if fail_fast:
+                raise
             errors.append(f"Error extracting symbols from {file_path}: {exc}")
             continue
 
@@ -292,7 +311,7 @@ def extract_symbol_graph(
                 )
             )
 
-    by_qualified, unique_names = _build_resolution_indexes(symbol_lookup)
+    by_qualified, by_name = _build_resolution_indexes(symbol_lookup)
     relationships: list[dict[str, Any]] = []
     seen_relationships: set[tuple[str, str, str]] = set()
 
@@ -309,8 +328,11 @@ def extract_symbol_graph(
                 reference = _normalize_reference(value)
                 if not reference:
                     continue
-                resolved = _resolve_reference(reference, by_qualified, unique_names)
-                to_id = resolved or reference
+                candidates = _resolve_reference_candidates(
+                    reference, by_qualified, by_name
+                )
+                resolution = _resolution_status(candidates)
+                to_id = candidates[0] if resolution == "resolved" else reference
                 if to_id == from_id:
                     continue
                 dedupe_key = (from_id, to_id, relationship_type)
@@ -324,7 +346,15 @@ def extract_symbol_graph(
                         "type": relationship_type,
                         "line": line,
                         "file": file_name,
-                        "is_internal": resolved is not None,
+                        "is_internal": resolution == "resolved",
+                        "reference": reference,
+                        "resolution": resolution,
+                        "candidates": candidates,
+                        "resolution_mode": resolution_mode,
+                        "provenance": {
+                            "resolver": "extract_symbol_graph",
+                            "source": "syntax",
+                        },
                     }
                 )
 

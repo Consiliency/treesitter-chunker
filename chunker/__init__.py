@@ -18,6 +18,7 @@ from ._internal.cache import ASTCache
 from .chunker import chunk_text_with_token_limit, count_chunk_tokens
 from .chunker_config import ChunkerConfig
 from .core import chunk_file
+from .boundary import extract_boundary_ir
 from .exceptions import LanguageNotFoundError, LibraryNotFoundError, ParserError
 from .fallback.intelligent_fallback import (
     ChunkingDecision,
@@ -188,6 +189,7 @@ __all__.extend(
         "chunk_text_with_token_limit",
         "clear_cache",
         "count_chunk_tokens",
+        "extract_boundary_ir",
         "get_language_info",
         "get_parser",
         "get_plugin_manager",

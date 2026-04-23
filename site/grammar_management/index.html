@@ -1,0 +1,2421 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Grammar Management Guide - Tree-sitter Chunker</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#grammar-management-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Tree-sitter Chunker" class="md-header__button md-logo" aria-label="Tree-sitter Chunker" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Tree-sitter Chunker
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Grammar Management Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ViperJuice/treesitter-chunker" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Overview
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../getting-started/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../user-guide/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  User Guide
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../configuration/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Configuration
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../cli-reference/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  CLI Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../api-reference/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  API Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../export-formats/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Export Formats
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../graphml_export/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  GraphML Export
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../performance-guide/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Performance Guide
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../grammar_discovery/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Grammar Discovery
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../zero_config_api/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Zero-Config API
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../cookbook/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Cookbook
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../plugin-development/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Plugin Development
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../architecture/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../interface-boundary-spec/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Interface Boundary Spec
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../troubleshooting/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Troubleshooting
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../intelligent_fallback/" class="md-tabs__link">
+          
+  
+  
+  Advanced Topics
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Tree-sitter Chunker" class="md-nav__button md-logo" aria-label="Tree-sitter Chunker" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Tree-sitter Chunker
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ViperJuice/treesitter-chunker" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../export-formats/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Export Formats
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../graphml_export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GraphML Export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../performance-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../grammar_discovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Grammar Discovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zero_config_api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Zero-Config API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cookbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cookbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../plugin-development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plugin Development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../interface-boundary-spec/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interface Boundary Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_17" >
+        
+          
+          <label class="md-nav__link" for="__nav_17" id="__nav_17_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advanced Topics
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_17_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_17">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Advanced Topics
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../intelligent_fallback/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intelligent Fallback
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../token_limits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Token Limits
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../markdown_processor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Markdown Processor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../config_processor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Config Processor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../log_processor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Log Processor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../metadata-extraction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metadata Extraction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../overlapping-fallback/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overlapping Fallback
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cross-language-usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cross-Language Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../environment_variables/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../internal-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Internal API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../packaging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Packaging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Features
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Features">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#smart-error-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧠 Smart Error Handling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#user-grammar-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🛠️ User Grammar Management
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#health-monitoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📊 Health Monitoring
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Start
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Quick Start">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#check-current-grammar-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check Current Grammar Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-a-new-grammar" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install a New Grammar
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manage-existing-grammars" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manage Existing Grammars
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cli-commands-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLI Commands Reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CLI Commands Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#grammar-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        grammar list
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#grammar-info-language" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        grammar info &lt;language&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#grammar-install-language-repo_url-branch-branch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        grammar install &lt;language&gt; &lt;repo_url&gt; [--branch &lt;branch&gt;]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#grammar-update-language" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        grammar update &lt;language&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#grammar-remove-language" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        grammar remove &lt;language&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#grammar-diagnose-language" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        grammar diagnose &lt;language&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#grammar-health" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        grammar health
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#grammar-validate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        grammar validate
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#error-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error Handling
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Error Handling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#common-issues-and-solutions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Issues and Solutions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Common Issues and Solutions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#missing-grammar-library" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Missing Grammar Library
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#corrupted-grammar-library" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Corrupted Grammar Library
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#incompatible-grammar" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Incompatible Grammar
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#recovery-plans" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recovery Plans
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#system-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        System Requirements
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="System Requirements">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#required-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Required Tools
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#directory-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Directory Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best Practices
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Best Practices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#grammar-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Grammar Installation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#maintenance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Maintenance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#advanced-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advanced Usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Advanced Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#programmatic-access" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Programmatic Access
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-grammar-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom Grammar Sources
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#batch-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Batch Operations
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting-guide" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting Guide
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting Guide">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#installation-failures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation Failures
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#runtime-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime Issues
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#system-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        System Compatibility
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#support-and-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Support and Resources
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Support and Resources">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#getting-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Getting Help
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#useful-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Useful Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#additional-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Additional Resources
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conclusion
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="grammar-management-guide">Grammar Management Guide<a class="headerlink" href="#grammar-management-guide" title="Permanent link">&para;</a></h1>
+<p>This guide covers the smart grammar management system for tree-sitter-chunker, which provides intelligent error handling, user guidance, and tools for managing tree-sitter grammar libraries.</p>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>The grammar management system consists of several components:</p>
+<ul>
+<li><strong>Smart Grammar Manager</strong>: Core management with intelligent error handling</li>
+<li><strong>User Grammar Tools</strong>: User-friendly tools for grammar operations</li>
+<li><strong>CLI Commands</strong>: Command-line interface for grammar management</li>
+<li><strong>Enhanced Error Handling</strong>: Comprehensive user guidance and troubleshooting</li>
+</ul>
+<h2 id="features">Features<a class="headerlink" href="#features" title="Permanent link">&para;</a></h2>
+<h3 id="smart-error-handling">🧠 Smart Error Handling<a class="headerlink" href="#smart-error-handling" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Automatic diagnosis</strong> of grammar issues</li>
+<li><strong>Context-aware recommendations</strong> based on error type</li>
+<li><strong>Recovery plans</strong> with step-by-step solutions</li>
+<li><strong>Compatibility checking</strong> for system requirements</li>
+</ul>
+<h3 id="user-grammar-management">🛠️ User Grammar Management<a class="headerlink" href="#user-grammar-management" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Install</strong> grammars from Git repositories</li>
+<li><strong>Update</strong> existing grammars to latest versions</li>
+<li><strong>Remove</strong> grammars and clean up sources</li>
+<li><strong>Validate</strong> grammar health and integrity</li>
+</ul>
+<h3 id="health-monitoring">📊 Health Monitoring<a class="headerlink" href="#health-monitoring" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Real-time status</strong> of all installed grammars</li>
+<li><strong>Compatibility scoring</strong> for system requirements</li>
+<li><strong>Issue tracking</strong> with actionable recommendations</li>
+<li><strong>System health reports</strong> for troubleshooting</li>
+</ul>
+<h2 id="quick-start">Quick Start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
+<h3 id="check-current-grammar-status">Check Current Grammar Status<a class="headerlink" href="#check-current-grammar-status" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># List all installed grammars</span>
+python<span class="w"> </span>-m<span class="w"> </span>chunker.cli<span class="w"> </span>grammar<span class="w"> </span>list
+
+<span class="c1"># Get detailed info about a specific grammar</span>
+python<span class="w"> </span>-m<span class="w"> </span>chunker.cli<span class="w"> </span>grammar<span class="w"> </span>info<span class="w"> </span>python
+
+<span class="c1"># Check system health</span>
+python<span class="w"> </span>-m<span class="w"> </span>chunker.cli<span class="w"> </span>grammar<span class="w"> </span>health
+</code></pre></div>
+
+<h3 id="install-a-new-grammar">Install a New Grammar<a class="headerlink" href="#install-a-new-grammar" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Install Python grammar</span>
+python<span class="w"> </span>-m<span class="w"> </span>chunker.cli<span class="w"> </span>grammar<span class="w"> </span>install<span class="w"> </span>python<span class="w"> </span>https://github.com/tree-sitter/tree-sitter-python.git
+
+<span class="c1"># Install with specific branch</span>
+python<span class="w"> </span>-m<span class="w"> </span>chunker.cli<span class="w"> </span>grammar<span class="w"> </span>install<span class="w"> </span>rust<span class="w"> </span>https://github.com/tree-sitter/tree-sitter-rust.git<span class="w"> </span>--branch<span class="w"> </span>main
+</code></pre></div>
+
+<h3 id="manage-existing-grammars">Manage Existing Grammars<a class="headerlink" href="#manage-existing-grammars" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Update a grammar to latest version</span>
+python<span class="w"> </span>-m<span class="w"> </span>chunker.cli<span class="w"> </span>grammar<span class="w"> </span>update<span class="w"> </span>python
+
+<span class="c1"># Remove a grammar</span>
+python<span class="w"> </span>-m<span class="w"> </span>chunker.cli<span class="w"> </span>grammar<span class="w"> </span>remove<span class="w"> </span>python
+
+<span class="c1"># Diagnose issues with a grammar</span>
+python<span class="w"> </span>-m<span class="w"> </span>chunker.cli<span class="w"> </span>grammar<span class="w"> </span>diagnose<span class="w"> </span>python
+</code></pre></div>
+
+<h2 id="cli-commands-reference">CLI Commands Reference<a class="headerlink" href="#cli-commands-reference" title="Permanent link">&para;</a></h2>
+<h3 id="grammar-list"><code>grammar list</code><a class="headerlink" href="#grammar-list" title="Permanent link">&para;</a></h3>
+<p>Lists all installed grammars with their health status.</p>
+<p><strong>Output:</strong></p>
+<div class="codehilite"><pre><span></span><code><span class="err">📋</span><span class="w"> </span><span class="nx">Grammar</span><span class="w"> </span><span class="nx">Status</span><span class="w"> </span><span class="nx">Summary</span><span class="p">:</span>
+<span class="w">   </span><span class="nx">Total</span><span class="w"> </span><span class="nx">grammars</span><span class="p">:</span><span class="w"> </span><span class="mi">6</span>
+<span class="w">   </span><span class="nx">Healthy</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span>
+<span class="w">   </span><span class="nx">Problematic</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span>
+
+<span class="err">🔍</span><span class="w"> </span><span class="nx">Individual</span><span class="w"> </span><span class="nx">Grammar</span><span class="w"> </span><span class="nx">Status</span><span class="p">:</span>
+<span class="w">   </span><span class="err">✅</span><span class="w"> </span><span class="nx">python</span><span class="p">:</span><span class="w"> </span><span class="nx">healthy</span>
+<span class="w">   </span><span class="err">✅</span><span class="w"> </span><span class="nx">rust</span><span class="p">:</span><span class="w"> </span><span class="nx">healthy</span>
+<span class="w">   </span><span class="err">✅</span><span class="w"> </span><span class="nx">go</span><span class="p">:</span><span class="w"> </span><span class="nx">healthy</span>
+<span class="w">   </span><span class="err">✅</span><span class="w"> </span><span class="nx">c</span><span class="p">:</span><span class="w"> </span><span class="nx">healthy</span>
+<span class="w">   </span><span class="err">✅</span><span class="w"> </span><span class="nx">cpp</span><span class="p">:</span><span class="w"> </span><span class="nx">healthy</span>
+<span class="w">   </span><span class="err">⚠️</span><span class="w"> </span><span class="nx">java</span><span class="p">:</span><span class="w"> </span><span class="nx">missing</span>
+<span class="w">      </span><span class="o">-</span><span class="w"> </span><span class="nx">Grammar</span><span class="w"> </span><span class="kn">library</span><span class="w"> </span><span class="o">/</span><span class="nx">path</span><span class="o">/</span><span class="nx">to</span><span class="o">/</span><span class="nx">java</span><span class="p">.</span><span class="nx">so</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="nx">found</span>
+<span class="w">      </span><span class="err">💡</span><span class="w"> </span><span class="nx">Check</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nx">grammar</span><span class="w"> </span><span class="nx">source</span><span class="w"> </span><span class="nx">exists</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="nx">grammars</span><span class="o">/</span><span class="w"> </span><span class="nx">directory</span>
+</code></pre></div>
+
+<blockquote>
+<p><strong>Empty submodule placeholders:</strong> If a grammar directory exists but is empty (e.g., from an
+uninitialized git submodule), <code>fetch_grammar()</code> automatically detects this and re-clones the
+grammar source. No manual intervention is required.</p>
+</blockquote>
+<h3 id="grammar-info-language"><code>grammar info &lt;language&gt;</code><a class="headerlink" href="#grammar-info-language" title="Permanent link">&para;</a></h3>
+<p>Provides detailed information about a specific grammar.</p>
+<p><strong>Output:</strong></p>
+<div class="codehilite"><pre><span></span><code><span class="err">📊</span><span class="w"> </span><span class="nx">Grammar</span><span class="w"> </span><span class="nx">Information</span><span class="p">:</span><span class="w"> </span><span class="nx">python</span>
+<span class="o">==================================================</span>
+<span class="nx">Status</span><span class="p">:</span><span class="w"> </span><span class="err">✅</span><span class="w"> </span><span class="nx">healthy</span>
+
+<span class="err">🔧</span><span class="w"> </span><span class="nx">Compatibility</span><span class="p">:</span>
+<span class="w">   </span><span class="nx">Tree</span><span class="o">-</span><span class="nx">sitter</span><span class="w"> </span><span class="nx">version</span><span class="p">:</span><span class="w"> </span><span class="m m-Double">0.20.8</span>
+<span class="w">   </span><span class="nx">System</span><span class="w"> </span><span class="nx">architecture</span><span class="p">:</span><span class="w"> </span><span class="nx">x86_64</span>
+<span class="w">   </span><span class="nx">OS</span><span class="w"> </span><span class="nx">platform</span><span class="p">:</span><span class="w"> </span><span class="nx">Linux</span>
+<span class="w">   </span><span class="nx">Compilation</span><span class="w"> </span><span class="nx">date</span><span class="p">:</span><span class="w"> </span><span class="mi">2024</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">15</span><span class="nx">T10</span><span class="p">:</span><span class="mi">30</span><span class="p">:</span><span class="mi">00</span>
+<span class="w">   </span><span class="nx">Compatibility</span><span class="w"> </span><span class="nx">score</span><span class="p">:</span><span class="w"> </span><span class="m m-Double">100.0</span><span class="o">%</span>
+
+<span class="err">📁</span><span class="w"> </span><span class="nx">Source</span><span class="w"> </span><span class="nx">Repository</span><span class="p">:</span>
+<span class="w">   </span><span class="nx">URL</span><span class="p">:</span><span class="w"> </span><span class="nx">https</span><span class="p">:</span><span class="c1">//github.com/tree-sitter/tree-sitter-python.git</span>
+<span class="w">   </span><span class="nx">Latest</span><span class="w"> </span><span class="nx">commit</span><span class="p">:</span><span class="w"> </span><span class="nx">abc1234</span><span class="w"> </span><span class="nx">Update</span><span class="w"> </span><span class="nx">Python</span><span class="w"> </span><span class="m m-Double">3.12</span><span class="w"> </span><span class="nx">support</span>
+<span class="w">   </span><span class="nx">Directory</span><span class="p">:</span><span class="w"> </span><span class="o">/</span><span class="nx">path</span><span class="o">/</span><span class="nx">to</span><span class="o">/</span><span class="nx">grammars</span><span class="o">/</span><span class="nx">tree</span><span class="o">-</span><span class="nx">sitter</span><span class="o">-</span><span class="nx">python</span>
+<span class="w">   </span><span class="nx">Has</span><span class="w"> </span><span class="kn">package</span><span class="p">.</span><span class="nx">json</span><span class="p">:</span><span class="w"> </span><span class="nx">True</span>
+<span class="w">   </span><span class="nx">Has</span><span class="w"> </span><span class="nx">grammar</span><span class="p">.</span><span class="nx">js</span><span class="p">:</span><span class="w"> </span><span class="nx">True</span>
+</code></pre></div>
+
+<h3 id="grammar-install-language-repo_url-branch-branch"><code>grammar install &lt;language&gt; &lt;repo_url&gt; [--branch &lt;branch&gt;]</code><a class="headerlink" href="#grammar-install-language-repo_url-branch-branch" title="Permanent link">&para;</a></h3>
+<p>Installs a grammar from a Git repository.</p>
+<p><strong>Example:</strong></p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>chunker.cli<span class="w"> </span>grammar<span class="w"> </span>install<span class="w"> </span>typescript<span class="w"> </span>https://github.com/tree-sitter/tree-sitter-typescript.git
+</code></pre></div>
+
+<p><strong>Output:</strong></p>
+<div class="codehilite"><pre><span></span><code><span class="err">🚀</span><span class="w"> </span><span class="nx">Installing</span><span class="w"> </span><span class="nx">grammar</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="nx">typescript</span><span class="o">...</span>
+<span class="w">   </span><span class="nx">Repository</span><span class="p">:</span><span class="w"> </span><span class="nx">https</span><span class="p">:</span><span class="c1">//github.com/tree-sitter/tree-sitter-typescript.git</span>
+<span class="w">   </span><span class="nx">Branch</span><span class="p">:</span><span class="w"> </span><span class="nx">main</span>
+
+<span class="err">📋</span><span class="w"> </span><span class="nx">Installation</span><span class="w"> </span><span class="nx">Result</span><span class="p">:</span>
+<span class="w">   </span><span class="nx">Status</span><span class="p">:</span><span class="w"> </span><span class="nx">success</span>
+
+<span class="err">✅</span><span class="w"> </span><span class="nx">Steps</span><span class="w"> </span><span class="nx">completed</span><span class="p">:</span>
+<span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">Cloned</span><span class="w"> </span><span class="nx">repository</span>
+<span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">Installed</span><span class="w"> </span><span class="nx">npm</span><span class="w"> </span><span class="nx">dependencies</span>
+<span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">Generated</span><span class="w"> </span><span class="nx">grammar</span>
+<span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">Copied</span><span class="w"> </span><span class="nx">typescript</span><span class="p">.</span><span class="nx">so</span><span class="w"> </span><span class="nx">to</span><span class="w"> </span><span class="nx">build</span><span class="w"> </span><span class="nx">directory</span>
+<span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">Validated</span><span class="w"> </span><span class="nx">grammar</span><span class="w"> </span><span class="nx">installation</span>
+
+<span class="err">🎉</span><span class="w"> </span><span class="nx">Successfully</span><span class="w"> </span><span class="nx">installed</span><span class="w"> </span><span class="nx">typescript</span><span class="w"> </span><span class="nx">grammar</span><span class="p">!</span>
+</code></pre></div>
+
+<h3 id="grammar-update-language"><code>grammar update &lt;language&gt;</code><a class="headerlink" href="#grammar-update-language" title="Permanent link">&para;</a></h3>
+<p>Updates an existing grammar to the latest version.</p>
+<p><strong>Example:</strong></p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>chunker.cli<span class="w"> </span>grammar<span class="w"> </span>update<span class="w"> </span>python
+</code></pre></div>
+
+<p><strong>Output:</strong></p>
+<div class="codehilite"><pre><span></span><code><span class="err">🔄</span><span class="w"> </span><span class="nx">Updating</span><span class="w"> </span><span class="nx">grammar</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="nx">python</span><span class="o">...</span>
+
+<span class="err">📋</span><span class="w"> </span><span class="nx">Update</span><span class="w"> </span><span class="nx">Result</span><span class="p">:</span>
+<span class="w">   </span><span class="nx">Status</span><span class="p">:</span><span class="w"> </span><span class="nx">success</span>
+
+<span class="err">✅</span><span class="w"> </span><span class="nx">Steps</span><span class="w"> </span><span class="nx">completed</span><span class="p">:</span>
+<span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">Fetched</span><span class="w"> </span><span class="nx">latest</span><span class="w"> </span><span class="nx">changes</span>
+<span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">Updated</span><span class="w"> </span><span class="nx">to</span><span class="w"> </span><span class="nx">latest</span><span class="w"> </span><span class="nx">version</span>
+<span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">Updated</span><span class="w"> </span><span class="nx">dependencies</span>
+<span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">Regenerated</span><span class="w"> </span><span class="nx">grammar</span>
+<span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">Updated</span><span class="w"> </span><span class="nx">compiled</span><span class="w"> </span><span class="nx">grammar</span><span class="w"> </span><span class="kn">library</span>
+
+<span class="err">🎉</span><span class="w"> </span><span class="nx">Successfully</span><span class="w"> </span><span class="nx">updated</span><span class="w"> </span><span class="nx">python</span><span class="w"> </span><span class="nx">grammar</span><span class="p">!</span>
+</code></pre></div>
+
+<h3 id="grammar-remove-language"><code>grammar remove &lt;language&gt;</code><a class="headerlink" href="#grammar-remove-language" title="Permanent link">&para;</a></h3>
+<p>Removes a grammar and its source code.</p>
+<p><strong>Example:</strong></p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>chunker.cli<span class="w"> </span>grammar<span class="w"> </span>remove<span class="w"> </span>python
+</code></pre></div>
+
+<p><strong>Output:</strong></p>
+<div class="codehilite"><pre><span></span><code>🗑️<span class="w"> </span>Removing<span class="w"> </span>grammar<span class="w"> </span>for<span class="w"> </span>python...
+Are<span class="w"> </span>you<span class="w"> </span>sure<span class="w"> </span>you<span class="w"> </span>want<span class="w"> </span>to<span class="w"> </span>remove<span class="w"> </span>python?<span class="w"> </span>(y/N):<span class="w"> </span>y
+
+📋<span class="w"> </span>Removal<span class="w"> </span>Result:
+<span class="w">   </span>Status:<span class="w"> </span>success
+
+✅<span class="w"> </span>Steps<span class="w"> </span>completed:
+<span class="w">   </span>-<span class="w"> </span>Removed<span class="w"> </span>compiled<span class="w"> </span>grammar<span class="w"> </span>library
+<span class="w">   </span>-<span class="w"> </span>Removed<span class="w"> </span>grammar<span class="w"> </span>source<span class="w"> </span>directory
+
+🎉<span class="w"> </span>Successfully<span class="w"> </span>removed<span class="w"> </span>python<span class="w"> </span>grammar!
+</code></pre></div>
+
+<h3 id="grammar-diagnose-language"><code>grammar diagnose &lt;language&gt;</code><a class="headerlink" href="#grammar-diagnose-language" title="Permanent link">&para;</a></h3>
+<p>Diagnoses issues with a specific grammar.</p>
+<p><strong>Example:</strong></p>
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>chunker.cli<span class="w"> </span>grammar<span class="w"> </span>diagnose<span class="w"> </span>java
+</code></pre></div>
+
+<p><strong>Output:</strong></p>
+<div class="codehilite"><pre><span></span><code><span class="err">🔍</span><span class="w"> </span><span class="nx">Diagnosing</span><span class="w"> </span><span class="nx">grammar</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="nx">java</span><span class="o">...</span>
+
+<span class="err">📊</span><span class="w"> </span><span class="nx">Grammar</span><span class="w"> </span><span class="nx">Information</span><span class="p">:</span><span class="w"> </span><span class="nx">java</span>
+<span class="o">==================================================</span>
+<span class="nx">Status</span><span class="p">:</span><span class="w"> </span><span class="err">⚠️</span><span class="w"> </span><span class="nx">missing</span>
+
+<span class="err">❌</span><span class="w"> </span><span class="nx">Issues</span><span class="p">:</span>
+<span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">Grammar</span><span class="w"> </span><span class="kn">library</span><span class="w"> </span><span class="o">/</span><span class="nx">path</span><span class="o">/</span><span class="nx">to</span><span class="o">/</span><span class="nx">java</span><span class="p">.</span><span class="nx">so</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="nx">found</span>
+<span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">Grammar</span><span class="w"> </span><span class="nx">source</span><span class="w"> </span><span class="nx">repository</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="nx">found</span><span class="p">:</span><span class="w"> </span><span class="o">/</span><span class="nx">path</span><span class="o">/</span><span class="nx">to</span><span class="o">/</span><span class="nx">grammars</span><span class="o">/</span><span class="nx">tree</span><span class="o">-</span><span class="nx">sitter</span><span class="o">-</span><span class="nx">java</span>
+
+<span class="err">💡</span><span class="w"> </span><span class="nx">Recommendations</span><span class="p">:</span>
+<span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">Check</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nx">grammar</span><span class="w"> </span><span class="nx">source</span><span class="w"> </span><span class="nx">exists</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="nx">grammars</span><span class="o">/</span><span class="w"> </span><span class="nx">directory</span>
+<span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">Compile</span><span class="w"> </span><span class="nx">the</span><span class="w"> </span><span class="nx">grammar</span><span class="w"> </span><span class="nx">using</span><span class="w"> </span><span class="nx">the</span><span class="w"> </span><span class="nx">appropriate</span><span class="w"> </span><span class="nx">build</span><span class="w"> </span><span class="nx">script</span>
+<span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">Verify</span><span class="w"> </span><span class="nx">the</span><span class="w"> </span><span class="nx">grammar</span><span class="w"> </span><span class="nx">repository</span><span class="w"> </span><span class="nx">was</span><span class="w"> </span><span class="nx">cloned</span><span class="w"> </span><span class="nx">correctly</span>
+<span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">Clone</span><span class="w"> </span><span class="nx">the</span><span class="w"> </span><span class="nx">grammar</span><span class="w"> </span><span class="nx">repository</span><span class="w"> </span><span class="nx">to</span><span class="w"> </span><span class="nx">grammars</span><span class="o">/</span><span class="w"> </span><span class="nx">directory</span>
+
+<span class="err">🛠️</span><span class="w"> </span><span class="nx">Recovery</span><span class="w"> </span><span class="nx">Plan</span><span class="p">:</span>
+<span class="w">   </span><span class="nx">Difficulty</span><span class="p">:</span><span class="w"> </span><span class="nx">easy</span>
+<span class="w">   </span><span class="nx">Estimated</span><span class="w"> </span><span class="nx">time</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="o">-</span><span class="mi">15</span><span class="w"> </span><span class="nx">minutes</span>
+<span class="w">   </span><span class="nx">Steps</span><span class="p">:</span>
+<span class="w">      </span><span class="mi">1</span><span class="p">.</span><span class="w"> </span><span class="nx">Clone</span><span class="w"> </span><span class="nx">grammar</span><span class="w"> </span><span class="nx">repository</span><span class="p">:</span><span class="w"> </span><span class="nx">git</span><span class="w"> </span><span class="nx">clone</span><span class="w"> </span><span class="p">&lt;</span><span class="nx">repo_url</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">grammars</span><span class="o">/</span><span class="nx">tree</span><span class="o">-</span><span class="nx">sitter</span><span class="o">-</span><span class="nx">java</span>
+<span class="w">      </span><span class="mi">2</span><span class="p">.</span><span class="w"> </span><span class="nx">Navigate</span><span class="w"> </span><span class="nx">to</span><span class="w"> </span><span class="nx">grammar</span><span class="w"> </span><span class="nx">directory</span><span class="p">:</span><span class="w"> </span><span class="nx">cd</span><span class="w"> </span><span class="nx">grammars</span><span class="o">/</span><span class="nx">tree</span><span class="o">-</span><span class="nx">sitter</span><span class="o">-</span><span class="nx">java</span>
+<span class="w">      </span><span class="mi">3</span><span class="p">.</span><span class="w"> </span><span class="nx">Install</span><span class="w"> </span><span class="nx">dependencies</span><span class="p">:</span><span class="w"> </span><span class="nx">npm</span><span class="w"> </span><span class="nx">install</span><span class="w"> </span><span class="p">(</span><span class="k">if</span><span class="w"> </span><span class="kn">package</span><span class="p">.</span><span class="nx">json</span><span class="w"> </span><span class="nx">exists</span><span class="p">)</span>
+<span class="w">      </span><span class="mi">4</span><span class="p">.</span><span class="w"> </span><span class="nx">Generate</span><span class="w"> </span><span class="nx">grammar</span><span class="p">:</span><span class="w"> </span><span class="nx">tree</span><span class="o">-</span><span class="nx">sitter</span><span class="w"> </span><span class="nx">generate</span>
+<span class="w">      </span><span class="mi">5</span><span class="p">.</span><span class="w"> </span><span class="nx">Copy</span><span class="w"> </span><span class="p">.</span><span class="nx">so</span><span class="w"> </span><span class="nx">file</span><span class="w"> </span><span class="nx">to</span><span class="w"> </span><span class="nx">build</span><span class="w"> </span><span class="nx">directory</span><span class="p">:</span><span class="w"> </span><span class="nx">cp</span><span class="w"> </span><span class="o">*</span><span class="p">.</span><span class="nx">so</span><span class="w"> </span><span class="p">..</span><span class="o">/</span><span class="p">..</span><span class="o">/</span><span class="nx">chunker</span><span class="o">/</span><span class="nx">data</span><span class="o">/</span><span class="nx">grammars</span><span class="o">/</span><span class="nx">build</span><span class="o">/</span>
+</code></pre></div>
+
+<h3 id="grammar-health"><code>grammar health</code><a class="headerlink" href="#grammar-health" title="Permanent link">&para;</a></h3>
+<p>Checks overall system health for grammar management.</p>
+<p><strong>Output:</strong></p>
+<div class="codehilite"><pre><span></span><code>🏥<span class="w"> </span><span class="nv">Checking</span><span class="w"> </span><span class="nv">system</span><span class="w"> </span><span class="nv">health</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="nv">grammar</span><span class="w"> </span><span class="nv">management</span>...
+
+📋<span class="w"> </span><span class="nv">System</span><span class="w"> </span><span class="nv">Health</span><span class="w"> </span><span class="nv">Report</span>:
+<span class="o">==================================================</span>
+
+🔧<span class="w"> </span><span class="nv">System</span><span class="w"> </span><span class="nv">Requirements</span>:
+<span class="w">   </span>✅<span class="w"> </span><span class="nv">Tree</span><span class="w"> </span><span class="nv">Sitter</span><span class="w"> </span><span class="nv">Cli</span>:<span class="w"> </span><span class="nv">Available</span>
+<span class="w">   </span>✅<span class="w"> </span><span class="nv">Node</span><span class="w"> </span><span class="nv">Npm</span>:<span class="w"> </span><span class="nv">Available</span>
+<span class="w">   </span>✅<span class="w"> </span><span class="nv">Git</span>:<span class="w"> </span><span class="nv">Available</span>
+<span class="w">   </span>✅<span class="w"> </span><span class="nv">Compiler</span>:<span class="w"> </span><span class="nv">Available</span>
+<span class="w">   </span>✅<span class="w"> </span><span class="nv">Python</span><span class="w"> </span><span class="nv">Deps</span>:<span class="w"> </span><span class="nv">Available</span>
+
+📁<span class="w"> </span><span class="nv">Directory</span><span class="w"> </span><span class="nv">Permissions</span>:
+<span class="w">   </span>✅<span class="w"> </span><span class="nv">build</span><span class="w"> </span><span class="nv">directory</span>:<span class="w"> </span><span class="nv">readable</span>,<span class="w"> </span><span class="nv">writable</span>,<span class="w"> </span><span class="nv">executable</span>
+<span class="w">   </span>✅<span class="w"> </span><span class="nv">grammars</span><span class="w"> </span><span class="nv">directory</span>:<span class="w"> </span><span class="nv">readable</span>,<span class="w"> </span><span class="nv">writable</span>,<span class="w"> </span><span class="nv">executable</span>
+
+📊<span class="w"> </span><span class="nv">Overall</span><span class="w"> </span><span class="nv">Health</span><span class="w"> </span><span class="nv">Score</span>:<span class="w"> </span><span class="mi">100</span>.<span class="mi">0</span><span class="o">%</span>
+🎉<span class="w"> </span><span class="nv">System</span><span class="w"> </span><span class="nv">is</span><span class="w"> </span><span class="nv">fully</span><span class="w"> </span><span class="nv">ready</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="nv">grammar</span><span class="w"> </span><span class="nv">management</span><span class="o">!</span>
+</code></pre></div>
+
+<h3 id="grammar-validate"><code>grammar validate</code><a class="headerlink" href="#grammar-validate" title="Permanent link">&para;</a></h3>
+<p>Validates all installed grammars.</p>
+<p><strong>Output:</strong></p>
+<div class="codehilite"><pre><span></span><code><span class="err">🔍</span><span class="w"> </span><span class="nx">Validating</span><span class="w"> </span><span class="nx">all</span><span class="w"> </span><span class="nx">installed</span><span class="w"> </span><span class="nx">grammars</span><span class="o">...</span>
+
+<span class="err">📋</span><span class="w"> </span><span class="nx">Validation</span><span class="w"> </span><span class="nx">Results</span><span class="p">:</span>
+<span class="w">   </span><span class="nx">Total</span><span class="w"> </span><span class="nx">grammars</span><span class="p">:</span><span class="w"> </span><span class="mi">6</span>
+<span class="w">   </span><span class="nx">Healthy</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span>
+<span class="w">   </span><span class="nx">Problematic</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span>
+
+<span class="err">⚠️</span><span class="w"> </span><span class="nx">Problematic</span><span class="w"> </span><span class="nx">Grammars</span><span class="p">:</span>
+<span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="nx">java</span><span class="p">:</span><span class="w"> </span><span class="nx">missing</span>
+<span class="w">     </span><span class="nx">Issue</span><span class="p">:</span><span class="w"> </span><span class="nx">Grammar</span><span class="w"> </span><span class="kn">library</span><span class="w"> </span><span class="o">/</span><span class="nx">path</span><span class="o">/</span><span class="nx">to</span><span class="o">/</span><span class="nx">java</span><span class="p">.</span><span class="nx">so</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="nx">found</span>
+<span class="w">     </span><span class="nx">Recommendation</span><span class="p">:</span><span class="w"> </span><span class="nx">Check</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nx">grammar</span><span class="w"> </span><span class="nx">source</span><span class="w"> </span><span class="nx">exists</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="nx">grammars</span><span class="o">/</span><span class="w"> </span><span class="nx">directory</span>
+<span class="w">     </span><span class="nx">Recommendation</span><span class="p">:</span><span class="w"> </span><span class="nx">Compile</span><span class="w"> </span><span class="nx">the</span><span class="w"> </span><span class="nx">grammar</span><span class="w"> </span><span class="nx">using</span><span class="w"> </span><span class="nx">the</span><span class="w"> </span><span class="nx">appropriate</span><span class="w"> </span><span class="nx">build</span><span class="w"> </span><span class="nx">script</span>
+<span class="w">     </span><span class="nx">Recommendation</span><span class="p">:</span><span class="w"> </span><span class="nx">Verify</span><span class="w"> </span><span class="nx">the</span><span class="w"> </span><span class="nx">grammar</span><span class="w"> </span><span class="nx">repository</span><span class="w"> </span><span class="nx">was</span><span class="w"> </span><span class="nx">cloned</span><span class="w"> </span><span class="nx">correctly</span>
+</code></pre></div>
+
+<h2 id="error-handling">Error Handling<a class="headerlink" href="#error-handling" title="Permanent link">&para;</a></h2>
+<h3 id="common-issues-and-solutions">Common Issues and Solutions<a class="headerlink" href="#common-issues-and-solutions" title="Permanent link">&para;</a></h3>
+<h4 id="missing-grammar-library">Missing Grammar Library<a class="headerlink" href="#missing-grammar-library" title="Permanent link">&para;</a></h4>
+<p><strong>Symptoms:</strong> <code>LanguageNotFoundError</code> with "missing" status</p>
+<p><strong>Solutions:</strong>
+1. Check if grammar source exists in <code>grammars/</code> directory
+2. Clone the grammar repository: <code>git clone &lt;repo_url&gt; grammars/tree-sitter-&lt;language&gt;</code>
+3. Install dependencies: <code>npm install</code> (if package.json exists)
+4. Generate grammar: <code>tree-sitter generate</code>
+5. Copy .so file to build directory</p>
+<h4 id="corrupted-grammar-library">Corrupted Grammar Library<a class="headerlink" href="#corrupted-grammar-library" title="Permanent link">&para;</a></h4>
+<p><strong>Symptoms:</strong> <code>LanguageLoadError</code> with "corrupted" status</p>
+<p><strong>Solutions:</strong>
+1. Remove corrupted .so file
+2. Clean grammar source: <code>git clean -fd</code>
+3. Pull latest changes: <code>git pull origin main</code>
+4. Regenerate grammar: <code>tree-sitter generate</code>
+5. Copy new .so file to build directory</p>
+<h4 id="incompatible-grammar">Incompatible Grammar<a class="headerlink" href="#incompatible-grammar" title="Permanent link">&para;</a></h4>
+<p><strong>Symptoms:</strong> <code>LanguageLoadError</code> with "incompatible" status</p>
+<p><strong>Solutions:</strong>
+1. Check system compatibility requirements
+2. Verify tree-sitter version compatibility
+3. Recompile grammar on current system
+4. Check for architecture-specific issues
+5. Consider using a different grammar version</p>
+<h3 id="recovery-plans">Recovery Plans<a class="headerlink" href="#recovery-plans" title="Permanent link">&para;</a></h3>
+<p>The system automatically generates recovery plans for problematic grammars:</p>
+<div class="codehilite"><pre><span></span><code><span class="err">🛠️</span><span class="w"> </span><span class="nx">Recovery</span><span class="w"> </span><span class="nx">Plan</span><span class="p">:</span>
+<span class="w">   </span><span class="nx">Difficulty</span><span class="p">:</span><span class="w"> </span><span class="nx">easy</span>
+<span class="w">   </span><span class="nx">Estimated</span><span class="w"> </span><span class="nx">time</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="o">-</span><span class="mi">15</span><span class="w"> </span><span class="nx">minutes</span>
+<span class="w">   </span><span class="nx">Steps</span><span class="p">:</span>
+<span class="w">      </span><span class="mi">1</span><span class="p">.</span><span class="w"> </span><span class="nx">Clone</span><span class="w"> </span><span class="nx">grammar</span><span class="w"> </span><span class="nx">repository</span><span class="p">:</span><span class="w"> </span><span class="nx">git</span><span class="w"> </span><span class="nx">clone</span><span class="w"> </span><span class="p">&lt;</span><span class="nx">repo_url</span><span class="p">&gt;</span><span class="w"> </span><span class="nx">grammars</span><span class="o">/</span><span class="nx">tree</span><span class="o">-</span><span class="nx">sitter</span><span class="o">-</span><span class="p">&lt;</span><span class="nx">language</span><span class="p">&gt;</span>
+<span class="w">      </span><span class="mi">2</span><span class="p">.</span><span class="w"> </span><span class="nx">Navigate</span><span class="w"> </span><span class="nx">to</span><span class="w"> </span><span class="nx">grammar</span><span class="w"> </span><span class="nx">directory</span><span class="p">:</span><span class="w"> </span><span class="nx">cd</span><span class="w"> </span><span class="nx">grammars</span><span class="o">/</span><span class="nx">tree</span><span class="o">-</span><span class="nx">sitter</span><span class="o">-</span><span class="p">&lt;</span><span class="nx">language</span><span class="p">&gt;</span>
+<span class="w">      </span><span class="mi">3</span><span class="p">.</span><span class="w"> </span><span class="nx">Install</span><span class="w"> </span><span class="nx">dependencies</span><span class="p">:</span><span class="w"> </span><span class="nx">npm</span><span class="w"> </span><span class="nx">install</span><span class="w"> </span><span class="p">(</span><span class="k">if</span><span class="w"> </span><span class="kn">package</span><span class="p">.</span><span class="nx">json</span><span class="w"> </span><span class="nx">exists</span><span class="p">)</span>
+<span class="w">      </span><span class="mi">4</span><span class="p">.</span><span class="w"> </span><span class="nx">Generate</span><span class="w"> </span><span class="nx">grammar</span><span class="p">:</span><span class="w"> </span><span class="nx">tree</span><span class="o">-</span><span class="nx">sitter</span><span class="w"> </span><span class="nx">generate</span>
+<span class="w">      </span><span class="mi">5</span><span class="p">.</span><span class="w"> </span><span class="nx">Copy</span><span class="w"> </span><span class="p">.</span><span class="nx">so</span><span class="w"> </span><span class="nx">file</span><span class="w"> </span><span class="nx">to</span><span class="w"> </span><span class="nx">build</span><span class="w"> </span><span class="nx">directory</span><span class="p">:</span><span class="w"> </span><span class="nx">cp</span><span class="w"> </span><span class="o">*</span><span class="p">.</span><span class="nx">so</span><span class="w"> </span><span class="p">..</span><span class="o">/</span><span class="p">..</span><span class="o">/</span><span class="nx">chunker</span><span class="o">/</span><span class="nx">data</span><span class="o">/</span><span class="nx">grammars</span><span class="o">/</span><span class="nx">build</span><span class="o">/</span>
+</code></pre></div>
+
+<h2 id="system-requirements">System Requirements<a class="headerlink" href="#system-requirements" title="Permanent link">&para;</a></h2>
+<h3 id="required-tools">Required Tools<a class="headerlink" href="#required-tools" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>tree-sitter CLI</strong>: <code>npm install -g tree-sitter-cli</code></li>
+<li><strong>Node.js and npm</strong>: For grammar compilation</li>
+<li><strong>Git</strong>: For managing grammar repositories</li>
+<li><strong>C Compiler</strong>: gcc or clang for building grammars</li>
+<li><strong>Python tree-sitter</strong>: <code>pip install tree-sitter</code></li>
+</ul>
+<h3 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code>project_root/
+├── chunker/
+│   └── data/
+│       └── grammars/
+│           └── build/          # Compiled grammar libraries
+└── grammars/                   # Grammar source repositories
+    ├── tree-sitter-python/
+    ├── tree-sitter-rust/
+    └── ...
+</code></pre></div>
+
+<blockquote>
+<p><strong>Platform-native extensions:</strong> Compiled grammar libraries use the extension appropriate for
+the current platform — <code>.so</code> on Linux, <code>.dylib</code> on macOS, and <code>.dll</code> on Windows. The grammar
+scanner automatically detects the correct extension. Examples in this guide show <code>.so</code> for brevity.</p>
+</blockquote>
+<h2 id="best-practices">Best Practices<a class="headerlink" href="#best-practices" title="Permanent link">&para;</a></h2>
+<h3 id="grammar-installation">Grammar Installation<a class="headerlink" href="#grammar-installation" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Use official repositories</strong> when possible</li>
+<li><strong>Check compatibility</strong> with your system</li>
+<li><strong>Keep grammars updated</strong> for latest language support</li>
+<li><strong>Validate installations</strong> after completion</li>
+</ol>
+<h3 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Start with system health check</strong>: <code>grammar health</code></li>
+<li><strong>Diagnose specific issues</strong>: <code>grammar diagnose &lt;language&gt;</code></li>
+<li><strong>Follow recovery plans</strong> step by step</li>
+<li><strong>Check system requirements</strong> if issues persist</li>
+</ol>
+<h3 id="maintenance">Maintenance<a class="headerlink" href="#maintenance" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Regular updates</strong> of installed grammars</li>
+<li><strong>Monitor grammar health</strong> with <code>grammar list</code></li>
+<li><strong>Clean up unused grammars</strong> to save space</li>
+<li><strong>Backup important grammars</strong> before major changes</li>
+</ol>
+<h2 id="advanced-usage">Advanced Usage<a class="headerlink" href="#advanced-usage" title="Permanent link">&para;</a></h2>
+<h3 id="programmatic-access">Programmatic Access<a class="headerlink" href="#programmatic-access" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker._internal.user_grammar_tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">UserGrammarTools</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="c1"># Initialize tools</span>
+<span class="n">tools</span> <span class="o">=</span> <span class="n">UserGrammarTools</span><span class="p">(</span>
+    <span class="n">build_dir</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;chunker/data/grammars/build&quot;</span><span class="p">),</span>
+    <span class="n">grammars_dir</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;grammars&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="c1"># Install a grammar</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">tools</span><span class="o">.</span><span class="n">install_grammar</span><span class="p">(</span>
+    <span class="s2">&quot;kotlin&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;https://github.com/fwcd/tree-sitter-kotlin.git&quot;</span>
+<span class="p">)</span>
+
+<span class="c1"># Check grammar health</span>
+<span class="n">health</span> <span class="o">=</span> <span class="n">tools</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">diagnose_grammar_issues</span><span class="p">(</span><span class="s2">&quot;kotlin&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Status: </span><span class="si">{</span><span class="n">health</span><span class="o">.</span><span class="n">status</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="custom-grammar-sources">Custom Grammar Sources<a class="headerlink" href="#custom-grammar-sources" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Install from custom repository</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">tools</span><span class="o">.</span><span class="n">install_grammar</span><span class="p">(</span>
+    <span class="s2">&quot;custom-lang&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;https://github.com/username/tree-sitter-custom-lang.git&quot;</span><span class="p">,</span>
+    <span class="n">branch</span><span class="o">=</span><span class="s2">&quot;develop&quot;</span>
+<span class="p">)</span>
+</code></pre></div>
+
+<h3 id="batch-operations">Batch Operations<a class="headerlink" href="#batch-operations" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Validate all grammars</span>
+<span class="n">all_health</span> <span class="o">=</span> <span class="n">tools</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">validate_all_grammars</span><span class="p">()</span>
+
+<span class="c1"># Check system health</span>
+<span class="n">system_health</span> <span class="o">=</span> <span class="n">tools</span><span class="o">.</span><span class="n">check_system_health</span><span class="p">()</span>
+
+<span class="c1"># Generate recovery plans for all problematic grammars</span>
+<span class="k">for</span> <span class="n">language</span><span class="p">,</span> <span class="n">health</span> <span class="ow">in</span> <span class="n">all_health</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="k">if</span> <span class="n">health</span><span class="o">.</span><span class="n">status</span> <span class="o">!=</span> <span class="s2">&quot;healthy&quot;</span><span class="p">:</span>
+        <span class="n">plan</span> <span class="o">=</span> <span class="n">tools</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">generate_recovery_plan</span><span class="p">(</span><span class="n">language</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Recovery plan for </span><span class="si">{</span><span class="n">language</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">plan</span><span class="p">[</span><span class="s1">&#39;difficulty&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h2 id="troubleshooting-guide">Troubleshooting Guide<a class="headerlink" href="#troubleshooting-guide" title="Permanent link">&para;</a></h2>
+<h3 id="installation-failures">Installation Failures<a class="headerlink" href="#installation-failures" title="Permanent link">&para;</a></h3>
+<p><strong>Problem:</strong> <code>npm install</code> fails
+<strong>Solution:</strong> Check Node.js version and npm permissions</p>
+<p><strong>Problem:</strong> <code>tree-sitter generate</code> fails
+<strong>Solution:</strong> Verify grammar.js file exists and syntax is correct</p>
+<p><strong>Problem:</strong> Permission denied errors
+<strong>Solution:</strong> Check directory permissions and user access</p>
+<h3 id="runtime-issues">Runtime Issues<a class="headerlink" href="#runtime-issues" title="Permanent link">&para;</a></h3>
+<p><strong>Problem:</strong> Grammar loads but parsing fails
+<strong>Solution:</strong> Check grammar version compatibility with your code</p>
+<p><strong>Problem:</strong> Symbol not found errors
+<strong>Solution:</strong> Recompile grammar on current system architecture</p>
+<p><strong>Problem:</strong> Memory errors during parsing
+<strong>Solution:</strong> Check grammar complexity and system resources</p>
+<h3 id="system-compatibility">System Compatibility<a class="headerlink" href="#system-compatibility" title="Permanent link">&para;</a></h3>
+<p><strong>Problem:</strong> Architecture mismatch
+<strong>Solution:</strong> Recompile grammar on target architecture</p>
+<p><strong>Problem:</strong> OS compatibility issues
+<strong>Solution:</strong> Use grammar versions compatible with your OS</p>
+<p><strong>Problem:</strong> Tree-sitter version mismatch
+<strong>Solution:</strong> Update tree-sitter or use compatible grammar version</p>
+<h2 id="support-and-resources">Support and Resources<a class="headerlink" href="#support-and-resources" title="Permanent link">&para;</a></h2>
+<h3 id="getting-help">Getting Help<a class="headerlink" href="#getting-help" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Check system health</strong>: <code>grammar health</code></li>
+<li><strong>Review error messages</strong> for specific guidance</li>
+<li><strong>Follow recovery plans</strong> provided by the system</li>
+<li><strong>Check grammar repository</strong> for known issues</li>
+</ol>
+<h3 id="useful-commands">Useful Commands<a class="headerlink" href="#useful-commands" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>grammar list</code> - Quick status overview</li>
+<li><code>grammar health</code> - System requirements check</li>
+<li><code>grammar diagnose &lt;language&gt;</code> - Detailed issue analysis</li>
+<li><code>grammar validate</code> - Comprehensive validation</li>
+</ul>
+<h3 id="additional-resources">Additional Resources<a class="headerlink" href="#additional-resources" title="Permanent link">&para;</a></h3>
+<ul>
+<li><a href="https://tree-sitter.github.io/tree-sitter/">Tree-sitter Documentation</a></li>
+<li><a href="https://tree-sitter.github.io/tree-sitter/creating-parsers">Grammar Development Guide</a></li>
+<li><a href="https://github.com/topics/tree-sitter-grammar">Community Grammars</a></li>
+</ul>
+<h2 id="conclusion">Conclusion<a class="headerlink" href="#conclusion" title="Permanent link">&para;</a></h2>
+<p>The smart grammar management system provides comprehensive tools for managing tree-sitter grammars with intelligent error handling and user guidance. By following the best practices and using the provided tools, you can maintain a healthy and up-to-date grammar ecosystem for optimal code parsing performance.</p>
+<p>For additional support or feature requests, please refer to the project documentation or create an issue in the project repository.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -17,28 +17,32 @@ This roadmap focuses only on boundary parsing and IR generation.
 - Generate canonical boundary IR for at least Python, TypeScript/JavaScript, and Go.
 - Reproducible outputs for identical repo snapshot + tool version.
 - Explicit edge resolution states (`resolved|ambiguous|unresolved`).
+- Implement against the frozen Boundary IR schema in `docs/interface-boundary-spec.md`.
 
 ### Work items
 
 1. **IR adapter layer**
-   - Build adapter from `chunk_file(...include_retrieval_metadata=True)` and `extract_symbol_graph()` output to spec IR.
+   - Build adapter from `chunk_file(...include_retrieval_metadata=True)` and `extract_symbol_graph()` output to the frozen Boundary IR schema in `docs/interface-boundary-spec.md`.
    - Implement canonical node/edge sorting and stable JSON serialization.
 
 2. **Boundary ID strategy**
    - Implement precedence: `definition_id` → `module+qualified_name` → `node_id`.
    - Add deterministic deduplication.
 
-3. **Strict mode implementation**
-   - No guessed edges in strict mode.
-   - Track ambiguous/unresolved edge counters.
+3. **Strict mode implementation** _(implemented)_
+   - Boundary IR defaults to `resolution_mode="strict"`.
+   - No guessed target node identity is emitted for ambiguous or unresolved edges.
+   - Resolved, ambiguous, and unresolved edge counters are tracked from emitted
+     edge statuses.
 
-4. **Golden tests**
+4. **Golden tests** _(implemented)_
    - Snapshot tests against fixture repos for deterministic output.
    - Run same input twice and assert byte-identical output.
 
 ### Exit criteria
 
 - Determinism tests pass in CI.
+- `docs/interface-boundary-spec.md` remains the canonical schema contract for adapter output.
 - Spec compliance checklist is fully green for core languages.
 
 ---
@@ -57,7 +61,7 @@ This roadmap focuses only on boundary parsing and IR generation.
    - Re-extract only changed files and impacted neighbors.
    - Cache intermediate boundary records keyed by file hash.
 
-2. **Observability**
+2. **Observability** _(implemented for deterministic Boundary IR output)_
    - Add structured timings: parse, normalization, graph assembly, serialization.
    - Publish run summary counters and top failure buckets.
 
@@ -65,7 +69,7 @@ This roadmap focuses only on boundary parsing and IR generation.
    - Add extractor conformance fixtures for additional languages.
    - Add per-language parity dashboards for key fields (`kind`, `qualified_name`, signatures).
 
-4. **Robust failure handling**
+4. **Robust failure handling** _(implemented for Boundary IR extraction)_
    - Continue on parse errors by default.
    - Add `fail_fast` toggle for strict pipelines.
 
@@ -103,13 +107,13 @@ This roadmap focuses only on boundary parsing and IR generation.
 
 ## Suggested execution order (first 10 tasks)
 
-1. Implement IR schema + serializer.
+1. Implement serializer for the frozen IR schema in `docs/interface-boundary-spec.md`.
 2. Implement ID precedence logic.
 3. Add deterministic sort + canonical JSON.
-4. Add strict/permissive resolution policy.
-5. Build first golden fixtures (3 languages).
-6. Add deterministic CI gate (double-run equivalence).
-7. Add structured metrics output.
+4. Add strict/permissive resolution policy. _(implemented)_
+5. Build first golden fixtures (3 languages). _(implemented for P0 matrix)_
+6. Add deterministic CI gate (double-run equivalence). _(implemented)_
+7. Add structured metrics output. _(implemented for Boundary IR observability)_
 8. Implement cache key strategy.
 9. Add incremental recomputation.
 10. Expand language conformance fixtures.

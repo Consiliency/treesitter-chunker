@@ -21,6 +21,7 @@ nav:
   - Cookbook: cookbook.md
   - Plugin Development: plugin-development.md
   - Architecture: architecture.md
+  - Interface Boundary Spec: interface-boundary-spec.md
   - Troubleshooting: troubleshooting.md
   - Advanced Topics:
     - Intelligent Fallback: intelligent_fallback.md

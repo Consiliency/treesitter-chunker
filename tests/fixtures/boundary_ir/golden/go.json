@@ -1,0 +1,658 @@
+{
+  "diagnostics": [],
+  "edges": [
+    {
+      "candidates": [],
+      "id": "edge:a3898180bbd8cd3a",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 3,
+        "start_line": 3
+      },
+      "metadata": {
+        "file": "beta.go",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "value",
+      "resolution": "unresolved",
+      "source": "07b63845cb3ae30cb48d2813b9e26e7f382ed2df",
+      "target": "value",
+      "type": "dependencies"
+    },
+    {
+      "candidates": [],
+      "id": "edge:e1b76270e5745f55",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 9,
+        "start_line": 9
+      },
+      "metadata": {
+        "file": "format.go",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "TrimSpace",
+      "resolution": "unresolved",
+      "source": "199e85c706042829c21a18a19e95258fbdcdc137",
+      "target": "TrimSpace",
+      "type": "calls"
+    },
+    {
+      "candidates": [],
+      "id": "edge:819eaa4415aa644d",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 9,
+        "start_line": 9
+      },
+      "metadata": {
+        "file": "format.go",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "strings",
+      "resolution": "unresolved",
+      "source": "199e85c706042829c21a18a19e95258fbdcdc137",
+      "target": "strings",
+      "type": "dependencies"
+    },
+    {
+      "candidates": [],
+      "id": "edge:d3faacbf277b431b",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 9,
+        "start_line": 9
+      },
+      "metadata": {
+        "file": "format.go",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "value",
+      "resolution": "unresolved",
+      "source": "199e85c706042829c21a18a19e95258fbdcdc137",
+      "target": "value",
+      "type": "dependencies"
+    },
+    {
+      "candidates": [],
+      "id": "edge:e9303e27e5900f9e",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 3,
+        "start_line": 3
+      },
+      "metadata": {
+        "file": "alpha.go",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "value",
+      "resolution": "unresolved",
+      "source": "6c6d2514190884959b91c1b42fbf90c94e1ef83a",
+      "target": "value",
+      "type": "dependencies"
+    },
+    {
+      "candidates": [
+        "199e85c706042829c21a18a19e95258fbdcdc137"
+      ],
+      "id": "edge:1374d58f964377d7",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 3,
+        "start_line": 3
+      },
+      "metadata": {
+        "file": "service.go",
+        "is_internal": true
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "Format",
+      "resolution": "resolved",
+      "source": "c929955174ede1c6857e22b2f555fe70f66912d6",
+      "target": "199e85c706042829c21a18a19e95258fbdcdc137",
+      "type": "calls"
+    },
+    {
+      "candidates": [
+        "199e85c706042829c21a18a19e95258fbdcdc137"
+      ],
+      "id": "edge:c8056ae4e03078f0",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 3,
+        "start_line": 3
+      },
+      "metadata": {
+        "file": "service.go",
+        "is_internal": true
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "Format",
+      "resolution": "resolved",
+      "source": "c929955174ede1c6857e22b2f555fe70f66912d6",
+      "target": "199e85c706042829c21a18a19e95258fbdcdc137",
+      "type": "dependencies"
+    },
+    {
+      "candidates": [],
+      "id": "edge:f1554145262a03fd",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 3,
+        "start_line": 3
+      },
+      "metadata": {
+        "file": "service.go",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "Ghost",
+      "resolution": "unresolved",
+      "source": "c929955174ede1c6857e22b2f555fe70f66912d6",
+      "target": "Ghost",
+      "type": "calls"
+    },
+    {
+      "candidates": [],
+      "id": "edge:218fdf144ed76960",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 3,
+        "start_line": 3
+      },
+      "metadata": {
+        "file": "service.go",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "Ghost",
+      "resolution": "unresolved",
+      "source": "c929955174ede1c6857e22b2f555fe70f66912d6",
+      "target": "Ghost",
+      "type": "dependencies"
+    },
+    {
+      "candidates": [
+        "07b63845cb3ae30cb48d2813b9e26e7f382ed2df",
+        "6c6d2514190884959b91c1b42fbf90c94e1ef83a"
+      ],
+      "id": "edge:ca34e39a25cdfb46",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 3,
+        "start_line": 3
+      },
+      "metadata": {
+        "file": "service.go",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "helper",
+      "resolution": "ambiguous",
+      "source": "c929955174ede1c6857e22b2f555fe70f66912d6",
+      "target": "helper",
+      "type": "calls"
+    },
+    {
+      "candidates": [
+        "07b63845cb3ae30cb48d2813b9e26e7f382ed2df",
+        "6c6d2514190884959b91c1b42fbf90c94e1ef83a"
+      ],
+      "id": "edge:35b1eae966d1e8c9",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 3,
+        "start_line": 3
+      },
+      "metadata": {
+        "file": "service.go",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "helper",
+      "resolution": "ambiguous",
+      "source": "c929955174ede1c6857e22b2f555fe70f66912d6",
+      "target": "helper",
+      "type": "dependencies"
+    },
+    {
+      "candidates": [],
+      "id": "edge:f0a02391bb742db0",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 3,
+        "start_line": 3
+      },
+      "metadata": {
+        "file": "service.go",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "value",
+      "resolution": "unresolved",
+      "source": "c929955174ede1c6857e22b2f555fe70f66912d6",
+      "target": "value",
+      "type": "dependencies"
+    }
+  ],
+  "files": [
+    {
+      "content_hash": "sha1:19bbec6a6d2a2eb75cba843937060067a1dd1773",
+      "diagnostics": [],
+      "id": "159d8f8ab24dbe8d1716a385b6fde4f44e645522",
+      "language": "go",
+      "parser": "tree-sitter-go",
+      "path": "alpha.go",
+      "status": "parsed"
+    },
+    {
+      "content_hash": "sha1:19bbec6a6d2a2eb75cba843937060067a1dd1773",
+      "diagnostics": [],
+      "id": "91907e5f1200a949d026636f1a6a1abfd8eac5aa",
+      "language": "go",
+      "parser": "tree-sitter-go",
+      "path": "beta.go",
+      "status": "parsed"
+    },
+    {
+      "content_hash": "sha1:409738fba408745c72de61809fc1ebb001a197fe",
+      "diagnostics": [],
+      "id": "0684ed7246fd837bd170652045aa659c3f6572de",
+      "language": "go",
+      "parser": "tree-sitter-go",
+      "path": "format.go",
+      "status": "parsed"
+    },
+    {
+      "content_hash": "sha1:de8d100cfe381bd909ff6ef3b87b697565062727",
+      "diagnostics": [],
+      "id": "124fb1b8c5088e94c75f863eb6f442e6f6c69c36",
+      "language": "go",
+      "parser": "tree-sitter-go",
+      "path": "service.go",
+      "status": "parsed"
+    }
+  ],
+  "metrics": {
+    "ambiguous_edges": 2,
+    "diagnostics_total": 0,
+    "edges_total": 12,
+    "failure_buckets": {},
+    "files_failed": 0,
+    "files_parsed": 4,
+    "files_processed": 4,
+    "files_skipped": 0,
+    "files_total": 4,
+    "graph_failures": 0,
+    "metadata_failures": 0,
+    "nodes_total": 6,
+    "parse_failures": 0,
+    "resolved_edges": 2,
+    "serialization_failures": 0,
+    "unresolved_edges": 8
+  },
+  "nodes": [
+    {
+      "definition_id": "07b63845cb3ae30cb48d2813b9e26e7f382ed2df",
+      "file_id": "91907e5f1200a949d026636f1a6a1abfd8eac5aa",
+      "id": "07b63845cb3ae30cb48d2813b9e26e7f382ed2df",
+      "identity": {
+        "source": "definition_id",
+        "value": "07b63845cb3ae30cb48d2813b9e26e7f382ed2df"
+      },
+      "kind": "function",
+      "language": "go",
+      "metadata": {
+        "dependencies": [
+          "value"
+        ],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: go\nfile: tests/fixtures/boundary_ir/repos/go/beta.go\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: tests/fixtures/boundary_ir/repos/go/beta.go::helper\nsignature text: helper(value string)\ndependencies: value\ncontent:\nfunc helper(value string) string {\n\treturn value\n}"
+      },
+      "node_id": "86b4f10e6fb113d9f88b7a2ceee55b8871f2004d",
+      "parent": null,
+      "path": "beta.go",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "helper",
+      "relationships": [
+        "edge:a3898180bbd8cd3a"
+      ],
+      "semantic_path": "tests/fixtures/boundary_ir/repos/go/beta.go::helper",
+      "signature": "helper(value string)",
+      "span": {
+        "byte_end": 71,
+        "byte_start": 21,
+        "end_line": 5,
+        "start_line": 3
+      },
+      "symbol": "helper",
+      "symbol_id": "ba3d4f1ad2c7f125fc128243362b2a23158c9a59"
+    },
+    {
+      "definition_id": "0b7a1617a7099f1a1cc62654bacbf737d7a1a45f",
+      "file_id": "0684ed7246fd837bd170652045aa659c3f6572de",
+      "id": "0b7a1617a7099f1a1cc62654bacbf737d7a1a45f",
+      "identity": {
+        "source": "definition_id",
+        "value": "0b7a1617a7099f1a1cc62654bacbf737d7a1a45f"
+      },
+      "kind": "struct",
+      "language": "go",
+      "metadata": {
+        "dependencies": [],
+        "exports": [
+          "Widget"
+        ],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: go\nfile: tests/fixtures/boundary_ir/repos/go/format.go\nkind: type\nsemantic path: tests/fixtures/boundary_ir/repos/go/format.go\nexports: Widget\ncontent:\ntype Widget struct {\n\tName string\n}"
+      },
+      "node_id": "2f7c4669cd3ab8f52476a70a5920ba6633489e27",
+      "parent": null,
+      "path": "format.go",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": null,
+      "relationships": [],
+      "semantic_path": "tests/fixtures/boundary_ir/repos/go/format.go",
+      "signature": null,
+      "span": {
+        "byte_end": 74,
+        "byte_start": 39,
+        "end_line": 7,
+        "start_line": 5
+      },
+      "symbol": null,
+      "symbol_id": null
+    },
+    {
+      "definition_id": "199e85c706042829c21a18a19e95258fbdcdc137",
+      "file_id": "0684ed7246fd837bd170652045aa659c3f6572de",
+      "id": "199e85c706042829c21a18a19e95258fbdcdc137",
+      "identity": {
+        "source": "definition_id",
+        "value": "199e85c706042829c21a18a19e95258fbdcdc137"
+      },
+      "kind": "function",
+      "language": "go",
+      "metadata": {
+        "dependencies": [
+          "strings",
+          "value"
+        ],
+        "exports": [
+          "Format"
+        ],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: go\nfile: tests/fixtures/boundary_ir/repos/go/format.go\nkind: function\nsymbol: Format\nqualified name: Format\nsemantic path: tests/fixtures/boundary_ir/repos/go/format.go::Format\nsignature text: Format(value string)\nexports: Format\ndependencies: strings, value\ncontent:\nfunc Format(value string) string {\n\treturn strings.TrimSpace(value)\n}"
+      },
+      "node_id": "b1633e176caca94449f5f5bab21c99a52de6e529",
+      "parent": null,
+      "path": "format.go",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Format",
+      "relationships": [
+        "edge:819eaa4415aa644d",
+        "edge:d3faacbf277b431b",
+        "edge:e1b76270e5745f55"
+      ],
+      "semantic_path": "tests/fixtures/boundary_ir/repos/go/format.go::Format",
+      "signature": "Format(value string)",
+      "span": {
+        "byte_end": 145,
+        "byte_start": 76,
+        "end_line": 11,
+        "start_line": 9
+      },
+      "symbol": "Format",
+      "symbol_id": "3c35c81458b9b57587be1b0ea6508bf052a9cbf1"
+    },
+    {
+      "definition_id": "6c6d2514190884959b91c1b42fbf90c94e1ef83a",
+      "file_id": "159d8f8ab24dbe8d1716a385b6fde4f44e645522",
+      "id": "6c6d2514190884959b91c1b42fbf90c94e1ef83a",
+      "identity": {
+        "source": "definition_id",
+        "value": "6c6d2514190884959b91c1b42fbf90c94e1ef83a"
+      },
+      "kind": "function",
+      "language": "go",
+      "metadata": {
+        "dependencies": [
+          "value"
+        ],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: go\nfile: tests/fixtures/boundary_ir/repos/go/alpha.go\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: tests/fixtures/boundary_ir/repos/go/alpha.go::helper\nsignature text: helper(value string)\ndependencies: value\ncontent:\nfunc helper(value string) string {\n\treturn value\n}"
+      },
+      "node_id": "7b366f13a539d5faa3f4ef3cf16bb65b0f381eb7",
+      "parent": null,
+      "path": "alpha.go",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "helper",
+      "relationships": [
+        "edge:e9303e27e5900f9e"
+      ],
+      "semantic_path": "tests/fixtures/boundary_ir/repos/go/alpha.go::helper",
+      "signature": "helper(value string)",
+      "span": {
+        "byte_end": 71,
+        "byte_start": 21,
+        "end_line": 5,
+        "start_line": 3
+      },
+      "symbol": "helper",
+      "symbol_id": "c1e030aced7ef6492cb6c143434d4e24758dbb00"
+    },
+    {
+      "definition_id": "c929955174ede1c6857e22b2f555fe70f66912d6",
+      "file_id": "124fb1b8c5088e94c75f863eb6f442e6f6c69c36",
+      "id": "c929955174ede1c6857e22b2f555fe70f66912d6",
+      "identity": {
+        "source": "definition_id",
+        "value": "c929955174ede1c6857e22b2f555fe70f66912d6"
+      },
+      "kind": "function",
+      "language": "go",
+      "metadata": {
+        "dependencies": [
+          "Format",
+          "Ghost",
+          "helper",
+          "value"
+        ],
+        "exports": [
+          "Render"
+        ],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: go\nfile: tests/fixtures/boundary_ir/repos/go/service.go\nkind: function\nsymbol: Render\nqualified name: Render\nsemantic path: tests/fixtures/boundary_ir/repos/go/service.go::Render\nsignature text: Render(value string)\nexports: Render\ndependencies: Format, Ghost, helper, value\ncontent:\nfunc Render(value string) string {\n\tcleaned := Format(value)\n\tduplicate := helper(cleaned)\n\treturn Ghost(duplicate)\n}"
+      },
+      "node_id": "0a30f2aa3bedb4fc7924e78f2431a7f89815c841",
+      "parent": null,
+      "path": "service.go",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Render",
+      "relationships": [
+        "edge:1374d58f964377d7",
+        "edge:218fdf144ed76960",
+        "edge:35b1eae966d1e8c9",
+        "edge:c8056ae4e03078f0",
+        "edge:ca34e39a25cdfb46",
+        "edge:f0a02391bb742db0",
+        "edge:f1554145262a03fd"
+      ],
+      "semantic_path": "tests/fixtures/boundary_ir/repos/go/service.go::Render",
+      "signature": "Render(value string)",
+      "span": {
+        "byte_end": 138,
+        "byte_start": 21,
+        "end_line": 7,
+        "start_line": 3
+      },
+      "symbol": "Render",
+      "symbol_id": "f0003f3d49e7f21488e24099bcfeda5515ab867b"
+    },
+    {
+      "definition_id": "f24a08c0aec67c2ddce935db79b4d7c13bb64902",
+      "file_id": "0684ed7246fd837bd170652045aa659c3f6572de",
+      "id": "f24a08c0aec67c2ddce935db79b4d7c13bb64902",
+      "identity": {
+        "source": "definition_id",
+        "value": "f24a08c0aec67c2ddce935db79b4d7c13bb64902"
+      },
+      "kind": "struct",
+      "language": "go",
+      "metadata": {
+        "dependencies": [],
+        "exports": [
+          "Widget"
+        ],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: go\nfile: tests/fixtures/boundary_ir/repos/go/format.go\nkind: type\nsymbol: Widget\nqualified name: Widget\nsemantic path: tests/fixtures/boundary_ir/repos/go/format.go::Widget\nexports: Widget\ncontent:\nWidget struct {\n\tName string\n}"
+      },
+      "node_id": "d6f5b5c6f77f17f2758ef4d9992fb42deb94f6cb",
+      "parent": "2f7c4669cd3ab8f52476a70a5920ba6633489e27",
+      "path": "format.go",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Widget",
+      "relationships": [],
+      "semantic_path": "tests/fixtures/boundary_ir/repos/go/format.go::Widget",
+      "signature": null,
+      "span": {
+        "byte_end": 74,
+        "byte_start": 44,
+        "end_line": 7,
+        "start_line": 5
+      },
+      "symbol": "Widget",
+      "symbol_id": "d84fea4ea05b78aa7c7630451525acfe63bf1b12"
+    }
+  ],
+  "run": {
+    "canonical": true,
+    "created_at": null,
+    "options": {
+      "fail_fast": false,
+      "include_retrieval_metadata": true,
+      "include_timings": false,
+      "language": "go",
+      "resolution_mode": "strict"
+    },
+    "root": "tests/fixtures/boundary_ir/repos/go",
+    "timings": {
+      "graph_assembly_ms": null,
+      "metadata_normalization_ms": null,
+      "parse_ms": null,
+      "resolution_ms": null,
+      "serialization_ms": null,
+      "total_ms": null
+    },
+    "tool": "treesitter-chunker",
+    "tool_version": "<tool-version>"
+  },
+  "schema_version": "1.0",
+  "source": {
+    "kind": "repository",
+    "path": "tests/fixtures/boundary_ir/repos/go"
+  }
+}

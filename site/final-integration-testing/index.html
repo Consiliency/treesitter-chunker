@@ -1,0 +1,2278 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Final Integration Testing System - Tree-sitter Chunker</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#final-integration-testing-system" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Tree-sitter Chunker" class="md-header__button md-logo" aria-label="Tree-sitter Chunker" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Tree-sitter Chunker
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Final Integration Testing System
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ViperJuice/treesitter-chunker" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Overview
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../getting-started/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../user-guide/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  User Guide
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../configuration/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Configuration
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../cli-reference/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  CLI Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../api-reference/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  API Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../export-formats/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Export Formats
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../graphml_export/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  GraphML Export
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../performance-guide/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Performance Guide
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../grammar_discovery/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Grammar Discovery
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../zero_config_api/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Zero-Config API
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../cookbook/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Cookbook
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../plugin-development/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Plugin Development
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../architecture/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../interface-boundary-spec/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Interface Boundary Spec
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../troubleshooting/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Troubleshooting
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../intelligent_fallback/" class="md-tabs__link">
+          
+  
+  
+  Advanced Topics
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Tree-sitter Chunker" class="md-nav__button md-logo" aria-label="Tree-sitter Chunker" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Tree-sitter Chunker
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ViperJuice/treesitter-chunker" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../export-formats/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Export Formats
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../graphml_export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GraphML Export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../performance-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../grammar_discovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Grammar Discovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zero_config_api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Zero-Config API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cookbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cookbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../plugin-development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plugin Development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../interface-boundary-spec/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interface Boundary Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_17" >
+        
+          
+          <label class="md-nav__link" for="__nav_17" id="__nav_17_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advanced Topics
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_17_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_17">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Advanced Topics
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../intelligent_fallback/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intelligent Fallback
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../token_limits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Token Limits
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../markdown_processor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Markdown Processor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../config_processor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Config Processor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../log_processor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Log Processor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../metadata-extraction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metadata Extraction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../overlapping-fallback/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overlapping Fallback
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cross-language-usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cross-Language Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../environment_variables/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../internal-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Internal API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../packaging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Packaging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Components
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Key Components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#finalintegrationtester" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FinalIntegrationTester
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-categories" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Categories
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-severities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Severities
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage Examples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basic-integration-testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic Integration Testing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stress-testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stress Testing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scenario-testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scenario Testing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-coverage-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Coverage Analysis
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#test-suites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Suites
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Test Suites">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#system-integration-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        System Integration Tests
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#performance-integration-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Integration Tests
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#user-experience-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        User Experience Tests
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#production-readiness-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Production Readiness Tests
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cross-component-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cross Component Tests
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stress-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stress Tests
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scenario-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scenario Tests
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#test-reports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Reports
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Test Reports">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#summary-statistics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary Statistics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#detailed-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Detailed Results
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#production-readiness-assessment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Production Readiness Assessment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#recommendations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommendations
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#integration-with-cicd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integration with CI/CD
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Integration with CI/CD">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#exit-codes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exit Codes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reporting-formats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reporting Formats
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#performance-thresholds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Thresholds
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#component-availability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Component Availability
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best Practices
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Best Practices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#test-execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Execution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stress-testing_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stress Testing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scenario-testing_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scenario Testing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#production-readiness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Production Readiness
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#common-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Issues
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#debugging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Debugging
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#future-enhancements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Future Enhancements
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conclusion
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="final-integration-testing-system">Final Integration Testing System<a class="headerlink" href="#final-integration-testing-system" title="Permanent link">&para;</a></h1>
+<p>The Final Integration Testing System for treesitter-chunker provides comprehensive validation of the complete Phase 1.9 system with all components working together. This system represents the culmination of the integration testing capabilities and ensures production readiness.</p>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>The Final Integration Testing System validates:
+- <strong>System Integration</strong>: All Phase 1.9 components working together
+- <strong>Performance Optimization</strong>: Real-world performance scenarios
+- <strong>User Experience</strong>: Complete user workflow validation
+- <strong>Production Readiness</strong>: Deployment and operational readiness
+- <strong>Cross-Component Interactions</strong>: Component dependency and communication
+- <strong>Stress Testing</strong>: High load and failure simulation
+- <strong>Scenario Testing</strong>: End-to-end user workflows</p>
+<h2 id="key-components">Key Components<a class="headerlink" href="#key-components" title="Permanent link">&para;</a></h2>
+<h3 id="finalintegrationtester">FinalIntegrationTester<a class="headerlink" href="#finalintegrationtester" title="Permanent link">&para;</a></h3>
+<p>The main orchestrator class that coordinates all integration testing activities:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker.integration.final_integration_tests</span><span class="w"> </span><span class="kn">import</span> <span class="n">FinalIntegrationTester</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;max_workers&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+    <span class="s1">&#39;test_timeout&#39;</span><span class="p">:</span> <span class="mi">300</span><span class="p">,</span>
+    <span class="s1">&#39;enable_performance_monitoring&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="s1">&#39;detailed_reporting&#39;</span><span class="p">:</span> <span class="kc">True</span>
+<span class="p">}</span>
+
+<span class="k">with</span> <span class="n">FinalIntegrationTester</span><span class="p">(</span><span class="n">config</span><span class="p">)</span> <span class="k">as</span> <span class="n">tester</span><span class="p">:</span>
+    <span class="n">report</span> <span class="o">=</span> <span class="n">tester</span><span class="o">.</span><span class="n">run_all_tests</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Success rate: </span><span class="si">{</span><span class="n">report</span><span class="o">.</span><span class="n">success_rate</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="test-categories">Test Categories<a class="headerlink" href="#test-categories" title="Permanent link">&para;</a></h3>
+<p>The system organizes tests into logical categories:</p>
+<ul>
+<li><strong>SYSTEM_INTEGRATION</strong>: Core system component integration</li>
+<li><strong>PERFORMANCE</strong>: Performance optimization validation</li>
+<li><strong>USER_EXPERIENCE</strong>: User workflow and interaction testing</li>
+<li><strong>PRODUCTION_READINESS</strong>: Production deployment validation</li>
+<li><strong>CROSS_COMPONENT</strong>: Component interaction testing</li>
+<li><strong>STRESS_TEST</strong>: High load and failure simulation</li>
+<li><strong>SCENARIO_TEST</strong>: End-to-end workflow validation</li>
+</ul>
+<h3 id="test-severities">Test Severities<a class="headerlink" href="#test-severities" title="Permanent link">&para;</a></h3>
+<p>Tests are classified by severity level:</p>
+<ul>
+<li><strong>LOW</strong>: Nice-to-have functionality</li>
+<li><strong>MEDIUM</strong>: Important but non-critical features</li>
+<li><strong>HIGH</strong>: Important functionality that affects user experience</li>
+<li><strong>CRITICAL</strong>: Essential functionality that must work for production</li>
+</ul>
+<h2 id="usage-examples">Usage Examples<a class="headerlink" href="#usage-examples" title="Permanent link">&para;</a></h2>
+<h3 id="basic-integration-testing">Basic Integration Testing<a class="headerlink" href="#basic-integration-testing" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker.integration.final_integration_tests</span><span class="w"> </span><span class="kn">import</span> <span class="n">run_final_integration_tests</span>
+
+<span class="c1"># Run all available integration tests</span>
+<span class="n">report</span> <span class="o">=</span> <span class="n">run_final_integration_tests</span><span class="p">()</span>
+
+<span class="k">if</span> <span class="n">report</span><span class="o">.</span><span class="n">is_passing</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ System is ready for production!&quot;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;❌ Critical issues found:&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">report</span><span class="o">.</span><span class="n">results</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">severity</span> <span class="o">==</span> <span class="n">TestSeverity</span><span class="o">.</span><span class="n">CRITICAL</span> <span class="ow">and</span> <span class="n">result</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">TestStatus</span><span class="o">.</span><span class="n">FAILED</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  - </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">test_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">error_message</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="stress-testing">Stress Testing<a class="headerlink" href="#stress-testing" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker.integration.final_integration_tests</span><span class="w"> </span><span class="kn">import</span> <span class="n">StressTestConfig</span><span class="p">,</span> <span class="n">run_stress_tests</span>
+
+<span class="n">stress_config</span> <span class="o">=</span> <span class="n">StressTestConfig</span><span class="p">(</span>
+    <span class="n">duration_seconds</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span>
+    <span class="n">concurrent_operations</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+    <span class="n">max_memory_mb</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span>
+    <span class="n">max_cpu_percent</span><span class="o">=</span><span class="mf">80.0</span><span class="p">,</span>
+    <span class="n">failure_injection_rate</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+    <span class="n">operation_types</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;parse&quot;</span><span class="p">,</span> <span class="s2">&quot;chunk&quot;</span><span class="p">,</span> <span class="s2">&quot;validate&quot;</span><span class="p">]</span>
+<span class="p">)</span>
+
+<span class="n">report</span> <span class="o">=</span> <span class="n">run_stress_tests</span><span class="p">(</span><span class="n">stress_config</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Completed </span><span class="si">{</span><span class="n">report</span><span class="o">.</span><span class="n">total_tests</span><span class="si">}</span><span class="s2"> stress tests&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="scenario-testing">Scenario Testing<a class="headerlink" href="#scenario-testing" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker.integration.final_integration_tests</span><span class="w"> </span><span class="kn">import</span> <span class="n">ScenarioTestConfig</span><span class="p">,</span> <span class="n">run_scenario_tests</span>
+
+<span class="n">scenarios</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">ScenarioTestConfig</span><span class="p">(</span>
+        <span class="n">user_type</span><span class="o">=</span><span class="s2">&quot;new_developer&quot;</span><span class="p">,</span>
+        <span class="n">workflow_steps</span><span class="o">=</span><span class="p">[</span>
+            <span class="s2">&quot;system_initialization&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grammar_discovery&quot;</span><span class="p">,</span> 
+            <span class="s2">&quot;first_chunk_operation&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;result_validation&quot;</span>
+        <span class="p">],</span>
+        <span class="n">expected_outcomes</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;successful_chunking&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+    <span class="p">)</span>
+<span class="p">]</span>
+
+<span class="n">report</span> <span class="o">=</span> <span class="n">run_scenario_tests</span><span class="p">(</span><span class="n">scenarios</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="test-coverage-analysis">Test Coverage Analysis<a class="headerlink" href="#test-coverage-analysis" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">chunker.integration.final_integration_tests</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_integration_test_coverage</span>
+
+<span class="n">coverage</span> <span class="o">=</span> <span class="n">get_integration_test_coverage</span><span class="p">()</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Component Coverage: </span><span class="si">{</span><span class="n">coverage</span><span class="p">[</span><span class="s1">&#39;component_coverage&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Integration Points: </span><span class="si">{</span><span class="n">coverage</span><span class="p">[</span><span class="s1">&#39;integration_points&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Critical Paths: </span><span class="si">{</span><span class="n">coverage</span><span class="p">[</span><span class="s1">&#39;critical_paths&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<h2 id="test-suites">Test Suites<a class="headerlink" href="#test-suites" title="Permanent link">&para;</a></h2>
+<h3 id="system-integration-tests">System Integration Tests<a class="headerlink" href="#system-integration-tests" title="Permanent link">&para;</a></h3>
+<p>Validates that all system components work together properly:</p>
+<ul>
+<li>System initialization and shutdown</li>
+<li>Component orchestration and lifecycle management</li>
+<li>Health monitoring and diagnostics</li>
+<li>Error propagation and handling</li>
+<li>Graceful degradation scenarios</li>
+<li>Configuration management</li>
+<li>Resource management and cleanup</li>
+</ul>
+<h3 id="performance-integration-tests">Performance Integration Tests<a class="headerlink" href="#performance-integration-tests" title="Permanent link">&para;</a></h3>
+<p>Verifies performance optimizations work in real scenarios:</p>
+<ul>
+<li>Cache optimization effectiveness</li>
+<li>Memory management and garbage collection</li>
+<li>Concurrency and thread pool optimization</li>
+<li>I/O optimization and batching</li>
+<li>Performance monitoring and alerting</li>
+<li>Auto-optimization capabilities</li>
+<li>Bottleneck detection and resolution</li>
+<li>Performance scaling under load</li>
+</ul>
+<h3 id="user-experience-tests">User Experience Tests<a class="headerlink" href="#user-experience-tests" title="Permanent link">&para;</a></h3>
+<p>Validates user workflows and interaction patterns:</p>
+<ul>
+<li>New user onboarding flow</li>
+<li>Interactive workflow execution</li>
+<li>Error guidance and recovery</li>
+<li>Feedback collection and processing</li>
+<li>Accessibility features</li>
+<li>Customization options</li>
+</ul>
+<h3 id="production-readiness-tests">Production Readiness Tests<a class="headerlink" href="#production-readiness-tests" title="Permanent link">&para;</a></h3>
+<p>Confirms the system is ready for production deployment:</p>
+<ul>
+<li>Dependency validation and version checking</li>
+<li>Configuration validation and security</li>
+<li>Security vulnerability assessment</li>
+<li>Performance requirement validation</li>
+<li>Integration point validation</li>
+<li>Critical path functionality</li>
+<li>Deployment readiness assessment</li>
+<li>Rollback procedure validation</li>
+</ul>
+<h3 id="cross-component-tests">Cross Component Tests<a class="headerlink" href="#cross-component-tests" title="Permanent link">&para;</a></h3>
+<p>Tests component interactions and dependencies:</p>
+<ul>
+<li>Inter-component communication</li>
+<li>Dependency injection mechanisms</li>
+<li>Event propagation and handling</li>
+<li>Data flow integrity</li>
+<li>Transaction consistency</li>
+<li>Component isolation</li>
+<li>Interface compatibility</li>
+</ul>
+<h3 id="stress-tests">Stress Tests<a class="headerlink" href="#stress-tests" title="Permanent link">&para;</a></h3>
+<p>Validates system behavior under extreme conditions:</p>
+<ul>
+<li>High concurrent load scenarios</li>
+<li>Memory pressure and resource exhaustion</li>
+<li>Network failure simulation</li>
+<li>Disk space exhaustion handling</li>
+<li>Component failure and recovery</li>
+<li>Sustained load over time</li>
+<li>Resource leak detection</li>
+</ul>
+<h3 id="scenario-tests">Scenario Tests<a class="headerlink" href="#scenario-tests" title="Permanent link">&para;</a></h3>
+<p>End-to-end validation of complete user workflows:</p>
+<ul>
+<li>New user onboarding journey</li>
+<li>Grammar management workflow</li>
+<li>Error recovery and troubleshooting</li>
+<li>Performance optimization workflow</li>
+<li>Multi-user concurrent access</li>
+<li>System upgrade and rollback</li>
+</ul>
+<h2 id="test-reports">Test Reports<a class="headerlink" href="#test-reports" title="Permanent link">&para;</a></h2>
+<p>The system generates comprehensive test reports with:</p>
+<h3 id="summary-statistics">Summary Statistics<a class="headerlink" href="#summary-statistics" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Total tests executed</li>
+<li>Pass/fail counts by category and severity</li>
+<li>Overall success rate</li>
+<li>Execution time metrics</li>
+<li>Session identification</li>
+</ul>
+<h3 id="detailed-results">Detailed Results<a class="headerlink" href="#detailed-results" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Individual test results with timing</li>
+<li>Error messages and stack traces</li>
+<li>Performance metrics per test</li>
+<li>Test coverage information</li>
+<li>System resource usage</li>
+</ul>
+<h3 id="production-readiness-assessment">Production Readiness Assessment<a class="headerlink" href="#production-readiness-assessment" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Critical test failure analysis</li>
+<li>Deployment readiness status</li>
+<li>Performance benchmark compliance</li>
+<li>Security validation results</li>
+<li>Dependency compatibility</li>
+</ul>
+<h3 id="recommendations">Recommendations<a class="headerlink" href="#recommendations" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Automated issue identification</li>
+<li>Performance optimization suggestions</li>
+<li>Coverage improvement recommendations</li>
+<li>Production deployment guidance</li>
+</ul>
+<h2 id="integration-with-cicd">Integration with CI/CD<a class="headerlink" href="#integration-with-cicd" title="Permanent link">&para;</a></h2>
+<p>The Final Integration Testing System is designed for CI/CD integration:</p>
+<h3 id="exit-codes">Exit Codes<a class="headerlink" href="#exit-codes" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>0</code>: All tests passed, system ready for production</li>
+<li><code>1</code>: Non-critical tests failed, review recommended</li>
+<li><code>2</code>: Critical tests failed, deployment blocked</li>
+</ul>
+<h3 id="reporting-formats">Reporting Formats<a class="headerlink" href="#reporting-formats" title="Permanent link">&para;</a></h3>
+<ul>
+<li>JSON reports for automated processing</li>
+<li>HTML reports for human review</li>
+<li>Metrics export for monitoring systems</li>
+<li>Log aggregation for troubleshooting</li>
+</ul>
+<h3 id="performance-thresholds">Performance Thresholds<a class="headerlink" href="#performance-thresholds" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Configurable performance benchmarks</li>
+<li>Automated performance regression detection</li>
+<li>Resource usage monitoring and alerting</li>
+<li>Scalability validation</li>
+</ul>
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<p>The system supports extensive configuration:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="c1"># Execution settings</span>
+    <span class="s1">&#39;max_workers&#39;</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span>
+    <span class="s1">&#39;test_timeout&#39;</span><span class="p">:</span> <span class="mi">600</span><span class="p">,</span>
+    <span class="s1">&#39;parallel_execution&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+
+    <span class="c1"># Monitoring settings</span>
+    <span class="s1">&#39;enable_performance_monitoring&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="s1">&#39;detailed_reporting&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="s1">&#39;resource_monitoring&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+
+    <span class="c1"># Stress testing settings</span>
+    <span class="s1">&#39;stress_test_duration&#39;</span><span class="p">:</span> <span class="mi">300</span><span class="p">,</span>
+    <span class="s1">&#39;max_concurrent_operations&#39;</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span>
+    <span class="s1">&#39;failure_injection_rate&#39;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>
+
+    <span class="c1"># Production validation</span>
+    <span class="s1">&#39;production_mode&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="s1">&#39;strict_validation&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="s1">&#39;security_scanning&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+
+    <span class="c1"># Reporting</span>
+    <span class="s1">&#39;report_formats&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;json&#39;</span><span class="p">,</span> <span class="s1">&#39;html&#39;</span><span class="p">],</span>
+    <span class="s1">&#39;include_metrics&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="s1">&#39;verbose_logging&#39;</span><span class="p">:</span> <span class="kc">True</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h2 id="component-availability">Component Availability<a class="headerlink" href="#component-availability" title="Permanent link">&para;</a></h2>
+<p>The system gracefully handles component availability:</p>
+<ul>
+<li><strong>Core Integration</strong>: Always required for basic functionality</li>
+<li><strong>Performance Optimizer</strong>: Optional, enables performance testing</li>
+<li><strong>User Experience</strong>: Optional, enables UX workflow testing</li>
+<li><strong>Production Validator</strong>: Optional, enables production readiness</li>
+<li><strong>Error Handling</strong>: Optional, enables error scenario testing</li>
+<li><strong>Chunker Core</strong>: Optional, enables actual chunking operation testing</li>
+</ul>
+<p>When components are unavailable, the system:
+- Logs warnings about missing components
+- Skips tests that require unavailable components
+- Continues with available functionality
+- Reports component status in test results</p>
+<h2 id="best-practices">Best Practices<a class="headerlink" href="#best-practices" title="Permanent link">&para;</a></h2>
+<h3 id="test-execution">Test Execution<a class="headerlink" href="#test-execution" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Run integration tests regularly in CI/CD pipeline</li>
+<li>Use parallel execution for faster feedback</li>
+<li>Set appropriate timeouts for different test categories</li>
+<li>Monitor resource usage during test execution</li>
+</ol>
+<h3 id="stress-testing_1">Stress Testing<a class="headerlink" href="#stress-testing_1" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Run stress tests in isolated environments</li>
+<li>Monitor system resources during stress tests</li>
+<li>Use realistic failure injection rates</li>
+<li>Validate recovery after stress conditions</li>
+</ol>
+<h3 id="scenario-testing_1">Scenario Testing<a class="headerlink" href="#scenario-testing_1" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Create scenarios based on real user workflows</li>
+<li>Test both happy path and error scenarios</li>
+<li>Validate expected outcomes after each workflow</li>
+<li>Include edge cases and boundary conditions</li>
+</ol>
+<h3 id="production-readiness">Production Readiness<a class="headerlink" href="#production-readiness" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Run full validation before each deployment</li>
+<li>Address all critical test failures before production</li>
+<li>Monitor performance benchmarks over time</li>
+<li>Validate security requirements regularly</li>
+</ol>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="common-issues">Common Issues<a class="headerlink" href="#common-issues" title="Permanent link">&para;</a></h3>
+<p><strong>Test Timeouts</strong>
+- Increase timeout values for slow systems
+- Check system resource availability
+- Monitor for deadlocks or blocking operations</p>
+<p><strong>Component Import Errors</strong>
+- Verify all dependencies are installed
+- Check Python path configuration
+- Ensure compatible component versions</p>
+<p><strong>Performance Test Failures</strong>
+- Check system resource availability
+- Verify performance baseline expectations
+- Monitor for external system dependencies</p>
+<p><strong>Stress Test Instability</strong>
+- Reduce concurrent operation count
+- Increase system resources
+- Check for race conditions</p>
+<h3 id="debugging">Debugging<a class="headerlink" href="#debugging" title="Permanent link">&para;</a></h3>
+<p>Enable detailed logging for troubleshooting:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
+
+<span class="c1"># Run tests with debug output</span>
+<span class="n">report</span> <span class="o">=</span> <span class="n">run_final_integration_tests</span><span class="p">({</span><span class="s1">&#39;verbose_logging&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">})</span>
+</code></pre></div>
+
+<p>Review test logs for detailed execution information:
+- Component initialization status
+- Test execution timing
+- Error stack traces
+- Resource usage patterns</p>
+<h2 id="future-enhancements">Future Enhancements<a class="headerlink" href="#future-enhancements" title="Permanent link">&para;</a></h2>
+<p>The Final Integration Testing System is designed for extensibility:</p>
+<ul>
+<li><strong>Custom Test Categories</strong>: Add domain-specific test categories</li>
+<li><strong>Plugin System</strong>: Extend with custom test implementations</li>
+<li><strong>Advanced Metrics</strong>: Additional performance and quality metrics</li>
+<li><strong>Machine Learning</strong>: Predictive failure analysis</li>
+<li><strong>Cloud Integration</strong>: Multi-environment testing support</li>
+<li><strong>Visual Reporting</strong>: Interactive test result dashboards</li>
+</ul>
+<h2 id="conclusion">Conclusion<a class="headerlink" href="#conclusion" title="Permanent link">&para;</a></h2>
+<p>The Final Integration Testing System provides comprehensive validation of the treesitter-chunker Phase 1.9 implementation, ensuring all components work together effectively and the system is ready for production deployment. With support for stress testing, scenario validation, and production readiness assessment, it delivers the confidence needed for reliable software delivery.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

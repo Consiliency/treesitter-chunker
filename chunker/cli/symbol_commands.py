@@ -48,6 +48,12 @@ def setup_symbol_parser(subparsers: argparse._SubParsersAction) -> None:
         action="store_true",
         help="Pretty-print JSON output",
     )
+    extract_parser.add_argument(
+        "--resolution-mode",
+        choices=["strict", "permissive"],
+        default="permissive",
+        help="Relationship resolution policy (default: permissive)",
+    )
     extract_parser.set_defaults(func=cmd_extract_symbols)
 
 
@@ -59,7 +65,11 @@ def cmd_extract_symbols(args: argparse.Namespace) -> int:
         print(f"Error: Path does not exist: {path}", file=sys.stderr)
         return 1
 
-    output = extract_symbol_graph(path, args.language)
+    output = extract_symbol_graph(
+        path,
+        args.language,
+        resolution_mode=args.resolution_mode,
+    )
     if output["metadata"]["files_processed"] == 0:
         print(
             f"Error: No {args.language} source files found in {path}",

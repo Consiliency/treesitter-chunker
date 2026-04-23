@@ -1,0 +1,43 @@
+{
+  "go": {
+    "expected_dependencies": ["Format", "Ghost", "helper"],
+    "expected_import_fragments": [],
+    "expected_import_limitation": "Go imports are top-level declarations and are not attached to callable chunks by the syntax-only metadata extractor.",
+    "expected_kinds": ["function", "struct"],
+    "expected_qualified_names": ["Format", "Render", "Widget", "helper"],
+    "expected_resolution_statuses": ["ambiguous", "resolved", "unresolved"],
+    "expected_signatures": ["Format", "Render", "helper"],
+    "expected_calls": ["Format", "Ghost", "helper"],
+    "strict_reference_targets": ["Ghost", "helper"]
+  },
+  "javascript": {
+    "expected_dependencies": ["formatName", "helper", "missingCall"],
+    "expected_import_fragments": ["import { formatName } from './format.js'"],
+    "expected_kinds": ["class", "function", "method"],
+    "expected_qualified_names": ["Renderer", "Renderer.render", "formatName", "helper", "run"],
+    "expected_resolution_statuses": ["ambiguous", "resolved", "unresolved"],
+    "expected_signatures": ["formatName", "helper", "render", "run"],
+    "expected_calls": ["formatName", "helper", "missingCall"],
+    "strict_reference_targets": ["helper", "missingCall"]
+  },
+  "python": {
+    "expected_dependencies": ["format_name", "helper", "missing_call"],
+    "expected_import_fragments": ["from app.formatting import format_name"],
+    "expected_kinds": ["class", "function", "method"],
+    "expected_qualified_names": ["Renderer", "Renderer.render", "format_name", "helper", "render_report"],
+    "expected_resolution_statuses": ["ambiguous", "resolved", "unresolved"],
+    "expected_signatures": ["format_name", "helper", "render", "render_report"],
+    "expected_calls": ["format_name", "helper", "missing_call"],
+    "strict_reference_targets": ["helper", "missing_call"]
+  },
+  "typescript": {
+    "expected_dependencies": ["Formatter", "formatName", "helper", "missingCall"],
+    "expected_import_fragments": ["import { formatName } from './format'"],
+    "expected_kinds": ["class", "function", "interface", "method"],
+    "expected_qualified_names": ["Formatter", "Renderer", "Renderer.render", "formatName", "helper", "run"],
+    "expected_resolution_statuses": ["ambiguous", "resolved", "unresolved"],
+    "expected_signatures": ["formatName", "helper", "render", "run"],
+    "expected_calls": ["formatName", "helper", "missingCall"],
+    "strict_reference_targets": ["helper", "missingCall"]
+  }
+}

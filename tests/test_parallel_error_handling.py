@@ -12,6 +12,7 @@ from unittest.mock import MagicMock, patch
 
 import psutil
 
+from chunker.boundary import extract_boundary_ir
 from tests.integration.interfaces import ErrorPropagationMixin
 
 
@@ -184,6 +185,36 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
             },
         }
         assert export_data["summary"]["success_rate"] == 70.0
+
+    @classmethod
+    def test_boundary_ir_failure_summary_preserves_partial_results(
+        cls,
+        temp_workspace,
+        monkeypatch,
+    ):
+        good = temp_workspace / "good.py"
+        bad = temp_workspace / "bad.py"
+        good.write_text("def ok():\n    return 1\n", encoding="utf-8")
+        bad.write_text("def broken():\n    return 2\n", encoding="utf-8")
+
+        from chunker.boundary import adapter
+
+        original_chunk_file = adapter.chunk_file
+
+        def fail_one_file(file_path, *args, **kwargs):
+            if Path(file_path).name == "bad.py":
+                raise RuntimeError("forced chunk failure")
+            return original_chunk_file(file_path, *args, **kwargs)
+
+        monkeypatch.setattr(adapter, "chunk_file", fail_one_file)
+
+        ir = extract_boundary_ir(temp_workspace, "python")
+
+        assert ir["metrics"]["files_processed"] == 2
+        assert ir["metrics"]["files_failed"] == 1
+        assert ir["metrics"]["parse_failures"] == 1
+        assert ir["metrics"]["failure_buckets"] == {"boundary.parse_error": 1}
+        assert any(node["path"] == "good.py" for node in ir["nodes"])
 
     @classmethod
     def test_resource_cleanup_after_errors(

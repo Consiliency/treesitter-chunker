@@ -1,0 +1,2203 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../architecture/">
+      
+      
+        <link rel="next" href="../troubleshooting/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Interface Boundary Spec - Tree-sitter Chunker</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#interface-boundary-specification" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Tree-sitter Chunker" class="md-header__button md-logo" aria-label="Tree-sitter Chunker" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Tree-sitter Chunker
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Interface Boundary Spec
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ViperJuice/treesitter-chunker" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Overview
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../getting-started/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../user-guide/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  User Guide
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../configuration/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Configuration
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../cli-reference/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  CLI Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../api-reference/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  API Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../export-formats/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Export Formats
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../graphml_export/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  GraphML Export
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../performance-guide/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Performance Guide
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../grammar_discovery/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Grammar Discovery
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../zero_config_api/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Zero-Config API
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../cookbook/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Cookbook
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../plugin-development/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Plugin Development
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../architecture/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Interface Boundary Spec
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../troubleshooting/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Troubleshooting
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../intelligent_fallback/" class="md-tabs__link">
+          
+  
+  
+  Advanced Topics
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Tree-sitter Chunker" class="md-nav__button md-logo" aria-label="Tree-sitter Chunker" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Tree-sitter Chunker
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ViperJuice/treesitter-chunker" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../export-formats/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Export Formats
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../graphml_export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GraphML Export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../performance-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../grammar_discovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Grammar Discovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zero_config_api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Zero-Config API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cookbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cookbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../plugin-development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plugin Development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interface Boundary Spec
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interface Boundary Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scope
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#non-goals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Non-goals
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#versioning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Versioning
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#top-level-object" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Top-level Object
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#file-records" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File Records
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#node-records" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Node Records
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#edge-records" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Edge Records
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#diagnostic-records" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagnostic Records
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metrics
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#run-metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Metadata
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#identity-precedence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Identity Precedence
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#canonical-json" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Canonical JSON
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conformance-fixtures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conformance Fixtures
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#minimal-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Minimal Example
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compatibility
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#contract-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Contract Checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_17" >
+        
+          
+          <label class="md-nav__link" for="__nav_17" id="__nav_17_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advanced Topics
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_17_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_17">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Advanced Topics
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../intelligent_fallback/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intelligent Fallback
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../token_limits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Token Limits
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../markdown_processor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Markdown Processor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../config_processor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Config Processor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../log_processor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Log Processor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../metadata-extraction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metadata Extraction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../overlapping-fallback/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overlapping Fallback
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cross-language-usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cross-Language Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../environment_variables/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../internal-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Internal API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../packaging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Packaging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scope
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#non-goals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Non-goals
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#versioning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Versioning
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#top-level-object" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Top-level Object
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#file-records" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File Records
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#node-records" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Node Records
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#edge-records" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Edge Records
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#diagnostic-records" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagnostic Records
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metrics
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#run-metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Metadata
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#identity-precedence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Identity Precedence
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#canonical-json" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Canonical JSON
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conformance-fixtures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conformance Fixtures
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#minimal-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Minimal Example
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compatibility
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#contract-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Contract Checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="interface-boundary-specification">Interface Boundary Specification<a class="headerlink" href="#interface-boundary-specification" title="Permanent link">&para;</a></h1>
+<p>This document is the canonical implementation-facing Boundary IR contract for
+<code>treesitter-chunker</code>. It freezes the schema surface that downstream adapters,
+serializers, tests, and policy orchestrators can rely on before runtime export
+work begins.</p>
+<p>The initial schema version is <code>1.0</code>.</p>
+<h2 id="scope">Scope<a class="headerlink" href="#scope" title="Permanent link">&para;</a></h2>
+<p>Boundary IR is a deterministic, language-neutral representation of source files,
+structural code nodes, relationships, extraction diagnostics, deterministic
+metrics, and run metadata. The contract is designed to be produced from existing
+<code>CodeChunk</code> fields, retrieval metadata, and symbol graph output.</p>
+<p>The schema is a data interchange contract. It does not require this repository
+to implement a policy engine, cache, semantic enrichment, ownership manifest, or
+patch authorization workflow in this phase.</p>
+<h2 id="non-goals">Non-goals<a class="headerlink" href="#non-goals" title="Permanent link">&para;</a></h2>
+<p>Policy engines, ownership manifests, patch authorization, and allow/reject
+enforcement live outside <code>treesitter-chunker</code>. This repository may emit the
+boundary facts those systems consume, but it does not own agent policy decisions.</p>
+<p>Semantic enrichment from LSPs, type checkers, or other external analyzers is
+optional future work. The baseline contract must remain useful when only
+Tree-sitter-derived syntax and normalized metadata are available.</p>
+<h2 id="versioning">Versioning<a class="headerlink" href="#versioning" title="Permanent link">&para;</a></h2>
+<p>The top-level <code>schema_version</code> field is required and must be the string <code>1.0</code>
+for the initial Boundary IR contract.</p>
+<p>Additive-compatible changes retain the current major version. Examples include
+adding optional fields, adding new diagnostic codes, or adding new metadata keys
+that consumers may ignore.</p>
+<p>Breaking changes require a major version bump. Examples include removing a
+required field, changing a field's meaning, changing canonical ordering, or
+renaming frozen keys. Downstream consumers may reject unknown major versions
+before reading the rest of the document.</p>
+<h2 id="top-level-object">Top-level Object<a class="headerlink" href="#top-level-object" title="Permanent link">&para;</a></h2>
+<p>The top-level Boundary IR object keys are frozen as:</p>
+<ul>
+<li><code>schema_version</code></li>
+<li><code>source</code></li>
+<li><code>files</code></li>
+<li><code>nodes</code></li>
+<li><code>edges</code></li>
+<li><code>diagnostics</code></li>
+<li><code>metrics</code></li>
+<li><code>run</code></li>
+</ul>
+<p><code>source</code> identifies the input repository or source root. <code>files</code>, <code>nodes</code>,
+<code>edges</code>, and <code>diagnostics</code> are arrays. <code>metrics</code> and <code>run</code> are objects.</p>
+<h2 id="file-records">File Records<a class="headerlink" href="#file-records" title="Permanent link">&para;</a></h2>
+<p>File records are frozen with these keys:</p>
+<ul>
+<li><code>id</code>: stable file identifier, preferably derived from <code>compute_file_id()</code>.</li>
+<li><code>path</code>: repository-relative or configured display path.</li>
+<li><code>language</code>: detected or requested language name.</li>
+<li><code>content_hash</code>: deterministic hash of the file content used for this run.</li>
+<li><code>parser</code>: parser or grammar identifier used for extraction.</li>
+<li><code>status</code>: extraction status such as <code>parsed</code>, <code>skipped</code>, or <code>error</code>.</li>
+<li><code>diagnostics</code>: diagnostic IDs associated with this file.</li>
+</ul>
+<p>File statuses are frozen as exactly <code>parsed</code>, <code>skipped</code>, and <code>error</code>. Extraction
+continues by default after per-file parse or metadata failures: failed file
+records use <code>status: error</code>, attach the relevant diagnostic IDs, and successful
+records from other files remain in the document. <code>fail_fast=True</code> raises on the
+first parse, metadata, graph, or serialization failure instead of returning
+partial Boundary IR.</p>
+<h2 id="node-records">Node Records<a class="headerlink" href="#node-records" title="Permanent link">&para;</a></h2>
+<p>Node records are frozen with these keys:</p>
+<ul>
+<li><code>id</code>: canonical node identity for Boundary IR references.</li>
+<li><code>identity</code>: object describing which identity source was selected.</li>
+<li><code>definition_id</code>: content-insensitive definition identity when available.</li>
+<li><code>node_id</code>: content-sensitive chunk identity when available.</li>
+<li><code>symbol_id</code>: symbol identity when available.</li>
+<li><code>file_id</code>: containing file identity.</li>
+<li><code>path</code>: file path for the node.</li>
+<li><code>language</code>: node language.</li>
+<li><code>kind</code>: normalized kind such as <code>class</code>, <code>function</code>, <code>method</code>, or <code>import</code>.</li>
+<li><code>symbol</code>: local symbol name when available.</li>
+<li><code>qualified_name</code>: language-neutral qualified symbol name when available.</li>
+<li><code>semantic_path</code>: path-like retrieval identity when available.</li>
+<li><code>signature</code>: normalized signature text when available.</li>
+<li><code>span</code>: object containing line and byte offsets.</li>
+<li><code>parent</code>: parent node identity or <code>null</code>.</li>
+<li><code>relationships</code>: relationship IDs or compact relationship summaries known at
+  node assembly time.</li>
+<li><code>metadata</code>: additional deterministic extraction metadata.</li>
+<li><code>provenance</code>: extraction source information for audit and debugging.</li>
+</ul>
+<p><code>span</code> should contain deterministic source coordinates, including
+<code>start_line</code>, <code>end_line</code>, <code>byte_start</code>, and <code>byte_end</code> when available.</p>
+<p><code>metadata</code> may include normalized retrieval fields already produced by this
+repository, including <code>parent_symbol</code>, <code>imports</code>, <code>exports</code>, <code>dependencies</code>,
+and <code>semantic_text</code>.</p>
+<h2 id="edge-records">Edge Records<a class="headerlink" href="#edge-records" title="Permanent link">&para;</a></h2>
+<p>Edge records are frozen with these keys:</p>
+<ul>
+<li><code>id</code>: deterministic edge identifier.</li>
+<li><code>source</code>: source node ID.</li>
+<li><code>target</code>: target node ID or unresolved reference string.</li>
+<li><code>type</code>: relationship type such as <code>imports</code>, <code>dependencies</code>, or <code>calls</code>.</li>
+<li><code>resolution</code>: one of <code>resolved</code>, <code>ambiguous</code>, or <code>unresolved</code>.</li>
+<li><code>reference</code>: original normalized reference text.</li>
+<li><code>candidates</code>: possible target IDs for ambiguous or unresolved references.</li>
+<li><code>location</code>: source location for the reference.</li>
+<li><code>provenance</code>: extraction and resolution source information.</li>
+<li><code>metadata</code>: additional deterministic edge metadata.</li>
+</ul>
+<p>Strict consumers should use <code>resolution</code> instead of inferring certainty from the
+shape of <code>target</code>.</p>
+<p>Resolution status values are frozen as exactly <code>resolved</code>, <code>ambiguous</code>, and
+<code>unresolved</code>. Resolution mode values are frozen as exactly <code>strict</code> and
+<code>permissive</code>.</p>
+<p>Candidate classification is deterministic:</p>
+<ul>
+<li>exactly one candidate emits <code>resolution: resolved</code>;</li>
+<li>multiple candidates emit <code>resolution: ambiguous</code>;</li>
+<li>zero candidates emit <code>resolution: unresolved</code>.</li>
+</ul>
+<p>Candidate IDs are sorted lexicographically before emission. Boundary IR defaults
+to strict mode. In strict mode, ambiguous and unresolved edges must not guess a
+target node identity: <code>target</code> is the normalized reference string and
+<code>candidates</code> carries possible node IDs only when available. Permissive mode
+preserves discovery-friendly references and syntax provenance, records
+<code>resolution_mode: permissive</code>, and does not emit an enforcement grade.</p>
+<h2 id="diagnostic-records">Diagnostic Records<a class="headerlink" href="#diagnostic-records" title="Permanent link">&para;</a></h2>
+<p>Diagnostic records are frozen with these keys:</p>
+<ul>
+<li><code>id</code>: deterministic diagnostic identifier.</li>
+<li><code>severity</code>: <code>info</code>, <code>warning</code>, or <code>error</code>.</li>
+<li><code>code</code>: stable diagnostic code.</li>
+<li><code>message</code>: human-readable message.</li>
+<li><code>path</code>: related file path or <code>null</code>.</li>
+<li><code>location</code>: source location or <code>null</code>.</li>
+<li><code>stage</code>: extraction stage such as <code>discovery</code>, <code>parse</code>, <code>metadata</code>, <code>graph</code>,
+  <code>resolution</code>, or <code>serialization</code>.</li>
+<li><code>details</code>: deterministic structured details.</li>
+</ul>
+<p>Diagnostic stages are frozen as exactly <code>discovery</code>, <code>parse</code>, <code>metadata</code>,
+<code>graph</code>, <code>resolution</code>, and <code>serialization</code>. Diagnostic IDs are deterministic
+hashes over <code>stage</code>, <code>code</code>, <code>path</code>, <code>location</code>, <code>message</code>, and canonicalized
+<code>details</code>; they must not depend on encounter-order indexes.</p>
+<h2 id="metrics">Metrics<a class="headerlink" href="#metrics" title="Permanent link">&para;</a></h2>
+<p><code>metrics</code> contains deterministic counters and summaries. It must not contain
+volatile timing values when byte-identical canonical output is requested.</p>
+<p>Required counter keys are:</p>
+<ul>
+<li><code>files_total</code></li>
+<li><code>files_processed</code></li>
+<li><code>files_parsed</code></li>
+<li><code>files_skipped</code></li>
+<li><code>files_failed</code></li>
+<li><code>nodes_total</code></li>
+<li><code>edges_total</code></li>
+<li><code>diagnostics_total</code></li>
+<li><code>resolved_edges</code></li>
+<li><code>ambiguous_edges</code></li>
+<li><code>unresolved_edges</code></li>
+<li><code>parse_failures</code></li>
+<li><code>metadata_failures</code></li>
+<li><code>graph_failures</code></li>
+<li><code>serialization_failures</code></li>
+<li><code>failure_buckets</code></li>
+</ul>
+<p><code>failure_buckets</code> is a lexicographically sorted diagnostic-code-to-count
+mapping. Additional deterministic counters may be added without a major version
+bump. Volatile timings must be omitted, set to <code>null</code>, or emitted only in
+opt-in run metadata.</p>
+<h2 id="run-metadata">Run Metadata<a class="headerlink" href="#run-metadata" title="Permanent link">&para;</a></h2>
+<p><code>run</code> describes deterministic run context needed to interpret the output.</p>
+<p>Required keys are:</p>
+<ul>
+<li><code>tool</code>: tool name.</li>
+<li><code>tool_version</code>: tool version when known.</li>
+<li><code>root</code>: normalized source root display path.</li>
+<li><code>created_at</code>: timestamp or <code>null</code>.</li>
+<li><code>canonical</code>: boolean indicating whether canonical serialization was requested.</li>
+<li><code>options</code>: deterministic option values that affect output shape.</li>
+<li><code>timings</code>: fixed timing keys for extraction stages.</li>
+</ul>
+<p><code>run.options</code> records <code>include_retrieval_metadata</code>, <code>language</code>,
+<code>resolution_mode</code>, <code>fail_fast</code>, and <code>include_timings</code>. <code>resolution_mode</code> records
+the mode used to shape relationship output. Boundary IR generation defaults to
+<code>strict</code>; symbol graph extraction defaults to <code>permissive</code> for legacy discovery
+compatibility.</p>
+<p><code>run.timings</code> always contains exactly <code>parse_ms</code>,
+<code>metadata_normalization_ms</code>, <code>graph_assembly_ms</code>, <code>resolution_ms</code>,
+<code>serialization_ms</code>, and <code>total_ms</code>. Values are <code>null</code> by default so canonical
+output remains byte-identical across double runs. When <code>include_timings=True</code>,
+values are nonnegative millisecond numbers.</p>
+<p>When canonical byte-identical output is requested, volatile fields such as wall
+clock durations, process IDs, temporary paths, and generated timestamps must be
+omitted, set to <code>null</code>, or moved to a non-canonical observability report. If
+<code>created_at</code> is present in canonical output, it must be caller-provided and
+stable for the compared runs.</p>
+<h2 id="identity-precedence">Identity Precedence<a class="headerlink" href="#identity-precedence" title="Permanent link">&para;</a></h2>
+<p>Node identity precedence is frozen as:</p>
+<ol>
+<li><code>definition_id</code></li>
+<li><code>module + qualified_name</code></li>
+<li><code>node_id</code></li>
+</ol>
+<p>The selected source must be recorded in <code>node.identity.source</code> as
+<code>definition_id</code>, <code>module + qualified_name</code>, or <code>node_id</code>.</p>
+<p>When <code>definition_id</code> is available, <code>node.id</code> must use it. When it is missing and
+<code>module + qualified_name</code> is available, <code>node.id</code> must use that composed value.
+When neither structural identity is available, <code>node.id</code> must fall back to
+<code>node_id</code>.</p>
+<h2 id="canonical-json">Canonical JSON<a class="headerlink" href="#canonical-json" title="Permanent link">&para;</a></h2>
+<p>Canonical JSON serialization is frozen as:</p>
+<ul>
+<li>UTF-8 encoding.</li>
+<li>Lexicographic object key ordering at every object level.</li>
+<li>Deterministic list ordering for <code>files</code>, <code>nodes</code>, <code>edges</code>, <code>diagnostics</code>, and
+  any nested list that affects output equality.</li>
+<li>Compact separators equivalent to <code>,</code> and <code>:</code> with no extra whitespace.</li>
+<li>Exactly one trailing newline for file output.</li>
+</ul>
+<p>Canonical ordering rules:</p>
+<ul>
+<li><code>files</code> sort by <code>path</code>, then <code>id</code>.</li>
+<li><code>nodes</code> sort by <code>id</code>, then <code>path</code>, then <code>span.start_line</code>.</li>
+<li><code>edges</code> sort by <code>source</code>, then <code>target</code>, then <code>type</code>, then <code>id</code>.</li>
+<li><code>diagnostics</code> sort by <code>path</code>, then <code>location.start_line</code>, then <code>code</code>, then
+  <code>id</code>.</li>
+<li><code>candidates</code> and other ID lists sort lexicographically unless a field-specific
+  semantic order is documented in a later compatible revision.</li>
+</ul>
+<h2 id="conformance-fixtures">Conformance Fixtures<a class="headerlink" href="#conformance-fixtures" title="Permanent link">&para;</a></h2>
+<p>The P0 Boundary IR conformance language IDs are exactly <code>python</code>, <code>javascript</code>,
+<code>typescript</code>, and <code>go</code>. JavaScript and TypeScript are separate language IDs for
+fixture and assertion purposes even though they share a language-family roadmap
+entry.</p>
+<p>Fixture source repositories live under
+<code>tests/fixtures/boundary_ir/repos/&lt;language&gt;/</code>. Checked golden snapshots live
+under <code>tests/fixtures/boundary_ir/golden/&lt;language&gt;.json</code>.</p>
+<p>Golden snapshot comparison uses <code>dumps_boundary_ir()</code> canonical JSON. The only
+field normalized before snapshot comparison is <code>run.tool_version</code>, which is set
+to a sentinel value in checked snapshots. <code>files</code>, <code>nodes</code>, <code>edges</code>,
+<code>diagnostics</code>, <code>metrics</code>, <code>run.options</code>, <code>run.timings</code>, and <code>created_at</code> are not
+normalized.</p>
+<p>Double-run determinism checks extract the same fixture input twice in one
+process and assert byte-identical <code>dumps_boundary_ir(extract_boundary_ir(...))</code>
+output with no normalization.</p>
+<p>Required-field validation covers top-level fields, source metadata, file
+records, node records, edge records, diagnostic records, metrics, and run
+metadata. Language parity assertions cover node <code>kind</code>, <code>qualified_name</code>,
+callable signatures, metadata <code>imports</code> and <code>dependencies</code>, <code>calls</code> edges, and
+<code>resolved</code>, <code>ambiguous</code>, and <code>unresolved</code> resolution states where syntax-derived
+extraction can produce them. Language-specific syntax-only limitations must be
+recorded in <code>tests/fixtures/boundary_ir/manifest.json</code>.</p>
+<p>The fast local CI-equivalent smoke batch includes the deterministic Boundary IR
+golden conformance gate through <code>scripts/run_ci_smoke.py</code>.</p>
+<h2 id="minimal-example">Minimal Example<a class="headerlink" href="#minimal-example" title="Permanent link">&para;</a></h2>
+<div class="codehilite"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;diagnostics&quot;</span><span class="p">:[],</span><span class="nt">&quot;edges&quot;</span><span class="p">:[{</span><span class="nt">&quot;candidates&quot;</span><span class="p">:[],</span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="s2">&quot;edge:example-source:example-target:imports&quot;</span><span class="p">,</span><span class="nt">&quot;location&quot;</span><span class="p">:{</span><span class="nt">&quot;byte_end&quot;</span><span class="p">:</span><span class="mi">12</span><span class="p">,</span><span class="nt">&quot;byte_start&quot;</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nt">&quot;end_line&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nt">&quot;start_line&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">},</span><span class="nt">&quot;metadata&quot;</span><span class="p">:{},</span><span class="nt">&quot;provenance&quot;</span><span class="p">:{</span><span class="nt">&quot;resolution_mode&quot;</span><span class="p">:</span><span class="s2">&quot;strict&quot;</span><span class="p">,</span><span class="nt">&quot;source&quot;</span><span class="p">:</span><span class="s2">&quot;syntax&quot;</span><span class="p">},</span><span class="nt">&quot;reference&quot;</span><span class="p">:</span><span class="s2">&quot;example.module&quot;</span><span class="p">,</span><span class="nt">&quot;resolution&quot;</span><span class="p">:</span><span class="s2">&quot;resolved&quot;</span><span class="p">,</span><span class="nt">&quot;source&quot;</span><span class="p">:</span><span class="s2">&quot;def:example-source&quot;</span><span class="p">,</span><span class="nt">&quot;target&quot;</span><span class="p">:</span><span class="s2">&quot;def:example-target&quot;</span><span class="p">,</span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="s2">&quot;imports&quot;</span><span class="p">}],</span><span class="nt">&quot;files&quot;</span><span class="p">:[{</span><span class="nt">&quot;content_hash&quot;</span><span class="p">:</span><span class="s2">&quot;sha1:placeholder&quot;</span><span class="p">,</span><span class="nt">&quot;diagnostics&quot;</span><span class="p">:[],</span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="s2">&quot;file:example&quot;</span><span class="p">,</span><span class="nt">&quot;language&quot;</span><span class="p">:</span><span class="s2">&quot;python&quot;</span><span class="p">,</span><span class="nt">&quot;parser&quot;</span><span class="p">:</span><span class="s2">&quot;tree-sitter-python&quot;</span><span class="p">,</span><span class="nt">&quot;path&quot;</span><span class="p">:</span><span class="s2">&quot;src/example.py&quot;</span><span class="p">,</span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="s2">&quot;parsed&quot;</span><span class="p">}],</span><span class="nt">&quot;metrics&quot;</span><span class="p">:{</span><span class="nt">&quot;ambiguous_edges&quot;</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nt">&quot;diagnostics_total&quot;</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nt">&quot;edges_total&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nt">&quot;failure_buckets&quot;</span><span class="p">:{},</span><span class="nt">&quot;files_failed&quot;</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nt">&quot;files_parsed&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nt">&quot;files_processed&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nt">&quot;files_skipped&quot;</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nt">&quot;files_total&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nt">&quot;graph_failures&quot;</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nt">&quot;metadata_failures&quot;</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nt">&quot;nodes_total&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nt">&quot;parse_failures&quot;</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nt">&quot;resolved_edges&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nt">&quot;serialization_failures&quot;</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nt">&quot;unresolved_edges&quot;</span><span class="p">:</span><span class="mi">0</span><span class="p">},</span><span class="nt">&quot;nodes&quot;</span><span class="p">:[{</span><span class="nt">&quot;definition_id&quot;</span><span class="p">:</span><span class="s2">&quot;def:example-source&quot;</span><span class="p">,</span><span class="nt">&quot;file_id&quot;</span><span class="p">:</span><span class="s2">&quot;file:example&quot;</span><span class="p">,</span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="s2">&quot;def:example-source&quot;</span><span class="p">,</span><span class="nt">&quot;identity&quot;</span><span class="p">:{</span><span class="nt">&quot;source&quot;</span><span class="p">:</span><span class="s2">&quot;definition_id&quot;</span><span class="p">,</span><span class="nt">&quot;value&quot;</span><span class="p">:</span><span class="s2">&quot;def:example-source&quot;</span><span class="p">},</span><span class="nt">&quot;kind&quot;</span><span class="p">:</span><span class="s2">&quot;function&quot;</span><span class="p">,</span><span class="nt">&quot;language&quot;</span><span class="p">:</span><span class="s2">&quot;python&quot;</span><span class="p">,</span><span class="nt">&quot;metadata&quot;</span><span class="p">:{</span><span class="nt">&quot;dependencies&quot;</span><span class="p">:[],</span><span class="nt">&quot;exports&quot;</span><span class="p">:[],</span><span class="nt">&quot;imports&quot;</span><span class="p">:[</span><span class="s2">&quot;example.module&quot;</span><span class="p">],</span><span class="nt">&quot;parent_symbol&quot;</span><span class="p">:</span><span class="kc">null</span><span class="p">,</span><span class="nt">&quot;semantic_text&quot;</span><span class="p">:</span><span class="s2">&quot;function example&quot;</span><span class="p">},</span><span class="nt">&quot;node_id&quot;</span><span class="p">:</span><span class="s2">&quot;node:placeholder&quot;</span><span class="p">,</span><span class="nt">&quot;parent&quot;</span><span class="p">:</span><span class="kc">null</span><span class="p">,</span><span class="nt">&quot;path&quot;</span><span class="p">:</span><span class="s2">&quot;src/example.py&quot;</span><span class="p">,</span><span class="nt">&quot;provenance&quot;</span><span class="p">:{</span><span class="nt">&quot;extractor&quot;</span><span class="p">:</span><span class="s2">&quot;chunk_file&quot;</span><span class="p">,</span><span class="nt">&quot;metadata&quot;</span><span class="p">:</span><span class="s2">&quot;retrieval&quot;</span><span class="p">},</span><span class="nt">&quot;qualified_name&quot;</span><span class="p">:</span><span class="s2">&quot;example&quot;</span><span class="p">,</span><span class="nt">&quot;relationships&quot;</span><span class="p">:[</span><span class="s2">&quot;edge:example-source:example-target:imports&quot;</span><span class="p">],</span><span class="nt">&quot;semantic_path&quot;</span><span class="p">:</span><span class="s2">&quot;src/example.py::example&quot;</span><span class="p">,</span><span class="nt">&quot;signature&quot;</span><span class="p">:</span><span class="s2">&quot;example()&quot;</span><span class="p">,</span><span class="nt">&quot;span&quot;</span><span class="p">:{</span><span class="nt">&quot;byte_end&quot;</span><span class="p">:</span><span class="mi">42</span><span class="p">,</span><span class="nt">&quot;byte_start&quot;</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="nt">&quot;end_line&quot;</span><span class="p">:</span><span class="mi">3</span><span class="p">,</span><span class="nt">&quot;start_line&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">},</span><span class="nt">&quot;symbol&quot;</span><span class="p">:</span><span class="s2">&quot;example&quot;</span><span class="p">,</span><span class="nt">&quot;symbol_id&quot;</span><span class="p">:</span><span class="s2">&quot;sym:placeholder&quot;</span><span class="p">}],</span><span class="nt">&quot;run&quot;</span><span class="p">:{</span><span class="nt">&quot;canonical&quot;</span><span class="p">:</span><span class="kc">true</span><span class="p">,</span><span class="nt">&quot;created_at&quot;</span><span class="p">:</span><span class="kc">null</span><span class="p">,</span><span class="nt">&quot;options&quot;</span><span class="p">:{</span><span class="nt">&quot;fail_fast&quot;</span><span class="p">:</span><span class="kc">false</span><span class="p">,</span><span class="nt">&quot;include_retrieval_metadata&quot;</span><span class="p">:</span><span class="kc">true</span><span class="p">,</span><span class="nt">&quot;include_timings&quot;</span><span class="p">:</span><span class="kc">false</span><span class="p">,</span><span class="nt">&quot;language&quot;</span><span class="p">:</span><span class="s2">&quot;python&quot;</span><span class="p">,</span><span class="nt">&quot;resolution_mode&quot;</span><span class="p">:</span><span class="s2">&quot;strict&quot;</span><span class="p">},</span><span class="nt">&quot;root&quot;</span><span class="p">:</span><span class="s2">&quot;.&quot;</span><span class="p">,</span><span class="nt">&quot;timings&quot;</span><span class="p">:{</span><span class="nt">&quot;graph_assembly_ms&quot;</span><span class="p">:</span><span class="kc">null</span><span class="p">,</span><span class="nt">&quot;metadata_normalization_ms&quot;</span><span class="p">:</span><span class="kc">null</span><span class="p">,</span><span class="nt">&quot;parse_ms&quot;</span><span class="p">:</span><span class="kc">null</span><span class="p">,</span><span class="nt">&quot;resolution_ms&quot;</span><span class="p">:</span><span class="kc">null</span><span class="p">,</span><span class="nt">&quot;serialization_ms&quot;</span><span class="p">:</span><span class="kc">null</span><span class="p">,</span><span class="nt">&quot;total_ms&quot;</span><span class="p">:</span><span class="kc">null</span><span class="p">},</span><span class="nt">&quot;tool&quot;</span><span class="p">:</span><span class="s2">&quot;treesitter-chunker&quot;</span><span class="p">,</span><span class="nt">&quot;tool_version&quot;</span><span class="p">:</span><span class="s2">&quot;placeholder&quot;</span><span class="p">},</span><span class="nt">&quot;schema_version&quot;</span><span class="p">:</span><span class="s2">&quot;1.0&quot;</span><span class="p">,</span><span class="nt">&quot;source&quot;</span><span class="p">:{</span><span class="nt">&quot;kind&quot;</span><span class="p">:</span><span class="s2">&quot;repository&quot;</span><span class="p">,</span><span class="nt">&quot;path&quot;</span><span class="p">:</span><span class="s2">&quot;.&quot;</span><span class="p">}}</span>
+</code></pre></div>
+
+<h2 id="compatibility">Compatibility<a class="headerlink" href="#compatibility" title="Permanent link">&para;</a></h2>
+<p>Consumers should accept unknown optional fields within a known major version
+unless they operate in a stricter validation mode. Consumers may reject unknown
+major versions, missing required frozen keys, non-canonical ordering, or outputs
+that mix volatile timing data into canonical deterministic exports.</p>
+<p>Compatibility notes for future revisions must identify whether changes are
+additive-compatible or breaking.</p>
+<h2 id="contract-checklist">Contract Checklist<a class="headerlink" href="#contract-checklist" title="Permanent link">&para;</a></h2>
+<ul>
+<li>[x] IF-0-SCHEMA-1: <code>docs/interface-boundary-spec.md</code> is the canonical Boundary
+  IR contract and defines <code>schema_version</code> with initial version <code>1.0</code>.</li>
+<li>[x] IF-0-SCHEMA-2: top-level keys are <code>schema_version</code>, <code>source</code>, <code>files</code>,
+  <code>nodes</code>, <code>edges</code>, <code>diagnostics</code>, <code>metrics</code>, and <code>run</code>.</li>
+<li>[x] IF-0-SCHEMA-3: file records define <code>id</code>, <code>path</code>, <code>language</code>,
+  <code>content_hash</code>, <code>parser</code>, <code>status</code>, and <code>diagnostics</code>.</li>
+<li>[x] IF-0-SCHEMA-4: node records define <code>id</code>, <code>identity</code>, <code>definition_id</code>,
+  <code>node_id</code>, <code>symbol_id</code>, <code>file_id</code>, <code>path</code>, <code>language</code>, <code>kind</code>, <code>symbol</code>,
+  <code>qualified_name</code>, <code>semantic_path</code>, <code>signature</code>, <code>span</code>, <code>parent</code>,
+  <code>relationships</code>, <code>metadata</code>, and <code>provenance</code>.</li>
+<li>[x] IF-0-SCHEMA-5: edge records define <code>id</code>, <code>source</code>, <code>target</code>, <code>type</code>,
+  <code>resolution</code>, <code>reference</code>, <code>candidates</code>, <code>location</code>, <code>provenance</code>, and
+  <code>metadata</code>.</li>
+<li>[x] IF-0-SCHEMA-6: diagnostic records define <code>id</code>, <code>severity</code>, <code>code</code>,
+  <code>message</code>, <code>path</code>, <code>location</code>, <code>stage</code>, and <code>details</code>.</li>
+<li>[x] IF-0-SCHEMA-7: metrics and run metadata separate deterministic counters
+  from volatile timing fields.</li>
+<li>[x] IF-0-SCHEMA-8: identity precedence is <code>definition_id</code> -&gt;
+  <code>module + qualified_name</code> -&gt; <code>node_id</code>, with the chosen source recorded in
+  <code>node.identity.source</code>.</li>
+<li>[x] IF-0-SCHEMA-9: Canonical JSON requires UTF-8, lexicographic object key
+  ordering, deterministic list ordering, compact separators, and exactly one
+  trailing newline for file output.</li>
+<li>[x] IF-0-SCHEMA-10: schema evolution policy keeps additive-compatible changes
+  on the same major version, requires major bumps for breaking changes, and
+  permits downstream consumers to reject unknown major versions.</li>
+<li>[x] IF-0-RESOLUTION-3: relationship resolution exposes <code>resolved</code>,
+  <code>ambiguous</code>, and <code>unresolved</code> states with strict/permissive mode semantics.</li>
+<li>[x] IF-0-RESOLUTION-3A: public resolution values are exactly
+  <code>ResolutionStatus = Literal["resolved", "ambiguous", "unresolved"]</code> and
+  <code>ResolutionMode = Literal["strict", "permissive"]</code>, exported from
+  <code>chunker.boundary</code>.</li>
+<li>[x] IF-0-RESOLUTION-3B: <code>extract_symbol_graph(path, language=None,
+  resolution_mode="permissive")</code> preserves legacy relationship fields and adds
+  <code>reference</code>, <code>resolution</code>, <code>candidates</code>, <code>resolution_mode</code>, and syntax
+  provenance.</li>
+<li>[x] IF-0-RESOLUTION-3C: candidate classification is deterministic and
+  candidate IDs are sorted lexicographically.</li>
+<li>[x] IF-0-RESOLUTION-3D: <code>extract_boundary_ir(path, language=None, *,
+  canonical=True, created_at=None, resolution_mode="strict")</code> emits normalized
+  reference targets for ambiguous and unresolved edges.</li>
+<li>[x] IF-0-RESOLUTION-3E: Boundary IR metrics count resolved, ambiguous, and
+  unresolved edges from emitted edge statuses, and <code>run.options.resolution_mode</code>
+  records the selected mode.</li>
+<li>[x] IF-0-CONFORMANCE-4: golden fixture and double-run determinism test
+  contract is frozen for Python, JavaScript/TypeScript, and Go.</li>
+<li>[x] IF-0-CONFORMANCE-4A: P0 conformance language IDs are exactly <code>python</code>,
+  <code>javascript</code>, <code>typescript</code>, and <code>go</code>.</li>
+<li>[x] IF-0-CONFORMANCE-4B: fixture source roots live under
+  <code>tests/fixtures/boundary_ir/repos/&lt;language&gt;/</code> and golden snapshots live under
+  <code>tests/fixtures/boundary_ir/golden/&lt;language&gt;.json</code>.</li>
+<li>[x] IF-0-CONFORMANCE-4C: golden comparison uses <code>dumps_boundary_ir()</code>
+  canonical JSON with only <code>run.tool_version</code> normalized to a sentinel.</li>
+<li>[x] IF-0-CONFORMANCE-4D: double-run determinism asserts byte-identical
+  canonical JSON output for the same fixture input and language in one process.</li>
+<li>[x] IF-0-CONFORMANCE-4E: required-field validation covers top-level fields,
+  file records, node records, edge records, diagnostic records, metrics, and run
+  metadata.</li>
+<li>[x] IF-0-CONFORMANCE-4F: per-language parity assertions cover node <code>kind</code>,
+  <code>qualified_name</code>, signatures, metadata <code>imports</code> and <code>dependencies</code>, <code>calls</code>
+  edges, and available resolution states.</li>
+<li>[x] IF-0-CONFORMANCE-4G: <code>scripts/run_ci_smoke.py</code> includes the deterministic
+  Boundary IR conformance gate in the fast local CI-equivalent smoke batch.</li>
+<li>[x] IF-0-OBSERVABILITY-5: Boundary IR exposes deterministic diagnostics,
+  metrics, default recovery, fail-fast behavior, and opt-in run timings.</li>
+<li>[x] IF-0-OBSERVABILITY-5A: <code>extract_boundary_ir(path, language=None, *,
+  canonical=True, created_at=None, resolution_mode="strict", fail_fast=False,
+  include_timings=False)</code> is the public Boundary IR API contract, and
+  <code>extract_symbol_graph(..., fail_fast=False)</code> preserves legacy default
+  behavior.</li>
+<li>[x] IF-0-OBSERVABILITY-5B: <code>run.timings</code> contains <code>parse_ms</code>,
+  <code>metadata_normalization_ms</code>, <code>graph_assembly_ms</code>, <code>resolution_ms</code>,
+  <code>serialization_ms</code>, and <code>total_ms</code>; values are <code>null</code> unless
+  <code>include_timings=True</code>.</li>
+<li>[x] IF-0-OBSERVABILITY-5C: <code>run.options</code> records
+  <code>include_retrieval_metadata</code>, <code>language</code>, <code>resolution_mode</code>, <code>fail_fast</code>, and
+  <code>include_timings</code>.</li>
+<li>[x] IF-0-OBSERVABILITY-5D: metrics include file, failure, edge, diagnostic,
+  and lexicographically sorted failure bucket counters.</li>
+<li>[x] IF-0-OBSERVABILITY-5E: diagnostics keep frozen keys and deterministic IDs
+  derived from canonical diagnostic content.</li>
+<li>[x] IF-0-OBSERVABILITY-5F: default extraction continues after parser or
+  metadata failures and records failed file diagnostics.</li>
+<li>[x] IF-0-OBSERVABILITY-5G: <code>fail_fast=True</code> raises on parser, metadata, graph,
+  or serialization failures without returning partial Boundary IR.</li>
+<li>[x] IF-0-OBSERVABILITY-5H: the <code>boundary</code> CLI exposes <code>--fail-fast</code>,
+  <code>--include-timings</code>, and <code>--summary</code> without polluting stdout JSON.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

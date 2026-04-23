@@ -16,6 +16,7 @@ CI_SMOKE_TESTS = [
     "tests/test_factory.py",
     "tests/test_registry_fallback.py",
     "tests/test_fallback_chunking.py",
+    "tests/test_boundary_ir_golden_snapshots.py",
 ]
 
 

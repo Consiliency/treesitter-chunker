@@ -1,0 +1,7 @@
+                      Name   Unannotated   Explicit   Unimported   Omitted Generics   Error   Special Form   Implementation Artifact
+------------------------------------------------------------------------------------------------------------------------------------
+            chunker.devenv             0          0            0                  0       0              0                         0
+chunker.devenv.environment             2        246            0                  0       0              0                         0
+    chunker.devenv.quality            17        152            7                 35       0              0                         0
+------------------------------------------------------------------------------------------------------------------------------------
+                     Total            19        398            7                 35       0              0                         0

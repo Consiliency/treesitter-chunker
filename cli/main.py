@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import tomllib
+from enum import Enum
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -16,7 +17,9 @@ from rich.table import Table
 
 # Ensure language configs are loaded
 from chunker import chunk_file, chunk_text
+from chunker.boundary import dumps_boundary_ir, extract_boundary_ir
 from chunker.exceptions import ChunkerError
+from chunker.export import write_boundary_ir
 from chunker.parser import list_languages
 
 # Import debug commands conditionally
@@ -40,6 +43,13 @@ from .setup_command import app as setup_app
 
 app = typer.Typer(help="Tree‑sitter‑based code‑chunker CLI")
 console = Console()
+stderr_console = Console(stderr=True)
+
+
+class ResolutionModeOption(str, Enum):
+    strict = "strict"
+    permissive = "permissive"
+
 
 if HAS_DEBUG:
     app.add_typer(
@@ -68,6 +78,98 @@ if TYPE_CHECKING:
 
 app.add_typer(repo_app, name="repo", help="Repository processing commands")
 app.add_typer(setup_app, name="setup", help="Grammar setup and management")
+
+
+@app.command("boundary")
+def boundary(
+    path: Path = typer.Argument(..., exists=True, readable=True),
+    *,
+    language: str | None = typer.Option(
+        None,
+        "--lang",
+        "-l",
+        help="Language name (auto-detect if not specified)",
+    ),
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Write Boundary IR JSON to this file",
+    ),
+    pretty: bool = typer.Option(
+        False,
+        "--pretty",
+        help="Pretty-print Boundary IR JSON",
+    ),
+    resolution_mode: ResolutionModeOption = typer.Option(
+        ResolutionModeOption.strict,
+        "--resolution-mode",
+        help="Relationship resolution policy",
+    ),
+    quiet: bool = typer.Option(
+        False,
+        "--quiet",
+        "-q",
+        help="Suppress non-essential output",
+    ),
+    fail_fast: bool = typer.Option(
+        False,
+        "--fail-fast",
+        help="Stop on the first Boundary IR extraction failure",
+    ),
+    include_timings: bool = typer.Option(
+        False,
+        "--include-timings",
+        help="Include measured stage timings in Boundary IR JSON",
+    ),
+    summary: bool = typer.Option(
+        False,
+        "--summary",
+        help="Print a Boundary IR run summary to stderr/stdout console output",
+    ),
+):
+    """Generate canonical Boundary IR for a file or repository."""
+    ir = extract_boundary_ir(
+        path,
+        language,
+        canonical=True,
+        resolution_mode=resolution_mode.value,
+        fail_fast=fail_fast,
+        include_timings=include_timings,
+    )
+    summary_text = _format_boundary_summary(ir)
+    if output is None:
+        print(dumps_boundary_ir(ir, pretty=pretty), end="")
+        if summary:
+            stderr_console.print(summary_text)
+        return
+
+    write_boundary_ir(ir, output, pretty=pretty)
+    if not quiet:
+        console.print(f"Boundary IR written to {output}")
+        console.print(summary_text)
+
+
+def _format_boundary_summary(ir: dict[str, Any]) -> str:
+    metrics = ir["metrics"]
+    lines = [
+        "Boundary IR summary",
+        f"  files processed: {metrics['files_processed']}",
+        f"  files skipped: {metrics['files_skipped']}",
+        f"  files failed: {metrics['files_failed']}",
+        f"  parse failures: {metrics['parse_failures']}",
+        f"  ambiguous edges: {metrics['ambiguous_edges']}",
+        f"  unresolved edges: {metrics['unresolved_edges']}",
+        f"  nodes: {metrics['nodes_total']}",
+        f"  edges: {metrics['edges_total']}",
+        f"  diagnostics: {metrics['diagnostics_total']}",
+    ]
+    failure_buckets = metrics.get("failure_buckets", {})
+    if failure_buckets:
+        lines.append("  failure buckets:")
+        for code in sorted(failure_buckets):
+            lines.append(f"    {code}: {failure_buckets[code]}")
+    return "\n".join(lines)
 
 
 def load_config(

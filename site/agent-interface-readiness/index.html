@@ -1,0 +1,1906 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Agent Interface Ownership Readiness (Repository Assessment) - Tree-sitter Chunker</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#agent-interface-ownership-readiness-repository-assessment" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Tree-sitter Chunker" class="md-header__button md-logo" aria-label="Tree-sitter Chunker" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Tree-sitter Chunker
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Agent Interface Ownership Readiness (Repository Assessment)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ViperJuice/treesitter-chunker" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Overview
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../getting-started/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../user-guide/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  User Guide
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../configuration/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Configuration
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../cli-reference/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  CLI Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../api-reference/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  API Reference
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../export-formats/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Export Formats
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../graphml_export/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  GraphML Export
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../performance-guide/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Performance Guide
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../grammar_discovery/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Grammar Discovery
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../zero_config_api/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Zero-Config API
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../cookbook/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Cookbook
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../plugin-development/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Plugin Development
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../architecture/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../interface-boundary-spec/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Interface Boundary Spec
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../troubleshooting/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Troubleshooting
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../intelligent_fallback/" class="md-tabs__link">
+          
+  
+  
+  Advanced Topics
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Tree-sitter Chunker" class="md-nav__button md-logo" aria-label="Tree-sitter Chunker" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Tree-sitter Chunker
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ViperJuice/treesitter-chunker" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../export-formats/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Export Formats
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../graphml_export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GraphML Export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../performance-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../grammar_discovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Grammar Discovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zero_config_api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Zero-Config API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cookbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cookbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../plugin-development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plugin Development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../interface-boundary-spec/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interface Boundary Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_17" >
+        
+          
+          <label class="md-nav__link" for="__nav_17" id="__nav_17_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advanced Topics
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_17_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_17">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Advanced Topics
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../intelligent_fallback/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intelligent Fallback
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../token_limits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Token Limits
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../markdown_processor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Markdown Processor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../config_processor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Config Processor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../log_processor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Log Processor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../metadata-extraction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metadata Extraction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../overlapping-fallback/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overlapping Fallback
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cross-language-usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cross-Language Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../environment_variables/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../internal-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Internal API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../packaging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Packaging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#bottom-line" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bottom line
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#should-this-live-in-this-repo-or-above-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Should this live in this repo or above it?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-already-in-place" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What is already in place
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What is already in place">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-ast-ingestion-and-multi-language-coverage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1) AST ingestion and multi-language coverage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-stable-identity-primitives" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2) Stable identity primitives
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-language-agnostic-retrieval-metadata-normalization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3) Language-agnostic retrieval metadata normalization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-existing-symbol-graph-extraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4) Existing symbol graph extraction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-export-pathway-for-graph-consumers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5) Export pathway for graph consumers
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gaps-that-block-deterministic-enforcement-today" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gaps that block deterministic enforcement today
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Gaps that block deterministic enforcement today">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-no-first-class-ownership-policy-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1) No first-class ownership policy engine
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-relationship-inference-has-heuristic-edges" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2) Relationship inference has heuristic edges
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-limited-semantic-guarantees" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3) Limited semantic guarantees
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-no-patch-to-ir-validator-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4) No patch-to-IR validator workflow
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recommended-architecture-using-this-repo-as-a-dependency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommended architecture using this repo as a dependency
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#suggested-near-term-implementation-phases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Suggested near-term implementation phases
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Suggested near-term implementation phases">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-1-deterministic-ownership-mvp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 1: Deterministic ownership MVP
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-2-pre-merge-enforcement-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 2: Pre-merge enforcement mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-3-optional-semantic-upgrades" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 3: Optional semantic upgrades
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#practical-readiness-score" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Practical readiness score
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#optimization-gaps-to-fill-in-treesitter-chunker-itself" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optimization gaps to fill in treesitter-chunker itself
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Optimization gaps to fill in treesitter-chunker itself">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-determinism-hardening-for-symboledge-resolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1) Determinism hardening for symbol/edge resolution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-first-class-ir-export-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2) First-class IR export mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-incremental-graph-recomputation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3) Incremental graph recomputation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-stronger-cross-language-extraction-contracts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4) Stronger cross-language extraction contracts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-better-observability-for-large-repo-runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5) Better observability for large-repo runs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-optional-semantic-augmentation-hooks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6) Optional semantic augmentation hooks
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="agent-interface-ownership-readiness-repository-assessment">Agent Interface Ownership Readiness (Repository Assessment)<a class="headerlink" href="#agent-interface-ownership-readiness-repository-assessment" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p>This document is a readiness assessment.
+The implementation-facing Boundary IR contract now lives in this repository:
+<code>docs/interface-boundary-spec.md</code>.
+The execution plan lives in:
+<code>docs/interface-boundary-roadmap.md</code>.</p>
+</blockquote>
+<p>This document evaluates how ready <code>treesitter-chunker</code> is to support <strong>agent-oriented code surface ownership</strong> enforced via <strong>AST-derived boundaries</strong>.</p>
+<h2 id="bottom-line">Bottom line<a class="headerlink" href="#bottom-line" title="Permanent link">&para;</a></h2>
+<p>This repository is a strong foundation for an AST-first ownership system, but it is currently optimized for chunking, metadata enrichment, and relationship inference rather than strict policy enforcement. The primitives you need already exist (stable IDs, symbol extraction, relationship graphs, multi-language adapters), while policy/runtime guardrails are still missing.</p>
+<h2 id="should-this-live-in-this-repo-or-above-it">Should this live in this repo or above it?<a class="headerlink" href="#should-this-live-in-this-repo-or-above-it" title="Permanent link">&para;</a></h2>
+<p>Recommendation: keep ownership-policy enforcement in a <strong>separate orchestrator project</strong> and use <code>treesitter-chunker</code> as a dependency.</p>
+<p>Why:</p>
+<ul>
+<li>This package's primary contract is extraction/chunking and language support.</li>
+<li>Ownership policy and multi-agent authorization is a higher-level orchestration concern.</li>
+<li>Keeping policy external lets you iterate policy rules and governance models without coupling them to parser/chunker release cadence.</li>
+</ul>
+<p>Reasonable split:</p>
+<ul>
+<li><code>treesitter-chunker</code> owns AST parsing, symbol extraction, metadata normalization, and graph export.</li>
+<li>The orchestrator owns agent manifests, policy evaluation, patch validation, and allow/reject enforcement.</li>
+</ul>
+<h2 id="what-is-already-in-place">What is already in place<a class="headerlink" href="#what-is-already-in-place" title="Permanent link">&para;</a></h2>
+<h3 id="1-ast-ingestion-and-multi-language-coverage">1) AST ingestion and multi-language coverage<a class="headerlink" href="#1-ast-ingestion-and-multi-language-coverage" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Core processing is Tree-sitter-based and language-aware, with dynamic language discovery and plugin support.</li>
+<li>The architecture is explicitly modular around parser management, chunk extraction, and language plugins.</li>
+</ul>
+<p><strong>Implication for ownership model:</strong> You already have a production AST ingestion plane suitable for deterministic, repeatable extraction.</p>
+<h3 id="2-stable-identity-primitives">2) Stable identity primitives<a class="headerlink" href="#2-stable-identity-primitives" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>CodeChunk</code> includes <code>node_id</code>, <code>file_id</code>, <code>symbol_id</code>, <code>qualified_route</code>, and <code>definition_id</code>.</li>
+<li><code>definition_id</code> is explicitly content-insensitive and derived from structural route, which is exactly the kind of stability you need for ownership boundaries across edits.</li>
+</ul>
+<p><strong>Implication for ownership model:</strong> You can assign policy to structural identities instead of byte ranges or text diffs.</p>
+<h3 id="3-language-agnostic-retrieval-metadata-normalization">3) Language-agnostic retrieval metadata normalization<a class="headerlink" href="#3-language-agnostic-retrieval-metadata-normalization" title="Permanent link">&para;</a></h3>
+<ul>
+<li>The core metadata pipeline normalizes kind/symbol/qualified_name/semantic_path and dependency-style fields in a language-agnostic shape.</li>
+</ul>
+<p><strong>Implication for ownership model:</strong> This is already a near-IR substrate. You can promote this retrieval metadata into a formal ownership IR with fewer transformations.</p>
+<h3 id="4-existing-symbol-graph-extraction">4) Existing symbol graph extraction<a class="headerlink" href="#4-existing-symbol-graph-extraction" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>extract_symbol_graph()</code> already builds a graph-like structure with symbols, internal/external relationships, imports/dependencies/calls, and per-symbol lookup records.</li>
+<li>Symbol IDs currently combine module and qualified names where available.</li>
+</ul>
+<p><strong>Implication for ownership model:</strong> The repo already has an initial “program graph projection” that can seed ownership checks and policy evaluation.</p>
+<h3 id="5-export-pathway-for-graph-consumers">5) Export pathway for graph consumers<a class="headerlink" href="#5-export-pathway-for-graph-consumers" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Semantic lens export maps chunk node kinds and relationship kinds into a normalized bundle model.</li>
+</ul>
+<p><strong>Implication for ownership model:</strong> You can either keep policy local or export to an external policy/graph engine without inventing a fresh interchange format from scratch.</p>
+<h2 id="gaps-that-block-deterministic-enforcement-today">Gaps that block deterministic enforcement today<a class="headerlink" href="#gaps-that-block-deterministic-enforcement-today" title="Permanent link">&para;</a></h2>
+<h3 id="1-no-first-class-ownership-policy-engine">1) No first-class ownership policy engine<a class="headerlink" href="#1-no-first-class-ownership-policy-engine" title="Permanent link">&para;</a></h3>
+<p>There is no built-in concept of:</p>
+<ul>
+<li>agent-to-symbol ownership mapping,</li>
+<li>allowed/forbidden cross-boundary calls,</li>
+<li>reject/allow decisions over proposed code edits.</li>
+</ul>
+<h3 id="2-relationship-inference-has-heuristic-edges">2) Relationship inference has heuristic edges<a class="headerlink" href="#2-relationship-inference-has-heuristic-edges" title="Permanent link">&para;</a></h3>
+<p>Current relationship resolution includes tokenized candidate matching and unique-name heuristics. That is useful for discovery, but policy enforcement should avoid heuristic ambiguity at decision time.</p>
+<h3 id="3-limited-semantic-guarantees">3) Limited semantic guarantees<a class="headerlink" href="#3-limited-semantic-guarantees" title="Permanent link">&para;</a></h3>
+<p>Tree-sitter coverage is strong, but this repo does not currently provide full type/binding resolution for authoritative call-target disambiguation in all languages.</p>
+<h3 id="4-no-patch-to-ir-validator-workflow">4) No patch-to-IR validator workflow<a class="headerlink" href="#4-no-patch-to-ir-validator-workflow" title="Permanent link">&para;</a></h3>
+<p>There is no built-in gate that:</p>
+<ol>
+<li>parses a patch,</li>
+<li>maps edits to structural symbol identities,</li>
+<li>enforces ownership policy,</li>
+<li>returns machine-verifiable allow/reject outcomes.</li>
+</ol>
+<h2 id="recommended-architecture-using-this-repo-as-a-dependency">Recommended architecture using this repo as a dependency<a class="headerlink" href="#recommended-architecture-using-this-repo-as-a-dependency" title="Permanent link">&para;</a></h2>
+<p>Use <code>treesitter-chunker</code> as the <strong>front-end extractor dependency</strong>, then add a slim policy service layer:</p>
+<ol>
+<li><strong>Ingest</strong> with <code>chunk_file(..., extract_metadata=True, include_retrieval_metadata=True)</code> and/or <code>extract_symbol_graph()</code>.</li>
+<li><strong>Normalize to ownership IR</strong> using stable structural IDs (<code>definition_id</code> preferred, fallback to module+qualified_name).</li>
+<li><strong>Attach policy</strong> via a separate manifest (e.g., <code>agent_policy.yaml</code>) mapping agent scopes and allowed edge types.</li>
+<li><strong>Validate edits</strong> by parsing changed files and reconciling changed definitions against policy.</li>
+<li><strong>Fail closed</strong> for unresolved symbol mappings in enforcement mode (log separately for triage).</li>
+</ol>
+<h2 id="suggested-near-term-implementation-phases">Suggested near-term implementation phases<a class="headerlink" href="#suggested-near-term-implementation-phases" title="Permanent link">&para;</a></h2>
+<h3 id="phase-1-deterministic-ownership-mvp">Phase 1: Deterministic ownership MVP<a class="headerlink" href="#phase-1-deterministic-ownership-mvp" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Define ownership IR schema from existing chunk metadata + symbol graph output.</li>
+<li>Use <code>definition_id</code> and <code>qualified_name</code> as canonical node keys.</li>
+<li>Implement read-only report mode (<code>violations</code> list only).</li>
+</ul>
+<h3 id="phase-2-pre-merge-enforcement-mode">Phase 2: Pre-merge enforcement mode<a class="headerlink" href="#phase-2-pre-merge-enforcement-mode" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Add strict policy checker that fails when modified symbols are outside agent scope.</li>
+<li>Only allow relationship checks when target resolution is deterministic; otherwise classify as unresolved and fail closed (configurable).</li>
+</ul>
+<h3 id="phase-3-optional-semantic-upgrades">Phase 3: Optional semantic upgrades<a class="headerlink" href="#phase-3-optional-semantic-upgrades" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Add language-specific semantic resolvers where needed for high-confidence edge disambiguation (LSP/type-checker augmentation).</li>
+</ul>
+<h2 id="practical-readiness-score">Practical readiness score<a class="headerlink" href="#practical-readiness-score" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Extractor readiness:</strong> High</li>
+<li><strong>IR readiness:</strong> Medium-high (close, not formalized)</li>
+<li><strong>Policy enforcement readiness:</strong> Low-medium (needs new module)</li>
+<li><strong>Cross-language viability:</strong> Medium-high (with per-language adapters)</li>
+</ul>
+<p>Overall: <strong>good dependency choice</strong> for bootstrapping an AST-governed agent ownership system, as long as you plan to build a dedicated policy/enforcement layer on top.</p>
+<h2 id="optimization-gaps-to-fill-in-treesitter-chunker-itself">Optimization gaps to fill in <code>treesitter-chunker</code> itself<a class="headerlink" href="#optimization-gaps-to-fill-in-treesitter-chunker-itself" title="Permanent link">&para;</a></h2>
+<p>If the goal is to make this package maximally ready as a dependency for deterministic agent systems, these are the highest-leverage improvements:</p>
+<h3 id="1-determinism-hardening-for-symboledge-resolution">1) Determinism hardening for symbol/edge resolution<a class="headerlink" href="#1-determinism-hardening-for-symboledge-resolution" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Add a strict mode that disallows heuristic fallback in relationship resolution when targets are ambiguous.</li>
+<li>Emit explicit resolution status (<code>resolved</code>, <code>ambiguous</code>, <code>unresolved</code>) for every edge candidate.</li>
+<li>Support fail-closed exports for downstream policy engines.</li>
+</ul>
+<h3 id="2-first-class-ir-export-mode">2) First-class IR export mode<a class="headerlink" href="#2-first-class-ir-export-mode" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Promote current normalized metadata + symbol graph into the documented, versioned Boundary IR schema in <code>docs/interface-boundary-spec.md</code>.</li>
+<li>Add schema versioning and compatibility checks for downstream consumers.</li>
+<li>Guarantee canonical ordering of nodes/edges in output for reproducible diffs.</li>
+</ul>
+<h3 id="3-incremental-graph-recomputation">3) Incremental graph recomputation<a class="headerlink" href="#3-incremental-graph-recomputation" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Recompute symbols/relationships only for changed files + impacted neighbors.</li>
+<li>Persist index artifacts keyed by file hash + grammar version.</li>
+<li>Add a “cold vs warm graph build” benchmark target in CI smoke tooling.</li>
+</ul>
+<h3 id="4-stronger-cross-language-extraction-contracts">4) Stronger cross-language extraction contracts<a class="headerlink" href="#4-stronger-cross-language-extraction-contracts" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Tighten per-language conformance tests for <code>kind</code>, <code>qualified_name</code>, signatures, imports/dependencies/calls.</li>
+<li>Require extractor contract fixtures for new languages before merge.</li>
+<li>Add parity score reporting to prevent regressions in less-common grammars.</li>
+</ul>
+<h3 id="5-better-observability-for-large-repo-runs">5) Better observability for large-repo runs<a class="headerlink" href="#5-better-observability-for-large-repo-runs" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Boundary IR now emits deterministic counters for skipped files, failed files,
+  parse failures, graph failures, unresolved edges, ambiguous edges, and failure
+  buckets.</li>
+<li>Boundary IR now includes fixed <code>run.timings</code> keys with <code>null</code> defaults and
+  opt-in measured values through <code>include_timings=True</code>.</li>
+<li>The <code>boundary</code> CLI now provides <code>--summary</code>, <code>--include-timings</code>, and
+  <code>--fail-fast</code> for policy pipeline diagnostics without polluting stdout JSON.</li>
+</ul>
+<h3 id="6-optional-semantic-augmentation-hooks">6) Optional semantic augmentation hooks<a class="headerlink" href="#6-optional-semantic-augmentation-hooks" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Define extension points for plugging in LSP/type-checker resolvers without changing core extraction APIs.</li>
+<li>Preserve a strict separation: syntactic baseline always available, semantic enrichment opt-in.</li>
+<li>Record provenance on enriched edges so downstream policy can choose trust level.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
