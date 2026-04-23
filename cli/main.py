@@ -122,6 +122,21 @@ def boundary(
         "--include-timings",
         help="Include measured stage timings in Boundary IR JSON",
     ),
+    incremental: bool = typer.Option(
+        False,
+        "--incremental",
+        help="Use the persistent incremental Boundary IR cache",
+    ),
+    cache_dir: Path | None = typer.Option(
+        None,
+        "--cache-dir",
+        help="Directory for incremental Boundary IR cache files",
+    ),
+    force_rebuild: bool = typer.Option(
+        False,
+        "--force-rebuild",
+        help="Ignore valid incremental cache records and refresh them",
+    ),
     summary: bool = typer.Option(
         False,
         "--summary",
@@ -136,6 +151,9 @@ def boundary(
         resolution_mode=resolution_mode.value,
         fail_fast=fail_fast,
         include_timings=include_timings,
+        incremental=incremental,
+        cache_dir=cache_dir,
+        force_rebuild=force_rebuild,
     )
     summary_text = _format_boundary_summary(ir)
     if output is None:

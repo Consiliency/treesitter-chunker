@@ -202,19 +202,123 @@ def _import_record(import_text: str, line: int) -> dict[str, Any]:
     }
 
 
-def extract_symbol_graph(
-    path: str | Path,
+def extract_symbol_facts_for_file(
+    file_path: Path,
+    root: Path,
     language: str | None = None,
-    resolution_mode: ResolutionMode = "permissive",
+    *,
     fail_fast: bool = False,
 ) -> dict[str, Any]:
-    """Extract a language-agnostic symbol graph from chunk metadata."""
+    """Extract deterministic per-file symbol facts used by graph assembly."""
+    detected_language = _detect_language(file_path, language)
+    display_file = _display_file(file_path, root)
+    module_name = _module_name(file_path, root)
+    facts: dict[str, Any] = {
+        "path": display_file,
+        "display_file": display_file,
+        "module": module_name,
+        "language": detected_language,
+        "symbol_lookup": {},
+        "import_strings": [],
+        "imports": [],
+        "chunk_records": [],
+        "errors": [],
+    }
+    if not detected_language:
+        return facts
+    try:
+        chunks = chunk_file(
+            file_path,
+            detected_language,
+            extract_metadata=True,
+            include_retrieval_metadata=True,
+        )
+    except Exception as exc:  # pragma: no cover - defensive around parser failures
+        if fail_fast:
+            raise
+        facts["errors"].append(f"Error extracting symbols from {file_path}: {exc}")
+        return facts
+
+    symbol_lookup: dict[str, dict[str, Any]] = {}
+    fact_import_strings: list[str] = []
+    imports_output: list[dict[str, Any]] = []
+    chunk_records: list[dict[str, Any]] = []
+    for chunk in chunks:
+        metadata = chunk.metadata or {}
+        fact_import_strings.extend(
+            str(value) for value in metadata.get("imports", []) if str(value)
+        )
+        symbol = metadata.get("symbol")
+        kind = metadata.get("kind")
+        if not symbol or not kind or kind not in SYMBOL_KINDS:
+            continue
+        qualified_name = metadata.get("qualified_name")
+        symbol_id = _symbol_id(
+            module_name,
+            str(qualified_name) if qualified_name else None,
+            str(symbol),
+            chunk.definition_id or chunk.node_id,
+        )
+        symbol_record = {
+            "name": str(symbol),
+            "kind": str(kind),
+            "file": display_file,
+            "line": chunk.start_line,
+            "end_line": chunk.end_line,
+            "module": module_name,
+            "parent_class": str(metadata.get("parent_symbol") or ""),
+            "qualified_name": qualified_name,
+            "signature": metadata.get("signature_text"),
+            "semantic_path": metadata.get("semantic_path"),
+            "language": detected_language,
+        }
+        symbol_lookup[symbol_id] = symbol_record
+        import_strings = [
+            str(value) for value in metadata.get("imports", []) if str(value)
+        ]
+        imports_output.extend(
+            _import_record(import_text, chunk.start_line)
+            for import_text in import_strings
+        )
+        chunk_records.append(
+            {
+                "context": {
+                    "id": symbol_id,
+                    "line": chunk.start_line,
+                    "file": display_file,
+                },
+                "imports": import_strings,
+                "dependencies": [
+                    str(value)
+                    for value in metadata.get("dependencies", [])
+                    if str(value)
+                ],
+                "calls": (
+                    list(metadata.get("calls", []))
+                    if isinstance(metadata.get("calls"), list)
+                    else []
+                ),
+            }
+        )
+    facts["symbol_lookup"] = symbol_lookup
+    facts["import_strings"] = sorted(dict.fromkeys(fact_import_strings))
+    facts["imports"] = imports_output
+    facts["chunk_records"] = chunk_records
+    return facts
+
+
+def assemble_symbol_graph(
+    facts: list[dict[str, Any]],
+    *,
+    total_files: int | None = None,
+    no_source_error: str | None = None,
+    resolution_mode: ResolutionMode = "permissive",
+) -> dict[str, Any]:
+    """Assemble public symbol graph output from per-file facts."""
     if resolution_mode not in RESOLUTION_MODES:
         msg = f"Unsupported resolution_mode: {resolution_mode}"
         raise ValueError(msg)
-    root = Path(path)
-    files = collect_source_files(root, language)
-    if not files:
+    if total_files == 0 and no_source_error:
         return {
             "symbols": {"classes": [], "functions": [], "imports": []},
             "relationships": [],
@@ -224,105 +328,35 @@ def extract_symbol_graph(
                 "total_functions": 0,
                 "total_imports": 0,
                 "total_relationships": 0,
-                "errors": [f"No source files found in {root}"],
+                "errors": [no_source_error],
             },
             "symbol_lookup": {},
-            "errors": [f"No source files found in {root}"],
+            "errors": [no_source_error],
         }
 
     symbol_lookup: dict[str, dict[str, Any]] = {}
-    chunk_records: list[
-        tuple[dict[str, Any], list[str], list[str], list[dict[str, Any]]]
-    ] = []
     imports_output: list[dict[str, Any]] = []
+    chunk_records: list[dict[str, Any]] = []
     errors: list[str] = []
-
-    for file_path in files:
-        detected_language = _detect_language(file_path, language)
-        if not detected_language:
-            continue
-        module_name = _module_name(file_path, root)
-        display_file = _display_file(file_path, root)
-        try:
-            chunks = chunk_file(
-                file_path,
-                detected_language,
-                extract_metadata=True,
-                include_retrieval_metadata=True,
-            )
-        except Exception as exc:  # pragma: no cover - defensive around parser failures
-            if fail_fast:
-                raise
-            errors.append(f"Error extracting symbols from {file_path}: {exc}")
-            continue
-
-        for chunk in chunks:
-            metadata = chunk.metadata or {}
-            symbol = metadata.get("symbol")
-            kind = metadata.get("kind")
-            if not symbol or not kind or kind not in SYMBOL_KINDS:
-                continue
-            qualified_name = metadata.get("qualified_name")
-            symbol_id = _symbol_id(
-                module_name,
-                str(qualified_name) if qualified_name else None,
-                str(symbol),
-                chunk.definition_id or chunk.node_id,
-            )
-            symbol_record = {
-                "name": str(symbol),
-                "kind": str(kind),
-                "file": display_file,
-                "line": chunk.start_line,
-                "end_line": chunk.end_line,
-                "module": module_name,
-                "parent_class": str(metadata.get("parent_symbol") or ""),
-                "qualified_name": qualified_name,
-                "signature": metadata.get("signature_text"),
-                "semantic_path": metadata.get("semantic_path"),
-                "language": detected_language,
-            }
-            symbol_lookup[symbol_id] = symbol_record
-            import_strings = [
-                str(value) for value in metadata.get("imports", []) if str(value)
-            ]
-            imports_output.extend(
-                _import_record(import_text, chunk.start_line)
-                for import_text in import_strings
-            )
-            chunk_records.append(
-                (
-                    {
-                        "id": symbol_id,
-                        "line": chunk.start_line,
-                        "file": display_file,
-                    },
-                    import_strings,
-                    [
-                        str(value)
-                        for value in metadata.get("dependencies", [])
-                        if str(value)
-                    ],
-                    (
-                        list(metadata.get("calls", []))
-                        if isinstance(metadata.get("calls"), list)
-                        else []
-                    ),
-                )
-            )
+    for file_facts in facts:
+        symbol_lookup.update(file_facts.get("symbol_lookup", {}))
+        imports_output.extend(file_facts.get("imports", []))
+        chunk_records.extend(file_facts.get("chunk_records", []))
+        errors.extend(str(error) for error in file_facts.get("errors", []))
 
     by_qualified, by_name = _build_resolution_indexes(symbol_lookup)
     relationships: list[dict[str, Any]] = []
     seen_relationships: set[tuple[str, str, str]] = set()
 
-    for relationship_context, imports, dependencies, calls in chunk_records:
+    for chunk_record in chunk_records:
+        relationship_context = chunk_record["context"]
         from_id = relationship_context["id"]
         line = relationship_context["line"]
         file_name = relationship_context["file"]
         for relationship_type, values in (
-            ("imports", imports),
-            ("dependencies", dependencies),
-            ("calls", calls),
+            ("imports", chunk_record.get("imports", [])),
+            ("dependencies", chunk_record.get("dependencies", [])),
+            ("calls", chunk_record.get("calls", [])),
         ):
             for value in values:
                 reference = _normalize_reference(value)
@@ -364,8 +398,9 @@ def extract_symbol_graph(
     function_symbols = [
         symbol for symbol in symbol_lookup.values() if symbol["kind"] in FUNCTION_KINDS
     ]
+    total = len(facts) if total_files is None else total_files
     metadata = {
-        "files_processed": len(files) - len(errors),
+        "files_processed": total - len(errors),
         "total_classes": len(class_symbols),
         "total_functions": len(function_symbols),
         "total_imports": len(imports_output),
@@ -383,6 +418,50 @@ def extract_symbol_graph(
         "symbol_lookup": symbol_lookup,
         "errors": errors,
     }
+
+
+def extract_symbol_graph(
+    path: str | Path,
+    language: str | None = None,
+    resolution_mode: ResolutionMode = "permissive",
+    fail_fast: bool = False,
+) -> dict[str, Any]:
+    """Extract a language-agnostic symbol graph from chunk metadata."""
+    if resolution_mode not in RESOLUTION_MODES:
+        msg = f"Unsupported resolution_mode: {resolution_mode}"
+        raise ValueError(msg)
+    root = Path(path)
+    files = collect_source_files(root, language)
+    if not files:
+        return {
+            "symbols": {"classes": [], "functions": [], "imports": []},
+            "relationships": [],
+            "metadata": {
+                "files_processed": 0,
+                "total_classes": 0,
+                "total_functions": 0,
+                "total_imports": 0,
+                "total_relationships": 0,
+                "errors": [f"No source files found in {root}"],
+            },
+            "symbol_lookup": {},
+            "errors": [f"No source files found in {root}"],
+        }
+
+    facts = [
+        extract_symbol_facts_for_file(
+            file_path,
+            root,
+            language,
+            fail_fast=fail_fast,
+        )
+        for file_path in files
+    ]
+    return assemble_symbol_graph(
+        facts,
+        total_files=len(files),
+        resolution_mode=resolution_mode,
+    )
 
 
 def find_symbols(

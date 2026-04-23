@@ -114,7 +114,10 @@ Use `treesitter-chunker` as the **front-end extractor dependency**, then add a s
 
 ### Phase 3: Optional semantic upgrades
 
-- Add language-specific semantic resolvers where needed for high-confidence edge disambiguation (LSP/type-checker augmentation).
+- Use the optional Boundary IR semantic resolver API for high-confidence edge
+  disambiguation where callers explicitly provide LSP/type-checker augmentation.
+- Keep enforcement decisions in the policy layer above this package; semantic
+  confidence is resolver provenance data, not authorization.
 
 ## Practical readiness score
 
@@ -147,6 +150,12 @@ If the goal is to make this package maximally ready as a dependency for determin
 - Persist index artifacts keyed by file hash + grammar version.
 - Add a “cold vs warm graph build” benchmark target in CI smoke tooling.
 
+Status: implemented for Boundary IR incremental mode. Cache keys include path,
+content hash, language, grammar/tool/schema versions, resolution mode,
+`fail_fast`, and retrieval metadata mode. Warm runs reuse valid per-file records,
+recompute changed files and impacted neighbors, and preserve canonical stdout
+JSON byte identity when timings are disabled.
+
 ### 4) Stronger cross-language extraction contracts
 
 - Tighten per-language conformance tests for `kind`, `qualified_name`, signatures, imports/dependencies/calls.
@@ -162,9 +171,17 @@ If the goal is to make this package maximally ready as a dependency for determin
   opt-in measured values through `include_timings=True`.
 - The `boundary` CLI now provides `--summary`, `--include-timings`, and
   `--fail-fast` for policy pipeline diagnostics without polluting stdout JSON.
+- The `boundary` CLI now provides `--incremental`, `--cache-dir`, and
+  `--force-rebuild` for persistent warm-run reuse without adding cache stats to
+  canonical JSON.
 
 ### 6) Optional semantic augmentation hooks
 
-- Define extension points for plugging in LSP/type-checker resolvers without changing core extraction APIs.
-- Preserve a strict separation: syntactic baseline always available, semantic enrichment opt-in.
-- Record provenance on enriched edges so downstream policy can choose trust level.
+- Boundary IR now defines optional semantic resolver hooks exposed from
+  `chunker.boundary`.
+- `extract_boundary_ir(..., semantic_resolvers=None)` preserves the syntax-only
+  baseline; callers opt in by passing resolver objects or discovering them from
+  explicitly registered language plugins.
+- Enriched edges record `provenance.source == "semantic"`, resolver identity,
+  resolver API version, and confidence. Downstream policy decides whether to
+  trust them.

@@ -6,14 +6,15 @@ This guide provides comprehensive strategies and best practices for optimizing T
 
 1. [Performance Overview](#performance-overview)
 2. [AST Caching](#ast-caching)
-3. [Parallel Processing](#parallel-processing)
-4. [Streaming Large Files](#streaming-large-files)
-5. [Memory Management](#memory-management)
-6. [Benchmarking](#benchmarking)
-7. [Configuration Tuning](#configuration-tuning)
-8. [Common Bottlenecks](#common-bottlenecks)
-9. [Performance Monitoring](#performance-monitoring)
-10. [Best Practices](#best-practices)
+3. [Incremental Boundary IR](#incremental-boundary-ir)
+4. [Parallel Processing](#parallel-processing)
+5. [Streaming Large Files](#streaming-large-files)
+6. [Memory Management](#memory-management)
+7. [Benchmarking](#benchmarking)
+8. [Configuration Tuning](#configuration-tuning)
+9. [Common Bottlenecks](#common-bottlenecks)
+10. [Performance Monitoring](#performance-monitoring)
+11. [Best Practices](#best-practices)
 
 ## Performance Overview
 
@@ -24,6 +25,8 @@ Tree-sitter Chunker is designed for high performance with several key optimizati
 - **Parallel Processing**: Near-linear speedup with CPU cores
 - **Streaming Support**: Process files larger than available memory
 - **Lazy Loading**: Languages loaded only when needed
+- **Incremental Boundary IR**: Persistent per-file cache records for repeated
+  Boundary IR runs on changing repositories
 
 ### Performance Metrics
 
@@ -76,6 +79,32 @@ The cache uses a composite key based on:
 - Language
 
 This ensures cache invalidation when files change.
+
+## Incremental Boundary IR
+
+Boundary IR generation can reuse persisted per-file records across runs:
+
+```bash
+treesitter-chunker boundary src/ --lang python --incremental --cache-dir .cache/boundary > boundary.json
+treesitter-chunker boundary src/ --lang python --incremental --cache-dir .cache/boundary > boundary.json
+```
+
+Cold incremental runs populate JSON cache records. Warm runs reuse valid records
+and recompute only added, deleted, changed, malformed, forced, or impacted
+neighbor files. Impacted neighbors include reverse import, dependency, and call
+references that mention changed modules or symbols.
+
+Use `--force-rebuild` to bypass cache reads and refresh all records:
+
+```bash
+treesitter-chunker boundary src/ --lang python --incremental --cache-dir .cache/boundary --force-rebuild
+```
+
+Cache keys include file path, content hash, language, grammar/tool/schema
+versions, resolution mode, `fail_fast`, and retrieval metadata mode. Timing
+fields and cache directory paths are excluded, so warm output remains
+byte-identical to cold output for the same snapshot when `--include-timings` is
+not used. Cache stats are intentionally kept out of stdout JSON.
 
 ### Advanced Caching
 

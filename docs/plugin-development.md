@@ -130,7 +130,51 @@ class LanguagePlugin(ABC):
     
     def get_context_for_children(self, node: Node, chunk: CodeChunk) -> str:
         """Build context string for nested definitions."""
+
+    def semantic_resolvers(self):
+        """Return optional Boundary IR semantic resolvers. Defaults to ()."""
 ```
+
+### Optional Boundary IR Semantic Resolvers
+
+Language plugins may expose semantic resolvers for callers that want
+supplemental Boundary IR edges from an LSP, type checker, or domain-specific
+analyzer. This hook is optional and must not be required for baseline chunking.
+
+```python
+from chunker.boundary import SemanticEdge, SemanticResolverContext
+
+class MyResolver:
+    resolver_id = "my-plugin.semantic"
+    resolver_version = "1.0.0"
+    supported_languages = ("swift",)
+
+    def enrich(self, context: SemanticResolverContext):
+        yield SemanticEdge(
+            source_node_id="def:source",
+            target_node_id="def:target",
+            relationship_type="calls",
+            resolution="resolved",
+            reference="target",
+            confidence=0.95,
+            resolver_id=self.resolver_id,
+            resolver_version=self.resolver_version,
+        )
+
+class SwiftPlugin(LanguagePlugin):
+    def semantic_resolvers(self):
+        return (MyResolver(),)
+```
+
+Resolvers are discovered only from explicitly registered plugins through
+`PluginRegistry.get_semantic_resolvers(language=None)`. Built-in plugins that do
+not override `semantic_resolvers()` return an empty tuple. Avoid importing heavy
+optional dependencies at module import time; initialize LSP clients or
+type-checker adapters lazily inside the resolver or behind user configuration.
+
+Semantic resolver output is supplemental. It must not mutate syntax-derived
+nodes or edges, and confidence must stay in `[0.0, 1.0]`. This repository does
+not use confidence for ownership, authorization, or enforcement policy.
 
 ## Creating a Language Plugin
 

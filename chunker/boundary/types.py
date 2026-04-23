@@ -8,14 +8,39 @@ BoundaryIR: TypeAlias = dict[str, Any]
 BoundaryRecord: TypeAlias = dict[str, Any]
 ResolutionStatus: TypeAlias = Literal["resolved", "ambiguous", "unresolved"]
 ResolutionMode: TypeAlias = Literal["strict", "permissive"]
+SemanticEdgeSource: TypeAlias = Literal["semantic"]
 
 BOUNDARY_IR_SCHEMA_VERSION = "1.0"
+BOUNDARY_IR_SEMANTIC_SCHEMA_VERSION = "1.1"
+SEMANTIC_RESOLVER_API_VERSION = "1.0"
+BOUNDARY_CACHE_VERSION = "1"
+BOUNDARY_CACHE_KEY_PREFIX = "boundary:v1:"
+BOUNDARY_CACHE_KEY_FIELDS = (
+    "path",
+    "content_hash",
+    "language",
+    "grammar_version",
+    "tool_version",
+    "schema_version",
+    "resolution_mode",
+    "fail_fast",
+    "include_retrieval_metadata",
+)
+BOUNDARY_CACHE_EXCLUDED_OPTION_FIELDS = (
+    "created_at",
+    "canonical",
+    "include_timings",
+    "incremental",
+    "cache_dir",
+    "force_rebuild",
+)
 RESOLUTION_STATUSES: tuple[ResolutionStatus, ...] = (
     "resolved",
     "ambiguous",
     "unresolved",
 )
 RESOLUTION_MODES: tuple[ResolutionMode, ...] = ("strict", "permissive")
+SEMANTIC_EDGE_SOURCES: tuple[SemanticEdgeSource, ...] = ("semantic",)
 
 TOP_LEVEL_KEYS = (
     "schema_version",
@@ -62,6 +87,7 @@ DIAGNOSTIC_STAGES = (
     "metadata",
     "graph",
     "resolution",
+    "semantic",
     "serialization",
 )
 

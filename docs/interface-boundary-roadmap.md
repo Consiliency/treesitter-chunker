@@ -57,7 +57,7 @@ This roadmap focuses only on boundary parsing and IR generation.
 
 ### Work items
 
-1. **Incremental recomputation**
+1. **Incremental recomputation** _(implemented for Boundary IR cache records)_
    - Re-extract only changed files and impacted neighbors.
    - Cache intermediate boundary records keyed by file hash.
 
@@ -75,7 +75,7 @@ This roadmap focuses only on boundary parsing and IR generation.
 
 ### Exit criteria
 
-- Incremental mode demonstrates measurable speedup on fixture repos.
+- Incremental mode demonstrates measurable speedup on fixture repos. _(implemented with deterministic warm-run reprocessing coverage)_
 - Diagnostics are sufficient to triage unresolved/ambiguous edge regressions.
 
 ---
@@ -88,20 +88,24 @@ This roadmap focuses only on boundary parsing and IR generation.
 
 ### Work items
 
-1. **Semantic plugin interface**
+1. **Semantic plugin interface** _(implemented as optional Boundary IR hooks)_
    - Define hook points for LSP/type-checker enrichment.
    - Preserve provenance and confidence metadata.
 
-2. **Trust-tiered edges**
+2. **Trust-tiered edges** _(implemented as supplemental semantic provenance)_
    - Mark each edge with `source=syntax|semantic` and confidence value.
    - Keep strict mode defaults syntax-first.
 
-3. **Compatibility guarantees**
+3. **Compatibility guarantees** _(implemented for syntax-only baseline and enriched output)_
    - Version IR schema and publish migration notes.
+   - Preserve syntax-only `schema_version == "1.0"` and use additive semantic
+     schema `1.1` only when resolvers are supplied.
 
 ### Exit criteria
 
-- Semantic enrichment is optional and cannot break baseline deterministic output.
+- Semantic enrichment is optional and cannot break baseline deterministic
+  output. _(implemented with contract, enrichment, plugin hook, and determinism
+  tests)_
 
 ---
 
@@ -114,9 +118,10 @@ This roadmap focuses only on boundary parsing and IR generation.
 5. Build first golden fixtures (3 languages). _(implemented for P0 matrix)_
 6. Add deterministic CI gate (double-run equivalence). _(implemented)_
 7. Add structured metrics output. _(implemented for Boundary IR observability)_
-8. Implement cache key strategy.
-9. Add incremental recomputation.
+8. Implement cache key strategy. _(implemented)_
+9. Add incremental recomputation. _(implemented)_
 10. Expand language conformance fixtures.
+11. Add optional semantic resolver hooks. _(implemented)_
 
 ## Risk register
 
@@ -128,3 +133,7 @@ This roadmap focuses only on boundary parsing and IR generation.
 
 - **Risk**: output churn due to schema evolution.  
   **Mitigation**: versioned schema + migration policy.
+
+- **Risk**: semantic confidence being mistaken for an enforcement decision.  
+  **Mitigation**: semantic confidence is documented as data only; policy and
+  authorization remain outside this repository.

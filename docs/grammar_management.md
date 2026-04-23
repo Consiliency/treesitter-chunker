@@ -31,6 +31,15 @@ The grammar management system consists of several components:
 - **Issue tracking** with actionable recommendations
 - **System health reports** for troubleshooting
 
+### Boundary IR Semantic Hooks
+
+Grammar availability still controls the syntax-first extraction baseline.
+Optional Boundary IR semantic resolvers can be exposed by language plugins, but
+they should not make grammar installation, chunking, or syntax-only Boundary IR
+depend on LSP or type-checker packages. Keep those dependencies optional and
+lazy so `extract_boundary_ir(..., semantic_resolvers=None)` remains deterministic
+and usable with only Tree-sitter grammar support.
+
 ## Quick Start
 
 ### Check Current Grammar Status

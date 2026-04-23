@@ -5,7 +5,8 @@ This document is the canonical implementation-facing Boundary IR contract for
 serializers, tests, and policy orchestrators can rely on before runtime export
 work begins.
 
-The initial schema version is `1.0`.
+The syntax-only schema version is `1.0`. Output enriched with optional semantic
+resolver edges uses the additive semantic schema version `1.1`.
 
 ## Scope
 
@@ -15,8 +16,8 @@ metrics, and run metadata. The contract is designed to be produced from existing
 `CodeChunk` fields, retrieval metadata, and symbol graph output.
 
 The schema is a data interchange contract. It does not require this repository
-to implement a policy engine, cache, semantic enrichment, ownership manifest, or
-patch authorization workflow in this phase.
+to implement a policy engine, semantic enrichment, ownership manifest, or patch
+authorization workflow.
 
 ## Non-goals
 
@@ -25,13 +26,17 @@ enforcement live outside `treesitter-chunker`. This repository may emit the
 boundary facts those systems consume, but it does not own agent policy decisions.
 
 Semantic enrichment from LSPs, type checkers, or other external analyzers is
-optional future work. The baseline contract must remain useful when only
-Tree-sitter-derived syntax and normalized metadata are available.
+optional. This repository defines the hook contract and merge behavior, but it
+does not ship mandatory resolver integrations, own policy decisions, or convert
+confidence scores into authorization outcomes. The baseline contract remains
+useful when only Tree-sitter-derived syntax and normalized metadata are
+available.
 
 ## Versioning
 
-The top-level `schema_version` field is required and must be the string `1.0`
-for the initial Boundary IR contract.
+The top-level `schema_version` field is required. Syntax-only output must use
+the string `1.0`. Output produced with explicit semantic resolvers uses `1.1`,
+which is additive over the syntax-only schema.
 
 Additive-compatible changes retain the current major version. Examples include
 adding optional fields, adding new diagnostic codes, or adding new metadata keys
@@ -41,6 +46,10 @@ Breaking changes require a major version bump. Examples include removing a
 required field, changing a field's meaning, changing canonical ordering, or
 renaming frozen keys. Downstream consumers may reject unknown major versions
 before reading the rest of the document.
+
+Consumers that do not understand semantic enrichment can ignore edge records
+where `provenance.source == "semantic"` and continue reading syntax-derived
+records where `provenance.source == "syntax"`.
 
 ## Top-level Object
 
@@ -143,6 +152,24 @@ target node identity: `target` is the normalized reference string and
 preserves discovery-friendly references and syntax provenance, records
 `resolution_mode: permissive`, and does not emit an enforcement grade.
 
+Syntax-derived edges use `provenance.source: syntax` and record the syntax
+resolver and resolution mode. Supplemental semantic edges use
+`provenance.source: semantic` and must record:
+
+- `resolver`: stable resolver ID.
+- `resolver_version`: resolver implementation version.
+- `resolver_api_version`: semantic resolver API version, currently `1.0`.
+- `confidence`: numeric confidence in the inclusive range `[0.0, 1.0]`.
+
+Semantic confidence is data only. This repository does not turn confidence into
+ownership, authorization, or enforcement policy.
+
+Semantic enrichment is append-only relative to the syntax baseline. It must not
+rewrite or delete syntax edges, syntax edge IDs, syntax node IDs, or syntax
+provenance. Duplicate semantic results are deduplicated deterministically by
+resolver ID, source, target, type, and reference; the highest-confidence result
+is retained.
+
 ## Diagnostic Records
 
 Diagnostic records are frozen with these keys:
@@ -154,13 +181,17 @@ Diagnostic records are frozen with these keys:
 - `path`: related file path or `null`.
 - `location`: source location or `null`.
 - `stage`: extraction stage such as `discovery`, `parse`, `metadata`, `graph`,
-  `resolution`, or `serialization`.
+  `resolution`, `semantic`, or `serialization`.
 - `details`: deterministic structured details.
 
 Diagnostic stages are frozen as exactly `discovery`, `parse`, `metadata`,
-`graph`, `resolution`, and `serialization`. Diagnostic IDs are deterministic
-hashes over `stage`, `code`, `path`, `location`, `message`, and canonicalized
-`details`; they must not depend on encounter-order indexes.
+`graph`, `resolution`, `semantic`, and `serialization`. Diagnostic IDs are
+deterministic hashes over `stage`, `code`, `path`, `location`, `message`, and
+canonicalized `details`; they must not depend on encounter-order indexes.
+
+Semantic resolver failures emit `boundary.semantic_resolver_error` diagnostics
+when `fail_fast=False`. With `fail_fast=True`, resolver exceptions are raised.
+Non-fail-fast semantic failures preserve baseline syntax records.
 
 ## Metrics
 
@@ -222,6 +253,108 @@ clock durations, process IDs, temporary paths, and generated timestamps must be
 omitted, set to `null`, or moved to a non-canonical observability report. If
 `created_at` is present in canonical output, it must be caller-provided and
 stable for the compared runs.
+
+## Optional Semantic Enrichment
+
+`chunker.boundary` exports the semantic resolver contract:
+
+- `SEMANTIC_RESOLVER_API_VERSION = "1.0"`
+- `BOUNDARY_IR_SEMANTIC_SCHEMA_VERSION = "1.1"`
+- `SemanticResolverContext`
+- `SemanticEdge`
+- `SemanticResolver`
+
+A `SemanticResolver` exposes stable `resolver_id`, `resolver_version`, and
+`supported_languages`, and implements `enrich(context) -> Iterable[SemanticEdge]`.
+Resolvers are not imported by baseline extraction; callers or explicitly
+registered plugins must provide them.
+
+`SemanticResolverContext` contains the source root, language, resolution mode,
+file records, node records, syntax edges, and current diagnostics. Resolvers
+must treat the context as read-only.
+
+`SemanticEdge` requires source node ID, relationship type, resolution status,
+reference, resolver identity, confidence, and either a target node ID or
+reference target. Candidate IDs are sorted deterministically. Confidence accepts
+only values in `[0.0, 1.0]`.
+
+The public API is:
+
+```python
+extract_boundary_ir(
+    path,
+    language=None,
+    *,
+    canonical=True,
+    created_at=None,
+    resolution_mode="strict",
+    fail_fast=False,
+    include_timings=False,
+    incremental=False,
+    cache_dir=None,
+    force_rebuild=False,
+    semantic_resolvers=None,
+    semantic_min_confidence=0.0,
+)
+```
+
+`semantic_resolvers=None` preserves the exact syntax-only execution path,
+`schema_version == "1.0"`, `run.options`, cache key input, and canonical JSON.
+When resolvers are supplied, semantic edges below `semantic_min_confidence` are
+filtered, semantic edge IDs are added to the source node `relationships` list,
+and the output uses schema version `1.1`.
+
+## Incremental Boundary Cache
+
+`extract_boundary_ir(path, language=None, *, canonical=True, created_at=None,
+resolution_mode="strict", fail_fast=False, include_timings=False,
+incremental=False, cache_dir=None, force_rebuild=False, semantic_resolvers=None,
+semantic_min_confidence=0.0)` is the public Boundary IR API.
+`incremental=False` preserves the default non-incremental execution path and
+keeps `run.options` unchanged when `semantic_resolvers=None`.
+
+`incremental=True` uses persisted JSON cache records for per-file Boundary IR
+slices and symbol facts. If `cache_dir` is provided, cache files are written
+there. Otherwise, they are written under the user cache namespace for the
+repository root. Cache paths, cache hit/miss stats, recomputed path sets, and
+benchmark measurements are diagnostics only; they are not canonical Boundary IR
+fields and must not appear in stdout JSON.
+
+Boundary cache keys are frozen as `boundary:v1:<sha256>`. The hash input is
+canonical JSON with exactly these fields, in this contract order:
+
+- `path`
+- `content_hash`
+- `language`
+- `grammar_version`
+- `tool_version`
+- `schema_version`
+- `resolution_mode`
+- `fail_fast`
+- `include_retrieval_metadata`
+
+`created_at`, `canonical`, `include_timings`, `incremental`, `cache_dir`, and
+`force_rebuild` are excluded from cache-key input. They also do not enter
+canonical Boundary IR except for the existing `created_at`, `canonical`, and
+`include_timings` run metadata fields.
+
+When semantic resolvers are supplied, the incremental cache key hash input is
+extended additively with `semantic_schema_version`, `semantic_resolvers`, and
+`semantic_min_confidence`. Syntax-only cache keys do not include those fields,
+so syntax-only records are not reused for enriched output and enriched records
+do not change baseline cache identity.
+
+Warm-run invalidation recomputes added files, deleted files, content/key
+mismatches, malformed cache records, and impacted neighbors. Impacted neighbors
+are the deterministic union of changed files, relationship-sensitive endpoints
+from previous and current records, and reverse import, dependency, or call
+references whose module or symbol candidates mention changed files. Returned
+path lists are normalized to POSIX separators and sorted lexicographically.
+
+For the same repository snapshot and options with `include_timings=False`, cold
+incremental output and warm incremental output must serialize to byte-identical
+`dumps_boundary_ir()` bytes. `force_rebuild=True` bypasses cache reads and
+refreshes all records without changing canonical output.
 
 ## Identity Precedence
 
@@ -307,6 +440,11 @@ that mix volatile timing data into canonical deterministic exports.
 
 Compatibility notes for future revisions must identify whether changes are
 additive-compatible or breaking.
+
+Migration note for semantic enrichment: syntax-only consumers can continue to
+require `schema_version == "1.0"`. Consumers that accept `1.1` should either
+ignore `provenance.source == "semantic"` edges or explicitly trust resolver IDs,
+versions, API version, and confidence according to their own policy.
 
 ## Contract Checklist
 
@@ -397,3 +535,42 @@ additive-compatible or breaking.
   or serialization failures without returning partial Boundary IR.
 - [x] IF-0-OBSERVABILITY-5H: the `boundary` CLI exposes `--fail-fast`,
   `--include-timings`, and `--summary` without polluting stdout JSON.
+- [x] IF-0-INCREMENTAL-6: Boundary cache key format, warm-run invalidation
+  rules, and impacted-neighbor recomputation contract are frozen.
+- [x] IF-0-INCREMENTAL-6A: Boundary cache keys use `boundary:v1:<sha256>` over
+  exactly `path`, `content_hash`, `language`, `grammar_version`, `tool_version`,
+  `schema_version`, `resolution_mode`, `fail_fast`, and
+  `include_retrieval_metadata`.
+- [x] IF-0-INCREMENTAL-6B: `extract_boundary_ir()` exposes `incremental`,
+  `cache_dir`, and `force_rebuild` as additive keyword-only options.
+- [x] IF-0-INCREMENTAL-6C: incremental mode stores JSON cache records under the
+  selected cache directory and keeps cache diagnostics out of canonical Boundary
+  IR.
+- [x] IF-0-INCREMENTAL-6D: warm runs invalidate added, deleted, changed,
+  malformed, and forced records deterministically.
+- [x] IF-0-INCREMENTAL-6E: impacted neighbors include reverse import,
+  dependency, and call references that mention changed modules or symbols.
+- [x] IF-0-INCREMENTAL-6F: cold and warm incremental runs serialize to
+  byte-identical canonical JSON when `include_timings=False`.
+- [x] IF-0-INCREMENTAL-6G: deterministic fixture coverage proves warm runs
+  reprocess fewer files without relying on wall-clock-only assertions.
+- [x] IF-0-SEMANTIC-7: Optional semantic enrichment plugin interface,
+  provenance, confidence, and schema migration contract are frozen.
+- [x] IF-0-SEMANTIC-7A: Semantic resolver API version is `1.0`; the public
+  contract exposes `SemanticResolver`, `SemanticResolverContext`, and
+  `SemanticEdge` from `chunker.boundary`.
+- [x] IF-0-SEMANTIC-7B: `SemanticResolver` requires stable `resolver_id`,
+  `resolver_version`, `supported_languages`, and `enrich(context)`.
+- [x] IF-0-SEMANTIC-7C: `extract_boundary_ir()` exposes additive
+  `semantic_resolvers` and `semantic_min_confidence` keyword-only parameters,
+  while `semantic_resolvers=None` preserves syntax-only output.
+- [x] IF-0-SEMANTIC-7D: Semantic edges use `provenance.source == "semantic"`
+  with resolver identity, resolver API version, and confidence in `[0.0, 1.0]`.
+- [x] IF-0-SEMANTIC-7E: Semantic enrichment never rewrites syntax edges, syntax
+  edge IDs, syntax node IDs, or syntax-first ordering.
+- [x] IF-0-SEMANTIC-7F: Resolver errors emit deterministic
+  `boundary.semantic_resolver_error` diagnostics unless `fail_fast=True`.
+- [x] IF-0-SEMANTIC-7G: Syntax-only output keeps schema `1.0`; enriched output
+  uses the additive semantic schema version with migration notes for consumers.
+- [x] IF-0-SEMANTIC-7H: Semantic confidence is data only and is not converted
+  into ownership, authorization, or enforcement policy in this repository.

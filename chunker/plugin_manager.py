@@ -14,6 +14,7 @@ from .languages.plugin_base import LanguagePlugin
 from .parser import get_parser
 
 if TYPE_CHECKING:
+    from .boundary import SemanticResolver
     from .languages.base import PluginConfig
 logger = logging.getLogger(__name__)
 
@@ -279,6 +280,34 @@ class PluginRegistry:
     def list_extensions(self) -> dict[str, str]:
         """List all supported file extensions and their languages."""
         return self._extension_map.copy()
+
+    def get_semantic_resolvers(
+        self,
+        language: str | None = None,
+    ) -> tuple[SemanticResolver, ...]:
+        """Return semantic resolvers exposed by registered plugin instances."""
+        languages = [language] if language else sorted(self._plugins)
+        resolvers: list[SemanticResolver] = []
+        for plugin_language in languages:
+            if plugin_language not in self._plugins:
+                continue
+            plugin = (
+                self._instances.get(plugin_language) or self._plugins[plugin_language]()
+            )
+            for resolver in plugin.semantic_resolvers():
+                supported = tuple(getattr(resolver, "supported_languages", ()))
+                if language and supported and language not in supported:
+                    continue
+                resolvers.append(resolver)
+        return tuple(
+            sorted(
+                resolvers,
+                key=lambda resolver: (
+                    str(getattr(resolver, "resolver_id", "")),
+                    str(getattr(resolver, "resolver_version", "")),
+                ),
+            )
+        )
 
 
 class PluginManager:

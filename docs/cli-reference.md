@@ -71,11 +71,21 @@ treesitter-chunker boundary src/ --lang python --include-timings
 
 # Print a concise run summary without polluting stdout JSON
 treesitter-chunker boundary src/ --lang python --summary
+
+# Reuse persisted per-file Boundary IR cache records on warm runs
+treesitter-chunker boundary src/ --lang python --incremental --cache-dir .cache/boundary
+
+# Ignore valid cache records and refresh the incremental cache
+treesitter-chunker boundary src/ --lang python --incremental --force-rebuild
 ```
 
 When `--output` is used, the boundary command prints the output path and summary
 unless `--quiet` is set. Without `--output`, JSON is written to stdout; `--summary`
 uses stderr so stdout remains parseable JSON.
+
+`--incremental` keeps stdout JSON canonical and does not print cache stats.
+`--cache-dir` selects the persistent Boundary IR cache directory. `--force-rebuild`
+bypasses cache reads and refreshes records for the current snapshot.
 
 ### Symbol graph extraction
 

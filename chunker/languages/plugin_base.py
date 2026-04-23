@@ -19,6 +19,8 @@ if TYPE_CHECKING:
 
     from tree_sitter import Node, Parser
 
+    from chunker.boundary import SemanticResolver
+
     from .base import LanguageConfig
 logger = logging.getLogger(__name__)
 
@@ -186,6 +188,10 @@ class LanguagePlugin(ABC):
         if lines < self.config.min_chunk_size:
             return False
         return not (self.config.max_chunk_size and lines > self.config.max_chunk_size)
+
+    def semantic_resolvers(self) -> tuple[SemanticResolver, ...]:
+        """Return optional semantic resolvers exposed by this plugin."""
+        return ()
 
     def walk_tree(
         self,
