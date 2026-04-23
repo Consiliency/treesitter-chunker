@@ -294,9 +294,13 @@ class LibraryLoadError(LibraryError):
     """Raised when shared library fails to load."""
 
     def __init__(self, path: Path, reason: str):
+        recovery = (
+            "Use 'ldd' to inspect missing shared-library dependencies, then run "
+            "'python scripts/build_lib.py' to rebuild grammars"
+        )
         super().__init__(
-            f"Failed to load shared library {path}: {reason}",
-            {"path": str(path), "reason": reason},
+            f"Failed to load shared library {path}: {reason}. {recovery}",
+            {"path": str(path), "reason": reason, "recovery": recovery},
         )
         self.path = path
         self.reason = reason
