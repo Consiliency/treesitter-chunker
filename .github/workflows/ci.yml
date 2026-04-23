@@ -61,6 +61,7 @@ jobs:
 
 
       - name: Mypy
+        shell: bash
         run: |
           # Run mypy on production code only, excluding tests and scripts
           if ! mypy chunker/ cli/ --ignore-missing-imports; then
