@@ -137,15 +137,10 @@ def list_pack_languages() -> list[str]:
             languages = list(tree_sitter_language_pack.LANGUAGES.keys())
             if languages:
                 return languages
-        languages = [
-            language
-            for language in _COMMON_LANGUAGE_NAMES
-            if get_language_from_pack(language) is not None
-        ]
-        if languages:
-            return languages
-        logger.debug("Cannot enumerate languages from pack, API not available")
-        return []
+        # Some pack builds can load languages by name but cannot enumerate them.
+        # Keep list operations side-effect-light: do not eagerly load many binary
+        # grammar modules just to report fallback availability.
+        return list(_COMMON_LANGUAGE_NAMES)
     except Exception as e:
         logger.warning("Error listing languages from pack: %s", e)
         return []
