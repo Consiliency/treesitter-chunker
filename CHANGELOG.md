@@ -7,17 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.2.23] - 2026-04-23
 
-### Added
+### ✨ Features
 
-- Boundary IR observability with CLI output controls, run summaries, optional timing metadata, and strict failure handling for extraction diagnostics.
-- Incremental Boundary IR extraction support with persistent cache controls, cache refresh behavior, and changed-file processing paths.
-- Optional semantic enrichment hooks for language plugins, including supplemental semantic edge provenance, confidence filtering, deterministic resolver ordering, and semantic cache-key separation.
+- Add Backstage catalog registration and repo standard layout
 
-### Changed
 
-- Release hygiene now keeps public docs navigation explicit, documents intentionally internal pages, and enforces the no-xfail policy for focused release gates.
-- Registry compatibility hardening now treats deprecation warnings as errors across the registry, parser, factory, CLI, chunking, and Boundary IR snapshot gates.
-- Release preparation now validates changelog/version alignment, release workflow guards, non-publishing wheel artifacts, and local package artifacts before tag or publish actions.
+- Add Consiliency maintenance worker trigger workflow
+
+
+
+### 📚 Documentation
+
+- **changelog**: Update for v2.2.22
+
+
+- Update for v2.2.22 — platform fixes, badges, version refs
+
+
+- Add interface boundary spec and delivery roadmap
+
+
+- Move interface boundary spec to Greenfield
+
+
+
+### 🔧 Maintenance
+
+- Transfer repo ownership to ViperJuice
+
+
+- Update all Consiliency→ViperJuice references post-transfer
+
+
+- Prepare v2.2.23 release
+
+
 
 ## [2.2.22] - 2026-04-03
 
