@@ -4,8 +4,6 @@ pytest_plugins = [
 
 import pytest
 
-from tests.integration.fixtures import error_tracking_context, temp_workspace
-
 
 @pytest.fixture
 def _temp_workspace(temp_workspace):
