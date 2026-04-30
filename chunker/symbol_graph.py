@@ -6,10 +6,11 @@ import re
 from collections import defaultdict
 from fnmatch import fnmatchcase
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 from .auto import ZeroConfigAPI
 from .core import chunk_file
+from .types import RESOLUTION_MODES, ResolutionMode, ResolutionStatus
 
 SKIP_PARTS = {
     "__pycache__",
@@ -39,9 +40,6 @@ _IMPORT_KEYWORDS = {
     "static",
     "new",
 }
-ResolutionMode = Literal["strict", "permissive"]
-ResolutionStatus = Literal["resolved", "ambiguous", "unresolved"]
-RESOLUTION_MODES = ("strict", "permissive")
 
 
 def _candidate_extensions(language: str | None) -> set[str]:

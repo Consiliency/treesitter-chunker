@@ -4,16 +4,29 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal, TypeAlias
 
 __all__ = [
     "CodeChunk",
+    "RESOLUTION_MODES",
+    "RESOLUTION_STATUSES",
+    "ResolutionMode",
+    "ResolutionStatus",
     "compute_definition_id",
     "compute_file_id",
     "compute_node_id",
     "compute_symbol_id",
     "compute_text_hash16",
 ]
+
+ResolutionStatus: TypeAlias = Literal["resolved", "ambiguous", "unresolved"]
+ResolutionMode: TypeAlias = Literal["strict", "permissive"]
+RESOLUTION_STATUSES: tuple[ResolutionStatus, ...] = (
+    "resolved",
+    "ambiguous",
+    "unresolved",
+)
+RESOLUTION_MODES: tuple[ResolutionMode, ...] = ("strict", "permissive")
 
 
 def compute_text_hash16(text: str) -> str:

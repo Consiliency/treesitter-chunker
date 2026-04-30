@@ -4,10 +4,15 @@ from __future__ import annotations
 
 from typing import Any, Literal, TypeAlias
 
+from chunker.types import (
+    RESOLUTION_MODES,
+    RESOLUTION_STATUSES,
+    ResolutionMode,
+    ResolutionStatus,
+)
+
 BoundaryIR: TypeAlias = dict[str, Any]
 BoundaryRecord: TypeAlias = dict[str, Any]
-ResolutionStatus: TypeAlias = Literal["resolved", "ambiguous", "unresolved"]
-ResolutionMode: TypeAlias = Literal["strict", "permissive"]
 SemanticEdgeSource: TypeAlias = Literal["semantic"]
 
 BOUNDARY_IR_SCHEMA_VERSION = "1.0"
@@ -34,12 +39,6 @@ BOUNDARY_CACHE_EXCLUDED_OPTION_FIELDS = (
     "cache_dir",
     "force_rebuild",
 )
-RESOLUTION_STATUSES: tuple[ResolutionStatus, ...] = (
-    "resolved",
-    "ambiguous",
-    "unresolved",
-)
-RESOLUTION_MODES: tuple[ResolutionMode, ...] = ("strict", "permissive")
 SEMANTIC_EDGE_SOURCES: tuple[SemanticEdgeSource, ...] = ("semantic",)
 
 TOP_LEVEL_KEYS = (

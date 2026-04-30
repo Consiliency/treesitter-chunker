@@ -179,7 +179,8 @@ Likely lanes:
 
 **Objective**
 
-Lock deterministic output and field parity for the P0 core languages.
+Audit and harden the existing deterministic conformance harness for the P0 core
+languages.
 
 **Exit criteria**
 - [ ] Golden fixture repositories exist for Python, JavaScript/TypeScript, and Go.
@@ -191,9 +192,16 @@ Lock deterministic output and field parity for the P0 core languages.
 **Scope notes**
 
 Likely lanes:
-- Fixture lane: add compact, realistic fixture repos covering nested definitions, imports, calls, duplicate names, and unresolved references.
-- Test harness lane: add schema validation, golden snapshots, and double-run equivalence.
+- Fixture audit lane: verify and extend the existing compact fixture repos so
+  nested definitions, imports, calls, duplicate names, and unresolved
+  references remain covered without assuming a greenfield fixture build.
+- Test harness lane: harden the existing schema validation, golden snapshots,
+  and double-run equivalence gates instead of rebuilding them from scratch.
 - Language parity lane: identify and fix core-language metadata inconsistencies exposed by the fixtures.
+
+This phase starts from the already-landed conformance baseline in the repo. It
+should freeze field parity and determinism against live behavior before later
+observability, incremental, or semantic work is treated as authoritative.
 
 **Non-goals**
 
@@ -502,9 +510,14 @@ Phase 0 (SCHEMA)
 
 Plan Phase 0 first because every downstream phase depends on the schema and serialization contract. After Phase 0, Phase 1 should be planned next as the implementation base.
 
-Phase 2 can begin after Phase 1 has produced the adapter contract. Phase 3 should wait for Phase 2 because golden fixtures must lock the final resolution status semantics.
+Phase 2 can begin after Phase 1 has produced the adapter contract. Phase 3
+should wait for Phase 2 because the existing golden fixtures and determinism
+gates must lock the final resolution status semantics before downstream
+planning.
 
-Phase 4 should wait until the conformance harness exists, because diagnostics and metrics need stable expected output. Phase 5 should wait for Phase 4 so cache behavior includes finalized metrics and diagnostics.
+Phase 4 should wait until the conformance harness is re-frozen, because
+diagnostics and metrics need stable expected output. Phase 5 should wait for
+Phase 4 so cache behavior includes finalized metrics and diagnostics.
 
 Phase 6 can be planned after Phase 2 and Phase 3. It does not need to wait for incremental recomputation, as long as it preserves baseline syntax-only output and the schema compatibility rules from Phase 0.
 
