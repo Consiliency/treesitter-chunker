@@ -323,16 +323,23 @@ Provide extension points for LSP or type-checker augmentation while preserving d
 **Exit criteria**
 - [ ] Semantic resolver hook interface is documented and versioned.
 - [ ] Enriched edges include provenance such as `source=syntax|semantic`, resolver identity, and confidence.
+- [ ] Semantic resolver failures remain additive observability diagnostics with
+  deterministic `stage="semantic"` records rather than redefining the Phase 4
+  base diagnostic contract.
 - [ ] Strict baseline output remains available without semantic dependencies.
 - [ ] Schema migration notes describe how semantic enrichment affects downstream consumers.
-- [ ] Tests prove semantic enrichment is opt-in and cannot mutate baseline syntax-only output.
+- [ ] Tests prove semantic enrichment is opt-in, cannot mutate baseline
+  syntax-only output, and only adds semantic-specific `run.options` fields when
+  resolvers are requested.
 
 **Scope notes**
 
 Likely lanes:
 - Plugin contract lane: define resolver inputs, outputs, error handling, and trust metadata.
 - IR enrichment lane: merge semantic results without changing syntax-first identity or ordering guarantees.
-- Compatibility lane: document schema version and migration behavior for consumers.
+- Compatibility lane: document schema version, migration behavior, and the
+  additive relationship between Phase 4 observability keys and semantic-stage
+  diagnostics for consumers.
 
 **Non-goals**
 
@@ -353,6 +360,7 @@ Likely lanes:
 - IF-0-SCHEMA-1
 - IF-0-RESOLUTION-3
 - IF-0-CONFORMANCE-4
+- IF-0-OBSERVABILITY-5
 
 **Produces**
 - IF-0-SEMANTIC-7 - Optional semantic enrichment plugin interface, provenance, confidence, and schema migration contract are frozen.
