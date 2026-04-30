@@ -20,6 +20,7 @@ def test_boundary_command_writes_json_to_stdout(tmp_path: Path):
     assert data["schema_version"] == "1.0"
     assert data["run"]["created_at"] is None
     assert data["run"]["options"]["resolution_mode"] == "strict"
+    assert "Boundary IR written" not in result.output
 
 
 def test_boundary_command_accepts_permissive_resolution_mode(tmp_path: Path):
@@ -57,6 +58,29 @@ def test_boundary_command_writes_output_file(tmp_path: Path):
     assert "Boundary IR written" in result.output
     data = json.loads(output.read_text(encoding="utf-8"))
     assert data["schema_version"] == "1.0"
+
+
+def test_boundary_command_quiet_file_output_suppresses_human_text(tmp_path: Path):
+    source = tmp_path / "app.py"
+    output = tmp_path / "out.json"
+    source.write_text("def greet():\n    return 'hi'\n", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        [
+            "boundary",
+            str(source),
+            "--lang",
+            "python",
+            "--output",
+            str(output),
+            "--quiet",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert result.output == ""
+    assert json.loads(output.read_text(encoding="utf-8"))["schema_version"] == "1.0"
 
 
 def test_existing_chunk_json_command_still_works(tmp_path: Path):

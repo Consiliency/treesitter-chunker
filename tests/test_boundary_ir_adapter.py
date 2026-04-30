@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 
+from chunker import extract_boundary_ir as extract_boundary_ir_public
 from chunker.boundary import extract_boundary_ir
 from chunker.parser import list_languages
 
@@ -38,6 +39,35 @@ def test_extract_boundary_ir_python_repo_is_deterministic(tmp_path: Path):
     assert any(node["identity"]["source"] == "definition_id" for node in first["nodes"])
 
 
+def test_extract_boundary_ir_top_level_export_matches_boundary_module(tmp_path: Path):
+    source = tmp_path / "app.py"
+    source.write_text("def greet(name):\n    return name\n", encoding="utf-8")
+
+    direct = extract_boundary_ir(tmp_path, "python")
+    public = extract_boundary_ir_public(tmp_path, "python")
+
+    assert public == direct
+    assert public["schema_version"] == "1.0"
+
+
+def test_extract_boundary_ir_single_file_uses_file_source_kind(tmp_path: Path):
+    source = tmp_path / "service.py"
+    source.write_text(
+        "def helper(name):\n"
+        "    return name.upper()\n\n"
+        "def greet(name):\n"
+        "    return helper(name)\n",
+        encoding="utf-8",
+    )
+
+    ir = extract_boundary_ir(source, "python")
+
+    assert ir["source"]["kind"] == "file"
+    assert ir["source"]["path"] == str(source)
+    assert [item["path"] for item in ir["files"]] == ["service.py"]
+    assert all(node["path"] == "service.py" for node in ir["nodes"])
+
+
 def test_extract_boundary_ir_records_unresolved_python_edge(tmp_path: Path):
     source = tmp_path / "service.py"
     source.write_text(
@@ -72,6 +102,21 @@ def test_extract_boundary_ir_javascript_resolved_call(tmp_path: Path):
 
     assert any(edge["resolution"] == "resolved" for edge in ir["edges"])
     assert ir["metrics"]["resolved_edges"] >= 1
+
+
+def test_extract_boundary_ir_created_at_is_opt_in(tmp_path: Path):
+    source = tmp_path / "service.py"
+    source.write_text("def greet():\n    return 'hi'\n", encoding="utf-8")
+
+    default_ir = extract_boundary_ir(tmp_path, "python")
+    pinned_ir = extract_boundary_ir(
+        tmp_path,
+        "python",
+        created_at="2026-04-30T00:00:00Z",
+    )
+
+    assert default_ir["run"]["created_at"] is None
+    assert pinned_ir["run"]["created_at"] == "2026-04-30T00:00:00Z"
 
 
 def test_extract_boundary_ir_go_core_fields_when_grammar_available(tmp_path: Path):

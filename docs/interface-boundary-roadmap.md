@@ -22,9 +22,12 @@ This roadmap focuses only on boundary parsing and IR generation.
 
 ### Work items
 
-1. **IR adapter layer**
+1. **IR adapter layer** _(implemented for the syntax-first Phase 1 baseline)_
    - Build adapter from `chunk_file(...include_retrieval_metadata=True)` and `extract_symbol_graph()` output to the frozen Boundary IR schema in `docs/interface-boundary-spec.md`.
    - Implement canonical node/edge sorting and stable JSON serialization.
+   - Keep later `resolution_mode`, observability, incremental, and semantic
+     surfaces documented as additive downstream extensions rather than part of
+     the baseline adapter freeze.
 
 2. **Boundary ID strategy**
    - Implement precedence: `definition_id` → `module+qualified_name` → `node_id`.
