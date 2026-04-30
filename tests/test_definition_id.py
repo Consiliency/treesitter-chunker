@@ -5,6 +5,7 @@ definitions across code changes. Unlike chunk_id/node_id which include content
 hashes, definition_id is computed purely from structural/positional information.
 """
 
+from chunker.boundary import select_node_identity
 from chunker.types import CodeChunk, compute_definition_id
 
 
@@ -321,3 +322,67 @@ class TestDefinitionIdIntegration:
 
         # definition_id should change when name changes
         assert original.definition_id != renamed.definition_id
+
+
+class TestBoundaryIdentityPrecedence:
+    """Boundary IR node identity follows the documented precedence order."""
+
+    def test_definition_id_precedes_module_and_qualified_name(self):
+        chunk = CodeChunk(
+            language="python",
+            file_path="/pkg/example.py",
+            node_type="function_definition",
+            start_line=1,
+            end_line=2,
+            byte_start=0,
+            byte_end=20,
+            parent_context="",
+            content="def example():\n    pass\n",
+            node_id="node-1",
+            definition_id="def-1",
+            metadata={"qualified_name": "Example.run"},
+        )
+
+        assert select_node_identity(chunk, module_name="pkg.example") == {
+            "source": "definition_id",
+            "value": "def-1",
+        }
+
+    def test_module_and_qualified_name_precede_node_id(self):
+        chunk = CodeChunk(
+            language="python",
+            file_path="/pkg/example.py",
+            node_type="function_definition",
+            start_line=1,
+            end_line=2,
+            byte_start=0,
+            byte_end=20,
+            parent_context="",
+            content="def example():\n    pass\n",
+            node_id="node-1",
+            metadata={"qualified_name": "Example.run"},
+        )
+
+        assert select_node_identity(chunk, module_name="pkg.example") == {
+            "source": "module + qualified_name",
+            "value": "pkg.example:Example.run",
+        }
+
+    def test_node_id_is_final_fallback(self):
+        chunk = CodeChunk(
+            language="python",
+            file_path="/pkg/example.py",
+            node_type="function_definition",
+            start_line=1,
+            end_line=2,
+            byte_start=0,
+            byte_end=20,
+            parent_context="",
+            content="def example():\n    pass\n",
+            node_id="node-1",
+        )
+
+        assert select_node_identity(chunk, module_name="pkg.example") == {
+            "source": "node_id",
+            "value": "node-1",
+        }

@@ -17,7 +17,8 @@ This roadmap focuses only on boundary parsing and IR generation.
 - Generate canonical boundary IR for at least Python, TypeScript/JavaScript, and Go.
 - Reproducible outputs for identical repo snapshot + tool version.
 - Explicit edge resolution states (`resolved|ambiguous|unresolved`).
-- Implement against the frozen Boundary IR schema in `docs/interface-boundary-spec.md`.
+- Implement against the frozen Phase 0 Boundary IR contract in
+  `docs/interface-boundary-spec.md`.
 
 ### Work items
 
@@ -42,7 +43,9 @@ This roadmap focuses only on boundary parsing and IR generation.
 ### Exit criteria
 
 - Determinism tests pass in CI.
-- `docs/interface-boundary-spec.md` remains the canonical schema contract for adapter output.
+- `docs/interface-boundary-spec.md` remains the canonical schema contract for
+  adapter output, with later implemented capabilities treated as additive
+  extensions to the Phase 0 baseline.
 - Spec compliance checklist is fully green for core languages.
 
 ---

@@ -1,6 +1,7 @@
 import json
 
 from chunker.boundary import dumps_boundary_ir
+from chunker.boundary.types import TOP_LEVEL_KEYS
 from chunker.export import BoundaryIRExporter, write_boundary_ir
 
 
@@ -119,11 +120,13 @@ def _ir():
 
 def test_dumps_boundary_ir_compact_canonical_json():
     text = dumps_boundary_ir(_ir())
+    payload = json.loads(text)
 
     assert text.endswith("\n")
     assert text.count("\n") == 1
     assert " " not in text
     assert text.startswith('{"diagnostics":[],"edges"')
+    assert list(payload.keys()) == sorted(TOP_LEVEL_KEYS)
 
 
 def test_dumps_boundary_ir_orders_schema_lists_and_candidates():
@@ -139,8 +142,12 @@ def test_write_boundary_ir_uses_utf8_and_trailing_newline(tmp_path):
 
     write_boundary_ir(_ir(), output)
 
-    assert output.read_text(encoding="utf-8").endswith("\n")
-    assert json.loads(output.read_text(encoding="utf-8"))["schema_version"] == "1.0"
+    raw = output.read_bytes()
+    text = raw.decode("utf-8")
+
+    assert raw.endswith(b"\n")
+    assert text.endswith("\n")
+    assert json.loads(text)["schema_version"] == "1.0"
 
 
 def test_boundary_ir_exporter_to_string():

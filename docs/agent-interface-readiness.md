@@ -1,12 +1,14 @@
 # Agent Interface Ownership Readiness (Repository Assessment)
 
 > This document is a readiness assessment.
-> The implementation-facing Boundary IR contract now lives in this repository:
+> The canonical Phase 0 Boundary IR contract now lives in this repository:
 > `docs/interface-boundary-spec.md`.
 > The execution plan lives in:
 > `docs/interface-boundary-roadmap.md`.
 
-This document evaluates how ready `treesitter-chunker` is to support **agent-oriented code surface ownership** enforced via **AST-derived boundaries**.
+This document evaluates how ready `treesitter-chunker` is to support
+**agent-oriented code surface ownership** enforced via **AST-derived
+boundaries**.
 
 ## Bottom line
 
@@ -140,7 +142,10 @@ If the goal is to make this package maximally ready as a dependency for determin
 
 ### 2) First-class IR export mode
 
-- Promote current normalized metadata + symbol graph into the documented, versioned Boundary IR schema in `docs/interface-boundary-spec.md`.
+- Promote current normalized metadata + symbol graph into the documented,
+  versioned Boundary IR schema in `docs/interface-boundary-spec.md`, treating
+  the Phase 0 syntax-only baseline as the canonical contract and later runtime
+  behavior as additive extensions.
 - Add schema versioning and compatibility checks for downstream consumers.
 - Guarantee canonical ordering of nodes/edges in output for reproducible diffs.
 
