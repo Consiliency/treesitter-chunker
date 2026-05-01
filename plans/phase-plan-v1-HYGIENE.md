@@ -217,7 +217,7 @@ cross-platform release hygiene, run the standing Windows preflight before
 pushing:
 
 ```bash
-ssh leno 'powershell -NoProfile -Command "cd $HOME\\code\\treesitter-chunker; git fetch origin; git checkout main; git pull --ff-only; uv run --with toml --all-extras python scripts/run_windows_preflight.py"'
+ssh win 'powershell -NoProfile -Command "cd $HOME\\code\\treesitter-chunker; git fetch origin; git checkout main; git pull --ff-only; uv run --with toml --all-extras python scripts/run_windows_preflight.py"'
 ```
 
 ## Acceptance Criteria
@@ -251,7 +251,7 @@ ssh leno 'powershell -NoProfile -Command "cd $HOME\\code\\treesitter-chunker; gi
   `uv run --with toml --all-extras python scripts/run_ci_smoke.py`.
 - [ ] Windows preflight remains green with
   `uv run --with toml --all-extras python scripts/run_windows_preflight.py` on
-  `leno`.
+  `win`.
 - [ ] Phase 7 does not publish a release, bump package versions, rework parser
   registry loading, or change fallback runtime behavior except for a real
   evidence-backed bug fix discovered during execution.

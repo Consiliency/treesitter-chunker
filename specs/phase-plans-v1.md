@@ -550,7 +550,7 @@ uv run --with toml --all-extras python scripts/run_ci_smoke.py
 For phases touching config, paths, temp files, extraction, fallback logic, or export formatting, also run the Windows preflight before pushing:
 
 ```bash
-ssh leno 'powershell -NoProfile -Command "cd $HOME\\code\\treesitter-chunker; git fetch origin; git checkout main; git pull --ff-only; uv run --with toml --all-extras python scripts/run_windows_preflight.py"'
+ssh win 'powershell -NoProfile -Command "cd $HOME\\code\\treesitter-chunker; git fetch origin; git checkout main; git pull --ff-only; uv run --with toml --all-extras python scripts/run_windows_preflight.py"'
 ```
 
 Phase-specific verification should include targeted tests before the broader smoke command:
