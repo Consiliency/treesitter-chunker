@@ -131,12 +131,12 @@ class ReleaseManagementContract(ABC):
 
         Preconditions:
             - Version is higher than current
-            - All tests pass
+            - Release preparation notes are ready
 
         Postconditions:
-            - Version is updated in all files
+            - Version is updated in pyproject.toml
             - Changelog is updated
-            - Git tag is created
+            - Intended release tag is vX.Y.Z
         """
         raise NotImplementedError("Distribution team will implement")
 
@@ -154,8 +154,8 @@ class ReleaseManagementContract(ABC):
             List of created artifact paths
 
         Preconditions:
-            - Source code is tagged with version
             - Build system is configured
+            - Version is already set in pyproject.toml
 
         Postconditions:
             - All distribution artifacts are created

@@ -34,9 +34,9 @@ local to the tests that trigger it, and avoid reopening parser registry,
 release publishing, or fallback implementation work that belongs to later or
 different phases.
 
-The older lowercase artifact `plans/phase-plan-v1-hygiene.md` exists as
-historical context only. Phase-loop execution for this run should follow this
-uppercase `plans/phase-plan-v1-HYGIENE.md` artifact.
+The older lowercase artifact was removed to avoid case-insensitive filesystem
+collisions. Phase-loop execution for this run should follow this uppercase
+`plans/phase-plan-v1-HYGIENE.md` artifact.
 
 This planning run wrote the artifact only; it did not execute tests, docs
 builds, formatters, or Windows preflight commands.

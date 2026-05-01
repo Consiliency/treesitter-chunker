@@ -33,9 +33,9 @@ fallback, parser-facing APIs must preserve current aliases and exceptions, and
 the standing smoke/platform-core/Windows release gates must still prove the
 contract under deprecation-as-error mode.
 
-The older lowercase artifact `plans/phase-plan-v1-registry.md` exists as
-historical context only. Phase-loop execution for this run should follow this
-uppercase `plans/phase-plan-v1-REGISTRY.md` artifact.
+The older lowercase artifact was removed to avoid case-insensitive filesystem
+collisions. Phase-loop execution for this run should follow this uppercase
+`plans/phase-plan-v1-REGISTRY.md` artifact.
 
 This planning run wrote the artifact only; it did not execute tests, builds,
 formatters, docs builds, or Windows preflight commands.
@@ -71,7 +71,7 @@ formatters, docs builds, or Windows preflight commands.
 - [ ] IF-0-REGISTRY-7 - Maintainer guidance changes only if execution shows
   drift between the live fallback/validation contract and
   `docs/development/RELEASE_CHECKLIST.md` or `docs/grammar_management.md`; the
-  AGENTS Windows preflight host remains `leno`, not an alternate host alias.
+  AGENTS Windows preflight host remains `win`, not an alternate host alias.
 
 ## Lane Index & Dependencies
 
@@ -199,7 +199,7 @@ formatters, docs builds, or Windows preflight commands.
     no-script-change decision in execution closeout.
   - impl: update `docs/development/RELEASE_CHECKLIST.md` only if the focused
     deprecation-as-error commands or the Windows preflight host drift from the
-    repo's actual release gate; use `ssh leno ...` if the AGENTS contract still
+    repo's actual release gate; use `ssh win ...` if the AGENTS contract still
     governs the Windows preflight hop.
   - impl: update `docs/grammar_management.md` only if local grammar fallback
     order, compatibility expectations, or user-visible troubleshooting guidance
@@ -209,7 +209,7 @@ formatters, docs builds, or Windows preflight commands.
   - verify: `uv run --with toml --all-extras pytest tests/test_cicd_pipeline.py -q`
   - verify: `uv run --with toml --all-extras python scripts/run_ci_smoke.py`
   - verify: `uv run --with toml --all-extras python scripts/run_platform_core.py --platform linux`
-  - verify: `ssh leno 'powershell -NoProfile -Command "cd $HOME\\code\\treesitter-chunker; git fetch origin; git checkout main; git pull --ff-only; uv run --with toml --all-extras python scripts/run_windows_preflight.py"'`
+  - verify: `ssh win 'powershell -NoProfile -Command "cd $HOME\\code\\treesitter-chunker; git fetch origin; git checkout main; git pull --ff-only; uv run --with toml --all-extras python scripts/run_windows_preflight.py"'`
 
 ## Verification
 
@@ -230,7 +230,7 @@ uv run --all-extras ruff check chunker/ cli/ tests/ --exclude archive --exclude 
 uv run --all-extras black --check chunker/ cli/ tests/ scripts/
 uv run --with toml --all-extras python scripts/run_ci_smoke.py
 uv run --with toml --all-extras python scripts/run_platform_core.py --platform linux
-ssh leno 'powershell -NoProfile -Command "cd $HOME\\code\\treesitter-chunker; git fetch origin; git checkout main; git pull --ff-only; uv run --with toml --all-extras python scripts/run_windows_preflight.py"'
+ssh win 'powershell -NoProfile -Command "cd $HOME\\code\\treesitter-chunker; git fetch origin; git checkout main; git pull --ff-only; uv run --with toml --all-extras python scripts/run_windows_preflight.py"'
 ```
 
 If `docs/development/RELEASE_CHECKLIST.md` or `docs/grammar_management.md`
@@ -257,7 +257,7 @@ uv run --with toml --all-extras --with mkdocs --with mkdocs-material --with mkdo
 - [ ] Registry, factory, parser, CLI, and Boundary IR focused coverage passes
   with `-W error::DeprecationWarning`.
 - [ ] `scripts/run_ci_smoke.py`, `scripts/run_platform_core.py --platform linux`,
-  and the standing Windows preflight on `leno` pass after any Phase 8 changes.
+  and the standing Windows preflight on `win` pass after any Phase 8 changes.
 - [ ] `tests/test_cicd_pipeline.py` remains aligned with any standing-script
   coverage changes required by this phase.
 - [ ] Release and grammar-management guidance matches the live Phase 8 contract

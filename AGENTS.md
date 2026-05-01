@@ -20,8 +20,8 @@
 
 - If GitHub fails only on Windows or macOS, reproduce the narrow failing test locally first when possible.
 - Favor platform-robust tests over platform-specific expectations.
-- Before pushing changes that touch config, paths, temp files, extraction, fallback logic, or export formatting, run the standing Windows preflight batch on `leno`:
-  - `ssh leno 'powershell -NoProfile -Command "cd $HOME\\code\\treesitter-chunker; git fetch origin; git checkout main; git pull --ff-only; uv run --with toml --all-extras python scripts/run_windows_preflight.py"'`
+- Before pushing changes that touch config, paths, temp files, extraction, fallback logic, or export formatting, run the standing Windows preflight batch on `win`:
+  - `ssh win 'powershell -NoProfile -Command "cd $HOME\\code\\treesitter-chunker; git fetch origin; git checkout main; git pull --ff-only; uv run --with toml --all-extras python scripts/run_windows_preflight.py"'`
 - Common failure classes in this repo:
   - Windows path separator and temp-file locking issues
   - Windows default encoding issues; prefer explicit `encoding="utf-8"`

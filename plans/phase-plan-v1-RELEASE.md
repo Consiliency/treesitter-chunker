@@ -43,9 +43,9 @@ version reporting reads installed package metadata through
 literal there is only a build/import fallback. `chunker/_version.py` is a
 generated file and should not become the manual bump target for this phase.
 
-The historical lowercase artifact `plans/phase-plan-v1-release.md` exists as
-context only. Phase-loop execution for this run should follow this uppercase
-`plans/phase-plan-v1-RELEASE.md` artifact.
+The historical lowercase artifact was removed to avoid case-insensitive
+filesystem collisions. Phase-loop execution for this run should follow this
+uppercase `plans/phase-plan-v1-RELEASE.md` artifact.
 
 This planning run wrote the artifact only; it did not choose a target version,
 edit package metadata, edit changelog entries, build distributions, run tests,
@@ -80,7 +80,7 @@ dispatch GitHub workflows, tag, push, or publish.
 - [ ] IF-0-RELEASE-7 - Maintainer-facing release docs name the actual local
   validation sequence for this repo: focused release-policy tests, Phase 7
   hygiene gates, Phase 8 registry gates, package build/check, repo smoke,
-  lint/format checks, Linux platform-core, and Windows preflight on `leno`.
+  lint/format checks, Linux platform-core, and Windows preflight on `win`.
 - [ ] IF-0-RELEASE-8 - Any supported release-helper APIs under
   `chunker/distribution/` either align with the Phase 9 authority split
   (`pyproject.toml` + changelog + workflow release gate) or are explicitly
@@ -276,7 +276,7 @@ dispatch GitHub workflows, tag, push, or publish.
     `dist/phase9-release-check-*` directory and confirm artifact names match
     `TARGET_VERSION`.
   - test: run lint, Black check, CI smoke, Linux platform-core, and Windows
-    preflight on `leno`.
+    preflight on `win`.
   - impl: route any discovered fixes back to the upstream owning lane instead
     of editing tracked files from this reducer lane.
   - impl: confirm `git status --short` is clean except for ignored `dist/`
@@ -320,7 +320,7 @@ uv run --all-extras ruff check chunker/ cli/ tests/ --exclude archive --exclude 
 uv run --all-extras black --check chunker/ cli/ tests/ scripts/
 uv run --with toml --all-extras python scripts/run_ci_smoke.py
 uv run --with toml --all-extras python scripts/run_platform_core.py --platform linux
-ssh leno 'powershell -NoProfile -Command "cd $HOME\\code\\treesitter-chunker; git fetch origin; git checkout main; git pull --ff-only; uv run --with toml --all-extras python scripts/run_windows_preflight.py"'
+ssh win 'powershell -NoProfile -Command "cd $HOME\\code\\treesitter-chunker; git fetch origin; git checkout main; git pull --ff-only; uv run --with toml --all-extras python scripts/run_windows_preflight.py"'
 git status --short
 ```
 
@@ -359,7 +359,7 @@ git status --short
 - [ ] Phase 8 registry compatibility gates pass after the release-prep edits.
 - [ ] Distribution-helper tests, lint, Black check, CI smoke, Linux
   platform-core, MkDocs strict build, package build/check, and Windows
-  preflight on `leno` pass before any later tag/push step.
+  preflight on `win` pass before any later tag/push step.
 - [ ] `git status --short` is clean before release handoff, except for ignored
   package artifacts under `dist/`.
 - [ ] Phase 9 does not add alternate publish paths, new credential handling,

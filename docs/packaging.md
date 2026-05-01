@@ -23,17 +23,18 @@ This document is the source of truth for packaging and PyPI publishing.
 2. Choose one `TARGET_VERSION` in `X.Y.Z` form
 3. Bump `pyproject.toml` to `TARGET_VERSION`
 4. Update the top `CHANGELOG.md` entry to `TARGET_VERSION`
-5. Run the focused release tests and local package checks
-6. Commit the release prep
-7. Confirm the working tree is clean
-8. Create and push a tag such as `v2.2.23`
-9. Let `release.yml` build distributions, create the GitHub Release, and publish to PyPI
+5. Run the focused release tests, hygiene gates, registry gates, and local package checks
+6. Run the repo local-first validation loop plus Linux platform-core and Windows preflight on `win`
+7. Commit the release prep
+8. Confirm the tracked working tree is clean
+9. Create and push a tag such as `v2.2.24`
+10. Let `release.yml` build distributions, create the GitHub Release, and publish to PyPI
 
 See `docs/development/RELEASE_CHECKLIST.md` for the maintainer checklist.
 
 ## Manual Release Dispatch
 
-`release.yml` also supports `workflow_dispatch`.
+`release.yml` also supports `workflow_dispatch` after the same version bump and local validation steps.
 
 - Use manual dispatch when you need a controlled release run without pushing a tag first
 - The entered version must still match `pyproject.toml`
@@ -44,7 +45,7 @@ See `docs/development/RELEASE_CHECKLIST.md` for the maintainer checklist.
 Local package building is still useful for validation and troubleshooting.
 
 ```bash
-TARGET_VERSION=2.2.23
+TARGET_VERSION=2.2.24
 OUTDIR="dist/phase9-release-check-${TARGET_VERSION}"
 uv run --with toml --all-extras python -m build --outdir "$OUTDIR"
 uv run --with toml --all-extras python -m twine check "$OUTDIR"/*
@@ -78,6 +79,6 @@ The repository no longer has a second token-based publish path in `build-wheels.
 ## Related Docs
 
 - `docs/development/RELEASE_CHECKLIST.md`
-- `specs/release-process-spec.md`
+- `specs/active/release-process-spec.md`
 - `.github/workflows/release.yml`
 - `.github/workflows/build-wheels.yml`

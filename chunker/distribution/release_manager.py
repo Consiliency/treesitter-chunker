@@ -18,7 +18,6 @@ class ReleaseManager:
 
     def __init__(self, project_root: Path | None = None):
         self.project_root = project_root or Path.cwd()
-        self.version_files = ["pyproject.toml", "chunker/__init__.py", "setup.py"]
 
     def prepare_release(
         self,
@@ -35,7 +34,12 @@ class ReleaseManager:
         Returns:
             Tuple of (success, release_info)
         """
-        info = {"version": version, "updated_files": [], "git_tag": None, "errors": []}
+        info = {
+            "version": version,
+            "intended_tag": f"v{version}",
+            "updated_files": [],
+            "errors": [],
+        }
         current_version = self._get_current_version()
         if not self._validate_version_bump(current_version, version):
             # Even on invalid bump, ensure changelog is accounted so tests see it
@@ -47,13 +51,14 @@ class ReleaseManager:
                 f"Invalid version bump: {current_version} -> {version}",
             )
             return False, info
-        for file_path in self.version_files:
-            full_path = self.project_root / file_path
-            if full_path.exists():
-                if self._update_version_in_file(full_path, version):
-                    info["updated_files"].append(str(file_path))
-                else:
-                    info["errors"].append(f"Failed to update version in {file_path}")
+        pyproject_path = self.project_root / "pyproject.toml"
+        if pyproject_path.exists():
+            if self._update_version_in_file(pyproject_path, version):
+                info["updated_files"].append("pyproject.toml")
+            else:
+                info["errors"].append("Failed to update version in pyproject.toml")
+        else:
+            info["errors"].append("pyproject.toml not found")
         changelog_path = self.project_root / "CHANGELOG.md"
         # Always ensure CHANGELOG.md is updated/created
         if self._update_changelog(changelog_path, version, changelog):
@@ -70,12 +75,6 @@ class ReleaseManager:
                 info["errors"].append("Failed to update CHANGELOG.md")
         if not self._run_tests():
             info["errors"].append("Tests failed. Fix issues before releasing.")
-        tag_name = f"v{version}"
-        # Tag creation is optional in test environment; don't fail if it cannot be created
-        if self._create_git_tag(tag_name, f"Release {version}\n\n{changelog}"):
-            info["git_tag"] = tag_name
-        else:
-            info["git_tag"] = None
         success = len(info["errors"]) == 0
         # Ensure tests see changelog updated entry regardless of environment quirks
         if "CHANGELOG.md" not in info["updated_files"]:
@@ -144,18 +143,8 @@ class ReleaseManager:
                     f'version = "{version}"',
                     content,
                 )
-            elif file_path.name == "__init__.py":
-                content = re.sub(
-                    r"__version__\s*=\s*[\"'][^\"']+[\"']",
-                    f'__version__ = "{version}"',
-                    content,
-                )
-            elif file_path.name == "setup.py":
-                content = re.sub(
-                    r"version\s*=\s*[\"'][^\"']+[\"']",
-                    f'version="{version}"',
-                    content,
-                )
+            else:
+                return False
             with Path(file_path).open("w", encoding="utf-8") as f:
                 f.write(content)
             return True
@@ -208,27 +197,6 @@ class ReleaseManager:
             )
             return result.returncode == 0
         except (OSError, IndexError, KeyError):
-            return False
-
-    def _create_git_tag(self, tag_name: str, message: str) -> bool:
-        """Create annotated git tag"""
-        try:
-            check_result = subprocess.run(
-                ["git", "tag", "-l", tag_name],
-                capture_output=True,
-                text=True,
-                cwd=self.project_root,
-                check=False,
-            )
-            if check_result.stdout.strip():
-                return False
-            subprocess.run(
-                ["git", "tag", "-a", tag_name, "-m", message],
-                check=True,
-                cwd=self.project_root,
-            )
-            return True
-        except subprocess.CalledProcessError:
             return False
 
     def _build_sdist(self, output_dir: Path) -> Path | None:

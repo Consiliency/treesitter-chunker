@@ -17,6 +17,7 @@ Use this checklist for any production PyPI release.
 
 ```bash
 uv run --with toml --all-extras pytest tests/test_cicd_pipeline.py -q
+uv run --with toml --all-extras pytest tests/unit/distribution/test_release_manager.py tests/test_distribution_impl.py tests/test_phase13_contracts.py -q
 uv run --with toml --all-extras python -m build --outdir "dist/phase9-release-check-${TARGET_VERSION}"
 uv run --with toml --all-extras python -m twine check "dist/phase9-release-check-${TARGET_VERSION}"/*
 ```
@@ -43,6 +44,7 @@ Expected behavior:
 Use `workflow_dispatch` only when you intentionally want a controlled release run.
 
 - the entered version must match `pyproject.toml`
+- the release prep commit and local validation should already be complete
 - prerelease runs should be used only for prerelease artifacts and validation
 - production publishing still follows the guarded release workflow
 
@@ -50,6 +52,7 @@ Use `workflow_dispatch` only when you intentionally want a controlled release ru
 
 - tag format is `vX.Y.Z`
 - tag version matches `pyproject.toml`
+- the top `CHANGELOG.md` heading matches `TARGET_VERSION`
 - version does not already exist on PyPI
 - build and package checks succeed
 - wheel artifact workflow uploads artifacts only and does not publish to PyPI
@@ -72,7 +75,7 @@ Use `workflow_dispatch` only when you intentionally want a controlled release ru
 - `uv run --all-extras black --check chunker/ cli/ tests/ scripts/`
 - `uv run --with toml --all-extras python scripts/run_ci_smoke.py`
 - `uv run --with toml --all-extras python scripts/run_platform_core.py --platform linux`
-- `ssh leno 'powershell -NoProfile -Command "cd $HOME\\code\\treesitter-chunker; git fetch origin; git checkout main; git pull --ff-only; uv run --with toml --all-extras python scripts/run_windows_preflight.py"'`
+- `ssh win 'powershell -NoProfile -Command "cd $HOME\\code\\treesitter-chunker; git fetch origin; git checkout main; git pull --ff-only; uv run --with toml --all-extras python scripts/run_windows_preflight.py"'`
 
 Confirm `git status --short` is clean before creating or pushing the release tag. Ignored package artifacts under `dist/` may remain locally.
 

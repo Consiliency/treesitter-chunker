@@ -38,9 +38,9 @@ implementation instead of rebuilding Phase 5 from scratch. The job is to
 reconcile the roadmap contract with the live cache-key surface, invalidation
 rules, impacted-neighbor recomputation, cold-versus-warm determinism, CLI
 pass-through, and docs/tests while preserving Phase 4 observability behavior
-and later additive semantic options. The older lowercase artifact
-`plans/phase-plan-v1-incremental.md` exists as historical planning context
-only. Phase-loop execution for this run should use this uppercase
+and later additive semantic options. The older lowercase artifact was removed
+to avoid case-insensitive filesystem collisions. Phase-loop execution for this
+run should use this uppercase
 `plans/phase-plan-v1-INCREMENTAL.md` artifact after `OBSERVABILITY` is complete.
 
 ## Interface Freeze Gates
@@ -281,7 +281,7 @@ invalidation, fallback/error behavior, and output formatting, run the standing
 Windows preflight before pushing:
 
 ```bash
-ssh leno 'powershell -NoProfile -Command "cd $HOME\\code\\treesitter-chunker; git fetch origin; git checkout main; git pull --ff-only; uv run --with toml --all-extras python scripts/run_windows_preflight.py"'
+ssh win 'powershell -NoProfile -Command "cd $HOME\\code\\treesitter-chunker; git fetch origin; git checkout main; git pull --ff-only; uv run --with toml --all-extras python scripts/run_windows_preflight.py"'
 ```
 
 ## Acceptance Criteria

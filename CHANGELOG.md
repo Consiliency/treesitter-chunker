@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.24] - 2026-05-01
+
+### ✨ Features
+
+- Freeze the release-prep contract around `pyproject.toml`, `CHANGELOG.md`, and the guarded GitHub release workflow
+
+### 📚 Documentation
+
+- Align packaging, release checklist, and active release-process guidance with the local-first validation flow
+
+### 🔧 Maintenance
+
+- Narrow legacy distribution release helpers so they no longer bump fallback version files or create local git tags during release prep
+
 ## [2.2.23] - 2026-04-23
 
 ### ✨ Features

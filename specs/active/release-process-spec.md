@@ -1,6 +1,6 @@
 # Release Process Spec
 
-- **File**: `specs/release-process-spec.md`
+- **File**: `specs/active/release-process-spec.md`
 - **Owner**: Core Chunker Team
 - **Status**: Active
 - **Purpose**: Define the supported GitHub-to-PyPI release process
@@ -25,8 +25,11 @@
 1. Merge code to `main`
 2. Verify CI is green
 3. Bump `pyproject.toml`
-4. Push the release tag
-5. Let `release.yml` build distributions, create the GitHub Release, and publish to PyPI
+4. Update the top `CHANGELOG.md` entry
+5. Run the focused release-policy tests, hygiene and registry gates, package build/check, and local-first platform validation
+6. Confirm the tracked worktree is clean
+7. Push the release tag
+8. Let `release.yml` build distributions, create the GitHub Release, and publish to PyPI
 
 ## Non-Goals
 

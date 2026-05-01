@@ -32,9 +32,9 @@ and make only the smallest production or test corrections needed to keep P0
 field parity and byte-identical determinism trustworthy before later phases rely
 on them.
 
-The older lowercase artifact `plans/phase-plan-v1-conformance.md` exists as
-historical planning context only. Phase-loop execution for this run should
-follow this uppercase `plans/phase-plan-v1-CONFORMANCE.md` artifact.
+The older lowercase artifact was removed to avoid case-insensitive filesystem
+collisions. Phase-loop execution for this run should follow this uppercase
+`plans/phase-plan-v1-CONFORMANCE.md` artifact.
 
 ## Interface Freeze Gates
 
@@ -232,7 +232,7 @@ Because this phase may touch fixtures, extraction behavior, canonical output,
 and path-sensitive tests, run the standing Windows preflight before pushing:
 
 ```bash
-ssh leno 'powershell -NoProfile -Command "cd $HOME\\code\\treesitter-chunker; git fetch origin; git checkout main; git pull --ff-only; uv run --with toml --all-extras python scripts/run_windows_preflight.py"'
+ssh win 'powershell -NoProfile -Command "cd $HOME\\code\\treesitter-chunker; git fetch origin; git checkout main; git pull --ff-only; uv run --with toml --all-extras python scripts/run_windows_preflight.py"'
 ```
 
 ## Acceptance Criteria

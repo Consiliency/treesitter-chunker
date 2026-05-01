@@ -34,9 +34,9 @@ additive implementation instead of rebuilding Phase 6 from scratch. The job is
 to reconcile the roadmap exit criteria with the live resolver API, explicit
 plugin discovery, syntax-only byte stability, semantic diagnostics,
 incremental-cache segregation, and migration docs while preserving the Phase 0
-through Phase 5 contracts. The older lowercase artifact
-`plans/phase-plan-v1-semantic.md` remains historical planning context only.
-Phase-loop execution for this run should use this uppercase
+through Phase 5 contracts. The older lowercase artifact was removed to avoid
+case-insensitive filesystem collisions. Phase-loop execution for this run
+should use this uppercase
 `plans/phase-plan-v1-SEMANTIC.md` artifact.
 
 ## Interface Freeze Gates
@@ -230,7 +230,7 @@ incremental behavior, docs, and cross-platform path handling, run the standing
 Windows preflight before pushing:
 
 ```bash
-ssh leno 'powershell -NoProfile -Command "cd $HOME\\code\\treesitter-chunker; git fetch origin; git checkout main; git pull --ff-only; uv run --with toml --all-extras python scripts/run_windows_preflight.py"'
+ssh win 'powershell -NoProfile -Command "cd $HOME\\code\\treesitter-chunker; git fetch origin; git checkout main; git pull --ff-only; uv run --with toml --all-extras python scripts/run_windows_preflight.py"'
 ```
 
 ## Acceptance Criteria

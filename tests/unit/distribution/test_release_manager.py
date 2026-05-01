@@ -15,6 +15,7 @@ class TestReleaseManager:
         """Test version validation during release preparation"""
         with tempfile.TemporaryDirectory() as tmpdir:
             manager = ReleaseManager(Path(tmpdir))
+            (Path(tmpdir) / "pyproject.toml").write_text('version = "1.0.0"')
             with patch.object(manager, "_get_current_version", return_value="1.0.0"):
                 success, info = manager.prepare_release("0.9.0", "changelog")
                 assert not success
@@ -30,20 +31,15 @@ class TestReleaseManager:
                             "_update_changelog",
                             return_value=True,
                         ):
-                            with patch.object(
-                                manager,
-                                "_create_git_tag",
-                                return_value=True,
-                            ):
-                                success, info = manager.prepare_release(
-                                    "1.1.0",
-                                    "changelog",
-                                )
-                                assert success
+                            success, info = manager.prepare_release(
+                                "1.1.0",
+                                "changelog",
+                            )
+                            assert success
 
     @classmethod
     def test_version_file_updates(cls):
-        """Test version updates in multiple files"""
+        """Test version updates in pyproject.toml only"""
         with tempfile.TemporaryDirectory() as tmpdir:
             project_root = Path(tmpdir)
             manager = ReleaseManager(project_root)
@@ -52,14 +48,10 @@ class TestReleaseManager:
             init_file = project_root / "chunker" / "__init__.py"
             init_file.parent.mkdir()
             init_file.write_text('__version__ = "1.0.0"')
-            setup_file = project_root / "setup.py"
-            setup_file.write_text('version="1.0.0"')
             assert manager._update_version_in_file(pyproject, "1.1.0")
-            assert manager._update_version_in_file(init_file, "1.1.0")
-            assert manager._update_version_in_file(setup_file, "1.1.0")
+            assert not manager._update_version_in_file(init_file, "1.1.0")
             assert 'version = "1.1.0"' in pyproject.read_text()
-            assert '__version__ = "1.1.0"' in init_file.read_text()
-            assert 'version="1.1.0"' in setup_file.read_text()
+            assert '__version__ = "1.0.0"' in init_file.read_text()
 
     @classmethod
     def test_changelog_update(cls):
@@ -87,16 +79,6 @@ class TestReleaseManager:
         assert not manager._validate_version_bump("1.0.0", "1.0.0")
         assert not manager._validate_version_bump("1.0.0", "0.9.0")
         assert not manager._validate_version_bump("1.0.0", "invalid")
-
-    @classmethod
-    @patch("subprocess.run")
-    def test_create_git_tag(cls, mock_run):
-        """Test git tag creation"""
-        manager = ReleaseManager()
-        mock_run.side_effect = [Mock(returncode=0, stdout=""), Mock(returncode=0)]
-        assert manager._create_git_tag("v1.0.0", "Release 1.0.0")
-        mock_run.side_effect = [Mock(returncode=0, stdout="v1.0.0\n")]
-        assert not manager._create_git_tag("v1.0.0", "Release 1.0.0")
 
     @classmethod
     @patch("subprocess.run")

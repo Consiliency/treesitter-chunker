@@ -58,36 +58,30 @@ class ReleaseManagementImpl(ReleaseManagementContract):
             return False, release_info
         version_files = [
             (
-                "setup.py",
-                "version\\s*=\\s*[\"\\']([^\"\\']+)[\"\\']",
-                f'version="{version}"',
-            ),
-            (
                 "pyproject.toml",
                 "version\\s*=\\s*[\"\\']([^\"\\']+)[\"\\']",
                 f'version = "{version}"',
-            ),
-            (
-                "chunker/__init__.py",
-                "__version__\\s*=\\s*[\"\\']([^\"\\']+)[\"\\']",
-                f'__version__ = "{version}"',
             ),
         ]
         for filename, pattern, replacement in version_files:
             filepath = self.project_root / filename
             if filepath.exists():
                 try:
-                    content = filepath.read_text()
+                    content = filepath.read_text(encoding="utf-8")
                     new_content = re.sub(pattern, replacement, content)
                     if new_content != content:
-                        filepath.write_text(new_content)
+                        filepath.write_text(new_content, encoding="utf-8")
                         release_info["files_updated"].append(str(filepath))
                 except (OSError, FileNotFoundError, IndexError) as e:
                     release_info["errors"].append(f"Failed to update {filename}: {e!s}")
+            else:
+                release_info["errors"].append(
+                    f"Failed to update {filename}: file missing"
+                )
         changelog_path = self.project_root / "CHANGELOG.md"
         try:
             if changelog_path.exists():
-                existing_changelog = changelog_path.read_text()
+                existing_changelog = changelog_path.read_text(encoding="utf-8")
                 date_str = datetime.now().strftime("%Y-%m-%d")
                 new_entry = f"\n## [{version}] - {date_str}\n\n{changelog}\n"
                 lines = existing_changelog.split("\n")
@@ -97,7 +91,7 @@ class ReleaseManagementImpl(ReleaseManagementContract):
                         insert_pos = i + 1
                         break
                 lines.insert(insert_pos, new_entry)
-                changelog_path.write_text("\n".join(lines))
+                changelog_path.write_text("\n".join(lines), encoding="utf-8")
                 release_info["files_updated"].append(str(changelog_path))
             else:
                 changelog_content = f"""# Changelog
@@ -111,40 +105,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 {changelog}
 """
-                changelog_path.write_text(changelog_content)
+                changelog_path.write_text(changelog_content, encoding="utf-8")
                 release_info["files_updated"].append(str(changelog_path))
         except (OSError, FileNotFoundError, IndexError) as e:
             release_info["errors"].append(f"Failed to update CHANGELOG: {e!s}")
-        try:
-            subprocess.run(["git", "--version"], capture_output=True, check=True)
-            result = subprocess.run(
-                ["git", "tag", "-l", release_info["tag"]],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            if not result.stdout.strip():
-                subprocess.run(
-                    [
-                        "git",
-                        "tag",
-                        "-a",
-                        release_info["tag"],
-                        "-m",
-                        f"""Release {version}
-
-{changelog}""",
-                    ],
-                    check=True,
-                )
-                release_info["git_tag_created"] = True
-            else:
-                release_info["git_tag_created"] = False
-                release_info["errors"].append(
-                    f"Tag {release_info['tag']} already exists",
-                )
-        except subprocess.CalledProcessError:
-            release_info["errors"].append("Git not available or tag creation failed")
         if release_info["errors"]:
             release_info["status"] = (
                 "partial_success" if release_info["files_updated"] else "failed"
@@ -256,15 +220,9 @@ See `treesitter-chunker-{version}.sha256` for file checksums.
 
     def _get_current_version(self) -> str | None:
         """Get the current version from project files"""
-        setup_py = self.project_root / "setup.py"
-        if setup_py.exists():
-            content = setup_py.read_text()
-            match = re.search(r"version\s*=\s*[\"']([^\"']+)[\"']", content)
-            if match:
-                return match.group(1)
         pyproject = self.project_root / "pyproject.toml"
         if pyproject.exists():
-            content = pyproject.read_text()
+            content = pyproject.read_text(encoding="utf-8")
             match = re.search(r"version\s*=\s*[\"']([^\"']+)[\"']", content)
             if match:
                 return match.group(1)

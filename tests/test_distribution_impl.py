@@ -136,21 +136,19 @@ class TestReleaseManagementImpl:
         with tempfile.TemporaryDirectory() as tmpdir:
             tmppath = Path(tmpdir)
             release = ReleaseManagementImpl(tmppath)
-            setup_py = tmppath / "setup.py"
-            setup_py.write_text('version="0.1.0"')
+            pyproject = tmppath / "pyproject.toml"
+            pyproject.write_text(
+                '[project]\nname = "treesitter-chunker"\nversion = "0.1.0"\n',
+            )
             changelog = tmppath / "CHANGELOG.md"
             changelog.write_text("# Changelog\n\n")
-            mock_run.side_effect = [
-                MagicMock(returncode=0),
-                MagicMock(returncode=0, stdout=""),
-                MagicMock(returncode=0),
-            ]
             success, info = release.prepare_release("1.0.0", "New features")
             assert success is True
             assert info["status"] == "success"
-            assert str(setup_py) in info["files_updated"]
+            assert info["tag"] == "v1.0.0"
+            assert str(pyproject) in info["files_updated"]
             assert str(changelog) in info["files_updated"]
-            assert 'version="1.0.0"' in setup_py.read_text()
+            assert 'version = "1.0.0"' in pyproject.read_text()
             assert "[1.0.0]" in changelog.read_text()
             assert "New features" in changelog.read_text()
 

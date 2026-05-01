@@ -32,9 +32,9 @@ implementation instead of rebuilding Phase 4 from scratch. The primary job is
 to reconcile live code, tests, docs, and golden fixtures around deterministic
 diagnostics, timing keys, summary behavior, and failure semantics while
 preserving later additive surfaces such as incremental cache support and
-optional semantic resolvers. The older lowercase artifact
-`plans/phase-plan-v1-observability.md` exists as historical planning context
-only. Phase-loop execution for this run should follow this uppercase
+optional semantic resolvers. The older lowercase artifact was removed to avoid
+case-insensitive filesystem collisions. Phase-loop execution for this run
+should follow this uppercase
 `plans/phase-plan-v1-OBSERVABILITY.md` artifact once the Phase 3 dependency
 chain is satisfied.
 
@@ -269,7 +269,7 @@ failure handling, and path-sensitive docs/test surfaces, run the standing
 Windows preflight before pushing:
 
 ```bash
-ssh leno 'powershell -NoProfile -Command "cd $HOME\\code\\treesitter-chunker; git fetch origin; git checkout main; git pull --ff-only; uv run --with toml --all-extras python scripts/run_windows_preflight.py"'
+ssh win 'powershell -NoProfile -Command "cd $HOME\\code\\treesitter-chunker; git fetch origin; git checkout main; git pull --ff-only; uv run --with toml --all-extras python scripts/run_windows_preflight.py"'
 ```
 
 ## Acceptance Criteria

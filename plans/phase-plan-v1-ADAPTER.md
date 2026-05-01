@@ -32,9 +32,9 @@ CLI entry point. It must not broaden into redesigning strict/permissive
 resolution semantics, observability counters/timings, incremental cache
 behavior, semantic resolver policy, or ownership enforcement.
 
-The older lowercase artifact `plans/phase-plan-v1-adapter.md` exists as
-historical planning context only. Phase-loop execution for this run should
-follow this uppercase `plans/phase-plan-v1-ADAPTER.md` artifact.
+The older lowercase artifact was removed to avoid case-insensitive filesystem
+collisions. Phase-loop execution for this run should follow this uppercase
+`plans/phase-plan-v1-ADAPTER.md` artifact.
 
 ## Interface Freeze Gates
 
@@ -212,7 +212,7 @@ Because this phase touches CLI paths, serialization, and output formatting, run
 the standing Windows preflight before pushing:
 
 ```bash
-ssh leno 'powershell -NoProfile -Command "cd $HOME\\code\\treesitter-chunker; git fetch origin; git checkout main; git pull --ff-only; uv run --with toml --all-extras python scripts/run_windows_preflight.py"'
+ssh win 'powershell -NoProfile -Command "cd $HOME\\code\\treesitter-chunker; git fetch origin; git checkout main; git pull --ff-only; uv run --with toml --all-extras python scripts/run_windows_preflight.py"'
 ```
 
 ## Acceptance Criteria
