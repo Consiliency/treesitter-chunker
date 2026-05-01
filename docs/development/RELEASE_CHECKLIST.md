@@ -72,7 +72,7 @@ Use `workflow_dispatch` only when you intentionally want a controlled release ru
 - `uv run --all-extras black --check chunker/ cli/ tests/ scripts/`
 - `uv run --with toml --all-extras python scripts/run_ci_smoke.py`
 - `uv run --with toml --all-extras python scripts/run_platform_core.py --platform linux`
-- `ssh win 'powershell -NoProfile -Command "cd $HOME\\code\\treesitter-chunker; git fetch origin; git checkout main; git pull --ff-only; uv run --with toml --all-extras python scripts/run_windows_preflight.py"'`
+- `ssh leno 'powershell -NoProfile -Command "cd $HOME\\code\\treesitter-chunker; git fetch origin; git checkout main; git pull --ff-only; uv run --with toml --all-extras python scripts/run_windows_preflight.py"'`
 
 Confirm `git status --short` is clean before creating or pushing the release tag. Ignored package artifacts under `dist/` may remain locally.
 
