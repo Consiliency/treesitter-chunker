@@ -84,3 +84,4 @@ Thumbs.db
 logs/
 .pubenv/
 .stow-symbols.json
+/.dev-skills/
