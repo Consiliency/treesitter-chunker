@@ -386,9 +386,9 @@
         "exports": [],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: go\nfile: tests/fixtures/boundary_ir/repos/go/beta.go\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: tests/fixtures/boundary_ir/repos/go/beta.go::helper\nsignature text: helper(value string)\ndependencies: value\ncontent:\nfunc helper(value string) string {\n\treturn value\n}"
+        "semantic_text": "language: go\nfile: beta.go\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: beta.go::helper\nsignature text: helper(value string)\ndependencies: value\ncontent:\nfunc helper(value string) string {\n\treturn value\n}"
       },
-      "node_id": "86b4f10e6fb113d9f88b7a2ceee55b8871f2004d",
+      "node_id": "87ce9d788f8360374946c0e5e84daab4eb5778f7",
       "parent": null,
       "path": "beta.go",
       "provenance": {
@@ -399,7 +399,7 @@
       "relationships": [
         "edge:a3898180bbd8cd3a"
       ],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/go/beta.go::helper",
+      "semantic_path": "beta.go::helper",
       "signature": "helper(value string)",
       "span": {
         "byte_end": 71,
@@ -408,7 +408,7 @@
         "start_line": 3
       },
       "symbol": "helper",
-      "symbol_id": "ba3d4f1ad2c7f125fc128243362b2a23158c9a59"
+      "symbol_id": "8d96dda3611a4ad21f61d7c78c66378eb5c9f856"
     },
     {
       "definition_id": "0b7a1617a7099f1a1cc62654bacbf737d7a1a45f",
@@ -427,9 +427,9 @@
         ],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: go\nfile: tests/fixtures/boundary_ir/repos/go/format.go\nkind: type\nsemantic path: tests/fixtures/boundary_ir/repos/go/format.go\nexports: Widget\ncontent:\ntype Widget struct {\n\tName string\n}"
+        "semantic_text": "language: go\nfile: format.go\nkind: type\nsemantic path: format.go\nexports: Widget\ncontent:\ntype Widget struct {\n\tName string\n}"
       },
-      "node_id": "2f7c4669cd3ab8f52476a70a5920ba6633489e27",
+      "node_id": "56ff4bac387a01697da4772475e0b3080d98f819",
       "parent": null,
       "path": "format.go",
       "provenance": {
@@ -438,7 +438,7 @@
       },
       "qualified_name": null,
       "relationships": [],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/go/format.go",
+      "semantic_path": "format.go",
       "signature": null,
       "span": {
         "byte_end": 74,
@@ -469,9 +469,9 @@
         ],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: go\nfile: tests/fixtures/boundary_ir/repos/go/format.go\nkind: function\nsymbol: Format\nqualified name: Format\nsemantic path: tests/fixtures/boundary_ir/repos/go/format.go::Format\nsignature text: Format(value string)\nexports: Format\ndependencies: strings, value\ncontent:\nfunc Format(value string) string {\n\treturn strings.TrimSpace(value)\n}"
+        "semantic_text": "language: go\nfile: format.go\nkind: function\nsymbol: Format\nqualified name: Format\nsemantic path: format.go::Format\nsignature text: Format(value string)\nexports: Format\ndependencies: strings, value\ncontent:\nfunc Format(value string) string {\n\treturn strings.TrimSpace(value)\n}"
       },
-      "node_id": "b1633e176caca94449f5f5bab21c99a52de6e529",
+      "node_id": "fa8191478fe3963d11925259c5cec76ef9a22bd3",
       "parent": null,
       "path": "format.go",
       "provenance": {
@@ -484,7 +484,7 @@
         "edge:d3faacbf277b431b",
         "edge:e1b76270e5745f55"
       ],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/go/format.go::Format",
+      "semantic_path": "format.go::Format",
       "signature": "Format(value string)",
       "span": {
         "byte_end": 145,
@@ -493,7 +493,7 @@
         "start_line": 9
       },
       "symbol": "Format",
-      "symbol_id": "3c35c81458b9b57587be1b0ea6508bf052a9cbf1"
+      "symbol_id": "b3b5b0edc4ed4f5376065baf0d275b5232ca79f2"
     },
     {
       "definition_id": "6c6d2514190884959b91c1b42fbf90c94e1ef83a",
@@ -512,9 +512,9 @@
         "exports": [],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: go\nfile: tests/fixtures/boundary_ir/repos/go/alpha.go\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: tests/fixtures/boundary_ir/repos/go/alpha.go::helper\nsignature text: helper(value string)\ndependencies: value\ncontent:\nfunc helper(value string) string {\n\treturn value\n}"
+        "semantic_text": "language: go\nfile: alpha.go\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: alpha.go::helper\nsignature text: helper(value string)\ndependencies: value\ncontent:\nfunc helper(value string) string {\n\treturn value\n}"
       },
-      "node_id": "7b366f13a539d5faa3f4ef3cf16bb65b0f381eb7",
+      "node_id": "caf07603c95ce42e118ea9ac760515cf5abb49a6",
       "parent": null,
       "path": "alpha.go",
       "provenance": {
@@ -525,7 +525,7 @@
       "relationships": [
         "edge:e9303e27e5900f9e"
       ],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/go/alpha.go::helper",
+      "semantic_path": "alpha.go::helper",
       "signature": "helper(value string)",
       "span": {
         "byte_end": 71,
@@ -534,7 +534,7 @@
         "start_line": 3
       },
       "symbol": "helper",
-      "symbol_id": "c1e030aced7ef6492cb6c143434d4e24758dbb00"
+      "symbol_id": "c40941f2d70c916d30f2fab769c7a9c7a43b772c"
     },
     {
       "definition_id": "c929955174ede1c6857e22b2f555fe70f66912d6",
@@ -558,9 +558,9 @@
         ],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: go\nfile: tests/fixtures/boundary_ir/repos/go/service.go\nkind: function\nsymbol: Render\nqualified name: Render\nsemantic path: tests/fixtures/boundary_ir/repos/go/service.go::Render\nsignature text: Render(value string)\nexports: Render\ndependencies: Format, Ghost, helper, value\ncontent:\nfunc Render(value string) string {\n\tcleaned := Format(value)\n\tduplicate := helper(cleaned)\n\treturn Ghost(duplicate)\n}"
+        "semantic_text": "language: go\nfile: service.go\nkind: function\nsymbol: Render\nqualified name: Render\nsemantic path: service.go::Render\nsignature text: Render(value string)\nexports: Render\ndependencies: Format, Ghost, helper, value\ncontent:\nfunc Render(value string) string {\n\tcleaned := Format(value)\n\tduplicate := helper(cleaned)\n\treturn Ghost(duplicate)\n}"
       },
-      "node_id": "0a30f2aa3bedb4fc7924e78f2431a7f89815c841",
+      "node_id": "4a0e1f0506d85bd069d04b3fb57508b756962599",
       "parent": null,
       "path": "service.go",
       "provenance": {
@@ -577,7 +577,7 @@
         "edge:f0a02391bb742db0",
         "edge:f1554145262a03fd"
       ],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/go/service.go::Render",
+      "semantic_path": "service.go::Render",
       "signature": "Render(value string)",
       "span": {
         "byte_end": 138,
@@ -586,7 +586,7 @@
         "start_line": 3
       },
       "symbol": "Render",
-      "symbol_id": "f0003f3d49e7f21488e24099bcfeda5515ab867b"
+      "symbol_id": "4648882eee0f9320649bcd19f74a49c7b8b12ac2"
     },
     {
       "definition_id": "f24a08c0aec67c2ddce935db79b4d7c13bb64902",
@@ -605,10 +605,10 @@
         ],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: go\nfile: tests/fixtures/boundary_ir/repos/go/format.go\nkind: type\nsymbol: Widget\nqualified name: Widget\nsemantic path: tests/fixtures/boundary_ir/repos/go/format.go::Widget\nexports: Widget\ncontent:\nWidget struct {\n\tName string\n}"
+        "semantic_text": "language: go\nfile: format.go\nkind: type\nsymbol: Widget\nqualified name: Widget\nsemantic path: format.go::Widget\nexports: Widget\ncontent:\nWidget struct {\n\tName string\n}"
       },
-      "node_id": "d6f5b5c6f77f17f2758ef4d9992fb42deb94f6cb",
-      "parent": "2f7c4669cd3ab8f52476a70a5920ba6633489e27",
+      "node_id": "9828c43e61ce4d7bafbc712f1d7fbd86ec7f1807",
+      "parent": "56ff4bac387a01697da4772475e0b3080d98f819",
       "path": "format.go",
       "provenance": {
         "extractor": "chunk_file",
@@ -616,7 +616,7 @@
       },
       "qualified_name": "Widget",
       "relationships": [],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/go/format.go::Widget",
+      "semantic_path": "format.go::Widget",
       "signature": null,
       "span": {
         "byte_end": 74,
@@ -625,7 +625,7 @@
         "start_line": 5
       },
       "symbol": "Widget",
-      "symbol_id": "d84fea4ea05b78aa7c7630451525acfe63bf1b12"
+      "symbol_id": "13a3bdadafdd10003254406446b3d34b8cee5e07"
     }
   ],
   "run": {

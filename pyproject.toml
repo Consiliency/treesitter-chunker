@@ -51,6 +51,10 @@ dependencies = [
     "networkx>=3.0",
     "leidenalg>=0.10.0",
     "igraph>=0.11.0",  # Required by leidenalg
+    # Pinned Unicode 16.0 DB for the vendored canon v1 serializer (chunker/boundary/_canon.py).
+    # canon's NFC must match the spec reference byte-for-byte; stdlib unicodedata is bound to the
+    # host CPython build, so canon pins this backport. See canon/SPEC.md S5.
+    "unicodedata2==16.0.0",
 ]
 
 [project.optional-dependencies]
@@ -164,6 +168,11 @@ exclude_lines = [
 line-length = 88
 target-version = ['py311', 'py312', 'py313']
 include = '\.pyi?$'
+# force-exclude applies even when a path is passed explicitly on the CLI. The
+# vendored canon serializer (chunker/boundary/_canon.py) is copied verbatim from
+# the spec reference impl (digest pinned in its header) and MUST NOT be
+# reformatted, or it would diverge from the source of truth.
+force-exclude = 'chunker/boundary/_canon\.py'
 extend-exclude = '''
 /(
   # directories

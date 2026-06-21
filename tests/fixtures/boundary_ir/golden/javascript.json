@@ -420,10 +420,10 @@
         "exports": [],
         "imports": [],
         "parent_symbol": "run",
-        "semantic_text": "language: javascript\nfile: tests/fixtures/boundary_ir/repos/javascript/service.js\nkind: variable_declarator\nsymbol: cleaned\nqualified name: run.cleaned\nparent symbol: run\nsemantic path: tests/fixtures/boundary_ir/repos/javascript/service.js::run.cleaned\ndependencies: formatName, value\ncontent:\ncleaned = formatName(value)"
+        "semantic_text": "language: javascript\nfile: service.js\nkind: variable_declarator\nsymbol: cleaned\nqualified name: run.cleaned\nparent symbol: run\nsemantic path: service.js::run.cleaned\ndependencies: formatName, value\ncontent:\ncleaned = formatName(value)"
       },
-      "node_id": "89c1a7f001367236185d07da4ae9f78b87381c21",
-      "parent": "9ee6f8c45786007268b21e77fa85d637bc93a56e",
+      "node_id": "4485b79b57db3ea482a2e6ae7d880c9998218682",
+      "parent": "dcdb38178db8a5cb54fbcad7b71b42e47fff79f8",
       "path": "service.js",
       "provenance": {
         "extractor": "chunk_file",
@@ -431,7 +431,7 @@
       },
       "qualified_name": "run.cleaned",
       "relationships": [],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/javascript/service.js::run.cleaned",
+      "semantic_path": "service.js::run.cleaned",
       "signature": null,
       "span": {
         "byte_end": 186,
@@ -440,7 +440,7 @@
         "start_line": 10
       },
       "symbol": "cleaned",
-      "symbol_id": "b4011a7d4c9224600b871f0be96fb43493f1a711"
+      "symbol_id": "24d06201dc19a8b9e5e8bbd5c97f5f26acc3cbdf"
     },
     {
       "definition_id": "3259abf65ed857b2e9f06afa3170021f6c71b61c",
@@ -459,10 +459,10 @@
         ],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: javascript\nfile: tests/fixtures/boundary_ir/repos/javascript/format.js\nkind: function\nsymbol: formatName\nqualified name: formatName\nsemantic path: tests/fixtures/boundary_ir/repos/javascript/format.js::formatName\nsignature text: formatName(value)\nexports: formatName\ncontent:\nfunction formatName(value) {\n  return value.trim();\n}"
+        "semantic_text": "language: javascript\nfile: format.js\nkind: function\nsymbol: formatName\nqualified name: formatName\nsemantic path: format.js::formatName\nsignature text: formatName(value)\nexports: formatName\ncontent:\nfunction formatName(value) {\n  return value.trim();\n}"
       },
-      "node_id": "c1745a37fac207c65756f897908f907332fb703e",
-      "parent": "4966d913577467fd790d4f5ca66bf8f949d0bdeb",
+      "node_id": "6b574be4b0a45dabf262574ce93e166d861e7a81",
+      "parent": "ef1570ad367c15ad79d083a2b5b97ce2b52a1e89",
       "path": "format.js",
       "provenance": {
         "extractor": "chunk_file",
@@ -472,7 +472,7 @@
       "relationships": [
         "edge:41c0fd3741b27592"
       ],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/javascript/format.js::formatName",
+      "semantic_path": "format.js::formatName",
       "signature": "formatName(value)",
       "span": {
         "byte_end": 60,
@@ -481,7 +481,7 @@
         "start_line": 1
       },
       "symbol": "formatName",
-      "symbol_id": "9fcf55e4fbdc5a233803ea857385f6aaa1e0a057"
+      "symbol_id": "1a4caa5ef5c429536d6f9bbaf8e9ad9312c2d7ba"
     },
     {
       "definition_id": "3e9775a7d997a10d69f3cb10e69283319d0d3d5a",
@@ -500,9 +500,9 @@
         ],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: javascript\nfile: tests/fixtures/boundary_ir/repos/javascript/beta.js\nkind: export_statement\nsemantic path: tests/fixtures/boundary_ir/repos/javascript/beta.js\nexports: helper\ncontent:\nexport function helper(value) {\n  return value.toUpperCase();\n}"
+        "semantic_text": "language: javascript\nfile: beta.js\nkind: export_statement\nsemantic path: beta.js\nexports: helper\ncontent:\nexport function helper(value) {\n  return value.toUpperCase();\n}"
       },
-      "node_id": "863c01c32c503600b6f80ccd18df8fd4702f10a5",
+      "node_id": "f7c5c85a3998e87da870ec9f4731480bc8f9ef0c",
       "parent": null,
       "path": "beta.js",
       "provenance": {
@@ -511,7 +511,7 @@
       },
       "qualified_name": null,
       "relationships": [],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/javascript/beta.js",
+      "semantic_path": "beta.js",
       "signature": null,
       "span": {
         "byte_end": 63,
@@ -541,10 +541,10 @@
         ],
         "imports": [],
         "parent_symbol": "Renderer",
-        "semantic_text": "language: javascript\nfile: tests/fixtures/boundary_ir/repos/javascript/service.js\nkind: method\nsymbol: render\nqualified name: Renderer.render\nparent symbol: Renderer\nsemantic path: tests/fixtures/boundary_ir/repos/javascript/service.js::Renderer.render\nsignature text: render(value)\nexports: render\ndependencies: formatName\ncontent:\nrender(value) {\n    return formatName(value);\n  }"
+        "semantic_text": "language: javascript\nfile: service.js\nkind: method\nsymbol: render\nqualified name: Renderer.render\nparent symbol: Renderer\nsemantic path: service.js::Renderer.render\nsignature text: render(value)\nexports: render\ndependencies: formatName\ncontent:\nrender(value) {\n    return formatName(value);\n  }"
       },
-      "node_id": "935bf5a4a7b943a66b334c9b7bc47c1ca01f1896",
-      "parent": "37a91f3c36ef8c17b887ff4c36bbaaa0cdfa25c3",
+      "node_id": "93b8bc67d830640e1b1ae72e02a77455790cef8a",
+      "parent": "241723aa1af9d42ff01c7e69b9c9155d6a9366be",
       "path": "service.js",
       "provenance": {
         "extractor": "chunk_file",
@@ -555,7 +555,7 @@
         "edge:44451a6bd5fea4ae",
         "edge:dc5813871593964f"
       ],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/javascript/service.js::Renderer.render",
+      "semantic_path": "service.js::Renderer.render",
       "signature": "render(value)",
       "span": {
         "byte_end": 118,
@@ -564,7 +564,7 @@
         "start_line": 4
       },
       "symbol": "render",
-      "symbol_id": "0c5d349a2188e9be1ca8a2495d95bc1bbe2e31d5"
+      "symbol_id": "ff3e034c1b13598c950adfacaf678a8ab1cd6852"
     },
     {
       "definition_id": "4efcc76af1457279a57d4a7d8c45e394821130e0",
@@ -583,10 +583,10 @@
         ],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: javascript\nfile: tests/fixtures/boundary_ir/repos/javascript/alpha.js\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: tests/fixtures/boundary_ir/repos/javascript/alpha.js::helper\nsignature text: helper(value)\nexports: helper\ncontent:\nfunction helper(value) {\n  return value.toLowerCase();\n}"
+        "semantic_text": "language: javascript\nfile: alpha.js\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: alpha.js::helper\nsignature text: helper(value)\nexports: helper\ncontent:\nfunction helper(value) {\n  return value.toLowerCase();\n}"
       },
-      "node_id": "63be99499c85dbb27a1fd7ecf30158f3b801e1dc",
-      "parent": "6c0a2663718c4bd95ff534fd9639fb5713f14bff",
+      "node_id": "309c20375ea6c3b4345028b9bf13f7ad73084ab6",
+      "parent": "08f8cd26961c161a8f6e3ab65d5574790f5e3e75",
       "path": "alpha.js",
       "provenance": {
         "extractor": "chunk_file",
@@ -596,7 +596,7 @@
       "relationships": [
         "edge:c6a2c92931d5716b"
       ],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/javascript/alpha.js::helper",
+      "semantic_path": "alpha.js::helper",
       "signature": "helper(value)",
       "span": {
         "byte_end": 63,
@@ -605,7 +605,7 @@
         "start_line": 1
       },
       "symbol": "helper",
-      "symbol_id": "c9f58681d4556e51b3b6bc985cb7e8c3d43cdcb4"
+      "symbol_id": "a9ef56286cc6fe2d21ae93aa94caf7cb240ba96b"
     },
     {
       "definition_id": "57004cdc6c66281504819eb98ea5b1efa62e144a",
@@ -628,10 +628,10 @@
         ],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: javascript\nfile: tests/fixtures/boundary_ir/repos/javascript/service.js\nkind: function\nsymbol: run\nqualified name: run\nsemantic path: tests/fixtures/boundary_ir/repos/javascript/service.js::run\nsignature text: run(value)\nexports: run\ndependencies: formatName, helper, missingCall\ncontent:\nfunction run(value) {\n  const cleaned = formatName(value);\n  const duplicate = helper(cleaned);\n  return missingCall(duplicate);\n}"
+        "semantic_text": "language: javascript\nfile: service.js\nkind: function\nsymbol: run\nqualified name: run\nsemantic path: service.js::run\nsignature text: run(value)\nexports: run\ndependencies: formatName, helper, missingCall\ncontent:\nfunction run(value) {\n  const cleaned = formatName(value);\n  const duplicate = helper(cleaned);\n  return missingCall(duplicate);\n}"
       },
-      "node_id": "9ee6f8c45786007268b21e77fa85d637bc93a56e",
-      "parent": "fee72e89bc1f9d0d35028260430bcb8d1fc576cf",
+      "node_id": "dcdb38178db8a5cb54fbcad7b71b42e47fff79f8",
+      "parent": "499684ec51372ed18680e9154ae0de14595dadb4",
       "path": "service.js",
       "provenance": {
         "extractor": "chunk_file",
@@ -646,7 +646,7 @@
         "edge:d0600e0b69c5ec35",
         "edge:e07f41af44ceea6f"
       ],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/javascript/service.js::run",
+      "semantic_path": "service.js::run",
       "signature": "run(value)",
       "span": {
         "byte_end": 259,
@@ -655,7 +655,7 @@
         "start_line": 9
       },
       "symbol": "run",
-      "symbol_id": "73a66d46936e2bc6dac8afa39846184e9a027152"
+      "symbol_id": "ed5b413865de011c4fc049540dc1eb9d7550548d"
     },
     {
       "definition_id": "a31f7d0d98b9d472efd500c92d4b675b1b20348c",
@@ -676,10 +676,10 @@
         ],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: javascript\nfile: tests/fixtures/boundary_ir/repos/javascript/service.js\nkind: class\nsymbol: Renderer\nqualified name: Renderer\nsemantic path: tests/fixtures/boundary_ir/repos/javascript/service.js::Renderer\nexports: Renderer\ndependencies: formatName\ncontent:\nclass Renderer {\n  render(value) {\n    return formatName(value);\n  }\n}"
+        "semantic_text": "language: javascript\nfile: service.js\nkind: class\nsymbol: Renderer\nqualified name: Renderer\nsemantic path: service.js::Renderer\nexports: Renderer\ndependencies: formatName\ncontent:\nclass Renderer {\n  render(value) {\n    return formatName(value);\n  }\n}"
       },
-      "node_id": "37a91f3c36ef8c17b887ff4c36bbaaa0cdfa25c3",
-      "parent": "fff010c9be63ef49e896b3b2681ed1c4fd9b8fb1",
+      "node_id": "241723aa1af9d42ff01c7e69b9c9155d6a9366be",
+      "parent": "547bae8a0fcd8921e21f8a4ba45f7983b23ced30",
       "path": "service.js",
       "provenance": {
         "extractor": "chunk_file",
@@ -690,7 +690,7 @@
         "edge:bb19cb90d4a5429e",
         "edge:fa4ead388c6eca68"
       ],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/javascript/service.js::Renderer",
+      "semantic_path": "service.js::Renderer",
       "signature": null,
       "span": {
         "byte_end": 120,
@@ -699,7 +699,7 @@
         "start_line": 3
       },
       "symbol": "Renderer",
-      "symbol_id": "84482e54d49bcaa5564c02ea78eb9375c311d2ea"
+      "symbol_id": "69bc24249b5516b75a05ff3ce7be3b04591383eb"
     },
     {
       "definition_id": "a7df3e6ec08e44dbdeaec19fbd47909ba41201aa",
@@ -721,9 +721,9 @@
           "{ formatName }"
         ],
         "parent_symbol": null,
-        "semantic_text": "language: javascript\nfile: tests/fixtures/boundary_ir/repos/javascript/service.js\nkind: import_statement\nsemantic path: tests/fixtures/boundary_ir/repos/javascript/service.js\nimports: import { formatName } from './format.js';, { formatName }\ndependencies: formatName\ncontent:\nimport { formatName } from './format.js';"
+        "semantic_text": "language: javascript\nfile: service.js\nkind: import_statement\nsemantic path: service.js\nimports: import { formatName } from './format.js';, { formatName }\ndependencies: formatName\ncontent:\nimport { formatName } from './format.js';"
       },
-      "node_id": "1dd38589405d84d51db1d44d7afe90ed5da9edc8",
+      "node_id": "4f31f95cca13c9d50d2d588ccb9ae518304660d2",
       "parent": null,
       "path": "service.js",
       "provenance": {
@@ -732,7 +732,7 @@
       },
       "qualified_name": null,
       "relationships": [],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/javascript/service.js",
+      "semantic_path": "service.js",
       "signature": null,
       "span": {
         "byte_end": 41,
@@ -760,9 +760,9 @@
         ],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: javascript\nfile: tests/fixtures/boundary_ir/repos/javascript/alpha.js\nkind: export_statement\nsemantic path: tests/fixtures/boundary_ir/repos/javascript/alpha.js\nexports: helper\ncontent:\nexport function helper(value) {\n  return value.toLowerCase();\n}"
+        "semantic_text": "language: javascript\nfile: alpha.js\nkind: export_statement\nsemantic path: alpha.js\nexports: helper\ncontent:\nexport function helper(value) {\n  return value.toLowerCase();\n}"
       },
-      "node_id": "6c0a2663718c4bd95ff534fd9639fb5713f14bff",
+      "node_id": "08f8cd26961c161a8f6e3ab65d5574790f5e3e75",
       "parent": null,
       "path": "alpha.js",
       "provenance": {
@@ -771,7 +771,7 @@
       },
       "qualified_name": null,
       "relationships": [],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/javascript/alpha.js",
+      "semantic_path": "alpha.js",
       "signature": null,
       "span": {
         "byte_end": 63,
@@ -799,10 +799,10 @@
         ],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: javascript\nfile: tests/fixtures/boundary_ir/repos/javascript/beta.js\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: tests/fixtures/boundary_ir/repos/javascript/beta.js::helper\nsignature text: helper(value)\nexports: helper\ncontent:\nfunction helper(value) {\n  return value.toUpperCase();\n}"
+        "semantic_text": "language: javascript\nfile: beta.js\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: beta.js::helper\nsignature text: helper(value)\nexports: helper\ncontent:\nfunction helper(value) {\n  return value.toUpperCase();\n}"
       },
-      "node_id": "2ede36cc9f71fc09bda333fd937e0ed1f5716e7f",
-      "parent": "863c01c32c503600b6f80ccd18df8fd4702f10a5",
+      "node_id": "adf72758af0d5ce86b88bcd24a885baa0c9aded5",
+      "parent": "f7c5c85a3998e87da870ec9f4731480bc8f9ef0c",
       "path": "beta.js",
       "provenance": {
         "extractor": "chunk_file",
@@ -812,7 +812,7 @@
       "relationships": [
         "edge:557e4fe789d374ec"
       ],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/javascript/beta.js::helper",
+      "semantic_path": "beta.js::helper",
       "signature": "helper(value)",
       "span": {
         "byte_end": 63,
@@ -821,7 +821,7 @@
         "start_line": 1
       },
       "symbol": "helper",
-      "symbol_id": "91f7b8db0fc975eb755fd5a7555007a52b85249d"
+      "symbol_id": "38fdd0915154d33f784396d69d3ef26aa2f538e9"
     },
     {
       "definition_id": "bbaaaa1f1d7e4cc2673c787ee4da39a3f95beb1e",
@@ -840,9 +840,9 @@
         ],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: javascript\nfile: tests/fixtures/boundary_ir/repos/javascript/format.js\nkind: export_statement\nsemantic path: tests/fixtures/boundary_ir/repos/javascript/format.js\nexports: formatName\ncontent:\nexport function formatName(value) {\n  return value.trim();\n}"
+        "semantic_text": "language: javascript\nfile: format.js\nkind: export_statement\nsemantic path: format.js\nexports: formatName\ncontent:\nexport function formatName(value) {\n  return value.trim();\n}"
       },
-      "node_id": "4966d913577467fd790d4f5ca66bf8f949d0bdeb",
+      "node_id": "ef1570ad367c15ad79d083a2b5b97ce2b52a1e89",
       "parent": null,
       "path": "format.js",
       "provenance": {
@@ -851,7 +851,7 @@
       },
       "qualified_name": null,
       "relationships": [],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/javascript/format.js",
+      "semantic_path": "format.js",
       "signature": null,
       "span": {
         "byte_end": 60,
@@ -883,9 +883,9 @@
         ],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: javascript\nfile: tests/fixtures/boundary_ir/repos/javascript/service.js\nkind: export_statement\nsemantic path: tests/fixtures/boundary_ir/repos/javascript/service.js\nexports: run\ndependencies: formatName, helper, missingCall\ncontent:\nexport function run(value) {\n  const cleaned = formatName(value);\n  const duplicate = helper(cleaned);\n  return missingCall(duplicate);\n}"
+        "semantic_text": "language: javascript\nfile: service.js\nkind: export_statement\nsemantic path: service.js\nexports: run\ndependencies: formatName, helper, missingCall\ncontent:\nexport function run(value) {\n  const cleaned = formatName(value);\n  const duplicate = helper(cleaned);\n  return missingCall(duplicate);\n}"
       },
-      "node_id": "fee72e89bc1f9d0d35028260430bcb8d1fc576cf",
+      "node_id": "499684ec51372ed18680e9154ae0de14595dadb4",
       "parent": null,
       "path": "service.js",
       "provenance": {
@@ -894,7 +894,7 @@
       },
       "qualified_name": null,
       "relationships": [],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/javascript/service.js",
+      "semantic_path": "service.js",
       "signature": null,
       "span": {
         "byte_end": 259,
@@ -924,9 +924,9 @@
         ],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: javascript\nfile: tests/fixtures/boundary_ir/repos/javascript/service.js\nkind: export_statement\nsemantic path: tests/fixtures/boundary_ir/repos/javascript/service.js\nexports: Renderer\ndependencies: formatName\ncontent:\nexport class Renderer {\n  render(value) {\n    return formatName(value);\n  }\n}"
+        "semantic_text": "language: javascript\nfile: service.js\nkind: export_statement\nsemantic path: service.js\nexports: Renderer\ndependencies: formatName\ncontent:\nexport class Renderer {\n  render(value) {\n    return formatName(value);\n  }\n}"
       },
-      "node_id": "fff010c9be63ef49e896b3b2681ed1c4fd9b8fb1",
+      "node_id": "547bae8a0fcd8921e21f8a4ba45f7983b23ced30",
       "parent": null,
       "path": "service.js",
       "provenance": {
@@ -935,7 +935,7 @@
       },
       "qualified_name": null,
       "relationships": [],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/javascript/service.js",
+      "semantic_path": "service.js",
       "signature": null,
       "span": {
         "byte_end": 120,
@@ -964,10 +964,10 @@
         "exports": [],
         "imports": [],
         "parent_symbol": "run",
-        "semantic_text": "language: javascript\nfile: tests/fixtures/boundary_ir/repos/javascript/service.js\nkind: variable_declarator\nsymbol: duplicate\nqualified name: run.duplicate\nparent symbol: run\nsemantic path: tests/fixtures/boundary_ir/repos/javascript/service.js::run.duplicate\ndependencies: cleaned, helper\ncontent:\nduplicate = helper(cleaned)"
+        "semantic_text": "language: javascript\nfile: service.js\nkind: variable_declarator\nsymbol: duplicate\nqualified name: run.duplicate\nparent symbol: run\nsemantic path: service.js::run.duplicate\ndependencies: cleaned, helper\ncontent:\nduplicate = helper(cleaned)"
       },
-      "node_id": "3ff4b15739bf50c9817abd584f8a508d94eea8a2",
-      "parent": "9ee6f8c45786007268b21e77fa85d637bc93a56e",
+      "node_id": "7b1bd90fdea64b097dfaba2a6d7dfedc75e564c7",
+      "parent": "dcdb38178db8a5cb54fbcad7b71b42e47fff79f8",
       "path": "service.js",
       "provenance": {
         "extractor": "chunk_file",
@@ -975,7 +975,7 @@
       },
       "qualified_name": "run.duplicate",
       "relationships": [],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/javascript/service.js::run.duplicate",
+      "semantic_path": "service.js::run.duplicate",
       "signature": null,
       "span": {
         "byte_end": 223,
@@ -984,7 +984,7 @@
         "start_line": 11
       },
       "symbol": "duplicate",
-      "symbol_id": "443e78f9469cb2116332934ef8c3977e39bc007c"
+      "symbol_id": "f51323e33a69a4c92e86aacd32ed81bef90d3915"
     }
   ],
   "run": {

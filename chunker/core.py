@@ -140,8 +140,16 @@ def _format_signature_text(signature: object) -> str | None:
     return signature_text
 
 
-def _normalize_text_list(value: object) -> list[str]:
-    """Normalize metadata values into a stable string list."""
+def _normalize_text_list(value: object, *, sort: bool = True) -> list[str]:
+    """Normalize metadata values into a stable string list.
+
+    ``sort=True`` (default) returns a sorted, de-duplicated list for genuinely
+    order-insensitive (set-semantic) fields such as exports/dependencies.
+    ``sort=False`` preserves source order (still de-duplicating, order-stably)
+    for order-significant fields such as imports -- canon S4 forbids reordering
+    an order-significant list, and BUG-1b established imports as order-significant
+    (side-effecting import order can matter). Never sort to mask nondeterminism.
+    """
     if value is None:
         return []
     if isinstance(value, str):
@@ -150,9 +158,8 @@ def _normalize_text_list(value: object) -> list[str]:
         values = [str(item) for item in value if item is not None]
     else:
         values = [str(value)]
-    return sorted(
-        dict.fromkeys(item.strip() for item in values if item and item.strip())
-    )
+    deduped = dict.fromkeys(item.strip() for item in values if item and item.strip())
+    return sorted(deduped) if sort else list(deduped)
 
 
 def _build_semantic_text(
@@ -178,7 +185,11 @@ def _build_semantic_text(
             lines.append(f"{label}: {value}")
 
     for key in ("imports", "exports", "dependencies"):
-        values = _normalize_text_list(retrieval_metadata.get(key))
+        # imports are order-significant (preserve source order); exports and
+        # dependencies are set-semantic (sort). See _normalize_text_list / BUG-1b.
+        values = _normalize_text_list(
+            retrieval_metadata.get(key), sort=(key != "imports")
+        )
         if values:
             lines.append(f"{key}: {', '.join(values)}")
 
@@ -235,7 +246,8 @@ def _build_retrieval_metadata(chunk: CodeChunk) -> dict[str, object]:
         "parent_symbol": parent_symbol,
         "semantic_path": semantic_path,
         "signature_text": _format_signature_text(signature),
-        "imports": _normalize_text_list(metadata.get("imports")),
+        # imports order-significant -> preserve; exports/dependencies set-semantic.
+        "imports": _normalize_text_list(metadata.get("imports"), sort=False),
         "exports": _normalize_text_list(metadata.get("exports")),
         "dependencies": _normalize_text_list(
             metadata.get("dependencies", chunk.dependencies)
@@ -1008,20 +1020,28 @@ def chunk_file(
     language: str,
     extract_metadata: bool = True,
     include_retrieval_metadata: bool = False,
+    identity_path: str | None = None,
 ) -> list[CodeChunk]:
     """Parse the file and return a list of `CodeChunk`.
 
     Args:
-        path: Path to the file to chunk
+        path: Path to the file to chunk (used to READ the file).
         language: Programming language
         extract_metadata: Whether to extract metadata (default: True)
         include_retrieval_metadata: Whether to add retrieval-oriented metadata
+        identity_path: Path baked into all chunk IDs (node_id/file_id/symbol_id/
+            chunk_id), parent links, and semantic_text. Defaults to ``str(path)``
+            to preserve legacy behavior; the Boundary adapter passes the
+            normalized repo-relative path so IDs are checkout-root independent
+            (BUG-3). The read path and the identity path are intentionally
+            decoupled.
 
     Returns:
         List of CodeChunk objects with optional metadata
     """
     # Read file contents with robust decoding
     p = Path(path)
+    identity = identity_path if identity_path is not None else str(path)
     try:
         src = p.read_text(encoding="utf-8")
     except UnicodeDecodeError:
@@ -1047,8 +1067,9 @@ def chunk_file(
             )
         all_chunks: list[CodeChunk] = []
         for code, start, end in snippets:
-            # Derive pseudo file name for chunk id stability
-            pseudo_path = f"{p}:{start}-{end}"
+            # Derive pseudo file name for chunk id stability (keyed on the
+            # identity path so IDs are checkout-root independent).
+            pseudo_path = f"{identity}:{start}-{end}"
             all_chunks.extend(
                 chunk_text(
                     code,
@@ -1063,7 +1084,7 @@ def chunk_file(
     return chunk_text(
         src,
         language,
-        str(path),
+        identity,
         extract_metadata=extract_metadata,
         include_retrieval_metadata=include_retrieval_metadata,
     )

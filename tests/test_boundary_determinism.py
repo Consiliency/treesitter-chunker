@@ -152,34 +152,24 @@ def _node_ir(metadata_list_field: str, items: list[str]) -> dict:
 # (1) RED -- false parity on order-significant string lists (BUG-1).
 #     Site: chunker/boundary/serialization.py:33-34 (_canonicalize_value).
 # ---------------------------------------------------------------------------
-@pytest.mark.xfail(
-    strict=True,
-    reason="P0 bug-lock: _canonicalize_value sorts all-string lists (false parity); turns green in P1",
-)
 def test_reordered_params_change_hash():
     """``params=["b","a"]`` and ``params=["a","b"]`` are DIFFERENT logical inputs
     and MUST produce different canonical bytes.
 
-    CURRENTLY RED. ``_canonicalize_value`` content-sniffs ("all items strings ->
-    sorted") so both orderings collapse to ``["a","b"]`` -> identical bytes ->
-    FALSE PARITY (a real parameter reorder becomes invisible to a hash check).
-
-    Captured evidence (this tree):
-        _canonicalize_value(["b","a"]) == ["a","b"]
-        IR(params=["a","b"]) bytes ... metadata == {"params":["a","b"]}
-        IR(params=["b","a"]) bytes ... metadata == {"params":["a","b"]}  # collapsed
+    GREEN after P1. ``_canonicalize_value`` no longer content-sniff-sorts
+    all-string lists (canon S4: array order is preserved ALWAYS), so a real
+    parameter reorder is now visible to a hash check (no false parity).
     """
-    # Direct proof of the offending branch (documents the exact mechanism):
-    assert _canonicalize_value(["b", "a"]) == ["a", "b"]  # the bug, isolated
+    # The content-sniff branch is gone: order is preserved verbatim.
+    assert _canonicalize_value(["b", "a"]) == ["b", "a"]
 
     forward = _node_ir("params", ["a", "b"])
     reordered = _node_ir("params", ["b", "a"])
 
-    # Sensitivity property: different order -> different bytes. FAILS today
-    # because both serialize identically (false parity).
+    # Sensitivity property: different order -> different bytes.
     assert _hash(forward) != _hash(reordered), (
-        "FALSE PARITY: reordered params hashed equal -- serialization.py:33-34 "
-        "sorts all-string lists, collapsing ['b','a'] to ['a','b']."
+        "reordered params must hash differently -- the serializer must preserve "
+        "list insertion order (canon S4)."
     )
 
 
@@ -187,37 +177,24 @@ def test_reordered_params_change_hash():
 # (2) RED -- false parity + silent de-dup on imports (BUG-1 via _stable_value).
 #     Site: chunker/boundary/adapter.py:95-96 (_stable_value).
 # ---------------------------------------------------------------------------
-@pytest.mark.xfail(
-    strict=True,
-    reason="P0 bug-lock: _stable_value sorts+dedups imports, destroying source order; turns green in P1",
-)
 def test_reordered_imports_change_hash():
     """A reordered ``metadata.imports`` list MUST change the canonical bytes.
 
-    CURRENTLY RED on two counts. ``_stable_value`` runs
-    ``sorted(dict.fromkeys(...))`` on all-string lists -- it both REORDERS and
-    DE-DUPLICATES -- and it is applied to ``metadata.{dependencies,exports,
-    imports}`` (adapter.py:160-168). So distinct import orderings collapse.
-
-    See the BUG-1b investigation in this module's docstring: ``imports`` is
-    order-significant at the extraction source but is sorted to mask it; P1 must
-    preserve source order.
-
-    Captured evidence (this tree):
-        _stable_value({"imports": ["b","a","b"]}) == {"imports": ["a","b"]}
-        _stable_value({"imports": ["a","b"]})     == {"imports": ["a","b"]}
-        # reorder lost AND the duplicate "b" silently dropped.
+    GREEN after P1. ``_stable_value`` no longer runs ``sorted(dict.fromkeys(...))``
+    on all-string lists -- it preserves list/tuple order verbatim (canon S4) and
+    no longer silently de-duplicates. ``imports`` is order-significant (BUG-1b):
+    a reorder is a different logical value and now hashes differently.
     """
-    # Direct proof of the offending branch, incl. the de-dup (the worse half):
-    assert _stable_value({"imports": ["b", "a", "b"]}) == {"imports": ["a", "b"]}
+    # The all-strings sort+dedup branch is gone: order AND duplicates preserved.
+    assert _stable_value({"imports": ["b", "a", "b"]}) == {"imports": ["b", "a", "b"]}
     assert _stable_value({"imports": ["a", "b"]}) == {"imports": ["a", "b"]}
 
     forward = _node_ir("imports", ["alpha", "beta"])
     reordered = _node_ir("imports", ["beta", "alpha"])
 
     assert _hash(forward) != _hash(reordered), (
-        "FALSE PARITY: reordered imports hashed equal -- adapter.py:95-96 "
-        "_stable_value sorts (and de-dups) all-string lists."
+        "reordered imports must hash differently -- _stable_value and the "
+        "serializer must preserve list order (canon S4; imports order-significant)."
     )
 
 
@@ -265,27 +242,14 @@ def test_reordered_candidates_same_hash():
 #     run.root/source.path stored as str(root) (adapter.py:866,899,1151,1184);
 #     all survive canonicalization (serialization.py:79-84).
 # ---------------------------------------------------------------------------
-@pytest.mark.xfail(
-    strict=True,
-    reason="P0 bug-lock: node_id + semantic_text bake the absolute root path; turns green in P1",
-)
 def test_two_roots_same_parity_hash(tmp_path):
     """The SAME snapshot extracted under two DIFFERENT absolute checkout roots
     MUST produce identical PARITY bytes (stability / no false negatives).
 
-    CURRENTLY RED. Even after hand-stripping the known-volatile ``run.root`` /
-    ``source.path`` (see ``_strip_volatile``), the bytes still differ because
-    ``node_id`` is computed from the raw absolute caller path
-    (``compute_node_id(file_path=str(path), ...)`` via ``chunk_file``), and the
-    absolute path also leaks into ``metadata.semantic_text``. Two machines with
-    different checkout locations therefore hash the same code differently ->
-    false negative on a parity check.
-
-    Captured evidence (this tree): with roots ``/tmp/alpha_*`` vs
-    ``/tmp/beta_longer_*`` and identical ``m.py``:
-        node_id(rootA) != node_id(rootB)            # path baked into the hash
-        semantic_text contains the absolute "/tmp/alpha_.../m.py"
-        _hash(strip(irA)) != _hash(strip(irB))      # leak survives stripping
+    GREEN after P1. node_id/symbol_id/definition_id and semantic_text are all
+    keyed on the normalized repo-relative identity path (chunk_file now takes an
+    identity_path the adapter sets to the relative display_path; BUG-3), so two
+    checkout roots hash the same code identically.
     """
     root_a = tmp_path / "alpha"
     root_b = tmp_path / "beta_longer_name"
@@ -310,10 +274,6 @@ def test_two_roots_same_parity_hash(tmp_path):
 #     normalize_boundary_path (impact.py:11-12) only swaps backslashes -- it does
 #     NOT collapse ./, .., or redundant separators.
 # ---------------------------------------------------------------------------
-@pytest.mark.xfail(
-    strict=True,
-    reason="P0 bug-lock: normalize_boundary_path incomplete (BUG-4), cold vs incremental diverge; turns green in P1",
-)
 def test_cold_vs_incremental_same_bytes(tmp_path, monkeypatch):
     """``incremental=False`` and ``incremental=True`` on identical input MUST
     produce identical canonical bytes.
@@ -333,16 +293,14 @@ def test_cold_vs_incremental_same_bytes(tmp_path, monkeypatch):
         incr file path: "pkg/m.py"
         _hash(strip(cold)) != _hash(strip(incr))
 
-    Underlying BUG-4 (also asserted directly): ``normalize_boundary_path`` is
-    incomplete -- it only swaps backslashes:
-        normalize_boundary_path("./a/b.py") == "./a/b.py"   # './' NOT collapsed
-        normalize_boundary_path("a/../b.py") == "a/../b.py"  # '..' NOT collapsed
-        normalize_boundary_path("a//b.py")  == "a//b.py"     # '//' NOT collapsed
+    BUG-4 fixed: ``normalize_boundary_path`` is now total -- it POSIX-ifies and
+    collapses ``.`` / ``..`` / redundant separators, so cold and incremental
+    funnel every path through the same canonical form.
     """
-    # BUG-4: normalize_boundary_path is not total (drives the divergence below).
-    assert normalize_boundary_path("./a/b.py") == "./a/b.py"
-    assert normalize_boundary_path("a/../b.py") == "a/../b.py"
-    assert normalize_boundary_path("a//b.py") == "a//b.py"
+    # BUG-4: normalize_boundary_path is now total.
+    assert normalize_boundary_path("./a/b.py") == "a/b.py"
+    assert normalize_boundary_path("a/../b.py") == "b.py"
+    assert normalize_boundary_path("a//b.py") == "a/b.py"
 
     pkg = tmp_path / "pkg"
     pkg.mkdir()
@@ -382,25 +340,14 @@ def test_cold_vs_incremental_same_bytes(tmp_path, monkeypatch):
 #     file_path=str(path)); file_id/definition_id key on the relative display
 #     path -> within one IR the IDs are mutually inconsistent + non-portable.
 # ---------------------------------------------------------------------------
-@pytest.mark.xfail(
-    strict=True, reason="P0 bug-lock: node_id uses absolute path; turns green in P1"
-)
 def test_node_id_uses_relative_path(tmp_path):
     """A node's ``node_id`` MUST key on the repo-relative path (the same form as
     ``file_id``/``definition_id``), NOT on the absolute caller path.
 
-    CURRENTLY RED. ``chunk_file`` -> ``chunk_text`` computes ``node_id`` with
-    ``file_path=str(path)`` (an absolute path; core.py:983), while the Boundary
-    layer recomputes ``file_id``/``definition_id`` from the relative display
-    path. So ``node_id`` keys on the absolute checkout root: it differs across
-    machines and is mutually inconsistent with the other IDs in the same IR.
-
-    Proven exactly: the emitted ``node_id`` equals
-    ``compute_node_id(<ABS path>, ...)`` and does NOT equal
-    ``compute_node_id(<relative path>, ...)``.
-
-    Captured evidence (this tree): the absolute root also leaks verbatim into
-    the serialized node via ``metadata.semantic_text``.
+    GREEN after P1. The Boundary adapter passes the normalized repo-relative
+    display_path to ``chunk_file`` as ``identity_path`` (BUG-3), so the emitted
+    ``node_id`` equals ``compute_node_id(<relative path>, ...)`` and the absolute
+    checkout root no longer leaks into the serialized node (semantic_text).
     """
     from chunker.core import chunk_file
     from chunker.types import compute_node_id

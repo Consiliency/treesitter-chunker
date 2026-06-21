@@ -591,9 +591,9 @@
           "from app.formatting import format_name"
         ],
         "parent_symbol": null,
-        "semantic_text": "language: python\nfile: tests/fixtures/boundary_ir/repos/python/app/service.py\nkind: function\nsymbol: render_report\nqualified name: render_report\nsemantic path: tests/fixtures/boundary_ir/repos/python/app/service.py::render_report\nsignature text: render_report(value: str) -> str\nimports: from app.formatting import format_name\nexports: cleaned, duplicate, render_report, value\ndependencies: app, format_name, formatting, helper, missing_call\ncontent:\ndef render_report(value: str) -> str:\n    from app.formatting import format_name\n\n    cleaned = format_name(value)\n    duplicate = helper(cleaned)\n    return missing_call(duplicate)"
+        "semantic_text": "language: python\nfile: app/service.py\nkind: function\nsymbol: render_report\nqualified name: render_report\nsemantic path: app/service.py::render_report\nsignature text: render_report(value: str) -> str\nimports: from app.formatting import format_name\nexports: cleaned, duplicate, render_report, value\ndependencies: app, format_name, formatting, helper, missing_call\ncontent:\ndef render_report(value: str) -> str:\n    from app.formatting import format_name\n\n    cleaned = format_name(value)\n    duplicate = helper(cleaned)\n    return missing_call(duplicate)"
       },
-      "node_id": "3bf04a9618cf539f4695d3498876870f9cb277bd",
+      "node_id": "21b528f1c0d9a7fcfe9db58423d4b42a2d7eacde",
       "parent": null,
       "path": "app/service.py",
       "provenance": {
@@ -612,7 +612,7 @@
         "edge:c939173996241d72",
         "edge:e486738be6b910eb"
       ],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/python/app/service.py::render_report",
+      "semantic_path": "app/service.py::render_report",
       "signature": "render_report(value: str) -> str",
       "span": {
         "byte_end": 315,
@@ -621,7 +621,7 @@
         "start_line": 9
       },
       "symbol": "render_report",
-      "symbol_id": "651827073930839f2df70237291968ae9348f4e2"
+      "symbol_id": "fc027cd18f8abead5f98b06926dd18162eb0757a"
     },
     {
       "definition_id": "43ddb130bf1b413b1406b1685ca631ef9f660f73",
@@ -644,10 +644,10 @@
         ],
         "imports": [],
         "parent_symbol": "Renderer",
-        "semantic_text": "language: python\nfile: tests/fixtures/boundary_ir/repos/python/app/service.py\nkind: method\nsymbol: render\nqualified name: Renderer.render\nparent symbol: Renderer\nsemantic path: tests/fixtures/boundary_ir/repos/python/app/service.py::Renderer.render\nsignature text: render(self, value: str) -> str\nexports: render, self, value\ndependencies: format_name\ncontent:\ndef render(self, value: str) -> str:\n        return format_name(value)"
+        "semantic_text": "language: python\nfile: app/service.py\nkind: method\nsymbol: render\nqualified name: Renderer.render\nparent symbol: Renderer\nsemantic path: app/service.py::Renderer.render\nsignature text: render(self, value: str) -> str\nexports: render, self, value\ndependencies: format_name\ncontent:\ndef render(self, value: str) -> str:\n        return format_name(value)"
       },
-      "node_id": "4c9f788d64a8f60b5336cdb110c049df2a958f98",
-      "parent": "c33bb72c5d141687a224f19d60aada2809d0e279",
+      "node_id": "1b645997804db41b8a8b76d1e53cf69d1ef0bcd0",
+      "parent": "0db901e789327c79fa0906b1ce0ba38e37180278",
       "path": "app/service.py",
       "provenance": {
         "extractor": "chunk_file",
@@ -658,7 +658,7 @@
         "edge:83e166bd1932e35e",
         "edge:b74e98f096722241"
       ],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/python/app/service.py::Renderer.render",
+      "semantic_path": "app/service.py::Renderer.render",
       "signature": "render(self, value: str) -> str",
       "span": {
         "byte_end": 131,
@@ -667,7 +667,7 @@
         "start_line": 5
       },
       "symbol": "render",
-      "symbol_id": "d41453681d9251301cbaa98ac81b6296b0ca638f"
+      "symbol_id": "86d1db434cb91e4d9f0d14af15501a2df67e95be"
     },
     {
       "definition_id": "4597ccd545a95379c4793630374d4c9ec080f210",
@@ -691,9 +691,9 @@
         ],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: python\nfile: tests/fixtures/boundary_ir/repos/python/app/service.py\nkind: class\nsymbol: Renderer\nqualified name: Renderer\nsemantic path: tests/fixtures/boundary_ir/repos/python/app/service.py::Renderer\nexports: Renderer, render, self, value\ndependencies: format_name\ncontent:\nclass Renderer:\n    def render(self, value: str) -> str:\n        return format_name(value)"
+        "semantic_text": "language: python\nfile: app/service.py\nkind: class\nsymbol: Renderer\nqualified name: Renderer\nsemantic path: app/service.py::Renderer\nexports: Renderer, render, self, value\ndependencies: format_name\ncontent:\nclass Renderer:\n    def render(self, value: str) -> str:\n        return format_name(value)"
       },
-      "node_id": "c33bb72c5d141687a224f19d60aada2809d0e279",
+      "node_id": "0db901e789327c79fa0906b1ce0ba38e37180278",
       "parent": null,
       "path": "app/service.py",
       "provenance": {
@@ -705,7 +705,7 @@
         "edge:1ae962a1d50bc8dd",
         "edge:c79637284d27493d"
       ],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/python/app/service.py::Renderer",
+      "semantic_path": "app/service.py::Renderer",
       "signature": null,
       "span": {
         "byte_end": 131,
@@ -714,7 +714,7 @@
         "start_line": 4
       },
       "symbol": "Renderer",
-      "symbol_id": "725ff603dfdc648802565c16d13bb5bbd7a68b0e"
+      "symbol_id": "d9cae5d6c3757cf13aee2dcae458dd08b8e3eedf"
     },
     {
       "definition_id": "514ea25c032c544bfcb5cec28f107cd30478a06a",
@@ -736,9 +736,9 @@
         ],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: python\nfile: tests/fixtures/boundary_ir/repos/python/app/formatting.py\nkind: function\nsymbol: format_name\nqualified name: format_name\nsemantic path: tests/fixtures/boundary_ir/repos/python/app/formatting.py::format_name\nsignature text: format_name(value: str) -> str\nexports: format_name, value\ndependencies: strip\ncontent:\ndef format_name(value: str) -> str:\n    return value.strip()"
+        "semantic_text": "language: python\nfile: app/formatting.py\nkind: function\nsymbol: format_name\nqualified name: format_name\nsemantic path: app/formatting.py::format_name\nsignature text: format_name(value: str) -> str\nexports: format_name, value\ndependencies: strip\ncontent:\ndef format_name(value: str) -> str:\n    return value.strip()"
       },
-      "node_id": "8a6dba12b4eb390f2c478eef00880fec1cb71c9a",
+      "node_id": "b46d949e343a88d97e31e067449517d8fd0a2cb6",
       "parent": null,
       "path": "app/formatting.py",
       "provenance": {
@@ -750,7 +750,7 @@
         "edge:11c0685beb40588a",
         "edge:ec7887dd18fc0294"
       ],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/python/app/formatting.py::format_name",
+      "semantic_path": "app/formatting.py::format_name",
       "signature": "format_name(value: str) -> str",
       "span": {
         "byte_end": 60,
@@ -759,7 +759,7 @@
         "start_line": 1
       },
       "symbol": "format_name",
-      "symbol_id": "6c42022dd99db52d902697e7a94925a77c26bd42"
+      "symbol_id": "b2c1acac76441a50ff3c138573385269cb16a768"
     },
     {
       "definition_id": "64d77146b1952a48a00557eda87ad157160c62fd",
@@ -781,9 +781,9 @@
         ],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: python\nfile: tests/fixtures/boundary_ir/repos/python/app/beta.py\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: tests/fixtures/boundary_ir/repos/python/app/beta.py::helper\nsignature text: helper(value: str) -> str\nexports: helper, value\ndependencies: upper\ncontent:\ndef helper(value: str) -> str:\n    return value.upper()"
+        "semantic_text": "language: python\nfile: app/beta.py\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: app/beta.py::helper\nsignature text: helper(value: str) -> str\nexports: helper, value\ndependencies: upper\ncontent:\ndef helper(value: str) -> str:\n    return value.upper()"
       },
-      "node_id": "b4becbb15df979b4932c7a606e0ca359a3cda8fc",
+      "node_id": "1fdf6b6e32fadc81e5f1fbb2361266ae9d3fa009",
       "parent": null,
       "path": "app/beta.py",
       "provenance": {
@@ -795,7 +795,7 @@
         "edge:3f1d3f247d2d7e4d",
         "edge:aa9ebb52708d20b8"
       ],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/python/app/beta.py::helper",
+      "semantic_path": "app/beta.py::helper",
       "signature": "helper(value: str) -> str",
       "span": {
         "byte_end": 55,
@@ -804,7 +804,7 @@
         "start_line": 1
       },
       "symbol": "helper",
-      "symbol_id": "3bc086274fc57df40adcf28ad8d88016fa24a5ca"
+      "symbol_id": "c1cc1e0734796b20059f639e9266f33b833d1885"
     },
     {
       "definition_id": "bcc5782f607322036ce36c5389e40ad8fc121e50",
@@ -826,9 +826,9 @@
         ],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: python\nfile: tests/fixtures/boundary_ir/repos/python/app/alpha.py\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: tests/fixtures/boundary_ir/repos/python/app/alpha.py::helper\nsignature text: helper(value: str) -> str\nexports: helper, value\ndependencies: lower\ncontent:\ndef helper(value: str) -> str:\n    return value.lower()"
+        "semantic_text": "language: python\nfile: app/alpha.py\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: app/alpha.py::helper\nsignature text: helper(value: str) -> str\nexports: helper, value\ndependencies: lower\ncontent:\ndef helper(value: str) -> str:\n    return value.lower()"
       },
-      "node_id": "2f19a554b944833cb15535653d100528a86578f2",
+      "node_id": "c45f63c6998c6541b0a5298630f4d36bdb189ef9",
       "parent": null,
       "path": "app/alpha.py",
       "provenance": {
@@ -840,7 +840,7 @@
         "edge:0612480fc79d07fd",
         "edge:0aeddf939ef8fe99"
       ],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/python/app/alpha.py::helper",
+      "semantic_path": "app/alpha.py::helper",
       "signature": "helper(value: str) -> str",
       "span": {
         "byte_end": 55,
@@ -849,7 +849,7 @@
         "start_line": 1
       },
       "symbol": "helper",
-      "symbol_id": "27f7bff0a7b67b7d6edaf353c57e3553a01d176d"
+      "symbol_id": "c59cb6d857c5a32c74f5be068ef19eaf4730ec4d"
     }
   ],
   "run": {
