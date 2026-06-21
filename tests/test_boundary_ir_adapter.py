@@ -31,7 +31,7 @@ def test_extract_boundary_ir_python_repo_is_deterministic(tmp_path: Path):
         "schema_version",
         "source",
     ]
-    assert first["schema_version"] == "1.0"
+    assert first["schema_version"] == "2.0"
     assert first["files"][0]["path"] == "service.py"
     assert first["metrics"]["files_total"] == 1
     assert first["metrics"]["nodes_total"] >= 2
@@ -47,7 +47,7 @@ def test_extract_boundary_ir_top_level_export_matches_boundary_module(tmp_path: 
     public = extract_boundary_ir_public(tmp_path, "python")
 
     assert public == direct
-    assert public["schema_version"] == "1.0"
+    assert public["schema_version"] == "2.0"
 
 
 def test_extract_boundary_ir_single_file_uses_file_source_kind(tmp_path: Path):

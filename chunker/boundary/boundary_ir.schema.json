@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/ViperJuice/treesitter-chunker/schemas/boundary-ir/1.0.json",
+  "$id": "https://github.com/ViperJuice/treesitter-chunker/schemas/boundary-ir/2.0.json",
   "title": "Boundary IR",
-  "description": "Machine-readable contract for the treesitter-chunker Boundary IR document (schema_version 1.0). Authored against, and CI-validated against, real extract_boundary_ir(..., canonical=True) output (the committed golden snapshots plus a freshly emitted sample). The document-level schema_version is '1.0' for the syntax-only baseline; semantic enrichment uses the additive '1.1' semantic schema version and adds the optional fields marked below. Identity fields (definition_id, node_id, file_id, symbol_id, identity.value) are Tier-2 occurrence fingerprints, not refactor-stable identities -- see docs/agent-interface-readiness.md.",
+  "description": "Machine-readable contract for the treesitter-chunker Boundary IR document (schema_version 2.0). Authored against, and CI-validated against, real extract_boundary_ir(..., canonical=True) output (the committed golden snapshots plus a freshly emitted sample). The document-level schema_version is '2.0' for the syntax-only baseline; semantic enrichment uses the additive '2.1' semantic schema version and adds the optional fields marked below. The 2.x schema_version line is a hard break from 1.x: the canon v1 boundary-IR determinism fix (treesitter-chunker >=3.0.0) changed both ID values and canonical bytes, so a 1.0/1.1 document does NOT validate here and a 2.0/2.1 document does NOT validate against the 1.x schema -- consumers must re-extract and re-index. Identity fields (definition_id, node_id, file_id, symbol_id, identity.value) are Tier-2 occurrence fingerprints, not refactor-stable identities -- see docs/agent-interface-readiness.md.",
   "type": "object",
   "required": [
     "schema_version",
@@ -18,7 +18,8 @@
   "properties": {
     "schema_version": {
       "type": "string",
-      "description": "Boundary IR document schema version. '1.0' for the syntax-only baseline."
+      "enum": ["2.0", "2.1"],
+      "description": "Boundary IR document schema version. '2.0' for the syntax-only baseline; '2.1' for semantic enrichment. 1.x documents (pre-3.0.0 canon) are rejected by this 2.x schema -- consumers must re-extract and re-index."
     },
     "source": {
       "type": "object",

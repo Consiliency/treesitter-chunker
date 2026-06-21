@@ -17,7 +17,7 @@ def test_boundary_command_writes_json_to_stdout(tmp_path: Path):
 
     assert result.exit_code == 0
     data = json.loads(result.output)
-    assert data["schema_version"] == "1.0"
+    assert data["schema_version"] == "2.0"
     assert data["run"]["created_at"] is None
     assert data["run"]["options"]["resolution_mode"] == "strict"
     assert "Boundary IR written" not in result.output
@@ -57,7 +57,7 @@ def test_boundary_command_writes_output_file(tmp_path: Path):
     assert result.exit_code == 0
     assert "Boundary IR written" in result.output
     data = json.loads(output.read_text(encoding="utf-8"))
-    assert data["schema_version"] == "1.0"
+    assert data["schema_version"] == "2.0"
 
 
 def test_boundary_command_quiet_file_output_suppresses_human_text(tmp_path: Path):
@@ -80,7 +80,7 @@ def test_boundary_command_quiet_file_output_suppresses_human_text(tmp_path: Path
 
     assert result.exit_code == 0
     assert result.output == ""
-    assert json.loads(output.read_text(encoding="utf-8"))["schema_version"] == "1.0"
+    assert json.loads(output.read_text(encoding="utf-8"))["schema_version"] == "2.0"
 
 
 def test_existing_chunk_json_command_still_works(tmp_path: Path):

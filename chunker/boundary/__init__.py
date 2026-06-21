@@ -28,8 +28,8 @@ Identity
     - ``select_node_identity`` -- Tier-2 node-identity precedence selection.
 
 Schema + versions
-    - ``BOUNDARY_IR_SCHEMA_VERSION`` (document schema_version, "1.0").
-    - ``BOUNDARY_IR_SEMANTIC_SCHEMA_VERSION`` ("1.1").
+    - ``BOUNDARY_IR_SCHEMA_VERSION`` (document schema_version, "2.0").
+    - ``BOUNDARY_IR_SEMANTIC_SCHEMA_VERSION`` ("2.1").
     - ``BOUNDARY_IR_SCHEMA_PATH`` / ``load_boundary_ir_schema`` -- the published
       machine-readable JSON Schema (``boundary_ir.schema.json``, packaged in the
       wheel) so consumers can validate documents and detect drift.

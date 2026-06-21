@@ -40,7 +40,7 @@ def test_boundary_cli_incremental_stdout_is_parseable_and_stable(tmp_path: Path)
 
     assert cold.exit_code == 0
     assert warm.exit_code == 0
-    assert json.loads(cold.stdout)["schema_version"] == "1.0"
+    assert json.loads(cold.stdout)["schema_version"] == "2.0"
     assert cold.stdout == warm.stdout
 
 

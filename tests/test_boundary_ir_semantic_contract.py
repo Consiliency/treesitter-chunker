@@ -14,7 +14,7 @@ from chunker.boundary.types import DIAGNOSTIC_STAGES
 
 def test_semantic_constants_are_frozen_and_exported():
     assert SEMANTIC_RESOLVER_API_VERSION == "1.0"
-    assert BOUNDARY_IR_SEMANTIC_SCHEMA_VERSION == "1.1"
+    assert BOUNDARY_IR_SEMANTIC_SCHEMA_VERSION == "2.1"
     assert SEMANTIC_EDGE_SOURCES == ("semantic",)
     assert "semantic" in DIAGNOSTIC_STAGES
 

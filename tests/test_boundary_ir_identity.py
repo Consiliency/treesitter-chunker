@@ -22,7 +22,7 @@ def _chunk(**overrides):
 
 
 def test_schema_version_is_frozen():
-    assert BOUNDARY_IR_SCHEMA_VERSION == "1.0"
+    assert BOUNDARY_IR_SCHEMA_VERSION == "2.0"
 
 
 def test_select_node_identity_prefers_definition_id():
