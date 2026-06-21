@@ -50,9 +50,9 @@ def test_canon_vector_fidelity(vector: dict) -> None:
     profile = vector["profile"]
     expected_digest = vector["expected_digest_hex"]
     actual_digest = _canon.digest(value, profile)
-    assert actual_digest == expected_digest, (
-        f"canon digest divergence on vector {_vector_id(vector)!r}."
-    )
+    assert (
+        actual_digest == expected_digest
+    ), f"canon digest divergence on vector {_vector_id(vector)!r}."
 
 
 def test_unicode_db_is_pinned_16() -> None:
