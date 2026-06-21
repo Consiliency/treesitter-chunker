@@ -74,6 +74,8 @@ import copy
 import hashlib
 import os
 
+import pytest
+
 from chunker.boundary import dumps_boundary_ir, extract_boundary_ir
 from chunker.boundary.adapter import _stable_value
 from chunker.boundary.impact import normalize_boundary_path
@@ -150,6 +152,7 @@ def _node_ir(metadata_list_field: str, items: list[str]) -> dict:
 # (1) RED -- false parity on order-significant string lists (BUG-1).
 #     Site: chunker/boundary/serialization.py:33-34 (_canonicalize_value).
 # ---------------------------------------------------------------------------
+@pytest.mark.xfail(strict=True, reason="P0 bug-lock: _canonicalize_value sorts all-string lists (false parity); turns green in P1")
 def test_reordered_params_change_hash():
     """``params=["b","a"]`` and ``params=["a","b"]`` are DIFFERENT logical inputs
     and MUST produce different canonical bytes.
@@ -181,6 +184,7 @@ def test_reordered_params_change_hash():
 # (2) RED -- false parity + silent de-dup on imports (BUG-1 via _stable_value).
 #     Site: chunker/boundary/adapter.py:95-96 (_stable_value).
 # ---------------------------------------------------------------------------
+@pytest.mark.xfail(strict=True, reason="P0 bug-lock: _stable_value sorts+dedups imports, destroying source order; turns green in P1")
 def test_reordered_imports_change_hash():
     """A reordered ``metadata.imports`` list MUST change the canonical bytes.
 
@@ -255,6 +259,7 @@ def test_reordered_candidates_same_hash():
 #     run.root/source.path stored as str(root) (adapter.py:866,899,1151,1184);
 #     all survive canonicalization (serialization.py:79-84).
 # ---------------------------------------------------------------------------
+@pytest.mark.xfail(strict=True, reason="P0 bug-lock: node_id + semantic_text bake the absolute root path; turns green in P1")
 def test_two_roots_same_parity_hash(tmp_path):
     """The SAME snapshot extracted under two DIFFERENT absolute checkout roots
     MUST produce identical PARITY bytes (stability / no false negatives).
@@ -296,6 +301,7 @@ def test_two_roots_same_parity_hash(tmp_path):
 #     normalize_boundary_path (impact.py:11-12) only swaps backslashes -- it does
 #     NOT collapse ./, .., or redundant separators.
 # ---------------------------------------------------------------------------
+@pytest.mark.xfail(strict=True, reason="P0 bug-lock: normalize_boundary_path incomplete (BUG-4), cold vs incremental diverge; turns green in P1")
 def test_cold_vs_incremental_same_bytes(tmp_path, monkeypatch):
     """``incremental=False`` and ``incremental=True`` on identical input MUST
     produce identical canonical bytes.
@@ -364,6 +370,7 @@ def test_cold_vs_incremental_same_bytes(tmp_path, monkeypatch):
 #     file_path=str(path)); file_id/definition_id key on the relative display
 #     path -> within one IR the IDs are mutually inconsistent + non-portable.
 # ---------------------------------------------------------------------------
+@pytest.mark.xfail(strict=True, reason="P0 bug-lock: node_id uses absolute path; turns green in P1")
 def test_node_id_uses_relative_path(tmp_path):
     """A node's ``node_id`` MUST key on the repo-relative path (the same form as
     ``file_id``/``definition_id``), NOT on the absolute caller path.
