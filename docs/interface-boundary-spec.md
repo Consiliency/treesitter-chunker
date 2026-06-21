@@ -78,6 +78,15 @@ When neither structural identity is available, `node.id` falls back to
 This matches the live identity-selection behavior in
 `chunker.boundary.identity.select_node_identity()`.
 
+All three identity sources — `definition_id`, `module + qualified_name`, and
+`node_id` — are **Tier-2 occurrence fingerprints** (deterministic hashes of
+content and/or location), **not** refactor-stable Tier-1 logical identities. They
+change on rename, move, or file-path change, so they identify a snapshot
+occurrence, not a durable logical entity. Rename/move continuity (Tier-1) is owned
+by the consuming orchestrator, not by Boundary IR. See
+`docs/agent-interface-readiness.md` ("Identity model: precedence and
+occurrence-vs-logical") and `idmodel` (`_SPINE.md` S2) for the full model.
+
 ## Canonical JSON
 
 Canonical JSON for the Phase 0 baseline is frozen as:
@@ -96,12 +105,33 @@ The canonical ordering rules are:
 - `edges` sort by `source`, then `target`, then `type`, then `id`.
 - `diagnostics` sort by `path`, then `location.start_line`, then `code`, then
   `id`.
-- `candidates` and other string-ID lists sort lexicographically unless a later
-  additive-compatible revision freezes a field-specific semantic order.
+
+Beyond the four top-level arrays above, exactly three nested **lists** are
+declared set-semantic and are sorted (lexicographically, by their string
+elements) at construction time. This is the complete, frozen allow-list of
+order-insensitive lists:
+
+- `edges[].candidates`
+- `nodes[].relationships`
+- `files[].diagnostics`
+
+In addition, `metrics.failure_buckets` is an object (a `code -> count` map), not
+a list; its keys are emitted in sorted order at construction and are also
+normalized by the lexicographic object-key ordering rule above, so its byte
+representation is independent of insertion order.
+
+**Every other list preserves insertion order.** Reordering any non-allow-listed
+list (for example `params`, `metadata.imports`, `metadata.dependencies`,
+`metadata.exports`) is a different logical value and MUST change the canonical
+bytes. The serializer never content-sniffs a list to decide whether to sort it:
+the only authorized list reorders are the four top-level array sorts and the
+three set-semantic nested-list sorts named above.
 
 This matches the live serializer contract in
 `chunker.boundary.serialization.dumps_boundary_ir()` and
-`canonicalize_boundary_ir()`.
+`canonicalize_boundary_ir()`, which applies the four top-level sorts and the four
+set-semantic sorts and otherwise preserves insertion order via
+`_canonicalize_value`.
 
 ## Compatibility
 

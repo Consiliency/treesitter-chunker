@@ -41,9 +41,69 @@ Reasonable split:
 ### 2) Stable identity primitives
 
 - `CodeChunk` includes `node_id`, `file_id`, `symbol_id`, `qualified_route`, and `definition_id`.
-- `definition_id` is explicitly content-insensitive and derived from structural route, which is exactly the kind of stability you need for ownership boundaries across edits.
+- `definition_id` is content-insensitive (it survives body edits) but is derived
+  from `file_path + language + qualified_route`, so it is an **occurrence
+  fingerprint**, not a durable logical-entity identity: it changes on rename, on
+  move to a different structural location, and on any file-path change. It is a
+  **Tier-2** identity (content/location evidence), not a refactor-stable
+  **Tier-1** identity.
 
-**Implication for ownership model:** You can assign policy to structural identities instead of byte ranges or text diffs.
+**Implication for ownership model:** You can key on these structural fingerprints
+to test whether *this occurrence* of a definition matches a stored snapshot, but
+you cannot rely on them to follow a definition across a rename or move. Durable
+rename/move continuity (Tier-1) must be owned by the consuming orchestrator
+(`spec`), which maintains a correspondence map on top of these Tier-2 IDs. See
+the identity model in `idmodel` (`_SPINE.md` S2).
+
+#### Identity model: precedence and occurrence-vs-logical
+
+All five Boundary-IR identity fields — `definition_id`, `node_id`, `file_id`,
+`symbol_id`, and the composed `module + qualified_name` key — are **Tier-2
+occurrence fingerprints**. Each is a deterministic hash of content and/or
+location; none of them is a refactor-stable Tier-1 logical-entity identity. A
+rename, a move, or a file-path change produces a *different* fingerprint for what
+is logically the same entity. Treat them as evidence that two occurrences are the
+same snapshot, not as proof that two snapshots are the same logical entity.
+
+**Node identity precedence.** `chunker.boundary.identity.select_node_identity()`
+picks `node.id` and records the chosen source in `node.identity.source` in this
+frozen order:
+
+1. `definition_id` (when present on the chunk);
+2. `module + qualified_name` (when both metadata fields are present);
+3. `node_id` (fallback).
+
+This is a precedence among Tier-2 fingerprints — choosing an earlier source does
+not upgrade the result to Tier-1. The same precedence is frozen in
+`docs/interface-boundary-spec.md`.
+
+**How each ID is derived** (see `chunker/types.py`):
+
+- `definition_id = sha1("def:" + file_path + "|" + language + "|" + qualified_route)`.
+  Body-stable, but breaks on rename, move, or file-path change — its own
+  docstring states this, and `tests/test_definition_id.py` locks the behavior in.
+  For anonymous definitions the `qualified_route` element falls back to a
+  line-brittle `"<kind>:anon@<start_line>"` form (`chunker/core.py:562`,
+  `chunker/streaming.py:111`), so inserting a line above an anonymous definition
+  changes its `definition_id`.
+- `node_id = sha1(file_path + "|" + language + "|" + route + "|" + text_hash16(content))`.
+  Content-sensitive. Because the key is `(file_path, language, route,
+  content-hash)` with no positional disambiguator, two sibling nodes that share a
+  parent route and have byte-identical content (e.g. two anonymous siblings with
+  the same body) hash to the **same** `node_id` — a latent collision. Consumers
+  that need to distinguish such siblings must not rely on `node_id` alone.
+- `file_id = sha1("file:" + file_path)` and
+  `symbol_id = sha1("sym:" + language + ":" + file_path + ":" + symbol_name)` are
+  location/name fingerprints with the same Tier-2 caveats.
+
+**Hash-width recommendation (MEDIUM).** All of the above use SHA-1, and
+`compute_text_hash16` (`chunker/types.py:32`) further truncates SHA-1 to 16 hex
+characters (64 bits) before folding it into `node_id`. SHA-1 is collision-prone
+and 64 bits is well within practical collision range for large corpora. The
+recommended content-identity primitive is an **untruncated SHA-256**, which
+aligns with the spine's single-hash decision (`_SPINE.md`). This is a
+content-identity hardening recommendation, not a Phase 0 blocker, but it should
+land with the MAJOR identity revision.
 
 ### 3) Language-agnostic retrieval metadata normalization
 
@@ -96,7 +156,13 @@ There is no built-in gate that:
 Use `treesitter-chunker` as the **front-end extractor dependency**, then add a slim policy service layer:
 
 1. **Ingest** with `chunk_file(..., extract_metadata=True, include_retrieval_metadata=True)` and/or `extract_symbol_graph()`.
-2. **Normalize to ownership IR** using stable structural IDs (`definition_id` preferred, fallback to module+qualified_name).
+2. **Normalize to ownership IR** using the structural fingerprints
+   (`definition_id` preferred, fallback to module+qualified_name). These are
+   Tier-2 occurrence identities (content/location fingerprints), **not**
+   refactor-stable logical identities — the orchestrator owns rename/move
+   continuity on top of them (a Tier-1 correspondence map), since
+   `definition_id` breaks on rename/move (see "Stable identity primitives" above
+   and the identity-precedence notes below).
 3. **Attach policy** via a separate manifest (e.g., `agent_policy.yaml`) mapping agent scopes and allowed edge types.
 4. **Validate edits** by parsing changed files and reconciling changed definitions against policy.
 5. **Fail closed** for unresolved symbol mappings in enforcement mode (log separately for triage).
