@@ -2,7 +2,13 @@
 
 from .adapter import extract_boundary_ir
 from .identity import select_node_identity
-from .serialization import dumps_boundary_ir
+from .serialization import (
+    canonicalize_boundary_ir,
+    canonicalize_for_parity,
+    canonicalize_for_parity_bytes,
+    dumps_boundary_ir,
+    parity_digest,
+)
 from .semantic import SemanticEdge, SemanticResolver, SemanticResolverContext
 from .types import (
     BOUNDARY_CACHE_EXCLUDED_OPTION_FIELDS,
@@ -47,7 +53,11 @@ __all__ = [
     "SemanticResolver",
     "SemanticResolverContext",
     "TIMING_KEYS",
+    "canonicalize_boundary_ir",
+    "canonicalize_for_parity",
+    "canonicalize_for_parity_bytes",
     "dumps_boundary_ir",
     "extract_boundary_ir",
+    "parity_digest",
     "select_node_identity",
 ]
