@@ -140,8 +140,16 @@ def _format_signature_text(signature: object) -> str | None:
     return signature_text
 
 
-def _normalize_text_list(value: object) -> list[str]:
-    """Normalize metadata values into a stable string list."""
+def _normalize_text_list(value: object, *, sort: bool = True) -> list[str]:
+    """Normalize metadata values into a stable string list.
+
+    ``sort=True`` (default) returns a sorted, de-duplicated list for genuinely
+    order-insensitive (set-semantic) fields such as exports/dependencies.
+    ``sort=False`` preserves source order (still de-duplicating, order-stably)
+    for order-significant fields such as imports -- canon S4 forbids reordering
+    an order-significant list, and BUG-1b established imports as order-significant
+    (side-effecting import order can matter). Never sort to mask nondeterminism.
+    """
     if value is None:
         return []
     if isinstance(value, str):
@@ -150,9 +158,8 @@ def _normalize_text_list(value: object) -> list[str]:
         values = [str(item) for item in value if item is not None]
     else:
         values = [str(value)]
-    return sorted(
-        dict.fromkeys(item.strip() for item in values if item and item.strip())
-    )
+    deduped = dict.fromkeys(item.strip() for item in values if item and item.strip())
+    return sorted(deduped) if sort else list(deduped)
 
 
 def _build_semantic_text(
@@ -178,7 +185,11 @@ def _build_semantic_text(
             lines.append(f"{label}: {value}")
 
     for key in ("imports", "exports", "dependencies"):
-        values = _normalize_text_list(retrieval_metadata.get(key))
+        # imports are order-significant (preserve source order); exports and
+        # dependencies are set-semantic (sort). See _normalize_text_list / BUG-1b.
+        values = _normalize_text_list(
+            retrieval_metadata.get(key), sort=(key != "imports")
+        )
         if values:
             lines.append(f"{key}: {', '.join(values)}")
 
@@ -235,7 +246,8 @@ def _build_retrieval_metadata(chunk: CodeChunk) -> dict[str, object]:
         "parent_symbol": parent_symbol,
         "semantic_path": semantic_path,
         "signature_text": _format_signature_text(signature),
-        "imports": _normalize_text_list(metadata.get("imports")),
+        # imports order-significant -> preserve; exports/dependencies set-semantic.
+        "imports": _normalize_text_list(metadata.get("imports"), sort=False),
         "exports": _normalize_text_list(metadata.get("exports")),
         "dependencies": _normalize_text_list(
             metadata.get("dependencies", chunk.dependencies)

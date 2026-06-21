@@ -152,34 +152,24 @@ def _node_ir(metadata_list_field: str, items: list[str]) -> dict:
 # (1) RED -- false parity on order-significant string lists (BUG-1).
 #     Site: chunker/boundary/serialization.py:33-34 (_canonicalize_value).
 # ---------------------------------------------------------------------------
-@pytest.mark.xfail(
-    strict=True,
-    reason="P0 bug-lock: _canonicalize_value sorts all-string lists (false parity); turns green in P1",
-)
 def test_reordered_params_change_hash():
     """``params=["b","a"]`` and ``params=["a","b"]`` are DIFFERENT logical inputs
     and MUST produce different canonical bytes.
 
-    CURRENTLY RED. ``_canonicalize_value`` content-sniffs ("all items strings ->
-    sorted") so both orderings collapse to ``["a","b"]`` -> identical bytes ->
-    FALSE PARITY (a real parameter reorder becomes invisible to a hash check).
-
-    Captured evidence (this tree):
-        _canonicalize_value(["b","a"]) == ["a","b"]
-        IR(params=["a","b"]) bytes ... metadata == {"params":["a","b"]}
-        IR(params=["b","a"]) bytes ... metadata == {"params":["a","b"]}  # collapsed
+    GREEN after P1. ``_canonicalize_value`` no longer content-sniff-sorts
+    all-string lists (canon S4: array order is preserved ALWAYS), so a real
+    parameter reorder is now visible to a hash check (no false parity).
     """
-    # Direct proof of the offending branch (documents the exact mechanism):
-    assert _canonicalize_value(["b", "a"]) == ["a", "b"]  # the bug, isolated
+    # The content-sniff branch is gone: order is preserved verbatim.
+    assert _canonicalize_value(["b", "a"]) == ["b", "a"]
 
     forward = _node_ir("params", ["a", "b"])
     reordered = _node_ir("params", ["b", "a"])
 
-    # Sensitivity property: different order -> different bytes. FAILS today
-    # because both serialize identically (false parity).
+    # Sensitivity property: different order -> different bytes.
     assert _hash(forward) != _hash(reordered), (
-        "FALSE PARITY: reordered params hashed equal -- serialization.py:33-34 "
-        "sorts all-string lists, collapsing ['b','a'] to ['a','b']."
+        "reordered params must hash differently -- the serializer must preserve "
+        "list insertion order (canon S4)."
     )
 
 
@@ -187,37 +177,24 @@ def test_reordered_params_change_hash():
 # (2) RED -- false parity + silent de-dup on imports (BUG-1 via _stable_value).
 #     Site: chunker/boundary/adapter.py:95-96 (_stable_value).
 # ---------------------------------------------------------------------------
-@pytest.mark.xfail(
-    strict=True,
-    reason="P0 bug-lock: _stable_value sorts+dedups imports, destroying source order; turns green in P1",
-)
 def test_reordered_imports_change_hash():
     """A reordered ``metadata.imports`` list MUST change the canonical bytes.
 
-    CURRENTLY RED on two counts. ``_stable_value`` runs
-    ``sorted(dict.fromkeys(...))`` on all-string lists -- it both REORDERS and
-    DE-DUPLICATES -- and it is applied to ``metadata.{dependencies,exports,
-    imports}`` (adapter.py:160-168). So distinct import orderings collapse.
-
-    See the BUG-1b investigation in this module's docstring: ``imports`` is
-    order-significant at the extraction source but is sorted to mask it; P1 must
-    preserve source order.
-
-    Captured evidence (this tree):
-        _stable_value({"imports": ["b","a","b"]}) == {"imports": ["a","b"]}
-        _stable_value({"imports": ["a","b"]})     == {"imports": ["a","b"]}
-        # reorder lost AND the duplicate "b" silently dropped.
+    GREEN after P1. ``_stable_value`` no longer runs ``sorted(dict.fromkeys(...))``
+    on all-string lists -- it preserves list/tuple order verbatim (canon S4) and
+    no longer silently de-duplicates. ``imports`` is order-significant (BUG-1b):
+    a reorder is a different logical value and now hashes differently.
     """
-    # Direct proof of the offending branch, incl. the de-dup (the worse half):
-    assert _stable_value({"imports": ["b", "a", "b"]}) == {"imports": ["a", "b"]}
+    # The all-strings sort+dedup branch is gone: order AND duplicates preserved.
+    assert _stable_value({"imports": ["b", "a", "b"]}) == {"imports": ["b", "a", "b"]}
     assert _stable_value({"imports": ["a", "b"]}) == {"imports": ["a", "b"]}
 
     forward = _node_ir("imports", ["alpha", "beta"])
     reordered = _node_ir("imports", ["beta", "alpha"])
 
     assert _hash(forward) != _hash(reordered), (
-        "FALSE PARITY: reordered imports hashed equal -- adapter.py:95-96 "
-        "_stable_value sorts (and de-dups) all-string lists."
+        "reordered imports must hash differently -- _stable_value and the "
+        "serializer must preserve list order (canon S4; imports order-significant)."
     )
 
 

@@ -29,10 +29,14 @@ def _canonicalize_value(value: Any) -> Any:
     if isinstance(value, dict):
         return {key: _canonicalize_value(value[key]) for key in sorted(value)}
     if isinstance(value, list):
-        canonical = [_canonicalize_value(item) for item in value]
-        if all(isinstance(item, str) for item in canonical):
-            return sorted(canonical)
-        return canonical
+        # canon rule (SPEC.md S4): array insertion order is preserved ALWAYS.
+        # The serializer never content-sniff-sorts lists -- reordering a list is a
+        # different logical value, so an order-significant field (params, imports,
+        # ...) MUST hash differently when reordered (BUG-1). The only authorized
+        # reorders are the explicit, field-keyed set-semantic sorts applied below
+        # in canonicalize_boundary_ir() (top-level files/nodes/edges/diagnostics,
+        # plus candidates / relationships / failure_buckets / file diagnostics).
+        return [_canonicalize_value(item) for item in value]
     return value
 
 
@@ -73,6 +77,24 @@ def canonicalize_boundary_ir(ir: dict[str, Any]) -> dict[str, Any]:
             item.get("id") or "",
         ),
     )
+
+    # Explicit, field-keyed set-semantic sorts (canon S4: only schema-declared
+    # order-insensitive lists may be ordered, and that ordering is the caller's,
+    # done before/at canonicalization -- NOT a content-sniff over arbitrary
+    # string lists). These are the only authorized array reorders besides the
+    # top-level files/nodes/edges/diagnostics sorts above. Every other list
+    # (params, imports, ...) preserves insertion order via _canonicalize_value.
+    for edge in canonical.get("edges", []):
+        if isinstance(edge, dict) and isinstance(edge.get("candidates"), list):
+            edge["candidates"] = sorted(edge["candidates"])
+    for node in canonical.get("nodes", []):
+        if isinstance(node, dict) and isinstance(node.get("relationships"), list):
+            node["relationships"] = sorted(node["relationships"])
+    for file_record in canonical.get("files", []):
+        if isinstance(file_record, dict) and isinstance(
+            file_record.get("diagnostics"), list
+        ):
+            file_record["diagnostics"] = sorted(file_record["diagnostics"])
     return canonical
 
 

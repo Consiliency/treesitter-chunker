@@ -90,11 +90,17 @@ def _stable_hash(*values: object) -> str:
 def _stable_value(value: Any) -> Any:
     if isinstance(value, dict):
         return {str(key): _stable_value(value[key]) for key in sorted(value)}
-    if isinstance(value, list | tuple | set):
-        values = [_stable_value(item) for item in value]
-        if all(isinstance(item, str) for item in values):
-            return sorted(dict.fromkeys(values))
-        return values
+    if isinstance(value, set):
+        # A set is genuinely order-insensitive AND has no source order to
+        # preserve, so it is the one collection we must order deterministically
+        # here. Stringify-sort to give canon a stable insertion order.
+        return sorted(_stable_value(item) for item in value)
+    if isinstance(value, list | tuple):
+        # canon S4: list/tuple order is preserved ALWAYS. NEVER content-sniff
+        # all-string lists into sorted(dict.fromkeys(...)) -- that destroyed
+        # order-significant fields (imports) and silently de-duplicated (BUG-1).
+        # Order-insensitive fields are sorted at construction / in the serializer.
+        return [_stable_value(item) for item in value]
     if isinstance(value, str | int | float | bool) or value is None:
         return value
     return str(value)
