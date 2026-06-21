@@ -130,9 +130,9 @@ three set-semantic nested-list sorts named above.
 
 This matches the live serializer contract in
 `chunker.boundary.serialization.dumps_boundary_ir()` and
-`canonicalize_boundary_ir()`, which applies the four top-level sorts and the four
-set-semantic sorts and otherwise preserves insertion order via
-`_canonicalize_value`.
+`canonicalize_boundary_ir()`, which applies the four top-level array sorts and
+the three set-semantic nested-list sorts and otherwise preserves insertion order
+via `_canonicalize_value`.
 
 ## Compatibility
 
