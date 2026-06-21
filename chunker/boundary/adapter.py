@@ -128,7 +128,10 @@ def _boundary_kind(chunk: CodeChunk, metadata: dict[str, Any]) -> str:
 
 
 def _ensure_definition_id(chunk: CodeChunk, display_path: str) -> None:
-    if chunk.definition_id or not chunk.qualified_route:
+    # Always (re)compute from the canonical repo-relative display_path (BUG-3):
+    # the chunk may already carry a definition_id computed from a different
+    # (e.g. absolute) path, so do NOT early-return when it is already set.
+    if not chunk.qualified_route:
         return
     chunk.definition_id = compute_definition_id(
         display_path,
@@ -658,6 +661,7 @@ def _extract_file_cache_record(
                 detected_language,
                 extract_metadata=True,
                 include_retrieval_metadata=True,
+                identity_path=display_path,
             )
             _add_duration(timing_spans, "parse_ms", started_at)
         except Exception as exc:  # pragma: no cover - parser dependent
@@ -1011,7 +1015,9 @@ def extract_boundary_ir(
     serialization_failures = 0
 
     for file_path in files:
-        display_path = _display_path(file_path, root)
+        # BUG-4: normalize on the cold path too, so cold and incremental funnel
+        # every path through the same total normalization before any ID.
+        display_path = normalize_boundary_path(_display_path(file_path, root))
         detected_language = _detect_language(file_path, language)
         file_id = compute_file_id(display_path)
         file_diagnostics: list[str] = []
@@ -1025,6 +1031,7 @@ def extract_boundary_ir(
                     detected_language,
                     extract_metadata=True,
                     include_retrieval_metadata=True,
+                    identity_path=display_path,
                 )
                 _add_duration(timing_spans, "parse_ms", started_at)
             except Exception as exc:  # pragma: no cover - parser dependent

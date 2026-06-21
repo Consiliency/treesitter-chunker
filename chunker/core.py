@@ -1020,20 +1020,28 @@ def chunk_file(
     language: str,
     extract_metadata: bool = True,
     include_retrieval_metadata: bool = False,
+    identity_path: str | None = None,
 ) -> list[CodeChunk]:
     """Parse the file and return a list of `CodeChunk`.
 
     Args:
-        path: Path to the file to chunk
+        path: Path to the file to chunk (used to READ the file).
         language: Programming language
         extract_metadata: Whether to extract metadata (default: True)
         include_retrieval_metadata: Whether to add retrieval-oriented metadata
+        identity_path: Path baked into all chunk IDs (node_id/file_id/symbol_id/
+            chunk_id), parent links, and semantic_text. Defaults to ``str(path)``
+            to preserve legacy behavior; the Boundary adapter passes the
+            normalized repo-relative path so IDs are checkout-root independent
+            (BUG-3). The read path and the identity path are intentionally
+            decoupled.
 
     Returns:
         List of CodeChunk objects with optional metadata
     """
     # Read file contents with robust decoding
     p = Path(path)
+    identity = identity_path if identity_path is not None else str(path)
     try:
         src = p.read_text(encoding="utf-8")
     except UnicodeDecodeError:
@@ -1059,8 +1067,9 @@ def chunk_file(
             )
         all_chunks: list[CodeChunk] = []
         for code, start, end in snippets:
-            # Derive pseudo file name for chunk id stability
-            pseudo_path = f"{p}:{start}-{end}"
+            # Derive pseudo file name for chunk id stability (keyed on the
+            # identity path so IDs are checkout-root independent).
+            pseudo_path = f"{identity}:{start}-{end}"
             all_chunks.extend(
                 chunk_text(
                     code,
@@ -1075,7 +1084,7 @@ def chunk_file(
     return chunk_text(
         src,
         language,
-        str(path),
+        identity,
         extract_metadata=extract_metadata,
         include_retrieval_metadata=include_retrieval_metadata,
     )

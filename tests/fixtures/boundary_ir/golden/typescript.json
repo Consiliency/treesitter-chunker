@@ -649,10 +649,10 @@
         ],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: typescript\nfile: tests/fixtures/boundary_ir/repos/typescript/format.ts\nkind: interface\nsymbol: Formatter\nqualified name: Formatter\nsemantic path: tests/fixtures/boundary_ir/repos/typescript/format.ts::Formatter\nexports: Formatter\ndependencies: Formatter, value\ncontent:\ninterface Formatter {\n  render(value: string): string;\n}"
+        "semantic_text": "language: typescript\nfile: format.ts\nkind: interface\nsymbol: Formatter\nqualified name: Formatter\nsemantic path: format.ts::Formatter\nexports: Formatter\ndependencies: Formatter, value\ncontent:\ninterface Formatter {\n  render(value: string): string;\n}"
       },
-      "node_id": "238c4c1492bc3a2aac021e800ba593ca44a30277",
-      "parent": "684143484f00207d265ee2ec796339e4a20038fd",
+      "node_id": "6a664e15701e96fed3e1e6272edbed693402291a",
+      "parent": "679d7b11e5e4f043797f26bed8abfd8ef0b14550",
       "path": "format.ts",
       "provenance": {
         "extractor": "chunk_file",
@@ -662,7 +662,7 @@
       "relationships": [
         "edge:b56face9b188cb68"
       ],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/typescript/format.ts::Formatter",
+      "semantic_path": "format.ts::Formatter",
       "signature": null,
       "span": {
         "byte_end": 63,
@@ -671,7 +671,7 @@
         "start_line": 1
       },
       "symbol": "Formatter",
-      "symbol_id": "d9bca8ba28ab0a5dd7ff4ee2b824f0d160386e1e"
+      "symbol_id": "1e138db7afc4edb494e8539ca6deb27b78c81255"
     },
     {
       "definition_id": "300f24d511ea9337e2f0d1dd43c03236cfc30535",
@@ -691,9 +691,9 @@
         "exports": [],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: typescript\nfile: tests/fixtures/boundary_ir/repos/typescript/format.ts\nkind: export_statement\nsemantic path: tests/fixtures/boundary_ir/repos/typescript/format.ts\ndependencies: Formatter, value\ncontent:\nexport interface Formatter {\n  render(value: string): string;\n}"
+        "semantic_text": "language: typescript\nfile: format.ts\nkind: export_statement\nsemantic path: format.ts\ndependencies: Formatter, value\ncontent:\nexport interface Formatter {\n  render(value: string): string;\n}"
       },
-      "node_id": "684143484f00207d265ee2ec796339e4a20038fd",
+      "node_id": "679d7b11e5e4f043797f26bed8abfd8ef0b14550",
       "parent": null,
       "path": "format.ts",
       "provenance": {
@@ -702,7 +702,7 @@
       },
       "qualified_name": null,
       "relationships": [],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/typescript/format.ts",
+      "semantic_path": "format.ts",
       "signature": null,
       "span": {
         "byte_end": 63,
@@ -733,9 +733,9 @@
           "{ Formatter }"
         ],
         "parent_symbol": null,
-        "semantic_text": "language: typescript\nfile: tests/fixtures/boundary_ir/repos/typescript/service.ts\nkind: import_statement\nsemantic path: tests/fixtures/boundary_ir/repos/typescript/service.ts\nimports: import type { Formatter } from './format';, { Formatter }\ndependencies: Formatter\ncontent:\nimport type { Formatter } from './format';"
+        "semantic_text": "language: typescript\nfile: service.ts\nkind: import_statement\nsemantic path: service.ts\nimports: import type { Formatter } from './format';, { Formatter }\ndependencies: Formatter\ncontent:\nimport type { Formatter } from './format';"
       },
-      "node_id": "eeeb1aed3f4c0f157d7ebb1d15c5f12645657c7c",
+      "node_id": "f66de88e5a1936d0c68d64ec4a79e6c9d16b15b8",
       "parent": null,
       "path": "service.ts",
       "provenance": {
@@ -744,7 +744,7 @@
       },
       "qualified_name": null,
       "relationships": [],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/typescript/service.ts",
+      "semantic_path": "service.ts",
       "signature": null,
       "span": {
         "byte_end": 81,
@@ -774,10 +774,10 @@
         ],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: typescript\nfile: tests/fixtures/boundary_ir/repos/typescript/beta.ts\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: tests/fixtures/boundary_ir/repos/typescript/beta.ts::helper\nsignature text: helper(value: string) -> string\nexports: helper\ndependencies: value\ncontent:\nfunction helper(value: string): string {\n  return value.toUpperCase();\n}"
+        "semantic_text": "language: typescript\nfile: beta.ts\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: beta.ts::helper\nsignature text: helper(value: string) -> string\nexports: helper\ndependencies: value\ncontent:\nfunction helper(value: string): string {\n  return value.toUpperCase();\n}"
       },
-      "node_id": "b48860251b799f747aed0a0bbabfe0efc318b4db",
-      "parent": "facaeb3115646069680ec332a144d88d93c3b196",
+      "node_id": "825b2d0e001862de7ab76aefed0fb94d0302f81e",
+      "parent": "06e611699402a47a5531cc1db21529f8e6081992",
       "path": "beta.ts",
       "provenance": {
         "extractor": "chunk_file",
@@ -788,7 +788,7 @@
         "edge:24da3f3f0e92cb97",
         "edge:405e6a506b2ed3b5"
       ],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/typescript/beta.ts::helper",
+      "semantic_path": "beta.ts::helper",
       "signature": "helper(value: string) -> string",
       "span": {
         "byte_end": 79,
@@ -797,7 +797,7 @@
         "start_line": 1
       },
       "symbol": "helper",
-      "symbol_id": "3cc3973a64858dd5368bcf9cc62d463710b62301"
+      "symbol_id": "41ab513915d72fa8507790cce1e366d6330a5a95"
     },
     {
       "definition_id": "3be965d6638f473ebcc93e819b6749480a9e160c",
@@ -818,9 +818,9 @@
         ],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: typescript\nfile: tests/fixtures/boundary_ir/repos/typescript/beta.ts\nkind: export_statement\nsemantic path: tests/fixtures/boundary_ir/repos/typescript/beta.ts\nexports: helper\ndependencies: value\ncontent:\nexport function helper(value: string): string {\n  return value.toUpperCase();\n}"
+        "semantic_text": "language: typescript\nfile: beta.ts\nkind: export_statement\nsemantic path: beta.ts\nexports: helper\ndependencies: value\ncontent:\nexport function helper(value: string): string {\n  return value.toUpperCase();\n}"
       },
-      "node_id": "facaeb3115646069680ec332a144d88d93c3b196",
+      "node_id": "06e611699402a47a5531cc1db21529f8e6081992",
       "parent": null,
       "path": "beta.ts",
       "provenance": {
@@ -829,7 +829,7 @@
       },
       "qualified_name": null,
       "relationships": [],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/typescript/beta.ts",
+      "semantic_path": "beta.ts",
       "signature": null,
       "span": {
         "byte_end": 79,
@@ -859,10 +859,10 @@
         ],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: typescript\nfile: tests/fixtures/boundary_ir/repos/typescript/format.ts\nkind: function\nsymbol: formatName\nqualified name: formatName\nsemantic path: tests/fixtures/boundary_ir/repos/typescript/format.ts::formatName\nsignature text: formatName(value: string) -> string\nexports: formatName\ndependencies: value\ncontent:\nfunction formatName(value: string): string {\n  return value.trim();\n}"
+        "semantic_text": "language: typescript\nfile: format.ts\nkind: function\nsymbol: formatName\nqualified name: formatName\nsemantic path: format.ts::formatName\nsignature text: formatName(value: string) -> string\nexports: formatName\ndependencies: value\ncontent:\nfunction formatName(value: string): string {\n  return value.trim();\n}"
       },
-      "node_id": "a2525ef5e39a2671a3024d281045a4083e2e2920",
-      "parent": "14b46336878e2ead68fc6c33adfb8c50a87d4f41",
+      "node_id": "a9a79bcaf2e61c01d187d2802314ca10307eb87a",
+      "parent": "99b0435475b7e790a4e9c234374aa50cc88fe4e0",
       "path": "format.ts",
       "provenance": {
         "extractor": "chunk_file",
@@ -873,7 +873,7 @@
         "edge:83a1c049e249274f",
         "edge:87ab3daa177569e4"
       ],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/typescript/format.ts::formatName",
+      "semantic_path": "format.ts::formatName",
       "signature": "formatName(value: string) -> string",
       "span": {
         "byte_end": 141,
@@ -882,7 +882,7 @@
         "start_line": 5
       },
       "symbol": "formatName",
-      "symbol_id": "3bf7a8f4290ef6f6ae990b2468beba981049c15e"
+      "symbol_id": "00d2ad772e8e030b5e19e6d71f96ea775c09757d"
     },
     {
       "definition_id": "5c480181dd47eb87dfa3b365d0a727d9a86005cc",
@@ -904,10 +904,10 @@
         "exports": [],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: typescript\nfile: tests/fixtures/boundary_ir/repos/typescript/service.ts\nkind: class\nsymbol: Renderer\nqualified name: Renderer\nsemantic path: tests/fixtures/boundary_ir/repos/typescript/service.ts::Renderer\ndependencies: Formatter, Renderer, formatName, value\ncontent:\nclass Renderer implements Formatter {\n  render(value: string): string {\n    return formatName(value);\n  }\n}"
+        "semantic_text": "language: typescript\nfile: service.ts\nkind: class\nsymbol: Renderer\nqualified name: Renderer\nsemantic path: service.ts::Renderer\ndependencies: Formatter, Renderer, formatName, value\ncontent:\nclass Renderer implements Formatter {\n  render(value: string): string {\n    return formatName(value);\n  }\n}"
       },
-      "node_id": "839b492410f06baeab0894061a60e760e97dfd83",
-      "parent": "d3aa11f82bfc443f54849d087f31be38d7280d3c",
+      "node_id": "2b7844da3a7b6cefc91369f6207c87866eddda6f",
+      "parent": "5537a2a537896436b04ec5b32421d7ce7a976bac",
       "path": "service.ts",
       "provenance": {
         "extractor": "chunk_file",
@@ -920,7 +920,7 @@
         "edge:1fb97e4a31ce4359",
         "edge:6644f60a5e273567"
       ],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/typescript/service.ts::Renderer",
+      "semantic_path": "service.ts::Renderer",
       "signature": null,
       "span": {
         "byte_end": 197,
@@ -929,7 +929,7 @@
         "start_line": 4
       },
       "symbol": "Renderer",
-      "symbol_id": "470cb0b070dc4ae6d47d5b11beaccea4cbec474f"
+      "symbol_id": "6acefe05731d0e61dc084a56741188cfea13fe1f"
     },
     {
       "definition_id": "7a25a07906ad66111659f05d4414846605a357e7",
@@ -951,10 +951,10 @@
         ],
         "imports": [],
         "parent_symbol": "Renderer",
-        "semantic_text": "language: typescript\nfile: tests/fixtures/boundary_ir/repos/typescript/service.ts\nkind: method\nsymbol: render\nqualified name: Renderer.render\nparent symbol: Renderer\nsemantic path: tests/fixtures/boundary_ir/repos/typescript/service.ts::Renderer.render\nsignature text: render(value: string) -> string\nexports: render\ndependencies: formatName, value\ncontent:\nrender(value: string): string {\n    return formatName(value);\n  }"
+        "semantic_text": "language: typescript\nfile: service.ts\nkind: method\nsymbol: render\nqualified name: Renderer.render\nparent symbol: Renderer\nsemantic path: service.ts::Renderer.render\nsignature text: render(value: string) -> string\nexports: render\ndependencies: formatName, value\ncontent:\nrender(value: string): string {\n    return formatName(value);\n  }"
       },
-      "node_id": "39989bdce346334adbec8303390bf21c3d12800c",
-      "parent": "839b492410f06baeab0894061a60e760e97dfd83",
+      "node_id": "87a143587e2759db926b7072e0c96b309cc842e5",
+      "parent": "2b7844da3a7b6cefc91369f6207c87866eddda6f",
       "path": "service.ts",
       "provenance": {
         "extractor": "chunk_file",
@@ -966,7 +966,7 @@
         "edge:3f2d65f324966438",
         "edge:e05b2e490a2ab53d"
       ],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/typescript/service.ts::Renderer.render",
+      "semantic_path": "service.ts::Renderer.render",
       "signature": "render(value: string) -> string",
       "span": {
         "byte_end": 195,
@@ -975,7 +975,7 @@
         "start_line": 5
       },
       "symbol": "render",
-      "symbol_id": "ff85493be6564ba4af5892ea52bc5b32e0722501"
+      "symbol_id": "0ee42e1dc72339752543cf2fe83802e5ed6de432"
     },
     {
       "definition_id": "8e7396d6bec9475cffe0bbe3165ce72d7cd5418a",
@@ -996,9 +996,9 @@
         ],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: typescript\nfile: tests/fixtures/boundary_ir/repos/typescript/alpha.ts\nkind: export_statement\nsemantic path: tests/fixtures/boundary_ir/repos/typescript/alpha.ts\nexports: helper\ndependencies: value\ncontent:\nexport function helper(value: string): string {\n  return value.toLowerCase();\n}"
+        "semantic_text": "language: typescript\nfile: alpha.ts\nkind: export_statement\nsemantic path: alpha.ts\nexports: helper\ndependencies: value\ncontent:\nexport function helper(value: string): string {\n  return value.toLowerCase();\n}"
       },
-      "node_id": "39271ec75a549cbd6662ef0597cf393813c4d10c",
+      "node_id": "d749e3742ec7aebabc5c31d3a78df92aa1be2766",
       "parent": null,
       "path": "alpha.ts",
       "provenance": {
@@ -1007,7 +1007,7 @@
       },
       "qualified_name": null,
       "relationships": [],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/typescript/alpha.ts",
+      "semantic_path": "alpha.ts",
       "signature": null,
       "span": {
         "byte_end": 79,
@@ -1040,10 +1040,10 @@
         ],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: typescript\nfile: tests/fixtures/boundary_ir/repos/typescript/service.ts\nkind: function\nsymbol: run\nqualified name: run\nsemantic path: tests/fixtures/boundary_ir/repos/typescript/service.ts::run\nsignature text: run(value: string) -> string\nexports: run\ndependencies: formatName, helper, missingCall, value\ncontent:\nfunction run(value: string): string {\n  const cleaned = formatName(value);\n  const duplicate = helper(cleaned);\n  return missingCall(duplicate);\n}"
+        "semantic_text": "language: typescript\nfile: service.ts\nkind: function\nsymbol: run\nqualified name: run\nsemantic path: service.ts::run\nsignature text: run(value: string) -> string\nexports: run\ndependencies: formatName, helper, missingCall, value\ncontent:\nfunction run(value: string): string {\n  const cleaned = formatName(value);\n  const duplicate = helper(cleaned);\n  return missingCall(duplicate);\n}"
       },
-      "node_id": "2e7d34a3db0c2e27475afdbc3968eb094ce15ef6",
-      "parent": "00157bd9693b01de427d99279ae8fb2a37a7f470",
+      "node_id": "8c2786f53f96d651d376844356f0253d0b13f118",
+      "parent": "76383a50628f366dd3136bf6b0e8de1a27720bd0",
       "path": "service.ts",
       "provenance": {
         "extractor": "chunk_file",
@@ -1059,7 +1059,7 @@
         "edge:f69393eaeb31d904",
         "edge:fa49b2d630eb244a"
       ],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/typescript/service.ts::run",
+      "semantic_path": "service.ts::run",
       "signature": "run(value: string) -> string",
       "span": {
         "byte_end": 352,
@@ -1068,7 +1068,7 @@
         "start_line": 10
       },
       "symbol": "run",
-      "symbol_id": "db865db7200d0d0a5c1b60cb686de4d2ba5fa9ca"
+      "symbol_id": "d69adde6fb2260b23d5c623709f8de5315dbc901"
     },
     {
       "definition_id": "ae7d4305baeb6e87e8f3fd6e9eb335216aad45fe",
@@ -1088,10 +1088,10 @@
         "exports": [],
         "imports": [],
         "parent_symbol": "run",
-        "semantic_text": "language: typescript\nfile: tests/fixtures/boundary_ir/repos/typescript/service.ts\nkind: variable_declarator\nsymbol: duplicate\nqualified name: run.duplicate\nparent symbol: run\nsemantic path: tests/fixtures/boundary_ir/repos/typescript/service.ts::run.duplicate\ndependencies: cleaned, helper\ncontent:\nduplicate = helper(cleaned)"
+        "semantic_text": "language: typescript\nfile: service.ts\nkind: variable_declarator\nsymbol: duplicate\nqualified name: run.duplicate\nparent symbol: run\nsemantic path: service.ts::run.duplicate\ndependencies: cleaned, helper\ncontent:\nduplicate = helper(cleaned)"
       },
-      "node_id": "6268dac5e7757000c855c04a7a0e1bc0197d4bd7",
-      "parent": "2e7d34a3db0c2e27475afdbc3968eb094ce15ef6",
+      "node_id": "cfddf23437e21252badc21378b2be74e053ca6bd",
+      "parent": "8c2786f53f96d651d376844356f0253d0b13f118",
       "path": "service.ts",
       "provenance": {
         "extractor": "chunk_file",
@@ -1099,7 +1099,7 @@
       },
       "qualified_name": "run.duplicate",
       "relationships": [],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/typescript/service.ts::run.duplicate",
+      "semantic_path": "service.ts::run.duplicate",
       "signature": null,
       "span": {
         "byte_end": 316,
@@ -1108,7 +1108,7 @@
         "start_line": 12
       },
       "symbol": "duplicate",
-      "symbol_id": "925e93582f895bd8c9255120224b6de8ebf586cb"
+      "symbol_id": "3a4bc5a49520e1a9c13c1e7437bc3affd9f19fec"
     },
     {
       "definition_id": "b62589f30f88c80902a6a346e174807a80fadbdd",
@@ -1129,9 +1129,9 @@
         ],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: typescript\nfile: tests/fixtures/boundary_ir/repos/typescript/format.ts\nkind: export_statement\nsemantic path: tests/fixtures/boundary_ir/repos/typescript/format.ts\nexports: formatName\ndependencies: value\ncontent:\nexport function formatName(value: string): string {\n  return value.trim();\n}"
+        "semantic_text": "language: typescript\nfile: format.ts\nkind: export_statement\nsemantic path: format.ts\nexports: formatName\ndependencies: value\ncontent:\nexport function formatName(value: string): string {\n  return value.trim();\n}"
       },
-      "node_id": "14b46336878e2ead68fc6c33adfb8c50a87d4f41",
+      "node_id": "99b0435475b7e790a4e9c234374aa50cc88fe4e0",
       "parent": null,
       "path": "format.ts",
       "provenance": {
@@ -1140,7 +1140,7 @@
       },
       "qualified_name": null,
       "relationships": [],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/typescript/format.ts",
+      "semantic_path": "format.ts",
       "signature": null,
       "span": {
         "byte_end": 141,
@@ -1168,10 +1168,10 @@
         "exports": [],
         "imports": [],
         "parent_symbol": "Formatter",
-        "semantic_text": "language: typescript\nfile: tests/fixtures/boundary_ir/repos/typescript/format.ts\nkind: method\nsymbol: render\nqualified name: Formatter.render\nparent symbol: Formatter\nsemantic path: tests/fixtures/boundary_ir/repos/typescript/format.ts::Formatter.render\ndependencies: value\ncontent:\nrender(value: string): string"
+        "semantic_text": "language: typescript\nfile: format.ts\nkind: method\nsymbol: render\nqualified name: Formatter.render\nparent symbol: Formatter\nsemantic path: format.ts::Formatter.render\ndependencies: value\ncontent:\nrender(value: string): string"
       },
-      "node_id": "a7995e979fe35153ea7d49bbf8e70fdb6f40b68b",
-      "parent": "238c4c1492bc3a2aac021e800ba593ca44a30277",
+      "node_id": "29f0d8415d3edde61282805ce22c46db9db52bc4",
+      "parent": "6a664e15701e96fed3e1e6272edbed693402291a",
       "path": "format.ts",
       "provenance": {
         "extractor": "chunk_file",
@@ -1181,7 +1181,7 @@
       "relationships": [
         "edge:024a39166f1dcccd"
       ],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/typescript/format.ts::Formatter.render",
+      "semantic_path": "format.ts::Formatter.render",
       "signature": null,
       "span": {
         "byte_end": 60,
@@ -1190,7 +1190,7 @@
         "start_line": 2
       },
       "symbol": "render",
-      "symbol_id": "4dc3e86db5eef2c898b853564aa7c9800c6c39e6"
+      "symbol_id": "d11e1eeaab64839fef8da081d4356f437fc9cdbb"
     },
     {
       "definition_id": "cf491cce00b6d9dddf5651d64712a96ba7a575b1",
@@ -1210,10 +1210,10 @@
         "exports": [],
         "imports": [],
         "parent_symbol": "run",
-        "semantic_text": "language: typescript\nfile: tests/fixtures/boundary_ir/repos/typescript/service.ts\nkind: variable_declarator\nsymbol: cleaned\nqualified name: run.cleaned\nparent symbol: run\nsemantic path: tests/fixtures/boundary_ir/repos/typescript/service.ts::run.cleaned\ndependencies: formatName, value\ncontent:\ncleaned = formatName(value)"
+        "semantic_text": "language: typescript\nfile: service.ts\nkind: variable_declarator\nsymbol: cleaned\nqualified name: run.cleaned\nparent symbol: run\nsemantic path: service.ts::run.cleaned\ndependencies: formatName, value\ncontent:\ncleaned = formatName(value)"
       },
-      "node_id": "f4ff21610e12c954c88f9bf34b0090187b995cc1",
-      "parent": "2e7d34a3db0c2e27475afdbc3968eb094ce15ef6",
+      "node_id": "aea4108f6bd076b468a0491f39e1496e3a1a1679",
+      "parent": "8c2786f53f96d651d376844356f0253d0b13f118",
       "path": "service.ts",
       "provenance": {
         "extractor": "chunk_file",
@@ -1221,7 +1221,7 @@
       },
       "qualified_name": "run.cleaned",
       "relationships": [],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/typescript/service.ts::run.cleaned",
+      "semantic_path": "service.ts::run.cleaned",
       "signature": null,
       "span": {
         "byte_end": 279,
@@ -1230,7 +1230,7 @@
         "start_line": 11
       },
       "symbol": "cleaned",
-      "symbol_id": "6a0abd55ae61d6f5f134fdd6b776c55561b2b18e"
+      "symbol_id": "31feb4bda94d5410f7ae0e79c25a9cf02d432f5d"
     },
     {
       "definition_id": "d30b3d9e8b2c68aacf780d9c285fd0ef61cadf6a",
@@ -1251,10 +1251,10 @@
         ],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: typescript\nfile: tests/fixtures/boundary_ir/repos/typescript/alpha.ts\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: tests/fixtures/boundary_ir/repos/typescript/alpha.ts::helper\nsignature text: helper(value: string) -> string\nexports: helper\ndependencies: value\ncontent:\nfunction helper(value: string): string {\n  return value.toLowerCase();\n}"
+        "semantic_text": "language: typescript\nfile: alpha.ts\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: alpha.ts::helper\nsignature text: helper(value: string) -> string\nexports: helper\ndependencies: value\ncontent:\nfunction helper(value: string): string {\n  return value.toLowerCase();\n}"
       },
-      "node_id": "8e2ab2d1c69688990b0550f80871d1553c51ce9a",
-      "parent": "39271ec75a549cbd6662ef0597cf393813c4d10c",
+      "node_id": "f8c0b614df1921dfd1df602f1e6cf09ecf1680dc",
+      "parent": "d749e3742ec7aebabc5c31d3a78df92aa1be2766",
       "path": "alpha.ts",
       "provenance": {
         "extractor": "chunk_file",
@@ -1265,7 +1265,7 @@
         "edge:af460caf7d857ac3",
         "edge:fbd7256751a1592e"
       ],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/typescript/alpha.ts::helper",
+      "semantic_path": "alpha.ts::helper",
       "signature": "helper(value: string) -> string",
       "span": {
         "byte_end": 79,
@@ -1274,7 +1274,7 @@
         "start_line": 1
       },
       "symbol": "helper",
-      "symbol_id": "8ea3d9f72eaf5c5a7bd15cf2998ee564262905d6"
+      "symbol_id": "01f1f0aa9a917286091acf8f2c534bdf554969a9"
     },
     {
       "definition_id": "f8193d9b9ffa7361233822bc9e64ae508f2a1789",
@@ -1296,9 +1296,9 @@
           "{ formatName }"
         ],
         "parent_symbol": null,
-        "semantic_text": "language: typescript\nfile: tests/fixtures/boundary_ir/repos/typescript/service.ts\nkind: import_statement\nsemantic path: tests/fixtures/boundary_ir/repos/typescript/service.ts\nimports: import { formatName } from './format';, { formatName }\ndependencies: formatName\ncontent:\nimport { formatName } from './format';"
+        "semantic_text": "language: typescript\nfile: service.ts\nkind: import_statement\nsemantic path: service.ts\nimports: import { formatName } from './format';, { formatName }\ndependencies: formatName\ncontent:\nimport { formatName } from './format';"
       },
-      "node_id": "b55f7753c0cf1f59b0a87880e89d86ad5cbd6260",
+      "node_id": "4567799234eafbc419007ba1ca344c765f40e8e2",
       "parent": null,
       "path": "service.ts",
       "provenance": {
@@ -1307,7 +1307,7 @@
       },
       "qualified_name": null,
       "relationships": [],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/typescript/service.ts",
+      "semantic_path": "service.ts",
       "signature": null,
       "span": {
         "byte_end": 38,
@@ -1338,9 +1338,9 @@
         "exports": [],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: typescript\nfile: tests/fixtures/boundary_ir/repos/typescript/service.ts\nkind: export_statement\nsemantic path: tests/fixtures/boundary_ir/repos/typescript/service.ts\ndependencies: Formatter, Renderer, formatName, value\ncontent:\nexport class Renderer implements Formatter {\n  render(value: string): string {\n    return formatName(value);\n  }\n}"
+        "semantic_text": "language: typescript\nfile: service.ts\nkind: export_statement\nsemantic path: service.ts\ndependencies: Formatter, Renderer, formatName, value\ncontent:\nexport class Renderer implements Formatter {\n  render(value: string): string {\n    return formatName(value);\n  }\n}"
       },
-      "node_id": "d3aa11f82bfc443f54849d087f31be38d7280d3c",
+      "node_id": "5537a2a537896436b04ec5b32421d7ce7a976bac",
       "parent": null,
       "path": "service.ts",
       "provenance": {
@@ -1349,7 +1349,7 @@
       },
       "qualified_name": null,
       "relationships": [],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/typescript/service.ts",
+      "semantic_path": "service.ts",
       "signature": null,
       "span": {
         "byte_end": 197,
@@ -1382,9 +1382,9 @@
         ],
         "imports": [],
         "parent_symbol": null,
-        "semantic_text": "language: typescript\nfile: tests/fixtures/boundary_ir/repos/typescript/service.ts\nkind: export_statement\nsemantic path: tests/fixtures/boundary_ir/repos/typescript/service.ts\nexports: run\ndependencies: formatName, helper, missingCall, value\ncontent:\nexport function run(value: string): string {\n  const cleaned = formatName(value);\n  const duplicate = helper(cleaned);\n  return missingCall(duplicate);\n}"
+        "semantic_text": "language: typescript\nfile: service.ts\nkind: export_statement\nsemantic path: service.ts\nexports: run\ndependencies: formatName, helper, missingCall, value\ncontent:\nexport function run(value: string): string {\n  const cleaned = formatName(value);\n  const duplicate = helper(cleaned);\n  return missingCall(duplicate);\n}"
       },
-      "node_id": "00157bd9693b01de427d99279ae8fb2a37a7f470",
+      "node_id": "76383a50628f366dd3136bf6b0e8de1a27720bd0",
       "parent": null,
       "path": "service.ts",
       "provenance": {
@@ -1393,7 +1393,7 @@
       },
       "qualified_name": null,
       "relationships": [],
-      "semantic_path": "tests/fixtures/boundary_ir/repos/typescript/service.ts",
+      "semantic_path": "service.ts",
       "signature": null,
       "span": {
         "byte_end": 352,

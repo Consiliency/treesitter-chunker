@@ -242,27 +242,14 @@ def test_reordered_candidates_same_hash():
 #     run.root/source.path stored as str(root) (adapter.py:866,899,1151,1184);
 #     all survive canonicalization (serialization.py:79-84).
 # ---------------------------------------------------------------------------
-@pytest.mark.xfail(
-    strict=True,
-    reason="P0 bug-lock: node_id + semantic_text bake the absolute root path; turns green in P1",
-)
 def test_two_roots_same_parity_hash(tmp_path):
     """The SAME snapshot extracted under two DIFFERENT absolute checkout roots
     MUST produce identical PARITY bytes (stability / no false negatives).
 
-    CURRENTLY RED. Even after hand-stripping the known-volatile ``run.root`` /
-    ``source.path`` (see ``_strip_volatile``), the bytes still differ because
-    ``node_id`` is computed from the raw absolute caller path
-    (``compute_node_id(file_path=str(path), ...)`` via ``chunk_file``), and the
-    absolute path also leaks into ``metadata.semantic_text``. Two machines with
-    different checkout locations therefore hash the same code differently ->
-    false negative on a parity check.
-
-    Captured evidence (this tree): with roots ``/tmp/alpha_*`` vs
-    ``/tmp/beta_longer_*`` and identical ``m.py``:
-        node_id(rootA) != node_id(rootB)            # path baked into the hash
-        semantic_text contains the absolute "/tmp/alpha_.../m.py"
-        _hash(strip(irA)) != _hash(strip(irB))      # leak survives stripping
+    GREEN after P1. node_id/symbol_id/definition_id and semantic_text are all
+    keyed on the normalized repo-relative identity path (chunk_file now takes an
+    identity_path the adapter sets to the relative display_path; BUG-3), so two
+    checkout roots hash the same code identically.
     """
     root_a = tmp_path / "alpha"
     root_b = tmp_path / "beta_longer_name"
@@ -287,10 +274,6 @@ def test_two_roots_same_parity_hash(tmp_path):
 #     normalize_boundary_path (impact.py:11-12) only swaps backslashes -- it does
 #     NOT collapse ./, .., or redundant separators.
 # ---------------------------------------------------------------------------
-@pytest.mark.xfail(
-    strict=True,
-    reason="P0 bug-lock: normalize_boundary_path incomplete (BUG-4), cold vs incremental diverge; turns green in P1",
-)
 def test_cold_vs_incremental_same_bytes(tmp_path, monkeypatch):
     """``incremental=False`` and ``incremental=True`` on identical input MUST
     produce identical canonical bytes.
@@ -310,16 +293,14 @@ def test_cold_vs_incremental_same_bytes(tmp_path, monkeypatch):
         incr file path: "pkg/m.py"
         _hash(strip(cold)) != _hash(strip(incr))
 
-    Underlying BUG-4 (also asserted directly): ``normalize_boundary_path`` is
-    incomplete -- it only swaps backslashes:
-        normalize_boundary_path("./a/b.py") == "./a/b.py"   # './' NOT collapsed
-        normalize_boundary_path("a/../b.py") == "a/../b.py"  # '..' NOT collapsed
-        normalize_boundary_path("a//b.py")  == "a//b.py"     # '//' NOT collapsed
+    BUG-4 fixed: ``normalize_boundary_path`` is now total -- it POSIX-ifies and
+    collapses ``.`` / ``..`` / redundant separators, so cold and incremental
+    funnel every path through the same canonical form.
     """
-    # BUG-4: normalize_boundary_path is not total (drives the divergence below).
-    assert normalize_boundary_path("./a/b.py") == "./a/b.py"
-    assert normalize_boundary_path("a/../b.py") == "a/../b.py"
-    assert normalize_boundary_path("a//b.py") == "a//b.py"
+    # BUG-4: normalize_boundary_path is now total.
+    assert normalize_boundary_path("./a/b.py") == "a/b.py"
+    assert normalize_boundary_path("a/../b.py") == "b.py"
+    assert normalize_boundary_path("a//b.py") == "a/b.py"
 
     pkg = tmp_path / "pkg"
     pkg.mkdir()
@@ -359,25 +340,14 @@ def test_cold_vs_incremental_same_bytes(tmp_path, monkeypatch):
 #     file_path=str(path)); file_id/definition_id key on the relative display
 #     path -> within one IR the IDs are mutually inconsistent + non-portable.
 # ---------------------------------------------------------------------------
-@pytest.mark.xfail(
-    strict=True, reason="P0 bug-lock: node_id uses absolute path; turns green in P1"
-)
 def test_node_id_uses_relative_path(tmp_path):
     """A node's ``node_id`` MUST key on the repo-relative path (the same form as
     ``file_id``/``definition_id``), NOT on the absolute caller path.
 
-    CURRENTLY RED. ``chunk_file`` -> ``chunk_text`` computes ``node_id`` with
-    ``file_path=str(path)`` (an absolute path; core.py:983), while the Boundary
-    layer recomputes ``file_id``/``definition_id`` from the relative display
-    path. So ``node_id`` keys on the absolute checkout root: it differs across
-    machines and is mutually inconsistent with the other IDs in the same IR.
-
-    Proven exactly: the emitted ``node_id`` equals
-    ``compute_node_id(<ABS path>, ...)`` and does NOT equal
-    ``compute_node_id(<relative path>, ...)``.
-
-    Captured evidence (this tree): the absolute root also leaks verbatim into
-    the serialized node via ``metadata.semantic_text``.
+    GREEN after P1. The Boundary adapter passes the normalized repo-relative
+    display_path to ``chunk_file`` as ``identity_path`` (BUG-3), so the emitted
+    ``node_id`` equals ``compute_node_id(<relative path>, ...)`` and the absolute
+    checkout root no longer leaks into the serialized node (semantic_text).
     """
     from chunker.core import chunk_file
     from chunker.types import compute_node_id

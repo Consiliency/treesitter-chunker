@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import posixpath
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -9,7 +10,26 @@ if TYPE_CHECKING:
 
 
 def normalize_boundary_path(path: str) -> str:
-    return path.replace("\\", "/")
+    """Total path normalization for Boundary IR identity + serialization (BUG-4).
+
+    Produces a single canonical repo-relative POSIX form so the same logical
+    path yields identical bytes regardless of OS separator or redundant
+    components -- cold and incremental extraction MUST funnel every path through
+    this one function before computing any ID or emitting any serialized path.
+
+    - POSIX-ify separators (Windows ``\\`` -> ``/``).
+    - Collapse ``.`` / ``..`` / redundant ``//`` via posix normpath.
+    - Empty / ``.`` -> ``""`` (the repo root display path), never ``"."``.
+
+    It is idempotent: normalize(normalize(p)) == normalize(p).
+    """
+    if not path:
+        return ""
+    posix = path.replace("\\", "/")
+    normalized = posixpath.normpath(posix)
+    if normalized == ".":
+        return ""
+    return normalized
 
 
 def detect_changed_paths(
