@@ -93,8 +93,9 @@ Canonical JSON for the Phase 0 baseline is frozen as:
 
 - UTF-8 encoding.
 - Lexicographic object-key ordering at every object level.
-- Deterministic list ordering for `files`, `nodes`, `edges`, `diagnostics`, and
-  nested ID lists that affect output equality.
+- Deterministic ordering for the four top-level arrays (`files`, `nodes`,
+  `edges`, `diagnostics`) and for the explicit set-semantic nested-list
+  allow-list below; all other lists preserve insertion order.
 - Compact separators equivalent to `,` and `:` with no extra whitespace.
 - Exactly one trailing newline for file output.
 
