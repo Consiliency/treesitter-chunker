@@ -16,16 +16,14 @@ from chunker.exceptions import LanguageNotFoundError, ParserConfigError, ParserI
 class TestParserConfig:
     """Test ParserConfig validation."""
 
-    @classmethod
-    def test_valid_config(cls):
+    def test_valid_config(self):
         """Test valid configuration."""
         config = ParserConfig(timeout_ms=1000)
         config.validate()
         config = ParserConfig(included_ranges=[])
         config.validate()
 
-    @classmethod
-    def test_invalid_timeout(cls):
+    def test_invalid_timeout(self):
         """Test invalid timeout values."""
         config = ParserConfig(timeout_ms=-1)
         with pytest.raises(ParserConfigError) as exc_info:
@@ -36,8 +34,7 @@ class TestParserConfig:
         with pytest.raises(ParserConfigError):
             config.validate()
 
-    @classmethod
-    def test_invalid_ranges(cls):
+    def test_invalid_ranges(self):
         """Test invalid included_ranges."""
         config = ParserConfig(included_ranges="not a list")
         with pytest.raises(ParserConfigError) as exc_info:
@@ -48,8 +45,7 @@ class TestParserConfig:
 class TestLRUCache:
     """Test LRU cache implementation."""
 
-    @classmethod
-    def test_basic_operations(cls):
+    def test_basic_operations(self):
         """Test basic get/put operations."""
         cache = LRUCache(maxsize=3)
         parser1 = Mock(spec=Parser)
@@ -60,8 +56,7 @@ class TestLRUCache:
         assert cache.get("javascript") is parser2
         assert cache.get("nonexistent") is None
 
-    @classmethod
-    def test_lru_eviction(cls):
+    def test_lru_eviction(self):
         """Test LRU eviction policy."""
         cache = LRUCache(maxsize=2)
         parser1 = Mock(spec=Parser)
@@ -75,8 +70,7 @@ class TestLRUCache:
         assert cache.get("rust") is parser3
         assert cache.get("javascript") is None
 
-    @classmethod
-    def test_clear(cls):
+    def test_clear(self):
         """Test cache clearing."""
         cache = LRUCache(maxsize=3)
         cache.put("python", Mock(spec=Parser))
@@ -85,8 +79,7 @@ class TestLRUCache:
         assert cache.get("python") is None
         assert cache.get("javascript") is None
 
-    @classmethod
-    def test_thread_safety(cls):
+    def test_thread_safety(self):
         """Test thread-safe operations."""
         cache = LRUCache(maxsize=10)
         errors = []
@@ -112,8 +105,7 @@ class TestLRUCache:
 class TestParserPool:
     """Test parser pool implementation."""
 
-    @classmethod
-    def test_pool_operations(cls):
+    def test_pool_operations(self):
         """Test basic pool get/put."""
         pool = ParserPool("python", max_size=3)
         assert pool.get() is None
@@ -126,8 +118,7 @@ class TestParserPool:
         assert pool.get() is parser2
         assert pool.get() is None
 
-    @classmethod
-    def test_pool_max_size(cls):
+    def test_pool_max_size(self):
         """Test pool size limits."""
         pool = ParserPool("python", max_size=2)
         parser1 = Mock(spec=Parser)
@@ -141,23 +132,20 @@ class TestParserPool:
 class TestParserFactory:
     """Test ParserFactory functionality."""
 
-    @classmethod
     @pytest.fixture
-    def registry(cls):
+    def registry(self):
         """Create a real registry for testing."""
         lib_path = Path(__file__).parent.parent / "build" / "my-languages.so"
         return LanguageRegistry(lib_path)
 
-    @classmethod
-    def test_parser_creation(cls, registry):
+    def test_parser_creation(self, registry):
         """Test basic parser creation."""
         factory = ParserFactory(registry)
         parser = factory.get_parser("python")
         assert isinstance(parser, Parser)
         assert factory._parser_count == 1
 
-    @classmethod
-    def test_parser_caching(cls, registry):
+    def test_parser_caching(self, registry):
         """Test that parsers are cached."""
         factory = ParserFactory(registry, cache_size=5)
         parser1 = factory.get_parser("python")
@@ -165,8 +153,7 @@ class TestParserFactory:
         assert parser1 is parser2
         assert factory._parser_count == 1
 
-    @classmethod
-    def test_parser_with_config(cls, registry):
+    def test_parser_with_config(self, registry):
         """Test parser creation with configuration."""
         factory = ParserFactory(registry)
         config = ParserConfig(timeout_ms=1000)
@@ -175,8 +162,7 @@ class TestParserFactory:
         parser2 = factory.get_parser("python", config)
         assert parser is not parser2
 
-    @classmethod
-    def test_invalid_language(cls, registry):
+    def test_invalid_language(self, registry):
         """Test error for invalid language."""
         factory = ParserFactory(registry)
         with pytest.raises(LanguageNotFoundError) as exc_info:
@@ -184,16 +170,14 @@ class TestParserFactory:
         assert "nonexistent" in str(exc_info.value)
         assert "python" in exc_info.value.available
 
-    @classmethod
-    def test_invalid_config(cls, registry):
+    def test_invalid_config(self, registry):
         """Test error for invalid configuration."""
         factory = ParserFactory(registry)
         config = ParserConfig(timeout_ms=-1)
         with pytest.raises(ParserConfigError):
             factory.get_parser("python", config)
 
-    @classmethod
-    def test_return_parser(cls, registry):
+    def test_return_parser(self, registry):
         """Test returning parser to pool."""
         factory = ParserFactory(registry, pool_size=2)
         parser1 = factory.get_parser("python")
@@ -202,8 +186,7 @@ class TestParserFactory:
         factory.get_parser("python")
         assert factory._parser_count == initial_count
 
-    @classmethod
-    def test_clear_cache(cls, registry):
+    def test_clear_cache(self, registry):
         """Test cache clearing."""
         factory = ParserFactory(registry)
         parser1 = factory.get_parser("python")
@@ -212,8 +195,7 @@ class TestParserFactory:
         parser3 = factory.get_parser("python")
         assert parser3 is not parser1
 
-    @classmethod
-    def test_get_stats(cls, registry):
+    def test_get_stats(self, registry):
         """Test factory statistics."""
         factory = ParserFactory(registry)
         factory.get_parser("python")
@@ -224,8 +206,7 @@ class TestParserFactory:
         assert "cache_size" in stats
         assert "pools" in stats
 
-    @classmethod
-    def test_concurrent_access(cls, registry):
+    def test_concurrent_access(self, registry):
         """Test thread-safe concurrent access."""
         factory = ParserFactory(registry)
         errors = []
@@ -252,8 +233,7 @@ class TestParserFactory:
         assert len(errors) == 0
         assert len(parsers) == 30
 
-    @classmethod
-    def test_parser_init_error(cls, registry):
+    def test_parser_init_error(self, registry):
         """Test handling of parser initialization errors."""
         factory = ParserFactory(registry)
         with patch.object(registry, "get_language") as mock_get:
@@ -262,8 +242,7 @@ class TestParserFactory:
                 factory.get_parser("python")
             assert "Failed to get language" in str(exc_info.value)
 
-    @classmethod
-    def test_parser_config_application(cls, registry):
+    def test_parser_config_application(self, registry):
         """Test that configuration is applied to parsers."""
         config = ParserConfig(timeout_ms=500)
 

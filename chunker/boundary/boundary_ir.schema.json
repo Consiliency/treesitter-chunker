@@ -1,0 +1,300 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ViperJuice/treesitter-chunker/schemas/boundary-ir/1.0.json",
+  "title": "Boundary IR",
+  "description": "Machine-readable contract for the treesitter-chunker Boundary IR document (schema_version 1.0). Authored against, and CI-validated against, real extract_boundary_ir(..., canonical=True) output (the committed golden snapshots plus a freshly emitted sample). The document-level schema_version is '1.0' for the syntax-only baseline; semantic enrichment uses the additive '1.1' semantic schema version and adds the optional fields marked below. Identity fields (definition_id, node_id, file_id, symbol_id, identity.value) are Tier-2 occurrence fingerprints, not refactor-stable identities -- see docs/agent-interface-readiness.md.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "source",
+    "files",
+    "nodes",
+    "edges",
+    "diagnostics",
+    "metrics",
+    "run"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Boundary IR document schema version. '1.0' for the syntax-only baseline."
+    },
+    "source": {
+      "type": "object",
+      "required": ["kind", "path"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "type": "string" },
+        "path": {
+          "type": "string",
+          "description": "Absolute or provided source root. Excluded from the parity hash view (volatile)."
+        }
+      }
+    },
+    "files": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/fileRecord" }
+    },
+    "nodes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/node" }
+    },
+    "edges": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/edge" }
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/diagnostic" }
+    },
+    "metrics": { "$ref": "#/$defs/metrics" },
+    "run": { "$ref": "#/$defs/run" }
+  },
+  "$defs": {
+    "nullableInt": { "type": ["integer", "null"] },
+    "nullableString": { "type": ["string", "null"] },
+    "location": {
+      "type": "object",
+      "required": ["byte_start", "byte_end", "start_line", "end_line"],
+      "additionalProperties": false,
+      "properties": {
+        "byte_start": { "$ref": "#/$defs/nullableInt" },
+        "byte_end": { "$ref": "#/$defs/nullableInt" },
+        "start_line": { "$ref": "#/$defs/nullableInt" },
+        "end_line": { "$ref": "#/$defs/nullableInt" }
+      }
+    },
+    "fileRecord": {
+      "type": "object",
+      "required": ["id", "path", "language", "status", "content_hash", "diagnostics"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string" },
+        "path": { "type": "string" },
+        "language": { "type": "string" },
+        "parser": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["parsed", "skipped", "error"]
+        },
+        "content_hash": { "type": "string" },
+        "diagnostics": {
+          "type": "array",
+          "description": "Set-semantic list of diagnostic ids; sorted at construction.",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "node": {
+      "type": "object",
+      "required": ["id", "node_id", "file_id", "path", "kind", "language", "identity", "span"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string" },
+        "node_id": { "type": "string" },
+        "file_id": { "type": "string" },
+        "definition_id": { "type": "string" },
+        "symbol_id": { "$ref": "#/$defs/nullableString" },
+        "path": { "type": "string" },
+        "kind": { "type": "string" },
+        "language": { "type": "string" },
+        "symbol": { "$ref": "#/$defs/nullableString" },
+        "qualified_name": { "$ref": "#/$defs/nullableString" },
+        "semantic_path": { "type": "string" },
+        "signature": { "$ref": "#/$defs/nullableString" },
+        "parent": { "$ref": "#/$defs/nullableString" },
+        "identity": {
+          "type": "object",
+          "required": ["source", "value"],
+          "additionalProperties": false,
+          "properties": {
+            "source": {
+              "type": "string",
+              "enum": ["definition_id", "module + qualified_name", "node_id"]
+            },
+            "value": { "type": "string" }
+          }
+        },
+        "span": { "$ref": "#/$defs/span" },
+        "relationships": {
+          "type": "array",
+          "description": "Set-semantic list of related node ids; sorted at construction.",
+          "items": { "type": "string" }
+        },
+        "metadata": { "type": "object" },
+        "provenance": { "type": "object" }
+      }
+    },
+    "span": {
+      "type": "object",
+      "required": ["byte_start", "byte_end", "start_line", "end_line"],
+      "additionalProperties": false,
+      "properties": {
+        "byte_start": { "$ref": "#/$defs/nullableInt" },
+        "byte_end": { "$ref": "#/$defs/nullableInt" },
+        "start_line": { "$ref": "#/$defs/nullableInt" },
+        "end_line": { "$ref": "#/$defs/nullableInt" }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "required": ["id", "source", "target", "type", "resolution", "candidates", "provenance"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string" },
+        "source": { "type": "string" },
+        "target": { "type": "string" },
+        "type": { "type": "string" },
+        "reference": { "type": "string" },
+        "resolution": {
+          "type": "string",
+          "enum": ["resolved", "ambiguous", "unresolved"]
+        },
+        "candidates": {
+          "type": "array",
+          "description": "Set-semantic list of candidate target ids; sorted at construction.",
+          "items": { "type": "string" }
+        },
+        "location": { "$ref": "#/$defs/location" },
+        "metadata": { "type": "object" },
+        "provenance": {
+          "type": "object",
+          "required": ["source"],
+          "additionalProperties": true,
+          "properties": {
+            "source": { "type": "string" },
+            "resolver": { "type": "string" },
+            "resolution_mode": {
+              "type": "string",
+              "enum": ["strict", "permissive"]
+            },
+            "enforcement_grade": { "type": "string" },
+            "confidence": {
+              "description": "Semantic-edge confidence (semantic enrichment only). Pre-represented as a string in the parity hash view.",
+              "type": ["number", "string", "null"]
+            }
+          }
+        }
+      }
+    },
+    "diagnostic": {
+      "type": "object",
+      "required": ["id", "severity", "code", "message", "stage"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string" },
+        "severity": {
+          "type": "string",
+          "enum": ["info", "warning", "error"]
+        },
+        "code": { "type": "string" },
+        "message": { "type": "string" },
+        "path": { "$ref": "#/$defs/nullableString" },
+        "location": {
+          "anyOf": [{ "$ref": "#/$defs/location" }, { "type": "null" }, { "type": "object" }]
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "discovery",
+            "parse",
+            "metadata",
+            "graph",
+            "resolution",
+            "semantic",
+            "serialization"
+          ]
+        },
+        "details": { "type": "object" }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "required": [
+        "files_total",
+        "files_processed",
+        "files_parsed",
+        "files_skipped",
+        "files_failed",
+        "nodes_total",
+        "edges_total",
+        "diagnostics_total",
+        "resolved_edges",
+        "ambiguous_edges",
+        "unresolved_edges",
+        "parse_failures",
+        "metadata_failures",
+        "graph_failures",
+        "serialization_failures",
+        "failure_buckets"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "files_total": { "type": "integer" },
+        "files_processed": { "type": "integer" },
+        "files_parsed": { "type": "integer" },
+        "files_skipped": { "type": "integer" },
+        "files_failed": { "type": "integer" },
+        "nodes_total": { "type": "integer" },
+        "edges_total": { "type": "integer" },
+        "diagnostics_total": { "type": "integer" },
+        "resolved_edges": { "type": "integer" },
+        "ambiguous_edges": { "type": "integer" },
+        "unresolved_edges": { "type": "integer" },
+        "parse_failures": { "type": "integer" },
+        "metadata_failures": { "type": "integer" },
+        "graph_failures": { "type": "integer" },
+        "serialization_failures": { "type": "integer" },
+        "failure_buckets": {
+          "type": "object",
+          "description": "code -> count map; keys emitted in sorted order at construction.",
+          "additionalProperties": { "type": "integer" }
+        }
+      }
+    },
+    "run": {
+      "type": "object",
+      "required": ["canonical", "tool", "tool_version", "root", "created_at", "options", "timings"],
+      "additionalProperties": true,
+      "properties": {
+        "canonical": { "type": "boolean" },
+        "tool": { "type": "string" },
+        "tool_version": {
+          "type": "string",
+          "description": "Volatile; excluded from the parity hash view."
+        },
+        "root": {
+          "type": "string",
+          "description": "Absolute checkout root; volatile; excluded from the parity hash view."
+        },
+        "created_at": {
+          "description": "Wall-clock timestamp; volatile; excluded from the parity hash view.",
+          "type": ["string", "null"]
+        },
+        "options": { "type": "object" },
+        "timings": {
+          "type": "object",
+          "description": "Fixed timing keys, null unless include_timings=True. Excluded from the parity hash view.",
+          "required": [
+            "parse_ms",
+            "metadata_normalization_ms",
+            "graph_assembly_ms",
+            "resolution_ms",
+            "serialization_ms",
+            "total_ms"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "parse_ms": { "type": ["number", "null"] },
+            "metadata_normalization_ms": { "type": ["number", "null"] },
+            "graph_assembly_ms": { "type": ["number", "null"] },
+            "resolution_ms": { "type": ["number", "null"] },
+            "serialization_ms": { "type": ["number", "null"] },
+            "total_ms": { "type": ["number", "null"] }
+          }
+        }
+      }
+    }
+  }
+}

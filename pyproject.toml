@@ -77,6 +77,7 @@ dev = [
     "twine",
     "toml>=0.10.2",  # Required by tests/test_config.py (tomllib is read-only; this also reads)
     "httpx>=0.27.0",  # Required by API tests
+    "jsonschema>=4.0.0",  # Validates emitted Boundary IR against boundary_ir.schema.json in CI
 ]
 viz = ["graphviz"]
 profile = ["memory-profiler>=0.61.0", "line-profiler>=4.1.0"]
@@ -116,6 +117,7 @@ exclude = ["tests*", "benchmarks*", "examples*", "docs*", "scripts*", "grammars*
 [tool.setuptools.package-data]
 chunker = [
     "py.typed",
+    "boundary/boundary_ir.schema.json",
     "data/grammars/build/*",
     "data/grammars/build/queries/*/*.scm",
 ]

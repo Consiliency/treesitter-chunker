@@ -33,8 +33,9 @@ jobs:
 
       - name: Install dependencies
         run: |
+          # toml, httpx, and jsonschema are declared in the [dev] extra, so the
+          # single editable install below covers them -- no ad-hoc pip installs.
           uv pip install --system -e ".[dev,api,viz,templates,advanced]"
-          uv pip install --system toml httpx  # Required by tests
 
       - name: Fetch grammars
         run: python scripts/fetch_grammars.py

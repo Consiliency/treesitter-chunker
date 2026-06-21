@@ -18,6 +18,12 @@ CI_SMOKE_TESTS = [
     "tests/test_fallback_chunking.py",
     "tests/test_boundary_ir_golden_snapshots.py",
     "tests/test_boundary_ir_incremental_benchmark.py",
+    # Blocking determinism + parity + schema gates (P0/P1/P2). These guard the
+    # Boundary-IR contract spec consumers hash against; they must be honestly
+    # green in CI, not just present in the tree.
+    "tests/test_boundary_determinism.py",
+    "tests/test_boundary_parity_view.py",
+    "tests/test_boundary_ir_schema.py",
 ]
 
 
