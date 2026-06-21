@@ -88,33 +88,28 @@ class MockRegistry:
 class TestZeroConfigAPI:
     """Test cases for ZeroConfigAPI."""
 
-    @classmethod
     @pytest.fixture
-    def api(cls):
+    def api(self):
         """Create a ZeroConfigAPI instance with mock registry."""
         registry = MockRegistry()
         return ZeroConfigAPI(registry)
 
-    @staticmethod
-    def test_ensure_language_already_installed(api):
+    def test_ensure_language_already_installed(self, api):
         """Test ensuring a language that's already installed."""
         assert api.ensure_language("python") is True
         assert api.registry.is_language_installed("python") is True
 
-    @staticmethod
-    def test_ensure_language_not_installed_but_available(api):
+    def test_ensure_language_not_installed_but_available(self, api):
         """Test ensuring a language that needs to be installed."""
         assert api.registry.is_language_installed("rust") is False
         assert api.ensure_language("rust") is True
         assert api.registry.is_language_installed("rust") is True
 
-    @staticmethod
-    def test_ensure_language_not_available(api):
+    def test_ensure_language_not_available(self, api):
         """Test ensuring a language that's not available."""
         assert api.ensure_language("not-a-language") is False
 
-    @staticmethod
-    def test_ensure_language_with_version(api):
+    def test_ensure_language_with_version(self, api):
         """Test ensuring a specific version of a language."""
         assert api.ensure_language("python", "0.20.0") is True
         with patch.object(
@@ -124,8 +119,7 @@ class TestZeroConfigAPI:
         ):
             assert api.ensure_language("python", "0.21.0") is True
 
-    @classmethod
-    def test_detect_language_by_extension(cls, api):
+    def test_detect_language_by_extension(self, api):
         """Test language detection by file extension."""
         assert api.detect_language(Path("test.py")) == "python"
         assert api.detect_language(Path("test.js")) == "javascript"
@@ -133,8 +127,7 @@ class TestZeroConfigAPI:
         assert api.detect_language(Path("test.go")) == "go"
         assert api.detect_language(Path("test.unknown")) is None
 
-    @classmethod
-    def test_detect_language_by_shebang(cls, api):
+    def test_detect_language_by_shebang(self, api):
         """Test language detection by shebang."""
         with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", delete=False) as f:
             f.write("#!/usr/bin/env python3\n")
@@ -147,16 +140,14 @@ class TestZeroConfigAPI:
         finally:
             temp_path.unlink(missing_ok=True)
 
-    @classmethod
-    def test_detect_language_special_files(cls, api):
+    def test_detect_language_special_files(self, api):
         """Test language detection for special file names."""
         assert api.detect_language(Path("Makefile")) == "makefile"
         assert api.detect_language(Path("Dockerfile")) == "dockerfile"
         assert api.detect_language(Path("package.json")) == "json"
         assert api.detect_language(Path("Cargo.toml")) == "toml"
 
-    @staticmethod
-    def test_list_supported_extensions(api):
+    def test_list_supported_extensions(self, api):
         """Test listing supported file extensions."""
         extensions = api.list_supported_extensions()
         assert isinstance(extensions, dict)
@@ -165,8 +156,7 @@ class TestZeroConfigAPI:
         assert "javascript" in extensions
         assert ".js" in extensions["javascript"]
 
-    @classmethod
-    def test_auto_chunk_file_with_tree_sitter(cls, api):
+    def test_auto_chunk_file_with_tree_sitter(self, api):
         """Test auto chunking a file with tree-sitter available."""
         with tempfile.NamedTemporaryFile(
             encoding="utf-8",
@@ -204,8 +194,7 @@ class TestZeroConfigAPI:
         finally:
             temp_path.unlink(missing_ok=True)
 
-    @classmethod
-    def test_auto_chunk_file_fallback(cls, api):
+    def test_auto_chunk_file_fallback(self, api):
         """Test auto chunking falls back when tree-sitter fails."""
         with tempfile.NamedTemporaryFile(
             encoding="utf-8",
@@ -227,8 +216,7 @@ class TestZeroConfigAPI:
         finally:
             temp_path.unlink(missing_ok=True)
 
-    @classmethod
-    def test_auto_chunk_file_with_language_override(cls, api):
+    def test_auto_chunk_file_with_language_override(self, api):
         """Test auto chunking with explicit language."""
         with tempfile.NamedTemporaryFile(
             encoding="utf-8",
@@ -262,8 +250,7 @@ class TestZeroConfigAPI:
         finally:
             temp_path.unlink(missing_ok=True)
 
-    @classmethod
-    def test_chunk_text_success(cls, api):
+    def test_chunk_text_success(self, api):
         """Test chunking text content successfully."""
         text = "def hello():\n    print('world')"
         mock_chunks = [
@@ -286,20 +273,17 @@ class TestZeroConfigAPI:
         assert result.fallback_used is False
         assert len(result.chunks) == 1
 
-    @staticmethod
-    def test_chunk_text_empty(api):
+    def test_chunk_text_empty(self, api):
         """Test chunking empty text raises error."""
         with pytest.raises(ValueError, match="Text cannot be empty"):
             api.chunk_text("", "python")
 
-    @staticmethod
-    def test_chunk_text_no_language(api):
+    def test_chunk_text_no_language(self, api):
         """Test chunking text without language raises error."""
         with pytest.raises(ValueError, match="Language must be specified"):
             api.chunk_text("some text", "")
 
-    @staticmethod
-    def test_get_chunker_for_language(api):
+    def test_get_chunker_for_language(self, api):
         """Test getting a chunker for a specific language."""
         chunker = api.get_chunker_for_language("python", auto_download=False)
         assert hasattr(chunker, "chunk_file")
@@ -309,8 +293,7 @@ class TestZeroConfigAPI:
         with pytest.raises(ChunkerError):
             api.get_chunker_for_language("not-a-language", auto_download=True)
 
-    @staticmethod
-    def test_preload_languages(api):
+    def test_preload_languages(self, api):
         """Test preloading multiple languages."""
         languages = ["rust", "java", "not-a-language"]
         results = api.preload_languages(languages)
