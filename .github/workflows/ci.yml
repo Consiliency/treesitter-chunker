@@ -51,11 +51,12 @@ jobs:
       - name: Ruff
         run: |
           # Run ruff on production code and tests only (exclude archive, logs, etc.)
-          # Using project's pyproject.toml configuration for consistency
-          ruff check chunker/ cli/ tests/ --exclude archive --exclude logs --exclude site
+          # Use the uv-locked ruff (0.12.5) so CI matches the lockfile + local;
+          # avoids unpinned-ruff drift flagging pre-existing issues on every push.
+          uv run --all-extras ruff check chunker/ cli/ tests/ --exclude archive --exclude logs --exclude site
 
       - name: Black
-        run: black --check chunker/ cli/ tests/ scripts/
+        run: uv run --all-extras black --check chunker/ cli/ tests/ scripts/
 
       # Note: isort check removed - ruff handles import sorting (I001)
 

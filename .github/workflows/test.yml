@@ -61,8 +61,10 @@ jobs:
 
     - name: Run linting
       run: |
-        ruff check chunker/ tests/
-        black --check chunker/ tests/
+        # Use the uv-locked ruff/black so CI matches the lockfile + local
+        # and avoids unpinned-tool version drift flagging pre-existing issues.
+        uv run --all-extras ruff check chunker/ tests/
+        uv run --all-extras black --check chunker/ tests/
 
     - name: Run type checking
       shell: bash
