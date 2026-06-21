@@ -1,0 +1,467 @@
+[
+  {
+    "name": "object-keys-sorted",
+    "input": {
+      "$obj": {
+        "b": {
+          "$int": "2"
+        },
+        "a": {
+          "$int": "1"
+        },
+        "c": {
+          "$int": "3"
+        }
+      }
+    },
+    "profile": "semantic-content",
+    "expected_canonical_bytes_b64": "eyJhIjoxLCJiIjoyLCJjIjozfQ==",
+    "expected_digest_hex": "0cf519811e261f23345f1ca861e24b1292d82f7f7f88dfc212950c52641b9435"
+  },
+  {
+    "name": "object-keys-sorted-reordered",
+    "input": {
+      "$obj": {
+        "c": {
+          "$int": "3"
+        },
+        "a": {
+          "$int": "1"
+        },
+        "b": {
+          "$int": "2"
+        }
+      }
+    },
+    "profile": "semantic-content",
+    "expected_canonical_bytes_b64": "eyJhIjoxLCJiIjoyLCJjIjozfQ==",
+    "expected_digest_hex": "0cf519811e261f23345f1ca861e24b1292d82f7f7f88dfc212950c52641b9435"
+  },
+  {
+    "name": "array-order-preserved",
+    "input": {
+      "$arr": [
+        {
+          "$int": "1"
+        },
+        {
+          "$int": "2"
+        },
+        {
+          "$int": "3"
+        }
+      ]
+    },
+    "profile": "semantic-content",
+    "expected_canonical_bytes_b64": "WzEsMiwzXQ==",
+    "expected_digest_hex": "79513425108f1e606d8ebe9351b94cedbd79ca6a3ac2c93b7f84a736386ff1c3"
+  },
+  {
+    "name": "array-order-matters",
+    "input": {
+      "$arr": [
+        {
+          "$int": "3"
+        },
+        {
+          "$int": "2"
+        },
+        {
+          "$int": "1"
+        }
+      ]
+    },
+    "profile": "semantic-content",
+    "expected_canonical_bytes_b64": "WzMsMiwxXQ==",
+    "expected_digest_hex": "959bf0b540a39de71c93f57a86bfd1402f8f0aa8ad52fb1270282ae7b9954d66"
+  },
+  {
+    "name": "nfc-composed-eacute",
+    "input": {
+      "$str": "\u00e9"
+    },
+    "profile": "semantic-content",
+    "expected_canonical_bytes_b64": "IsOpIg==",
+    "expected_digest_hex": "c9dcdb8c0beab390b15d6611cd3bd415b0df430bb7d6f6cb725ea5fe2b3588b7"
+  },
+  {
+    "name": "nfc-decomposed-eacute",
+    "input": {
+      "$str": "e\u0301"
+    },
+    "profile": "semantic-content",
+    "expected_canonical_bytes_b64": "IsOpIg==",
+    "expected_digest_hex": "c9dcdb8c0beab390b15d6611cd3bd415b0df430bb7d6f6cb725ea5fe2b3588b7"
+  },
+  {
+    "name": "nfc-key-normalized",
+    "input": {
+      "$obj": {
+        "e\u0301": {
+          "$int": "1"
+        }
+      }
+    },
+    "profile": "semantic-content",
+    "expected_canonical_bytes_b64": "eyLDqSI6MX0=",
+    "expected_digest_hex": "7997a063a1ea2e61680f762922fe089f3a2227ffd0aca1c5309dba0059604c80"
+  },
+  {
+    "name": "post13-nfc-reorder-telugu-nukta",
+    "input": {
+      "$str": "\u0c15\u0951\u0c3c"
+    },
+    "profile": "semantic-content",
+    "note": "U+0C3C(ccc7, U15.0) reorders before U+0951(ccc230); diverges under a U13 DB",
+    "expected_canonical_bytes_b64": "IuCwleCwvOClkSI=",
+    "expected_digest_hex": "b09dbd2a03fccaef40555ca0d4ee2ab9c1f5ceb3b3964a0806d296f357789de5"
+  },
+  {
+    "name": "post13-nfc-reorder-arabic-pepet",
+    "input": {
+      "$str": "\u0628\u0897\u065c"
+    },
+    "profile": "semantic-content",
+    "note": "U+0897 PEPET(ccc230, U16.0) reorders after U+065C(ccc220); diverges under U13",
+    "expected_canonical_bytes_b64": "Itio2Zzgopci",
+    "expected_digest_hex": "20468b80d250b26b4fc6fc2abd659e015de0bbe964d0b0a28caddcc10085f8b0"
+  },
+  {
+    "name": "post13-nfc-reorder-two-new-marks",
+    "input": {
+      "$str": "\u1715\u0c3c"
+    },
+    "profile": "semantic-content",
+    "note": "U+1715(ccc9,U15) + U+0C3C(ccc7,U15) reorder by ccc; both ccc=0 under a U13 DB",
+    "expected_canonical_bytes_b64": "IuCwvOGclSI=",
+    "expected_digest_hex": "394ddde97ebc5339036c5d92d0ad6b5aa9f2dbed44c6922877aaae4140993dcb"
+  },
+  {
+    "name": "astral-key-sort",
+    "input": {
+      "$obj": {
+        "\ud800\udc00": {
+          "$int": "2"
+        },
+        "\ue000": {
+          "$int": "1"
+        }
+      }
+    },
+    "profile": "semantic-content",
+    "expected_canonical_bytes_b64": "eyLugIAiOjEsIvCQgIAiOjJ9",
+    "expected_digest_hex": "24b019fe7d67f2b5ec74279c67263aa0de78fd19c8e787518002307ada7c4622"
+  },
+  {
+    "name": "non-ascii-raw",
+    "input": {
+      "$str": "\u65e5\u672c\u8a9e \ud83d\ude00"
+    },
+    "profile": "semantic-content",
+    "expected_canonical_bytes_b64": "IuaXpeacrOiqniDwn5iAIg==",
+    "expected_digest_hex": "a93f56f4a756d8af2fc075fa6f8673c31abbbd9566906ca6090ee9421ae45c84"
+  },
+  {
+    "name": "control-chars-escaped",
+    "input": {
+      "$str": "a\nb\tc\u0000d\u001f"
+    },
+    "profile": "semantic-content",
+    "expected_canonical_bytes_b64": "ImFcdTAwMGFiXHUwMDA5Y1x1MDAwMGRcdTAwMWYi",
+    "expected_digest_hex": "49313de37e110b1638932b0a8214995e26bf3c42c43605c224e793825d1e8b8a"
+  },
+  {
+    "name": "del-char-raw",
+    "input": {
+      "$str": "x\u007fy"
+    },
+    "profile": "semantic-content",
+    "expected_canonical_bytes_b64": "Inh/eSI=",
+    "expected_digest_hex": "9bf99aaaa234129a05d0c8f6d9ba0c680c97855f606c5f35d225fdd527eba1eb"
+  },
+  {
+    "name": "quote-backslash-escape",
+    "input": {
+      "$str": "a\"b\\c"
+    },
+    "profile": "semantic-content",
+    "expected_canonical_bytes_b64": "ImFcImJcXGMi",
+    "expected_digest_hex": "9483b07a2489491a81bb1f1e98e64c20d89663cf865a02e0a807b5fcbb4c5279"
+  },
+  {
+    "name": "boolean-value",
+    "input": {
+      "$obj": {
+        "t": {
+          "$bool": true
+        },
+        "f": {
+          "$bool": false
+        }
+      }
+    },
+    "profile": "semantic-content",
+    "expected_canonical_bytes_b64": "eyJmIjpmYWxzZSwidCI6dHJ1ZX0=",
+    "expected_digest_hex": "954521673d49dde6bc4349eaf19161eed2c75d9ca0ea047da4bf3305aaeb4e4d"
+  },
+  {
+    "name": "null-value",
+    "input": {
+      "$null": true
+    },
+    "profile": "semantic-content",
+    "expected_canonical_bytes_b64": "bnVsbA==",
+    "expected_digest_hex": "1e5f5472eca2793bfabef6fd7223e5954d2e7ba871d37bc956383cc313942a2b"
+  },
+  {
+    "name": "integer-basic",
+    "input": {
+      "$int": "42"
+    },
+    "profile": "semantic-content",
+    "expected_canonical_bytes_b64": "NDI=",
+    "expected_digest_hex": "a0b11ccc478e6b63f2eacce5d6842521a2e946a4c79d27b9fad8e89c33935051"
+  },
+  {
+    "name": "integer-negative-zero-large",
+    "input": {
+      "$arr": [
+        {
+          "$int": "0"
+        },
+        {
+          "$int": "-17"
+        },
+        {
+          "$int": "123456789012345678901234567890"
+        }
+      ]
+    },
+    "profile": "semantic-content",
+    "expected_canonical_bytes_b64": "WzAsLTE3LDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MF0=",
+    "expected_digest_hex": "22ac68c3c69bd9d05cee42b0269dda0dc09bde2e94abac2afcd62f6fc7a39d98"
+  },
+  {
+    "name": "nested-object-array",
+    "input": {
+      "$obj": {
+        "z": {
+          "$arr": [
+            {
+              "$obj": {
+                "k": {
+                  "$str": "v"
+                }
+              }
+            },
+            {
+              "$int": "1"
+            }
+          ]
+        },
+        "a": {
+          "$obj": {
+            "nested": {
+              "$arr": [
+                {
+                  "$bool": true
+                },
+                {
+                  "$null": true
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "profile": "semantic-content",
+    "expected_canonical_bytes_b64": "eyJhIjp7Im5lc3RlZCI6W3RydWUsbnVsbF19LCJ6IjpbeyJrIjoidiJ9LDFdfQ==",
+    "expected_digest_hex": "8940c0d9c1b13e213e9fedad845c7eb694b989997410bf5e35fab0bf0dcb0d84"
+  },
+  {
+    "name": "empty-object",
+    "input": {
+      "$obj": {}
+    },
+    "profile": "semantic-content",
+    "expected_canonical_bytes_b64": "e30=",
+    "expected_digest_hex": "5d38c49fdcd034178d76df1b9a51a48005fb10bee2b218d087ab8b7fe72083e7"
+  },
+  {
+    "name": "empty-array",
+    "input": {
+      "$arr": []
+    },
+    "profile": "semantic-content",
+    "expected_canonical_bytes_b64": "W10=",
+    "expected_digest_hex": "9ef34130fa41e1db7673200a3de5c96cab08b2c44c7b97431a175991c6737bdb"
+  },
+  {
+    "name": "profile-semantic-content",
+    "input": {
+      "$obj": {
+        "id": {
+          "$str": "x"
+        }
+      }
+    },
+    "profile": "semantic-content",
+    "expected_canonical_bytes_b64": "eyJpZCI6IngifQ==",
+    "expected_digest_hex": "6c7861bf3530a29bd8940352e87fd432a6864a5ce336909b4095db6eff7680e0"
+  },
+  {
+    "name": "profile-run",
+    "input": {
+      "$obj": {
+        "id": {
+          "$str": "x"
+        }
+      }
+    },
+    "profile": "run",
+    "expected_canonical_bytes_b64": "eyJpZCI6IngifQ==",
+    "expected_digest_hex": "a951ff2f451fd569c3d5be89854cdefd8285f066fe33cbb208a0594b1d4708f6"
+  },
+  {
+    "name": "profile-artifact-byte",
+    "input": {
+      "$obj": {
+        "id": {
+          "$str": "x"
+        }
+      }
+    },
+    "profile": "artifact-byte",
+    "expected_canonical_bytes_b64": "eyJpZCI6IngifQ==",
+    "expected_digest_hex": "32298e9799d2e2c3fe617270c4ac472d9393a99981328807b04ec5bfa5c3c01d"
+  },
+  {
+    "name": "profile-certificate",
+    "input": {
+      "$obj": {
+        "id": {
+          "$str": "x"
+        }
+      }
+    },
+    "profile": "certificate",
+    "expected_canonical_bytes_b64": "eyJpZCI6IngifQ==",
+    "expected_digest_hex": "ac35f581dba0eca0b85729c1d83d2a5e409d599ea1ba78f0597133314b1192e7"
+  },
+  {
+    "name": "digest-field-excluded",
+    "input": {
+      "$obj": {
+        "digest": {
+          "$str": "PLACEHOLDER-MUST-NOT-AFFECT-DIGEST"
+        },
+        "content": {
+          "$str": "real"
+        }
+      }
+    },
+    "profile": "semantic-content",
+    "expected_canonical_bytes_b64": "eyJjb250ZW50IjoicmVhbCIsImRpZ2VzdCI6IlBMQUNFSE9MREVSLU1VU1QtTk9ULUFGRkVDVC1ESUdFU1QifQ==",
+    "expected_digest_hex": "6db76bc39f64753eda300213f1e0fd634851406a8daeff52c28da8ba8dd1ebc0"
+  },
+  {
+    "name": "digest-field-excluded-baseline",
+    "input": {
+      "$obj": {
+        "content": {
+          "$str": "real"
+        }
+      }
+    },
+    "profile": "semantic-content",
+    "expected_canonical_bytes_b64": "eyJjb250ZW50IjoicmVhbCJ9",
+    "expected_digest_hex": "6db76bc39f64753eda300213f1e0fd634851406a8daeff52c28da8ba8dd1ebc0"
+  },
+  {
+    "name": "content-envelope-split",
+    "input": {
+      "$obj": {
+        "capability": {
+          "$str": "validate"
+        },
+        "version": {
+          "$int": "1"
+        }
+      }
+    },
+    "profile": "semantic-content",
+    "note": "digest must equal content-envelope-split-other; envelopes differ, content same",
+    "expected_canonical_bytes_b64": "eyJjYXBhYmlsaXR5IjoidmFsaWRhdGUiLCJ2ZXJzaW9uIjoxfQ==",
+    "expected_digest_hex": "0e16763fc6e32b3b49ffd7b86499fc416e8aa627a1de3be5bd03ac0dc2044c83"
+  },
+  {
+    "name": "content-envelope-split-other",
+    "input": {
+      "$obj": {
+        "capability": {
+          "$str": "validate"
+        },
+        "version": {
+          "$int": "1"
+        }
+      }
+    },
+    "profile": "semantic-content",
+    "note": "same content as content-envelope-split with a different (non-hashed) envelope",
+    "expected_canonical_bytes_b64": "eyJjYXBhYmlsaXR5IjoidmFsaWRhdGUiLCJ2ZXJzaW9uIjoxfQ==",
+    "expected_digest_hex": "0e16763fc6e32b3b49ffd7b86499fc416e8aa627a1de3be5bd03ac0dc2044c83"
+  },
+  {
+    "name": "reject-float",
+    "input": {
+      "$float": "1.0"
+    },
+    "profile": "semantic-content",
+    "expect_error": true
+  },
+  {
+    "name": "reject-nan",
+    "input": {
+      "$nan": true
+    },
+    "profile": "semantic-content",
+    "expect_error": true
+  },
+  {
+    "name": "reject-pos-inf",
+    "input": {
+      "$inf": 1
+    },
+    "profile": "semantic-content",
+    "expect_error": true
+  },
+  {
+    "name": "reject-neg-inf",
+    "input": {
+      "$inf": -1
+    },
+    "profile": "semantic-content",
+    "expect_error": true
+  },
+  {
+    "name": "reject-float-nested",
+    "input": {
+      "$obj": {
+        "price": {
+          "$float": "9.99"
+        }
+      }
+    },
+    "profile": "semantic-content",
+    "expect_error": true
+  },
+  {
+    "name": "reject-lone-surrogate",
+    "input": {
+      "$str": "\ud800"
+    },
+    "profile": "semantic-content",
+    "expect_error": true
+  }
+]
