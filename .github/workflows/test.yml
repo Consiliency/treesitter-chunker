@@ -50,7 +50,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install uv
         uv pip install --system -e ".[dev,api,viz,templates,advanced]"
-        uv pip install --system git+https://github.com/tree-sitter/py-tree-sitter.git@v0.25.2
         uv pip install --system toml httpx  # Required by tests
 
     - name: Fetch grammars
@@ -61,8 +60,10 @@ jobs:
 
     - name: Run linting
       run: |
-        ruff check chunker/ tests/
-        black --check chunker/ tests/
+        # Use the uv-locked ruff/black so CI matches the lockfile + local
+        # and avoids unpinned-tool version drift flagging pre-existing issues.
+        uv run --all-extras ruff check chunker/ tests/
+        uv run --all-extras black --check chunker/ tests/
 
     - name: Run type checking
       shell: bash
