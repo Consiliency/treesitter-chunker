@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.0.0] - 2026-06-21
 
+### 📚 Documentation
+
+- **changelog**: Update for v3.0.0
+
+
+
+## [3.0.0] - 2026-06-21
+
 ### 🐛 Bug Fixes
 
 - Probe language pack fallback languages
