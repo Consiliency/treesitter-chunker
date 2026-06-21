@@ -50,7 +50,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install uv
         uv pip install --system -e ".[dev,api,viz,templates,advanced]"
-        uv pip install --system git+https://github.com/tree-sitter/py-tree-sitter.git@v0.25.2
         uv pip install --system toml httpx  # Required by tests
 
     - name: Fetch grammars
