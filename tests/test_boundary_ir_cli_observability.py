@@ -37,7 +37,7 @@ def test_boundary_cli_stdout_json_is_not_polluted_by_default(tmp_path: Path):
     result = runner.invoke(app, ["boundary", str(source), "--lang", "python"])
 
     assert result.exit_code == 0
-    assert json.loads(result.stdout)["schema_version"] == "1.0"
+    assert json.loads(result.stdout)["schema_version"] == "2.0"
     assert "Boundary IR summary" not in result.stdout
 
 
@@ -51,7 +51,7 @@ def test_boundary_cli_summary_uses_stderr_without_polluting_stdout(tmp_path: Pat
     )
 
     assert result.exit_code == 0
-    assert json.loads(result.stdout)["schema_version"] == "1.0"
+    assert json.loads(result.stdout)["schema_version"] == "2.0"
     assert "Boundary IR summary" in result.stderr
 
 
