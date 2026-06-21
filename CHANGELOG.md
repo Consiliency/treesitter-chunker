@@ -7,80 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.0.0] - 2026-06-21
 
-MAJOR — breaking Boundary-IR determinism fix. This release closes the
-treesitter-chunker P0→P3 work-stream that makes the `chunker.boundary` Boundary
-IR deterministic and parity-safe. Both version signals move together because ID
-*values* and canonical *bytes* both change — this is a re-index, not a rewrite.
+### 🐛 Bug Fixes
 
-### 💥 BREAKING
+- Probe language pack fallback languages
 
-- **Boundary-IR determinism fixes (canon v1 adoption).** `node_id`,
-  `symbol_id`, `definition_id`, and `chunk_id` **VALUES** and the canonical
-  **BYTES** all change. Pre-3.0.0 IDs and hashes are **NOT comparable** to
-  `>=3.0.0` ones. Any consumer that stores these IDs or canonical/parity hashes
-  (Code-Index-MCP, codegraph-de, greenfield, spec) **MUST RE-EXTRACT and
-  RE-INDEX** after upgrading. There is no in-place migration of stored IDs.
-- **`schema_version` bumped `1.0` → `2.0`** (and the semantic schema
-  `1.1` → `2.1`) so consumers detect the break at the document level. The
-  published IR JSON Schema now rejects `1.x` documents and a `1.x` schema rejects
-  `2.x` documents — cross-version hash comparison is structurally refused.
-- **Public API signatures are UNCHANGED.** The `chunker.boundary` import surface
-  (`extract_boundary_ir`, `dumps_boundary_ir`, `canonicalize_boundary_ir`,
-  `canonicalize_for_parity` / `canonicalize_for_parity_bytes` / `parity_digest`,
-  `select_node_identity`, the published JSON Schema + loader) is stable;
-  `BOUNDARY_PUBLIC_API_VERSION` stays `1.0`. Consumers need a **re-index, not a
-  rewrite** — the break is in the emitted ID/byte content, not the call surface.
 
-### ✨ What landed (P1 + P2 + P3)
+- Avoid eager language pack loads while listing
 
-- **P1 — canon v1 parity core.** Killed the content-sniff "all-strings → sort"
-  branch (lists now preserve insertion order; only schema-authorized set lists
-  sort at construction); total path normalization unified across cold and
-  incremental extraction; absolute paths stripped from hashed material; all IDs
-  recomputed from a single repo-relative POSIX form; first-class parity-hash view
-  (`canonicalize_for_parity*` / `parity_digest`) excluding volatile fields
-  (`run.root`, `source.path`, `created_at`, `tool_version`, `run.timings`).
-- **P2 — frozen contract + pinned surface.** `definition_id` (and
-  `node_id`/`file_id`/`symbol_id`) documented as **Tier-2 occurrence
-  fingerprints, NOT refactor-stable identities** (`spec` owns rename/move
-  continuity); machine-readable IR JSON Schema published and CI-validated against
-  real emitter output; narrow public surface carved and pinned
-  (`BOUNDARY_PUBLIC_API_VERSION = "1.0"`).
-- **P3 — MAJOR release.** Package `2.2.24` → `3.0.0`; `schema_version`
-  `1.0` → `2.0` / semantic `1.1` → `2.1`; golden snapshots regenerated;
-  migration notes (this entry).
-- **Toolchain pins.** `tree_sitter` 0.24 / `tree-sitter-language-pack` 0.9 ABI
-  pairing pinned; `ruff` and `black` locked in CI for reproducible lint/format.
 
-### 🧭 Migration
-
-1. Upgrade the pin to `treesitter-chunker==3.0.0`.
-2. Re-extract every repository you index and re-index the new IDs/hashes; do not
-   compare any stored `<3.0.0` ID or hash to a `>=3.0.0` one.
-3. Validate emitted documents against the published `2.x` JSON Schema
-   (`load_boundary_ir_schema()`); a `1.x` document will fail validation, which is
-   the intended cross-version guard.
-
-### 📝 Deferred
-
-- An explicitly emitted `canonicalization_version` field (so a consumer could
-  refuse cross-revision hash comparison via a dedicated field rather than via
-  `schema_version`) is an open question and is **NOT** added in 3.0.0. The
-  `schema_version` `1.x`/`2.x` split already enforces the break this release.
-
-## [2.2.24] - 2026-05-01
-
-### ✨ Features
-
-- Freeze the release-prep contract around `pyproject.toml`, `CHANGELOG.md`, and the guarded GitHub release workflow
 
 ### 📚 Documentation
 
-- Align packaging, release checklist, and active release-process guidance with the local-first validation flow
+- **changelog**: Update for v2.2.23
+
+
+
+### 🔧 CI/CD
+
+- Update GitHub Actions runtimes
+
+
+- Update codecov action runtime
+
+
+- Report nonblocking mypy as warnings
+
+
+- Use bash for mypy warning wrapper
+
+
+- Pin ruff to the locked 0.12.5 (fix unpinned-ruff drift reddening main) (#72)
+
+
 
 ### 🔧 Maintenance
 
-- Narrow legacy distribution release helpers so they no longer bump fallback version files or create local git tags during release prep
+- Update lockfile for v2.2.23
+
+
+- Gitignore .dev-skills/ (phase-loop v18 handoff layout)
+
+
+
+### 🧪 Testing
+
+- Release traversal memory before assertion
+
+
 
 ## [2.2.23] - 2026-04-23
 
