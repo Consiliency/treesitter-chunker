@@ -19,9 +19,8 @@ except ImportError:
 class TestRepoProcessor:
     """Test basic repository processor."""
 
-    @classmethod
     @pytest.fixture
-    def temp_repo(cls):
+    def temp_repo(self):
         """Create a temporary repository structure."""
         with tempfile.TemporaryDirectory() as tmpdir:
             repo_path = Path(tmpdir)
@@ -70,9 +69,8 @@ def test_goodbye():
             (repo_path / "docs" / "README.md").write_text("# Documentation")
             yield repo_path
 
-    @classmethod
     @pytest.fixture
-    def processor(cls):
+    def processor(self):
         """Create a repository processor."""
         return RepoProcessor(show_progress=False)
 
@@ -213,9 +211,8 @@ def greeting():
 class TestGitAwareRepoProcessor:
     """Test Git-aware repository processor."""
 
-    @classmethod
     @pytest.fixture
-    def git_repo(cls):
+    def git_repo(self):
         """Create a temporary git repository."""
         with tempfile.TemporaryDirectory() as tmpdir:
             repo_path = Path(tmpdir)
@@ -230,9 +227,8 @@ class TestGitAwareRepoProcessor:
             repo.index.commit("Initial commit")
             yield repo_path, repo
 
-    @classmethod
     @pytest.fixture
-    def git_processor(cls):
+    def git_processor(self):
         """Create a Git-aware repository processor."""
         return GitAwareRepoProcessor(show_progress=False)
 

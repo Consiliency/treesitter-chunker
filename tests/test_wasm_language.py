@@ -11,9 +11,8 @@ from chunker.parser import get_parser
 class TestWASMPlugin:
     """Test suite for WebAssembly language plugin."""
 
-    @classmethod
     @pytest.fixture
-    def plugin(cls):
+    def plugin(self):
         """Create a WASM plugin instance."""
         return WASMPlugin()
 

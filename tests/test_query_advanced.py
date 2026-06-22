@@ -16,15 +16,13 @@ from chunker.types import CodeChunk
 class TestNaturalLanguageQueryEngine:
     """Test natural language query engine."""
 
-    @classmethod
     @pytest.fixture
-    def query_engine(cls):
+    def query_engine(self):
         """Create query engine instance."""
         return NaturalLanguageQueryEngine()
 
-    @classmethod
     @pytest.fixture
-    def sample_chunks(cls):
+    def sample_chunks(self):
         """Create sample code chunks for testing."""
         return [
             CodeChunk(
@@ -253,15 +251,13 @@ class TestNaturalLanguageQueryEngine:
 class TestAdvancedQueryIndex:
     """Test advanced query index functionality."""
 
-    @classmethod
     @pytest.fixture
-    def index(cls):
+    def index(self):
         """Create index instance."""
         return AdvancedQueryIndex()
 
-    @classmethod
     @pytest.fixture
-    def sample_chunks(cls):
+    def sample_chunks(self):
         """Create sample chunks."""
         return [
             CodeChunk(
@@ -414,9 +410,8 @@ class TestAdvancedQueryIndex:
 class TestSmartQueryOptimizer:
     """Test query optimization functionality."""
 
-    @classmethod
     @pytest.fixture
-    def optimizer(cls):
+    def optimizer(self):
         """Create optimizer instance."""
         return SmartQueryOptimizer()
 
@@ -531,9 +526,8 @@ class TestSmartQueryOptimizer:
 class TestIntegration:
     """Integration tests for the complete query system."""
 
-    @classmethod
     @pytest.fixture
-    def query_system(cls):
+    def query_system(self):
         """Create complete query system."""
         engine = NaturalLanguageQueryEngine()
         index = AdvancedQueryIndex()

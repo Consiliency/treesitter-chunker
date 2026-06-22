@@ -9,9 +9,8 @@ from chunker.strategies.semantic import SemanticChunker
 class TestSemanticChunker:
     """Test suite for SemanticChunker."""
 
-    @classmethod
     @pytest.fixture
-    def semantic_chunker(cls):
+    def semantic_chunker(self):
         """Create a semantic chunker instance."""
         return SemanticChunker()
 

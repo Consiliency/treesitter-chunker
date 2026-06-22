@@ -11,9 +11,8 @@ from chunker.parser import get_parser
 class TestZigPlugin:
     """Test suite for Zig language plugin."""
 
-    @classmethod
     @pytest.fixture
-    def plugin(cls):
+    def plugin(self):
         """Create a Zig plugin instance."""
         return ZigPlugin()
 

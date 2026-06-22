@@ -15,9 +15,8 @@ from chunker.types import CodeChunk
 class TestCompositeChunker:
     """Test suite for CompositeChunker."""
 
-    @classmethod
     @pytest.fixture
-    def composite_chunker(cls):
+    def composite_chunker(self):
         """Create a composite chunker instance."""
         return CompositeChunker()
 

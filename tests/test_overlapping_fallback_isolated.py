@@ -13,9 +13,8 @@ from chunker.fallback.overlapping import OverlappingFallbackChunker, OverlapStra
 class TestOverlappingFallbackChunker:
     """Test suite for overlapping fallback chunker."""
 
-    @classmethod
     @pytest.fixture
-    def chunker(cls):
+    def chunker(self):
         """Create a chunker instance."""
         return OverlappingFallbackChunker()
 

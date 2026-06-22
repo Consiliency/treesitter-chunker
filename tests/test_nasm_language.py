@@ -11,9 +11,8 @@ from chunker.parser import get_parser
 class TestNASMPlugin:
     """Test suite for NASM language plugin."""
 
-    @classmethod
     @pytest.fixture
-    def plugin(cls):
+    def plugin(self):
         """Create a NASM plugin instance."""
         return NASMPlugin()
 

@@ -306,9 +306,8 @@ class TestConfigValidation:
 class TestLanguageConfigRegistry:
     """Test the language configuration registry."""
 
-    @classmethod
     @pytest.fixture
-    def registry(cls):
+    def registry(self):
         """Create a fresh registry for each test."""
         reg = LanguageConfigRegistry(enable_lazy_loading=False)
         yield reg
