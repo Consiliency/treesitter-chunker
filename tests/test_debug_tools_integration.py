@@ -15,9 +15,8 @@ from chunker.debug.tools import ChunkComparison, DebugVisualization
 class TestDebugToolsIntegration:
     """Test debug tools integrate with core chunker"""
 
-    @classmethod
     @pytest.fixture
-    def sample_python_file(cls):
+    def sample_python_file(self):
         """Create a sample Python file for testing"""
         content = """def hello(name):
     ""\"Say hello""\"

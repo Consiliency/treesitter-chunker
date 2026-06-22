@@ -15,9 +15,8 @@ from chunker.grammar.discovery import GrammarDiscoveryService
 class TestGrammarDiscoveryService:
     """Test the real GrammarDiscoveryService implementation"""
 
-    @classmethod
     @pytest.fixture
-    def discovery_service(cls):
+    def discovery_service(self):
         """Create a discovery service with a temporary cache directory"""
         with tempfile.TemporaryDirectory() as tmpdir:
             service = GrammarDiscoveryService()

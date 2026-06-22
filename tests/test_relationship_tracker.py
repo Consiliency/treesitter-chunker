@@ -11,9 +11,8 @@ from chunker.types import CodeChunk
 class TestASTRelationshipTracker:
     """Test AST-based relationship tracking."""
 
-    @classmethod
     @pytest.fixture
-    def tracker(cls):
+    def tracker(self):
         """Create a tracker instance."""
         return ASTRelationshipTracker()
 

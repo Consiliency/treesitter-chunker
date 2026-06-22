@@ -9,9 +9,8 @@ from chunker.strategies.adaptive import AdaptiveChunker, AdaptiveMetrics
 class TestAdaptiveChunker:
     """Test suite for AdaptiveChunker."""
 
-    @classmethod
     @pytest.fixture
-    def adaptive_chunker(cls):
+    def adaptive_chunker(self):
         """Create an adaptive chunker instance."""
         return AdaptiveChunker()
 

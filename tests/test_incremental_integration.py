@@ -20,9 +20,8 @@ from chunker.types import CodeChunk
 class TestIncrementalIntegration:
     """Integration tests for incremental processing."""
 
-    @classmethod
     @pytest.fixture
-    def temp_project(cls):
+    def temp_project(self):
         """Create a temporary project structure."""
         temp_dir = tempfile.mkdtemp()
         src_dir = Path(temp_dir) / "src"

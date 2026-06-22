@@ -11,9 +11,8 @@ from chunker.processors.logs import LogProcessor
 class TestLogProcessor:
     """Test suite for LogProcessor."""
 
-    @classmethod
     @pytest.fixture
-    def processor(cls):
+    def processor(self):
         """Create a default LogProcessor instance."""
         return LogProcessor()
 

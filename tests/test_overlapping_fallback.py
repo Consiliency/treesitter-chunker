@@ -25,9 +25,8 @@ def _with_expected_fallback_warning(callback: Callable[[], T], match: str) -> T:
 class TestOverlappingFallbackChunker:
     """Test overlapping fallback chunker implementation."""
 
-    @classmethod
     @pytest.fixture
-    def chunker(cls):
+    def chunker(self):
         """Create an overlapping fallback chunker instance."""
         return OverlappingFallbackChunker()
 

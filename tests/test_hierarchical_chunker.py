@@ -9,9 +9,8 @@ from chunker.strategies.hierarchical import HierarchicalChunker
 class TestHierarchicalChunker:
     """Test suite for HierarchicalChunker."""
 
-    @classmethod
     @pytest.fixture
-    def hierarchical_chunker(cls):
+    def hierarchical_chunker(self):
         """Create a hierarchical chunker instance."""
         return HierarchicalChunker()
 
