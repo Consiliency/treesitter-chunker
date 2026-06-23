@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2026-06-22
+
+### 🐛 Bug Fixes
+
+- **cpp**: Register a proper `CppConfig` so C++ extraction no longer falls back
+  to the generic default chunk types. Classes (`class_specifier` → `class`),
+  structs (`struct_specifier` → `struct`), namespaces (`namespace_definition` →
+  `module`), and in-class members are now emitted. In-class method declarations
+  and out-of-line `Class::method` definitions resolve to `method` (not bare
+  `function`); data members keep their own names (including pointer/reference
+  members) and remain `field_declaration`, matching the convention used by other
+  OO languages such as Java. Previously a C++ file extracted to only its
+  out-of-line `function_definition`s.
+
+### ✨ Features
+
+- New C++ boundary node-type mappings (additive; no change to other languages).
+  New boundaries are byte-reproducible and absolute-path-independent.
+
+
 ## [3.0.0] - 2026-06-21
 
 ### 📚 Documentation

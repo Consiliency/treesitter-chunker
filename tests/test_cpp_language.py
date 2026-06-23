@@ -1,14 +1,13 @@
 """Test C++-specific language features for the chunker.
 
-Note: The C++ language plugin (CppPlugin) exists and supports many C++ constructs
-including classes, namespaces, templates, constructors/destructors, etc. However,
-without a proper LanguageConfig registration (like Python has), the chunker falls
-back to default chunk types which only includes function_definition, class_definition,
-and method_definition.
-
-As a result, these tests verify that C++ code can be parsed and that functions/methods
-are properly detected, but more advanced chunking (classes, namespaces, templates as
-separate chunks) requires proper configuration setup.
+Note: C++ now registers a proper ``CppConfig`` in ``language_config_registry``
+(inheriting C's struct/union/enum/typedef/function types and adding the OO
+surface: ``class_specifier``, ``namespace_definition``, ``template_declaration``
+and in-class ``field_declaration`` members). Before that registration existed,
+``cpp`` had no config and the chunker fell back to the generic default chunk
+types ({function_definition, class_definition, method_definition}); classes,
+namespaces, and templates were silently dropped. These tests assert the
+corrected, richer extraction.
 """
 
 import importlib
@@ -57,9 +56,13 @@ auto add(T a, U b) -> decltype(a + b) {
 """,
         )
         chunks = chunk_file(test_file, "cpp")
-        assert len(chunks) == 2
-        for chunk in chunks:
-            assert chunk.node_type == "function_definition"
+        # Each templated function now emits both its wrapping
+        # `template_declaration` and the inner `function_definition` (previously
+        # the generic fallback only saw the two function_definitions).
+        function_chunks = [c for c in chunks if c.node_type == "function_definition"]
+        template_chunks = [c for c in chunks if c.node_type == "template_declaration"]
+        assert len(function_chunks) == 2
+        assert len(template_chunks) == 2
         assert any("max" in chunk.content for chunk in chunks)
         assert any("add" in chunk.content for chunk in chunks)
 
@@ -466,13 +469,17 @@ private:
 """,
         )
         chunks = chunk_file(test_file, "cpp")
+        # The enclosing `class_specifier` is now emitted as its own chunk (and
+        # its content contains every member), so scope member-level assertions
+        # to `function_definition` chunks to avoid double-counting the class.
         all_functions = [c for c in chunks if c.node_type == "function_definition"]
         assert len(all_functions) >= 7
-        constructor_like = [c for c in chunks if "Resource(" in c.content]
+        assert any(c.node_type == "class_specifier" for c in chunks)
+        constructor_like = [c for c in all_functions if "Resource(" in c.content]
         assert len(constructor_like) >= 3
-        destructor_like = [c for c in chunks if "~Resource" in c.content]
+        destructor_like = [c for c in all_functions if "~Resource" in c.content]
         assert len(destructor_like) >= 1
-        assignment_chunks = [c for c in chunks if "operator=" in c.content]
+        assignment_chunks = [c for c in all_functions if "operator=" in c.content]
         assert len(assignment_chunks) == 2
 
     @staticmethod

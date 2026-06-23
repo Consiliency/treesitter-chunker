@@ -64,7 +64,89 @@ def _extract_definition_name(node: Node, source: bytes) -> str | None:
                 errors="ignore",
             )
 
+    # C/C++ member and out-of-line definitions. The grammar buries the name
+    # under a function_declarator (for methods) or names a data member with a
+    # field_identifier directly, neither of which is exposed as a "name" field.
+    cpp_name = _extract_c_member_name(node, source)
+    if cpp_name is not None:
+        return cpp_name
+
     return None
+
+
+def _extract_c_member_name(node: Node, source: bytes) -> str | None:
+    """Extract a name from C++ member and out-of-line definition nodes.
+
+    Handles the C++ declarator shapes the generic ``name``/``identifier`` field
+    lookups miss:
+    - ``field_identifier`` (in-class data members, e.g. ``int total;``, and
+      in-class method declarations whose name sits under a function_declarator)
+    - ``pointer_declarator`` / ``reference_declarator`` wrapping a
+      ``field_identifier`` (pointer/reference data members)
+    - ``qualified_identifier`` under a ``function_declarator`` (out-of-line
+      ``Class::method``), where the last ``identifier`` segment is the name.
+
+    Deliberately does NOT resolve a bare ``identifier`` under a
+    ``function_declarator`` (a C-style free function): the base lookups leave
+    those anonymous, and naming them would rewrite C qualified routes and
+    definition_ids. Returns the unqualified name, or ``None`` if none applies.
+    """
+    for child in getattr(node, "children", []) or []:
+        child_type = getattr(child, "type", "")
+        if child_type == "field_identifier":
+            return source[child.start_byte : child.end_byte].decode(
+                "utf-8",
+                errors="ignore",
+            )
+        # Pointer/reference data members wrap the field_identifier in a
+        # (possibly nested) pointer_declarator / reference_declarator.
+        if child_type in {"pointer_declarator", "reference_declarator"}:
+            name = _extract_c_member_name(child, source)
+            if name is not None:
+                return name
+        if child_type == "function_declarator":
+            for sub in getattr(child, "children", []) or []:
+                sub_type = getattr(sub, "type", "")
+                if sub_type == "field_identifier":
+                    return source[sub.start_byte : sub.end_byte].decode(
+                        "utf-8",
+                        errors="ignore",
+                    )
+                if sub_type == "qualified_identifier":
+                    return _last_qualified_segment(sub, source)
+                # NOTE: deliberately do NOT resolve a plain `identifier` here.
+                # That shape is a C-style free function (`int add(){}`) which
+                # the base name lookups intentionally leave anonymous; resolving
+                # it would rewrite C qualified routes and definition_ids and
+                # break C's pinned IR. C++ in-class methods use `field_identifier`
+                # and out-of-line methods use `qualified_identifier` (handled
+                # above), so dropping this case loses nothing for C++. C++ free
+                # functions stay anonymous too, matching the C convention.
+    return None
+
+
+def _last_qualified_segment(node: Node, source: bytes) -> str | None:
+    """Return the final unqualified identifier of a C++ qualified_identifier."""
+    current = node
+    # qualified_identifier nests (a::b::c -> a :: (b :: c)); descend to the leaf.
+    while True:
+        nested = None
+        leaf = None
+        for child in getattr(current, "children", []) or []:
+            child_type = getattr(child, "type", "")
+            if child_type == "qualified_identifier":
+                nested = child
+            elif child_type == "identifier":
+                leaf = child
+        if nested is not None:
+            current = nested
+            continue
+        if leaf is not None:
+            return source[leaf.start_byte : leaf.end_byte].decode(
+                "utf-8",
+                errors="ignore",
+            )
+        return None
 
 
 def _parse_route_segment(segment: str) -> tuple[str, str]:
@@ -473,6 +555,27 @@ def _walk(
                         adjusted_node_type = "method_definition"
                         break
                     parent = getattr(parent, "parent", None)
+        elif language == "cpp":
+            # C++ buries in-class methods inside `field_declaration` (a
+            # function_declarator marks a method vs. a data member) and writes
+            # out-of-line definitions as `function_definition` with a
+            # qualified_identifier (Class::method). Promote both to
+            # `method_declaration` so the emitted kind is `method` rather than
+            # `field`/`function`. Plain data members stay `field_declaration`
+            # (kind `field_declaration`), matching how Java emits fields.
+            if node.type == "field_declaration":
+                if any(
+                    getattr(child, "type", "") == "function_declarator"
+                    for child in node.children
+                ):
+                    adjusted_node_type = "method_declaration"
+            elif node.type == "function_definition":
+                declarator = node.child_by_field_name("declarator")
+                if declarator is not None and any(
+                    getattr(child, "type", "") == "qualified_identifier"
+                    for child in declarator.children
+                ):
+                    adjusted_node_type = "method_declaration"
         elif language == "julia":
             # Map Julia assignment nodes that are actually function definitions
             if node.type == "assignment":

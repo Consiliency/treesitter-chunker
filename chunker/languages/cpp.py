@@ -2,10 +2,44 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .c import CPlugin
+from .base import language_config_registry
+from .c import CConfig, CPlugin
 
 if TYPE_CHECKING:
     from tree_sitter import Node
+
+
+class CppConfig(CConfig):
+    """Language configuration for C++ (inherits C's chunk types).
+
+    C++ shares C's struct/union/enum/typedef/function nodes and adds the
+    object-oriented surface: classes, namespaces, and in-class members. The
+    `field_declaration` node carries both data members and in-class method
+    declarations; the latter are promoted to ``method_declaration`` by the
+    C++-specific adjustment in ``core._walk`` so the emitted kind is ``method``
+    rather than ``field_declaration``.
+    """
+
+    @property
+    def language_id(self) -> str:
+        return "cpp"
+
+    @property
+    def chunk_types(self) -> set[str]:
+        """C++ chunk types: C's set plus the OO surface."""
+        return super().chunk_types | {
+            "class_specifier",
+            "namespace_definition",
+            "field_declaration",
+            "template_declaration",
+        }
+
+    @property
+    def file_extensions(self) -> set[str]:
+        return {".cpp", ".cxx", ".cc", ".hpp", ".hxx", ".hh"}
+
+
+language_config_registry.register(CppConfig())
 
 
 class CppPlugin(CPlugin):
