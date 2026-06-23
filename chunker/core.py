@@ -75,17 +75,21 @@ def _extract_definition_name(node: Node, source: bytes) -> str | None:
 
 
 def _extract_c_member_name(node: Node, source: bytes) -> str | None:
-    """Extract a name from C/C++ member and out-of-line definition nodes.
+    """Extract a name from C++ member and out-of-line definition nodes.
 
-    Handles the declarator shapes the generic ``name``/``identifier`` field
+    Handles the C++ declarator shapes the generic ``name``/``identifier`` field
     lookups miss:
-    - ``field_identifier`` (in-class data members, e.g. ``int total;``)
-    - ``function_declarator`` wrapping a method name (in-class declarations and
-      out-of-line definitions)
-    - ``qualified_identifier`` (out-of-line ``Class::method``), where the last
-      ``identifier`` segment is the unqualified name.
+    - ``field_identifier`` (in-class data members, e.g. ``int total;``, and
+      in-class method declarations whose name sits under a function_declarator)
+    - ``pointer_declarator`` / ``reference_declarator`` wrapping a
+      ``field_identifier`` (pointer/reference data members)
+    - ``qualified_identifier`` under a ``function_declarator`` (out-of-line
+      ``Class::method``), where the last ``identifier`` segment is the name.
 
-    Returns the unqualified name, or ``None`` if no name node is present.
+    Deliberately does NOT resolve a bare ``identifier`` under a
+    ``function_declarator`` (a C-style free function): the base lookups leave
+    those anonymous, and naming them would rewrite C qualified routes and
+    definition_ids. Returns the unqualified name, or ``None`` if none applies.
     """
     for child in getattr(node, "children", []) or []:
         child_type = getattr(child, "type", "")
@@ -110,11 +114,14 @@ def _extract_c_member_name(node: Node, source: bytes) -> str | None:
                     )
                 if sub_type == "qualified_identifier":
                     return _last_qualified_segment(sub, source)
-                if sub_type == "identifier":
-                    return source[sub.start_byte : sub.end_byte].decode(
-                        "utf-8",
-                        errors="ignore",
-                    )
+                # NOTE: deliberately do NOT resolve a plain `identifier` here.
+                # That shape is a C-style free function (`int add(){}`) which
+                # the base name lookups intentionally leave anonymous; resolving
+                # it would rewrite C qualified routes and definition_ids and
+                # break C's pinned IR. C++ in-class methods use `field_identifier`
+                # and out-of-line methods use `qualified_identifier` (handled
+                # above), so dropping this case loses nothing for C++. C++ free
+                # functions stay anonymous too, matching the C convention.
     return None
 
 
