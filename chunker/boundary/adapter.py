@@ -12,6 +12,7 @@ from typing import Any
 from chunker.auto import ZeroConfigAPI
 from chunker.core import chunk_file
 from chunker.symbol_graph import (
+    _canonical_language,
     assemble_symbol_graph,
     collect_source_files,
     extract_symbol_facts_for_file,
@@ -74,7 +75,9 @@ def _module_name(display_path: str) -> str:
 
 def _detect_language(file_path: Path, fallback: str | None) -> str | None:
     if fallback:
-        return fallback.lower()
+        # Canonicalize aliases (e.g. "c_sharp" -> "csharp") so the alias resolves
+        # to the same config and hashes identically to the canonical name.
+        return _canonical_language(fallback)
     return ZeroConfigAPI.EXTENSION_MAP.get(file_path.suffix.lower())
 
 
@@ -963,6 +966,11 @@ def extract_boundary_ir(
     if resolution_mode not in RESOLUTION_MODES:
         msg = f"Unsupported resolution_mode: {resolution_mode}"
         raise ValueError(msg)
+    # Canonicalize language aliases (e.g. "c_sharp" -> "csharp") once, so every
+    # downstream consumer — file collection, graph assembly, and the echoed
+    # run.options.language — sees the canonical value and the IR is byte-identical
+    # regardless of which alias the caller passed.
+    language = _canonical_language(language)
     _validate_semantic_min_confidence(semantic_min_confidence)
     semantic_resolvers = (
         None if semantic_resolvers is None else tuple(semantic_resolvers)

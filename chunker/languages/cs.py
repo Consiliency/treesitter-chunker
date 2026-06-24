@@ -19,6 +19,11 @@ class CSharpConfig(LanguageConfig):
     def chunk_types(self) -> set[str]:
         # Common C# tree-sitter node types of interest
         return {
+            # Namespace surface — both the block form (`namespace N { ... }`) and
+            # the C# 10 file-scoped form (`namespace N;`). Both normalize to kind
+            # "module" via core._normalize_kind, matching C++'s namespace_definition.
+            "namespace_declaration",
+            "file_scoped_namespace_declaration",
             "class_declaration",
             "struct_declaration",
             "interface_declaration",

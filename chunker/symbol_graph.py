@@ -42,11 +42,27 @@ _IMPORT_KEYWORDS = {
 }
 
 
+# Canonicalize language aliases to the value used in EXTENSION_MAP. The C#
+# registry registers language_id "c_sharp" with alias "csharp", but
+# EXTENSION_MAP maps ".cs" -> "csharp"; without this, passing language
+# "c_sharp" matches no extension and collects zero files. Canonicalizing here
+# (and in adapter._detect_language) makes the "c_sharp" alias resolve to the
+# same files and hash identically to "csharp".
+_LANGUAGE_ALIASES: dict[str, str] = {"c_sharp": "csharp"}
+
+
+def _canonical_language(language: str | None) -> str | None:
+    if language is None:
+        return None
+    lowered = language.lower()
+    return _LANGUAGE_ALIASES.get(lowered, lowered)
+
+
 def _candidate_extensions(language: str | None) -> set[str]:
     extension_map = ZeroConfigAPI.EXTENSION_MAP
     if language is None:
         return set(extension_map)
-    normalized = language.lower()
+    normalized = _canonical_language(language)
     return {ext for ext, lang in extension_map.items() if lang == normalized}
 
 
@@ -80,7 +96,7 @@ def _detect_language(
     file_path: Path, fallback_language: str | None = None
 ) -> str | None:
     if fallback_language:
-        return fallback_language.lower()
+        return _canonical_language(fallback_language)
     return ZeroConfigAPI.EXTENSION_MAP.get(file_path.suffix.lower())
 
 

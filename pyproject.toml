@@ -1,6 +1,6 @@
 [project]
 name            = "treesitter-chunker"
-version = "3.1.0"
+version = "3.2.0"
 description     = "Semantic code chunker using Tree-sitter for intelligent code analysis"
 readme          = "README.md"
 requires-python = ">=3.11"
@@ -106,6 +106,20 @@ requires = [
     # "setuptools-scm[toml]>=6.2",
 ]
 build-backend = "setuptools.build_meta"
+
+
+[tool.uv]
+# C# boundary extraction requires an ABI-14 grammar. tree-sitter-language-pack
+# 0.9.x transitively hard-pins tree-sitter-c-sharp>=0.23.1, which is built against
+# tree-sitter ABI 15. Our verified pairing caps the core at tree_sitter 0.24
+# (ABI 13-14), so the 0.23.1 grammar fails to load
+# ("Incompatible Language version 15. Must be between 13 and 14") and C# silently
+# emits zero boundaries. tree-sitter-c-sharp 0.23.0 is ABI 14 and loads + parses
+# C# richly (class/method/field/enum) under tree_sitter 0.24. A plain dependency
+# constraint is unsatisfiable against the pack's transitive >=0.23.1 hard-pin, so
+# this MUST be an override. Additive: only C# changes; the 0.24/0.9 pairing for
+# every other language is untouched.
+override-dependencies = ["tree-sitter-c-sharp==0.23.0"]
 
 
 
