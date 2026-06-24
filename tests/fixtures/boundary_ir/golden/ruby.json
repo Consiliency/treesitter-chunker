@@ -1,0 +1,247 @@
+{
+  "diagnostics": [],
+  "edges": [],
+  "files": [
+    {
+      "content_hash": "sha1:736e169031af07f75c486b44c8c4f0ff441abe8a",
+      "diagnostics": [],
+      "id": "0dc255d17d246a4891b0e6cafdf66be9c9f81d48",
+      "language": "ruby",
+      "parser": "tree-sitter-ruby",
+      "path": "widget.rb",
+      "status": "parsed"
+    }
+  ],
+  "metrics": {
+    "ambiguous_edges": 0,
+    "diagnostics_total": 0,
+    "edges_total": 0,
+    "failure_buckets": {},
+    "files_failed": 0,
+    "files_parsed": 1,
+    "files_processed": 1,
+    "files_skipped": 0,
+    "files_total": 1,
+    "graph_failures": 0,
+    "metadata_failures": 0,
+    "nodes_total": 5,
+    "parse_failures": 0,
+    "resolved_edges": 0,
+    "serialization_failures": 0,
+    "unresolved_edges": 0
+  },
+  "nodes": [
+    {
+      "definition_id": "35310095834fec9333d9874bbd3ac7477ee2f40e",
+      "file_id": "0dc255d17d246a4891b0e6cafdf66be9c9f81d48",
+      "id": "35310095834fec9333d9874bbd3ac7477ee2f40e",
+      "identity": {
+        "source": "definition_id",
+        "value": "35310095834fec9333d9874bbd3ac7477ee2f40e"
+      },
+      "kind": "method",
+      "language": "ruby",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": "Widget",
+        "semantic_text": "language: ruby\nfile: widget.rb\nkind: method\nsymbol: render\nqualified name: Widget.render\nparent symbol: Widget\nsemantic path: widget.rb::Widget.render\ncontent:\ndef render\n    helper(@count)\n  end"
+      },
+      "node_id": "418f302615f111752a66464d1b3f8eb5475fc123",
+      "parent": "624eb47dadf0e6619172cc828db43cd340bf6d33",
+      "path": "widget.rb",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Widget.render",
+      "relationships": [],
+      "semantic_path": "widget.rb::Widget.render",
+      "signature": null,
+      "span": {
+        "byte_end": 100,
+        "byte_start": 65,
+        "end_line": 8,
+        "start_line": 6
+      },
+      "symbol": "render",
+      "symbol_id": "c3c42e442612cfd37c495784fee8ba7297f4bd2c"
+    },
+    {
+      "definition_id": "52adab2ccbee230d0ea2bd938f69a3d40166c749",
+      "file_id": "0dc255d17d246a4891b0e6cafdf66be9c9f81d48",
+      "id": "52adab2ccbee230d0ea2bd938f69a3d40166c749",
+      "identity": {
+        "source": "definition_id",
+        "value": "52adab2ccbee230d0ea2bd938f69a3d40166c749"
+      },
+      "kind": "method",
+      "language": "ruby",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": "Widget",
+        "semantic_text": "language: ruby\nfile: widget.rb\nkind: method\nsymbol: helper\nqualified name: Widget.helper\nparent symbol: Widget\nsemantic path: widget.rb::Widget.helper\ncontent:\ndef helper(value)\n    value + 1\n  end"
+      },
+      "node_id": "d1a4c6a33da93dd9d0df4a8d147fd86fc783ad98",
+      "parent": "624eb47dadf0e6619172cc828db43cd340bf6d33",
+      "path": "widget.rb",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Widget.helper",
+      "relationships": [],
+      "semantic_path": "widget.rb::Widget.helper",
+      "signature": null,
+      "span": {
+        "byte_end": 141,
+        "byte_start": 104,
+        "end_line": 12,
+        "start_line": 10
+      },
+      "symbol": "helper",
+      "symbol_id": "df377cb614d3dd38d8ccf5e7632222158f491836"
+    },
+    {
+      "definition_id": "5903643579d7686c6fb23f3c2144bbaf977d1009",
+      "file_id": "0dc255d17d246a4891b0e6cafdf66be9c9f81d48",
+      "id": "5903643579d7686c6fb23f3c2144bbaf977d1009",
+      "identity": {
+        "source": "definition_id",
+        "value": "5903643579d7686c6fb23f3c2144bbaf977d1009"
+      },
+      "kind": "class",
+      "language": "ruby",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: ruby\nfile: widget.rb\nkind: class\nsymbol: Widget\nqualified name: Widget\nsemantic path: widget.rb::Widget\ncontent:\nclass"
+      },
+      "node_id": "a1b67bffde8b1283953cb837d01b93c6482c0127",
+      "parent": "624eb47dadf0e6619172cc828db43cd340bf6d33",
+      "path": "widget.rb",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Widget",
+      "relationships": [],
+      "semantic_path": "widget.rb::Widget",
+      "signature": null,
+      "span": {
+        "byte_end": 5,
+        "byte_start": 0,
+        "end_line": 1,
+        "start_line": 1
+      },
+      "symbol": "Widget",
+      "symbol_id": "907a8933e9a738318652743631007fa2ed33b100"
+    },
+    {
+      "definition_id": "7f580379a419db28002fc841ce5f11518bb6b2f5",
+      "file_id": "0dc255d17d246a4891b0e6cafdf66be9c9f81d48",
+      "id": "7f580379a419db28002fc841ce5f11518bb6b2f5",
+      "identity": {
+        "source": "definition_id",
+        "value": "7f580379a419db28002fc841ce5f11518bb6b2f5"
+      },
+      "kind": "class",
+      "language": "ruby",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: ruby\nfile: widget.rb\nkind: class\nsymbol: Widget\nqualified name: Widget\nsemantic path: widget.rb::Widget\ncontent:\nclass Widget\n  def initialize(count)\n    @count = count\n  end\n\n  def render\n    helper(@count)\n  end\n\n  def helper(value)\n    value + 1\n  end\nend"
+      },
+      "node_id": "624eb47dadf0e6619172cc828db43cd340bf6d33",
+      "parent": null,
+      "path": "widget.rb",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Widget",
+      "relationships": [],
+      "semantic_path": "widget.rb::Widget",
+      "signature": null,
+      "span": {
+        "byte_end": 145,
+        "byte_start": 0,
+        "end_line": 13,
+        "start_line": 1
+      },
+      "symbol": "Widget",
+      "symbol_id": "907a8933e9a738318652743631007fa2ed33b100"
+    },
+    {
+      "definition_id": "a93d037372fa03e1ddb81e4ac27ab2d323116948",
+      "file_id": "0dc255d17d246a4891b0e6cafdf66be9c9f81d48",
+      "id": "a93d037372fa03e1ddb81e4ac27ab2d323116948",
+      "identity": {
+        "source": "definition_id",
+        "value": "a93d037372fa03e1ddb81e4ac27ab2d323116948"
+      },
+      "kind": "method",
+      "language": "ruby",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": "Widget",
+        "semantic_text": "language: ruby\nfile: widget.rb\nkind: method\nsymbol: initialize\nqualified name: Widget.initialize\nparent symbol: Widget\nsemantic path: widget.rb::Widget.initialize\ncontent:\ndef initialize(count)\n    @count = count\n  end"
+      },
+      "node_id": "66963847b8aff81b52f225b9f3e5e2f537c95e2d",
+      "parent": "624eb47dadf0e6619172cc828db43cd340bf6d33",
+      "path": "widget.rb",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Widget.initialize",
+      "relationships": [],
+      "semantic_path": "widget.rb::Widget.initialize",
+      "signature": null,
+      "span": {
+        "byte_end": 61,
+        "byte_start": 15,
+        "end_line": 4,
+        "start_line": 2
+      },
+      "symbol": "initialize",
+      "symbol_id": "9ec262098b7d49c9610df9cbf9dcf8aac563446f"
+    }
+  ],
+  "run": {
+    "canonical": true,
+    "created_at": null,
+    "options": {
+      "fail_fast": false,
+      "include_retrieval_metadata": true,
+      "include_timings": false,
+      "language": "ruby",
+      "resolution_mode": "strict"
+    },
+    "root": "tests/fixtures/boundary_ir/repos/ruby",
+    "timings": {
+      "graph_assembly_ms": null,
+      "metadata_normalization_ms": null,
+      "parse_ms": null,
+      "resolution_ms": null,
+      "serialization_ms": null,
+      "total_ms": null
+    },
+    "tool": "treesitter-chunker",
+    "tool_version": "<tool-version>"
+  },
+  "schema_version": "2.0",
+  "source": {
+    "kind": "repository",
+    "path": "tests/fixtures/boundary_ir/repos/ruby"
+  }
+}

@@ -5,13 +5,13 @@ import pytest
 from chunker.boundary import dumps_boundary_ir
 from tests.boundary_ir_conformance import (
     GOLDEN_ROOT,
-    P0_BOUNDARY_LANGUAGES,
+    SUPPORTED_BOUNDARY_LANGUAGES,
     extract_fixture_ir,
     normalize_ir_for_golden,
 )
 
 
-@pytest.mark.parametrize("language", P0_BOUNDARY_LANGUAGES)
+@pytest.mark.parametrize("language", SUPPORTED_BOUNDARY_LANGUAGES)
 def test_boundary_ir_golden_snapshot(language: str):
     actual_ir = normalize_ir_for_golden(extract_fixture_ir(language))
     golden_path = GOLDEN_ROOT / f"{language}.json"

@@ -1,0 +1,247 @@
+{
+  "diagnostics": [],
+  "edges": [],
+  "files": [
+    {
+      "content_hash": "sha1:914374affb6331f45928cfab145c6b25827c235b",
+      "diagnostics": [],
+      "id": "85ce94054e96365832ea9a283b0b6ccfc1aec5c4",
+      "language": "swift",
+      "parser": "tree-sitter-swift",
+      "path": "Widget.swift",
+      "status": "parsed"
+    }
+  ],
+  "metrics": {
+    "ambiguous_edges": 0,
+    "diagnostics_total": 0,
+    "edges_total": 0,
+    "failure_buckets": {},
+    "files_failed": 0,
+    "files_parsed": 1,
+    "files_processed": 1,
+    "files_skipped": 0,
+    "files_total": 1,
+    "graph_failures": 0,
+    "metadata_failures": 0,
+    "nodes_total": 5,
+    "parse_failures": 0,
+    "resolved_edges": 0,
+    "serialization_failures": 0,
+    "unresolved_edges": 0
+  },
+  "nodes": [
+    {
+      "definition_id": "5a298fb13ca7f368d503fd6adb7ac0d8c7b1ac50",
+      "file_id": "85ce94054e96365832ea9a283b0b6ccfc1aec5c4",
+      "id": "5a298fb13ca7f368d503fd6adb7ac0d8c7b1ac50",
+      "identity": {
+        "source": "definition_id",
+        "value": "5a298fb13ca7f368d503fd6adb7ac0d8c7b1ac50"
+      },
+      "kind": "class",
+      "language": "swift",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: swift\nfile: Widget.swift\nkind: class\nsymbol: Widget\nqualified name: Widget\nsemantic path: Widget.swift::Widget\ncontent:\nclass Widget {\n    var count: Int = 0\n\n    func render() -> Int {\n        return helper(count)\n    }\n\n    func helper(_ value: Int) -> Int {\n        return value + 1\n    }\n}"
+      },
+      "node_id": "b1e80617ae1a4d3e5ab0176b97524c3b9504e728",
+      "parent": null,
+      "path": "Widget.swift",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Widget",
+      "relationships": [],
+      "semantic_path": "Widget.swift::Widget",
+      "signature": null,
+      "span": {
+        "byte_end": 173,
+        "byte_start": 0,
+        "end_line": 11,
+        "start_line": 1
+      },
+      "symbol": "Widget",
+      "symbol_id": "03f0ef443bd4b8fa09776e5ea6aa4ac23e6f3598"
+    },
+    {
+      "definition_id": "6b8e69e71274adbaf1ff0c800390b18c4faf998a",
+      "file_id": "85ce94054e96365832ea9a283b0b6ccfc1aec5c4",
+      "id": "6b8e69e71274adbaf1ff0c800390b18c4faf998a",
+      "identity": {
+        "source": "definition_id",
+        "value": "6b8e69e71274adbaf1ff0c800390b18c4faf998a"
+      },
+      "kind": "function",
+      "language": "swift",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: swift\nfile: Widget.swift\nkind: function\nsymbol: run\nqualified name: run\nsemantic path: Widget.swift::run\ncontent:\nfunc run() -> Int {\n    return Widget().render()\n}"
+      },
+      "node_id": "40ac2f910e6e3bb1854ee0aacc4370e122f4bd11",
+      "parent": null,
+      "path": "Widget.swift",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "run",
+      "relationships": [],
+      "semantic_path": "Widget.swift::run",
+      "signature": null,
+      "span": {
+        "byte_end": 225,
+        "byte_start": 175,
+        "end_line": 15,
+        "start_line": 13
+      },
+      "symbol": "run",
+      "symbol_id": "d6a1a7b04a991b73823ee89c9bf55256c07b4bf3"
+    },
+    {
+      "definition_id": "89c9baae6cf09e364f31cef19341944bbc473bee",
+      "file_id": "85ce94054e96365832ea9a283b0b6ccfc1aec5c4",
+      "id": "89c9baae6cf09e364f31cef19341944bbc473bee",
+      "identity": {
+        "source": "definition_id",
+        "value": "89c9baae6cf09e364f31cef19341944bbc473bee"
+      },
+      "kind": "method",
+      "language": "swift",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": "Widget",
+        "semantic_text": "language: swift\nfile: Widget.swift\nkind: method\nsymbol: helper\nqualified name: Widget.helper\nparent symbol: Widget\nsemantic path: Widget.swift::Widget.helper\ncontent:\nfunc helper(_ value: Int) -> Int {\n        return value + 1\n    }"
+      },
+      "node_id": "4169568e3b87dbe6eec14ccc64851482b8055f87",
+      "parent": "b1e80617ae1a4d3e5ab0176b97524c3b9504e728",
+      "path": "Widget.swift",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Widget.helper",
+      "relationships": [],
+      "semantic_path": "Widget.swift::Widget.helper",
+      "signature": null,
+      "span": {
+        "byte_end": 171,
+        "byte_start": 106,
+        "end_line": 10,
+        "start_line": 8
+      },
+      "symbol": "helper",
+      "symbol_id": "4ef3a2ea7d06d5326ce666bffb4386cdd7a85546"
+    },
+    {
+      "definition_id": "b8469fa43030f1a63e96494c6bb1fcb8cbff3172",
+      "file_id": "85ce94054e96365832ea9a283b0b6ccfc1aec5c4",
+      "id": "b8469fa43030f1a63e96494c6bb1fcb8cbff3172",
+      "identity": {
+        "source": "definition_id",
+        "value": "b8469fa43030f1a63e96494c6bb1fcb8cbff3172"
+      },
+      "kind": "property_declaration",
+      "language": "swift",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": "Widget",
+        "semantic_text": "language: swift\nfile: Widget.swift\nkind: property_declaration\nsymbol: count\nqualified name: Widget.count\nparent symbol: Widget\nsemantic path: Widget.swift::Widget.count\ncontent:\nvar count: Int = 0"
+      },
+      "node_id": "12c60e889bc83d289e0faf8f8093ab2919f60546",
+      "parent": "b1e80617ae1a4d3e5ab0176b97524c3b9504e728",
+      "path": "Widget.swift",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Widget.count",
+      "relationships": [],
+      "semantic_path": "Widget.swift::Widget.count",
+      "signature": null,
+      "span": {
+        "byte_end": 37,
+        "byte_start": 19,
+        "end_line": 2,
+        "start_line": 2
+      },
+      "symbol": "count",
+      "symbol_id": "7138e864d0d32b6604a5e7f93ec4103b9050e842"
+    },
+    {
+      "definition_id": "f8877a6af7ebbb7bcf2483a4a4bb5979c9027e0f",
+      "file_id": "85ce94054e96365832ea9a283b0b6ccfc1aec5c4",
+      "id": "f8877a6af7ebbb7bcf2483a4a4bb5979c9027e0f",
+      "identity": {
+        "source": "definition_id",
+        "value": "f8877a6af7ebbb7bcf2483a4a4bb5979c9027e0f"
+      },
+      "kind": "method",
+      "language": "swift",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": "Widget",
+        "semantic_text": "language: swift\nfile: Widget.swift\nkind: method\nsymbol: render\nqualified name: Widget.render\nparent symbol: Widget\nsemantic path: Widget.swift::Widget.render\ncontent:\nfunc render() -> Int {\n        return helper(count)\n    }"
+      },
+      "node_id": "30e21bf6c32b82d3bd359a674cfefdc71aa8df4e",
+      "parent": "b1e80617ae1a4d3e5ab0176b97524c3b9504e728",
+      "path": "Widget.swift",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Widget.render",
+      "relationships": [],
+      "semantic_path": "Widget.swift::Widget.render",
+      "signature": null,
+      "span": {
+        "byte_end": 100,
+        "byte_start": 43,
+        "end_line": 6,
+        "start_line": 4
+      },
+      "symbol": "render",
+      "symbol_id": "2f9f6c9b089629632620459cecd35732f90360b9"
+    }
+  ],
+  "run": {
+    "canonical": true,
+    "created_at": null,
+    "options": {
+      "fail_fast": false,
+      "include_retrieval_metadata": true,
+      "include_timings": false,
+      "language": "swift",
+      "resolution_mode": "strict"
+    },
+    "root": "tests/fixtures/boundary_ir/repos/swift",
+    "timings": {
+      "graph_assembly_ms": null,
+      "metadata_normalization_ms": null,
+      "parse_ms": null,
+      "resolution_ms": null,
+      "serialization_ms": null,
+      "total_ms": null
+    },
+    "tool": "treesitter-chunker",
+    "tool_version": "<tool-version>"
+  },
+  "schema_version": "2.0",
+  "source": {
+    "kind": "repository",
+    "path": "tests/fixtures/boundary_ir/repos/swift"
+  }
+}

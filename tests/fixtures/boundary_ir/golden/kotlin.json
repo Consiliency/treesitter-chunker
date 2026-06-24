@@ -1,0 +1,210 @@
+{
+  "diagnostics": [],
+  "edges": [],
+  "files": [
+    {
+      "content_hash": "sha1:da21dc4f63570260f626a07c6207178ebf3416fc",
+      "diagnostics": [],
+      "id": "1aae6d0cbd7a6568c104c279e72116a4f6feb374",
+      "language": "kotlin",
+      "parser": "tree-sitter-kotlin",
+      "path": "Widget.kt",
+      "status": "parsed"
+    }
+  ],
+  "metrics": {
+    "ambiguous_edges": 0,
+    "diagnostics_total": 0,
+    "edges_total": 0,
+    "failure_buckets": {},
+    "files_failed": 0,
+    "files_parsed": 1,
+    "files_processed": 1,
+    "files_skipped": 0,
+    "files_total": 1,
+    "graph_failures": 0,
+    "metadata_failures": 0,
+    "nodes_total": 4,
+    "parse_failures": 0,
+    "resolved_edges": 0,
+    "serialization_failures": 0,
+    "unresolved_edges": 0
+  },
+  "nodes": [
+    {
+      "definition_id": "4c571ad7d112f80b2a26511e73a9018a715d756f",
+      "file_id": "1aae6d0cbd7a6568c104c279e72116a4f6feb374",
+      "id": "4c571ad7d112f80b2a26511e73a9018a715d756f",
+      "identity": {
+        "source": "definition_id",
+        "value": "4c571ad7d112f80b2a26511e73a9018a715d756f"
+      },
+      "kind": "method",
+      "language": "kotlin",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: kotlin\nfile: Widget.kt\nkind: method\nsymbol: class_declaration\nqualified name: class_declaration\nsemantic path: Widget.kt::class_declaration\ncontent:\nfun render(): Int {\n        return helper(count)\n    }"
+      },
+      "node_id": "d36caa45ccfa1294f8ee678fd1e26b6a2b131028",
+      "parent": "e5bfe8bb686fd1d7aacaa54934433170b693988c",
+      "path": "Widget.kt",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "class_declaration",
+      "relationships": [],
+      "semantic_path": "Widget.kt::class_declaration",
+      "signature": null,
+      "span": {
+        "byte_end": 102,
+        "byte_start": 48,
+        "end_line": 6,
+        "start_line": 4
+      },
+      "symbol": "class_declaration",
+      "symbol_id": "51e225fc38da234fc2fb3cc3331f92ac73cc75ed"
+    },
+    {
+      "definition_id": "cc0a6e60f1c7360be23cdadf259175c7a60625a6",
+      "file_id": "1aae6d0cbd7a6568c104c279e72116a4f6feb374",
+      "id": "cc0a6e60f1c7360be23cdadf259175c7a60625a6",
+      "identity": {
+        "source": "definition_id",
+        "value": "cc0a6e60f1c7360be23cdadf259175c7a60625a6"
+      },
+      "kind": "method",
+      "language": "kotlin",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: kotlin\nfile: Widget.kt\nkind: method\nsymbol: class_declaration\nqualified name: class_declaration\nsemantic path: Widget.kt::class_declaration\ncontent:\nfun helper(value: Int): Int {\n        return value + 1\n    }"
+      },
+      "node_id": "8c0124bef7d88ec5b0bc960b8d8610e1bfd06633",
+      "parent": "e5bfe8bb686fd1d7aacaa54934433170b693988c",
+      "path": "Widget.kt",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "class_declaration",
+      "relationships": [],
+      "semantic_path": "Widget.kt::class_declaration",
+      "signature": null,
+      "span": {
+        "byte_end": 168,
+        "byte_start": 108,
+        "end_line": 10,
+        "start_line": 8
+      },
+      "symbol": "class_declaration",
+      "symbol_id": "51e225fc38da234fc2fb3cc3331f92ac73cc75ed"
+    },
+    {
+      "definition_id": "f16906df0adc4ed69aa8f61caff4bde67ad2e62e",
+      "file_id": "1aae6d0cbd7a6568c104c279e72116a4f6feb374",
+      "id": "f16906df0adc4ed69aa8f61caff4bde67ad2e62e",
+      "identity": {
+        "source": "definition_id",
+        "value": "f16906df0adc4ed69aa8f61caff4bde67ad2e62e"
+      },
+      "kind": "function",
+      "language": "kotlin",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: kotlin\nfile: Widget.kt\nkind: function\nsemantic path: Widget.kt\ncontent:\nfun run(): Int {\n    return Widget(1).render()\n}"
+      },
+      "node_id": "d0666efc976e2f9010a631f34b32c737cbaa58b1",
+      "parent": null,
+      "path": "Widget.kt",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": null,
+      "relationships": [],
+      "semantic_path": "Widget.kt",
+      "signature": null,
+      "span": {
+        "byte_end": 220,
+        "byte_start": 172,
+        "end_line": 15,
+        "start_line": 13
+      },
+      "symbol": null,
+      "symbol_id": null
+    },
+    {
+      "definition_id": "fa65b306cfa8a20c256934715ee62d31f0acef19",
+      "file_id": "1aae6d0cbd7a6568c104c279e72116a4f6feb374",
+      "id": "fa65b306cfa8a20c256934715ee62d31f0acef19",
+      "identity": {
+        "source": "definition_id",
+        "value": "fa65b306cfa8a20c256934715ee62d31f0acef19"
+      },
+      "kind": "class",
+      "language": "kotlin",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: kotlin\nfile: Widget.kt\nkind: class\nsemantic path: Widget.kt\ncontent:\nclass Widget(val count: Int) {\n    fun render(): Int {\n        return helper(count)\n    }\n\n    fun helper(value: Int): Int {\n        return value + 1\n    }\n}"
+      },
+      "node_id": "e5bfe8bb686fd1d7aacaa54934433170b693988c",
+      "parent": null,
+      "path": "Widget.kt",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": null,
+      "relationships": [],
+      "semantic_path": "Widget.kt",
+      "signature": null,
+      "span": {
+        "byte_end": 170,
+        "byte_start": 13,
+        "end_line": 11,
+        "start_line": 3
+      },
+      "symbol": null,
+      "symbol_id": null
+    }
+  ],
+  "run": {
+    "canonical": true,
+    "created_at": null,
+    "options": {
+      "fail_fast": false,
+      "include_retrieval_metadata": true,
+      "include_timings": false,
+      "language": "kotlin",
+      "resolution_mode": "strict"
+    },
+    "root": "tests/fixtures/boundary_ir/repos/kotlin",
+    "timings": {
+      "graph_assembly_ms": null,
+      "metadata_normalization_ms": null,
+      "parse_ms": null,
+      "resolution_ms": null,
+      "serialization_ms": null,
+      "total_ms": null
+    },
+    "tool": "treesitter-chunker",
+    "tool_version": "<tool-version>"
+  },
+  "schema_version": "2.0",
+  "source": {
+    "kind": "repository",
+    "path": "tests/fixtures/boundary_ir/repos/kotlin"
+  }
+}

@@ -24,6 +24,9 @@ CI_SMOKE_TESTS = [
     "tests/test_boundary_determinism.py",
     "tests/test_boundary_parity_view.py",
     "tests/test_boundary_ir_schema.py",
+    # Determinism gate: per-language golden non-empty guard + fail-closed
+    # grammar/runtime pin assertion (the silent-{} and ABI-drift failure modes).
+    "tests/test_boundary_ir_determinism.py",
 ]
 
 
