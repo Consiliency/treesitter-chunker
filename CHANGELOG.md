@@ -5,14 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [3.2.0] - 2026-06-24
+
+ADDITIVE minor — turnkey C# + a future-proof tree-sitter runtime, proven
+byte-stable for every existing language by the new determinism gate.
+
+### ✨ Added / Changed
+
+- **runtime**: Bumped the tree-sitter runtime `tree_sitter>=0.24,<0.25` →
+  `>=0.25,<0.26` (now supports grammar ABI 13–15). Purely additive: the
+  determinism gate confirms the canonical Boundary IR is **byte-identical** for
+  all previously-supported languages (the Python docstring-extraction path was
+  adapted to 0.25 so Python's IR is unchanged — a fix, not a re-baseline). No
+  consumer re-index required.
+- **csharp**: C# boundary extraction now works **out of the box** — the 0.25
+  runtime loads the language-pack's ABI-15 C# grammar (no grammar pin / override
+  needed), emitting class/interface/method/field/enum boundaries. C# is now a
+  first-class language in the determinism gate (fixture + golden + guards);
+  canonical language key is `csharp`.
 
 ### 🧪 Testing
 
 - **boundary-ir**: Determinism gate — extended golden Boundary IR coverage from
   the 4 P0 languages to all 11 supported languages (python, javascript,
-  typescript, go, java, cpp, c, ruby, kotlin, swift, php; C# deliberately
-  excluded pending its grammar ABI fix). Added a non-empty-extraction guard
+  typescript, go, java, cpp, c, ruby, kotlin, swift, php — and C#, added in this
+  same release via the 0.25 runtime (12 total). Added a non-empty-extraction guard
   (`test_extraction_nonempty`) that fails loudly on the silent-`{}` /
   ABI-mismatch failure mode, and a fail-closed grammar/runtime pin assertion
   (`test_grammar_runtime_pins_match`) that trips on an unintended
