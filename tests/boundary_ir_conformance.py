@@ -19,12 +19,12 @@ P0_BOUNDARY_LANGUAGES = ("python", "javascript", "typescript", "go")
 # non-empty-extraction guarantee. P0 is the richer semantic-parity contract
 # (manifest.json); this superset is the byte-level / grammar-health contract.
 #
-# c_sharp is DELIBERATELY EXCLUDED: tree-sitter-c-sharp ships an ABI-15 grammar
-# that is incompatible with the pinned tree_sitter 0.24 ABI, so it silently
-# emits {} (zero boundaries) rather than failing. It stays out of the gate until
-# its grammar ABI is fixed; see PR #77 (CppConfig + "C# blocked on grammar ABI,
-# deferred"). Excluding it here is a conscious, documented choice, not a silent
-# gap -- the non-empty guard below would otherwise (correctly) make it fail.
+# csharp is TURNKEY as of the tree_sitter 0.25 runtime bump: the language-pack
+# 0.9.0 C# grammar is ABI-15, which the old 0.24 runtime rejected (silently
+# emitting {} / zero boundaries). The 0.25 runtime loads ABI 13-15, so C# now
+# extracts rich nodes out of the box with no grammar pin / uv override. The
+# canonical key is ``csharp`` (NOT ``c_sharp`` -- that alias yields zero nodes);
+# see EXTENSION_MAP in chunker/auto.py (.cs -> csharp).
 SUPPORTED_BOUNDARY_LANGUAGES = (
     "python",
     "javascript",
@@ -37,6 +37,7 @@ SUPPORTED_BOUNDARY_LANGUAGES = (
     "kotlin",
     "swift",
     "php",
+    "csharp",
 )
 
 FIXTURE_ROOT = Path("tests/fixtures/boundary_ir/repos")

@@ -1,0 +1,358 @@
+{
+  "diagnostics": [],
+  "edges": [],
+  "files": [
+    {
+      "content_hash": "sha1:085c26fa3bccbe70f08f4f3d5d727eeb3805774e",
+      "diagnostics": [],
+      "id": "d93d3f31910db85b2ff77e9ff7145c5688b5485a",
+      "language": "csharp",
+      "parser": "tree-sitter-csharp",
+      "path": "Widget.cs",
+      "status": "parsed"
+    }
+  ],
+  "metrics": {
+    "ambiguous_edges": 0,
+    "diagnostics_total": 0,
+    "edges_total": 0,
+    "failure_buckets": {},
+    "files_failed": 0,
+    "files_parsed": 1,
+    "files_processed": 1,
+    "files_skipped": 0,
+    "files_total": 1,
+    "graph_failures": 0,
+    "metadata_failures": 0,
+    "nodes_total": 8,
+    "parse_failures": 0,
+    "resolved_edges": 0,
+    "serialization_failures": 0,
+    "unresolved_edges": 0
+  },
+  "nodes": [
+    {
+      "definition_id": "10a274a92ae35b2272ce3be5fa9b910f83d6981f",
+      "file_id": "d93d3f31910db85b2ff77e9ff7145c5688b5485a",
+      "id": "10a274a92ae35b2272ce3be5fa9b910f83d6981f",
+      "identity": {
+        "source": "definition_id",
+        "value": "10a274a92ae35b2272ce3be5fa9b910f83d6981f"
+      },
+      "kind": "interface",
+      "language": "csharp",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: csharp\nfile: Widget.cs\nkind: interface\nsymbol: IRenderer\nqualified name: IRenderer\nsemantic path: Widget.cs::IRenderer\ncontent:\npublic interface IRenderer\n{\n    int Render();\n}"
+      },
+      "node_id": "4918f124bb14f6c771601d86ce2f6ac0b08f46ba",
+      "parent": null,
+      "path": "Widget.cs",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "IRenderer",
+      "relationships": [],
+      "semantic_path": "Widget.cs::IRenderer",
+      "signature": null,
+      "span": {
+        "byte_end": 64,
+        "byte_start": 16,
+        "end_line": 6,
+        "start_line": 3
+      },
+      "symbol": "IRenderer",
+      "symbol_id": "8f1c8ad436930cdfb0de2cbdbc5d9ce1df719283"
+    },
+    {
+      "definition_id": "2dbf3f1f047fdc9a488513d2103562ff27146116",
+      "file_id": "d93d3f31910db85b2ff77e9ff7145c5688b5485a",
+      "id": "2dbf3f1f047fdc9a488513d2103562ff27146116",
+      "identity": {
+        "source": "definition_id",
+        "value": "2dbf3f1f047fdc9a488513d2103562ff27146116"
+      },
+      "kind": "method",
+      "language": "csharp",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": "Widget",
+        "semantic_text": "language: csharp\nfile: Widget.cs\nkind: method\nsymbol: Render\nqualified name: Widget.Render\nparent symbol: Widget\nsemantic path: Widget.cs::Widget.Render\ncontent:\npublic int Render()\n    {\n        return Helper(count);\n    }"
+      },
+      "node_id": "41fa69eba3797d9480a871e5a6e4e31d0b771c04",
+      "parent": "a635d4db2cffbfcb35d7b669c48fab636505691e",
+      "path": "Widget.cs",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Widget.Render",
+      "relationships": [],
+      "semantic_path": "Widget.cs::Widget.Render",
+      "signature": null,
+      "span": {
+        "byte_end": 259,
+        "byte_start": 198,
+        "end_line": 20,
+        "start_line": 17
+      },
+      "symbol": "Render",
+      "symbol_id": "cb24686bfd672a1dd973278965a086d5f325a6cd"
+    },
+    {
+      "definition_id": "4b298337922201f6330d61168795ff914161c2aa",
+      "file_id": "d93d3f31910db85b2ff77e9ff7145c5688b5485a",
+      "id": "4b298337922201f6330d61168795ff914161c2aa",
+      "identity": {
+        "source": "definition_id",
+        "value": "4b298337922201f6330d61168795ff914161c2aa"
+      },
+      "kind": "class",
+      "language": "csharp",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: csharp\nfile: Widget.cs\nkind: class\nsymbol: Widget\nqualified name: Widget\nsemantic path: Widget.cs::Widget\ncontent:\npublic class Widget : IRenderer\n{\n    private int count;\n\n    public Widget(int count)\n    {\n        this.count = count;\n    }\n\n    public int Render()\n    {\n        return Helper(count);\n    }\n\n    private int Helper(int value)\n    {\n        return value + 1;\n    }\n}"
+      },
+      "node_id": "a635d4db2cffbfcb35d7b669c48fab636505691e",
+      "parent": null,
+      "path": "Widget.cs",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Widget",
+      "relationships": [],
+      "semantic_path": "Widget.cs::Widget",
+      "signature": null,
+      "span": {
+        "byte_end": 334,
+        "byte_start": 66,
+        "end_line": 26,
+        "start_line": 8
+      },
+      "symbol": "Widget",
+      "symbol_id": "0031c5748059e77c1b11a1726c4c0f8e0bbf7f13"
+    },
+    {
+      "definition_id": "4cfe0c27d4b7cb1a4708af7a29f485b8a50f4a03",
+      "file_id": "d93d3f31910db85b2ff77e9ff7145c5688b5485a",
+      "id": "4cfe0c27d4b7cb1a4708af7a29f485b8a50f4a03",
+      "identity": {
+        "source": "definition_id",
+        "value": "4cfe0c27d4b7cb1a4708af7a29f485b8a50f4a03"
+      },
+      "kind": "method",
+      "language": "csharp",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": "IRenderer",
+        "semantic_text": "language: csharp\nfile: Widget.cs\nkind: method\nsymbol: Render\nqualified name: IRenderer.Render\nparent symbol: IRenderer\nsemantic path: Widget.cs::IRenderer.Render\ncontent:\nint Render();"
+      },
+      "node_id": "47ff194928817f132f592fc8173f076f62599d17",
+      "parent": "4918f124bb14f6c771601d86ce2f6ac0b08f46ba",
+      "path": "Widget.cs",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "IRenderer.Render",
+      "relationships": [],
+      "semantic_path": "Widget.cs::IRenderer.Render",
+      "signature": null,
+      "span": {
+        "byte_end": 62,
+        "byte_start": 49,
+        "end_line": 5,
+        "start_line": 5
+      },
+      "symbol": "Render",
+      "symbol_id": "cb24686bfd672a1dd973278965a086d5f325a6cd"
+    },
+    {
+      "definition_id": "6ccaff36ba40d8a4281607c7ec0eb33be1baa5e0",
+      "file_id": "d93d3f31910db85b2ff77e9ff7145c5688b5485a",
+      "id": "6ccaff36ba40d8a4281607c7ec0eb33be1baa5e0",
+      "identity": {
+        "source": "definition_id",
+        "value": "6ccaff36ba40d8a4281607c7ec0eb33be1baa5e0"
+      },
+      "kind": "method",
+      "language": "csharp",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": "Widget",
+        "semantic_text": "language: csharp\nfile: Widget.cs\nkind: method\nsymbol: Helper\nqualified name: Widget.Helper\nparent symbol: Widget\nsemantic path: Widget.cs::Widget.Helper\ncontent:\nprivate int Helper(int value)\n    {\n        return value + 1;\n    }"
+      },
+      "node_id": "b01761b38ecda250b6bc30b40fb9dc08ef3745be",
+      "parent": "a635d4db2cffbfcb35d7b669c48fab636505691e",
+      "path": "Widget.cs",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Widget.Helper",
+      "relationships": [],
+      "semantic_path": "Widget.cs::Widget.Helper",
+      "signature": null,
+      "span": {
+        "byte_end": 332,
+        "byte_start": 265,
+        "end_line": 25,
+        "start_line": 22
+      },
+      "symbol": "Helper",
+      "symbol_id": "16cfa9a25adb082ce58bfdce1dcdd95eab4d82a5"
+    },
+    {
+      "definition_id": "abbfb4437cee7b2a181e20604b2378c03f946bba",
+      "file_id": "d93d3f31910db85b2ff77e9ff7145c5688b5485a",
+      "id": "abbfb4437cee7b2a181e20604b2378c03f946bba",
+      "identity": {
+        "source": "definition_id",
+        "value": "abbfb4437cee7b2a181e20604b2378c03f946bba"
+      },
+      "kind": "enum",
+      "language": "csharp",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: csharp\nfile: Widget.cs\nkind: enum\nsymbol: Color\nqualified name: Color\nsemantic path: Widget.cs::Color\ncontent:\npublic enum Color\n{\n    Red,\n    Green,\n    Blue\n}"
+      },
+      "node_id": "b6952f33d2de600d5c3399fe422953de59c30a32",
+      "parent": null,
+      "path": "Widget.cs",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Color",
+      "relationships": [],
+      "semantic_path": "Widget.cs::Color",
+      "signature": null,
+      "span": {
+        "byte_end": 386,
+        "byte_start": 336,
+        "end_line": 33,
+        "start_line": 28
+      },
+      "symbol": "Color",
+      "symbol_id": "bf415e0c0c39e7588275f2ff0c8765d217110e21"
+    },
+    {
+      "definition_id": "b63a700c518a54f1bd9ef13e9c24baa604b927de",
+      "file_id": "d93d3f31910db85b2ff77e9ff7145c5688b5485a",
+      "id": "b63a700c518a54f1bd9ef13e9c24baa604b927de",
+      "identity": {
+        "source": "definition_id",
+        "value": "b63a700c518a54f1bd9ef13e9c24baa604b927de"
+      },
+      "kind": "constructor",
+      "language": "csharp",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": "Widget",
+        "semantic_text": "language: csharp\nfile: Widget.cs\nkind: constructor\nsymbol: Widget\nqualified name: Widget.Widget\nparent symbol: Widget\nsemantic path: Widget.cs::Widget.Widget\ncontent:\npublic Widget(int count)\n    {\n        this.count = count;\n    }"
+      },
+      "node_id": "1bc96d396fdc59977b65334e4ad709f1f63b7e82",
+      "parent": "a635d4db2cffbfcb35d7b669c48fab636505691e",
+      "path": "Widget.cs",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Widget.Widget",
+      "relationships": [],
+      "semantic_path": "Widget.cs::Widget.Widget",
+      "signature": null,
+      "span": {
+        "byte_end": 192,
+        "byte_start": 128,
+        "end_line": 15,
+        "start_line": 12
+      },
+      "symbol": "Widget",
+      "symbol_id": "0031c5748059e77c1b11a1726c4c0f8e0bbf7f13"
+    },
+    {
+      "definition_id": "be53fd4f87b46082c4409a640473259196cadd3e",
+      "file_id": "d93d3f31910db85b2ff77e9ff7145c5688b5485a",
+      "id": "be53fd4f87b46082c4409a640473259196cadd3e",
+      "identity": {
+        "source": "definition_id",
+        "value": "be53fd4f87b46082c4409a640473259196cadd3e"
+      },
+      "kind": "field_declaration",
+      "language": "csharp",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: csharp\nfile: Widget.cs\nkind: field_declaration\nsymbol: Widget\nqualified name: Widget\nsemantic path: Widget.cs::Widget\ncontent:\nprivate int count;"
+      },
+      "node_id": "124157e22b4bff27a1b8f5b3ba8a81331267de2c",
+      "parent": "a635d4db2cffbfcb35d7b669c48fab636505691e",
+      "path": "Widget.cs",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Widget",
+      "relationships": [],
+      "semantic_path": "Widget.cs::Widget",
+      "signature": null,
+      "span": {
+        "byte_end": 122,
+        "byte_start": 104,
+        "end_line": 10,
+        "start_line": 10
+      },
+      "symbol": "Widget",
+      "symbol_id": "0031c5748059e77c1b11a1726c4c0f8e0bbf7f13"
+    }
+  ],
+  "run": {
+    "canonical": true,
+    "created_at": null,
+    "options": {
+      "fail_fast": false,
+      "include_retrieval_metadata": true,
+      "include_timings": false,
+      "language": "csharp",
+      "resolution_mode": "strict"
+    },
+    "root": "tests/fixtures/boundary_ir/repos/csharp",
+    "timings": {
+      "graph_assembly_ms": null,
+      "metadata_normalization_ms": null,
+      "parse_ms": null,
+      "resolution_ms": null,
+      "serialization_ms": null,
+      "total_ms": null
+    },
+    "tool": "treesitter-chunker",
+    "tool_version": "<tool-version>"
+  },
+  "schema_version": "2.0",
+  "source": {
+    "kind": "repository",
+    "path": "tests/fixtures/boundary_ir/repos/csharp"
+  }
+}
