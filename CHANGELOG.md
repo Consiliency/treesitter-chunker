@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0] - 2026-06-24
+
+### ✨ Features
+
+- **csharp**: C# boundary extraction via an ABI-14 grammar override. C# previously
+  emitted nothing: tree-sitter-language-pack 0.9.0 pulls
+  `tree-sitter-c-sharp==0.23.1` (tree-sitter ABI 15) transitively, but the pinned
+  `tree_sitter==0.24` core caps at ABI 14, so the grammar failed to load
+  ("Incompatible Language version 15. Must be between 13 and 14"), the error was
+  swallowed, and the chunker produced `{}`. A `[tool.uv] override-dependencies`
+  entry pins the ABI-14 `tree-sitter-c-sharp==0.23.0`, which loads under
+  `tree_sitter 0.24` and parses C# richly. C# now emits
+  namespace (→ `module`) / class / method / field / enum / property boundaries.
+  Also adds `namespace_declaration` + `file_scoped_namespace_declaration` to the
+  C# chunk types, and canonicalizes the `c_sharp` language alias to `csharp` so
+  both aliases collect `.cs` files and produce byte-identical Boundary IR.
+  This change is purely additive: only C# gains coverage; the canonical Boundary
+  IR for every other language (C, C++, Java, Python, Go, Rust, TypeScript) is
+  byte-for-byte unchanged (verified by canonical-IR byte-diff against 3.1.0).
+
+  > **Note:** the `[tool.uv]` override is root-only and is **not** packaged into
+  > the wheel/sdist. A plain `pip install treesitter-chunker==3.2.0` resolves the
+  > ABI-15 `tree-sitter-c-sharp` and C# extraction stays empty. Consumers that
+  > need C# boundaries must pin `tree-sitter-c-sharp==0.23.0` in their **own** uv
+  > root (or `pip install tree-sitter-c-sharp==0.23.0`). See PR #78.
+
 ## [3.1.0] - 2026-06-23
 
 ### 🐛 Bug Fixes
