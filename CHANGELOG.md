@@ -13,11 +13,18 @@ byte-stable for every existing language by the new determinism gate.
 ### ✨ Added / Changed
 
 - **runtime**: Bumped the tree-sitter runtime `tree_sitter>=0.24,<0.25` →
-  `>=0.25,<0.26` (now supports grammar ABI 13–15). Purely additive: the
-  determinism gate confirms the canonical Boundary IR is **byte-identical** for
-  all previously-supported languages (the Python docstring-extraction path was
-  adapted to 0.25 so Python's IR is unchanged — a fix, not a re-baseline). No
-  consumer re-index required.
+  `>=0.25,<0.26` (now supports grammar ABI 13–15), keeping
+  `tree-sitter-language-pack>=0.9,<1.0`. Purely additive: the determinism gate
+  confirms the canonical Boundary IR is **byte-identical** for all
+  previously-supported languages, Python included. NOTE: this byte-stability
+  holds because the language-pack is **held at 0.9.0** — the runtime bump alone
+  does not change Python's IR. (A pack *float* to ≥1.x ships a newer Python
+  grammar that drops the `docstring:` line; the pack `<1.0` upper bound — asserted
+  fail-closed by the determinism gate — is the load-bearing guard. This was NOT a
+  docstring "fix"; nothing in extraction changed.) No consumer re-index required.
+  **Downstream:** consumers (e.g. spec's realized Python gate) stay byte-stable
+  only if they likewise resolve language-pack 0.9.x; floating to ≥1.x inherits the
+  docstring drop.
 - **csharp**: C# boundary extraction now works **out of the box** — the 0.25
   runtime loads the language-pack's ABI-15 C# grammar (no grammar pin / override
   needed), emitting class/interface/method/field/enum boundaries. C# is now a
