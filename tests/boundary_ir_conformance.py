@@ -44,12 +44,16 @@ GOLDEN_ROOT = Path("tests/fixtures/boundary_ir/golden")
 GOLDEN_TOOL_VERSION = "<tool-version>"
 
 # Pinned grammar/runtime ranges. These MUST mirror pyproject.toml's dependency
-# pins (tree_sitter and tree-sitter-language-pack are ABI-paired; mixing 0.25.x
-# core with the 0.9.x pack's pre-compiled grammars breaks extraction). The pin
-# assertion below fails closed if an unintended transitive bump moves either
-# outside its range -- the exact failure mode that silently dropped Python
-# docstrings when tree_sitter drifted 0.24 -> 0.25.
-PINNED_TREE_SITTER = (("0.24", "0.25"), "tree_sitter")
+# pins. tree_sitter and tree-sitter-language-pack are ABI-paired, but the
+# coupling is asymmetric: the 0.25 runtime is ABI-additive (loads ABI 13-15, so
+# bumping the runtime under a HELD pack is byte-stable), whereas bumping the PACK
+# floats its pre-compiled grammars -- pack >=1.x ships a newer Python grammar
+# that changes docstring node handling and silently drops the ``docstring:``
+# line from semantic_text. That pack-float is the real cause of the historically
+# observed "docstring drop", NOT the runtime bump. The assertion below fails
+# closed if an unintended transitive bump moves either dist outside its range, so
+# pack stays pinned at 0.9.x and the IR stays byte-stable.
+PINNED_TREE_SITTER = (("0.25", "0.26"), "tree_sitter")
 PINNED_LANGUAGE_PACK = (("0.9", "1.0"), "tree-sitter-language-pack")
 
 FILE_KEYS = (
@@ -182,10 +186,10 @@ def assert_grammar_runtime_pins() -> None:
     """Fail closed if the installed grammar/runtime versions drift off-pin.
 
     Reads the *installed* distribution versions and checks each against the
-    range pinned in pyproject.toml. An unintended transitive bump (e.g.
-    tree_sitter 0.24 -> 0.25, which breaks the ABI pairing with the pre-compiled
-    language-pack grammars) trips this guard rather than silently corrupting the
-    IR.
+    range pinned in pyproject.toml. An unintended transitive bump (e.g. the
+    language-pack drifting 0.9 -> 1.x, which floats a newer Python grammar that
+    drops docstrings from semantic_text) trips this guard rather than silently
+    corrupting the IR.
     """
     for (low, high), dist in (PINNED_TREE_SITTER, PINNED_LANGUAGE_PACK):
         installed = metadata.version(dist)
