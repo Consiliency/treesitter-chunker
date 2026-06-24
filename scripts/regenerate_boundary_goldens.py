@@ -8,7 +8,7 @@ determinism gate (``tests/test_boundary_ir_golden_snapshots.py`` +
 ``tests/test_boundary_ir_determinism.py``) makes *unintended* changes fail
 loudly in CI.
 
-It MUST be run on the pinned, ABI-paired stack (tree_sitter 0.24 /
+It MUST be run on the pinned, ABI-paired stack (tree_sitter 0.25 /
 tree-sitter-language-pack 0.9). Running it twice produces no git diff: output is
 byte-stable (``sort_keys`` + fixed indent), the volatile ``run.tool_version`` is
 normalized to a placeholder, and the IR's other volatile fields (timestamps,
