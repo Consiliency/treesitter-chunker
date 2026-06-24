@@ -1,0 +1,330 @@
+{
+  "diagnostics": [],
+  "edges": [
+    {
+      "candidates": [
+        "a87ce3a17ba52279eb8da7e44ac3a6252bace7fc"
+      ],
+      "id": "edge:06133e76e4713a45",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 9,
+        "start_line": 9
+      },
+      "metadata": {
+        "file": "widget.c",
+        "is_internal": true
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "helper",
+      "resolution": "resolved",
+      "source": "4eb85efd6348631dbc4ef2ae94d21db85b8883df",
+      "target": "a87ce3a17ba52279eb8da7e44ac3a6252bace7fc",
+      "type": "calls"
+    },
+    {
+      "candidates": [
+        "a87ce3a17ba52279eb8da7e44ac3a6252bace7fc"
+      ],
+      "id": "edge:5aa50e8852e2469d",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 9,
+        "start_line": 9
+      },
+      "metadata": {
+        "file": "widget.c",
+        "is_internal": true
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "helper",
+      "resolution": "resolved",
+      "source": "4eb85efd6348631dbc4ef2ae94d21db85b8883df",
+      "target": "a87ce3a17ba52279eb8da7e44ac3a6252bace7fc",
+      "type": "dependencies"
+    },
+    {
+      "candidates": [],
+      "id": "edge:ee0031636684cd7c",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 9,
+        "start_line": 9
+      },
+      "metadata": {
+        "file": "widget.c",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "w",
+      "resolution": "unresolved",
+      "source": "4eb85efd6348631dbc4ef2ae94d21db85b8883df",
+      "target": "w",
+      "type": "dependencies"
+    },
+    {
+      "candidates": [],
+      "id": "edge:61f45469e6be16d7",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 5,
+        "start_line": 5
+      },
+      "metadata": {
+        "file": "widget.c",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "value",
+      "resolution": "unresolved",
+      "source": "a87ce3a17ba52279eb8da7e44ac3a6252bace7fc",
+      "target": "value",
+      "type": "dependencies"
+    }
+  ],
+  "files": [
+    {
+      "content_hash": "sha1:a4fad01fb66dfef7e89de3a5909eada77129a7e8",
+      "diagnostics": [],
+      "id": "a2a9db15f65d218f03865ca3b80f19c0f0762001",
+      "language": "c",
+      "parser": "tree-sitter-c",
+      "path": "widget.c",
+      "status": "parsed"
+    }
+  ],
+  "metrics": {
+    "ambiguous_edges": 0,
+    "diagnostics_total": 0,
+    "edges_total": 4,
+    "failure_buckets": {},
+    "files_failed": 0,
+    "files_parsed": 1,
+    "files_processed": 1,
+    "files_skipped": 0,
+    "files_total": 1,
+    "graph_failures": 0,
+    "metadata_failures": 0,
+    "nodes_total": 4,
+    "parse_failures": 0,
+    "resolved_edges": 2,
+    "serialization_failures": 0,
+    "unresolved_edges": 2
+  },
+  "nodes": [
+    {
+      "definition_id": "12789ecfd69a4081dfac25664cbb786b84d77ca9",
+      "file_id": "a2a9db15f65d218f03865ca3b80f19c0f0762001",
+      "id": "12789ecfd69a4081dfac25664cbb786b84d77ca9",
+      "identity": {
+        "source": "definition_id",
+        "value": "12789ecfd69a4081dfac25664cbb786b84d77ca9"
+      },
+      "kind": "struct",
+      "language": "c",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: c\nfile: widget.c\nkind: struct\nsymbol: Widget\nqualified name: Widget\nsemantic path: widget.c::Widget\ncontent:\nstruct Widget {\n    int count;\n}"
+      },
+      "node_id": "a6c57df925decbbcde0a5a575a827ba69ee15301",
+      "parent": null,
+      "path": "widget.c",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Widget",
+      "relationships": [],
+      "semantic_path": "widget.c::Widget",
+      "signature": null,
+      "span": {
+        "byte_end": 32,
+        "byte_start": 0,
+        "end_line": 3,
+        "start_line": 1
+      },
+      "symbol": "Widget",
+      "symbol_id": "5c2d6d53853890133e91e9be4f2e3f84222ee130"
+    },
+    {
+      "definition_id": "4eb85efd6348631dbc4ef2ae94d21db85b8883df",
+      "file_id": "a2a9db15f65d218f03865ca3b80f19c0f0762001",
+      "id": "4eb85efd6348631dbc4ef2ae94d21db85b8883df",
+      "identity": {
+        "source": "definition_id",
+        "value": "4eb85efd6348631dbc4ef2ae94d21db85b8883df"
+      },
+      "kind": "function",
+      "language": "c",
+      "metadata": {
+        "dependencies": [
+          "helper",
+          "w"
+        ],
+        "exports": [
+          "render"
+        ],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: c\nfile: widget.c\nkind: function\nsymbol: render\nqualified name: render\nsemantic path: widget.c::render\nsignature text: render(struct Widget *w) -> int\nexports: render\ndependencies: helper, w\ncontent:\nint render(struct Widget *w) {\n    return helper(w->count);\n}"
+      },
+      "node_id": "aef63f026c62933831cb7c1301d635b7318ade62",
+      "parent": null,
+      "path": "widget.c",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "render",
+      "relationships": [
+        "edge:06133e76e4713a45",
+        "edge:5aa50e8852e2469d",
+        "edge:ee0031636684cd7c"
+      ],
+      "semantic_path": "widget.c::render",
+      "signature": "render(struct Widget *w) -> int",
+      "span": {
+        "byte_end": 145,
+        "byte_start": 84,
+        "end_line": 11,
+        "start_line": 9
+      },
+      "symbol": "render",
+      "symbol_id": "2d4e72009a66e84215f57e0681d6b7cc36aa3d61"
+    },
+    {
+      "definition_id": "6d3a751d52663e25620ebc79c4b9f5b1a33c9484",
+      "file_id": "a2a9db15f65d218f03865ca3b80f19c0f0762001",
+      "id": "6d3a751d52663e25620ebc79c4b9f5b1a33c9484",
+      "identity": {
+        "source": "definition_id",
+        "value": "6d3a751d52663e25620ebc79c4b9f5b1a33c9484"
+      },
+      "kind": "struct",
+      "language": "c",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: c\nfile: widget.c\nkind: struct\nsymbol: Widget\nqualified name: Widget\nsemantic path: widget.c::Widget\ncontent:\nstruct Widget"
+      },
+      "node_id": "0bf53fd6f48ccd08dc5a0715688da3e0dd5f9e7a",
+      "parent": "aef63f026c62933831cb7c1301d635b7318ade62",
+      "path": "widget.c",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Widget",
+      "relationships": [],
+      "semantic_path": "widget.c::Widget",
+      "signature": null,
+      "span": {
+        "byte_end": 108,
+        "byte_start": 95,
+        "end_line": 9,
+        "start_line": 9
+      },
+      "symbol": "Widget",
+      "symbol_id": "5c2d6d53853890133e91e9be4f2e3f84222ee130"
+    },
+    {
+      "definition_id": "a87ce3a17ba52279eb8da7e44ac3a6252bace7fc",
+      "file_id": "a2a9db15f65d218f03865ca3b80f19c0f0762001",
+      "id": "a87ce3a17ba52279eb8da7e44ac3a6252bace7fc",
+      "identity": {
+        "source": "definition_id",
+        "value": "a87ce3a17ba52279eb8da7e44ac3a6252bace7fc"
+      },
+      "kind": "function",
+      "language": "c",
+      "metadata": {
+        "dependencies": [
+          "value"
+        ],
+        "exports": [
+          "helper"
+        ],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: c\nfile: widget.c\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: widget.c::helper\nsignature text: helper(int value) -> int\nexports: helper\ndependencies: value\ncontent:\nint helper(int value) {\n    return value + 1;\n}"
+      },
+      "node_id": "d1dc095cafb83e27284d59c61d3ca0dd3b1f16f5",
+      "parent": null,
+      "path": "widget.c",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "helper",
+      "relationships": [
+        "edge:61f45469e6be16d7"
+      ],
+      "semantic_path": "widget.c::helper",
+      "signature": "helper(int value) -> int",
+      "span": {
+        "byte_end": 82,
+        "byte_start": 35,
+        "end_line": 7,
+        "start_line": 5
+      },
+      "symbol": "helper",
+      "symbol_id": "63c7daeccff88b63e2360c8a9948d3a79da4dc9b"
+    }
+  ],
+  "run": {
+    "canonical": true,
+    "created_at": null,
+    "options": {
+      "fail_fast": false,
+      "include_retrieval_metadata": true,
+      "include_timings": false,
+      "language": "c",
+      "resolution_mode": "strict"
+    },
+    "root": "tests/fixtures/boundary_ir/repos/c",
+    "timings": {
+      "graph_assembly_ms": null,
+      "metadata_normalization_ms": null,
+      "parse_ms": null,
+      "resolution_ms": null,
+      "serialization_ms": null,
+      "total_ms": null
+    },
+    "tool": "treesitter-chunker",
+    "tool_version": "<tool-version>"
+  },
+  "schema_version": "2.0",
+  "source": {
+    "kind": "repository",
+    "path": "tests/fixtures/boundary_ir/repos/c"
+  }
+}

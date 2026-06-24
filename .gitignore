@@ -85,3 +85,10 @@ logs/
 .pubenv/
 .stow-symbols.json
 /.dev-skills/
+
+# Boundary IR golden fixtures are first-class committed test data. The
+# "test repositories (downloaded for testing)" patterns above (e.g. ruby/,
+# rust/) would otherwise swallow same-named fixture dirs. This negation is last
+# so it wins (git applies the last matching pattern).
+!tests/fixtures/boundary_ir/repos/
+!tests/fixtures/boundary_ir/repos/**

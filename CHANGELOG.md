@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### 🧪 Testing
+
+- **boundary-ir**: Determinism gate — extended golden Boundary IR coverage from
+  the 4 P0 languages to all 11 supported languages (python, javascript,
+  typescript, go, java, cpp, c, ruby, kotlin, swift, php; C# deliberately
+  excluded pending its grammar ABI fix). Added a non-empty-extraction guard
+  (`test_extraction_nonempty`) that fails loudly on the silent-`{}` /
+  ABI-mismatch failure mode, and a fail-closed grammar/runtime pin assertion
+  (`test_grammar_runtime_pins_match`) that trips on an unintended
+  tree_sitter / tree-sitter-language-pack bump. Added
+  `scripts/regenerate_boundary_goldens.py` as the sole sanctioned, idempotent
+  golden-regenerate path, and wired the new guards into `scripts/run_ci_smoke.py`.
+  Additive / guard-only — no extraction behavior changed.
+
 ## [3.1.0] - 2026-06-23
 
 ### 🐛 Bug Fixes

@@ -1,0 +1,284 @@
+{
+  "diagnostics": [],
+  "edges": [],
+  "files": [
+    {
+      "content_hash": "sha1:167fc645d16a6f2062bb5aafb05cdec9fc69e7b1",
+      "diagnostics": [],
+      "id": "5334ee93a069e7868ee9fe23c115d3437668d078",
+      "language": "java",
+      "parser": "tree-sitter-java",
+      "path": "Widget.java",
+      "status": "parsed"
+    }
+  ],
+  "metrics": {
+    "ambiguous_edges": 0,
+    "diagnostics_total": 0,
+    "edges_total": 0,
+    "failure_buckets": {},
+    "files_failed": 0,
+    "files_parsed": 1,
+    "files_processed": 1,
+    "files_skipped": 0,
+    "files_total": 1,
+    "graph_failures": 0,
+    "metadata_failures": 0,
+    "nodes_total": 6,
+    "parse_failures": 0,
+    "resolved_edges": 0,
+    "serialization_failures": 0,
+    "unresolved_edges": 0
+  },
+  "nodes": [
+    {
+      "definition_id": "405d4f0f7e490f29227880779051d107180fd922",
+      "file_id": "5334ee93a069e7868ee9fe23c115d3437668d078",
+      "id": "405d4f0f7e490f29227880779051d107180fd922",
+      "identity": {
+        "source": "definition_id",
+        "value": "405d4f0f7e490f29227880779051d107180fd922"
+      },
+      "kind": "field_declaration",
+      "language": "java",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": "Widget",
+        "semantic_text": "language: java\nfile: Widget.java\nkind: field_declaration\nsymbol: count\nqualified name: Widget.count\nparent symbol: Widget\nsemantic path: Widget.java::Widget.count\ncontent:\nprivate int count;"
+      },
+      "node_id": "ba4dc48d6151421e3bd9b9a4ac03250f0e42e152",
+      "parent": "7283643a995241b5bda153a2f07868e7ebaf78fb",
+      "path": "Widget.java",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Widget.count",
+      "relationships": [],
+      "semantic_path": "Widget.java::Widget.count",
+      "signature": null,
+      "span": {
+        "byte_end": 58,
+        "byte_start": 40,
+        "end_line": 4,
+        "start_line": 4
+      },
+      "symbol": "count",
+      "symbol_id": "6b119c1f5dab633df4cbab401efe28a12c2f1e38"
+    },
+    {
+      "definition_id": "6290d565e086df515c2fdf2b7c2a8e5dacda8433",
+      "file_id": "5334ee93a069e7868ee9fe23c115d3437668d078",
+      "id": "6290d565e086df515c2fdf2b7c2a8e5dacda8433",
+      "identity": {
+        "source": "definition_id",
+        "value": "6290d565e086df515c2fdf2b7c2a8e5dacda8433"
+      },
+      "kind": "class",
+      "language": "java",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: java\nfile: Widget.java\nkind: class\nsymbol: Widget\nqualified name: Widget\nsemantic path: Widget.java::Widget\ncontent:\npublic class Widget {\n    private int count;\n\n    public Widget(int count) {\n        this.count = count;\n    }\n\n    public int render() {\n        return helper(count);\n    }\n\n    private int helper(int value) {\n        return value + 1;\n    }\n}"
+      },
+      "node_id": "7283643a995241b5bda153a2f07868e7ebaf78fb",
+      "parent": null,
+      "path": "Widget.java",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Widget",
+      "relationships": [],
+      "semantic_path": "Widget.java::Widget",
+      "signature": null,
+      "span": {
+        "byte_end": 258,
+        "byte_start": 14,
+        "end_line": 17,
+        "start_line": 3
+      },
+      "symbol": "Widget",
+      "symbol_id": "81eba169f938c21200a87c81593c1c32cfbd33c4"
+    },
+    {
+      "definition_id": "6f969d2ee6ac785243cfe7fda679a1b8f26cd94a",
+      "file_id": "5334ee93a069e7868ee9fe23c115d3437668d078",
+      "id": "6f969d2ee6ac785243cfe7fda679a1b8f26cd94a",
+      "identity": {
+        "source": "definition_id",
+        "value": "6f969d2ee6ac785243cfe7fda679a1b8f26cd94a"
+      },
+      "kind": "method",
+      "language": "java",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": "Widget",
+        "semantic_text": "language: java\nfile: Widget.java\nkind: method\nsymbol: render\nqualified name: Widget.render\nparent symbol: Widget\nsemantic path: Widget.java::Widget.render\ncontent:\npublic int render() {\n        return helper(count);\n    }"
+      },
+      "node_id": "c76ce267c33547067ab1449fee4ac170b5897e27",
+      "parent": "7283643a995241b5bda153a2f07868e7ebaf78fb",
+      "path": "Widget.java",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Widget.render",
+      "relationships": [],
+      "semantic_path": "Widget.java::Widget.render",
+      "signature": null,
+      "span": {
+        "byte_end": 187,
+        "byte_start": 130,
+        "end_line": 12,
+        "start_line": 10
+      },
+      "symbol": "render",
+      "symbol_id": "c61d5bc44b29ed125e71a28d047c82c0dd025ba2"
+    },
+    {
+      "definition_id": "8bdd0ff0349aeca8d6605680598090eaa5c5fa90",
+      "file_id": "5334ee93a069e7868ee9fe23c115d3437668d078",
+      "id": "8bdd0ff0349aeca8d6605680598090eaa5c5fa90",
+      "identity": {
+        "source": "definition_id",
+        "value": "8bdd0ff0349aeca8d6605680598090eaa5c5fa90"
+      },
+      "kind": "method",
+      "language": "java",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": "Widget",
+        "semantic_text": "language: java\nfile: Widget.java\nkind: method\nsymbol: helper\nqualified name: Widget.helper\nparent symbol: Widget\nsemantic path: Widget.java::Widget.helper\ncontent:\nprivate int helper(int value) {\n        return value + 1;\n    }"
+      },
+      "node_id": "6ffeb6db764f5be488dbe7a872f38f1a3cfc82e0",
+      "parent": "7283643a995241b5bda153a2f07868e7ebaf78fb",
+      "path": "Widget.java",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Widget.helper",
+      "relationships": [],
+      "semantic_path": "Widget.java::Widget.helper",
+      "signature": null,
+      "span": {
+        "byte_end": 256,
+        "byte_start": 193,
+        "end_line": 16,
+        "start_line": 14
+      },
+      "symbol": "helper",
+      "symbol_id": "34139ccbae995ed04c1c338f4eb70c4c3e8cfe56"
+    },
+    {
+      "definition_id": "97eec646cd212e90887ff5e34b05fcf76b638122",
+      "file_id": "5334ee93a069e7868ee9fe23c115d3437668d078",
+      "id": "97eec646cd212e90887ff5e34b05fcf76b638122",
+      "identity": {
+        "source": "definition_id",
+        "value": "97eec646cd212e90887ff5e34b05fcf76b638122"
+      },
+      "kind": "constructor",
+      "language": "java",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": "Widget",
+        "semantic_text": "language: java\nfile: Widget.java\nkind: constructor\nsymbol: Widget\nqualified name: Widget.Widget\nparent symbol: Widget\nsemantic path: Widget.java::Widget.Widget\ncontent:\npublic Widget(int count) {\n        this.count = count;\n    }"
+      },
+      "node_id": "a65f0ee8f4baf57fe99a8294d02120ac241ea650",
+      "parent": "7283643a995241b5bda153a2f07868e7ebaf78fb",
+      "path": "Widget.java",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Widget.Widget",
+      "relationships": [],
+      "semantic_path": "Widget.java::Widget.Widget",
+      "signature": null,
+      "span": {
+        "byte_end": 124,
+        "byte_start": 64,
+        "end_line": 8,
+        "start_line": 6
+      },
+      "symbol": "Widget",
+      "symbol_id": "81eba169f938c21200a87c81593c1c32cfbd33c4"
+    },
+    {
+      "definition_id": "9adcc537e275bcb236589b0553fc86ad79784377",
+      "file_id": "5334ee93a069e7868ee9fe23c115d3437668d078",
+      "id": "9adcc537e275bcb236589b0553fc86ad79784377",
+      "identity": {
+        "source": "definition_id",
+        "value": "9adcc537e275bcb236589b0553fc86ad79784377"
+      },
+      "kind": "enum",
+      "language": "java",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: java\nfile: Widget.java\nkind: enum\nsymbol: Color\nqualified name: Color\nsemantic path: Widget.java::Color\ncontent:\nenum Color {\n    RED,\n    GREEN,\n    BLUE\n}"
+      },
+      "node_id": "5c1ffad1d9a5572b6c47f08abad6a96de2bae1b3",
+      "parent": null,
+      "path": "Widget.java",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Color",
+      "relationships": [],
+      "semantic_path": "Widget.java::Color",
+      "signature": null,
+      "span": {
+        "byte_end": 303,
+        "byte_start": 260,
+        "end_line": 23,
+        "start_line": 19
+      },
+      "symbol": "Color",
+      "symbol_id": "a742917abae85d2f15c718b40ee3d63d52109f37"
+    }
+  ],
+  "run": {
+    "canonical": true,
+    "created_at": null,
+    "options": {
+      "fail_fast": false,
+      "include_retrieval_metadata": true,
+      "include_timings": false,
+      "language": "java",
+      "resolution_mode": "strict"
+    },
+    "root": "tests/fixtures/boundary_ir/repos/java",
+    "timings": {
+      "graph_assembly_ms": null,
+      "metadata_normalization_ms": null,
+      "parse_ms": null,
+      "resolution_ms": null,
+      "serialization_ms": null,
+      "total_ms": null
+    },
+    "tool": "treesitter-chunker",
+    "tool_version": "<tool-version>"
+  },
+  "schema_version": "2.0",
+  "source": {
+    "kind": "repository",
+    "path": "tests/fixtures/boundary_ir/repos/java"
+  }
+}

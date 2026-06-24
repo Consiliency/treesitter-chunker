@@ -1,0 +1,247 @@
+{
+  "diagnostics": [],
+  "edges": [],
+  "files": [
+    {
+      "content_hash": "sha1:25523405164fab24faaf0f1c0988d81ba19aa63c",
+      "diagnostics": [],
+      "id": "112db18be7c9bd026dfbccd2fa972bca59498e3d",
+      "language": "php",
+      "parser": "tree-sitter-php",
+      "path": "widget.php",
+      "status": "parsed"
+    }
+  ],
+  "metrics": {
+    "ambiguous_edges": 0,
+    "diagnostics_total": 0,
+    "edges_total": 0,
+    "failure_buckets": {},
+    "files_failed": 0,
+    "files_parsed": 1,
+    "files_processed": 1,
+    "files_skipped": 0,
+    "files_total": 1,
+    "graph_failures": 0,
+    "metadata_failures": 0,
+    "nodes_total": 5,
+    "parse_failures": 0,
+    "resolved_edges": 0,
+    "serialization_failures": 0,
+    "unresolved_edges": 0
+  },
+  "nodes": [
+    {
+      "definition_id": "04614565298c6fe1e886659291a158408d5da191",
+      "file_id": "112db18be7c9bd026dfbccd2fa972bca59498e3d",
+      "id": "04614565298c6fe1e886659291a158408d5da191",
+      "identity": {
+        "source": "definition_id",
+        "value": "04614565298c6fe1e886659291a158408d5da191"
+      },
+      "kind": "method",
+      "language": "php",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": "Widget",
+        "semantic_text": "language: php\nfile: widget.php\nkind: method\nsymbol: helper\nqualified name: Widget.helper\nparent symbol: Widget\nsemantic path: widget.php::Widget.helper\ncontent:\npublic function helper($value)\n    {\n        return $value + 1;\n    }"
+      },
+      "node_id": "b7ef83705199e5c1f8eed0a4b78fd496c4565b0a",
+      "parent": "b52b300aeacf6ceff1dcaf8fa60eb96eb74ef17a",
+      "path": "widget.php",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Widget.helper",
+      "relationships": [],
+      "semantic_path": "widget.php::Widget.helper",
+      "signature": null,
+      "span": {
+        "byte_end": 205,
+        "byte_start": 136,
+        "end_line": 15,
+        "start_line": 12
+      },
+      "symbol": "helper",
+      "symbol_id": "77453ae226226d45d2d25f93fd61db78a646f92c"
+    },
+    {
+      "definition_id": "104cb1570c65a81493be515cddcdcfaaf7ebfcdd",
+      "file_id": "112db18be7c9bd026dfbccd2fa972bca59498e3d",
+      "id": "104cb1570c65a81493be515cddcdcfaaf7ebfcdd",
+      "identity": {
+        "source": "definition_id",
+        "value": "104cb1570c65a81493be515cddcdcfaaf7ebfcdd"
+      },
+      "kind": "property_declaration",
+      "language": "php",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: php\nfile: widget.php\nkind: property_declaration\nsymbol: Widget\nqualified name: Widget\nsemantic path: widget.php::Widget\ncontent:\npublic $count = 0;"
+      },
+      "node_id": "ea1fb64f623a4414bf2046a82b4178f85f6afa4e",
+      "parent": "b52b300aeacf6ceff1dcaf8fa60eb96eb74ef17a",
+      "path": "widget.php",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Widget",
+      "relationships": [],
+      "semantic_path": "widget.php::Widget",
+      "signature": null,
+      "span": {
+        "byte_end": 44,
+        "byte_start": 26,
+        "end_line": 5,
+        "start_line": 5
+      },
+      "symbol": "Widget",
+      "symbol_id": "168a2d6de0bdba0de2055e13fc186578de1436fa"
+    },
+    {
+      "definition_id": "1ca03e9770c5f211ea36a4a98ba33cf9c93136bb",
+      "file_id": "112db18be7c9bd026dfbccd2fa972bca59498e3d",
+      "id": "1ca03e9770c5f211ea36a4a98ba33cf9c93136bb",
+      "identity": {
+        "source": "definition_id",
+        "value": "1ca03e9770c5f211ea36a4a98ba33cf9c93136bb"
+      },
+      "kind": "function",
+      "language": "php",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: php\nfile: widget.php\nkind: function\nsymbol: run\nqualified name: run\nsemantic path: widget.php::run\ncontent:\nfunction run()\n{\n    $w = new Widget();\n    return $w->render();\n}"
+      },
+      "node_id": "f0882a64384472e5bc80036eb5de9ee3adfa1bbb",
+      "parent": null,
+      "path": "widget.php",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "run",
+      "relationships": [],
+      "semantic_path": "widget.php::run",
+      "signature": null,
+      "span": {
+        "byte_end": 275,
+        "byte_start": 209,
+        "end_line": 22,
+        "start_line": 18
+      },
+      "symbol": "run",
+      "symbol_id": "d97842f1cf5648047761fbd5bfa96e95c1c9e1dd"
+    },
+    {
+      "definition_id": "5061122c3f58a71696ac6e4b9c959a11292b39c7",
+      "file_id": "112db18be7c9bd026dfbccd2fa972bca59498e3d",
+      "id": "5061122c3f58a71696ac6e4b9c959a11292b39c7",
+      "identity": {
+        "source": "definition_id",
+        "value": "5061122c3f58a71696ac6e4b9c959a11292b39c7"
+      },
+      "kind": "class",
+      "language": "php",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: php\nfile: widget.php\nkind: class\nsymbol: Widget\nqualified name: Widget\nsemantic path: widget.php::Widget\ncontent:\nclass Widget\n{\n    public $count = 0;\n\n    public function render()\n    {\n        return $this->helper($this->count);\n    }\n\n    public function helper($value)\n    {\n        return $value + 1;\n    }\n}"
+      },
+      "node_id": "b52b300aeacf6ceff1dcaf8fa60eb96eb74ef17a",
+      "parent": null,
+      "path": "widget.php",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Widget",
+      "relationships": [],
+      "semantic_path": "widget.php::Widget",
+      "signature": null,
+      "span": {
+        "byte_end": 207,
+        "byte_start": 7,
+        "end_line": 16,
+        "start_line": 3
+      },
+      "symbol": "Widget",
+      "symbol_id": "168a2d6de0bdba0de2055e13fc186578de1436fa"
+    },
+    {
+      "definition_id": "9fad269433dd9bbf7e738a1311736b939ef428b6",
+      "file_id": "112db18be7c9bd026dfbccd2fa972bca59498e3d",
+      "id": "9fad269433dd9bbf7e738a1311736b939ef428b6",
+      "identity": {
+        "source": "definition_id",
+        "value": "9fad269433dd9bbf7e738a1311736b939ef428b6"
+      },
+      "kind": "method",
+      "language": "php",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": "Widget",
+        "semantic_text": "language: php\nfile: widget.php\nkind: method\nsymbol: render\nqualified name: Widget.render\nparent symbol: Widget\nsemantic path: widget.php::Widget.render\ncontent:\npublic function render()\n    {\n        return $this->helper($this->count);\n    }"
+      },
+      "node_id": "e2c4a7b4212dce8944f0fc48afdad6f93346d782",
+      "parent": "b52b300aeacf6ceff1dcaf8fa60eb96eb74ef17a",
+      "path": "widget.php",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Widget.render",
+      "relationships": [],
+      "semantic_path": "widget.php::Widget.render",
+      "signature": null,
+      "span": {
+        "byte_end": 130,
+        "byte_start": 50,
+        "end_line": 10,
+        "start_line": 7
+      },
+      "symbol": "render",
+      "symbol_id": "c7ca73914e488590a87508b51bd39b309ca781ba"
+    }
+  ],
+  "run": {
+    "canonical": true,
+    "created_at": null,
+    "options": {
+      "fail_fast": false,
+      "include_retrieval_metadata": true,
+      "include_timings": false,
+      "language": "php",
+      "resolution_mode": "strict"
+    },
+    "root": "tests/fixtures/boundary_ir/repos/php",
+    "timings": {
+      "graph_assembly_ms": null,
+      "metadata_normalization_ms": null,
+      "parse_ms": null,
+      "resolution_ms": null,
+      "serialization_ms": null,
+      "total_ms": null
+    },
+    "tool": "treesitter-chunker",
+    "tool_version": "<tool-version>"
+  },
+  "schema_version": "2.0",
+  "source": {
+    "kind": "repository",
+    "path": "tests/fixtures/boundary_ir/repos/php"
+  }
+}

@@ -1,0 +1,576 @@
+{
+  "diagnostics": [],
+  "edges": [
+    {
+      "candidates": [
+        "17e4949dedb2a95eb65cfc35732d2ce4ab551f34"
+      ],
+      "id": "edge:d77c93aab97e1e51",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 3,
+        "start_line": 3
+      },
+      "metadata": {
+        "file": "widget.cpp",
+        "is_internal": true
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "helper",
+      "resolution": "resolved",
+      "source": "0bee8bd50c52e2babf8fe455f2c38454362c557c",
+      "target": "17e4949dedb2a95eb65cfc35732d2ce4ab551f34",
+      "type": "calls"
+    },
+    {
+      "candidates": [],
+      "id": "edge:d7cce1ee2b05c009",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 3,
+        "start_line": 3
+      },
+      "metadata": {
+        "file": "widget.cpp",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "count",
+      "resolution": "unresolved",
+      "source": "0bee8bd50c52e2babf8fe455f2c38454362c557c",
+      "target": "count",
+      "type": "dependencies"
+    },
+    {
+      "candidates": [],
+      "id": "edge:33a8c398872eb01f",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 11,
+        "start_line": 11
+      },
+      "metadata": {
+        "file": "widget.cpp",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "count",
+      "resolution": "unresolved",
+      "source": "17e4949dedb2a95eb65cfc35732d2ce4ab551f34",
+      "target": "count",
+      "type": "dependencies"
+    },
+    {
+      "candidates": [
+        "17e4949dedb2a95eb65cfc35732d2ce4ab551f34"
+      ],
+      "id": "edge:e48da697bb9ba911",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 7,
+        "start_line": 7
+      },
+      "metadata": {
+        "file": "widget.cpp",
+        "is_internal": true
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "helper",
+      "resolution": "resolved",
+      "source": "1940d8e41e814151475d62410e23a8d4dbd2e6f4",
+      "target": "17e4949dedb2a95eb65cfc35732d2ce4ab551f34",
+      "type": "calls"
+    },
+    {
+      "candidates": [
+        "17e4949dedb2a95eb65cfc35732d2ce4ab551f34"
+      ],
+      "id": "edge:83c07923e9c0620c",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 7,
+        "start_line": 7
+      },
+      "metadata": {
+        "file": "widget.cpp",
+        "is_internal": true
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "helper",
+      "resolution": "resolved",
+      "source": "1940d8e41e814151475d62410e23a8d4dbd2e6f4",
+      "target": "17e4949dedb2a95eb65cfc35732d2ce4ab551f34",
+      "type": "dependencies"
+    },
+    {
+      "candidates": [
+        "1940d8e41e814151475d62410e23a8d4dbd2e6f4"
+      ],
+      "id": "edge:5f022e7ba38eb674",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 16,
+        "start_line": 16
+      },
+      "metadata": {
+        "file": "widget.cpp",
+        "is_internal": true
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "render",
+      "resolution": "resolved",
+      "source": "77ffc7c9aa54e26b250bccaec5b7fadb261f7443",
+      "target": "1940d8e41e814151475d62410e23a8d4dbd2e6f4",
+      "type": "calls"
+    },
+    {
+      "candidates": [],
+      "id": "edge:1bcd530da6dba7ca",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 16,
+        "start_line": 16
+      },
+      "metadata": {
+        "file": "widget.cpp",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "w",
+      "resolution": "unresolved",
+      "source": "77ffc7c9aa54e26b250bccaec5b7fadb261f7443",
+      "target": "w",
+      "type": "dependencies"
+    },
+    {
+      "candidates": [],
+      "id": "edge:5145d518d09d8298",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 1,
+        "start_line": 1
+      },
+      "metadata": {
+        "file": "widget.cpp",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "BLUE",
+      "resolution": "unresolved",
+      "source": "b451b3d7cc10d6f8ba7cbf9c5e1d3806171bedcb",
+      "target": "BLUE",
+      "type": "dependencies"
+    },
+    {
+      "candidates": [],
+      "id": "edge:4b6335434721ab4d",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 1,
+        "start_line": 1
+      },
+      "metadata": {
+        "file": "widget.cpp",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "GREEN",
+      "resolution": "unresolved",
+      "source": "b451b3d7cc10d6f8ba7cbf9c5e1d3806171bedcb",
+      "target": "GREEN",
+      "type": "dependencies"
+    },
+    {
+      "candidates": [],
+      "id": "edge:dfa93bcb31ac2641",
+      "location": {
+        "byte_end": null,
+        "byte_start": null,
+        "end_line": 1,
+        "start_line": 1
+      },
+      "metadata": {
+        "file": "widget.cpp",
+        "is_internal": false
+      },
+      "provenance": {
+        "enforcement_grade": "strict",
+        "resolution_mode": "strict",
+        "resolver": "extract_symbol_graph",
+        "source": "syntax"
+      },
+      "reference": "RED",
+      "resolution": "unresolved",
+      "source": "b451b3d7cc10d6f8ba7cbf9c5e1d3806171bedcb",
+      "target": "RED",
+      "type": "dependencies"
+    }
+  ],
+  "files": [
+    {
+      "content_hash": "sha1:76e6dfb603eb513cab2b91faac5a033bd8e043e9",
+      "diagnostics": [],
+      "id": "67f25e7957778dd68cfec96200eb22a8384e3f1a",
+      "language": "cpp",
+      "parser": "tree-sitter-cpp",
+      "path": "widget.cpp",
+      "status": "parsed"
+    }
+  ],
+  "metrics": {
+    "ambiguous_edges": 0,
+    "diagnostics_total": 0,
+    "edges_total": 10,
+    "failure_buckets": {},
+    "files_failed": 0,
+    "files_parsed": 1,
+    "files_processed": 1,
+    "files_skipped": 0,
+    "files_total": 1,
+    "graph_failures": 0,
+    "metadata_failures": 0,
+    "nodes_total": 6,
+    "parse_failures": 0,
+    "resolved_edges": 4,
+    "serialization_failures": 0,
+    "unresolved_edges": 6
+  },
+  "nodes": [
+    {
+      "definition_id": "0bee8bd50c52e2babf8fe455f2c38454362c557c",
+      "file_id": "67f25e7957778dd68cfec96200eb22a8384e3f1a",
+      "id": "0bee8bd50c52e2babf8fe455f2c38454362c557c",
+      "identity": {
+        "source": "definition_id",
+        "value": "0bee8bd50c52e2babf8fe455f2c38454362c557c"
+      },
+      "kind": "class",
+      "language": "cpp",
+      "metadata": {
+        "dependencies": [
+          "count"
+        ],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: cpp\nfile: widget.cpp\nkind: class\nsymbol: Widget\nqualified name: Widget\nsemantic path: widget.cpp::Widget\ndependencies: count\ncontent:\nclass Widget {\npublic:\n    int count;\n\n    int render() {\n        return helper();\n    }\n\n    int helper() {\n        return count + 1;\n    }\n}"
+      },
+      "node_id": "a9a9429aa3d99980f1bcfc555e9374cea145fa51",
+      "parent": null,
+      "path": "widget.cpp",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Widget",
+      "relationships": [
+        "edge:d77c93aab97e1e51",
+        "edge:d7cce1ee2b05c009"
+      ],
+      "semantic_path": "widget.cpp::Widget",
+      "signature": null,
+      "span": {
+        "byte_end": 176,
+        "byte_start": 34,
+        "end_line": 14,
+        "start_line": 3
+      },
+      "symbol": "Widget",
+      "symbol_id": "fbc3ea6be49ca30d519b73af2902922da168b56a"
+    },
+    {
+      "definition_id": "17e4949dedb2a95eb65cfc35732d2ce4ab551f34",
+      "file_id": "67f25e7957778dd68cfec96200eb22a8384e3f1a",
+      "id": "17e4949dedb2a95eb65cfc35732d2ce4ab551f34",
+      "identity": {
+        "source": "definition_id",
+        "value": "17e4949dedb2a95eb65cfc35732d2ce4ab551f34"
+      },
+      "kind": "method",
+      "language": "cpp",
+      "metadata": {
+        "dependencies": [
+          "count"
+        ],
+        "exports": [
+          "helper"
+        ],
+        "imports": [],
+        "parent_symbol": "Widget",
+        "semantic_text": "language: cpp\nfile: widget.cpp\nkind: method\nsymbol: helper\nqualified name: Widget.helper\nparent symbol: Widget\nsemantic path: widget.cpp::Widget.helper\nsignature text: helper() -> int\nexports: helper\ndependencies: count\ncontent:\nint helper() {\n        return count + 1;\n    }"
+      },
+      "node_id": "2d40a7f012e6b6a2948f925de0608895dbc3723b",
+      "parent": "a9a9429aa3d99980f1bcfc555e9374cea145fa51",
+      "path": "widget.cpp",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Widget.helper",
+      "relationships": [
+        "edge:33a8c398872eb01f"
+      ],
+      "semantic_path": "widget.cpp::Widget.helper",
+      "signature": "helper() -> int",
+      "span": {
+        "byte_end": 174,
+        "byte_start": 128,
+        "end_line": 13,
+        "start_line": 11
+      },
+      "symbol": "helper",
+      "symbol_id": "9db719cfc4046358a9a12cdf037430bf248fcd37"
+    },
+    {
+      "definition_id": "1940d8e41e814151475d62410e23a8d4dbd2e6f4",
+      "file_id": "67f25e7957778dd68cfec96200eb22a8384e3f1a",
+      "id": "1940d8e41e814151475d62410e23a8d4dbd2e6f4",
+      "identity": {
+        "source": "definition_id",
+        "value": "1940d8e41e814151475d62410e23a8d4dbd2e6f4"
+      },
+      "kind": "method",
+      "language": "cpp",
+      "metadata": {
+        "dependencies": [
+          "helper"
+        ],
+        "exports": [
+          "render"
+        ],
+        "imports": [],
+        "parent_symbol": "Widget",
+        "semantic_text": "language: cpp\nfile: widget.cpp\nkind: method\nsymbol: render\nqualified name: Widget.render\nparent symbol: Widget\nsemantic path: widget.cpp::Widget.render\nsignature text: render() -> int\nexports: render\ndependencies: helper\ncontent:\nint render() {\n        return helper();\n    }"
+      },
+      "node_id": "c518f075ee3e405cf2152b8f3145d4405161480c",
+      "parent": "a9a9429aa3d99980f1bcfc555e9374cea145fa51",
+      "path": "widget.cpp",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Widget.render",
+      "relationships": [
+        "edge:83c07923e9c0620c",
+        "edge:e48da697bb9ba911"
+      ],
+      "semantic_path": "widget.cpp::Widget.render",
+      "signature": "render() -> int",
+      "span": {
+        "byte_end": 122,
+        "byte_start": 77,
+        "end_line": 9,
+        "start_line": 7
+      },
+      "symbol": "render",
+      "symbol_id": "888aac2ad5943fd00ceca864617c157c6be447c0"
+    },
+    {
+      "definition_id": "77ffc7c9aa54e26b250bccaec5b7fadb261f7443",
+      "file_id": "67f25e7957778dd68cfec96200eb22a8384e3f1a",
+      "id": "77ffc7c9aa54e26b250bccaec5b7fadb261f7443",
+      "identity": {
+        "source": "definition_id",
+        "value": "77ffc7c9aa54e26b250bccaec5b7fadb261f7443"
+      },
+      "kind": "function",
+      "language": "cpp",
+      "metadata": {
+        "dependencies": [
+          "w"
+        ],
+        "exports": [
+          "run"
+        ],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: cpp\nfile: widget.cpp\nkind: function\nsymbol: run\nqualified name: run\nsemantic path: widget.cpp::run\nsignature text: run() -> int\nexports: run\ndependencies: w\ncontent:\nint run() {\n    Widget w;\n    return w.render();\n}"
+      },
+      "node_id": "10eae52084f3843953e7c80d4777e72c3743e1ee",
+      "parent": null,
+      "path": "widget.cpp",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "run",
+      "relationships": [
+        "edge:1bcd530da6dba7ca",
+        "edge:5f022e7ba38eb674"
+      ],
+      "semantic_path": "widget.cpp::run",
+      "signature": "run() -> int",
+      "span": {
+        "byte_end": 229,
+        "byte_start": 179,
+        "end_line": 19,
+        "start_line": 16
+      },
+      "symbol": "run",
+      "symbol_id": "4a160705e617f9c3bce3fd60e3b73beba87aab87"
+    },
+    {
+      "definition_id": "b0ab9cedfcbbb86fc2b2dbf38bfab78f67f0c016",
+      "file_id": "67f25e7957778dd68cfec96200eb22a8384e3f1a",
+      "id": "b0ab9cedfcbbb86fc2b2dbf38bfab78f67f0c016",
+      "identity": {
+        "source": "definition_id",
+        "value": "b0ab9cedfcbbb86fc2b2dbf38bfab78f67f0c016"
+      },
+      "kind": "field_declaration",
+      "language": "cpp",
+      "metadata": {
+        "dependencies": [],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": "Widget",
+        "semantic_text": "language: cpp\nfile: widget.cpp\nkind: field_declaration\nsymbol: count\nqualified name: Widget.count\nparent symbol: Widget\nsemantic path: widget.cpp::Widget.count\ncontent:\nint count;"
+      },
+      "node_id": "f6897f384ba794499537c105a82b88824a557e67",
+      "parent": "a9a9429aa3d99980f1bcfc555e9374cea145fa51",
+      "path": "widget.cpp",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Widget.count",
+      "relationships": [],
+      "semantic_path": "widget.cpp::Widget.count",
+      "signature": null,
+      "span": {
+        "byte_end": 71,
+        "byte_start": 61,
+        "end_line": 5,
+        "start_line": 5
+      },
+      "symbol": "count",
+      "symbol_id": "506b329323ee67494eac4e6d74c0d4fa61ab0758"
+    },
+    {
+      "definition_id": "b451b3d7cc10d6f8ba7cbf9c5e1d3806171bedcb",
+      "file_id": "67f25e7957778dd68cfec96200eb22a8384e3f1a",
+      "id": "b451b3d7cc10d6f8ba7cbf9c5e1d3806171bedcb",
+      "identity": {
+        "source": "definition_id",
+        "value": "b451b3d7cc10d6f8ba7cbf9c5e1d3806171bedcb"
+      },
+      "kind": "enum",
+      "language": "cpp",
+      "metadata": {
+        "dependencies": [
+          "BLUE",
+          "GREEN",
+          "RED"
+        ],
+        "exports": [],
+        "imports": [],
+        "parent_symbol": null,
+        "semantic_text": "language: cpp\nfile: widget.cpp\nkind: enum\nsymbol: Color\nqualified name: Color\nsemantic path: widget.cpp::Color\ndependencies: BLUE, GREEN, RED\ncontent:\nenum Color { RED, GREEN, BLUE }"
+      },
+      "node_id": "39af059406596657096a3bd07dcd4caf6e10ca0e",
+      "parent": null,
+      "path": "widget.cpp",
+      "provenance": {
+        "extractor": "chunk_file",
+        "metadata": "retrieval"
+      },
+      "qualified_name": "Color",
+      "relationships": [
+        "edge:4b6335434721ab4d",
+        "edge:5145d518d09d8298",
+        "edge:dfa93bcb31ac2641"
+      ],
+      "semantic_path": "widget.cpp::Color",
+      "signature": null,
+      "span": {
+        "byte_end": 31,
+        "byte_start": 0,
+        "end_line": 1,
+        "start_line": 1
+      },
+      "symbol": "Color",
+      "symbol_id": "adc2666706081f9110cdafa953a1a01c2bc55c7b"
+    }
+  ],
+  "run": {
+    "canonical": true,
+    "created_at": null,
+    "options": {
+      "fail_fast": false,
+      "include_retrieval_metadata": true,
+      "include_timings": false,
+      "language": "cpp",
+      "resolution_mode": "strict"
+    },
+    "root": "tests/fixtures/boundary_ir/repos/cpp",
+    "timings": {
+      "graph_assembly_ms": null,
+      "metadata_normalization_ms": null,
+      "parse_ms": null,
+      "resolution_ms": null,
+      "serialization_ms": null,
+      "total_ms": null
+    },
+    "tool": "treesitter-chunker",
+    "tool_version": "<tool-version>"
+  },
+  "schema_version": "2.0",
+  "source": {
+    "kind": "repository",
+    "path": "tests/fixtures/boundary_ir/repos/cpp"
+  }
+}
