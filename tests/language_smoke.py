@@ -220,7 +220,7 @@ def compute_coverage() -> dict[str, Any]:
             record["sample"] = (
                 "golden-fixture"
                 if name in GOLDEN_LANGUAGES
-                else str(SAMPLES_ROOT / SAMPLE_LANGUAGES[name])
+                else (SAMPLES_ROOT / SAMPLE_LANGUAGES[name]).as_posix()
             )
         else:
             record["extraction"] = LOAD_ONLY
@@ -242,7 +242,7 @@ def compute_coverage() -> dict[str, Any]:
             "extraction": EXTRACTION_GAP,
             "node_count": probe["node_count"],
             "kinds": probe["kinds"],
-            "sample": str(SAMPLES_ROOT / SAMPLE_LANGUAGES[name]),
+            "sample": (SAMPLES_ROOT / SAMPLE_LANGUAGES[name]).as_posix(),
         }
 
     # Summary counts -- the honest headline numbers. ``pack_total`` /

@@ -49,6 +49,31 @@ def test_grammar_runtime_pins_held() -> None:
     assert_grammar_runtime_pins()
 
 
+def test_pack_pinned_exactly_at_committed_version() -> None:
+    """Guard the diff-against-committed oracle against pack patch float.
+
+    The committed coverage JSON's per-language ``node_count`` / ``kinds`` are
+    baked against the EXACT pack version the report was generated on. The
+    pyproject range (``>=0.9,<1.0``) and ``assert_grammar_runtime_pins`` would
+    both stay green on a future ``0.9.x`` whose grammars shifted, turning the
+    coverage diff red with a confusing message. Assert the exact committed pack
+    version here so any float fails loudly with a clear cause: regenerate the
+    oracle on the new pin, or hold the pack.
+    """
+    from importlib import metadata
+
+    committed_pack = _committed_coverage()["pins"]["tree_sitter_language_pack"]
+    expected = committed_pack.lstrip("=")
+    installed = metadata.version("tree-sitter-language-pack")
+    assert installed == expected, (
+        f"tree-sitter-language-pack=={installed} but the committed coverage "
+        f"oracle was baked against {expected}. The coverage JSON's per-language "
+        "node_count/kinds are version-exact; a different 0.9.x can shift them. "
+        "Regenerate via scripts/regenerate_language_coverage.py on the new pin "
+        "(and review the diff), or hold the pack at the committed version."
+    )
+
+
 def test_coverage_report_is_committed() -> None:
     """The published coverage report must exist (it is the test oracle)."""
     assert COVERAGE_JSON.exists(), (

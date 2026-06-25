@@ -231,8 +231,10 @@ coverage sweep across the entire
 continuously enforced by a smoke-tier CI gate (`tests/test_language_smoke.py`).
 Honest tiers:
 
-- **12** languages with full byte-level **golden conformance** + determinism gate.
-- **27** extraction-verified (rich/sparse boundary surface on a curated sample).
+- **12** languages with full byte-level **golden conformance** + determinism gate
+  (extraction-verified against authoritative golden fixture repos).
+- **27** extraction-verified overall (a real boundary surface — the 12 above plus
+  15 more checked against small curated samples; rich = 2+ kinds, sparse = 1 kind).
 - **167 / 167** pack grammars **load** under the pinned runtime (a forward ABI-drift
   tripwire — it would have flagged the C# ABI break and the pre-fix C++ sparseness
   instantly).
