@@ -221,6 +221,23 @@ Current PyPI releases include precompiled Tree-sitter grammars for common langua
 
 **Legend**: ✅ Production Ready, 🔧 Buildable on-demand, 🚧 Experimental
 
+#### 📋 Honest, machine-verified coverage
+
+We do not just *hope* the ~167 pack languages work — we measure and publish it. See
+**[docs/language-coverage.md](docs/language-coverage.md)** (and the machine-readable
+[`docs/language-coverage.json`](docs/language-coverage.json)) for the per-language
+coverage sweep across the entire
+[tree-sitter-language-pack](https://github.com/Goldziher/tree-sitter-language-pack),
+continuously enforced by a smoke-tier CI gate (`tests/test_language_smoke.py`).
+Honest tiers:
+
+- **12** languages with full byte-level **golden conformance** + determinism gate.
+- **27** extraction-verified (rich/sparse boundary surface on a curated sample).
+- **167 / 167** pack grammars **load** under the pinned runtime (a forward ABI-drift
+  tripwire — it would have flagged the C# ABI break and the pre-fix C++ sparseness
+  instantly).
+- The **broken / sparse / empty** languages are named openly in the report, not hidden.
+
 **For Advanced Usage:**
 If you need languages not included in prebuilt wheels, the package can still build them locally using the same build system used during wheel creation.
 

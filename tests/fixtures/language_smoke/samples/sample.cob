@@ -1,0 +1,5 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. SAMPLE.
+       PROCEDURE DIVISION.
+           DISPLAY "hi".
+           STOP RUN.

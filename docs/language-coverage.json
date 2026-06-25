@@ -1,0 +1,959 @@
+{
+  "languages": {
+    "actionscript": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "ada": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "agda": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "apex": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "arduino": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "asm": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "assembly": {
+      "extraction": "extraction_gap",
+      "kinds": [],
+      "load": "fails_to_load",
+      "load_error": "no pack grammar enumerated under this name",
+      "node_count": 0,
+      "sample": "tests/fixtures/language_smoke/samples/sample.asm"
+    },
+    "astro": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "bash": {
+      "extraction": "sparse",
+      "kinds": [
+        "function"
+      ],
+      "load": "loads",
+      "node_count": 2,
+      "sample": "tests/fixtures/language_smoke/samples/sample.sh"
+    },
+    "beancount": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "bibtex": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "bicep": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "bitbake": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "c": {
+      "extraction": "rich",
+      "kinds": [
+        "function",
+        "struct"
+      ],
+      "load": "loads",
+      "node_count": 4,
+      "sample": "golden-fixture"
+    },
+    "cairo": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "capnp": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "chatito": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "clarity": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "clojure": {
+      "extraction": "rich",
+      "kinds": [
+        "defn",
+        "list_lit"
+      ],
+      "load": "loads",
+      "node_count": 4,
+      "sample": "tests/fixtures/language_smoke/samples/sample.clj"
+    },
+    "cmake": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "cobol": {
+      "extraction": "extraction_gap",
+      "kinds": [],
+      "load": "fails_to_load",
+      "load_error": "no pack grammar enumerated under this name",
+      "node_count": 0,
+      "sample": "tests/fixtures/language_smoke/samples/sample.cob"
+    },
+    "comment": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "commonlisp": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "cpon": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "cpp": {
+      "extraction": "rich",
+      "kinds": [
+        "class",
+        "enum",
+        "field_declaration",
+        "function",
+        "method"
+      ],
+      "load": "loads",
+      "node_count": 6,
+      "sample": "golden-fixture"
+    },
+    "csharp": {
+      "extraction": "rich",
+      "kinds": [
+        "class",
+        "constructor",
+        "enum",
+        "field_declaration",
+        "interface",
+        "method"
+      ],
+      "load": "loads",
+      "node_count": 8,
+      "sample": "golden-fixture"
+    },
+    "css": {
+      "extraction": "empty",
+      "kinds": [],
+      "load": "loads",
+      "node_count": 0,
+      "sample": "tests/fixtures/language_smoke/samples/sample.css"
+    },
+    "csv": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "cuda": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "d": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "dart": {
+      "extraction": "rich",
+      "kinds": [
+        "class",
+        "function",
+        "method"
+      ],
+      "load": "loads",
+      "node_count": 4,
+      "sample": "tests/fixtures/language_smoke/samples/sample.dart"
+    },
+    "dockerfile": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "doxygen": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "dtd": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "elisp": {
+      "extraction": "sparse",
+      "kinds": [
+        "function"
+      ],
+      "load": "loads",
+      "node_count": 2,
+      "sample": "tests/fixtures/language_smoke/samples/sample.el"
+    },
+    "elixir": {
+      "extraction": "rich",
+      "kinds": [
+        "call",
+        "function",
+        "module"
+      ],
+      "load": "loads",
+      "node_count": 5,
+      "sample": "tests/fixtures/language_smoke/samples/sample.ex"
+    },
+    "elm": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "embeddedtemplate": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "erlang": {
+      "extraction": "empty",
+      "kinds": [],
+      "load": "loads",
+      "node_count": 0,
+      "sample": "tests/fixtures/language_smoke/samples/sample.erl"
+    },
+    "fennel": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "firrtl": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "fish": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "fortran": {
+      "extraction": "empty",
+      "kinds": [],
+      "load": "loads",
+      "node_count": 0,
+      "sample": "tests/fixtures/language_smoke/samples/sample.f90"
+    },
+    "fsharp": {
+      "extraction": "extraction_gap",
+      "kinds": [],
+      "load": "fails_to_load",
+      "load_error": "no pack grammar enumerated under this name",
+      "node_count": 0,
+      "sample": "tests/fixtures/language_smoke/samples/sample.fs"
+    },
+    "func": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "gdscript": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "gitattributes": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "gitcommit": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "gitignore": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "gleam": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "glsl": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "gn": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "go": {
+      "extraction": "rich",
+      "kinds": [
+        "function",
+        "struct"
+      ],
+      "load": "loads",
+      "node_count": 6,
+      "sample": "golden-fixture"
+    },
+    "gomod": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "gosum": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "graphql": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "groovy": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "gstlaunch": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "hack": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "hare": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "haskell": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "haxe": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "hcl": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "heex": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "hlsl": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "html": {
+      "extraction": "empty",
+      "kinds": [],
+      "load": "loads",
+      "node_count": 0,
+      "sample": "tests/fixtures/language_smoke/samples/sample.html"
+    },
+    "hyprlang": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "ini": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "ispc": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "janet": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "java": {
+      "extraction": "rich",
+      "kinds": [
+        "class",
+        "constructor",
+        "enum",
+        "field_declaration",
+        "method"
+      ],
+      "load": "loads",
+      "node_count": 6,
+      "sample": "golden-fixture"
+    },
+    "javascript": {
+      "extraction": "rich",
+      "kinds": [
+        "class",
+        "export_statement",
+        "function",
+        "import_statement",
+        "method",
+        "variable_declarator"
+      ],
+      "load": "loads",
+      "node_count": 14,
+      "sample": "golden-fixture"
+    },
+    "jsdoc": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "json": {
+      "extraction": "empty",
+      "kinds": [],
+      "load": "loads",
+      "node_count": 0,
+      "sample": "tests/fixtures/language_smoke/samples/sample.json"
+    },
+    "jsonnet": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "julia": {
+      "extraction": "sparse",
+      "kinds": [
+        "function"
+      ],
+      "load": "loads",
+      "node_count": 2,
+      "sample": "tests/fixtures/language_smoke/samples/sample.jl"
+    },
+    "kconfig": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "kdl": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "kotlin": {
+      "extraction": "rich",
+      "kinds": [
+        "class",
+        "function",
+        "method"
+      ],
+      "load": "loads",
+      "node_count": 4,
+      "sample": "golden-fixture"
+    },
+    "latex": {
+      "extraction": "empty",
+      "kinds": [],
+      "load": "loads",
+      "node_count": 0,
+      "sample": "tests/fixtures/language_smoke/samples/sample.tex"
+    },
+    "linkerscript": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "llvm": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "lua": {
+      "extraction": "empty",
+      "kinds": [],
+      "load": "loads",
+      "node_count": 0,
+      "sample": "tests/fixtures/language_smoke/samples/sample.lua"
+    },
+    "luadoc": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "luap": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "luau": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "magik": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "make": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "markdown": {
+      "extraction": "empty",
+      "kinds": [],
+      "load": "loads",
+      "node_count": 0,
+      "sample": "tests/fixtures/language_smoke/samples/sample.md"
+    },
+    "markdown_inline": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "matlab": {
+      "extraction": "sparse",
+      "kinds": [
+        "function"
+      ],
+      "load": "loads",
+      "node_count": 2,
+      "sample": "tests/fixtures/language_smoke/samples/sample.m"
+    },
+    "mermaid": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "meson": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "netlinx": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "nim": {
+      "extraction": "empty",
+      "kinds": [],
+      "load": "loads",
+      "node_count": 0,
+      "sample": "tests/fixtures/language_smoke/samples/sample.nim"
+    },
+    "ninja": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "nix": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "nqc": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "objc": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "ocaml": {
+      "extraction": "rich",
+      "kinds": [
+        "let_binding",
+        "value_definition"
+      ],
+      "load": "loads",
+      "node_count": 4,
+      "sample": "tests/fixtures/language_smoke/samples/sample.ml"
+    },
+    "ocaml_interface": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "odin": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "org": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "pascal": {
+      "extraction": "empty",
+      "kinds": [],
+      "load": "loads",
+      "node_count": 0,
+      "sample": "tests/fixtures/language_smoke/samples/sample.pas"
+    },
+    "pem": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "perl": {
+      "extraction": "empty",
+      "kinds": [],
+      "load": "loads",
+      "node_count": 0,
+      "sample": "tests/fixtures/language_smoke/samples/sample.pl"
+    },
+    "pgn": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "php": {
+      "extraction": "rich",
+      "kinds": [
+        "class",
+        "function",
+        "method",
+        "property_declaration"
+      ],
+      "load": "loads",
+      "node_count": 5,
+      "sample": "golden-fixture"
+    },
+    "po": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "pony": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "powershell": {
+      "extraction": "empty",
+      "kinds": [],
+      "load": "loads",
+      "node_count": 0,
+      "sample": "tests/fixtures/language_smoke/samples/sample.ps1"
+    },
+    "printf": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "prisma": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "properties": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "proto": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "psv": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "puppet": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "purescript": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "pymanifest": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "python": {
+      "extraction": "rich",
+      "kinds": [
+        "class",
+        "function",
+        "method"
+      ],
+      "load": "loads",
+      "node_count": 6,
+      "sample": "golden-fixture"
+    },
+    "qmldir": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "qmljs": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "query": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "r": {
+      "extraction": "sparse",
+      "kinds": [
+        "function"
+      ],
+      "load": "loads",
+      "node_count": 2,
+      "sample": "tests/fixtures/language_smoke/samples/sample.r"
+    },
+    "racket": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "raku": {
+      "extraction": "extraction_gap",
+      "kinds": [],
+      "load": "fails_to_load",
+      "load_error": "no pack grammar enumerated under this name",
+      "node_count": 0,
+      "sample": "tests/fixtures/language_smoke/samples/sample.raku"
+    },
+    "re2c": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "readline": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "rego": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "requirements": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "restructuredtext": {
+      "extraction": "extraction_gap",
+      "kinds": [],
+      "load": "fails_to_load",
+      "load_error": "no pack grammar enumerated under this name",
+      "node_count": 0,
+      "sample": "tests/fixtures/language_smoke/samples/sample.rst"
+    },
+    "ron": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "rst": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "ruby": {
+      "extraction": "rich",
+      "kinds": [
+        "class",
+        "method"
+      ],
+      "load": "loads",
+      "node_count": 5,
+      "sample": "golden-fixture"
+    },
+    "rust": {
+      "extraction": "rich",
+      "kinds": [
+        "function",
+        "impl_item",
+        "struct"
+      ],
+      "load": "loads",
+      "node_count": 4,
+      "sample": "tests/fixtures/language_smoke/samples/sample.rs"
+    },
+    "scala": {
+      "extraction": "rich",
+      "kinds": [
+        "method",
+        "object_definition"
+      ],
+      "load": "loads",
+      "node_count": 3,
+      "sample": "tests/fixtures/language_smoke/samples/sample.scala"
+    },
+    "scheme": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "scss": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "smali": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "smithy": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "solidity": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "sparql": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "sql": {
+      "extraction": "rich",
+      "kinds": [
+        "create_table_statement",
+        "select_statement",
+        "statement"
+      ],
+      "load": "loads",
+      "node_count": 4,
+      "sample": "tests/fixtures/language_smoke/samples/sample.sql"
+    },
+    "squirrel": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "starlark": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "svelte": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "swift": {
+      "extraction": "rich",
+      "kinds": [
+        "class",
+        "function",
+        "method",
+        "property_declaration"
+      ],
+      "load": "loads",
+      "node_count": 5,
+      "sample": "golden-fixture"
+    },
+    "tablegen": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "tcl": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "terraform": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "test": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "thrift": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "toml": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "tsv": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "tsx": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "twig": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "typescript": {
+      "extraction": "rich",
+      "kinds": [
+        "class",
+        "export_statement",
+        "function",
+        "import_statement",
+        "interface",
+        "method",
+        "variable_declarator"
+      ],
+      "load": "loads",
+      "node_count": 18,
+      "sample": "golden-fixture"
+    },
+    "typst": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "udev": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "ungrammar": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "uxntal": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "v": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "verilog": {
+      "extraction": "empty",
+      "kinds": [],
+      "load": "loads",
+      "node_count": 0,
+      "sample": "tests/fixtures/language_smoke/samples/sample.v"
+    },
+    "vhdl": {
+      "extraction": "empty",
+      "kinds": [],
+      "load": "loads",
+      "node_count": 0,
+      "sample": "tests/fixtures/language_smoke/samples/sample.vhdl"
+    },
+    "vim": {
+      "extraction": "sparse",
+      "kinds": [
+        "function"
+      ],
+      "load": "loads",
+      "node_count": 2,
+      "sample": "tests/fixtures/language_smoke/samples/sample.vim"
+    },
+    "vue": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "wgsl": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "xcompose": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "xml": {
+      "extraction": "sparse",
+      "kinds": [
+        "element"
+      ],
+      "load": "loads",
+      "node_count": 3,
+      "sample": "tests/fixtures/language_smoke/samples/sample.xml"
+    },
+    "yaml": {
+      "extraction": "rich",
+      "kinds": [
+        "block_mapping",
+        "block_mapping_pair",
+        "block_sequence"
+      ],
+      "load": "loads",
+      "node_count": 7,
+      "sample": "tests/fixtures/language_smoke/samples/sample.yaml"
+    },
+    "yuck": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "zig": {
+      "extraction": "empty",
+      "kinds": [],
+      "load": "loads",
+      "node_count": 0,
+      "sample": "tests/fixtures/language_smoke/samples/sample.zig"
+    }
+  },
+  "pins": {
+    "tree_sitter": ">=0.25,<0.26",
+    "tree_sitter_language_pack": "==0.9.0"
+  },
+  "summary": {
+    "advertised_no_pack_grammar": 5,
+    "extraction": {
+      "empty": 15,
+      "extraction_gap": 5,
+      "load_only": 125,
+      "rich": 20,
+      "sparse": 7
+    },
+    "fails_to_load": 0,
+    "loads": 167,
+    "pack_total": 167
+  }
+}
