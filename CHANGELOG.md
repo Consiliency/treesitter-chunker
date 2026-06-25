@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.1] - 2026-06-25
+
+### 🐛 Bug Fixes
+
+- **deps**: Cap `tree-sitter-language-pack` at `>=0.9,<0.10` (was `<1.0`). The
+  loose upper bound let the pack float off the verified, byte-stable 0.9.0
+  pairing on a plain `pip install` / `uv pip install` (which ignores `uv.lock`).
+  This is not cosmetic: pack 0.13.0 ships a `cobol` grammar that infinite-loops
+  in `parser.parse()` at the C level, which a signal-based timeout cannot
+  interrupt — it hung the language-coverage smoke step in CI for the full 60-min
+  budget. The `<0.10` cap protects pip consumers, contributor machines, and the
+  CI matrix from the same float; the byte-stable boundary-IR guarantee is only
+  verified at 0.9.x, and the determinism gate catches any 0.9.x patch drift.
+
+### 🧪 Testing / CI
+
+- **ci**: Re-land the language-coverage smoke gate (reverted in #84) into the
+  standing CI batch, now that the install pins the pack to `==0.9.0`. The gate
+  verifies all pack languages load + the per-language coverage oracle diff +
+  the sampled-nonempty guard. The CI install pins `tree-sitter-language-pack==0.9.0`
+  explicitly and asserts the resolved version post-install, so a future float
+  fails loudly instead of hanging.
+
 ## [3.2.0] - 2026-06-24
 
 ### ✨ Features
