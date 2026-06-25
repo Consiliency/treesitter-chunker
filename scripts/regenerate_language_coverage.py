@@ -41,16 +41,18 @@ MD_PATH = REPO_ROOT / "docs" / "language-coverage.md"
 # are data/markup formats with no function/type surface, so 0 boundaries is not
 # a gap. Used only to annotate the Markdown narrative; it does not affect the
 # JSON oracle or any assertion.
-DATA_MARKUP_LANGUAGES = frozenset({
-    "css",
-    "html",
-    "json",
-    "markdown",
-    "latex",
-    "yaml",
-    "xml",
-    "toml",
-})
+DATA_MARKUP_LANGUAGES = frozenset(
+    {
+        "css",
+        "html",
+        "json",
+        "markdown",
+        "latex",
+        "yaml",
+        "xml",
+        "toml",
+    }
+)
 
 
 def _normalize_for_commit(coverage: dict) -> dict:
