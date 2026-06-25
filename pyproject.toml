@@ -1,6 +1,6 @@
 [project]
 name            = "treesitter-chunker"
-version = "3.2.0"
+version = "3.2.1"
 description     = "Semantic code chunker using Tree-sitter for intelligent code analysis"
 readme          = "README.md"
 requires-python = ">=3.11"
@@ -34,11 +34,17 @@ dependencies = [
     # 0.25.x core + 0.9.x pack is the verified pairing -- the 0.25 runtime loads
     # ABI 13-15, so it accepts every grammar the 0.9.0 pack ships INCLUDING the
     # ABI-15 C# grammar that the old 0.24 runtime rejected (C# is now turnkey).
-    # Holding the pack at 0.9.x keeps boundary IR byte-stable: pack >=1.x floats a
-    # newer Python grammar that drops docstrings from semantic_text, so the pack
-    # upper bound is load-bearing, not cosmetic.
+    # Holding the pack at 0.9.x keeps boundary IR byte-stable: a newer Python
+    # grammar drops docstrings from semantic_text, so the pack upper bound is
+    # load-bearing, not cosmetic. The bound is <0.10 (NOT <1.0): the float is
+    # dangerous WITHIN the 0.x series, not just at 1.x -- pack 0.13.0 ships a
+    # `cobol` grammar that infinite-loops in parser.parse() at the C level, which
+    # a signal-based timeout cannot kill (it hung CI's smoke step for 60 min; the
+    # determinism gate catches any 0.9.x patch drift). When bumping this pin:
+    # regenerate docs/language-coverage.{md,json} on the new pack AND add a
+    # hard-kill (subprocess) hang-guard to the load smoke first.
     "tree_sitter>=0.25,<0.26",
-    "tree-sitter-language-pack>=0.9,<1.0",  # Pre-compiled grammars; ABI-paired with tree_sitter above (held at 0.9.x)
+    "tree-sitter-language-pack>=0.9,<0.10",  # Pre-compiled grammars; ABI-paired with tree_sitter above (held at 0.9.x; <0.10 is load-bearing -- see above)
     "rich>=13.0.0",
     "typer>=0.9.0",
     "pyarrow>=15.0.0",

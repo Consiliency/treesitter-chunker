@@ -35,7 +35,34 @@ jobs:
         run: |
           # toml, httpx, and jsonschema are declared in the [dev] extra, so the
           # single editable install below covers them -- no ad-hoc pip installs.
-          uv pip install --system -e ".[dev,api,viz,templates,advanced]"
+          #
+          # Pin tree-sitter-language-pack to the LOCKED 0.9.0 explicitly. `uv pip
+          # install` does NOT consult uv.lock, so the pyproject range otherwise
+          # floats to the newest pack on every CI run. That float is not cosmetic:
+          # the language-coverage smoke gate is baked against 0.9.0 (the
+          # byte-stable, ABI-paired pin its oracle + pin asserts demand), and a
+          # newer pack ships a `cobol` grammar that infinite-loops in
+          # `parser.parse()` at the C level -- which pytest-timeout's signal-based
+          # interrupt CANNOT kill, so the LOAD smoke hung the whole Pytest step to
+          # the 60-min wall (the bug behind the #84 revert). pyproject now caps the
+          # pack at <0.10, so this `==0.9.0` is belt-and-suspenders pinning the
+          # exact patch CI runs on. When the pack pin is next bumped, regenerate
+          # the coverage oracle AND add a hard-kill (subprocess) hang-guard to the
+          # load smoke first -- the cobol C-hang is latent until then.
+          uv pip install --system -e ".[dev,api,viz,templates,advanced]" \
+            "tree-sitter-language-pack==0.9.0"
+          # Fail loudly (not silently green) if the install resolved a different
+          # pack than the gate's oracle was baked against.
+          python - <<'PY'
+          import importlib.metadata as m
+          expected = "0.9.0"
+          installed = m.version("tree-sitter-language-pack")
+          assert installed == expected, (
+              f"tree-sitter-language-pack=={installed} but the smoke-gate oracle "
+              f"is baked against {expected}; the CI install must stay on the pin."
+          )
+          print(f"tree-sitter-language-pack pinned at {installed}")
+          PY
 
       - name: Fetch grammars
         run: python scripts/fetch_grammars.py

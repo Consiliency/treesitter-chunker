@@ -2171,7 +2171,7 @@ wheels = [
 
 [[package]]
 name = "treesitter-chunker"
-version = "3.1.0"
+version = "3.2.1"
 source = { editable = "." }
 dependencies = [
     { name = "chardet" },
@@ -2320,7 +2320,7 @@ requires-dist = [
     { name = "tomli-w", specifier = ">=1.0.0" },
     { name = "tqdm", specifier = ">=4.66.0" },
     { name = "tree-sitter", specifier = ">=0.25,<0.26" },
-    { name = "tree-sitter-language-pack", specifier = ">=0.9,<1.0" },
+    { name = "tree-sitter-language-pack", specifier = ">=0.9,<0.10" },
     { name = "treesitter-chunker", extras = ["dev", "viz", "docs", "profile", "api", "templates", "advanced"], marker = "extra == 'all'" },
     { name = "twine", marker = "extra == 'dev'" },
     { name = "typer", specifier = ">=0.9.0" },
