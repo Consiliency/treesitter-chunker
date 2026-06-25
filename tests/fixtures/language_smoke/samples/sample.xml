@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<greeter>
+  <name>world</name>
+  <count>2</count>
+</greeter>

@@ -1,0 +1,6 @@
+greeter:
+  name: world
+  count: 2
+items:
+  - one
+  - two

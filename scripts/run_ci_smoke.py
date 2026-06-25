@@ -27,6 +27,11 @@ CI_SMOKE_TESTS = [
     # Determinism gate: per-language golden non-empty guard + fail-closed
     # grammar/runtime pin assertion (the silent-{} and ABI-drift failure modes).
     "tests/test_boundary_ir_determinism.py",
+    # Smoke-tier coverage gate: comprehensive LOAD smoke across the ENTIRE pack
+    # (every grammar must load under the pin -- forward ABI-drift tripwire) plus
+    # per-language coverage diffed against the committed docs/language-coverage
+    # .json oracle. Complements the deep 12-language golden gate above.
+    "tests/test_language_smoke.py",
 ]
 
 
