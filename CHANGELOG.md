@@ -7,43 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.2.0] - 2026-06-24
 
-ADDITIVE minor — turnkey C# + a future-proof tree-sitter runtime, proven
-byte-stable for every existing language by the new determinism gate.
+### ✨ Features
 
-### ✨ Added / Changed
+- Boundary-IR determinism gate (golden coverage for all languages + non-empty & pin guards) (#79)
 
-- **runtime**: Bumped the tree-sitter runtime `tree_sitter>=0.24,<0.25` →
-  `>=0.25,<0.26` (now supports grammar ABI 13–15), keeping
-  `tree-sitter-language-pack>=0.9,<1.0`. Purely additive: the determinism gate
-  confirms the canonical Boundary IR is **byte-identical** for all
-  previously-supported languages, Python included. NOTE: this byte-stability
-  holds because the language-pack is **held at 0.9.0** — the runtime bump alone
-  does not change Python's IR. (A pack *float* to ≥1.x ships a newer Python
-  grammar that drops the `docstring:` line; the pack `<1.0` upper bound — asserted
-  fail-closed by the determinism gate — is the load-bearing guard. This was NOT a
-  docstring "fix"; nothing in extraction changed.) No consumer re-index required.
-  **Downstream:** consumers (e.g. spec's realized Python gate) stay byte-stable
-  only if they likewise resolve language-pack 0.9.x; floating to ≥1.x inherits the
-  docstring drop.
-- **csharp**: C# boundary extraction now works **out of the box** — the 0.25
-  runtime loads the language-pack's ABI-15 C# grammar (no grammar pin / override
-  needed), emitting class/interface/method/field/enum boundaries. C# is now a
-  first-class language in the determinism gate (fixture + golden + guards);
-  canonical language key is `csharp`.
 
-### 🧪 Testing
+- Tree-sitter 0.25 runtime (additive) — turnkey C# + future-proof ABI (3.2.0) (#80)
 
-- **boundary-ir**: Determinism gate — extended golden Boundary IR coverage from
-  the 4 P0 languages to all 11 supported languages (python, javascript,
-  typescript, go, java, cpp, c, ruby, kotlin, swift, php — and C#, added in this
-  same release via the 0.25 runtime (12 total). Added a non-empty-extraction guard
-  (`test_extraction_nonempty`) that fails loudly on the silent-`{}` /
-  ABI-mismatch failure mode, and a fail-closed grammar/runtime pin assertion
-  (`test_grammar_runtime_pins_match`) that trips on an unintended
-  tree_sitter / tree-sitter-language-pack bump. Added
-  `scripts/regenerate_boundary_goldens.py` as the sole sanctioned, idempotent
-  golden-regenerate path, and wired the new guards into `scripts/run_ci_smoke.py`.
-  Additive / guard-only — no extraction behavior changed.
+
+
+### 📚 Documentation
+
+- **changelog**: Update for v3.1.0
+
+
+- **changelog**: Correct 3.2.0 mechanism — byte-stability is from holding pack 0.9.0, not a docstring fix (#82)
+
+
 
 ## [3.1.0] - 2026-06-23
 
