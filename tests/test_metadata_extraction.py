@@ -470,6 +470,28 @@ interface Calculator {
             assert signature is not None
             assert "interface_method" in signature.modifiers
 
+    @staticmethod
+    def test_extract_optional_parameter_type(extractor):
+        """Optional parameters (``x?: type``) must keep their type annotation.
+
+        Regression test: the ``optional_parameter`` branch of
+        ``_parse_parameter`` used to read the name but never the
+        ``type_annotation`` child, silently dropping the type for every
+        optional param while the adjacent ``required_parameter`` branch kept
+        it.
+        """
+        code = "\nfunction greet(name?: string, age: number): string {\n    return name;\n}\n"
+        parser = get_parser("typescript")
+        tree = parser.parse(code.encode())
+        func_node = tree.root_node.children[0]
+        signature = extractor.extract_signature(func_node, code.encode())
+        assert signature.name == "greet"
+        assert len(signature.parameters) == 2
+        assert signature.parameters[0]["name"] == "name?"
+        assert signature.parameters[0]["type"] == "string"
+        assert signature.parameters[1]["name"] == "age"
+        assert signature.parameters[1]["type"] == "number"
+
 
 class TestIntegrationWithChunker:
     """Test metadata extraction integration with chunker."""

@@ -304,6 +304,16 @@ class JavaScriptMetadataExtractor(BaseMetadataExtractor):
                 text = self._get_node_text(param_node, source)
                 if "?" in text:
                     param_info["name"] += "?"
+            type_node = self._find_child_by_type(param_node, "type_annotation")
+            if type_node:
+                param_info["type"] = (
+                    self._get_node_text(
+                        type_node,
+                        source,
+                    )
+                    .strip(":")
+                    .strip()
+                )
             for i, child in enumerate(param_node.children):
                 if child.type == "=":
                     next_child = self._safe_get_child(param_node, i + 1)
