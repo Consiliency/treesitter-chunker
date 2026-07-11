@@ -77,7 +77,7 @@ SL-4 — Documentation & spec reconciliation (SL-docs)
 
 ### SL-2 — Real grammar-version cache key
 - **Scope**: Make `_grammar_version()` return a real fingerprint (tree-sitter-language-pack + tree_sitter runtime versions), and add `grammar_version` (already present) plus a `runtime_version` field to `BOUNDARY_CACHE_KEY_FIELDS` so an incremental recompute across a pack/runtime bump does not reuse stale nodes.
-- **Owned files**: `chunker/boundary/adapter.py`, `chunker/boundary/types.py`, `tests/test_boundary_cache_key.py`
+- **Owned files**: `chunker/boundary/adapter.py`, `chunker/boundary/types.py`, `tests/test_boundary_cache_key.py`, `tests/test_boundary_ir_incremental_contract.py`
 - **Interfaces provided**: IF-0-BOUNDARYFIX-1 (real grammar_version fingerprint + cache-key fields)
 - **Interfaces consumed**: (none)
 - **Tasks**:
@@ -85,7 +85,7 @@ SL-4 — Documentation & spec reconciliation (SL-docs)
 | Task ID | Type | Depends on | Files in scope | Tests owned | Test command |
 |---|---|---|---|---|---|
 | SL-2.1 | test | — | `tests/test_boundary_cache_key.py` | the boundary cache key CHANGES when the simulated pack/runtime version changes; is STABLE for the same versions; grammar_version reflects the real pack version, not a constant | `uv run --with toml --all-extras python -m pytest tests/test_boundary_cache_key.py -q` |
-| SL-2.2 | impl | SL-2.1 | `chunker/boundary/adapter.py`, `chunker/boundary/types.py` | — | — |
+| SL-2.2 | impl | SL-2.1 | `chunker/boundary/adapter.py`, `chunker/boundary/types.py`, `tests/test_boundary_ir_incremental_contract.py` | — | — |
 | SL-2.3 | verify | SL-2.2 | cache key | cache-key + conformance | `uv run --with toml --all-extras python -m pytest tests/test_boundary_cache_key.py tests/boundary_ir_conformance.py -q` |
 
 ### SL-3 — Committed cross-tool parity golden
