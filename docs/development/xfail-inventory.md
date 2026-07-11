@@ -23,3 +23,16 @@ while the tracked debt is paid down by shrinking the baseline.
 - Clearing owner: a dedicated type-debt phase (post-remediation), which reduces the
   baseline in bounded batches and re-runs `scripts/mypy_gate.py --update`.
 - Do NOT add to the baseline to silence a new error — fix the error instead.
+
+## PARSER follow-up: 3 more stored-parser holders (owned by SCALE)
+
+The PARSER phase closed the shared-parser segfault in `get_parser`/`acquire_parser`,
+`StreamingChunker`, and cached plugin instances. Panel review (Fable) found the SAME
+stored-parser anti-pattern in three more holders that cache a parser into a shared instance:
+- `chunker/smart_context.py:553-555`
+- `chunker/performance/optimization/incremental.py:162-164`
+- `chunker/export/relationships/tracker.py:111-113`
+
+They are pre-existing and outside PARSER's enumerated scope. **SCALE owns migrating them to
+the thread-local `get_parser` / `acquire_parser` API** as part of "all thread-pool paths acquire
+via IF-0-PARSER-1." Clearing owner: SCALE.

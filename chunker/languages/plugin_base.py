@@ -38,6 +38,7 @@ class LanguagePlugin(ABC):
     def __init__(self, config: PluginConfig | None = None):
         self.config = config or PluginConfig()
         self._parser: Parser | None = None
+        self._parser_injected: bool = False
         self._language_config: LanguageConfig | None = None
         self._validate_plugin()
 
@@ -117,6 +118,7 @@ class LanguagePlugin(ABC):
     def set_parser(self, parser: Parser) -> None:
         """Set the tree-sitter parser for this plugin."""
         self._parser = parser
+        self._parser_injected = True
 
     def process_node(
         self,
@@ -226,21 +228,20 @@ class LanguagePlugin(ABC):
 
         A plugin instance is cached globally (plugin_manager._instances) and thus
         shared across threads, so its stored `self._parser` must NOT be used for
-        parsing — that would run one Parser on multiple threads (segfault). We
-        fetch the calling thread's own thread-local parser instead (PARSER phase).
-        Falls back to the stored parser only when the language module is
-        unavailable (e.g. a test that injects a parser via set_parser()).
-        """
-        try:
-            from chunker.parser import get_parser
+        production parsing — that would run one Parser on multiple threads
+        (segfault). Production instances are never injected, so they fetch the
+        calling thread's own thread-local parser via `get_parser` (PARSER phase),
+        and any failure PROPAGATES — it must never fail open to the shared parser.
 
-            return get_parser(self.language_name)
-        except Exception:
-            if not self._parser:
-                raise RuntimeError(
-                    f"Parser not set for {self.language_name} plugin"
-                ) from None
+        The only path that uses the stored parser is an EXPLICIT single-threaded
+        test injection via `set_parser()` (e.g. custom test grammars like zig/julia
+        that the factory registry cannot provide), gated on `self._parser_injected`.
+        """
+        if self._parser_injected and self._parser is not None:
             return self._parser
+        from chunker.parser import get_parser
+
+        return get_parser(self.language_name)
 
     @staticmethod
     @abstractmethod
