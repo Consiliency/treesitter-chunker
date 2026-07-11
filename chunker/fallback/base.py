@@ -227,15 +227,21 @@ class FallbackChunker(IFallbackChunker):
                 chunk_content = part + delimiter
             else:
                 chunk_content = part
-            # A delimiter separates parts, so it consumes source length even when
-            # excluded from the chunk content — advance past it or every chunk
-            # after the first drifts by len(delimiter) (COREFIX true byte offsets).
-            delimiter_span = (
-                0 if (include_delimiter or i == len(parts) - 1) else len(delimiter)
-            )
+            # A delimiter separates parts, so it consumes source length/lines even
+            # when excluded from the chunk content. Advance byte offset AND line
+            # number by the full source span (part + delimiter) or every chunk
+            # after the first drifts (COREFIX true byte offsets + line numbers).
+            # The line advance mirrors the byte advance: count the delimiter's
+            # newlines exactly once, and only when a delimiter actually follows.
+            is_last = i == len(parts) - 1
+            delimiter_span = 0 if (include_delimiter or is_last) else len(delimiter)
+            delimiter_lines = 0 if is_last else delimiter.count("\n")
+            # Lines consumed by this part's own text (excludes the delimiter, which
+            # is accounted separately so include/exclude modes agree).
+            part_lines = part.count("\n")
             if not chunk_content.strip():
                 current_offset += len(chunk_content) + delimiter_span
-                current_line += chunk_content.count("\n") + delimiter.count("\n")
+                current_line += part_lines + delimiter_lines
                 continue
             start_line = current_line
             end_line = start_line + chunk_content.count("\n")
@@ -252,7 +258,7 @@ class FallbackChunker(IFallbackChunker):
             )
             chunks.append(chunk)
             current_offset += len(chunk_content) + delimiter_span
-            current_line = end_line + 1
+            current_line += part_lines + delimiter_lines
         return chunks
 
     def chunk_by_pattern(

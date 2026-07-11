@@ -311,20 +311,35 @@ class TreeSitterSmartContextProvider(SmartContextProvider):
         index = self._identifier_index(chunk.file_path, chunk.language, file_chunks)
         query_ids = chunk_features.get("identifiers") or set()
         seen: dict[Any, Any] = {}
-        for ident in query_ids:
+        # Iterate identifiers in a STABLE (sorted) order so the cap-truncated
+        # candidate set is a deterministic function of the input, not of the
+        # process's hash seed (COREFIX determinism).
+        for ident in sorted(query_ids):
             for cand in index.get(ident, ()):
                 if cand.chunk_id != chunk.chunk_id:
                     seen[cand.chunk_id or id(cand)] = cand
                     if len(seen) >= self._MAX_CONTEXT_CANDIDATES:
-                        return list(seen.values())
+                        return self._ordered(seen.values())
         if seen:
-            return list(seen.values())
-        return [c for c in file_chunks if c.chunk_id != chunk.chunk_id][
-            : self._MAX_CONTEXT_CANDIDATES
-        ]
+            return self._ordered(seen.values())
+        return sorted(
+            (c for c in file_chunks if c.chunk_id != chunk.chunk_id),
+            key=self._candidate_sort_key,
+        )[: self._MAX_CONTEXT_CANDIDATES]
+
+    @staticmethod
+    def _candidate_sort_key(cand: CodeChunk):
+        return (cand.chunk_id or "", cand.byte_start)
+
+    def _ordered(self, candidates):
+        return sorted(candidates, key=self._candidate_sort_key)
 
     def _identifier_index(self, file_path, language, file_chunks):
-        key = f"{file_path}|{language}|{len(file_chunks)}"
+        # The key includes a CONTENT digest (not just len) so a same-length
+        # rechunk with different content does not serve a stale index
+        # (COREFIX cache-freshness). The digest is content-derived via node_id.
+        digest = self._candidate_cache_type("ident-index", file_chunks)
+        key = f"{file_path}|{language}|{digest}"
         cache = getattr(self, "_ident_index_cache", None)
         if cache is None:
             cache = {}

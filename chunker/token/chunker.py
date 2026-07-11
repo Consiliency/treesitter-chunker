@@ -224,6 +224,30 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
             return self._split_by_lines(chunk, max_tokens, model)
         current_part = class_header_lines.copy()
         current_tokens = header_tokens
+        # Running cursor into the original content so two byte-identical methods
+        # in separate sub-chunks anchor to their OWN occurrence, not the first
+        # (COREFIX: class-split duplicate-method disambiguation).
+        search_from = 0
+
+        def _emit(part_lines: list[str]) -> None:
+            nonlocal search_from
+            chunk_content = "\n".join(part_lines)
+            method_lines = part_lines[len(class_header_lines):]
+            anchor = "\n".join(method_lines) if method_lines else None
+            new_chunk = self._create_sub_chunk(
+                chunk,
+                chunk_content,
+                len(chunks),
+                search_from=search_from,
+                anchor=anchor,
+            )
+            chunks.append(new_chunk)
+            # Advance the cursor past this sub-chunk's anchor occurrence.
+            needle = anchor if anchor is not None else chunk_content
+            found = chunk.content.find(needle, search_from)
+            if found >= 0:
+                search_from = found + len(needle)
+
         for i, start_idx in enumerate(method_starts):
             end_idx = method_starts[i + 1] if i + 1 < len(method_starts) else len(lines)
             method_lines = lines[start_idx:end_idx]
@@ -236,31 +260,13 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
                 current_tokens + method_tokens > max_tokens
                 and current_part != class_header_lines
             ):
-                chunk_content = "\n".join(current_part)
-                _method_lines = current_part[len(class_header_lines):]
-                _anchor = "\n".join(_method_lines) if _method_lines else None
-                new_chunk = self._create_sub_chunk(
-                    chunk,
-                    chunk_content,
-                    len(chunks),
-                    anchor=_anchor,
-                )
-                chunks.append(new_chunk)
+                _emit(current_part)
                 current_part = class_header_lines.copy()
                 current_tokens = header_tokens
             current_part.extend(method_lines)
             current_tokens += method_tokens
         if current_part and current_part != class_header_lines:
-            chunk_content = "\n".join(current_part)
-            _method_lines = current_part[len(class_header_lines):]
-            _anchor = "\n".join(_method_lines) if _method_lines else None
-            new_chunk = self._create_sub_chunk(
-                chunk,
-                chunk_content,
-                len(chunks),
-                anchor=_anchor,
-            )
-            chunks.append(new_chunk)
+            _emit(current_part)
         return chunks if chunks else [chunk]
 
     def _split_by_lines(
@@ -308,18 +314,22 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
             original_chunk.content.find(needle), 0
         )
         start_offset = original_chunk.content[:content_offset].count("\n")
-        new_lines = content.split("\n")
         byte_offset = len(original_chunk.content[:content_offset].encode("utf-8"))
+        # The byte/line SPAN describes the NEEDLE's real region in the parent
+        # (the anchor for a class split whose ``content`` is header-augmented, or
+        # ``content`` itself for a contiguous line split). Using ``content`` here
+        # would overshoot the parent's byte_end whenever a synthetic header was
+        # prepended (COREFIX: spans stay within the parent).
         new_chunk = CodeChunk(
             language=original_chunk.language,
             file_path=original_chunk.file_path,
             node_type=f"{original_chunk.node_type}_part_{index + 1}",
             start_line=original_chunk.start_line + start_offset,
-            end_line=(original_chunk.start_line + start_offset + len(new_lines) - 1),
+            end_line=original_chunk.start_line + start_offset + needle.count("\n"),
             byte_start=original_chunk.byte_start + byte_offset,
             byte_end=original_chunk.byte_start
             + byte_offset
-            + len(content.encode("utf-8")),
+            + len(needle.encode("utf-8")),
             parent_context=original_chunk.parent_context,
             content=content,
             parent_chunk_id=original_chunk.chunk_id,
