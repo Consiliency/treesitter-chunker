@@ -52,7 +52,7 @@ SL-3 — Documentation & spec reconciliation (SL-docs)
 
 ### SL-1 — Collision-free node_id contract
 - **Scope**: Change `compute_node_id` to incorporate the qualified (named) route + byte position so byte-identical siblings under same-typed ancestors get distinct ids; update the `core.py` call site to pass `qualified_route` + `byte_start`; keep `chunk_id == node_id` (alias) and `len == 40` (sha1). Reconcile the back-compat spec_test.
-- **Owned files**: `chunker/types.py`, `chunker/core.py`, `spec_tests/test_codechunk_ids_backcompat.py`, `tests/test_chunk_id_collision.py`
+- **Owned files**: `chunker/types.py`, `chunker/core.py`, `chunker/streaming.py`, `spec_tests/test_codechunk_ids_backcompat.py`, `tests/test_chunk_id_collision.py`, `tests/fixtures/boundary_ir/golden/`
 - **Interfaces provided**: IF-0-IDENTITY-1 (`compute_node_id` collision-free contract)
 - **Interfaces consumed**: (none)
 - **Tasks**:
@@ -61,12 +61,12 @@ SL-3 — Documentation & spec reconciliation (SL-docs)
 |---|---|---|---|---|---|
 | SL-1.1 | test | — | `tests/test_chunk_id_collision.py` | two byte-identical sibling defs under same-typed ancestors (copy-pasted `def __init__(self): pass` in two classes) yield DISTINCT chunk_ids; anonymous siblings at different byte offsets distinct; a single def's id is stable across re-chunk; `chunk_id == node_id`; `len(node_id) == 40` | `uv run --with toml --all-extras python -m pytest tests/test_chunk_id_collision.py -q` |
 | SL-1.2 | impl | SL-1.1 | `chunker/types.py` | — | — |
-| SL-1.3 | impl | SL-1.2 | `chunker/core.py`, `spec_tests/test_codechunk_ids_backcompat.py` | — | — |
+| SL-1.3 | impl | SL-1.2 | `chunker/core.py`, `chunker/streaming.py`, `spec_tests/test_codechunk_ids_backcompat.py`, `tests/fixtures/boundary_ir/golden/` | — | — |
 | SL-1.4 | verify | SL-1.3 | identity | collision + backcompat | `uv run --with toml --all-extras python -m pytest tests/test_chunk_id_collision.py spec_tests/test_codechunk_ids_backcompat.py -q` |
 
 ### SL-2 — Re-key consuming maps + cache-version bump
 - **Scope**: Audit every `{chunk_id: chunk}` / `{node_id: ...}` / `parent_chunk_id` map and the boundary adapter's `symbol_indexes` so none drops a chunk under the new (now collision-free) ids; bump the persisted-cache version so stale content-hash ids are invalidated.
-- **Owned files**: `chunker/incremental.py`, `chunker/graph/xref.py`, `chunker/export/postgres_spec_exporter.py`, `tests/test_identity_maps.py`
+- **Owned files**: `chunker/incremental.py`, `chunker/_internal/cache.py`, `chunker/graph/xref.py`, `chunker/export/postgres_spec_exporter.py`, `tests/test_identity_maps.py`
 - **Interfaces provided**: (none)
 - **Interfaces consumed**: IF-0-IDENTITY-1
 - **Tasks**:
@@ -74,7 +74,7 @@ SL-3 — Documentation & spec reconciliation (SL-docs)
 | Task ID | Type | Depends on | Files in scope | Tests owned | Test command |
 |---|---|---|---|---|---|
 | SL-2.1 | test | — | `tests/test_identity_maps.py` | chunking a file with two identical sibling defs yields TWO chunks in the id-keyed maps (none dropped); parent_chunk_id links resolve to the correct distinct parents; persisted-cache version changed | `uv run --with toml --all-extras python -m pytest tests/test_identity_maps.py -q` |
-| SL-2.2 | impl | SL-2.1 | `chunker/incremental.py`, `chunker/graph/xref.py`, `chunker/export/postgres_spec_exporter.py` | — | — |
+| SL-2.2 | impl | SL-2.1 | `chunker/incremental.py`, `chunker/_internal/cache.py`, `chunker/graph/xref.py`, `chunker/export/postgres_spec_exporter.py` | — | — |
 | SL-2.3 | verify | SL-2.2 | maps | identity-maps + graph + incremental | `uv run --with toml --all-extras python -m pytest tests/test_identity_maps.py tests/test_incremental.py -q` |
 
 ### SL-3 — Documentation & spec reconciliation (SL-docs)
