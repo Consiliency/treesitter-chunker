@@ -19,7 +19,7 @@ deletions.
 The preamble must sever all three known live import edges before deletion: `chunker/__init__.py` to
 `integration`, `chunker/grammar_management/cli.py` to `error_handling`, and
 `chunker/contracts/__init__.py` to `cicd`. Static imports, dynamic `importlib` calls, and the legacy
-tests are inventoried in `logs/hygiene-reachability-audit.txt`. A surviving production reference
+tests are inventoried in `plans/hygiene-reachability-audit.txt`. A surviving production reference
 from `chunker/`, `cli/`, or `api/` blocks deletion of that package and narrows the affected lane to
 quarantine; it does not permit widening ownership silently.
 
@@ -31,7 +31,7 @@ finding blocks closeout and requires an explicit plan repair.
 
 ## Interface Freeze Gates
 
-- [ ] IF-0-HYGIENE-1 — `logs/hygiene-reachability-audit.txt` records the static and dynamic
+- [ ] IF-0-HYGIENE-1 — `plans/hygiene-reachability-audit.txt` records the static and dynamic
   reachability inventory, the retained/quarantined/deleted disposition for every candidate
   subpackage, and the final `chunker/__init__.py` exports; the terminal verifier proves the final
   public surface imports and the full local suite passes.
@@ -78,7 +78,7 @@ SL-7 — Phase verification, documentation sweep, and interface-freeze reducer
 ### SL-1 — Reachability audit and import-edge severing
 
 - **Scope**: Freeze the reachability inventory, add one contract test, and sever the three known production import edges before any deletion lane starts.
-- **Owned files**: `chunker/__init__.py`, `chunker/contracts/__init__.py`, `chunker/grammar_management/cli.py`, `tests/test_hygiene_reachability.py`, `logs/hygiene-reachability-audit.txt`
+- **Owned files**: `chunker/__init__.py`, `chunker/contracts/__init__.py`, `chunker/grammar_management/cli.py`, `tests/test_hygiene_reachability.py`, `plans/hygiene-reachability-audit.txt`
 - **Interfaces provided**: `HYGIENE_REACHABILITY_V1` inventory and severed-import baseline
 - **Interfaces consumed**: package import graph (pre-existing)
 - **Parallel-safe**: no
@@ -183,20 +183,20 @@ test -z "$(git ls-files 'treesitter_chunker.egg-info/**' 'ide/**/node_modules/**
 
 ## Acceptance Criteria
 
-- [ ] `logs/hygiene-reachability-audit.txt` records static imports, dynamic imports, legacy-test disposition, and retained/quarantined/deleted status for every candidate package, as asserted by `tests/test_hygiene_reachability.py`.
+- [ ] `plans/hygiene-reachability-audit.txt` records static imports, dynamic imports, legacy-test disposition, and retained/quarantined/deleted status for every candidate package, as asserted by `tests/test_hygiene_reachability.py`.
 - [ ] The three known false-reachability edges are absent, while `chunker`, `chunker.contracts`, and `chunker._internal.error_handling` import successfully.
 - [ ] `uv run --with toml --all-extras python -m pytest tests/test_hygiene_reachability.py -q` proves every package cleared for deletion and its legacy tests are absent; any package not cleared is explicitly quarantined in the audit.
 - [ ] `languages.base.PluginConfig is languages.plugin_base.PluginConfig`, and only the six audit-confirmed unused exception classes are removed.
 - [ ] No roadmap-named cruft, generated egg-info, or IDE `node_modules` path remains tracked, and durable ignore rules cover regenerated artifacts.
 - [ ] The targeted HYGIENE contracts, full local pytest suite, ruff check, and black check all pass.
-- [ ] SL-7 lists IF-0-HYGIENE-1 in closeout only after `automation.suite_command` passes and `logs/hygiene-reachability-audit.txt` matches the final tree.
+- [ ] SL-7 lists IF-0-HYGIENE-1 in closeout only after `automation.suite_command` passes and `plans/hygiene-reachability-audit.txt` matches the final tree.
 
 ## Spec Closeout Plan
 
 - schema: `spec_delta_closeout.v1`
 - decision: `no_spec_delta`
 - target surfaces: `(none)`
-- evidence paths: `logs/hygiene-reachability-audit.txt`
+- evidence paths: `plans/hygiene-reachability-audit.txt`
 - redaction posture: `metadata_only`
 - downstream handling: `none`
 
