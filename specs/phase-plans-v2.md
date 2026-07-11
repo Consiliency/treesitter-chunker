@@ -168,6 +168,7 @@ Make the CI signal real: run the full/tiered suite, enforce lint correctness and
 
 **Scope notes**
 - Decompose into 5 lanes: (a) CI workflow tiering + wire canon/spec_tests; (b) ruff F-rule un-ignore + cleanup (relies on HYGIENE deletions); (c) mypy blocking + triage; (d) pin-derivation helper + conformance/regenerate wiring + drift test + xfall-cap inventory; (e) workflow security hardening (perms, SHA pins, dispatch injection).
+- Post-HYGIENE amendment (2026-07-11): before setting the full-suite baseline, inventory and retire or rewrite the legacy tests whose sole subject is a deleted HYGIENE subpackage. The HYGIENE audit found 21 test files with 49 direct imports across `integration`, `error_handling`, `extractors`, `devenv`, `distribution`, `cicd`, and `monitoring`; they are outside HYGIENE's owned-file contract. Do not hide them behind untracked xfails: remove obsolete coverage or replace it with coverage of the surviving public surface, then make that disposition explicit in the GATES test-tier inventory.
 - Parallelism: publish `resolve_pack_pin()` signature day-1. Lanes (a) and (e) both edit `.github/workflows/*` — assign lane (a) to own the workflow files; lane (e) hands it the security delta (they are now in ONE phase, so no cross-phase collision with SUPPLY).
 - Single-writer file: `pyproject.toml` (lanes b and d) — lane (d) owns it.
 
