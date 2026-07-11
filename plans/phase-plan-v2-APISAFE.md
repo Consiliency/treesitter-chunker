@@ -71,7 +71,7 @@ SL-5 — Documentation & spec reconciliation (SL-docs)
 
 ### SL-2 — API auth + confinement + CORS + bind + size cap
 - **Scope**: Add an auth dependency, confine every path arg via `resolve_within_root()`, fix CORS, cap body size, stop default `0.0.0.0` bind, and wire the frozen `/graph/cut` route decision.
-- **Owned files**: `api/server.py`, `tests/test_api_security.py`
+- **Owned files**: `api/server.py`, `tests/test_api_security.py`, `tests/test_api_endpoints_extended.py`
 - **Interfaces provided**: IF-0-APISAFE-1 (auth dependency signature)
 - **Interfaces consumed**: `resolve_within_root` (SL-1); `/graph/cut` decision (SL-4)
 - **Tasks**:
