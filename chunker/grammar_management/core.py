@@ -40,6 +40,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from chunker.exceptions import ChunkerError
+from chunker.grammar.source_validation import validate_grammar_source
 from chunker.interfaces.grammar import GrammarInfo, GrammarStatus, NodeTypeInfo
 
 logger = logging.getLogger(__name__)
@@ -683,6 +684,12 @@ class GrammarInstaller:
         version: str | None = None,
     ) -> tuple[bool, Path | None, str | None]:
         """Download grammar source code."""
+        try:
+            repository_url = validate_grammar_source(repository_url)
+        except ValueError as e:
+            return False, None, f"Invalid grammar source: {e}"
+        if version and version.startswith("-"):
+            return False, None, "Invalid grammar version"
         download_dir = self._downloads_dir / f"tree-sitter-{language}"
 
         # Clean up existing download
@@ -691,7 +698,7 @@ class GrammarInstaller:
 
         try:
             # Clone repository
-            cmd = ["git", "clone", repository_url, str(download_dir)]
+            cmd = ["git", "clone", "--", repository_url, str(download_dir)]
             result = subprocess.run(
                 cmd,
                 capture_output=True,
@@ -705,7 +712,7 @@ class GrammarInstaller:
 
             # Checkout specific version if requested
             if version:
-                cmd = ["git", "checkout", version]
+                cmd = ["git", "checkout", "--detach", version]
                 result = subprocess.run(
                     cmd,
                     cwd=download_dir,

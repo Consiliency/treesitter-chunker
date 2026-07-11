@@ -7,10 +7,9 @@ import subprocess
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from urllib.parse import urlparse
-
 from .contracts.grammar_manager_contract import GrammarManagerContract
 from .exceptions import ChunkerError
+from .grammar.source_validation import validate_grammar_source
 
 logger = logging.getLogger(__name__)
 
@@ -81,16 +80,10 @@ class GrammarManager(GrammarManagerContract):
         Raises:
             GrammarManagerError: If URL is invalid or language already exists
         """
-        parsed = urlparse(repo_url)
-        if (
-            parsed.scheme
-            not in {
-                "http",
-                "https",
-            }
-            or "github.com" not in parsed.netloc
-        ):
-            raise GrammarManagerError(f"Invalid GitHub URL: {repo_url}")
+        try:
+            repo_url = validate_grammar_source(repo_url)
+        except ValueError as e:
+            raise GrammarManagerError(f"Invalid GitHub URL: {repo_url}") from e
         if language in self._grammar_sources:
 
             logger.warning(
@@ -131,7 +124,7 @@ class GrammarManager(GrammarManagerContract):
 
         def fetch_single(lang: str) -> tuple[str, bool]:
             """Fetch a single grammar repository."""
-            repo_url = self._grammar_sources[lang]
+            repo_url = validate_grammar_source(self._grammar_sources[lang])
             target_dir = self._grammars_dir / f"tree-sitter-{lang}"
             if target_dir.exists():
                 logger.info(
@@ -142,14 +135,14 @@ class GrammarManager(GrammarManagerContract):
                 return lang, True
             try:
                 logger.info("[clone] %s from %s", lang, repo_url)
-                cmd = ["git", "clone", "--depth=1", repo_url, str(target_dir)]
+                cmd = ["git", "clone", "--depth=1", "--", repo_url, str(target_dir)]
                 result = subprocess.run(cmd, capture_output=True, text=True, check=True)
                 logger.debug("Clone output for %s: %s", lang, result.stdout)
                 return lang, True
             except subprocess.CalledProcessError as e:
                 logger.error("Failed to clone %s: %s", lang, e.stderr)
                 return lang, False
-            except (OSError, IndexError, KeyError) as e:
+            except (OSError, IndexError, KeyError, ValueError) as e:
                 logger.error("Unexpected error cloning %s: %s", lang, e)
                 return lang, False
             except Exception as e:

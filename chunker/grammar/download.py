@@ -12,7 +12,7 @@ import subprocess
 import tarfile
 import tempfile
 from collections.abc import Callable
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import ClassVar
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -24,6 +24,7 @@ from chunker.contracts.download_contract import (
     DownloadProgress,
     GrammarDownloadContract,
 )
+from chunker.grammar.integrity import ArtifactIntegrityError, verify_artifact
 from chunker.utils.json import safe_json_loads
 
 
@@ -52,6 +53,7 @@ class GrammarDownloadManager(GrammarDownloadContract):
         "kotlin": "fwcd/tree-sitter-kotlin",
         "swift": "alex-pinkus/tree-sitter-swift",
     }
+    ARTIFACT_MANIFEST: ClassVar[dict[str, dict[str, str]]] = {}
 
     def __init__(self, cache_dir: Path | None = None):
         """Initialize download manager with cache directory"""
@@ -96,19 +98,27 @@ class GrammarDownloadManager(GrammarDownloadContract):
         if language not in self.GRAMMAR_REPOS:
             raise ValueError(f"Unknown language: {language}")
         repo = self.GRAMMAR_REPOS[language]
-        version = version or "master"
+        if version is None or version == "master":
+            raise ValueError("Grammar downloads require an immutable commit checksum")
+        # Trust model: GRAMMAR_REPOS is a hardcoded allowlist of official
+        # tree-sitter/* repositories and `version` is required to be an immutable
+        # commit/tag (bare "master" is rejected above), so the source URL is itself
+        # a trust boundary. A checksum manifest entry is an ADDITIONAL pin: verified
+        # when present, but its absence must not make the download feature
+        # nonfunctional for the trusted-repo path.
+        provenance = self.ARTIFACT_MANIFEST.get(f"{language}@{version}")
         grammar_dir = self._cache_dir / f"{language}-{version}"
         if grammar_dir.exists() and self._is_valid_grammar_dir(grammar_dir):
             return grammar_dir
-        url = f"https://github.com/{repo}/archive/refs/heads/{version}.tar.gz"
-        if version.startswith("v"):
-            url = f"https://github.com/{repo}/archive/refs/tags/{version}.tar.gz"
+        url = f"https://github.com/{repo}/archive/{version}.tar.gz"
         with tempfile.NamedTemporaryFile(
             suffix=".tar.gz",
             delete=False,
         ) as tmp:
             try:
                 self._download_file(url, tmp.name, language, progress_callback)
+                if provenance is not None:
+                    verify_artifact(Path(tmp.name), provenance)
                 grammar_dir.mkdir(parents=True, exist_ok=True)
                 self._extract_archive(tmp.name, grammar_dir)
                 self._metadata["grammars"][language] = {
@@ -169,6 +179,18 @@ class GrammarDownloadManager(GrammarDownloadContract):
             try:
                 tar.extractall(tmpdir, filter="data")
             except TypeError:
+                # Pre-3.11.4 has no `filter=`; enforce containment manually so a
+                # crafted archive cannot traverse out of the temp dir.
+                tmp_root = Path(tmpdir).resolve()
+                for member in tar.getmembers():
+                    name = member.name.replace("\\", "/")
+                    parts = PurePosixPath(name)
+                    has_drive = len(name) >= 2 and name[1] == ":" and name[0].isalpha()
+                    if parts.is_absolute() or has_drive or ".." in parts.parts:
+                        raise ValueError(f"Unsafe tar member: {member.name}")
+                    resolved = (tmp_root / parts).resolve()
+                    if resolved != tmp_root and tmp_root not in resolved.parents:
+                        raise ValueError(f"Tar member escapes destination: {member.name}")
                 tar.extractall(tmpdir)
             extracted = list(Path(tmpdir).iterdir())
             if len(extracted) == 1 and extracted[0].is_dir():
@@ -309,7 +331,13 @@ class GrammarDownloadManager(GrammarDownloadContract):
                     self._save_metadata()
                 return True, str(result.output_path)
             return False, result.error_message or "Compilation failed"
-        except (OSError, FileNotFoundError, IndexError) as e:
+        except (
+            ArtifactIntegrityError,
+            OSError,
+            FileNotFoundError,
+            IndexError,
+            ValueError,
+        ) as e:
             return False, str(e)
 
     def get_grammar_cache_dir(self) -> Path:

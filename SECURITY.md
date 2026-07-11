@@ -46,7 +46,10 @@ Send a detailed report to our security team at:
 - **File Paths**: Strict validation of file paths to prevent path traversal attacks
 - **Language Detection**: Safe language detection without code execution
 - **Configuration Files**: Secure parsing of configuration files
-- **Grammar Sources**: Validation of grammar repository URLs
+- **Grammar Sources**: Exact-host HTTPS validation, immutable-version checksum
+  manifests, and verification before grammar archives are extracted or compiled
+- **Plugin Directories**: Custom plugin directories require explicit opt-in
+  before their Python modules are executed
 
 ### **Sandboxing**
 

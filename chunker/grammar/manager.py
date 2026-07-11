@@ -7,6 +7,7 @@ import subprocess
 from pathlib import Path
 
 from chunker.exceptions import ChunkerError
+from chunker.grammar.source_validation import validate_grammar_source
 from chunker.interfaces.grammar import (
     GrammarInfo,
     GrammarManager,
@@ -110,6 +111,9 @@ class TreeSitterGrammarManager(GrammarManager):
         grammar = self._grammars[name]
         grammar_path = self.grammars_dir / f"tree-sitter-{name}"
         try:
+            repository_url = validate_grammar_source(grammar.repository_url)
+            if grammar.commit_hash and grammar.commit_hash.startswith("-"):
+                raise ValueError("Grammar commit must not start with '-'")
             if grammar_path.exists():
                 # Check whether the directory has actual grammar source content.
                 # Git submodule placeholder dirs (created by checkout without
@@ -125,7 +129,7 @@ class TreeSitterGrammarManager(GrammarManager):
                     )
                     shutil.rmtree(grammar_path)
                     result = subprocess.run(
-                        ["git", "clone", grammar.repository_url, str(grammar_path)],
+                        ["git", "clone", repository_url, "--", str(grammar_path)],
                         check=False,
                         capture_output=True,
                         text=True,
@@ -136,6 +140,15 @@ class TreeSitterGrammarManager(GrammarManager):
                         )
                 else:
                     logger.info("Updating grammar '%s'...", name)
+                    # Re-pin origin to the validated URL so the update never
+                    # trusts a possibly-tampered stored remote (SUPPLY hardening).
+                    subprocess.run(
+                        ["git", "remote", "set-url", "origin", "--", repository_url],
+                        check=False,
+                        cwd=grammar_path,
+                        capture_output=True,
+                        text=True,
+                    )
                     result = subprocess.run(
                         ["git", "pull"],
                         check=False,
@@ -160,7 +173,8 @@ class TreeSitterGrammarManager(GrammarManager):
                                 [
                                     "git",
                                     "clone",
-                                    grammar.repository_url,
+                                    repository_url,
+                                    "--",
                                     str(grammar_path),
                                 ],
                                 check=False,
@@ -175,7 +189,7 @@ class TreeSitterGrammarManager(GrammarManager):
                 # Clone new repository
                 logger.info("Cloning grammar '%s'...", name)
                 result = subprocess.run(
-                    ["git", "clone", grammar.repository_url, str(grammar_path)],
+                    ["git", "clone", repository_url, "--", str(grammar_path)],
                     check=False,
                     capture_output=True,
                     text=True,
@@ -187,7 +201,7 @@ class TreeSitterGrammarManager(GrammarManager):
             if grammar.commit_hash:
                 logger.info("Checking out commit %s", grammar.commit_hash)
                 result = subprocess.run(
-                    ["git", "checkout", grammar.commit_hash],
+                    ["git", "checkout", "--detach", grammar.commit_hash],
                     check=False,
                     cwd=grammar_path,
                     capture_output=True,
@@ -203,7 +217,13 @@ class TreeSitterGrammarManager(GrammarManager):
 
             logger.info("Successfully fetched grammar '%s'", name)
             return True
-        except (FileNotFoundError, OSError, TypeError, GrammarManagementError) as e:
+        except (
+            FileNotFoundError,
+            OSError,
+            TypeError,
+            ValueError,
+            GrammarManagementError,
+        ) as e:
             logger.error("Failed to fetch grammar '%s': %s", name, e)
             grammar.status = GrammarStatus.ERROR
             grammar.error = str(e)

@@ -44,6 +44,8 @@ from urllib.request import urlopen, urlretrieve
 
 import click
 
+from chunker.grammar.source_validation import validate_grammar_source
+
 # Import grammar management components from core
 try:
     from .core import (
@@ -1284,6 +1286,9 @@ class ComprehensiveGrammarCLI:
         Returns:
             Exit code
         """
+        repo_url = validate_grammar_source(repo_url)
+        if (version or branch).startswith("-"):
+            raise ValueError("Grammar branch or version must not start with '-'")
         target_dir = self.user_grammars_dir / language
 
         click.echo(f"Repository: {repo_url}")
@@ -1307,11 +1312,19 @@ class ComprehensiveGrammarCLI:
             git_cmd = ["git", "clone"]
             if version:
                 # For specific version, we'll clone then checkout
-                git_cmd.extend([repo_url, str(target_dir)])
+                git_cmd.extend(["--", repo_url, str(target_dir)])
             else:
                 # For branch, clone specific branch
                 git_cmd.extend(
-                    ["--branch", branch, "--depth", "1", repo_url, str(target_dir)],
+                    [
+                        "--branch",
+                        branch,
+                        "--depth",
+                        "1",
+                        "--",
+                        repo_url,
+                        str(target_dir),
+                    ],
                 )
 
             progress.update("Cloning repository...")
@@ -1326,8 +1339,12 @@ class ComprehensiveGrammarCLI:
 
             # If specific version requested, checkout that version
             if version:
+                if version.startswith("-"):
+                    raise ValueError(
+                        f"Refusing unsafe grammar version (leading dash): {version!r}"
+                    )
                 progress.update(f"Checking out version {version}...")
-                checkout_cmd = ["git", "checkout", version]
+                checkout_cmd = ["git", "checkout", "--detach", version]
                 returncode, _stdout, stderr = self._run_command(
                     checkout_cmd,
                     cwd=target_dir,
