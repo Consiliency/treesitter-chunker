@@ -126,14 +126,14 @@ SL-7 — Phase verification, documentation sweep, and interface-freeze reducer
 ### SL-5 — Deduplicate PluginConfig and prune unused exceptions
 
 - **Scope**: Make `languages.base.PluginConfig` the single class identity and remove only the six exception classes proven never raised or caught by the audit.
-- **Owned files**: `chunker/languages/base.py`, `chunker/languages/plugin_base.py`, `chunker/exceptions.py`, `tests/test_pluginconfig_single.py`
+- **Owned files**: `chunker/languages/base.py`, `chunker/languages/plugin_base.py`, `chunker/exceptions.py`, `tests/test_pluginconfig_single.py`, `tests/test_exceptions.py`, `tests/test_cross_module_errors.py`
 - **Interfaces provided**: one `PluginConfig` identity shared by base and plugin APIs
 - **Interfaces consumed**: language plugin API (pre-existing)
 - **Parallel-safe**: yes
 - **Tasks**:
   - test: Add `tests/test_pluginconfig_single.py` to assert both import paths expose the same class and the six audited exception symbols are absent.
-  - impl: Import `PluginConfig` from `languages.base` in `plugin_base.py` and delete only the audit-confirmed unused exception definitions.
-  - verify: `uv run --with toml --all-extras python -m pytest tests/test_pluginconfig_single.py -q`.
+  - impl: Import `PluginConfig` from `languages.base` in `plugin_base.py`; delete only the audit-confirmed unused exception definitions; and update the two surviving tests that reference them (`tests/test_exceptions.py` drops `LanguageLoadError`/`LibrarySymbolError` cases; `tests/test_cross_module_errors.py` drops the `CacheError` case) so the full suite stays green.
+  - verify: `uv run --with toml --all-extras python -m pytest tests/test_pluginconfig_single.py tests/test_exceptions.py tests/test_cross_module_errors.py -q`.
 
 ### SL-6 — Remove root cruft and generated package metadata
 
