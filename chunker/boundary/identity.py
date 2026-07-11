@@ -18,7 +18,15 @@ def _metadata_text(metadata: dict[str, Any], key: str) -> str | None:
 def select_node_identity(
     chunk: CodeChunk, module_name: str | None = None
 ) -> dict[str, str]:
-    """Select the canonical Boundary IR node identity for a chunk."""
+    """Select the canonical Boundary IR node identity for a chunk.
+
+    Prefers ``definition_id`` (a name-based, position-independent identity) so the
+    Boundary IR node id stays STABLE across edits/moves — its purpose for diffing
+    and impact analysis. Same-name overloads whose ``definition_id`` collides are
+    disambiguated at the adapter level (``_dedupe_node_identities``) using the
+    collision-free ``node_id``, so distinct definitions never share a Boundary id
+    without making every node id position-sensitive.
+    """
     if chunk.definition_id:
         return {"source": "definition_id", "value": chunk.definition_id}
 

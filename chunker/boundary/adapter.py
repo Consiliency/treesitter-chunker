@@ -698,7 +698,6 @@ def _extract_file_cache_record(
 
     module = _module_name(display_path)
     node_records: list[dict[str, Any]] = []
-    symbol_indexes: dict[str, str] = {}
     for chunk in chunks:
         try:
             started_at = time.perf_counter()
@@ -709,7 +708,6 @@ def _extract_file_cache_record(
                 started_at,
             )
             node_records.append(node)
-            _add_symbol_indexes(symbol_indexes, chunk, node, module)
         except Exception as exc:  # pragma: no cover - defensive normalization
             _add_duration(
                 timing_spans,
@@ -731,6 +729,7 @@ def _extract_file_cache_record(
             diagnostics.append(diagnostic)
             file_diagnostics.append(str(diagnostic["id"]))
 
+    _dedupe_node_identities(node_records)
     file_record = {
         "id": file_id,
         "path": display_path,
@@ -754,6 +753,34 @@ def _extract_file_cache_record(
     return record, parse_failures, metadata_failures
 
 
+def _dedupe_node_identities(node_records: list[dict[str, Any]]) -> None:
+    """Disambiguate Boundary nodes whose canonical id collides.
+
+    Same-name overloads share a ``definition_id`` because ``qualified_route``
+    cannot express the signature, so ``select_node_identity`` would give them the
+    same Boundary node id and the id-keyed ``symbol_indexes`` would collapse them
+    (dropping one). When two nodes carry the same ``id`` we append the
+    collision-free ``node_id`` (IDENTITY phase) to make them distinct, in stable
+    input order, without making non-colliding ids position-sensitive.
+    """
+    seen: dict[str, int] = {}
+    for node in node_records:
+        node_id = str(node.get("id"))
+        count = seen.get(node_id, 0)
+        if count:
+            # STABLE ORDINAL (#1, #2, ...) in input order -- NOT node_id, which
+            # carries byte_start and would churn the overload's boundary id on any
+            # upstream edit. Same-name overloads extract in a stable order, so the
+            # ordinal keeps colliding-node ids position-INDEPENDENT.
+            new_id = f"{node_id}#{count}"
+            node["id"] = new_id
+            identity = node.get("identity")
+            if isinstance(identity, dict):
+                identity["value"] = new_id
+                identity["disambiguated_from"] = node_id
+        seen[node_id] = count + 1
+
+
 def _node_symbol_indexes(node_records: list[dict[str, Any]]) -> dict[str, str]:
     indexes: dict[str, str] = {}
     for node in node_records:
@@ -767,12 +794,15 @@ def _node_symbol_indexes(node_records: list[dict[str, Any]]) -> dict[str, str]:
         ):
             value = node.get(key)
             if value:
-                indexes[str(value)] = node_id
+                # first-wins: do NOT let a later same-name overload
+                # silently steal edges from the first (COREFIX owns signature-aware
+                # overload edge disambiguation).
+                indexes.setdefault(str(value), node_id)
         module_name = _module_name(str(node.get("path") or ""))
         for key in ("qualified_name", "symbol"):
             value = node.get(key)
             if value:
-                indexes[f"{module_name}:{value}"] = node_id
+                indexes.setdefault(f"{module_name}:{value}", node_id)
     return indexes
 
 
@@ -825,8 +855,14 @@ def _assemble_boundary_ir(
         for diagnostic in diagnostics
         if diagnostic.get("code") == "boundary.metadata_error"
     )
+    _dedupe_node_identities(node_records)
     symbol_indexes = _node_symbol_indexes(node_records)
     edge_records: list[dict[str, Any]] = []
+    # Disambiguate colliding node ids (same-name overloads) BEFORE indexing +
+    # edge resolution so no chunk is dropped and edges resolve to the right node.
+    _dedupe_node_identities(node_records)
+    symbol_indexes = _node_symbol_indexes(node_records)
+
     seen_edges: set[str] = set()
     relationships_by_source: dict[str, list[str]] = {}
     started_at = time.perf_counter()
@@ -1077,7 +1113,6 @@ def extract_boundary_ir(
                     started_at,
                 )
                 node_records.append(node)
-                _add_symbol_indexes(symbol_indexes, chunk, node, module)
             except Exception as exc:  # pragma: no cover - defensive normalization
                 _add_duration(
                     timing_spans,
@@ -1112,6 +1147,12 @@ def extract_boundary_ir(
                 "diagnostics": sorted(dict.fromkeys(file_diagnostics)),
             }
         )
+
+    # Disambiguate colliding node ids + rebuild the symbol index from the
+    # deduped records BEFORE edge resolution, so no chunk is dropped and
+    # edges resolve to real nodes (IDENTITY panel: cold path skipped this).
+    _dedupe_node_identities(node_records)
+    symbol_indexes = _node_symbol_indexes(node_records)
 
     seen_edges: set[str] = set()
     relationships_by_source: dict[str, list[str]] = {}

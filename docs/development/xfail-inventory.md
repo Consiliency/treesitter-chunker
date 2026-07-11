@@ -49,3 +49,18 @@ Interactive/single-thread holders (confirm-safe or migrate; low risk — not dri
 
 Do NOT treat this list as silenced — SCALE clears each entry by migrating it to `acquire_parser`/
 thread-local `get_parser` and adding production-holder concurrency coverage.
+
+## IDENTITY follow-up: overload edge disambiguation (owned by COREFIX)
+
+IDENTITY made chunk_id/node_id collision-free (the #2 CRITICAL: no chunk is silently
+dropped) and boundary node ids distinct for same-name overloads (stable ordinal). It also
+made the boundary symbol index first-wins so a later overload can no longer silently steal
+ALL edges from the first.
+
+What remains (panel: codex/gemini): NAME-based edge resolution cannot determine WHICH
+overload a call `foo(...)` targets — that needs signature/type resolution. So an edge to an
+overloaded name resolves deterministically to the first declaration, and genuinely-external
+references stay `unresolved`. Correctly attributing an overload call to its matching
+signature is semantic-resolution work owned by **COREFIX** (the roadmap defers a mandatory
+semantic resolver). Clearing owner: COREFIX. This does NOT drop chunks and does NOT leave
+edges pointing at non-nodes for resolvable references.

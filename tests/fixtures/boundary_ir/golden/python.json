@@ -593,7 +593,7 @@
         "parent_symbol": null,
         "semantic_text": "language: python\nfile: app/service.py\nkind: function\nsymbol: render_report\nqualified name: render_report\nsemantic path: app/service.py::render_report\nsignature text: render_report(value: str) -> str\nimports: from app.formatting import format_name\nexports: cleaned, duplicate, render_report, value\ndependencies: app, format_name, formatting, helper, missing_call\ncontent:\ndef render_report(value: str) -> str:\n    from app.formatting import format_name\n\n    cleaned = format_name(value)\n    duplicate = helper(cleaned)  # noqa: F821 - unresolved-call fixture\n    return missing_call(duplicate)  # noqa: F821 - unresolved-call fixture"
       },
-      "node_id": "ca39ba17399db0fde30e837e2468f6af37494c83",
+      "node_id": "9aa81fe3d8d212f57642ae926c24cc5d01c22756",
       "parent": null,
       "path": "app/service.py",
       "provenance": {
@@ -646,8 +646,8 @@
         "parent_symbol": "Renderer",
         "semantic_text": "language: python\nfile: app/service.py\nkind: method\nsymbol: render\nqualified name: Renderer.render\nparent symbol: Renderer\nsemantic path: app/service.py::Renderer.render\nsignature text: render(self, value: str) -> str\nexports: render, self, value\ndependencies: format_name\ncontent:\ndef render(self, value: str) -> str:\n        return format_name(value)"
       },
-      "node_id": "1b645997804db41b8a8b76d1e53cf69d1ef0bcd0",
-      "parent": "0db901e789327c79fa0906b1ce0ba38e37180278",
+      "node_id": "f061596225f36a64d5abfbb7f15c891d3b4f08ba",
+      "parent": "92b9106e0de0d2d07f5e0cee73f4d1c6130b934f",
       "path": "app/service.py",
       "provenance": {
         "extractor": "chunk_file",
@@ -693,7 +693,7 @@
         "parent_symbol": null,
         "semantic_text": "language: python\nfile: app/service.py\nkind: class\nsymbol: Renderer\nqualified name: Renderer\nsemantic path: app/service.py::Renderer\nexports: Renderer, render, self, value\ndependencies: format_name\ncontent:\nclass Renderer:\n    def render(self, value: str) -> str:\n        return format_name(value)"
       },
-      "node_id": "0db901e789327c79fa0906b1ce0ba38e37180278",
+      "node_id": "92b9106e0de0d2d07f5e0cee73f4d1c6130b934f",
       "parent": null,
       "path": "app/service.py",
       "provenance": {
@@ -738,7 +738,7 @@
         "parent_symbol": null,
         "semantic_text": "language: python\nfile: app/formatting.py\nkind: function\nsymbol: format_name\nqualified name: format_name\nsemantic path: app/formatting.py::format_name\nsignature text: format_name(value: str) -> str\nexports: format_name, value\ndependencies: strip\ncontent:\ndef format_name(value: str) -> str:\n    return value.strip()"
       },
-      "node_id": "b46d949e343a88d97e31e067449517d8fd0a2cb6",
+      "node_id": "43a4211205e579337446d9413d59f35bbf49df4c",
       "parent": null,
       "path": "app/formatting.py",
       "provenance": {
@@ -783,7 +783,7 @@
         "parent_symbol": null,
         "semantic_text": "language: python\nfile: app/beta.py\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: app/beta.py::helper\nsignature text: helper(value: str) -> str\nexports: helper, value\ndependencies: upper\ncontent:\ndef helper(value: str) -> str:\n    return value.upper()"
       },
-      "node_id": "1fdf6b6e32fadc81e5f1fbb2361266ae9d3fa009",
+      "node_id": "e197c962987ead929fe4ae2142b1ee39e6e7165b",
       "parent": null,
       "path": "app/beta.py",
       "provenance": {
@@ -828,7 +828,7 @@
         "parent_symbol": null,
         "semantic_text": "language: python\nfile: app/alpha.py\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: app/alpha.py::helper\nsignature text: helper(value: str) -> str\nexports: helper, value\ndependencies: lower\ncontent:\ndef helper(value: str) -> str:\n    return value.lower()"
       },
-      "node_id": "c45f63c6998c6541b0a5298630f4d36bdb189ef9",
+      "node_id": "e5d896eee78d9140d8dcd4884c4b3a9f1a79e79c",
       "parent": null,
       "path": "app/alpha.py",
       "provenance": {

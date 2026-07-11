@@ -48,7 +48,7 @@
         "parent_symbol": null,
         "semantic_text": "language: csharp\nfile: Widget.cs\nkind: interface\nsymbol: IRenderer\nqualified name: IRenderer\nsemantic path: Widget.cs::IRenderer\ncontent:\npublic interface IRenderer\n{\n    int Render();\n}"
       },
-      "node_id": "4918f124bb14f6c771601d86ce2f6ac0b08f46ba",
+      "node_id": "0ae53cfc2279138fa74e80c4cf876b813817d793",
       "parent": null,
       "path": "Widget.cs",
       "provenance": {
@@ -85,8 +85,8 @@
         "parent_symbol": "Widget",
         "semantic_text": "language: csharp\nfile: Widget.cs\nkind: method\nsymbol: Render\nqualified name: Widget.Render\nparent symbol: Widget\nsemantic path: Widget.cs::Widget.Render\ncontent:\npublic int Render()\n    {\n        return Helper(count);\n    }"
       },
-      "node_id": "41fa69eba3797d9480a871e5a6e4e31d0b771c04",
-      "parent": "a635d4db2cffbfcb35d7b669c48fab636505691e",
+      "node_id": "5d2026d5819ad365daef241df3ea98a7bd82b85e",
+      "parent": "f0c0945654efdc1158b297556bc004322f188d81",
       "path": "Widget.cs",
       "provenance": {
         "extractor": "chunk_file",
@@ -122,7 +122,7 @@
         "parent_symbol": null,
         "semantic_text": "language: csharp\nfile: Widget.cs\nkind: class\nsymbol: Widget\nqualified name: Widget\nsemantic path: Widget.cs::Widget\ncontent:\npublic class Widget : IRenderer\n{\n    private int count;\n\n    public Widget(int count)\n    {\n        this.count = count;\n    }\n\n    public int Render()\n    {\n        return Helper(count);\n    }\n\n    private int Helper(int value)\n    {\n        return value + 1;\n    }\n}"
       },
-      "node_id": "a635d4db2cffbfcb35d7b669c48fab636505691e",
+      "node_id": "f0c0945654efdc1158b297556bc004322f188d81",
       "parent": null,
       "path": "Widget.cs",
       "provenance": {
@@ -159,8 +159,8 @@
         "parent_symbol": "IRenderer",
         "semantic_text": "language: csharp\nfile: Widget.cs\nkind: method\nsymbol: Render\nqualified name: IRenderer.Render\nparent symbol: IRenderer\nsemantic path: Widget.cs::IRenderer.Render\ncontent:\nint Render();"
       },
-      "node_id": "47ff194928817f132f592fc8173f076f62599d17",
-      "parent": "4918f124bb14f6c771601d86ce2f6ac0b08f46ba",
+      "node_id": "20c4fa8ece81805c074a1ae85cddf693643a63e4",
+      "parent": "0ae53cfc2279138fa74e80c4cf876b813817d793",
       "path": "Widget.cs",
       "provenance": {
         "extractor": "chunk_file",
@@ -196,8 +196,8 @@
         "parent_symbol": "Widget",
         "semantic_text": "language: csharp\nfile: Widget.cs\nkind: method\nsymbol: Helper\nqualified name: Widget.Helper\nparent symbol: Widget\nsemantic path: Widget.cs::Widget.Helper\ncontent:\nprivate int Helper(int value)\n    {\n        return value + 1;\n    }"
       },
-      "node_id": "b01761b38ecda250b6bc30b40fb9dc08ef3745be",
-      "parent": "a635d4db2cffbfcb35d7b669c48fab636505691e",
+      "node_id": "e6b1edc48ff2c18fcb053596cb3fcb04321de58f",
+      "parent": "f0c0945654efdc1158b297556bc004322f188d81",
       "path": "Widget.cs",
       "provenance": {
         "extractor": "chunk_file",
@@ -233,7 +233,7 @@
         "parent_symbol": null,
         "semantic_text": "language: csharp\nfile: Widget.cs\nkind: enum\nsymbol: Color\nqualified name: Color\nsemantic path: Widget.cs::Color\ncontent:\npublic enum Color\n{\n    Red,\n    Green,\n    Blue\n}"
       },
-      "node_id": "b6952f33d2de600d5c3399fe422953de59c30a32",
+      "node_id": "610f1af3a21bbafc4d38c7bba852113439f7acf9",
       "parent": null,
       "path": "Widget.cs",
       "provenance": {
@@ -270,8 +270,8 @@
         "parent_symbol": "Widget",
         "semantic_text": "language: csharp\nfile: Widget.cs\nkind: constructor\nsymbol: Widget\nqualified name: Widget.Widget\nparent symbol: Widget\nsemantic path: Widget.cs::Widget.Widget\ncontent:\npublic Widget(int count)\n    {\n        this.count = count;\n    }"
       },
-      "node_id": "1bc96d396fdc59977b65334e4ad709f1f63b7e82",
-      "parent": "a635d4db2cffbfcb35d7b669c48fab636505691e",
+      "node_id": "e54b4f17ee4b53d6f4bbd966102ef25d6add87c5",
+      "parent": "f0c0945654efdc1158b297556bc004322f188d81",
       "path": "Widget.cs",
       "provenance": {
         "extractor": "chunk_file",
@@ -307,8 +307,8 @@
         "parent_symbol": null,
         "semantic_text": "language: csharp\nfile: Widget.cs\nkind: field_declaration\nsymbol: Widget\nqualified name: Widget\nsemantic path: Widget.cs::Widget\ncontent:\nprivate int count;"
       },
-      "node_id": "124157e22b4bff27a1b8f5b3ba8a81331267de2c",
-      "parent": "a635d4db2cffbfcb35d7b669c48fab636505691e",
+      "node_id": "4106ce145df4d92ab9db277b0c0095790689b593",
+      "parent": "f0c0945654efdc1158b297556bc004322f188d81",
       "path": "Widget.cs",
       "provenance": {
         "extractor": "chunk_file",

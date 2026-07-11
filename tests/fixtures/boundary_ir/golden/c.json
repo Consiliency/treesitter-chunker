@@ -153,7 +153,7 @@
         "parent_symbol": null,
         "semantic_text": "language: c\nfile: widget.c\nkind: struct\nsymbol: Widget\nqualified name: Widget\nsemantic path: widget.c::Widget\ncontent:\nstruct Widget {\n    int count;\n}"
       },
-      "node_id": "a6c57df925decbbcde0a5a575a827ba69ee15301",
+      "node_id": "9157a3a74e0f6ed2ac500aebf298fb10a316bba2",
       "parent": null,
       "path": "widget.c",
       "provenance": {
@@ -195,7 +195,7 @@
         "parent_symbol": null,
         "semantic_text": "language: c\nfile: widget.c\nkind: function\nsymbol: render\nqualified name: render\nsemantic path: widget.c::render\nsignature text: render(struct Widget *w) -> int\nexports: render\ndependencies: helper, w\ncontent:\nint render(struct Widget *w) {\n    return helper(w->count);\n}"
       },
-      "node_id": "aef63f026c62933831cb7c1301d635b7318ade62",
+      "node_id": "eeda2eaf83edc29c59dee540dfea6533c02a6dfc",
       "parent": null,
       "path": "widget.c",
       "provenance": {
@@ -236,8 +236,8 @@
         "parent_symbol": null,
         "semantic_text": "language: c\nfile: widget.c\nkind: struct\nsymbol: Widget\nqualified name: Widget\nsemantic path: widget.c::Widget\ncontent:\nstruct Widget"
       },
-      "node_id": "0bf53fd6f48ccd08dc5a0715688da3e0dd5f9e7a",
-      "parent": "aef63f026c62933831cb7c1301d635b7318ade62",
+      "node_id": "116dac3119516f89febcc628146059af5ef3e1d3",
+      "parent": "eeda2eaf83edc29c59dee540dfea6533c02a6dfc",
       "path": "widget.c",
       "provenance": {
         "extractor": "chunk_file",
@@ -277,7 +277,7 @@
         "parent_symbol": null,
         "semantic_text": "language: c\nfile: widget.c\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: widget.c::helper\nsignature text: helper(int value) -> int\nexports: helper\ndependencies: value\ncontent:\nint helper(int value) {\n    return value + 1;\n}"
       },
-      "node_id": "d1dc095cafb83e27284d59c61d3ca0dd3b1f16f5",
+      "node_id": "4b1cd4458b5e82f3d56f712a5a06f2750e7f88f2",
       "parent": null,
       "path": "widget.c",
       "provenance": {

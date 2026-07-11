@@ -134,9 +134,11 @@ class StreamingChunker:
             chunk.node_id = compute_node_id(
                 file_path,
                 chunk.language,
-                chunk.parent_route,
+                chunk.qualified_route or chunk.parent_route,
+                chunk.byte_start,
                 chunk.content,
             )
+            chunk.chunk_id = chunk.node_id
             if include_retrieval_metadata:
                 chunk.metadata = _build_retrieval_metadata(chunk)
             yield chunk

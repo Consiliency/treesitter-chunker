@@ -309,7 +309,7 @@
         "parent_symbol": null,
         "semantic_text": "language: cpp\nfile: widget.cpp\nkind: class\nsymbol: Widget\nqualified name: Widget\nsemantic path: widget.cpp::Widget\ndependencies: count\ncontent:\nclass Widget {\npublic:\n    int count;\n\n    int render() {\n        return helper();\n    }\n\n    int helper() {\n        return count + 1;\n    }\n}"
       },
-      "node_id": "a9a9429aa3d99980f1bcfc555e9374cea145fa51",
+      "node_id": "21336e0ba49ed1cacfb6404a1258feb22991773f",
       "parent": null,
       "path": "widget.cpp",
       "provenance": {
@@ -353,8 +353,8 @@
         "parent_symbol": "Widget",
         "semantic_text": "language: cpp\nfile: widget.cpp\nkind: method\nsymbol: helper\nqualified name: Widget.helper\nparent symbol: Widget\nsemantic path: widget.cpp::Widget.helper\nsignature text: helper() -> int\nexports: helper\ndependencies: count\ncontent:\nint helper() {\n        return count + 1;\n    }"
       },
-      "node_id": "2d40a7f012e6b6a2948f925de0608895dbc3723b",
-      "parent": "a9a9429aa3d99980f1bcfc555e9374cea145fa51",
+      "node_id": "9fa49d79df78dbd6579ab6823782fef96650c07f",
+      "parent": "21336e0ba49ed1cacfb6404a1258feb22991773f",
       "path": "widget.cpp",
       "provenance": {
         "extractor": "chunk_file",
@@ -396,8 +396,8 @@
         "parent_symbol": "Widget",
         "semantic_text": "language: cpp\nfile: widget.cpp\nkind: method\nsymbol: render\nqualified name: Widget.render\nparent symbol: Widget\nsemantic path: widget.cpp::Widget.render\nsignature text: render() -> int\nexports: render\ndependencies: helper\ncontent:\nint render() {\n        return helper();\n    }"
       },
-      "node_id": "c518f075ee3e405cf2152b8f3145d4405161480c",
-      "parent": "a9a9429aa3d99980f1bcfc555e9374cea145fa51",
+      "node_id": "2d879477a40504c0b7e382e251d6f7c24da29135",
+      "parent": "21336e0ba49ed1cacfb6404a1258feb22991773f",
       "path": "widget.cpp",
       "provenance": {
         "extractor": "chunk_file",
@@ -440,7 +440,7 @@
         "parent_symbol": null,
         "semantic_text": "language: cpp\nfile: widget.cpp\nkind: function\nsymbol: run\nqualified name: run\nsemantic path: widget.cpp::run\nsignature text: run() -> int\nexports: run\ndependencies: w\ncontent:\nint run() {\n    Widget w;\n    return w.render();\n}"
       },
-      "node_id": "10eae52084f3843953e7c80d4777e72c3743e1ee",
+      "node_id": "49f5c101318c039e3a900aaf61766352ef2e93cd",
       "parent": null,
       "path": "widget.cpp",
       "provenance": {
@@ -480,8 +480,8 @@
         "parent_symbol": "Widget",
         "semantic_text": "language: cpp\nfile: widget.cpp\nkind: field_declaration\nsymbol: count\nqualified name: Widget.count\nparent symbol: Widget\nsemantic path: widget.cpp::Widget.count\ncontent:\nint count;"
       },
-      "node_id": "f6897f384ba794499537c105a82b88824a557e67",
-      "parent": "a9a9429aa3d99980f1bcfc555e9374cea145fa51",
+      "node_id": "a1e1b04a3b41dba36bb3c19f118059e1a77c579e",
+      "parent": "21336e0ba49ed1cacfb6404a1258feb22991773f",
       "path": "widget.cpp",
       "provenance": {
         "extractor": "chunk_file",
@@ -521,7 +521,7 @@
         "parent_symbol": null,
         "semantic_text": "language: cpp\nfile: widget.cpp\nkind: enum\nsymbol: Color\nqualified name: Color\nsemantic path: widget.cpp::Color\ndependencies: BLUE, GREEN, RED\ncontent:\nenum Color { RED, GREEN, BLUE }"
       },
-      "node_id": "39af059406596657096a3bd07dcd4caf6e10ca0e",
+      "node_id": "32169a44a3dfd3d4ba576f17f2135b40070e9b7f",
       "parent": null,
       "path": "widget.cpp",
       "provenance": {

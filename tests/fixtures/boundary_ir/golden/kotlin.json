@@ -48,8 +48,8 @@
         "parent_symbol": null,
         "semantic_text": "language: kotlin\nfile: Widget.kt\nkind: method\nsymbol: class_declaration\nqualified name: class_declaration\nsemantic path: Widget.kt::class_declaration\ncontent:\nfun render(): Int {\n        return helper(count)\n    }"
       },
-      "node_id": "d36caa45ccfa1294f8ee678fd1e26b6a2b131028",
-      "parent": "e5bfe8bb686fd1d7aacaa54934433170b693988c",
+      "node_id": "b48289f2ab3eefda09dad57524efdd41fad4a68f",
+      "parent": "e9f6ac3cfcd55046c251b376c932b7cbe35f060f",
       "path": "Widget.kt",
       "provenance": {
         "extractor": "chunk_file",
@@ -85,8 +85,8 @@
         "parent_symbol": null,
         "semantic_text": "language: kotlin\nfile: Widget.kt\nkind: method\nsymbol: class_declaration\nqualified name: class_declaration\nsemantic path: Widget.kt::class_declaration\ncontent:\nfun helper(value: Int): Int {\n        return value + 1\n    }"
       },
-      "node_id": "8c0124bef7d88ec5b0bc960b8d8610e1bfd06633",
-      "parent": "e5bfe8bb686fd1d7aacaa54934433170b693988c",
+      "node_id": "d30f63ef3b0f1b5fa660e42a74ac148a40a113d2",
+      "parent": "e9f6ac3cfcd55046c251b376c932b7cbe35f060f",
       "path": "Widget.kt",
       "provenance": {
         "extractor": "chunk_file",
@@ -122,7 +122,7 @@
         "parent_symbol": null,
         "semantic_text": "language: kotlin\nfile: Widget.kt\nkind: function\nsemantic path: Widget.kt\ncontent:\nfun run(): Int {\n    return Widget(1).render()\n}"
       },
-      "node_id": "d0666efc976e2f9010a631f34b32c737cbaa58b1",
+      "node_id": "39b82a02da9c326f4b6a0929e89d134adbef20a7",
       "parent": null,
       "path": "Widget.kt",
       "provenance": {
@@ -159,7 +159,7 @@
         "parent_symbol": null,
         "semantic_text": "language: kotlin\nfile: Widget.kt\nkind: class\nsemantic path: Widget.kt\ncontent:\nclass Widget(val count: Int) {\n    fun render(): Int {\n        return helper(count)\n    }\n\n    fun helper(value: Int): Int {\n        return value + 1\n    }\n}"
       },
-      "node_id": "e5bfe8bb686fd1d7aacaa54934433170b693988c",
+      "node_id": "e9f6ac3cfcd55046c251b376c932b7cbe35f060f",
       "parent": null,
       "path": "Widget.kt",
       "provenance": {

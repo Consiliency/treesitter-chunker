@@ -4,7 +4,8 @@
     "APISAFE",
     "GATES",
     "PARSER",
-    "BOUNDARYFIX"
+    "BOUNDARYFIX",
+    "IDENTITY"
   ],
-  "refresh_note": "scaffold_docs_catalog.py is unavailable; BOUNDARYFIX updated this catalog manually"
+  "refresh_note": "scaffold_docs_catalog.py is unavailable; IDENTITY updated this catalog manually"
 }

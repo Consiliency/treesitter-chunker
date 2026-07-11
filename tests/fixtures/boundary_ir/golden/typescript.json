@@ -651,8 +651,8 @@
         "parent_symbol": null,
         "semantic_text": "language: typescript\nfile: format.ts\nkind: interface\nsymbol: Formatter\nqualified name: Formatter\nsemantic path: format.ts::Formatter\nexports: Formatter\ndependencies: Formatter, value\ncontent:\ninterface Formatter {\n  render(value: string): string;\n}"
       },
-      "node_id": "6a664e15701e96fed3e1e6272edbed693402291a",
-      "parent": "679d7b11e5e4f043797f26bed8abfd8ef0b14550",
+      "node_id": "74dca79c334badaacffed46724b93f59e2312002",
+      "parent": "5dec10720107a593764262d16a0e36435dfeffaa",
       "path": "format.ts",
       "provenance": {
         "extractor": "chunk_file",
@@ -693,7 +693,7 @@
         "parent_symbol": null,
         "semantic_text": "language: typescript\nfile: format.ts\nkind: export_statement\nsemantic path: format.ts\ndependencies: Formatter, value\ncontent:\nexport interface Formatter {\n  render(value: string): string;\n}"
       },
-      "node_id": "679d7b11e5e4f043797f26bed8abfd8ef0b14550",
+      "node_id": "5dec10720107a593764262d16a0e36435dfeffaa",
       "parent": null,
       "path": "format.ts",
       "provenance": {
@@ -735,7 +735,7 @@
         "parent_symbol": null,
         "semantic_text": "language: typescript\nfile: service.ts\nkind: import_statement\nsemantic path: service.ts\nimports: import type { Formatter } from './format';, { Formatter }\ndependencies: Formatter\ncontent:\nimport type { Formatter } from './format';"
       },
-      "node_id": "f66de88e5a1936d0c68d64ec4a79e6c9d16b15b8",
+      "node_id": "b6ab68c2b7001ec51bb066d83f7cf8ad4d41e78f",
       "parent": null,
       "path": "service.ts",
       "provenance": {
@@ -776,8 +776,8 @@
         "parent_symbol": null,
         "semantic_text": "language: typescript\nfile: beta.ts\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: beta.ts::helper\nsignature text: helper(value: string) -> string\nexports: helper\ndependencies: value\ncontent:\nfunction helper(value: string): string {\n  return value.toUpperCase();\n}"
       },
-      "node_id": "825b2d0e001862de7ab76aefed0fb94d0302f81e",
-      "parent": "06e611699402a47a5531cc1db21529f8e6081992",
+      "node_id": "ba4254a6a439195c64de44bb32a522be020483d5",
+      "parent": "bd9b8faa198d85d57fedf9a30d57694c70743d0a",
       "path": "beta.ts",
       "provenance": {
         "extractor": "chunk_file",
@@ -820,7 +820,7 @@
         "parent_symbol": null,
         "semantic_text": "language: typescript\nfile: beta.ts\nkind: export_statement\nsemantic path: beta.ts\nexports: helper\ndependencies: value\ncontent:\nexport function helper(value: string): string {\n  return value.toUpperCase();\n}"
       },
-      "node_id": "06e611699402a47a5531cc1db21529f8e6081992",
+      "node_id": "bd9b8faa198d85d57fedf9a30d57694c70743d0a",
       "parent": null,
       "path": "beta.ts",
       "provenance": {
@@ -861,8 +861,8 @@
         "parent_symbol": null,
         "semantic_text": "language: typescript\nfile: format.ts\nkind: function\nsymbol: formatName\nqualified name: formatName\nsemantic path: format.ts::formatName\nsignature text: formatName(value: string) -> string\nexports: formatName\ndependencies: value\ncontent:\nfunction formatName(value: string): string {\n  return value.trim();\n}"
       },
-      "node_id": "a9a79bcaf2e61c01d187d2802314ca10307eb87a",
-      "parent": "99b0435475b7e790a4e9c234374aa50cc88fe4e0",
+      "node_id": "b0d504c30ccbbab01a3400ff5cd4a4f7041e79ec",
+      "parent": "7379adfa92ffeeec89e7908f2f2b4f3645c0d88f",
       "path": "format.ts",
       "provenance": {
         "extractor": "chunk_file",
@@ -906,8 +906,8 @@
         "parent_symbol": null,
         "semantic_text": "language: typescript\nfile: service.ts\nkind: class\nsymbol: Renderer\nqualified name: Renderer\nsemantic path: service.ts::Renderer\ndependencies: Formatter, Renderer, formatName, value\ncontent:\nclass Renderer implements Formatter {\n  render(value: string): string {\n    return formatName(value);\n  }\n}"
       },
-      "node_id": "2b7844da3a7b6cefc91369f6207c87866eddda6f",
-      "parent": "5537a2a537896436b04ec5b32421d7ce7a976bac",
+      "node_id": "f0f464427b227be1b08f7668ff4f5d791c61ea95",
+      "parent": "d6e444b5e3564253017b08d05bb213cefdaf1970",
       "path": "service.ts",
       "provenance": {
         "extractor": "chunk_file",
@@ -953,8 +953,8 @@
         "parent_symbol": "Renderer",
         "semantic_text": "language: typescript\nfile: service.ts\nkind: method\nsymbol: render\nqualified name: Renderer.render\nparent symbol: Renderer\nsemantic path: service.ts::Renderer.render\nsignature text: render(value: string) -> string\nexports: render\ndependencies: formatName, value\ncontent:\nrender(value: string): string {\n    return formatName(value);\n  }"
       },
-      "node_id": "87a143587e2759db926b7072e0c96b309cc842e5",
-      "parent": "2b7844da3a7b6cefc91369f6207c87866eddda6f",
+      "node_id": "0994715d9e085dbaf9b7af598cb1ca1775557c72",
+      "parent": "f0f464427b227be1b08f7668ff4f5d791c61ea95",
       "path": "service.ts",
       "provenance": {
         "extractor": "chunk_file",
@@ -998,7 +998,7 @@
         "parent_symbol": null,
         "semantic_text": "language: typescript\nfile: alpha.ts\nkind: export_statement\nsemantic path: alpha.ts\nexports: helper\ndependencies: value\ncontent:\nexport function helper(value: string): string {\n  return value.toLowerCase();\n}"
       },
-      "node_id": "d749e3742ec7aebabc5c31d3a78df92aa1be2766",
+      "node_id": "b2ccd0176fcbbd2edd2f02b2eaaaffe031cbb3bd",
       "parent": null,
       "path": "alpha.ts",
       "provenance": {
@@ -1042,8 +1042,8 @@
         "parent_symbol": null,
         "semantic_text": "language: typescript\nfile: service.ts\nkind: function\nsymbol: run\nqualified name: run\nsemantic path: service.ts::run\nsignature text: run(value: string) -> string\nexports: run\ndependencies: formatName, helper, missingCall, value\ncontent:\nfunction run(value: string): string {\n  const cleaned = formatName(value);\n  const duplicate = helper(cleaned);\n  return missingCall(duplicate);\n}"
       },
-      "node_id": "8c2786f53f96d651d376844356f0253d0b13f118",
-      "parent": "76383a50628f366dd3136bf6b0e8de1a27720bd0",
+      "node_id": "31abee7191ed736fe2694c78d51d55821f890ffb",
+      "parent": "67516d9786705fb95310772c04b2c54e508e7298",
       "path": "service.ts",
       "provenance": {
         "extractor": "chunk_file",
@@ -1090,8 +1090,8 @@
         "parent_symbol": "run",
         "semantic_text": "language: typescript\nfile: service.ts\nkind: variable_declarator\nsymbol: duplicate\nqualified name: run.duplicate\nparent symbol: run\nsemantic path: service.ts::run.duplicate\ndependencies: cleaned, helper\ncontent:\nduplicate = helper(cleaned)"
       },
-      "node_id": "cfddf23437e21252badc21378b2be74e053ca6bd",
-      "parent": "8c2786f53f96d651d376844356f0253d0b13f118",
+      "node_id": "f669e38d17df75a9334fcf9596cb6895b90240aa",
+      "parent": "31abee7191ed736fe2694c78d51d55821f890ffb",
       "path": "service.ts",
       "provenance": {
         "extractor": "chunk_file",
@@ -1131,7 +1131,7 @@
         "parent_symbol": null,
         "semantic_text": "language: typescript\nfile: format.ts\nkind: export_statement\nsemantic path: format.ts\nexports: formatName\ndependencies: value\ncontent:\nexport function formatName(value: string): string {\n  return value.trim();\n}"
       },
-      "node_id": "99b0435475b7e790a4e9c234374aa50cc88fe4e0",
+      "node_id": "7379adfa92ffeeec89e7908f2f2b4f3645c0d88f",
       "parent": null,
       "path": "format.ts",
       "provenance": {
@@ -1170,8 +1170,8 @@
         "parent_symbol": "Formatter",
         "semantic_text": "language: typescript\nfile: format.ts\nkind: method\nsymbol: render\nqualified name: Formatter.render\nparent symbol: Formatter\nsemantic path: format.ts::Formatter.render\ndependencies: value\ncontent:\nrender(value: string): string"
       },
-      "node_id": "29f0d8415d3edde61282805ce22c46db9db52bc4",
-      "parent": "6a664e15701e96fed3e1e6272edbed693402291a",
+      "node_id": "b7412b7f17e158ca507e338aa711cf61460d2b67",
+      "parent": "74dca79c334badaacffed46724b93f59e2312002",
       "path": "format.ts",
       "provenance": {
         "extractor": "chunk_file",
@@ -1212,8 +1212,8 @@
         "parent_symbol": "run",
         "semantic_text": "language: typescript\nfile: service.ts\nkind: variable_declarator\nsymbol: cleaned\nqualified name: run.cleaned\nparent symbol: run\nsemantic path: service.ts::run.cleaned\ndependencies: formatName, value\ncontent:\ncleaned = formatName(value)"
       },
-      "node_id": "aea4108f6bd076b468a0491f39e1496e3a1a1679",
-      "parent": "8c2786f53f96d651d376844356f0253d0b13f118",
+      "node_id": "82f2b7cb7e80b88e03deee10fb45f9e270aab248",
+      "parent": "31abee7191ed736fe2694c78d51d55821f890ffb",
       "path": "service.ts",
       "provenance": {
         "extractor": "chunk_file",
@@ -1253,8 +1253,8 @@
         "parent_symbol": null,
         "semantic_text": "language: typescript\nfile: alpha.ts\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: alpha.ts::helper\nsignature text: helper(value: string) -> string\nexports: helper\ndependencies: value\ncontent:\nfunction helper(value: string): string {\n  return value.toLowerCase();\n}"
       },
-      "node_id": "f8c0b614df1921dfd1df602f1e6cf09ecf1680dc",
-      "parent": "d749e3742ec7aebabc5c31d3a78df92aa1be2766",
+      "node_id": "166ab782c0de26b46e5179784c8c596f08029532",
+      "parent": "b2ccd0176fcbbd2edd2f02b2eaaaffe031cbb3bd",
       "path": "alpha.ts",
       "provenance": {
         "extractor": "chunk_file",
@@ -1298,7 +1298,7 @@
         "parent_symbol": null,
         "semantic_text": "language: typescript\nfile: service.ts\nkind: import_statement\nsemantic path: service.ts\nimports: import { formatName } from './format';, { formatName }\ndependencies: formatName\ncontent:\nimport { formatName } from './format';"
       },
-      "node_id": "4567799234eafbc419007ba1ca344c765f40e8e2",
+      "node_id": "e86fa863a2de0a4fdab18f85cc1dcfc4eb1b0d51",
       "parent": null,
       "path": "service.ts",
       "provenance": {
@@ -1340,7 +1340,7 @@
         "parent_symbol": null,
         "semantic_text": "language: typescript\nfile: service.ts\nkind: export_statement\nsemantic path: service.ts\ndependencies: Formatter, Renderer, formatName, value\ncontent:\nexport class Renderer implements Formatter {\n  render(value: string): string {\n    return formatName(value);\n  }\n}"
       },
-      "node_id": "5537a2a537896436b04ec5b32421d7ce7a976bac",
+      "node_id": "d6e444b5e3564253017b08d05bb213cefdaf1970",
       "parent": null,
       "path": "service.ts",
       "provenance": {
@@ -1384,7 +1384,7 @@
         "parent_symbol": null,
         "semantic_text": "language: typescript\nfile: service.ts\nkind: export_statement\nsemantic path: service.ts\nexports: run\ndependencies: formatName, helper, missingCall, value\ncontent:\nexport function run(value: string): string {\n  const cleaned = formatName(value);\n  const duplicate = helper(cleaned);\n  return missingCall(duplicate);\n}"
       },
-      "node_id": "76383a50628f366dd3136bf6b0e8de1a27720bd0",
+      "node_id": "67516d9786705fb95310772c04b2c54e508e7298",
       "parent": null,
       "path": "service.ts",
       "provenance": {

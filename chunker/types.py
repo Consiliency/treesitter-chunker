@@ -41,12 +41,21 @@ def compute_file_id(file_path: str) -> str:
 def compute_node_id(
     file_path: str,
     language: str,
-    parent_route: list[str],
-    content: str,
+    qualified_route: list[str],
+    byte_start: int | str,
+    content: str | None = None,
 ) -> str:
-    route = "/".join(parent_route or [])
+    """Compute a content-addressed occurrence ID for a chunk.
+
+    ``byte_start`` remains optional for callers using the former four-argument
+    form; newly emitted chunks always supply it explicitly.
+    """
+    if content is None:
+        content = str(byte_start)
+        byte_start = 0
+    route = "/".join(qualified_route or [])
     text_hash16 = compute_text_hash16(content or "")
-    to_hash = f"{file_path}|{language}|{route}|{text_hash16}".encode()
+    to_hash = f"{file_path}|{language}|{route}|{byte_start}|{text_hash16}".encode()
     return hashlib.sha1(to_hash).hexdigest()
 
 
@@ -107,11 +116,12 @@ class CodeChunk:
     definition_id: str = ""
 
     def generate_id(self) -> str:
-        """Generate a stable ID using file/language/route/text hash."""
+        """Generate an occurrence ID using the named route and byte position."""
         return compute_node_id(
             self.file_path,
             self.language,
-            self.parent_route,
+            self.qualified_route or self.parent_route,
+            self.byte_start,
             self.content,
         )
 

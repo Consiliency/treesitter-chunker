@@ -842,9 +842,16 @@ def _walk(
                 body = script_text
                 gt = script_text.find(">")
                 end_tag = script_text.rfind("</")
+                body_offset = 0
                 if gt != -1 and end_tag != -1 and gt + 1 < end_tag:
                     body = script_text[gt + 1 : end_tag]
+                    body_offset = gt + 1
                 lines = body.splitlines()
+                # FILE-ABSOLUTE byte offset per line so two byte-identical `$:`
+                # lines in DIFFERENT script blocks (module vs instance) never
+                # collide to one chunk_id (IDENTITY panel: body-relative offsets
+                # reset per <script> and collided across blocks).
+                _line_byte = node.start_byte + body_offset
                 for idx, line in enumerate(lines):
                     stripped = line.strip()
                     if stripped.startswith("$:"):
@@ -854,14 +861,15 @@ def _walk(
                             node_type="reactive_statement",
                             start_line=current_chunk.start_line + idx,
                             end_line=current_chunk.start_line + idx,
-                            byte_start=0,
-                            byte_end=0,
+                            byte_start=_line_byte,
+                            byte_end=_line_byte + len(line.encode("utf-8")),
                             parent_context="script_element",
                             content=line,
                             parent_chunk_id=current_chunk.parent_chunk_id,
                             parent_route=[*current_route, "reactive_statement"],
                         )
                         chunks.append(reactive_chunk)
+                    _line_byte += len(line.encode("utf-8")) + 1  # +1 for '\n'
             except Exception:
                 pass
         # Svelte: synthesize control-flow chunks by scanning entire file once at top-level
@@ -869,7 +877,13 @@ def _walk(
             try:
                 full_text = source.decode("utf-8", errors="replace")
                 lines = full_text.splitlines()
+                # Real byte offset per line so two byte-identical control-flow
+                # lines (e.g. repeated `{#each ...}`) get distinct, stable
+                # byte_start -> distinct chunk_ids (IDENTITY).
+                _cf_byte = 0
                 for idx, line in enumerate(lines, start=1):
+                    _line_start = _cf_byte
+                    _cf_byte += len(line.encode("utf-8")) + 1  # +1 for '\n'
                     stripped = line.strip()
                     cf_type = None
                     if stripped.startswith("{#if"):
@@ -887,8 +901,8 @@ def _walk(
                             node_type=cf_type,
                             start_line=idx,
                             end_line=idx,
-                            byte_start=0,
-                            byte_end=0,
+                            byte_start=_line_start,
+                            byte_end=_line_start + len(line.encode("utf-8")),
                             parent_context="template",
                             content=line,
                             parent_chunk_id=None,
@@ -1077,11 +1091,18 @@ def chunk_text(
     # Build mapping from temporary IDs (no path) to final IDs (with path)
     tmp_to_final: dict[str, str] = {}
     for c in chunks:
-        tmp_id = compute_node_id("", c.language, c.parent_route, c.content)
+        tmp_id = compute_node_id(
+            "",
+            c.language,
+            c.qualified_route or c.parent_route,
+            c.byte_start,
+            c.content,
+        )
         final_id = compute_node_id(
             file_path,
             c.language,
-            c.parent_route,
+            c.qualified_route or c.parent_route,
+            c.byte_start,
             c.content,
         )
         tmp_to_final[tmp_id] = final_id
@@ -1093,7 +1114,8 @@ def chunk_text(
         c.node_id = compute_node_id(
             file_path,
             c.language,
-            c.parent_route,
+            c.qualified_route or c.parent_route,
+            c.byte_start,
             c.content,
         )
         c.chunk_id = c.node_id
