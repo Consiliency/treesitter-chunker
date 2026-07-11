@@ -24,31 +24,44 @@ def _method(n: int) -> str:
     return f"    def run(self):\n{body}\n        return x0\n"
 
 
-def test_class_split_disambiguates_identical_methods_and_stays_within_parent():
-    """Two byte-identical methods must map to DISTINCT byte offsets, and every
-    sub-chunk's byte range must stay within the parent chunk (residual #1)."""
+def test_class_split_spans_slice_back_and_disambiguate_identical_methods():
+    """Class-split sub-chunk spans must slice back to their content (README
+    token-split span contract), stay within the parent, and byte-identical
+    methods must map to DISTINCT offsets (residual #1)."""
     m = _method(0)
     content = "class C:\n" + m + m  # two identical methods
+    byte_start = 100
     original = CodeChunk(
         language="python",
         file_path="c.py",
         node_type="class_definition",
         start_line=1,
         end_line=1 + content.count("\n"),
-        byte_start=100,
-        byte_end=100 + len(content.encode("utf-8")),
+        byte_start=byte_start,
+        byte_end=byte_start + len(content.encode("utf-8")),
         parent_context="",
         content=content,
     )
+    # Reconstruct the "file" so the parent's byte span slices back to its content.
+    source = b"x" * byte_start + content.encode("utf-8")
     chunker = TreeSitterTokenAwareChunker()
     parts = chunker._split_class_chunk(original, max_tokens=40, model="gpt-4")
     # The split must actually separate the two methods.
     assert len(parts) >= 2, f"expected the two methods to split, got {len(parts)}"
-    # Every sub-chunk stays within the parent's byte range (no overshoot).
     for p in parts:
+        # Contract: slicing the source at the span reproduces the content exactly.
+        assert source[p.byte_start : p.byte_end].decode("utf-8") == p.content, (
+            f"span {p.byte_start}:{p.byte_end} does not slice back to content"
+        )
+        # And it stays within the parent's byte range (no overshoot).
         assert original.byte_start <= p.byte_start <= p.byte_end <= original.byte_end, (
             f"sub-chunk {p.byte_start}:{p.byte_end} escapes parent "
             f"{original.byte_start}:{original.byte_end}"
+        )
+        # The class header is preserved as context (not lost) even though it is
+        # no longer prepended into the sliceable content.
+        assert "class C:" in (p.parent_context or ""), (
+            "class header context was dropped from parent_context"
         )
     # Identical methods must land at DISTINCT byte offsets (no collapse-to-first).
     method_parts = [p for p in parts if "def run" in p.content]

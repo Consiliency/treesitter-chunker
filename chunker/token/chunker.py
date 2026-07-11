@@ -231,22 +231,32 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
 
         def _emit(part_lines: list[str]) -> None:
             nonlocal search_from
-            chunk_content = "\n".join(part_lines)
+            # The stored content MUST be a contiguous slice of the source so its
+            # byte span slices back to it (README token-split span contract:
+            # "slicing the original file bytes at a chunk span reproduces its
+            # content", incl. token-split chunks). So content is the method
+            # portion only; the class header is preserved as context in
+            # parent_context, NOT prepended into content (which would make the
+            # content non-contiguous and break slice-back).
             method_lines = part_lines[len(class_header_lines):]
-            anchor = "\n".join(method_lines) if method_lines else None
+            chunk_content = "\n".join(method_lines)
             new_chunk = self._create_sub_chunk(
                 chunk,
                 chunk_content,
                 len(chunks),
                 search_from=search_from,
-                anchor=anchor,
             )
+            if class_header:
+                base = new_chunk.parent_context or ""
+                new_chunk.parent_context = (
+                    f"{class_header}\n{base}" if base else class_header
+                )
             chunks.append(new_chunk)
-            # Advance the cursor past this sub-chunk's anchor occurrence.
-            needle = anchor if anchor is not None else chunk_content
-            found = chunk.content.find(needle, search_from)
+            # Advance the cursor past this sub-chunk's own occurrence so two
+            # byte-identical methods anchor to distinct offsets.
+            found = chunk.content.find(chunk_content, search_from)
             if found >= 0:
-                search_from = found + len(needle)
+                search_from = found + len(chunk_content)
 
         for i, start_idx in enumerate(method_starts):
             end_idx = method_starts[i + 1] if i + 1 < len(method_starts) else len(lines)
@@ -298,38 +308,34 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
         content: str,
         index: int,
         search_from: int = 0,
-        anchor: str | None = None,
     ) -> CodeChunk:
         """Create a sub-chunk from an original chunk.
 
-        ``search_from`` locates ``content`` STARTING at a running position so
-        repeated parts do not all collapse to the first occurrence (COREFIX).
-        ``anchor`` is the substring to locate when ``content`` itself is not a
-        contiguous slice of the original (e.g. a class split that prepends the
-        header): the byte offset then anchors to the anchor's real position.
+        ``content`` MUST be a contiguous slice of ``original_chunk.content`` so
+        the sub-chunk's byte span slices back to it (README token-split span
+        contract). ``search_from`` locates ``content`` STARTING at a running
+        position so repeated identical parts map to their OWN occurrence, not
+        the first (COREFIX).
         """
-        needle = anchor if anchor is not None else content
-        found = original_chunk.content.find(needle, search_from)
+        found = original_chunk.content.find(content, search_from)
         content_offset = found if found >= 0 else max(
-            original_chunk.content.find(needle), 0
+            original_chunk.content.find(content), 0
         )
         start_offset = original_chunk.content[:content_offset].count("\n")
         byte_offset = len(original_chunk.content[:content_offset].encode("utf-8"))
-        # The byte/line SPAN describes the NEEDLE's real region in the parent
-        # (the anchor for a class split whose ``content`` is header-augmented, or
-        # ``content`` itself for a contiguous line split). Using ``content`` here
-        # would overshoot the parent's byte_end whenever a synthetic header was
-        # prepended (COREFIX: spans stay within the parent).
+        # The byte/line span describes ``content``'s real, contiguous region in
+        # the parent, so slicing the source at [byte_start, byte_end] reproduces
+        # ``content`` exactly and never overshoots the parent's byte_end.
         new_chunk = CodeChunk(
             language=original_chunk.language,
             file_path=original_chunk.file_path,
             node_type=f"{original_chunk.node_type}_part_{index + 1}",
             start_line=original_chunk.start_line + start_offset,
-            end_line=original_chunk.start_line + start_offset + needle.count("\n"),
+            end_line=original_chunk.start_line + start_offset + content.count("\n"),
             byte_start=original_chunk.byte_start + byte_offset,
             byte_end=original_chunk.byte_start
             + byte_offset
-            + len(needle.encode("utf-8")),
+            + len(content.encode("utf-8")),
             parent_context=original_chunk.parent_context,
             content=content,
             parent_chunk_id=original_chunk.chunk_id,

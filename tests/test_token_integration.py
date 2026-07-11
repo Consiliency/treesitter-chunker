@@ -223,10 +223,12 @@ class LargeClass:
         # Should have split the class
         assert len(chunks) >= 1
 
-        # Check that split chunks maintain class context
+        # Check that split chunks maintain class context. The header is kept in
+        # parent_context (not prepended into content) so the sub-chunk's byte
+        # span slices back to its content (README token-split span contract).
         for chunk in chunks:
             if chunk.metadata.get("is_split"):
-                assert "class LargeClass" in chunk.content
+                assert "class LargeClass" in (chunk.parent_context or "")
 
     def test_chunk_interface_implementation(self):
         """Test the basic chunk() method from ChunkingStrategy interface."""
