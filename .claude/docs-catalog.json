@@ -1,6 +1,8 @@
 {
   "touched_by_phases": [
     "SUPPLY",
-    "APISAFE"
-  ]
+    "APISAFE",
+    "GATES"
+  ],
+  "refresh_note": "scaffold_docs_catalog.py is unavailable; GATES updated this catalog manually"
 }

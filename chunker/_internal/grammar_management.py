@@ -1,20 +1,11 @@
 """Smart grammar management with user guidance and error handling."""
 
-import json
 import logging
-import shutil
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
-from chunker._internal.error_handling import format_grammar_error
-from chunker.exceptions import (
-    LanguageLoadError,
-    LanguageNotFoundError,
-    LibraryNotFoundError,
-    ParsingError,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -236,8 +227,6 @@ class SmartGrammarManager:
             Recovery plan with specific steps
         """
         health = self.diagnose_grammar_issues(language)
-        compatibility = self.get_grammar_compatibility(language)
-
         plan = {
             "language": language,
             "current_status": health.status,
@@ -377,9 +366,9 @@ class SmartGrammarManager:
 
         # Check Python dependencies
         try:
-            import tree_sitter
+            import tree_sitter as _tree_sitter
 
-            requirements["python_deps"] = True
+            requirements["python_deps"] = _tree_sitter is not None
         except ImportError:
             pass
 

@@ -1,13 +1,12 @@
 """User-friendly tools for managing tree-sitter grammars."""
 
-import json
 import logging
 import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
-from .grammar_management import GrammarCompatibility, GrammarHealth, SmartGrammarManager
+from typing import Any
+from .grammar_management import SmartGrammarManager
 from ..grammar.source_validation import validate_grammar_source
 
 logger = logging.getLogger(__name__)

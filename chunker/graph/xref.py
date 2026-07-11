@@ -69,7 +69,6 @@ def build_xref(
             if not imp:
                 continue
             for t in chunks:
-                t_exports = []
                 t_sig = (t.metadata or {}).get("signature") or {}
                 t_name = t_sig.get("name")
                 if imp in ((t.metadata or {}).get("exports") or []) or (

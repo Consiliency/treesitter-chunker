@@ -64,5 +64,6 @@ def test_surviving_contract_reexports_intact():
         CICDPipelineStub,
         CICDPipelineImpl,
     )
+
     assert CICDPipelineImpl is CICDPipelineStub
     assert issubclass(CICDPipelineStub, CICDPipelineContract)

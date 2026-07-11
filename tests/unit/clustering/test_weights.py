@@ -1,7 +1,5 @@
 """Unit tests for chunker.clustering.weights module."""
 
-import pytest
-
 from chunker.clustering.weights import EdgeWeightCalculator, EdgeWeightConfig
 
 

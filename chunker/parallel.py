@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import multiprocessing as mp
-import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from concurrent.futures import TimeoutError as FutureTimeout
 from pathlib import Path
@@ -57,7 +56,6 @@ class ParallelChunker:
     ) -> dict[Path, list[CodeChunk]]:
         """Process multiple files in parallel."""
         results: dict[Path, list[CodeChunk]] = {}
-        start_time = time.time()
         timeout_seconds = 10.0
         with ProcessPoolExecutor(max_workers=self.num_workers) as executor:
             # Submit all tasks

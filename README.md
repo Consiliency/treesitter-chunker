@@ -1089,6 +1089,13 @@ chunks = chunk_text_with_token_limit(
 
 ---
 
+## Quality gates
+
+Pull requests run the fast, blocking lint, type, and smoke-test tier. The
+scheduled nightly workflow runs the full suite, including `spec_tests/`.
+Run the same nightly command locally with
+`uv run --with toml --all-extras python scripts/run_full_suite.py`.
+
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

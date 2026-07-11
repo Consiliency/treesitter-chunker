@@ -1,7 +1,5 @@
 """Test suite for Phase 2: Language-specific metadata extractors."""
 
-import pytest
-
 from chunker.core import chunk_text
 from chunker.metadata import MetadataExtractorFactory
 
@@ -210,8 +208,6 @@ class TestCallSpanAccuracy:
         assert span["name"] == "print"
 
         # Extract text using spans - the span is relative to the full code text
-        # Find where print starts in the code
-        print_start = code.find('print("hello")')
         # The span positions should match the actual call
         full_call = code[span["start"] : span["end"]]
         assert full_call == 'print("hello")'

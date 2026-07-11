@@ -74,7 +74,6 @@ import copy
 import hashlib
 import os
 
-import pytest
 
 from chunker.boundary import dumps_boundary_ir, extract_boundary_ir
 from chunker.boundary.adapter import _stable_value

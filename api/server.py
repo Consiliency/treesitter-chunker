@@ -32,6 +32,7 @@ from chunker._internal.path_confinement import resolve_within_root
 DEFAULT_HOST = "127.0.0.1"
 MAX_REQUEST_BODY_BYTES = 1_048_576
 _bearer_scheme = HTTPBearer(auto_error=False)
+_api_token_security = Security(_bearer_scheme)
 
 
 def _cors_origins() -> list[str]:
@@ -63,7 +64,7 @@ def _resolve_api_path(path: str) -> Path:
 
 
 def require_api_token(
-    credentials: HTTPAuthorizationCredentials | None = Security(_bearer_scheme),
+    credentials: HTTPAuthorizationCredentials | None = _api_token_security,
 ) -> None:
     """Require the configured bearer token for filesystem-backed operations."""
     expected_token = os.environ.get("TREE_SITTER_CHUNKER_API_TOKEN")

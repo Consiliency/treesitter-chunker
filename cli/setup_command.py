@@ -7,17 +7,12 @@ including fetching, building, and validating grammar libraries.
 from __future__ import annotations
 
 import os
-import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import typer
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
-
-if TYPE_CHECKING:
-    from collections.abc import Sequence
 
 app = typer.Typer(help="Grammar setup and management commands")
 console = Console()
@@ -514,8 +509,6 @@ def list_available():
         "css",
         "json",
     ]
-    community = ["yaml", "toml", "markdown", "sql", "kotlin", "swift"]
-
     for lang in sorted(GRAMMAR_REPOS.keys()):
         repo = GRAMMAR_REPOS[lang]
         category = (

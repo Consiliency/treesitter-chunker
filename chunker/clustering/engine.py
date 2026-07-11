@@ -14,7 +14,7 @@ import leidenalg
 import networkx as nx
 
 from .hierarchy import ClusterNode, HierarchyBuilder
-from .metrics import ClusterMetrics, MetricsCalculator
+from .metrics import MetricsCalculator
 from .weights import EdgeWeightCalculator, EdgeWeightConfig
 
 

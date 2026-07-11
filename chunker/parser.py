@@ -12,7 +12,6 @@ from ._internal.factory import ParserConfig, ParserFactory
 from ._internal.registry import LanguageMetadata, LanguageRegistry
 from .exceptions import (
     LanguageNotFoundError,
-    LibraryNotFoundError,
     ParserConfigError,
     ParserError,
 )

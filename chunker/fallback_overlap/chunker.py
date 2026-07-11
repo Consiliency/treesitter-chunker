@@ -14,7 +14,6 @@ from chunker.interfaces.fallback_overlap import (
 from chunker.interfaces.fallback_overlap import (
     OverlapStrategy,
 )
-from chunker.parser import list_languages
 from chunker.types import CodeChunk
 
 logger = logging.getLogger(__name__)

@@ -1,7 +1,5 @@
 """Unit tests for chunker.clustering.hierarchy module."""
 
-import pytest
-
 from chunker.clustering.hierarchy import ClusterNode, HierarchyBuilder
 from chunker.clustering.metrics import ClusterMetrics
 
@@ -544,9 +542,8 @@ class TestHierarchyBuilder:
             symbols=symbols,
             metrics_calculator=MockMetricsCalculator(),
         )
-        root = builder.build()
+        builder.build()
 
-        component = root.children[0]
         # Label should be generated based on common module or naming
         # The exact label depends on implementation
 

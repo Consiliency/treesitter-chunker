@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict, deque
 from collections.abc import Iterable
-from typing import Any, Tuple
+from typing import Any
 
 
 def graph_cut(

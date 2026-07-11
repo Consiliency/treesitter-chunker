@@ -2,13 +2,12 @@
 
 import json
 import logging
-import os
 import platform
 import re
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from .schema import CompatibilityLevel, GrammarVersion, LanguageVersion
 

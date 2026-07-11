@@ -1,5 +1,8 @@
 name: Consiliency Maintenance
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main]

@@ -1,7 +1,6 @@
 """Tests for the integration test fixtures."""
 
 import asyncio
-import sys
 import threading
 import time
 

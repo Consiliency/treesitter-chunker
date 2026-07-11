@@ -24,23 +24,17 @@ Error handling:
 
 from __future__ import annotations
 
-import asyncio
 import builtins
 import json
 import logging
-import os
 import platform
 import shutil
 import subprocess
 import sys
-import tempfile
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
-from urllib.parse import urlparse
-from urllib.request import urlopen, urlretrieve
+from typing import Any
 
 import click
 
@@ -49,17 +43,9 @@ from chunker.grammar.source_validation import validate_grammar_source
 # Import grammar management components from core
 try:
     from .core import (
-        GrammarInstallationError,
-        GrammarInstaller,
-        GrammarManagementError,
         GrammarManager,
         GrammarPriority,
-        GrammarRegistry,
-        GrammarValidationError,
-        GrammarValidator,
-        InstallationInfo,
         ValidationLevel,
-        ValidationResult,
     )
 
     GRAMMAR_COMPONENTS_AVAILABLE = True
@@ -2262,7 +2248,7 @@ if __name__ == "__main__":
         try:
             import ctypes
 
-            lib = ctypes.CDLL(str(grammar_path))
+            ctypes.CDLL(str(grammar_path))
 
             # Basic load test passed
             result["valid"] = True

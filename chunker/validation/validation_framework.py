@@ -1,25 +1,18 @@
 # chunker/validation/validation_framework.py
 
-import gc
 import hashlib
 import json
 import logging
-import os
-import pickle
 import statistics
-import subprocess
-import sys
 import tempfile
 import threading
 import time
-import traceback
-import weakref
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 from ..performance.core.performance_framework import (
     PerformanceManager,
@@ -1273,7 +1266,7 @@ class LoadTester:
         try:
             # Run comprehensive tests if no results exist
             if not self.results_store:
-                comprehensive_results = self.run_comprehensive_load_tests()
+                self.run_comprehensive_load_tests()
 
             report = {
                 "timestamp": datetime.now().isoformat(),
@@ -1465,18 +1458,18 @@ class RegressionTester:
         try:
             # Memory allocation benchmark
             start_time = time.time()
-            data = list(range(100000))
+            list(range(100000))
             benchmarks["memory_allocation_100k_items"] = time.time() - start_time
 
             # CPU intensive benchmark
             start_time = time.time()
-            result = sum(i * i for i in range(10000))
+            sum(i * i for i in range(10000))
             benchmarks["cpu_intensive_sum_squares_10k"] = time.time() - start_time
 
             # String processing benchmark
             start_time = time.time()
             text = "test string " * 1000
-            processed = text.upper().replace(" ", "_")
+            text.upper().replace(" ", "_")
             benchmarks["string_processing_1k_ops"] = time.time() - start_time
 
             # File I/O benchmark (if possible)
@@ -1486,7 +1479,7 @@ class RegressionTester:
                     f.write("test data " * 1000)
                     f.flush()
                     f.seek(0)
-                    content = f.read()
+                    f.read()
                 benchmarks["file_io_1k_write_read"] = time.time() - start_time
             except Exception:
                 pass

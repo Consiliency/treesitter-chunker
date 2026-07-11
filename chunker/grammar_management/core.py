@@ -28,20 +28,16 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import os
 import shutil
 import subprocess
-import tempfile
 import time
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
 
 from chunker.exceptions import ChunkerError
 from chunker.grammar.source_validation import validate_grammar_source
-from chunker.interfaces.grammar import GrammarInfo, GrammarStatus, NodeTypeInfo
 
 logger = logging.getLogger(__name__)
 
@@ -191,7 +187,7 @@ class GrammarValidator:
             try:
                 import tree_sitter
 
-                language = tree_sitter.Language(str(grammar_path))
+                tree_sitter.Language(str(grammar_path))
                 # If we can create a language object, it's compatible
                 return True, None
             except Exception as e:

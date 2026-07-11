@@ -20,7 +20,6 @@ from chunker.symbol_graph import (
 from chunker.types import CodeChunk, compute_definition_id, compute_file_id
 
 from .cache import (
-    BoundaryCacheIndex,
     BoundaryCacheRecord,
     build_boundary_cache_key,
     load_cache_index,

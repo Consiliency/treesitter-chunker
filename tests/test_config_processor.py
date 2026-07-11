@@ -244,7 +244,9 @@ features:
   - caching
 """
         try:
-            import yaml
+            import yaml as _yaml
+
+            assert _yaml is not None
         except ImportError:
             pytest.skip("yaml library not available")
         chunks = self.processor.process("config.yaml", yaml_content)
@@ -281,7 +283,9 @@ name = "cli"
 path = "src/cli.rs\"
 """
         try:
-            import toml
+            import toml as _toml
+
+            assert _toml is not None
         except ImportError:
             pytest.skip("toml library not available")
         chunks = self.processor.process("Cargo.toml", toml_content)

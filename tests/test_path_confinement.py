@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import pytest
 
 from chunker._internal.path_confinement import resolve_within_root

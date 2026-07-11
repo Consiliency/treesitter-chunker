@@ -201,6 +201,13 @@ Make the CI signal real: run the full/tiered suite, enforce lint correctness and
 - evidence paths: `logs/gates-ci-run.txt`
 - redaction posture: `metadata_only`
 
+### Post-execution amendments
+
+- The honest, blocking mypy command currently reports 2,243 strict-type errors
+  across 214 files. Plan a dedicated type-debt reduction phase before the
+  release gate can require a green mypy result; do not downgrade the GATES
+  workflow back to warning-only behavior.
+
 ---
 
 ### Phase 3 — Supply-Chain & Grammar-Install Hardening (SUPPLY)

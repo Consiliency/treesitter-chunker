@@ -190,7 +190,9 @@ class GrammarDownloadManager(GrammarDownloadContract):
                         raise ValueError(f"Unsafe tar member: {member.name}")
                     resolved = (tmp_root / parts).resolve()
                     if resolved != tmp_root and tmp_root not in resolved.parents:
-                        raise ValueError(f"Tar member escapes destination: {member.name}")
+                        raise ValueError(
+                            f"Tar member escapes destination: {member.name}"
+                        )
                 tar.extractall(tmpdir)
             extracted = list(Path(tmpdir).iterdir())
             if len(extracted) == 1 and extracted[0].is_dir():

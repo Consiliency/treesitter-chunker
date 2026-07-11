@@ -1008,11 +1008,6 @@ def _detect_matlab_scripts(
 
     # Check if there are top-level statements that make this a script
     has_top_level_code = False
-    has_functions_or_classes = any(
-        chunk.node_type in {"function_definition", "classdef", "class_definition"}
-        for chunk in chunks
-    )
-
     # Look for top-level statements in the node children
     for child in node.children:
         if child.type in {"assignment", "function_call", "command", "comment"}:

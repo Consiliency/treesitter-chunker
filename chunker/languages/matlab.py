@@ -166,16 +166,8 @@ class MATLABPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         if node.type == "source_file":
             # Check if there are top-level statements that aren't functions/classes
             has_top_level_code = False
-            has_functions_or_classes = False
-
             for child in node.children:
                 if child.type in {
-                    "function_definition",
-                    "classdef",
-                    "class_definition",
-                }:
-                    has_functions_or_classes = True
-                elif child.type in {
                     "assignment",
                     "function_call",
                     "command",

@@ -11,6 +11,14 @@ from chunker.types import (
     ResolutionStatus,
 )
 
+__all__ = [
+    "RESOLUTION_MODES",
+    "RESOLUTION_STATUSES",
+    "ResolutionMode",
+    "ResolutionStatus",
+]
+
+
 BoundaryIR: TypeAlias = dict[str, Any]
 BoundaryRecord: TypeAlias = dict[str, Any]
 SemanticEdgeSource: TypeAlias = Literal["semantic"]

@@ -63,7 +63,6 @@ class VFSChunker:
             if not language:
                 # Fallback: infer from simple extension map used elsewhere
                 try:
-                    ext = Path(path).suffix.lower()
                     from .plugin_manager import get_plugin_manager
 
                     pm = get_plugin_manager()

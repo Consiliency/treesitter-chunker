@@ -1,12 +1,10 @@
 """Comprehensive unit tests for performance core framework."""
 
 import gc
-import json
-import threading
 import time
 import tracemalloc
-from datetime import datetime, timedelta
-from unittest.mock import MagicMock, Mock, patch
+from datetime import datetime
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -1023,8 +1021,8 @@ class TestPerformanceManager:
         manager = PerformanceManager(enable_continuous_monitoring=False)
 
         # Collect some profiles
-        profile1 = manager.collect_system_metrics()
-        profile2 = manager.collect_system_metrics()
+        manager.collect_system_metrics()
+        manager.collect_system_metrics()
 
         # Note: profiles are only stored during continuous monitoring
         # So history might be empty here, which is expected behavior

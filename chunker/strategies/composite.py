@@ -70,10 +70,6 @@ class OverlapMerger(ChunkMerger):
         if overlap_start > overlap_end:
             return False
         overlap_lines = overlap_end - overlap_start + 1
-        chunk1_lines = chunk1.end_line - chunk1.start_line + 1
-        chunk2_lines = chunk2.end_line - chunk2.start_line + 1
-        overlap_ratio1 = overlap_lines / chunk1_lines
-        overlap_ratio2 = overlap_lines / chunk2_lines
         # Merge on any positive overlap for robustness. Downstream logic ensures
         # the final set does not contain significantly overlapping pairs.
         return overlap_lines > 0

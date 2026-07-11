@@ -5,7 +5,6 @@ import json
 import logging
 import subprocess
 import threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from .contracts.grammar_manager_contract import GrammarManagerContract
 from .exceptions import ChunkerError

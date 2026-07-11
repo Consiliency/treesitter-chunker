@@ -4,7 +4,7 @@ import json
 import os
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Tuple
+from typing import Any
 from urllib.parse import urlparse
 
 from chunker.core import chunk_file

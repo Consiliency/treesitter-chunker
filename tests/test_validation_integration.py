@@ -1,7 +1,7 @@
 # tests/test_validation_integration.py
 
 import time
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 

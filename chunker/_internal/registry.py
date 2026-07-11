@@ -9,7 +9,7 @@ import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from tree_sitter import Language, Parser
 
@@ -17,7 +17,6 @@ from chunker._internal.error_handling import log_grammar_discovery_summary
 from chunker.exceptions import (
     LanguageNotFoundError,
     LibraryLoadError,
-    LibraryNotFoundError,
 )
 
 logger = logging.getLogger(__name__)
@@ -366,7 +365,6 @@ class LanguageRegistry:
         if package_grammar_build.exists():
             search_dirs.append(package_grammar_build)
 
-        env_dir = Path(str(Path().home()))
         from os import getenv as _getenv
 
         override = _getenv("CHUNKER_GRAMMAR_BUILD_DIR")

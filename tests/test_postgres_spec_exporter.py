@@ -1,5 +1,4 @@
 import importlib
-from pathlib import Path
 
 
 def test_postgres_spec_exporter_generates_sql_file(tmp_path, monkeypatch):
