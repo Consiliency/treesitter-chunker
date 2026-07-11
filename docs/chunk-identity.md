@@ -15,6 +15,7 @@ otherwise identical anonymous siblings distinct. Changing content, moving a
 chunk, or inserting text before it produces a new occurrence ID; a repeated
 chunking run of unchanged source produces the same ID.
 
-Incremental diffs and graph/export maps use `chunk_id`/`node_id` (the same
-namespace). Boundary symbol indexes use the emitted boundary-node identity,
-which prefers the unchanged `definition_id` contract when it is available.
+Incremental diffs match named definitions by `definition_id`, so a body-only
+edit is a `MODIFIED` change rather than a delete-and-add pair. Graph/export
+maps use `chunk_id`/`node_id` (the same namespace). Boundary symbol indexes
+also prefer the emitted `definition_id` contract when it is available.

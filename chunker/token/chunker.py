@@ -282,21 +282,20 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
         index: int,
     ) -> CodeChunk:
         """Create a sub-chunk from an original chunk."""
-        original_lines = original_chunk.content.split("\n")
+        content_offset = max(original_chunk.content.find(content), 0)
+        start_offset = original_chunk.content[:content_offset].count("\n")
         new_lines = content.split("\n")
-        start_offset = 0
-        for i, line in enumerate(original_lines):
-            if new_lines and line.strip() == new_lines[0].strip():
-                start_offset = i
-                break
+        byte_offset = len(original_chunk.content[:content_offset].encode("utf-8"))
         new_chunk = CodeChunk(
             language=original_chunk.language,
             file_path=original_chunk.file_path,
             node_type=f"{original_chunk.node_type}_part_{index + 1}",
             start_line=original_chunk.start_line + start_offset,
             end_line=(original_chunk.start_line + start_offset + len(new_lines) - 1),
-            byte_start=original_chunk.byte_start,
-            byte_end=original_chunk.byte_start + len(content.encode()),
+            byte_start=original_chunk.byte_start + byte_offset,
+            byte_end=original_chunk.byte_start
+            + byte_offset
+            + len(content.encode("utf-8")),
             parent_context=original_chunk.parent_context,
             content=content,
             parent_chunk_id=original_chunk.chunk_id,

@@ -1,6 +1,7 @@
 """Smart context implementation for intelligent chunk context selection."""
 
 import builtins
+import hashlib
 import re
 import time
 from collections import defaultdict
@@ -34,6 +35,11 @@ class TreeSitterSmartContextProvider(SmartContextProvider):
         self.cache = cache or InMemoryContextCache()
         # Back-compat alias used by some tests
         self._cache = self.cache
+        # Memoize per-chunk semantic features by chunk_id so the all-pairs
+        # similarity scan extracts each chunk's features ONCE, not once per
+        # (request, candidate) pair -- turns repeated O(n^2) extraction into
+        # O(n) amortized (COREFIX).
+        self._feature_cache: dict[str, dict[str, Any]] = {}
         self._parsers = {}
 
     def get_semantic_context(
@@ -54,13 +60,13 @@ class TreeSitterSmartContextProvider(SmartContextProvider):
         Returns:
             Tuple of (context_string, metadata)
         """
-        chunk_features = self._extract_semantic_features(chunk)
+        chunk_features = self._features_for(chunk)
         file_chunks = self._get_file_chunks(chunk.file_path, chunk.language)
         similar_chunks = []
         for candidate in file_chunks:
             if candidate.chunk_id == chunk.chunk_id:
                 continue
-            candidate_features = self._extract_semantic_features(candidate)
+            candidate_features = self._features_for(candidate)
             similarity_score = self._calculate_semantic_similarity(
                 chunk_features,
                 candidate_features,
@@ -113,7 +119,8 @@ class TreeSitterSmartContextProvider(SmartContextProvider):
         Returns:
             List of (chunk, metadata) tuples for dependencies
         """
-        cached = self.cache.get(chunk.chunk_id, "dependency")
+        cache_type = self._candidate_cache_type("dependency", chunks)
+        cached = self.cache.get(chunk.chunk_id, cache_type)
         if cached is not None:
             return cached
         dependencies = []
@@ -137,7 +144,7 @@ class TreeSitterSmartContextProvider(SmartContextProvider):
                 )
                 dependencies.append((candidate, metadata))
         dependencies.sort(key=lambda x: x[1].relevance_score, reverse=True)
-        self.cache.set(chunk.chunk_id, "dependency", dependencies)
+        self.cache.set(chunk.chunk_id, cache_type, dependencies)
         return dependencies
 
     def get_usage_context(
@@ -157,7 +164,8 @@ class TreeSitterSmartContextProvider(SmartContextProvider):
         Returns:
             List of (chunk, metadata) tuples for usages
         """
-        cached = self.cache.get(chunk.chunk_id, "usage")
+        cache_type = self._candidate_cache_type("usage", chunks)
+        cached = self.cache.get(chunk.chunk_id, cache_type)
         if cached is not None:
             return cached
         usages = []
@@ -224,7 +232,7 @@ class TreeSitterSmartContextProvider(SmartContextProvider):
                 )
                 usages.append((candidate, metadata))
         usages.sort(key=lambda x: x[1].relevance_score, reverse=True)
-        self.cache.set(chunk.chunk_id, "usage", usages)
+        self.cache.set(chunk.chunk_id, cache_type, usages)
         return usages
 
     def get_structural_context(
@@ -244,7 +252,8 @@ class TreeSitterSmartContextProvider(SmartContextProvider):
         Returns:
             List of (chunk, metadata) tuples for structural relations
         """
-        cached = self.cache.get(chunk.chunk_id, "structural")
+        cache_type = self._candidate_cache_type("structural", chunks)
+        cached = self.cache.get(chunk.chunk_id, cache_type)
         if cached is not None:
             return cached
         structural_relations = []
@@ -273,8 +282,26 @@ class TreeSitterSmartContextProvider(SmartContextProvider):
             key=lambda x: (x[1].relevance_score, -x[1].distance),
             reverse=True,
         )
-        self.cache.set(chunk.chunk_id, "structural", structural_relations)
+        self.cache.set(chunk.chunk_id, cache_type, structural_relations)
         return structural_relations
+
+    @staticmethod
+    def _candidate_cache_type(context_type: str, chunks: list[CodeChunk]) -> str:
+        identities = sorted(
+            f"{candidate.chunk_id}:{candidate.node_id}:{candidate.file_path}:{candidate.byte_start}"
+            for candidate in chunks
+        )
+        digest = hashlib.sha256("\0".join(identities).encode("utf-8")).hexdigest()[:16]
+        return f"{context_type}:{digest}"
+
+    def _features_for(self, chunk: CodeChunk) -> dict[str, Any]:
+        """Return cached semantic features for a chunk (computed once per chunk_id)."""
+        key = chunk.chunk_id or f"{chunk.file_path}:{chunk.byte_start}:{chunk.byte_end}"
+        cached = self._feature_cache.get(key)
+        if cached is None:
+            cached = self._extract_semantic_features(chunk)
+            self._feature_cache[key] = cached
+        return cached
 
     @staticmethod
     def _extract_semantic_features(chunk: CodeChunk) -> dict[str, Any]:

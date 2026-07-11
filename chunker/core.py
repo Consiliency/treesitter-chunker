@@ -16,7 +16,13 @@ __all__ = [
 # Imported lazily below to avoid circular import with multi_language
 from .metadata import MetadataExtractorFactory
 from .parser import get_parser
-from .types import CodeChunk, compute_file_id, compute_node_id, compute_symbol_id
+from .types import (
+    CodeChunk,
+    compute_definition_id,
+    compute_file_id,
+    compute_node_id,
+    compute_symbol_id,
+)
 
 if TYPE_CHECKING:
     from tree_sitter import Node
@@ -349,6 +355,47 @@ def _apply_retrieval_metadata(chunks: list[CodeChunk]) -> None:
         chunk.metadata.update(_build_retrieval_metadata(chunk))
 
 
+def _svelte_control_flow_chunks(source: bytes) -> list[CodeChunk]:
+    """Extract template control-flow blocks once from the Svelte root."""
+    chunks = []
+    byte_start = 0
+    for line_number, line in enumerate(
+        source.decode("utf-8", errors="replace").splitlines(),
+        start=1,
+    ):
+        node_type = next(
+            (
+                node_type
+                for prefix, node_type in (
+                    ("{#if", "if_block"),
+                    ("{#each", "each_block"),
+                    ("{#await", "await_block"),
+                    ("{#key", "key_block"),
+                )
+                if line.strip().startswith(prefix)
+            ),
+            None,
+        )
+        line_bytes = len(line.encode("utf-8"))
+        if node_type:
+            chunks.append(
+                CodeChunk(
+                    language="svelte",
+                    file_path="",
+                    node_type=node_type,
+                    start_line=line_number,
+                    end_line=line_number,
+                    byte_start=byte_start,
+                    byte_end=byte_start + line_bytes,
+                    parent_context="template",
+                    content=line,
+                    parent_route=[node_type],
+                ),
+            )
+        byte_start += line_bytes + 1
+    return chunks
+
+
 def _walk(
     node: Node,
     source: bytes,
@@ -359,8 +406,11 @@ def _walk(
     analyzer=None,
     parent_route: list[str] | None = None,
     parent_qualified_route: list[str] | None = None,
+    depth: int = 0,
 ) -> list[CodeChunk]:
     """Walk the AST and extract chunks based on language configuration."""
+    if depth >= 900:
+        raise RecursionError("chunk tree exceeds safe traversal depth")
     # Get language configuration
     config = language_config_registry.get(language)
     if not config:
@@ -435,6 +485,9 @@ def _walk(
                 )
 
     chunks: list[CodeChunk] = []
+    is_svelte_root = language == "svelte" and node.type in {"document", "source_file"}
+    if is_svelte_root:
+        chunks.extend(_svelte_control_flow_chunks(source))
     current_chunk = None
     current_qualified_route: list[str] | None = None
 
@@ -670,13 +723,7 @@ def _walk(
             file_path="",
             node_type=adjusted_node_type,
             start_line=start_line,
-            end_line=(
-                # Estimate end line from span_end by walking to end_point if same node
-                node.end_point[0] + 1
-                if span_end == node.end_byte
-                else None  # type: ignore[truthy-bool]
-            )
-            or (node.end_point[0] + 1),
+            end_line=source[:span_end].count(b"\n") + 1,
             byte_start=span_start,
             byte_end=span_end,
             parent_context=parent_ctx or "",
@@ -873,7 +920,11 @@ def _walk(
             except Exception:
                 pass
         # Svelte: synthesize control-flow chunks by scanning entire file once at top-level
-        if language == "svelte" and parent_chunk is None:
+        if (
+            language == "svelte"
+            and node.type in {"document", "source_file"}
+            and not is_svelte_root
+        ):
             try:
                 full_text = source.decode("utf-8", errors="replace")
                 lines = full_text.splitlines()
@@ -928,6 +979,7 @@ def _walk(
                 analyzer,
                 parent_route=parent_route,
                 parent_qualified_route=parent_qualified_route,
+                depth=depth + 1,
             ),
         )
 
@@ -1080,13 +1132,18 @@ def chunk_text(
         extractor = MetadataExtractorFactory.create_extractor(language)
         analyzer = MetadataExtractorFactory.create_analyzer(language)
 
-    chunks = _walk(
-        tree.root_node,
-        src,
-        language,
-        extractor=extractor,
-        analyzer=analyzer,
-    )
+    try:
+        chunks = _walk(
+            tree.root_node,
+            src,
+            language,
+            extractor=extractor,
+            analyzer=analyzer,
+        )
+    except RecursionError:
+        from .fallback.sliding_window_fallback import SlidingWindowFallback
+
+        chunks = SlidingWindowFallback().chunk_text(text, file_path)
 
     # Build mapping from temporary IDs (no path) to final IDs (with path)
     tmp_to_final: dict[str, str] = {}
@@ -1111,6 +1168,11 @@ def chunk_text(
         c.file_path = file_path
         # update file/node ids now that path is known
         c.file_id = compute_file_id(file_path)
+        c.definition_id = compute_definition_id(
+            file_path,
+            c.language,
+            c.qualified_route or c.parent_route,
+        )
         c.node_id = compute_node_id(
             file_path,
             c.language,

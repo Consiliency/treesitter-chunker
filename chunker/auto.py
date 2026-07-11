@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from .chunker import chunk_file_with_token_limit, chunk_text_with_token_limit
 from .contracts.auto_contract import AutoChunkResult, ZeroConfigContract
 from .core import chunk_file, chunk_text
-from .exceptions import ChunkerError
+from .exceptions import ChunkerError, LanguageNotFoundError, ParserError
 from .fallback.sliding_window_fallback import SlidingWindowFallback
 
 if TYPE_CHECKING:
@@ -169,7 +169,7 @@ class ZeroConfigAPI(ZeroConfigContract):
         if not language:
             detected = self.detect_language(file_path)
             if not detected:
-                content = file_path.read_text(encoding="utf-8")
+                content = file_path.read_text(encoding="utf-8", errors="replace")
                 code_chunks = self._fallback_chunker.chunk_text(content, str(file_path))
                 chunks = []
                 for chunk in code_chunks:
@@ -224,9 +224,9 @@ class ZeroConfigAPI(ZeroConfigContract):
                         "tree_sitter_version": "0.20.0",
                     },
                 )
-        except (OSError, FileNotFoundError, IndexError):
+        except (LanguageNotFoundError, ParserError, OSError, IndexError):
             pass
-        content = file_path.read_text(encoding="utf-8")
+        content = file_path.read_text(encoding="utf-8", errors="replace")
         code_chunks = self._fallback_chunker.chunk_text(
             content,
             str(file_path),
@@ -376,7 +376,7 @@ class ZeroConfigAPI(ZeroConfigContract):
                     fallback_used=False,
                     metadata={"tree_sitter_version": "0.20.0"},
                 )
-        except (IndexError, KeyError):
+        except (LanguageNotFoundError, ParserError, IndexError, KeyError):
             pass
         code_chunks = self._fallback_chunker.chunk_text(text, "<text>")
         chunks = []

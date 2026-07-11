@@ -12,6 +12,8 @@ from chunker.interfaces.fallback_overlap import (
 )
 from chunker.types import CodeChunk
 
+from .offsets import TextPositionIndex
+
 __all__ = ["OverlapConfig", "OverlapStrategy", "OverlappingFallbackChunker"]
 
 
@@ -223,8 +225,8 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
             ):
                 # If last line is empty and we have a trailing newline, remove it
                 chunk_content = chunk_content[:-1]
-            byte_start = sum(len(line) for line in lines[:start_idx])
-            byte_end = byte_start + len(chunk_content)
+            byte_start = len("".join(lines[:start_idx]).encode("utf-8"))
+            byte_end = byte_start + len(chunk_content.encode("utf-8"))
             chunk = CodeChunk(
                 language=self._detect_language(),
                 file_path=self.file_path or "",
@@ -250,6 +252,7 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
     ) -> list[CodeChunk]:
         """Chunk by characters with overlap."""
         chunks = []
+        offsets = TextPositionIndex(content)
         if strategy == OverlapStrategy.PERCENTAGE:
             overlap_size = int(chunk_size * (overlap_size / 100.0))
         i = 0
@@ -271,16 +274,16 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
                         overlap_size // 2,
                     )
             chunk_content = content[start:end]
-            start_line = content[:start].count("\n") + 1
-            end_line = content[:end].count("\n") + 1
+            start_line = offsets.line_number(start)
+            end_line = offsets.line_number(end)
             chunk = CodeChunk(
                 language=self._detect_language(),
                 file_path=self.file_path or "",
                 node_type="fallback_overlap_chars",
                 start_line=start_line,
                 end_line=end_line,
-                byte_start=start,
-                byte_end=end,
+                byte_start=offsets.byte_offset(start),
+                byte_end=offsets.byte_offset(end),
                 parent_context=f"overlap_chunk_{chunk_num}",
                 content=chunk_content,
             )
@@ -309,8 +312,8 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
                 end_idx = len(lines)
             chunk_lines = lines[start_idx:end_idx]
             chunk_content = "".join(chunk_lines)
-            byte_start = sum(len(line) for line in lines[:start_idx])
-            byte_end = byte_start + len(chunk_content)
+            byte_start = len("".join(lines[:start_idx]).encode("utf-8"))
+            byte_end = byte_start + len(chunk_content.encode("utf-8"))
             chunk = CodeChunk(
                 language=self._detect_language(),
                 file_path=self.file_path or "",
@@ -336,6 +339,7 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
     ) -> list[CodeChunk]:
         """Chunk by characters with asymmetric overlap."""
         chunks = []
+        offsets = TextPositionIndex(content)
         i = 0
         chunk_num = 0
         while i < len(content):
@@ -345,16 +349,16 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
             else:
                 end = len(content)
             chunk_content = content[start:end]
-            start_line = content[:start].count("\n") + 1
-            end_line = content[:end].count("\n") + 1
+            start_line = offsets.line_number(start)
+            end_line = offsets.line_number(end)
             chunk = CodeChunk(
                 language=self._detect_language(),
                 file_path=self.file_path or "",
                 node_type="fallback_asymmetric_chars",
                 start_line=start_line,
                 end_line=end_line,
-                byte_start=start,
-                byte_end=end,
+                byte_start=offsets.byte_offset(start),
+                byte_end=offsets.byte_offset(end),
                 parent_context=f"asymmetric_chunk_{chunk_num}",
                 content=chunk_content,
             )
@@ -389,8 +393,8 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
             end_idx = min(i + chunk_size, len(lines))
             chunk_lines = lines[start_idx:end_idx]
             chunk_content = "".join(chunk_lines)
-            byte_start = sum(len(line) for line in lines[:start_idx])
-            byte_end = byte_start + len(chunk_content)
+            byte_start = len("".join(lines[:start_idx]).encode("utf-8"))
+            byte_end = byte_start + len(chunk_content.encode("utf-8"))
             chunk = CodeChunk(
                 language=self._detect_language(),
                 file_path=self.file_path or "",
@@ -416,6 +420,7 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
     ) -> list[CodeChunk]:
         """Chunk by characters with dynamic overlap based on content."""
         chunks = []
+        offsets = TextPositionIndex(content)
         i = 0
         chunk_num = 0
         while i < len(content):
@@ -437,16 +442,16 @@ class OverlappingFallbackChunker(IOverlappingFallbackChunker):
                 start = max(0, start)
             end = min(i + chunk_size, len(content))
             chunk_content = content[start:end]
-            start_line = content[:start].count("\n") + 1
-            end_line = content[:end].count("\n") + 1
+            start_line = offsets.line_number(start)
+            end_line = offsets.line_number(end)
             chunk = CodeChunk(
                 language=self._detect_language(),
                 file_path=self.file_path or "",
                 node_type="fallback_dynamic_chars",
                 start_line=start_line,
                 end_line=end_line,
-                byte_start=start,
-                byte_end=end,
+                byte_start=offsets.byte_offset(start),
+                byte_end=offsets.byte_offset(end),
                 parent_context=f"dynamic_chunk_{chunk_num}",
                 content=chunk_content,
             )

@@ -15,6 +15,8 @@ from chunker.interfaces.fallback import (
 from chunker.interfaces.fallback import FallbackChunker as IFallbackChunker
 from chunker.types import CodeChunk
 
+from .offsets import TextPositionIndex
+
 logger = logging.getLogger(__name__)
 
 
@@ -173,6 +175,7 @@ class FallbackChunker(IFallbackChunker):
             List of chunks
         """
         lines = content.splitlines(keepends=True)
+        offsets = TextPositionIndex(content)
         chunks = []
         i = 0
         while i < len(lines):
@@ -180,8 +183,9 @@ class FallbackChunker(IFallbackChunker):
             end_idx = min(i + lines_per_chunk, len(lines))
             chunk_lines = lines[start_idx:end_idx]
             chunk_content = "".join(chunk_lines)
-            byte_start = sum(len(line) for line in lines[:start_idx])
-            byte_end = byte_start + len(chunk_content)
+            char_start = sum(len(line) for line in lines[:start_idx])
+            byte_start = offsets.byte_offset(char_start)
+            byte_end = offsets.byte_offset(char_start + len(chunk_content))
             chunk = CodeChunk(
                 language=self._detect_language(),
                 file_path=self.file_path or "",
@@ -214,8 +218,9 @@ class FallbackChunker(IFallbackChunker):
             List of chunks
         """
         parts = content.split(delimiter)
+        offsets = TextPositionIndex(content)
         chunks = []
-        current_byte = 0
+        current_offset = 0
         current_line = 1
         for i, part in enumerate(parts):
             if include_delimiter and i < len(parts) - 1:
@@ -223,7 +228,7 @@ class FallbackChunker(IFallbackChunker):
             else:
                 chunk_content = part
             if not chunk_content.strip():
-                current_byte += len(chunk_content)
+                current_offset += len(chunk_content)
                 current_line += chunk_content.count("\n")
                 continue
             start_line = current_line
@@ -234,13 +239,13 @@ class FallbackChunker(IFallbackChunker):
                 node_type="fallback_delimiter",
                 start_line=start_line,
                 end_line=end_line,
-                byte_start=current_byte,
-                byte_end=current_byte + len(chunk_content),
+                byte_start=offsets.byte_offset(current_offset),
+                byte_end=offsets.byte_offset(current_offset + len(chunk_content)),
                 parent_context=f"delimiter_chunk_{i}",
                 content=chunk_content,
             )
             chunks.append(chunk)
-            current_byte += len(chunk_content)
+            current_offset += len(chunk_content)
             current_line = end_line + 1
         return chunks
 
@@ -261,6 +266,7 @@ class FallbackChunker(IFallbackChunker):
             List of chunks
         """
         chunks = []
+        offsets = TextPositionIndex(content)
         last_end = 0
         current_line = 1
         for match in pattern.finditer(content):
@@ -269,7 +275,7 @@ class FallbackChunker(IFallbackChunker):
                 if pre_content.strip():
                     chunk = self._create_chunk_from_content(
                         pre_content,
-                        last_end,
+                        offsets.byte_offset(last_end),
                         current_line,
                         "fallback_pattern_pre",
                     )
@@ -280,7 +286,7 @@ class FallbackChunker(IFallbackChunker):
                 if match_content.strip():
                     chunk = self._create_chunk_from_content(
                         match_content,
-                        match.start(),
+                        offsets.byte_offset(match.start()),
                         current_line,
                         "fallback_pattern_match",
                     )
@@ -292,7 +298,7 @@ class FallbackChunker(IFallbackChunker):
             if remaining.strip():
                 chunk = self._create_chunk_from_content(
                     remaining,
-                    last_end,
+                    offsets.byte_offset(last_end),
                     current_line,
                     "fallback_pattern_post",
                 )
@@ -360,7 +366,7 @@ class FallbackChunker(IFallbackChunker):
             start_line=start_line,
             end_line=start_line + line_count,
             byte_start=byte_start,
-            byte_end=byte_start + len(content),
+            byte_end=byte_start + len(content.encode("utf-8")),
             parent_context=f"{node_type}_{start_line}",
             content=content,
         )

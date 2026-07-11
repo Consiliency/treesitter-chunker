@@ -394,6 +394,10 @@ for added in diff.added:
 # diff = processor.compute_diff(old_chunks, file_path.read_text(), "python")
 ```
 
+Body-only edits to a named definition are reported as `MODIFIED`: incremental
+matching uses its stable `definition_id` while retaining the real file path
+during reparse.
+
 ### Smart Context and Natural-Language Query (optional)
 
 Advanced features are optional at import time (NumPy/PyArrow heavy deps); when available:
@@ -840,6 +844,9 @@ chunk.byte_end    # End byte offset in file
 chunk.start_line  # 1-indexed start line
 chunk.end_line    # 1-indexed end line
 ```
+
+Offsets are UTF-8 byte positions, including for fallback and token-split
+chunks; slicing the original file bytes at a chunk span reproduces its content.
 
 These spans are propagated through:
 - Repository processing and incremental watch

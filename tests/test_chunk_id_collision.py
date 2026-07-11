@@ -66,9 +66,21 @@ def test_boundary_dedupe_disambiguates_colliding_node_identities():
     from chunker.boundary.adapter import _dedupe_node_identities
 
     records = [
-        {"id": "same", "node_id": "aaaa", "identity": {"source": "definition_id", "value": "same"}},
-        {"id": "same", "node_id": "bbbb", "identity": {"source": "definition_id", "value": "same"}},
-        {"id": "other", "node_id": "cccc", "identity": {"source": "definition_id", "value": "other"}},
+        {
+            "id": "same",
+            "node_id": "aaaa",
+            "identity": {"source": "definition_id", "value": "same"},
+        },
+        {
+            "id": "same",
+            "node_id": "bbbb",
+            "identity": {"source": "definition_id", "value": "same"},
+        },
+        {
+            "id": "other",
+            "node_id": "cccc",
+            "identity": {"source": "definition_id", "value": "other"},
+        },
     ]
     _dedupe_node_identities(records)
     ids = [r["id"] for r in records]
@@ -97,8 +109,16 @@ def test_dedupe_ordinal_is_position_independent():
     from chunker.boundary.adapter import _dedupe_node_identities
 
     records = [
-        {"id": "over", "node_id": "n_at_byte_100", "identity": {"source": "definition_id", "value": "over"}},
-        {"id": "over", "node_id": "n_at_byte_200", "identity": {"source": "definition_id", "value": "over"}},
+        {
+            "id": "over",
+            "node_id": "n_at_byte_100",
+            "identity": {"source": "definition_id", "value": "over"},
+        },
+        {
+            "id": "over",
+            "node_id": "n_at_byte_200",
+            "identity": {"source": "definition_id", "value": "over"},
+        },
     ]
     _dedupe_node_identities(records)
     # Second is disambiguated by ordinal, independent of its node_id/byte position.
@@ -124,4 +144,6 @@ def test_boundary_edges_resolve_to_nodes_all_paths(tmp_path):
         node_ids = {n["id"] for n in ir["nodes"]}
         edges = ir.get("edges", [])
         outside = [e for e in edges if e.get("source") not in node_ids]
-        assert not outside, f"{label}: {len(outside)}/{len(edges)} edge sources outside node set"
+        assert (
+            not outside
+        ), f"{label}: {len(outside)}/{len(edges)} edge sources outside node set"

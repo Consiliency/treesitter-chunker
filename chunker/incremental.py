@@ -128,10 +128,15 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
                 old_chunks,
                 new_chunks_or_content,
                 language,
+                str(file_path_or_old_chunks),
             )
         raise ValueError(
             "Invalid arguments: expected (file_path, new_chunks) or (old_chunks, new_content, language)",
         )
+
+    @staticmethod
+    def _identity_key(chunk: CodeChunk) -> str:
+        return chunk.definition_id or chunk.chunk_id
 
     def _compute_chunks_diff(
         self,
@@ -139,8 +144,8 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
         new_chunks: list[CodeChunk],
     ) -> ChunkDiff:
         """Compute diff between two chunk lists."""
-        old_map = {chunk.chunk_id: chunk for chunk in old_chunks}
-        new_map = {chunk.chunk_id: chunk for chunk in new_chunks}
+        old_map = {self._identity_key(chunk): chunk for chunk in old_chunks}
+        new_map = {self._identity_key(chunk): chunk for chunk in new_chunks}
 
         old_ids = set(old_map.keys())
         new_ids = set(new_map.keys())
@@ -231,11 +236,13 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
         old_chunks: list[CodeChunk],
         new_content: str,
         language: str,
+        file_path: str | None = None,
     ) -> ChunkDiff:
         """Compute difference between old chunks and new content."""
-        new_chunks = chunk_text(new_content, language, file_path="")
-        old_map = {chunk.chunk_id: chunk for chunk in old_chunks}
-        new_map = {chunk.chunk_id: chunk for chunk in new_chunks}
+        identity_path = file_path or (old_chunks[0].file_path if old_chunks else "")
+        new_chunks = chunk_text(new_content, language, file_path=identity_path)
+        old_map = {self._identity_key(chunk): chunk for chunk in old_chunks}
+        new_map = {self._identity_key(chunk): chunk for chunk in new_chunks}
         old_ids = set(old_map.keys())
         new_ids = set(new_map.keys())
         unchanged_ids = old_ids & new_ids

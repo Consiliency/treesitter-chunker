@@ -4,6 +4,7 @@ import logging
 import re
 
 from chunker.fallback.base import FallbackChunker
+from chunker.fallback.offsets import TextPositionIndex
 from chunker.interfaces.fallback import ChunkingMethod, FallbackConfig
 from chunker.interfaces.fallback import MarkdownChunker as IMarkdownChunker
 from chunker.types import CodeChunk
@@ -50,6 +51,7 @@ class MarkdownChunker(FallbackChunker, IMarkdownChunker):
         """
         chunks = []
         lines = content.splitlines(keepends=True)
+        offsets = TextPositionIndex(content)
 
         # Find all headers with their positions
         headers: list[tuple[int, int, str, str]] = (
@@ -94,8 +96,12 @@ class MarkdownChunker(FallbackChunker, IMarkdownChunker):
                 node_type=f"markdown_h{level}",
                 start_line=line_num + 1,
                 end_line=end_line_num,
-                byte_start=sum(len(line) for line in lines[:line_num]),
-                byte_end=sum(len(line) for line in lines[:end_line_num]),
+                byte_start=offsets.byte_offset(
+                    sum(len(line) for line in lines[:line_num])
+                ),
+                byte_end=offsets.byte_offset(
+                    sum(len(line) for line in lines[:end_line_num])
+                ),
                 parent_context=f"h{level}_{text[:30]}",
                 content=chunk_content,
             )
@@ -113,7 +119,7 @@ class MarkdownChunker(FallbackChunker, IMarkdownChunker):
                     start_line=1,
                     end_line=headers[0][0],
                     byte_start=0,
-                    byte_end=len(pre_content),
+                    byte_end=len(pre_content.encode("utf-8")),
                     parent_context="preamble",
                     content=pre_content,
                 )
@@ -143,6 +149,11 @@ class MarkdownChunker(FallbackChunker, IMarkdownChunker):
         """
         chunks = []
         lines = content.splitlines(keepends=True)
+        # Byte offset at the START of each 1-indexed line (COREFIX: markdown
+        # section chunks must carry TRUE byte offsets, not byte_start=0 / char len).
+        _line_byte_starts = [0]
+        for _l in lines:
+            _line_byte_starts.append(_line_byte_starts[-1] + len(_l.encode("utf-8")))
 
         # State tracking
         current_section_lines = []
@@ -169,6 +180,7 @@ class MarkdownChunker(FallbackChunker, IMarkdownChunker):
                             current_start_line,
                             i,
                             current_section_type,
+                            line_byte_starts=_line_byte_starts,
                         )
                         chunks.append(chunk)
 
@@ -193,6 +205,7 @@ class MarkdownChunker(FallbackChunker, IMarkdownChunker):
                             current_start_line,
                             i + 1,
                             current_section_type,
+                            line_byte_starts=_line_byte_starts,
                         )
                         chunks.append(chunk)
 
@@ -218,6 +231,7 @@ class MarkdownChunker(FallbackChunker, IMarkdownChunker):
                         current_start_line,
                         i,
                         current_section_type,
+                            line_byte_starts=_line_byte_starts,
                     )
                     chunks.append(chunk)
 
@@ -243,6 +257,7 @@ class MarkdownChunker(FallbackChunker, IMarkdownChunker):
                             current_start_line,
                             i,
                             current_section_type,
+                            line_byte_starts=_line_byte_starts,
                         )
                         chunks.append(chunk)
 
@@ -276,6 +291,7 @@ class MarkdownChunker(FallbackChunker, IMarkdownChunker):
                                 current_start_line,
                                 i,
                                 current_section_type,
+                            line_byte_starts=_line_byte_starts,
                             )
                             chunks.append(chunk)
 
@@ -296,6 +312,7 @@ class MarkdownChunker(FallbackChunker, IMarkdownChunker):
                             current_start_line,
                             i,
                             current_section_type,
+                            line_byte_starts=_line_byte_starts,
                         )
                         chunks.append(chunk)
 
@@ -316,6 +333,7 @@ class MarkdownChunker(FallbackChunker, IMarkdownChunker):
                 current_start_line,
                 len(lines),
                 current_section_type,
+                line_byte_starts=_line_byte_starts,
             )
             chunks.append(chunk)
 
@@ -331,6 +349,7 @@ class MarkdownChunker(FallbackChunker, IMarkdownChunker):
             List of code block chunks
         """
         chunks = []
+        offsets = TextPositionIndex(content)
 
         # Find all code blocks
         for match in self.code_block_pattern.finditer(content):
@@ -348,8 +367,8 @@ class MarkdownChunker(FallbackChunker, IMarkdownChunker):
                 node_type="code_block",
                 start_line=start_line,
                 end_line=end_line,
-                byte_start=match.start(),
-                byte_end=match.end(),
+                byte_start=offsets.byte_offset(match.start()),
+                byte_end=offsets.byte_offset(match.end()),
                 parent_context=f"code_block_{language}",
                 content=match.group(0),
             )
@@ -363,18 +382,24 @@ class MarkdownChunker(FallbackChunker, IMarkdownChunker):
         start_line: int,
         end_line: int,
         section_type: str,
+        line_byte_starts: list[int] | None = None,
     ) -> CodeChunk:
         """Create a chunk for a markdown section."""
         content = "".join(lines)
-
+        # TRUE byte offsets: byte_start from the line->byte prefix map (0 if the
+        # caller could not supply it), byte_end = byte_start + UTF-8 byte length.
+        if line_byte_starts is not None and 1 <= start_line <= len(line_byte_starts):
+            byte_start = line_byte_starts[start_line - 1]
+        else:
+            byte_start = 0
         return CodeChunk(
             language="markdown",
             file_path=self.file_path or "",
             node_type=f"markdown_{section_type}",
             start_line=start_line,
             end_line=end_line,
-            byte_start=0,  # Would need full content to calculate
-            byte_end=len(content),
+            byte_start=byte_start,
+            byte_end=byte_start + len(content.encode("utf-8")),
             parent_context=section_type,
             content=content,
         )

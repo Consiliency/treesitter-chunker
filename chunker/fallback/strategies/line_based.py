@@ -4,6 +4,7 @@ import logging
 import re
 
 from chunker.fallback.base import FallbackChunker
+from chunker.fallback.offsets import TextPositionIndex
 from chunker.interfaces.fallback import ChunkingMethod, FallbackConfig
 from chunker.types import CodeChunk
 
@@ -51,6 +52,7 @@ class LineBasedChunker(FallbackChunker):
             List of chunks
         """
         lines = content.splitlines(keepends=True)
+        offsets = TextPositionIndex(content)
         if not lines:
             return []
         chunks = []
@@ -75,8 +77,10 @@ class LineBasedChunker(FallbackChunker):
                 node_type="csv_chunk",
                 start_line=start_line,
                 end_line=end_line,
-                byte_start=sum(len(line) for line in lines[:i]),
-                byte_end=sum(len(line) for line in lines[:chunk_end]),
+                byte_start=offsets.byte_offset(sum(len(line) for line in lines[:i])),
+                byte_end=offsets.byte_offset(
+                    sum(len(line) for line in lines[:chunk_end])
+                ),
                 parent_context=f"csv_rows_{start_line}_{end_line}",
                 content=chunk_content,
             )
@@ -124,6 +128,7 @@ class LineBasedChunker(FallbackChunker):
             List of chunks
         """
         lines = content.splitlines(keepends=True)
+        offsets = TextPositionIndex(content)
         chunks = []
         current_chunk = []
         current_bytes = 0
@@ -144,10 +149,14 @@ class LineBasedChunker(FallbackChunker):
                     node_type="adaptive_chunk",
                     start_line=current_start,
                     end_line=current_start + len(current_chunk) - 1,
-                    byte_start=sum(len(line) for line in lines[: current_start - 1]),
-                    byte_end=sum(
-                        len(line)
-                        for line in lines[: current_start - 1 + len(current_chunk)]
+                    byte_start=offsets.byte_offset(
+                        sum(len(line) for line in lines[: current_start - 1])
+                    ),
+                    byte_end=offsets.byte_offset(
+                        sum(
+                            len(line)
+                            for line in lines[: current_start - 1 + len(current_chunk)]
+                        )
                     ),
                     parent_context=f"adaptive_{current_start}",
                     content=chunk_content,
@@ -166,8 +175,10 @@ class LineBasedChunker(FallbackChunker):
                 node_type="adaptive_chunk",
                 start_line=current_start,
                 end_line=len(lines),
-                byte_start=sum(len(line) for line in lines[: current_start - 1]),
-                byte_end=len(content),
+                byte_start=offsets.byte_offset(
+                    sum(len(line) for line in lines[: current_start - 1])
+                ),
+                byte_end=len(content.encode("utf-8")),
                 parent_context=f"adaptive_{current_start}",
                 content=chunk_content,
             )

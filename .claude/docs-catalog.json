@@ -5,7 +5,8 @@
     "GATES",
     "PARSER",
     "BOUNDARYFIX",
-    "IDENTITY"
+    "IDENTITY",
+    "COREFIX"
   ],
-  "refresh_note": "scaffold_docs_catalog.py is unavailable; IDENTITY updated this catalog manually"
+  "refresh_note": "scaffold_docs_catalog.py is unavailable; COREFIX updated this catalog manually"
 }
