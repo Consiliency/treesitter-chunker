@@ -114,7 +114,7 @@
       "acceptance_criteria_count": null,
       "created_at": "2026-07-11T06:31:55Z",
       "file": "plans/phase-plan-v2-HYGIENE.md",
-      "handoff_ref": ".dev-skills/handoffs/codex-plan-phase/20260711T063155Z-hygiene-plan.md",
+      "handoff_ref": ".dev-skills/handoffs/codex-plan-phase/20260711T064515Z-hygiene-plan.md",
       "if_gates_produced": [
         "IF-0-HYGIENE-1"
       ],
@@ -130,7 +130,7 @@
       "lifecycle": [],
       "owner_skill": "codex-plan-phase",
       "phase_alias": "HYGIENE",
-      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-phase/reflections/656e829d/remediation-v3.2.2-review/20260711T063155Z-hygiene-plan.md",
+      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-phase/reflections/656e829d/remediation-v3.2.2-review/20260711T064515Z-hygiene-plan.md",
       "roadmap_ref": {
         "file": "specs/phase-plans-v2.md",
         "slug": "phase-plans-v2",
@@ -141,7 +141,7 @@
       "status": "committed",
       "task_summary": null,
       "type": "phase",
-      "updated_at": "2026-07-11T06:31:55Z"
+      "updated_at": "2026-07-11T06:45:15Z"
     },
     {
       "acceptance_criteria_count": null,

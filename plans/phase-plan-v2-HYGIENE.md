@@ -2,7 +2,7 @@
 phase_loop_plan_version: 1
 phase: HYGIENE
 roadmap: specs/phase-plans-v2.md
-roadmap_sha256: 7c65fd87539e4b7a1bcb4b7130033faa85b6c6c0ff23dd988569b16c811a2b57
+roadmap_sha256: 4f31561d0d33504f8a3c2f88316b4c6e9d55af2cfe3e5a627ef0f3de75a010d1
 ---
 
 # HYGIENE: Surface Reduction & Dead-Code Removal
