@@ -169,6 +169,7 @@ Make the CI signal real: run the full/tiered suite, enforce lint correctness and
 **Scope notes**
 - Decompose into 5 lanes: (a) CI workflow tiering + wire canon/spec_tests; (b) ruff F-rule un-ignore + cleanup (relies on HYGIENE deletions); (c) mypy blocking + triage; (d) pin-derivation helper + conformance/regenerate wiring + drift test + xfall-cap inventory; (e) workflow security hardening (perms, SHA pins, dispatch injection).
 - HYGIENE owns and retires the 21 legacy tests with 49 direct imports across `integration`, `error_handling`, `extractors`, `devenv`, `distribution`, `cicd`, and `monitoring`. GATES consumes that completed disposition when setting the full-suite baseline; it must not reintroduce obsolete coverage or hide it behind untracked xfails.
+- Documentation sweep: after HYGIENE's final disposition is available, update or retire supported documentation that imports removed phase-scaffolding packages, beginning with `docs/final-integration-testing.md`; remove obsolete legacy-test commands from `docs/development/RELEASE_CHECKLIST.md`. Prove supported docs contain no imports of a deleted HYGIENE package.
 - Parallelism: publish `resolve_pack_pin()` signature day-1. Lanes (a) and (e) both edit `.github/workflows/*` — assign lane (a) to own the workflow files; lane (e) hands it the security delta (they are now in ONE phase, so no cross-phase collision with SUPPLY).
 - Single-writer file: `pyproject.toml` (lanes b and d) — lane (d) owns it.
 
@@ -184,6 +185,8 @@ Make the CI signal real: run the full/tiered suite, enforce lint correctness and
 - `pyproject.toml`
 - `tests/boundary_ir_conformance.py`
 - `scripts/regenerate_boundary_goldens.py`
+- `docs/final-integration-testing.md`
+- `docs/development/RELEASE_CHECKLIST.md`
 
 **Depends on**
 - HYGIENE

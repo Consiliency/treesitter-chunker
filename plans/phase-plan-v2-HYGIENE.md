@@ -102,7 +102,7 @@ SL-7 — Phase verification, documentation sweep, and interface-freeze reducer
 ### SL-3 — Remove integration and error-handling scaffolding
 
 - **Scope**: Delete `integration/` and the top-level `error_handling/` after SL-1 severs their live edges, retaining `_internal/error_handling.py`, and retire three legacy tests.
-- **Owned files**: `chunker/integration/**`, `chunker/error_handling/**`, `tests/test_core_integration.py`, `tests/test_phase3_integration.py`, `tests/test_security.py`
+- **Owned files**: `chunker/integration/**`, `chunker/error_handling/**`, `tests/test_core_integration.py`, `tests/test_phase3_integration.py`, `tests/test_security.py`, `examples/final_integration_testing_demo.py`, `examples/core_integration_demo.py`, `docs/final-integration-testing.md`
 - **Interfaces provided**: integration/error-handling deletion or audit-recorded quarantine disposition
 - **Interfaces consumed**: `HYGIENE_REACHABILITY_V1`
 - **Parallel-safe**: yes
@@ -114,7 +114,7 @@ SL-7 — Phase verification, documentation sweep, and interface-freeze reducer
 ### SL-4 — Remove deployment, development, distribution, CI/CD, and monitoring scaffolding
 
 - **Scope**: Delete the five audited scaffolding subpackages after the contracts edge is severed and retire their eleven legacy tests.
-- **Owned files**: `chunker/deployment/**`, `chunker/devenv/**`, `chunker/distribution/**`, `chunker/cicd/**`, `chunker/monitoring/**`, `tests/test_cicd_pipeline.py`, `tests/test_workflow_validator.py`, `tests/test_devenv_integration.py`, `tests/unit/test_devenv.py`, `tests/test_distribution_impl.py`, `tests/unit/distribution/**`, `tests/test_observability_system.py`
+- **Owned files**: `chunker/deployment/**`, `chunker/devenv/**`, `chunker/distribution/**`, `chunker/cicd/**`, `chunker/monitoring/**`, `tests/test_cicd_pipeline.py`, `tests/test_workflow_validator.py`, `tests/test_devenv_integration.py`, `tests/unit/test_devenv.py`, `tests/test_distribution_impl.py`, `tests/unit/distribution/**`, `tests/test_observability_system.py`, `examples/devenv_demo.py`, `examples/monitoring_demo.py`
 - **Interfaces provided**: deployment/devenv/distribution/cicd/monitoring deletion or audit-recorded quarantine disposition
 - **Interfaces consumed**: `HYGIENE_REACHABILITY_V1`
 - **Parallel-safe**: yes
@@ -125,14 +125,14 @@ SL-7 — Phase verification, documentation sweep, and interface-freeze reducer
 
 ### SL-5 — Deduplicate PluginConfig and prune unused exceptions
 
-- **Scope**: Make `languages.base.PluginConfig` the single class identity and remove only the six exception classes proven never raised or caught by the audit.
+- **Scope**: Make `languages.base.PluginConfig` the single class identity and remove only the FOUR exception classes proven never raised or caught by the audit (`LibrarySymbolError`, `CacheError`, `CacheCorruptionError`, `CacheVersionError`). `LanguageLoadError` and `ParsingError` are live production code (raised/caught in `chunker/`) and are retained; the original review's six-class claim was wrong on those two.
 - **Owned files**: `chunker/languages/base.py`, `chunker/languages/plugin_base.py`, `chunker/exceptions.py`, `tests/test_pluginconfig_single.py`, `tests/test_exceptions.py`, `tests/test_cross_module_errors.py`
 - **Interfaces provided**: one `PluginConfig` identity shared by base and plugin APIs
 - **Interfaces consumed**: language plugin API (pre-existing)
 - **Parallel-safe**: yes
 - **Tasks**:
-  - test: Add `tests/test_pluginconfig_single.py` to assert both import paths expose the same class and the six audited exception symbols are absent.
-  - impl: Import `PluginConfig` from `languages.base` in `plugin_base.py`; delete only the audit-confirmed unused exception definitions; and update the two surviving tests that reference them (`tests/test_exceptions.py` drops `LanguageLoadError`/`LibrarySymbolError` cases; `tests/test_cross_module_errors.py` drops the `CacheError` case) so the full suite stays green.
+  - test: Add `tests/test_pluginconfig_single.py` to assert both import paths expose the same class and the four audited dead exception symbols are absent while `LanguageLoadError`/`ParsingError` remain importable.
+  - impl: Import `PluginConfig` from `languages.base` in `plugin_base.py`; delete only the four audit-confirmed dead exception definitions (keep `LanguageLoadError`, `ParsingError`); and update the two surviving tests that reference the removed symbols (`tests/test_exceptions.py` drops the `LibrarySymbolError` case but keeps `LanguageLoadError`; `tests/test_cross_module_errors.py` drops the `CacheError` case) so the full suite stays green.
   - verify: `uv run --with toml --all-extras python -m pytest tests/test_pluginconfig_single.py tests/test_exceptions.py tests/test_cross_module_errors.py -q`.
 
 ### SL-6 — Remove root cruft and generated package metadata
@@ -186,7 +186,7 @@ test -z "$(git ls-files 'treesitter_chunker.egg-info/**' 'ide/**/node_modules/**
 - [ ] `plans/hygiene-reachability-audit.txt` records static imports, dynamic imports, legacy-test disposition, and retained/quarantined/deleted status for every candidate package, as asserted by `tests/test_hygiene_reachability.py`.
 - [ ] The three known false-reachability edges are absent, while `chunker`, `chunker.contracts`, and `chunker._internal.error_handling` import successfully.
 - [ ] `uv run --with toml --all-extras python -m pytest tests/test_hygiene_reachability.py -q` proves every package cleared for deletion and its legacy tests are absent; any package not cleared is explicitly quarantined in the audit.
-- [ ] `languages.base.PluginConfig is languages.plugin_base.PluginConfig`, and only the six audit-confirmed unused exception classes are removed.
+- [ ] `languages.base.PluginConfig is languages.plugin_base.PluginConfig`, and only the four audit-confirmed dead exception classes are removed (`LanguageLoadError`, `ParsingError` retained).
 - [ ] No roadmap-named cruft, generated egg-info, or IDE `node_modules` path remains tracked, and durable ignore rules cover regenerated artifacts.
 - [ ] The targeted HYGIENE contracts, full local pytest suite, ruff check, and black check all pass.
 - [ ] SL-7 lists IF-0-HYGIENE-1 in closeout only after `automation.suite_command` passes and `plans/hygiene-reachability-audit.txt` matches the final tree.
