@@ -227,9 +227,15 @@ class FallbackChunker(IFallbackChunker):
                 chunk_content = part + delimiter
             else:
                 chunk_content = part
+            # A delimiter separates parts, so it consumes source length even when
+            # excluded from the chunk content — advance past it or every chunk
+            # after the first drifts by len(delimiter) (COREFIX true byte offsets).
+            delimiter_span = (
+                0 if (include_delimiter or i == len(parts) - 1) else len(delimiter)
+            )
             if not chunk_content.strip():
-                current_offset += len(chunk_content)
-                current_line += chunk_content.count("\n")
+                current_offset += len(chunk_content) + delimiter_span
+                current_line += chunk_content.count("\n") + delimiter.count("\n")
                 continue
             start_line = current_line
             end_line = start_line + chunk_content.count("\n")
@@ -245,7 +251,7 @@ class FallbackChunker(IFallbackChunker):
                 content=chunk_content,
             )
             chunks.append(chunk)
-            current_offset += len(chunk_content)
+            current_offset += len(chunk_content) + delimiter_span
             current_line = end_line + 1
         return chunks
 

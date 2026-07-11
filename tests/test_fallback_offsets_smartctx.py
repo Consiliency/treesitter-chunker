@@ -98,3 +98,24 @@ def test_smart_context_memoizes_features():
                 prov.get_semantic_context(c)
     # Without memoization this would be O(n^2) ~ 36+; memoized it is O(n) ~ <= len(chunks)+few.
     assert calls["n"] <= len(chunks) + 2, f"features extracted {calls['n']}x (not memoized)"
+
+
+def test_candidate_subset_is_bounded_at_scale():
+    """The similarity scan is bounded to O(n * cap), not O(n^2).
+
+    With all-unique identifiers every query falls through to the bounded
+    fallback, which is capped at _MAX_CONTEXT_CANDIDATES. Above the cap the
+    total candidate-comparisons must stay <= n * cap (was n*(n-1) all-pairs).
+    """
+    prov = TreeSitterSmartContextProvider()
+    cap = prov._MAX_CONTEXT_CANDIDATES
+    n = cap * 3
+    chunks = [
+        _chunk(f"c{i}", f"def fn{i}():\n    return unique_{i}\n") for i in range(n)
+    ]
+    total = sum(
+        len(prov._candidate_subset(c, prov._features_for(c), chunks)) for c in chunks
+    )
+    assert total <= n * cap, f"unbounded: {total} > {n * cap}"
+    # And it is a genuine reduction vs the former all-pairs pass.
+    assert total < n * (n - 1)

@@ -62,8 +62,13 @@ class TreeSitterSmartContextProvider(SmartContextProvider):
         """
         chunk_features = self._features_for(chunk)
         file_chunks = self._get_file_chunks(chunk.file_path, chunk.language)
+        # BOUNDED candidate selection (COREFIX): instead of comparing against every
+        # chunk in the file (O(n^2) across requests), use an inverted identifier
+        # index to consider only candidates that share >= 1 identifier with the
+        # query, capped at _MAX_CONTEXT_CANDIDATES.
+        candidates = self._candidate_subset(chunk, chunk_features, file_chunks)
         similar_chunks = []
-        for candidate in file_chunks:
+        for candidate in candidates:
             if candidate.chunk_id == chunk.chunk_id:
                 continue
             candidate_features = self._features_for(candidate)
@@ -293,6 +298,52 @@ class TreeSitterSmartContextProvider(SmartContextProvider):
         )
         digest = hashlib.sha256("\0".join(identities).encode("utf-8")).hexdigest()[:16]
         return f"{context_type}:{digest}"
+
+    _MAX_CONTEXT_CANDIDATES = 200
+
+    def _candidate_subset(self, chunk, chunk_features, file_chunks):
+        """Return a BOUNDED candidate set sharing an identifier with the query.
+
+        Uses an inverted identifier index (identifier -> chunks) so the similarity
+        scan considers only candidates that share >= 1 identifier, capped at
+        _MAX_CONTEXT_CANDIDATES — bounding the former O(n^2) all-pairs pass (COREFIX).
+        """
+        index = self._identifier_index(chunk.file_path, chunk.language, file_chunks)
+        query_ids = chunk_features.get("identifiers") or set()
+        seen: dict[Any, Any] = {}
+        for ident in query_ids:
+            for cand in index.get(ident, ()):
+                if cand.chunk_id != chunk.chunk_id:
+                    seen[cand.chunk_id or id(cand)] = cand
+                    if len(seen) >= self._MAX_CONTEXT_CANDIDATES:
+                        return list(seen.values())
+        if seen:
+            return list(seen.values())
+        return [c for c in file_chunks if c.chunk_id != chunk.chunk_id][
+            : self._MAX_CONTEXT_CANDIDATES
+        ]
+
+    def _identifier_index(self, file_path, language, file_chunks):
+        key = f"{file_path}|{language}|{len(file_chunks)}"
+        cache = getattr(self, "_ident_index_cache", None)
+        if cache is None:
+            cache = {}
+            self._ident_index_cache = cache
+        idx = cache.get(key)
+        if idx is None:
+            idx = {}
+            for cand in file_chunks:
+                feats = self._features_for(cand)
+                # Index only DISCRIMINATIVE identifiers: drop language keywords and
+                # ubiquitous short tokens so common words (def/return/self/...) don't
+                # make every chunk a candidate for every query (keeps the pass bounded).
+                keywords = feats.get("keywords") or set()
+                for ident in feats.get("identifiers") or set():
+                    if ident in keywords or len(ident) <= 2:
+                        continue
+                    idx.setdefault(ident, []).append(cand)
+            cache[key] = idx
+        return idx
 
     def _features_for(self, chunk: CodeChunk) -> dict[str, Any]:
         """Return cached semantic features for a chunk (computed once per chunk_id)."""

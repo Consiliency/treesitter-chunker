@@ -237,10 +237,13 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
                 and current_part != class_header_lines
             ):
                 chunk_content = "\n".join(current_part)
+                _method_lines = current_part[len(class_header_lines):]
+                _anchor = "\n".join(_method_lines) if _method_lines else None
                 new_chunk = self._create_sub_chunk(
                     chunk,
                     chunk_content,
                     len(chunks),
+                    anchor=_anchor,
                 )
                 chunks.append(new_chunk)
                 current_part = class_header_lines.copy()
@@ -249,10 +252,13 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
             current_tokens += method_tokens
         if current_part and current_part != class_header_lines:
             chunk_content = "\n".join(current_part)
+            _method_lines = current_part[len(class_header_lines):]
+            _anchor = "\n".join(_method_lines) if _method_lines else None
             new_chunk = self._create_sub_chunk(
                 chunk,
                 chunk_content,
                 len(chunks),
+                anchor=_anchor,
             )
             chunks.append(new_chunk)
         return chunks if chunks else [chunk]
@@ -270,9 +276,14 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
             model,
         )
         chunks = []
+        search_from = 0
         for i, part in enumerate(text_parts):
-            new_chunk = self._create_sub_chunk(chunk, part, i)
+            new_chunk = self._create_sub_chunk(chunk, part, i, search_from=search_from)
             chunks.append(new_chunk)
+            # Advance the search cursor past this part so a repeated part maps to
+            # its OWN occurrence, not the first (COREFIX token-offset fix).
+            found = chunk.content.find(part, search_from)
+            search_from = (found + len(part)) if found >= 0 else search_from + len(part)
         return chunks
 
     def _create_sub_chunk(
@@ -280,9 +291,22 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
         original_chunk: CodeChunk,
         content: str,
         index: int,
+        search_from: int = 0,
+        anchor: str | None = None,
     ) -> CodeChunk:
-        """Create a sub-chunk from an original chunk."""
-        content_offset = max(original_chunk.content.find(content), 0)
+        """Create a sub-chunk from an original chunk.
+
+        ``search_from`` locates ``content`` STARTING at a running position so
+        repeated parts do not all collapse to the first occurrence (COREFIX).
+        ``anchor`` is the substring to locate when ``content`` itself is not a
+        contiguous slice of the original (e.g. a class split that prepends the
+        header): the byte offset then anchors to the anchor's real position.
+        """
+        needle = anchor if anchor is not None else content
+        found = original_chunk.content.find(needle, search_from)
+        content_offset = found if found >= 0 else max(
+            original_chunk.content.find(needle), 0
+        )
         start_offset = original_chunk.content[:content_offset].count("\n")
         new_lines = content.split("\n")
         byte_offset = len(original_chunk.content[:content_offset].encode("utf-8"))
