@@ -2,6 +2,7 @@
 
 import json
 import os
+import threading
 import time
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -111,12 +112,21 @@ class RepoProcessor(RepoProcessorInterface):
         if incremental and hasattr(self, "get_changed_files"):
             state = self.load_incremental_state(str(repo_path))
             if state and "last_commit" in state:
-                changed_files = self.get_changed_files(
-                    str(repo_path),
-                    since_commit=state["last_commit"],
-                )
-                changed_paths = {(repo_path / f) for f in changed_files}
-                files_to_process = [f for f in files_to_process if f in changed_paths]
+                try:
+                    changed_files = self.get_changed_files(
+                        str(repo_path),
+                        since_commit=state["last_commit"],
+                    )
+                except (self.git.BadName, ValueError):
+                    # Stale/nonexistent last_commit: a rewritten-away SHA raises
+                    # ValueError while a vanished ref name raises BadName. Either
+                    # way, fall back to a full scan instead of crashing.
+                    changed_files = None
+                if changed_files is not None:
+                    changed_paths = {(repo_path / f) for f in changed_files}
+                    files_to_process = [
+                        f for f in files_to_process if f in changed_paths
+                    ]
         # Process files in parallel
         processing_result = self._process_files_parallel(
             files_to_process,
@@ -130,15 +140,22 @@ class RepoProcessor(RepoProcessorInterface):
         total_chunks = processing_result["total_chunks"]
         if incremental and hasattr(self, "save_incremental_state"):
             try:
-                repo = self.git.Repo(repo_path)
-                state = {
-                    "last_commit": repo.head.commit.hexsha,
-                    "processed_at": datetime.now().isoformat(),
-                    "total_files": len(file_results),
-                    "total_chunks": total_chunks,
-                }
+                # Use a context manager so the underlying git resources are
+                # released instead of leaking a Repo handle per invocation.
+                with self.git.Repo(repo_path) as repo:
+                    state = {
+                        "last_commit": repo.head.commit.hexsha,
+                        "processed_at": datetime.now().isoformat(),
+                        "total_files": len(file_results),
+                        "total_chunks": total_chunks,
+                    }
                 self.save_incremental_state(str(repo_path), state)
-            except (AttributeError, FileNotFoundError, OSError):
+            except (
+                AttributeError,
+                FileNotFoundError,
+                OSError,
+                self.git.InvalidGitRepositoryError,
+            ):
                 pass
         processing_time = time.time() - start_time
         return RepoChunkResult(
@@ -357,6 +374,9 @@ class RepoProcessor(RepoProcessorInterface):
             )
             if isinstance(content, FileChunkResult):
                 return content
+            # Chunking (and thus parser acquisition) is delegated to the Chunker
+            # adapter, which routes through the frozen thread-local get_parser
+            # API; this processor never caches a shared Parser itself.
             chunks = self.chunker.chunk(content, language=language)
             for chunk in chunks:
                 if not chunk.metadata:
@@ -539,27 +559,30 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
             List of changed file paths relative to repo root
         """
         try:
-            repo = self.git.Repo(repo_path)
-            if branch:
-                diff = repo.head.commit.diff(branch)
-            elif since_commit:
-                diff = repo.commit(since_commit).diff(repo.head.commit)
-            elif repo.head.is_valid():
-                try:
-                    # Check if HEAD~1 exists
-                    repo.commit("HEAD~1")
-                    diff = repo.head.commit.diff("HEAD~1")
-                except (self.git.BadName, self.git.GitCommandError):
-                    # No previous commit (initial commit scenario)
+            # One Repo per call, released via the context manager, rather than
+            # a leaked handle. BadName from an unknown ``since_commit`` is left
+            # to propagate so callers can fall back to a full scan.
+            with self.git.Repo(repo_path) as repo:
+                if branch:
+                    diff = repo.head.commit.diff(branch)
+                elif since_commit:
+                    diff = repo.commit(since_commit).diff(repo.head.commit)
+                elif repo.head.is_valid():
+                    try:
+                        # Check if HEAD~1 exists
+                        repo.commit("HEAD~1")
+                        diff = repo.head.commit.diff("HEAD~1")
+                    except (self.git.BadName, self.git.GitCommandError):
+                        # No previous commit (initial commit scenario)
+                        return []
+                else:
                     return []
-            else:
-                return []
-            changed_files = []
-            for item in diff:
-                path = item.b_path if item.b_path else item.a_path
-                if path and Path(repo_path, path).exists():
-                    changed_files.append(path)
-            return changed_files
+                changed_files = []
+                for item in diff:
+                    path = item.b_path if item.b_path else item.a_path
+                    if path and Path(repo_path, path).exists():
+                        changed_files.append(path)
+                return changed_files
         except self.git.InvalidGitRepositoryError:
             # Not a git repository, return empty list
             return []
@@ -578,18 +601,17 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
             True if file should be processed
         """
         try:
-            repo = self.git.Repo(repo_path)
-            try:
-                repo.git.check_ignore(file_path)
-                return False
-            except self.git.GitCommandError:
-                pass
-            rel_path = Path(file_path).relative_to(repo_path)
-            tracked_files = {path for path, stage in repo.index.entries.keys()}
-            if str(rel_path) not in tracked_files:
-                untracked = repo.untracked_files
-                return str(rel_path) in untracked
-            return True
+            with self.git.Repo(repo_path) as repo:
+                try:
+                    repo.git.check_ignore(file_path)
+                    return False
+                except self.git.GitCommandError:
+                    pass
+                rel_path = Path(file_path).relative_to(repo_path)
+                tracked_files = {path for path, _stage in repo.index.entries.keys()}
+                if str(rel_path) not in tracked_files:
+                    return str(rel_path) in repo.untracked_files
+                return True
         except (FileNotFoundError, IndexError, KeyError):
             return True
 
@@ -611,9 +633,9 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
             List of commit info dicts with hash, author, date, message
         """
         try:
-            repo = self.git.Repo(repo_path)
-            rel_path = Path(file_path).relative_to(repo_path)
-            commits = list(repo.iter_commits(paths=str(rel_path), max_count=limit))
+            with self.git.Repo(repo_path) as repo:
+                rel_path = Path(file_path).relative_to(repo_path)
+                commits = list(repo.iter_commits(paths=str(rel_path), max_count=limit))
             history = [
                 {
                     "hash": commit.hexsha,
@@ -654,18 +676,18 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
     def _get_global_excludes_path(self, repo_path: str) -> Path | None:
         """Get the path to the global excludes file."""
         try:
-            repo = self.git.Repo(repo_path)
-            # Check if repository is bare
-            if repo.bare:
-                return None
-            config_reader = repo.config_reader()
-            try:
-                excludes_file = config_reader.get_value("core", "excludesfile")
-                if excludes_file:
-                    return Path(excludes_file).expanduser()
-            except (KeyError, AttributeError, NoOptionError):
-                # No excludesfile configured, which is normal
-                pass
+            with self.git.Repo(repo_path) as repo:
+                # Check if repository is bare
+                if repo.bare:
+                    return None
+                config_reader = repo.config_reader()
+                try:
+                    excludes_file = config_reader.get_value("core", "excludesfile")
+                    if excludes_file:
+                        return Path(excludes_file).expanduser()
+                except (KeyError, AttributeError, NoOptionError):
+                    # No excludesfile configured, which is normal
+                    pass
         except (
             OSError,
             FileNotFoundError,
@@ -731,30 +753,29 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
             List of file paths
         """
         files = super().get_processable_files(repo_path, file_pattern, exclude_patterns)
+        resolved_root = Path(repo_path).resolve()
         try:
-            repo = self.git.Repo(repo_path)
-            # Check if repository is bare
-            if repo.bare:
-                from chunker.exceptions import ChunkerError
-
-                raise ChunkerError(
-                    f"Cannot process bare repository: {repo_path}. "
-                    "Bare repositories have no working tree to process.",
-                )
-            gitignore_patterns = self.load_gitignore_patterns(repo_path)
-            if gitignore_patterns:
-                gitignore_spec = pathspec.PathSpec.from_lines(
-                    "gitwildmatch",
-                    gitignore_patterns,
-                )
-                filtered_files = []
-                for file_path in files:
-                    rel_path = file_path.relative_to(repo_path)
-                    if not gitignore_spec.match_file(
-                        str(rel_path),
-                    ) and self.should_process_file(str(file_path), repo_path):
-                        filtered_files.append(file_path)
-                return filtered_files
+            # One Repo for the whole batch (released via the context manager),
+            # rather than a fresh git.Repo per file.
+            with self.git.Repo(repo_path) as repo:
+                # Check if repository is bare
+                if repo.bare:
+                    raise ChunkerError(
+                        f"Cannot process bare repository: {repo_path}. "
+                        "Bare repositories have no working tree to process.",
+                    )
+                gitignore_patterns = self.load_gitignore_patterns(repo_path)
+                if gitignore_patterns:
+                    gitignore_spec = pathspec.PathSpec.from_lines(
+                        "gitwildmatch",
+                        gitignore_patterns,
+                    )
+                    return self._filter_tracked_files(
+                        repo,
+                        resolved_root,
+                        files,
+                        gitignore_spec,
+                    )
         except (
             FileNotFoundError,
             IndexError,
@@ -764,20 +785,65 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
             pass
         return files
 
+    def _filter_tracked_files(
+        self,
+        repo,
+        resolved_root: Path,
+        files: list[Path],
+        gitignore_spec: pathspec.PathSpec,
+    ) -> list[Path]:
+        """Filter ``files`` down to tracked/untracked, non-ignored paths.
+
+        The git-ignore membership is resolved with a *single* batched
+        ``git check-ignore`` invocation (``Repo.ignored``) for the whole file
+        set instead of spawning one ``check-ignore`` subprocess per file.
+        """
+        rel_paths = [str(f.relative_to(resolved_root)) for f in files]
+
+        ignored: set[str] = set()
+        if rel_paths:
+            try:
+                # Repo.ignored issues exactly one `git check-ignore` subprocess.
+                ignored = set(repo.ignored(*rel_paths))
+            except self.git.GitCommandError:
+                ignored = set()
+
+        tracked = {path for path, _stage in repo.index.entries.keys()}
+        untracked = set(repo.untracked_files)
+
+        filtered: list[Path] = []
+        for file_path, rel_path in zip(files, rel_paths, strict=False):
+            if gitignore_spec.match_file(rel_path):
+                continue
+            if rel_path in ignored:
+                continue
+            if rel_path in tracked or rel_path in untracked:
+                filtered.append(file_path)
+        return filtered
+
     def watch_repository(
         self,
         repo_path: str,
         on_update,
         poll_interval: float = 1.0,
+        stop_event: threading.Event | None = None,
+        max_iterations: int | None = None,
     ) -> None:
         """
         Watch a repository for changes and emit deltas via callback.
 
         on_update signature: (deltas: dict) -> None
         deltas keys: nodes_added, nodes_updated, nodes_removed, edges, spans
-        """
-        from time import sleep
 
+        The loop is bounded so it never spins unattended:
+
+        * ``stop_event`` — when supplied, the loop checks it before each poll
+          and uses it as an interruptible sleep, so callers can stop the watch
+          cleanly from another thread.
+        * ``max_iterations`` — hard cap on the number of poll iterations.
+        * A non-git ``repo_path`` has no commit cursor to advance, so it is
+          scanned exactly once rather than being busy-looped forever.
+        """
         repo_root = Path(repo_path).resolve()
         if not repo_root.exists():
             raise ChunkerError(f"Repository path does not exist: {repo_root}")
@@ -791,98 +857,135 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
             repo = None
 
         known_ids: set[str] = set()
-        while True:
-            changed_files: list[str] = []
-            if repo:
+        iterations = 0
+        try:
+            while True:
+                if stop_event is not None and stop_event.is_set():
+                    break
+
+                changed_files = self._collect_watch_changes(repo, repo_root, last_commit)
+                deltas = self._build_watch_deltas(repo_root, changed_files, known_ids)
                 try:
-                    if last_commit:
-                        changed_files = self.get_changed_files(
-                            str(repo_root),
-                            since_commit=last_commit,
-                        )
-                    else:
-                        # first run, process all
-                        changed_files = [
-                            str(p.relative_to(repo_root))
-                            for p in self.get_processable_files(str(repo_root))
-                        ]
+                    on_update(deltas)
                 except Exception:
-                    changed_files = []
-            else:
-                # Fallback: process all files on first loop
-                changed_files = [
+                    pass
+
+                # Update last_commit cursor.
+                try:
+                    if repo and repo.head.is_valid():
+                        last_commit = repo.head.commit.hexsha
+                        self.save_incremental_state(
+                            str(repo_root),
+                            {"last_commit": last_commit},
+                        )
+                except Exception:
+                    pass
+
+                iterations += 1
+                if max_iterations is not None and iterations >= max_iterations:
+                    break
+                if repo is None:
+                    # Non-git directory: nothing to poll for incrementally, so
+                    # do not busy-loop — one scan is all we can do.
+                    break
+                if stop_event is not None:
+                    # Interruptible sleep; returns True as soon as it is set.
+                    if stop_event.wait(poll_interval):
+                        break
+                else:
+                    from time import sleep
+
+                    sleep(poll_interval)
+        finally:
+            if repo is not None:
+                repo.close()
+
+    def _collect_watch_changes(
+        self,
+        repo,
+        repo_root: Path,
+        last_commit: str | None,
+    ) -> list[str]:
+        """Return the relative paths to (re)chunk for one watch iteration."""
+        if repo is not None:
+            try:
+                if last_commit:
+                    return self.get_changed_files(
+                        str(repo_root),
+                        since_commit=last_commit,
+                    )
+                # First run against a git repo: process everything.
+                return [
                     str(p.relative_to(repo_root))
                     for p in self.get_processable_files(str(repo_root))
                 ]
+            except Exception:
+                return []
+        # Non-git directory fallback: process all files.
+        return [
+            str(p.relative_to(repo_root))
+            for p in self.get_processable_files(str(repo_root))
+        ]
 
-            # Build deltas
-            nodes_added: list[dict] = []
-            nodes_updated: list[dict] = []
-            nodes_removed: list[str] = []
-            all_chunks = []
-            for rel in changed_files:
-                path = repo_root / rel
-                ext = path.suffix.lower()
-                language = self._language_extensions.get(ext)
-                if not language or not path.exists():
-                    continue
-                try:
-                    content = path.read_text(encoding="utf-8")
-                except Exception:
-                    continue
-                from chunker.core import chunk_text
+    def _build_watch_deltas(
+        self,
+        repo_root: Path,
+        changed_files: list[str],
+        known_ids: set[str],
+    ) -> dict[str, Any]:
+        """Chunk the changed files and assemble the delta payload."""
+        from chunker.core import chunk_text
+        from chunker.graph.xref import build_xref
 
-                chunks = chunk_text(content, language, str(path))
-                all_chunks.extend(chunks)
-                for c in chunks:
-                    node = {
-                        "id": c.node_id or c.chunk_id,
-                        "file": c.file_path,
-                        "lang": c.language,
-                        "symbol": c.symbol_id,
-                        "kind": c.node_type,
-                        "attrs": c.metadata or {},
-                    }
-                    if node["id"] in known_ids:
-                        nodes_updated.append(node)
-                    else:
-                        nodes_added.append(node)
-                        known_ids.add(node["id"])
-
-            from chunker.graph.xref import build_xref
-
-            _nodes, edges = build_xref(all_chunks)
-            spans = [
-                {
-                    "file_id": getattr(c, "file_id", ""),
-                    "symbol_id": getattr(c, "symbol_id", None),
-                    "start_byte": getattr(c, "byte_start", 0),
-                    "end_byte": getattr(c, "byte_end", 0),
+        nodes_added: list[dict] = []
+        nodes_updated: list[dict] = []
+        nodes_removed: list[str] = []
+        all_chunks = []
+        for rel in changed_files:
+            path = repo_root / rel
+            ext = path.suffix.lower()
+            language = self._language_extensions.get(ext)
+            if not language or not path.exists():
+                continue
+            try:
+                content = path.read_text(encoding="utf-8")
+            except Exception:
+                continue
+            # Parsing is delegated to chunk_text, which acquires parsers through
+            # the frozen thread-local ``get_parser`` API (chunker.parser); this
+            # module never holds a shared cached Parser of its own.
+            chunks = chunk_text(content, language, str(path))
+            all_chunks.extend(chunks)
+            for c in chunks:
+                node = {
+                    "id": c.node_id or c.chunk_id,
+                    "file": c.file_path,
+                    "lang": c.language,
+                    "symbol": c.symbol_id,
+                    "kind": c.node_type,
+                    "attrs": c.metadata or {},
                 }
-                for c in all_chunks
-            ]
+                if node["id"] in known_ids:
+                    nodes_updated.append(node)
+                else:
+                    nodes_added.append(node)
+                    known_ids.add(node["id"])
 
-            deltas = {
-                "nodes_added": nodes_added,
-                "nodes_updated": nodes_updated,
-                "nodes_removed": nodes_removed,
-                "edges": edges,
-                "spans": spans,
+        _nodes, edges = build_xref(all_chunks)
+        spans = [
+            {
+                "file_id": getattr(c, "file_id", ""),
+                "symbol_id": getattr(c, "symbol_id", None),
+                "start_byte": getattr(c, "byte_start", 0),
+                "end_byte": getattr(c, "byte_end", 0),
             }
-            try:
-                on_update(deltas)
-            except Exception:
-                pass
+            for c in all_chunks
+        ]
 
-            # Update last_commit
-            try:
-                if repo and repo.head.is_valid():
-                    last_commit = repo.head.commit.hexsha
-                    self.save_incremental_state(
-                        str(repo_root),
-                        {"last_commit": last_commit},
-                    )
-            except Exception:
-                pass
-
-            sleep(poll_interval)
+        return {
+            "nodes_added": nodes_added,
+            "nodes_updated": nodes_updated,
+            "nodes_removed": nodes_removed,
+            "edges": edges,
+            "spans": spans,
+        }

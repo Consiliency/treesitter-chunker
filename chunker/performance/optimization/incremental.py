@@ -8,7 +8,7 @@ from tree_sitter import Parser, Tree
 from chunker.interfaces.performance import (
     IncrementalParser as IncrementalParserInterface,
 )
-from chunker.parser import get_parser
+from chunker.parser import get_parser, list_languages
 from chunker.types import CodeChunk
 
 logger = logging.getLogger(__name__)
@@ -19,7 +19,13 @@ class IncrementalParser(IncrementalParserInterface):
 
     def __init__(self):
         """Initialize incremental parser."""
-        self._parser_cache = {}
+        # Reverse map from a tree-sitter ``Language`` object to its registered
+        # name, populated lazily as trees of new languages are encountered.
+        # NOTE: we deliberately do NOT cache ``Parser`` instances here — parsers
+        # are stateful and incremental parsing runs under concurrency, so each
+        # re-parse acquires its parser fresh via the thread-local ``get_parser``
+        # lease (IF-0-PARSER-1) instead of sharing one cached Parser.
+        self._language_names: dict[object, str] = {}
         logger.info("Initialized IncrementalParser")
 
     def parse_incremental(
@@ -27,6 +33,7 @@ class IncrementalParser(IncrementalParserInterface):
         old_tree: Tree,
         source: bytes,
         changed_ranges: list[tuple[int, int, int, int]],
+        language: str | None = None,
     ) -> Tree:
         """Parse incrementally based on changes.
 
@@ -37,20 +44,26 @@ class IncrementalParser(IncrementalParserInterface):
             old_tree: Previous parse tree
             source: New source code
             changed_ranges: List of (start_byte, old_end_byte, new_end_byte, start_point)
+            language: Optional language name. When omitted the language is
+                detected from ``old_tree`` so the re-parse uses the tree's REAL
+                grammar (never a hardcoded default).
 
         Returns:
             New parse tree
         """
         if not old_tree or not hasattr(old_tree, "root_node"):
             raise ValueError("Invalid old_tree provided")
-        parser = self._get_parser_for_tree(old_tree)
+        parser = self._get_parser_for_tree(old_tree, language)
+        # Capture the OLD source before any edits so ``old_end_point`` is
+        # computed in the pre-edit coordinate space.
+        old_source = old_tree.root_node.text
         for start_byte, old_end_byte, new_end_byte, start_point in changed_ranges:
             old_tree.edit(
                 start_byte=start_byte,
                 old_end_byte=old_end_byte,
                 new_end_byte=new_end_byte,
                 start_point=start_point,
-                old_end_point=self._calculate_point(old_tree.text, old_end_byte),
+                old_end_point=self._calculate_point(old_source, old_end_byte),
                 new_end_point=self._calculate_point(source, new_end_byte),
             )
         new_tree = parser.parse(source, old_tree)
@@ -156,12 +169,52 @@ class IncrementalParser(IncrementalParserInterface):
                 logger.debug("Chunk %s needs re-parsing", chunk.chunk_id)
         return updated_chunks
 
-    def _get_parser_for_tree(self, _tree: Tree) -> Parser:
-        """Get or create a parser for the tree's language."""
-        language = "python"
-        if language not in self._parser_cache:
-            self._parser_cache[language] = get_parser(language)
-        return self._parser_cache[language]
+    def _get_parser_for_tree(
+        self,
+        tree: Tree,
+        language: str | None = None,
+    ) -> Parser:
+        """Acquire a parser for the tree's REAL language.
+
+        The language is taken from the explicit ``language`` argument when
+        provided, otherwise detected from the tree itself. The parser is
+        acquired fresh from the thread-local ``get_parser`` lease
+        (IF-0-PARSER-1) rather than a shared cached instance, because
+        incremental parsing may run concurrently.
+        """
+        resolved = language or self._detect_language(tree)
+        return get_parser(resolved)
+
+    def _detect_language(self, tree: Tree) -> str:
+        """Resolve the registered language name for ``tree``.
+
+        Reverse-maps the tree's ``Language`` object to its registered name by
+        comparing against the available languages. Never falls back to a
+        hardcoded default: an unresolvable tree raises rather than silently
+        re-parsing with the wrong grammar.
+        """
+        tree_language = getattr(tree, "language", None)
+        if tree_language is None:
+            raise ValueError("Cannot determine language: tree has no language")
+
+        cached = self._language_names.get(tree_language)
+        if cached is not None:
+            return cached
+
+        for name in list_languages():
+            try:
+                candidate = get_parser(name).language
+            except Exception as exc:  # noqa: BLE001 - skip unloadable grammars
+                logger.debug("Skipping language %s during detection: %s", name, exc)
+                continue
+            if candidate == tree_language:
+                self._language_names[tree_language] = name
+                return name
+
+        raise ValueError(
+            "Could not determine the language of the provided tree; "
+            "refusing to fall back to a default grammar",
+        )
 
     @staticmethod
     def _calculate_point(source: bytes, byte_offset: int) -> tuple[int, int]:
