@@ -21,7 +21,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-BASELINE = Path(__file__).resolve().parents[1] / "docs" / "development" / "mypy-baseline.txt"
+BASELINE = (
+    Path(__file__).resolve().parents[1] / "docs" / "development" / "mypy-baseline.txt"
+)
 MYPY_CMD = [
     "mypy",
     "chunker/",
@@ -69,7 +71,11 @@ def main(argv: list[str]) -> int:
     fixed = len(baseline) - len(current & baseline)
     print(
         f"mypy gate OK: no new errors. Tracked debt: {len(current & baseline)}"
-        + (f" ({fixed} baseline signatures newly cleared — run --update)" if fixed else ""),
+        + (
+            f" ({fixed} baseline signatures newly cleared — run --update)"
+            if fixed
+            else ""
+        ),
     )
     return 0
 

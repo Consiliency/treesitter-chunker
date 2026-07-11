@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import threading
 import json
 import logging
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from ._internal.factory import ParserConfig, ParserFactory
+from ._internal.factory import ParserConfig, ParserFactory, ParserLease
 from ._internal.registry import LanguageMetadata, LanguageRegistry
 from .exceptions import (
     LanguageNotFoundError,
@@ -24,6 +25,8 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "ParserConfig",
+    "ParserLease",
+    "acquire_parser",
     "clear_cache",
     "get_language_info",
     "get_parser",
@@ -38,6 +41,7 @@ class _ParserState:
     def __init__(self) -> None:
         self.registry: LanguageRegistry | None = None
         self.factory: ParserFactory | None = None
+        self._init_lock = threading.Lock()
         # Prefer in-package built artifacts when present (for wheels with prebuilt grammars)
         _lib_ext = {"darwin": ".dylib", "win32": ".dll"}.get(sys.platform, ".so")
         package_build = Path(__file__).parent / "data" / "grammars" / "build"
@@ -54,14 +58,23 @@ class _ParserState:
         Args:
             library_path: Optional path to the compiled library
         """
-        if self.registry is None:
+        # Guard the whole init under a lock and use `factory` (set LAST) as the
+        # initialized sentinel, so a concurrent cold-start thread can never observe
+        # registry-set-but-factory-None and fail with "factory not initialized".
+        if self.factory is not None:
+            return
+        with self._init_lock:
+            if self.factory is not None:
+                return
             path = library_path or self.default_library_path
             # If the compiled library doesn't exist or fails to load, initialize registry
             # with no shared library so that list_languages() can still function for tests
             # Always initialize the registry; it now tolerates missing combined library
-            self.registry = LanguageRegistry(path)
-            self.factory = ParserFactory(self.registry)
-            languages = self.registry.list_languages()
+            registry = LanguageRegistry(path)
+            factory = ParserFactory(registry)
+            self.registry = registry
+            self.factory = factory  # published last; the sentinel above gates on it
+            languages = registry.list_languages()
 
             logger.info(
                 "Initialized parser with %d languages: %s",
@@ -158,6 +171,57 @@ def get_parser(language: str, config: ParserConfig | None = None) -> Parser:
         raise ParserError(f"Parser initialization failed: {e}") from e
 
 
+def acquire_parser(language: str, config: ParserConfig | None = None) -> ParserLease:
+    """Exclusively lease a parser for the duration of a context manager.
+
+    The leased parser is not available to another lease until the context exits.
+    Prefer this API for work that needs a parser only temporarily.
+    """
+    _initialize()
+    if _state.factory is None:
+        raise ParserError("Parser factory not initialized")
+    alias_map = {
+        "csharp": "csharp",
+        "c_sharp": "csharp",
+        "typescript": "typescript",
+        "tsx": "tsx",
+    }
+    normalized = alias_map.get(language, language)
+    try:
+        return _state.factory.acquire_parser(normalized, config)
+    except LanguageNotFoundError:
+        try:
+            sources_path = (
+                Path(__file__).parent.parent / "config" / "grammar_sources.json"
+            )
+            repo_url: str | None = None
+            if sources_path.exists():
+                try:
+                    with sources_path.open("r", encoding="utf-8") as f:
+                        sources = json.load(f)
+                except json.JSONDecodeError as e:
+                    logger.warning(
+                        "Invalid JSON in %s: %s at line %s",
+                        sources_path,
+                        e.msg,
+                        e.lineno,
+                    )
+                    sources = {}
+                repo_key = alias_map.get(language, language)
+                repo_url = sources.get(repo_key)
+            if repo_url:
+                gm = TreeSitterGrammarManager()
+                if not gm.get_grammar_info(language):
+                    gm.add_grammar(language, repo_url)
+                if gm.fetch_grammar(language):
+                    gm.build_grammar(language)
+                    return _state.factory.acquire_parser(normalized, config)
+        except Exception as e:
+            logger.debug("On-demand grammar build attempt failed: %s", e)
+        available = _state.registry.list_languages() if _state.registry else []
+        raise LanguageNotFoundError(normalized, available) from None
+
+
 def list_languages() -> list[str]:
     """List all available languages.
 
@@ -189,9 +253,7 @@ def get_language_info(language: str) -> LanguageMetadata:
 
 
 def return_parser(language: str, parser: Parser) -> None:
-    """Return a parser to the pool for reuse.
-
-    This can improve performance by reusing parser instances.
+    """Keep the legacy return call safe for thread-owned parser instances.
 
     Args:
         language: Language name
@@ -216,6 +278,8 @@ def clear_cache() -> None:
 __all__ = [
     "LanguageMetadata",
     "ParserConfig",
+    "ParserLease",
+    "acquire_parser",
     "clear_cache",
     "get_language_info",
     "get_parser",

@@ -64,6 +64,11 @@ class LRUCache:
             self.cache.move_to_end(key)
             return self.cache[key]
 
+    def pop(self, key: str) -> Parser | None:
+        """Remove and return an idle parser from the cache."""
+        with self.lock:
+            return self.cache.pop(key, None)
+
     def put(self, key: str, value: Parser) -> None:
         """Add item to cache, evicting LRU item if needed."""
         with self.lock:
@@ -102,12 +107,47 @@ class ParserPool:
         try:
             self.pool.put(parser, block=False)
             return True
-        except (AttributeError, KeyError, SyntaxError, Full):
+        except Full:
             return False
 
     def size(self) -> int:
         """Get current pool size."""
         return self.pool.qsize()
+
+
+class ParserLease:
+    """Exclusive checkout of a parser managed by :class:`ParserFactory`."""
+
+    def __init__(
+        self,
+        factory: ParserFactory,
+        language: str,
+        parser: Parser,
+        *,
+        reusable: bool,
+    ) -> None:
+        self._factory = factory
+        self._language = language
+        self._parser: Parser | None = parser
+        self._reusable = reusable
+
+    def __enter__(self) -> Parser:
+        if self._parser is None:
+            raise RuntimeError("Parser lease has already been released")
+        return self._parser
+
+    def __exit__(self, exc_type: object, exc_value: object, traceback: object) -> None:
+        self.release()
+
+    def release(self) -> None:
+        """Return this parser to the factory once, if it is reusable."""
+        if self._parser is not None:
+            self._factory._release_parser(
+                self._language,
+                self._parser,
+                reusable=self._reusable,
+            )
+            self._parser = None
 
 
 class ParserFactory:
@@ -131,6 +171,8 @@ class ParserFactory:
         self._pools: dict[str, ParserPool] = {}
         self._pool_size = pool_size
         self._lock = threading.RLock()
+        self._thread_local = threading.local()
+        self._cache_generation = 0
         self._parser_count = 0
         logger.info(
             "Initialized ParserFactory with cache_size=%d, pool_size=%d",
@@ -169,9 +211,9 @@ class ParserFactory:
                         self._parser_count,
                     )
                     return parser
-                except (ImportError, Exception) as pack_error:
+                except Exception as pack_error:
                     match = re.search(
-                        r"version (\\d+)\\. Must be between (\\d+) and (\\d+)",
+                        r"version (\d+)\. Must be between (\d+) and (\d+)",
                         str(e),
                     )
                     if match:
@@ -183,7 +225,7 @@ class ParserFactory:
                         ) from e
                     raise ParserInitError(language, str(e)) from e
             raise ParserInitError(language, str(e)) from e
-        except (IndexError, KeyError, SyntaxError, Exception) as e:
+        except Exception as e:
             raise ParserInitError(language, str(e)) from e
 
     def _get_pool(self, language: str) -> ParserPool:
@@ -207,12 +249,29 @@ class ParserFactory:
         if config.logger is not None:
             pass
 
+    def _validate_request(
+        self,
+        language: str,
+        config: ParserConfig | None,
+    ) -> None:
+        if not self._registry.has_language(language):
+            available = self._registry.list_languages()
+            raise LanguageNotFoundError(language, available)
+        if config:
+            config.validate()
+
+    def _thread_parsers(self) -> dict[str, Parser]:
+        if getattr(self._thread_local, "generation", None) != self._cache_generation:
+            self._thread_local.parsers = {}
+            self._thread_local.generation = self._cache_generation
+        return self._thread_local.parsers
+
     def get_parser(
         self,
         language: str,
         config: ParserConfig | None = None,
     ) -> Parser:
-        """Get or create a parser for the language.
+        """Get a parser owned exclusively by the calling thread.
 
         Args:
             language: Language name
@@ -226,48 +285,81 @@ class ParserFactory:
             ParserInitError: If parser creation fails
             ParserConfigError: If configuration is invalid
         """
-        if not self._registry.has_language(language):
-            available = self._registry.list_languages()
-            raise LanguageNotFoundError(language, available)
-        if config:
-            config.validate()
-        cache_key = language
-        if config and (config.timeout_ms or config.included_ranges):
+        self._validate_request(language, config)
+        if config is not None:
             parser = self._create_parser(language)
             self._apply_config(parser, config)
             return parser
-        parser = self._cache.get(cache_key)
-        if parser:
-            logger.debug("Retrieved parser for '%s' from cache", language)
+        with self._lock:
+            parsers = self._thread_parsers()
+            parser = parsers.get(language)
+            if parser is None:
+                parser = self._create_parser(language)
+                parsers[language] = parser
             return parser
-        pool = self._get_pool(language)
-        parser = pool.get()
-        if parser:
-            logger.debug("Retrieved parser for '%s' from pool", language)
-            self._cache.put(cache_key, parser)
-            return parser
-        parser = self._create_parser(language)
-        if config:
-            self._apply_config(parser, config)
-        self._cache.put(cache_key, parser)
-        return parser
+
+    def acquire_parser(
+        self,
+        language: str,
+        config: ParserConfig | None = None,
+    ) -> ParserLease:
+        """Exclusively lease a parser until the returned lease is released."""
+        self._validate_request(language, config)
+        with self._lock:
+            parser = self._cache.pop(language)
+            if parser is None:
+                parser = self._get_pool(language).get()
+            if parser is None:
+                parser = self._create_parser(language)
+            if config is not None:
+                self._apply_config(parser, config)
+            return ParserLease(
+                self,
+                language,
+                parser,
+                reusable=config is None,
+            )
+
+    def _release_parser(
+        self,
+        language: str,
+        parser: Parser,
+        *,
+        reusable: bool,
+    ) -> None:
+        with self._lock:
+            if not reusable:
+                logger.debug(
+                    "Discarded configured parser for '%s' after lease", language
+                )
+                return
+            if self._cache.get(language) is None:
+                self._cache.put(language, parser)
+                logger.debug("Returned parser for '%s' to cache", language)
+                return
+            if self._get_pool(language).put(parser):
+                logger.debug("Returned parser for '%s' to pool", language)
+            else:
+                logger.debug("Pool for '%s' is full, parser discarded", language)
 
     def return_parser(self, language: str, parser: Parser) -> None:
-        """Return a parser to the pool for reuse.
+        """Accept the legacy return call without sharing a raw parser.
 
         Args:
             language: Language name
             parser: Parser instance to return
         """
-        pool = self._get_pool(language)
-        if pool.put(parser):
-            logger.debug("Returned parser for '%s' to pool", language)
-        else:
-            logger.debug("Pool for '%s' is full, parser discarded", language)
+        logger.debug(
+            "Ignored legacy return_parser call for '%s'; use acquire_parser for leases",
+            language,
+        )
 
     def clear_cache(self) -> None:
         """Clear the parser cache."""
-        self._cache.clear()
+        with self._lock:
+            self._cache.clear()
+            self._pools.clear()
+            self._cache_generation += 1
         logger.info("Cleared parser cache")
 
     def get_stats(self) -> dict[str, Any]:

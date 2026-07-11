@@ -217,11 +217,30 @@ class LanguagePlugin(ABC):
 
     def chunk_file(self, file_path: Path) -> list[CodeChunk]:
         """Parse a file and return chunks."""
-        if not self._parser:
-            raise RuntimeError(f"Parser not set for {self.language_name} plugin")
         source = file_path.read_bytes()
-        tree = self._parser.parse(source)
+        tree = self._thread_safe_parser().parse(source)
         return self.walk_tree(tree.root_node, source, str(file_path))
+
+    def _thread_safe_parser(self) -> Parser:
+        """Return a parser owned by the calling thread.
+
+        A plugin instance is cached globally (plugin_manager._instances) and thus
+        shared across threads, so its stored `self._parser` must NOT be used for
+        parsing — that would run one Parser on multiple threads (segfault). We
+        fetch the calling thread's own thread-local parser instead (PARSER phase).
+        Falls back to the stored parser only when the language module is
+        unavailable (e.g. a test that injects a parser via set_parser()).
+        """
+        try:
+            from chunker.parser import get_parser
+
+            return get_parser(self.language_name)
+        except Exception:
+            if not self._parser:
+                raise RuntimeError(
+                    f"Parser not set for {self.language_name} plugin"
+                ) from None
+            return self._parser
 
     @staticmethod
     @abstractmethod

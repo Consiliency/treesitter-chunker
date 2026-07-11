@@ -723,11 +723,25 @@ Tree-sitter Chunker exports 110+ APIs organized into logical groups:
 - `chunk_directory()` - Parallel directory chunking (convenience alias)
 
 ### Parser Management
-- `get_parser()` - Get parser for a language
+- `get_parser()` - Get a parser owned by the calling thread
+- `acquire_parser()` - Exclusively lease a parser with a context manager
 - `list_languages()` - List available languages
 - `get_language_info()` - Get language metadata
-- `return_parser()` - Return parser to pool
+- `return_parser()` - Backward-compatible no-op for thread-owned parsers
 - `clear_cache()` - Clear parser cache
+
+For a short-lived parse, prefer the lease API so the parser is returned only
+after the context exits:
+
+```python
+from chunker.parser import acquire_parser
+
+with acquire_parser("python") as parser:
+    tree = parser.parse(source.encode())
+```
+
+`get_parser("python")` reuses a parser only within the current thread. It never
+shares that live parser with another thread.
 
 ### Plugin System
 - `PluginManager` - Manage language plugins
@@ -1036,7 +1050,7 @@ subprocess.run(
 ### Thread Safety
 
 - **Immutable registries** - Language registry is read-only after initialization
-- **Synchronized access** - Parser factory uses locks for thread-safe caching
+- **Exclusive parser access** - Leases remove parsers from idle containers while in use, and `get_parser()` is thread-local
 - **No shared mutable state** - CodeChunk objects are independent
 
 ---

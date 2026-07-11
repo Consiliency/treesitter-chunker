@@ -71,7 +71,13 @@ class StreamingChunker:
 
     def __init__(self, language: str):
         self.language = language
-        self.parser = get_parser(language)
+
+    @property
+    def parser(self):
+        # Fetch the caller thread's own parser each access. get_parser() is
+        # thread-local by construction (PARSER phase), so a StreamingChunker
+        # instance shared across threads never hands one Parser to two threads.
+        return get_parser(self.language)
 
     def _walk_streaming(
         self,
