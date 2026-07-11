@@ -64,3 +64,46 @@ references stay `unresolved`. Correctly attributing an overload call to its matc
 signature is semantic-resolution work owned by **COREFIX** (the roadmap defers a mandatory
 semantic resolver). Clearing owner: COREFIX. This does NOT drop chunks and does NOT leave
 edges pointing at non-nodes for resolvable references.
+
+## COREFIX follow-up: fallback-path residuals (panel-found, tracked)
+
+The COREFIX iteration-3 merge panel (codex red-team leg) surfaced three real,
+PRE-EXISTING defects in the fallback / identity paths. They are OUTSIDE the
+class-split contract fix that was the merge subject (which all four panel legs
+confirmed correct) and outside COREFIX's stated acceptance-criteria tests (all
+passing). They are tracked here for a dedicated follow-up (candidate: fold into
+SCALE, which already touches identity-keyed maps and fallback, or a RELEASE-gate
+fix). Verified real by direct probe/inspection on 2026-07-11.
+
+1. **Fallback `definition_id` collision (identity contract).**
+   `chunker/core.py:1171` assigns fallback chunks
+   `compute_definition_id(file_path, language, qualified_route or parent_route)`.
+   Fallback chunks have EMPTY routes, so every fallback chunk in a file receives
+   the SAME `definition_id`. `chunker/incremental.py` keys MODIFIED/ADDED/DELETED
+   classification on `definition_id`, so multiple fallback chunks collapse into
+   one identity and incremental diffs lose chunks. Fix direction: give routeless
+   chunks a disambiguating route component (e.g. byte_start or an ordinal) in the
+   definition_id derivation, mirroring the IDENTITY node_id seed.
+
+2. **CSV fallback slice-back violation (byte-offset contract).**
+   `chunker/fallback/strategies/line_based.py` `_chunk_csv` with
+   `include_header=True` prepends the header row to every chunk after the first
+   (`chunk_lines.append(header)`), but computes `byte_start/byte_end` from the
+   data-row spans only (`lines[:i]`..`lines[:chunk_end]`). So
+   `src[byte_start:byte_end]` slices back the data rows WITHOUT the prepended
+   header, contradicting the README universal slice-back contract (which names
+   fallback chunks). This is the same defect class fixed for class token-splits
+   in COREFIX (commit a0ab4fea). Fix direction (Model-1): keep content = the
+   contiguous data-row slice and preserve the CSV header in `parent_context` /
+   `metadata["csv_header"]`, OR extend the span to include the header bytes (not
+   possible contiguously — Model-1 is the correct resolution).
+
+3. **Fallback O(n²) prefix rescans (performance).**
+   `chunker/fallback/base.py` (`chunk_by_lines` ~:186) and
+   `chunker/fallback/strategies/line_based.py` (~:152) recompute
+   `sum(len(line) for line in lines[:i])` / re-join every preceding line for each
+   chunk, an O(n²) offset scan. COREFIX's O(n²) exit criterion was scoped to and
+   satisfied for `smart_context` (the all-pairs similarity pass, now O(n·cap));
+   this fallback prefix-scan is a separate, lower-severity performance residual.
+   Fix direction: carry a running byte cursor (the `TextPositionIndex` already
+   built) instead of re-summing prefixes.
