@@ -12,10 +12,14 @@ Usage:
     uvicorn api.server:app --reload
 """
 
+import os
+import secrets
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request, Security
+from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -23,6 +27,60 @@ from pydantic import BaseModel, Field
 from chunker import __version__, chunk_file, chunk_text, list_languages
 from chunker.graph.cut import graph_cut
 from chunker.graph.xref import build_xref
+from chunker._internal.path_confinement import resolve_within_root
+
+DEFAULT_HOST = "127.0.0.1"
+MAX_REQUEST_BODY_BYTES = 1_048_576
+_bearer_scheme = HTTPBearer(auto_error=False)
+
+
+def _cors_origins() -> list[str]:
+    return [
+        origin.strip()
+        for origin in os.environ.get("TREE_SITTER_CHUNKER_API_CORS_ORIGINS", "").split(
+            ",",
+        )
+        if origin.strip() and origin.strip() != "*"
+    ]
+
+
+def _api_root() -> Path:
+    return Path(
+        os.environ.get("TREE_SITTER_CHUNKER_API_ROOT", str(Path.cwd())),
+    ).resolve()
+
+
+def _resolve_api_path(path: str) -> Path:
+    candidate = Path(path)
+    if candidate.is_absolute():
+        raise HTTPException(status_code=400, detail="Absolute paths are not allowed")
+    try:
+        return resolve_within_root(candidate, _api_root())
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400, detail="Path is outside the API root"
+        ) from exc
+
+
+def require_api_token(
+    credentials: HTTPAuthorizationCredentials | None = Security(_bearer_scheme),
+) -> None:
+    """Require the configured bearer token for filesystem-backed operations."""
+    expected_token = os.environ.get("TREE_SITTER_CHUNKER_API_TOKEN")
+    if (
+        not expected_token
+        or credentials is None
+        or not secrets.compare_digest(
+            credentials.credentials.encode("utf-8"),
+            expected_token.encode("utf-8"),
+        )
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
 
 # Create FastAPI app
 app = FastAPI(
@@ -36,11 +94,38 @@ app = FastAPI(
 # Enable CORS for cross-origin requests
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=_cors_origins(),
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def reject_oversized_requests(request: Request, call_next: Any):
+    """Reject oversized requests before model parsing allocates their bodies."""
+    content_length = request.headers.get("content-length")
+    try:
+        declared_length = int(content_length) if content_length is not None else 0
+    except ValueError:
+        return JSONResponse(
+            status_code=400,
+            content={"detail": "Invalid Content-Length header"},
+        )
+    if declared_length > MAX_REQUEST_BODY_BYTES:
+        return JSONResponse(
+            status_code=413,
+            content={"detail": "Request body exceeds the configured limit"},
+        )
+    # Do not trust Content-Length: read the actual body and enforce the cap on
+    # its real size (chunked / omitted-length requests would otherwise bypass it).
+    body = await request.body()
+    if len(body) > MAX_REQUEST_BODY_BYTES:
+        return JSONResponse(
+            status_code=413,
+            content={"detail": "Request body exceeds the configured limit"},
+        )
+    return await call_next(request)
 
 
 # Request/Response models
@@ -148,6 +233,8 @@ class GraphCutParams(BaseModel):
 
 class GraphCutRequest(BaseModel):
     seeds: list[str]
+    nodes: list[dict[str, Any]]
+    edges: list[dict[str, Any]]
     params: GraphCutParams | None = None
 
 
@@ -245,13 +332,16 @@ async def chunk_text_endpoint(request: ChunkRequest):
 
 
 @app.post("/chunk/file", response_model=ChunkResult)
-async def chunk_file_endpoint(request: ChunkFileRequest):
+async def chunk_file_endpoint(
+    request: ChunkFileRequest,
+    _: None = Depends(require_api_token),
+):
     """
     Chunk a source code file.
 
     This endpoint chunks a file from the filesystem.
     """
-    file_path = Path(request.file_path)
+    file_path = _resolve_api_path(request.file_path)
 
     # Check if file exists
     if not file_path.exists():
@@ -363,19 +453,27 @@ async def chunk_file_endpoint(request: ChunkFileRequest):
 
 # New endpoints per spec (implemented)
 @app.post("/export/postgres", response_model=ExportPostgresResponse)
-async def export_postgres_endpoint(request: ExportPostgresRequest):
+async def export_postgres_endpoint(
+    request: ExportPostgresRequest,
+    _: None = Depends(require_api_token),
+):
     try:
         from chunker.export.postgres_spec_exporter import export as pg_export
 
-        rows_written = pg_export(request.repo_root, request.config or {})
+        rows_written = pg_export(
+            str(_resolve_api_path(request.repo_root)), request.config or {}
+        )
         return ExportPostgresResponse(rows_written=rows_written)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @app.post("/graph/xref", response_model=GraphResponse)
-async def graph_xref_endpoint(request: GraphXrefRequest):
-    paths = [Path(p) for p in request.paths]
+async def graph_xref_endpoint(
+    request: GraphXrefRequest,
+    _: None = Depends(require_api_token),
+):
+    paths = [_resolve_api_path(path) for path in request.paths]
     chunks = []
     for p in paths:
         if p.exists() and p.is_file():
@@ -399,14 +497,10 @@ async def graph_xref_endpoint(request: GraphXrefRequest):
 async def graph_cut_endpoint(request: GraphCutRequest):
     try:
         params = request.params or GraphCutParams()
-        nodes: list[dict[str, Any]] = []
-        edges: list[dict[str, Any]] = []
-        # Note: a real implementation would accept nodes/edges input
-        # or compute xref first; here we return empty on missing inputs.
         selected, induced = graph_cut(
             request.seeds,
-            nodes,
-            edges,
+            request.nodes,
+            request.edges,
             radius=params.radius or 2,
             budget=params.budget or 200,
             weights=params.weights or {},
@@ -417,11 +511,17 @@ async def graph_cut_endpoint(request: GraphCutRequest):
 
 
 @app.post("/nearest-tests", response_model=NearestTestsResponse)
-async def nearest_tests_endpoint(request: NearestTestsRequest):
+async def nearest_tests_endpoint(
+    request: NearestTestsRequest,
+    _: None = Depends(require_api_token),
+):
     try:
         from chunker.helpers.nearest_tests import nearest_tests
 
-        tests = nearest_tests(request.symbols, str(Path()))
+        # Confine the walk root to the configured API root so this endpoint
+        # cannot enumerate / read arbitrary files (APISAFE hardening).
+        root = _resolve_api_path(str(Path()))
+        tests = nearest_tests(request.symbols, str(root))
         return NearestTestsResponse(tests=tests)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -432,4 +532,4 @@ if __name__ == "__main__":
     import uvicorn
 
     # Run the server
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host=DEFAULT_HOST, port=8000)

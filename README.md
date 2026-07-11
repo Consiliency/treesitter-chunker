@@ -910,8 +910,12 @@ Tree-sitter Chunker provides a REST API for LLM agents and external tools.
 # Install with API support
 pip install "treesitter-chunker[api]"
 
-# Start server
-uvicorn api.server:app --host 0.0.0.0 --port 8000
+# Configure the server before exposing it beyond the local host.
+export TREE_SITTER_CHUNKER_API_TOKEN="replace-with-a-secret-token"
+export TREE_SITTER_CHUNKER_API_ROOT="$(pwd)"
+
+# Start server (loopback is the default)
+uvicorn api.server:app --host 127.0.0.1 --port 8000
 
 # Or run directly
 python -m api.server
@@ -925,10 +929,10 @@ python -m api.server
 | `/health` | GET | Health check |
 | `/languages` | GET | List supported languages |
 | `/chunk/text` | POST | Chunk source code text |
-| `/chunk/file` | POST | Chunk file from filesystem |
-| `/graph/xref` | POST | Build cross-reference graph |
+| `/chunk/file` | POST | Chunk a root-confined file (Bearer auth required) |
+| `/graph/xref` | POST | Build a root-confined cross-reference graph (Bearer auth required) |
 | `/graph/cut` | POST | Extract subgraph via BFS |
-| `/export/postgres` | POST | Export to PostgreSQL |
+| `/export/postgres` | POST | Export a root-confined repository (Bearer auth required) |
 | `/nearest-tests` | POST | Find related test files |
 
 ### Example: Chunk Code via API
@@ -948,7 +952,8 @@ curl -X POST http://localhost:8000/chunk/text \
 # Step 1: Build cross-reference graph
 curl -X POST http://localhost:8000/graph/xref \
   -H "Content-Type: application/json" \
-  -d '{"paths": ["/path/to/file.py"]}'
+  -H "Authorization: Bearer $TREE_SITTER_CHUNKER_API_TOKEN" \
+  -d '{"paths": ["src/file.py"]}'
 
 # Step 2: Extract subgraph around seeds
 curl -X POST http://localhost:8000/graph/cut \
@@ -966,6 +971,19 @@ curl -X POST http://localhost:8000/graph/cut \
 Interactive API docs available at:
 - Swagger UI: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`
+
+### API Security Configuration
+
+Filesystem-backed endpoints require a matching Bearer token and accept only
+relative paths below `TREE_SITTER_CHUNKER_API_ROOT` (the current working
+directory by default). Canonical resolution rejects `..` traversal and symlink
+escapes. The server limits request bodies to 1 MiB, binds to `127.0.0.1` when
+run directly, and denies cross-origin credentials by default.
+
+`/export/postgres` only connects to hosts in
+`TREE_SITTER_CHUNKER_POSTGRES_HOSTS` (local loopback hosts by default).
+`/graph/cut` is live: supply the graph's `nodes` and `edges` in the request,
+then it returns the bounded cut around the requested seed IDs.
 
 ---
 

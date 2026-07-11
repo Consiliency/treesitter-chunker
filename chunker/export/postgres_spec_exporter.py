@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Tuple
+from urllib.parse import urlparse
 
 from chunker.core import chunk_file
 from chunker.graph.xref import build_xref
@@ -51,9 +53,52 @@ INSERT_SPAN = (
 )
 
 
+def _sql_literal(value: object) -> str:
+    if value is None:
+        return "NULL"
+    return "'" + str(value).replace("'", "''") + "'"
+
+
+def _allowed_dsn_hosts() -> set[str]:
+    configured_hosts = os.environ.get(
+        "TREE_SITTER_CHUNKER_POSTGRES_HOSTS",
+        "localhost,127.0.0.1,::1",
+    )
+    return {
+        host.strip().lower() for host in configured_hosts.split(",") if host.strip()
+    }
+
+
+def _validate_dsn(dsn: str) -> None:
+    parsed = urlparse(dsn)
+    if parsed.scheme not in {"postgres", "postgresql"}:
+        raise ValueError("Postgres DSN must use postgres or postgresql")
+    if not parsed.hostname or parsed.hostname.lower() not in _allowed_dsn_hosts():
+        raise ValueError("Postgres DSN host is not approved")
+    # libpq honours host=/hostaddr= (and port) query parameters as the EFFECTIVE
+    # destination, overriding the URI authority. Reject them so the allowlist on
+    # the authority above cannot be bypassed (e.g. ...localhost/db?host=evil).
+    from urllib.parse import parse_qs
+
+    overriding = {"host", "hostaddr"}
+    for key in parse_qs(parsed.query):
+        if key.lower() in overriding:
+            raise ValueError(
+                f"Postgres DSN may not override the destination host via '{key}'"
+            )
+
+
 def _iter_files(repo_root: str, exts: set[str]) -> Iterable[Path]:
-    root = Path(repo_root)
+    root = Path(repo_root).resolve()
     for p in root.rglob("*"):
+        # Skip anything reached via a symlink and anything that resolves outside
+        # the export root, so a symlink planted inside repo_root cannot exfiltrate
+        # files from elsewhere on disk (APISAFE follow-up).
+        if p.is_symlink():
+            continue
+        resolved = p.resolve()
+        if root != resolved and root not in resolved.parents:
+            continue
         if p.is_file() and p.suffix.lower() in exts:
             yield p
 
@@ -108,6 +153,7 @@ def export(repo_root: str, config: dict[str, Any] | None = None) -> int:
 
     dsn = config.get("dsn")
     if dsn:
+        _validate_dsn(dsn)
         try:
             import psycopg
         except Exception as e:  # pragma: no cover - optional dependency
@@ -149,30 +195,35 @@ def export(repo_root: str, config: dict[str, Any] | None = None) -> int:
 
     # Fallback: generate SQL file
     output_sql = Path(repo_root) / "chunker_export.sql"
+    # Never follow a pre-existing symlink at the output path — it could redirect
+    # the write to an arbitrary location outside repo_root (APISAFE follow-up).
+    if output_sql.is_symlink():
+        raise ValueError("Refusing to write export through a symlink")
     with output_sql.open("w", encoding="utf-8") as f:
         f.write(SCHEMA_DDL)
         for n in nodes:
-            attrs_json = json.dumps(n.get("attrs") or {}).replace("'", "''")
+            attrs_json = json.dumps(n.get("attrs") or {})
             f.write(
                 "INSERT INTO nodes (id, file, lang, symbol, kind, attrs) VALUES ("
-                f"'{n.get('id')}', '{n.get('file')}', '{n.get('lang')}', "
-                f"'{n.get('symbol')}', '{n.get('kind')}', "
-                f"'{attrs_json}'::jsonb) ON CONFLICT (id) DO UPDATE SET "
+                f"{_sql_literal(n.get('id'))}, {_sql_literal(n.get('file'))}, "
+                f"{_sql_literal(n.get('lang'))}, {_sql_literal(n.get('symbol'))}, "
+                f"{_sql_literal(n.get('kind'))}, {_sql_literal(attrs_json)}::jsonb) "
+                "ON CONFLICT (id) DO UPDATE SET "
                 "change_version = nodes.change_version + 1, "
                 "attrs = EXCLUDED.attrs;\n",
             )
         for e in edges:
             f.write(
                 "INSERT INTO edges (src, dst, type, weight) VALUES ("
-                f"'{e.get('src')}', '{e.get('dst')}', "
-                f"'{e.get('type')}', {float(e.get('weight', 1.0))});\n",
+                f"{_sql_literal(e.get('src'))}, {_sql_literal(e.get('dst'))}, "
+                f"{_sql_literal(e.get('type'))}, {float(e.get('weight', 1.0))});\n",
             )
         for s in spans:
             file_id, symbol_id, start_b, end_b = s
-            sym_val = f"'{symbol_id}'" if symbol_id else "NULL"
             f.write(
                 "INSERT INTO spans (file_id, symbol_id, start_byte, end_byte) "
                 "VALUES ("
-                f"'{file_id}', {sym_val}, {int(start_b)}, {int(end_b)});\n",
+                f"{_sql_literal(file_id)}, {_sql_literal(symbol_id)}, "
+                f"{int(start_b)}, {int(end_b)});\n",
             )
     return len(nodes) + len(edges) + len(spans)

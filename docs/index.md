@@ -6,6 +6,7 @@ Welcome to the Tree-sitter Chunker documentation! Tree-sitter Chunker is a power
 
 - **[Getting Started](getting-started.md)** - Installation and your first chunking project
 - **[API Reference](api-reference.md)** - Complete API documentation with all 107+ exported APIs
+- **[REST API Security](environment_variables.md#rest-api-security)** - Required API token, root confinement, and CORS settings
 - **[User Guide](user-guide.md)** - Comprehensive usage guide with plugins and performance
 - **[Plugin Development](plugin-development.md)** - Create custom language plugins
 - **[Configuration](configuration.md)** - Configuration files and options
