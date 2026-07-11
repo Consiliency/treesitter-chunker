@@ -84,7 +84,7 @@ SL-7 — Phase verification, documentation sweep, and interface-freeze reducer
 - **Parallel-safe**: no
 - **Tasks**:
   - test: Add `tests/test_hygiene_reachability.py` to assert the three false-reachability edges are absent, retained internal error handling still imports, and every audited candidate has a disposition.
-  - impl: Record static and dynamic reachability in the audit, remove the optional integration export block, remove the grammar CLI error-handling integration, and remove CI/CD imports/exports from the contracts package initializer.
+  - impl: Record static and dynamic reachability in the audit, remove the optional integration export block, remove the grammar CLI error-handling integration, and remove CI/CD imports/exports from the contracts package initializer. Scope every reachability search strictly to the source trees `chunker/`, `cli/`, `api/`, and `tests/` plus `pyproject.toml` (for example `rg <pattern> chunker cli api tests pyproject.toml`); never run a repo-wide search that reads protected evidence, ignored, `logs/`, or `.phase-loop/` paths.
   - verify: `uv run --with toml --all-extras python -m pytest tests/test_hygiene_reachability.py -q` and `uv run --with toml --all-extras python -c "import chunker; import chunker.contracts"`.
 
 ### SL-2 — Remove extractors and testing scaffolding
