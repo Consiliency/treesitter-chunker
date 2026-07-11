@@ -24,15 +24,28 @@ while the tracked debt is paid down by shrinking the baseline.
   baseline in bounded batches and re-runs `scripts/mypy_gate.py --update`.
 - Do NOT add to the baseline to silence a new error — fix the error instead.
 
-## PARSER follow-up: 3 more stored-parser holders (owned by SCALE)
+## PARSER holder inventory (complete) — migration owned by SCALE
 
-The PARSER phase closed the shared-parser segfault in `get_parser`/`acquire_parser`,
-`StreamingChunker`, and cached plugin instances. Panel review (Fable) found the SAME
-stored-parser anti-pattern in three more holders that cache a parser into a shared instance:
-- `chunker/smart_context.py:553-555`
-- `chunker/performance/optimization/incremental.py:162-164`
-- `chunker/export/relationships/tracker.py:111-113`
+PARSER delivered the safe primitive (thread-local `get_parser`, exclusive `acquire_parser`
+lease) and migrated the holders it owns (`StreamingChunker`, plugin instances). Per the
+roadmap PARSER exit criterion, EVERY remaining parser holder is inventoried here; per the
+SCALE exit criterion ("All parser holders acquire via IF-0-PARSER-1; no shared-parser path
+remains"), SCALE migrates each to the lease/thread-local API. Clearing owner: **SCALE**.
 
-They are pre-existing and outside PARSER's enumerated scope. **SCALE owns migrating them to
-the thread-local `get_parser` / `acquire_parser` API** as part of "all thread-pool paths acquire
-via IF-0-PARSER-1." Clearing owner: SCALE.
+Thread-pool / pooled holders (MUST migrate — they store or pool a parser reused across threads):
+- `chunker/performance/optimization/memory_pool.py:144` — pools the get_parser() result, then hands
+  one pooled parser to concurrent checkouts (codex panel probe: `first is second == True`).
+- `chunker/performance/enhanced_chunker.py` (warm_up ~:320) — pre-warms parsers into a shared pool.
+- `chunker/performance/optimization/incremental.py:163` — caches parser per language in a shared dict.
+- `chunker/smart_context.py:554` — caches parser per language in a shared instance dict.
+- `chunker/export/relationships/tracker.py:112` — caches parser per language in a shared instance dict.
+- `chunker/performance/optimization/batch.py` — thread-pool batch path (roadmap SCALE-named).
+- `chunker/repo/processor.py` — ThreadPoolExecutor path (roadmap SCALE-named).
+
+Interactive/single-thread holders (confirm-safe or migrate; low risk — not driven concurrently):
+- `chunker/debug/visualization/ast_visualizer.py:31,37`, `chunker/debug/interactive/chunk_debugger.py:24`,
+  `chunker/debug/interactive/node_explorer.py:43`, `chunker/debug/interactive/query_debugger.py:40`
+  store `self.parser = get_parser(...)`; used by single-threaded interactive debug tools.
+
+Do NOT treat this list as silenced — SCALE clears each entry by migrating it to `acquire_parser`/
+thread-local `get_parser` and adding production-holder concurrency coverage.
