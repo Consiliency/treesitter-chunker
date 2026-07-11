@@ -16,8 +16,7 @@ Use this checklist for any production PyPI release.
 ## Release Prep
 
 ```bash
-uv run --with toml --all-extras pytest tests/test_cicd_pipeline.py -q
-uv run --with toml --all-extras pytest tests/unit/distribution/test_release_manager.py tests/test_distribution_impl.py tests/test_phase13_contracts.py -q
+uv run --with toml --all-extras pytest tests/test_phase13_contracts.py -q
 uv run --with toml --all-extras python -m build --outdir "dist/phase9-release-check-${TARGET_VERSION}"
 uv run --with toml --all-extras python -m twine check "dist/phase9-release-check-${TARGET_VERSION}"/*
 ```

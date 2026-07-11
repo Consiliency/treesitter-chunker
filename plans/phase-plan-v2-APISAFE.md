@@ -2,7 +2,7 @@
 phase_loop_plan_version: 1
 phase: APISAFE
 roadmap: specs/phase-plans-v2.md
-roadmap_sha256: e4c6954f7901ad7ad67e5ed68e7669b5edb36092101ab9468e77be2c2a63f270
+roadmap_sha256: c823c7f97987e4b68d451541507bf69c9271af17480c826f88725e41be0186dc
 ---
 
 # APISAFE: API & VFS Surface Safety

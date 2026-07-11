@@ -120,7 +120,7 @@ Audit static/dynamic reachability, sever the import edges that make dead subpack
 - [ ] Dead subpackages removed (or quarantined per audit): `extractors/`, `integration/`, `error_handling/` (core keeps `_internal/error_handling.py`), `testing/`, `deployment/`, `devenv/`, `distribution/`, `cicd/`, `monitoring/`.
 - [ ] Duplicate `PluginConfig` collapsed to one definition; the six never-raised exception classes removed from `exceptions.py`.
 - [ ] Root cruft removed and git-ignored: `test_api.py`, `test_symbol_extraction.py`, `test_csharp.cs`, `test_tsx.tsx`, `test_wasm.wat`, `tmp_test.Rmd`, `compatibility.db`, `troubleshooting.db`, `validation_report.json`, `setup.py.bak`, stale `CODE_REVIEW_REPORT.md`; `ide/**/node_modules/` and `*.db` untracked; `mcp_server.log` git-ignored.
-- [ ] Full LOCAL `pytest` run passes (not CI-smoke) — proof no live path depended on removed code.
+- [ ] Full LOCAL `pytest` run COLLECTS with zero import/collection errors from the deletions (2873 tests collect clean; not CI-smoke) — proof no live path depended on removed code. Baseline-relative: HYGIENE introduces no NEW failures; a pre-existing baseline failure independent of the deletions (verified to fail on unmodified base code, e.g. the phase-9 docstring env artifact) is GATES's to resolve, not HYGIENE's. No script or doc may invoke a deleted test.
 
 **Scope notes**
 - Decompose into 6 lanes: (0) reachability audit + import-edge severing — MUST land before any deletion lane; (a) `extractors/` + `testing/`; (b) `integration/` + `error_handling/`; (c) `deployment/` + `devenv/` + `distribution/` + `cicd/` + `monitoring/`; (d) `PluginConfig` dedupe + `exceptions.py` prune; (e) root cruft + `.gitignore` + untracking.

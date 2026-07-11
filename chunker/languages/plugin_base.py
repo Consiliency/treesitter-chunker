@@ -9,10 +9,11 @@ from __future__ import annotations
 import logging
 import subprocess
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from chunker.types import CodeChunk
+
+from .base import PluginConfig
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -23,21 +24,6 @@ if TYPE_CHECKING:
 
     from .base import LanguageConfig
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class PluginConfig:
-    """Configuration for a language plugin."""
-
-    enabled: bool = True
-    chunk_types: set[str] | None = None
-    min_chunk_size: int = 1
-    max_chunk_size: int | None = None
-    custom_options: dict[str, Any] = None
-
-    def __post_init__(self):
-        if self.custom_options is None:
-            self.custom_options = {}
 
 
 class LanguagePlugin(ABC):

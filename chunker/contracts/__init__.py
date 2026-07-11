@@ -2,14 +2,20 @@
 
 # Phase 13/15 Contracts
 
-from chunker.cicd.pipeline import CICDPipelineImpl
-
 from .build_contract import BuildSystemContract, PlatformSupportContract
 
 # Phase 13/15 Stub implementations
 from .build_stub import BuildSystemStub, PlatformSupportStub
+
+# CI/CD contract + stub survive (the concrete `chunker.cicd` package was removed in
+# the HYGIENE dead-code phase, but these contract-layer APIs are still public).
 from .cicd_contract import CICDPipelineContract
 from .cicd_stub import CICDPipelineStub
+
+# The concrete CI/CD pipeline implementation lived in the deleted `chunker.cicd`
+# package; fall back to the stub so `CICDPipelineImpl` stays importable.
+CICDPipelineImpl = CICDPipelineStub
+
 from .debug_contract import ChunkComparisonContract, DebugVisualizationContract
 from .debug_stub import ChunkComparisonStub, DebugVisualizationStub
 from .devenv_contract import DevelopmentEnvironmentContract, QualityAssuranceContract
@@ -26,19 +32,13 @@ from .template_generator_stub import TemplateGeneratorStub
 from .tooling_contract import DeveloperToolingContract
 from .tooling_stub import DeveloperToolingStub
 
-# Import actual implementations if available
-try:
-    from chunker.cicd.pipeline import CICDPipeline as CICDPipelineImpl
-except ImportError:
-    CICDPipelineImpl = CICDPipelineStub  # Fallback to stub
-
 __all__ = [
     # Phase 13/15 Contracts
     "BuildSystemContract",
     # Phase 13/15 Stubs
     "BuildSystemStub",
+    # CI/CD contract layer (surviving APIs; impl falls back to stub)
     "CICDPipelineContract",
-    # Implementations
     "CICDPipelineImpl",
     "CICDPipelineStub",
     "ChunkComparisonContract",

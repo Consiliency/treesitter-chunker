@@ -447,16 +447,6 @@ class TestCrossModuleErrors(ErrorPropagationMixin):
                 ],
             },
             {
-                "error_type": "CacheError",
-                "message": "Cache database corrupted",
-                "context": {"cache_path": "/tmp/cache.db"},
-                "expected_suggestions": [
-                    "Delete the cache file and retry",
-                    "Run with --no-cache option",
-                    "Check disk space and permissions",
-                ],
-            },
-            {
                 "error_type": "NetworkError",
                 "message": "Failed to fetch remote grammar",
                 "context": {"url": "https://example.com/grammar.js"},
