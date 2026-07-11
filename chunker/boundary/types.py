@@ -33,6 +33,7 @@ BOUNDARY_CACHE_KEY_FIELDS = (
     "content_hash",
     "language",
     "grammar_version",
+    "runtime_version",
     "tool_version",
     "schema_version",
     "resolution_mode",

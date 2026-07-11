@@ -1,0 +1,55 @@
+{
+  "parity_bytes": "{\"diagnostics\":[],\"edges\":[{\"candidates\":[],\"id\":\"e1\",\"provenance\":{\"confidence\":\"0.9\",\"source\":\"semantic\"},\"source\":\"n1\",\"target\":\"n2\",\"type\":\"call\"}],\"files\":[],\"metrics\":{\"failure_buckets\":{}},\"nodes\":[{\"definition_id\":null,\"id\":\"n1\",\"identity\":{\"source\":\"node_id\",\"value\":\"n1\"},\"metadata\":{},\"node_id\":\"n1\",\"path\":\"m.py\",\"relationships\":[],\"span\":{\"byte_end\":1,\"byte_start\":0,\"end_line\":1,\"start_line\":1}}],\"run\":{\"canonical\":true,\"options\":{\"semantic_min_confidence\":\"0.5\"},\"tool\":\"treesitter-chunker\"},\"schema_version\":\"1.0\",\"source\":{\"kind\":\"file\"}}",
+  "parity_digest": "d225ba0789d8884fd576a0faf70bb4b4a7e4b44eb844bb2970f7dfb1e6b55f4f",
+  "parity_view": {
+    "diagnostics": [],
+    "edges": [
+      {
+        "candidates": [],
+        "id": "e1",
+        "provenance": {
+          "confidence": "0.9",
+          "source": "semantic"
+        },
+        "source": "n1",
+        "target": "n2",
+        "type": "call"
+      }
+    ],
+    "files": [],
+    "metrics": {
+      "failure_buckets": {}
+    },
+    "nodes": [
+      {
+        "definition_id": null,
+        "id": "n1",
+        "identity": {
+          "source": "node_id",
+          "value": "n1"
+        },
+        "metadata": {},
+        "node_id": "n1",
+        "path": "m.py",
+        "relationships": [],
+        "span": {
+          "byte_end": 1,
+          "byte_start": 0,
+          "end_line": 1,
+          "start_line": 1
+        }
+      }
+    ],
+    "run": {
+      "canonical": true,
+      "options": {
+        "semantic_min_confidence": "0.5"
+      },
+      "tool": "treesitter-chunker"
+    },
+    "schema_version": "1.0",
+    "source": {
+      "kind": "file"
+    }
+  }
+}

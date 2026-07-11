@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterable, Protocol, runtime_checkable
@@ -54,8 +56,13 @@ class SemanticEdge:
             raise ValueError(f"Unsupported semantic resolution: {self.resolution}")
         if self.target_node_id is None and not self.reference:
             raise ValueError("SemanticEdge requires target_node_id or reference")
-        if self.confidence < 0.0 or self.confidence > 1.0:
-            raise ValueError("SemanticEdge.confidence must be in [0.0, 1.0]")
+        if not math.isfinite(self.confidence) or not (0.0 <= self.confidence <= 1.0):
+            # `not (0 <= x <= 1)` alone would let NaN through (all comparisons
+            # are False), so reject non-finite explicitly — a non-finite
+            # confidence has no canonical serialization.
+            raise ValueError(
+                "SemanticEdge.confidence must be a finite value in [0.0, 1.0]"
+            )
         object.__setattr__(
             self,
             "candidates",

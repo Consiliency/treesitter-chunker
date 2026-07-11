@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import hashlib
 import json
 import time
@@ -337,7 +338,18 @@ def _failure_buckets(diagnostics: list[dict[str, Any]]) -> dict[str, int]:
 def _grammar_version(language: str | None) -> str | None:
     if not language:
         return None
-    return f"tree-sitter-{language}"
+    return (
+        f"tree-sitter-{language}:"
+        f"pack={_distribution_version('tree-sitter-language-pack')}:"
+        f"runtime={_distribution_version('tree-sitter')}"
+    )
+
+
+def _distribution_version(distribution: str) -> str | None:
+    try:
+        return version(distribution)
+    except PackageNotFoundError:  # pragma: no cover - source tree without metadata
+        return None
 
 
 def _cache_dir_for(root: Path, cache_dir: str | Path | None) -> Path:
@@ -363,6 +375,7 @@ def _cache_key_payload(
         "content_hash": content_hash,
         "language": language,
         "grammar_version": _grammar_version(language),
+        "runtime_version": _distribution_version("tree-sitter"),
         "tool_version": TOOL_VERSION,
         "schema_version": (
             BOUNDARY_IR_SEMANTIC_SCHEMA_VERSION
@@ -407,8 +420,10 @@ def _build_boundary_cache_key(payload: dict[str, Any]) -> str:
 
 
 def _validate_semantic_min_confidence(value: float) -> None:
-    if value < 0.0 or value > 1.0:
-        msg = "semantic_min_confidence must be in [0.0, 1.0]"
+    # Reject non-finite explicitly: `value < 0 or value > 1` lets NaN through
+    # (all comparisons with NaN are False), and NaN has no canonical serialization.
+    if not math.isfinite(value) or not (0.0 <= value <= 1.0):
+        msg = "semantic_min_confidence must be a finite value in [0.0, 1.0]"
         raise ValueError(msg)
 
 

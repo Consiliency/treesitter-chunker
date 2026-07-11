@@ -535,7 +535,7 @@
       "status": "parsed"
     },
     {
-      "content_hash": "sha1:c69fe3e2555e3f4c24d387bb007f7d0fe5f2b60a",
+      "content_hash": "sha1:2cfe404919781efd0986c44eb16b942ad340350d",
       "diagnostics": [],
       "id": "1902932438cd9238f3cd2d665d1f14cf2295e0fb",
       "language": "python",
@@ -591,9 +591,9 @@
           "from app.formatting import format_name"
         ],
         "parent_symbol": null,
-        "semantic_text": "language: python\nfile: app/service.py\nkind: function\nsymbol: render_report\nqualified name: render_report\nsemantic path: app/service.py::render_report\nsignature text: render_report(value: str) -> str\nimports: from app.formatting import format_name\nexports: cleaned, duplicate, render_report, value\ndependencies: app, format_name, formatting, helper, missing_call\ncontent:\ndef render_report(value: str) -> str:\n    from app.formatting import format_name\n\n    cleaned = format_name(value)\n    duplicate = helper(cleaned)\n    return missing_call(duplicate)"
+        "semantic_text": "language: python\nfile: app/service.py\nkind: function\nsymbol: render_report\nqualified name: render_report\nsemantic path: app/service.py::render_report\nsignature text: render_report(value: str) -> str\nimports: from app.formatting import format_name\nexports: cleaned, duplicate, render_report, value\ndependencies: app, format_name, formatting, helper, missing_call\ncontent:\ndef render_report(value: str) -> str:\n    from app.formatting import format_name\n\n    cleaned = format_name(value)\n    duplicate = helper(cleaned)  # noqa: F821 - unresolved-call fixture\n    return missing_call(duplicate)  # noqa: F821 - unresolved-call fixture"
       },
-      "node_id": "21b528f1c0d9a7fcfe9db58423d4b42a2d7eacde",
+      "node_id": "ca39ba17399db0fde30e837e2468f6af37494c83",
       "parent": null,
       "path": "app/service.py",
       "provenance": {
@@ -615,7 +615,7 @@
       "semantic_path": "app/service.py::render_report",
       "signature": "render_report(value: str) -> str",
       "span": {
-        "byte_end": 315,
+        "byte_end": 395,
         "byte_start": 134,
         "end_line": 14,
         "start_line": 9

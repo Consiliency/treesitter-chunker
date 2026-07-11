@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from copy import deepcopy
 from typing import Any
 
@@ -109,11 +110,20 @@ def canonicalize_boundary_ir(ir: dict[str, Any]) -> dict[str, Any]:
 
 
 def dumps_boundary_ir(ir: dict[str, Any], *, pretty: bool = False) -> str:
-    """Serialize Boundary IR as UTF-8-compatible JSON text with one newline."""
+    """Serialize Boundary IR as UTF-8-compatible JSON text with one newline.
+
+    ``allow_nan=False`` makes ``json.dumps`` raise ``ValueError`` on ANY non-finite
+    float anywhere in the structure — including arbitrary nested ``metadata`` values
+    a resolver might inject — so the emitted document can never contain the invalid
+    JSON tokens ``NaN``/``Infinity`` (which also have no canonical cross-tool form).
+    """
     canonical = canonicalize_boundary_ir(ir)
     if pretty:
-        return json.dumps(canonical, indent=2, sort_keys=True) + "\n"
-    return json.dumps(canonical, separators=(",", ":"), sort_keys=True) + "\n"
+        return json.dumps(canonical, indent=2, sort_keys=True, allow_nan=False) + "\n"
+    return (
+        json.dumps(canonical, separators=(",", ":"), sort_keys=True, allow_nan=False)
+        + "\n"
+    )
 
 
 def _strip_parity_volatile(canonical: dict[str, Any]) -> dict[str, Any]:
@@ -134,8 +144,44 @@ def _strip_parity_volatile(canonical: dict[str, Any]) -> dict[str, Any]:
     return canonical
 
 
+def _canon_float_str(value: float) -> str:
+    """Return the ECMAScript ``Number.prototype.toString`` representation.
+
+    Non-finite floats (NaN / +-Infinity) are REJECTED: they are not valid JSON and
+    have no canonical, cross-tool-stable serialization, so the deterministic IR must
+    never contain them. Callers validate confidence/weight inputs with
+    ``math.isfinite`` before they reach the serializer.
+    """
+    if not math.isfinite(value):
+        raise ValueError(
+            f"Non-finite float is not serializable in the canonical IR: {value!r}"
+        )
+    if value == 0:
+        return "0"
+
+    rendered = repr(value)
+    if "e" not in rendered and "E" not in rendered:
+        return rendered.removesuffix(".0")
+
+    mantissa, exponent_text = rendered.lower().split("e")
+    exponent = int(exponent_text)
+    if 1e-6 <= abs(value) < 1e21:
+        sign = ""
+        if mantissa.startswith("-"):
+            sign, mantissa = "-", mantissa[1:]
+        digits = mantissa.replace(".", "")
+        decimal_index = 1 + exponent
+        if decimal_index <= 0:
+            return f"{sign}0.{('0' * -decimal_index)}{digits}"
+        if decimal_index >= len(digits):
+            return f"{sign}{digits}{('0' * (decimal_index - len(digits)))}"
+        return f"{sign}{digits[:decimal_index]}.{digits[decimal_index:]}"
+
+    return f"{mantissa.removesuffix('.0')}e{exponent:+d}"
+
+
 def _floats_to_strings(value: Any) -> Any:
-    """Recursively convert every float to its string repr (canon S6).
+    """Recursively convert every float to its canon string form (canon S6).
 
     canon rejects ALL real numbers (cross-language float formatting is the single
     largest source of byte-divergence), so any float in the IR -- semantic-edge
@@ -147,7 +193,7 @@ def _floats_to_strings(value: Any) -> Any:
     if isinstance(value, bool):
         return value
     if isinstance(value, float):
-        return repr(value)
+        return _canon_float_str(value)
     if isinstance(value, dict):
         return {key: _floats_to_strings(item) for key, item in value.items()}
     if isinstance(value, list):

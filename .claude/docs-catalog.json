@@ -3,7 +3,8 @@
     "SUPPLY",
     "APISAFE",
     "GATES",
-    "PARSER"
+    "PARSER",
+    "BOUNDARYFIX"
   ],
-  "refresh_note": "scaffold_docs_catalog.py is unavailable; PARSER updated this catalog manually"
+  "refresh_note": "scaffold_docs_catalog.py is unavailable; BOUNDARYFIX updated this catalog manually"
 }

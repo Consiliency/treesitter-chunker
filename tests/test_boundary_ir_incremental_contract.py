@@ -17,6 +17,7 @@ def test_boundary_cache_constants_freeze_key_contract():
         "content_hash",
         "language",
         "grammar_version",
+        "runtime_version",
         "tool_version",
         "schema_version",
         "resolution_mode",

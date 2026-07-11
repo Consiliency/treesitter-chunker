@@ -16,11 +16,11 @@ import chunker  # noqa: F401  (ensure package import side effects)
 
 def test_cold_start_init_race_no_exception() -> None:
     """8 threads racing the very first initialize() must all succeed."""
-    from chunker import parser as P
+    from chunker import parser as parser_mod
 
     # Force a cold state so the race window is real.
-    P._state.registry = None
-    P._state.factory = None
+    parser_mod._state.registry = None
+    parser_mod._state.factory = None
 
     errors: list[Exception] = []
     barrier = threading.Barrier(8)
@@ -28,7 +28,7 @@ def test_cold_start_init_race_no_exception() -> None:
     def worker() -> None:
         try:
             barrier.wait()
-            P.get_parser("python")
+            parser_mod.get_parser("python")
         except Exception as exc:  # pragma: no cover - failure path
             errors.append(exc)
 
@@ -107,7 +107,7 @@ def test_lease_returned_on_parse_exception() -> None:
     """acquire_parser must return the parser to the pool even if parse() raises."""
     from chunker.parser import acquire_parser
 
-    class _Boom(Exception):
+    class _BoomError(Exception):
         pass
 
     # The lease context must exit cleanly (returning the parser) despite an
@@ -115,8 +115,8 @@ def test_lease_returned_on_parse_exception() -> None:
     try:
         with acquire_parser("python") as parser:
             assert parser is not None
-            raise _Boom
-    except _Boom:
+            raise _BoomError
+    except _BoomError:
         pass
 
     # A subsequent lease still works — the pool/cache was not corrupted or drained
@@ -150,11 +150,11 @@ def test_plugin_failopen_does_not_share_under_failure(monkeypatch) -> None:
     # Production instance is NOT injected -> a get_parser failure must PROPAGATE,
     # not fall open to a shared self._parser. _thread_safe_parser does
     # `from chunker.parser import get_parser`, so patch it on that module.
-    import chunker.parser as P
+    import chunker.parser as parser_mod
 
     def _boom(_lang):
         raise RuntimeError("induced parser failure")
 
-    monkeypatch.setattr(P, "get_parser", _boom)
+    monkeypatch.setattr(parser_mod, "get_parser", _boom)
     with pytest.raises(RuntimeError):
         inst._thread_safe_parser()
