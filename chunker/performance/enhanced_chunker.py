@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from chunker.core import _walk
+from chunker.parser import get_parser
 from chunker.types import CodeChunk
 
 from .cache.manager import CacheManager
@@ -240,22 +241,18 @@ class EnhancedChunker:
         Returns:
             Tuple of (tree, parse_time_ms)
         """
-        # Get parser from pool
-        parser = self._pool.acquire_parser(language)
+        # Obtain the calling thread's own parser (IF-0-PARSER-1 thread-local);
+        # parsers are never shared across threads via a pool.
+        parser = get_parser(language)
 
-        try:
-            # Parse with timing
-            op_id = self._monitor.start_operation("parse_file")
-            tree = parser.parse(source)
-            parse_time_ms = self._monitor.end_operation(op_id)
+        # Parse with timing
+        op_id = self._monitor.start_operation("parse_file")
+        tree = parser.parse(source)
+        parse_time_ms = self._monitor.end_operation(op_id)
 
-            logger.debug("Parsed %s in %.2fms", file_path, parse_time_ms)
+        logger.debug("Parsed %s in %.2fms", file_path, parse_time_ms)
 
-            return tree, parse_time_ms
-
-        finally:
-            # Return parser to pool
-            self._pool.release_parser(parser, language)
+        return tree, parse_time_ms
 
     def _generate_chunks(
         self,

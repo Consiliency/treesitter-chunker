@@ -25,7 +25,6 @@ class ASTRelationshipTracker(RelationshipTracker):
     def __init__(self):
         self._relationships: list[ChunkRelationship] = []
         self._chunk_index: dict[str, CodeChunk] = {}
-        self._parsers: dict[str, Parser] = {}
 
     def track_relationship(
         self,
@@ -99,7 +98,6 @@ class ASTRelationshipTracker(RelationshipTracker):
         """Clear all tracked relationships."""
         self._relationships.clear()
         self._chunk_index.clear()
-        self._parsers.clear()
 
     def _build_chunk_index(self, chunks: list[CodeChunk]) -> None:
         """Build index of chunks for quick lookup."""
@@ -107,10 +105,12 @@ class ASTRelationshipTracker(RelationshipTracker):
             self._chunk_index[chunk.chunk_id] = chunk
 
     def _get_parser(self, language: str) -> Parser:
-        """Get or create parser for language."""
-        if language not in self._parsers:
-            self._parsers[language] = get_parser(language)
-        return self._parsers[language]
+        """Return the calling thread's own parser for a language.
+
+        Uses the frozen IF-0-PARSER-1 thread-local API so a parser is never
+        cached on ``self`` and shared across threads.
+        """
+        return get_parser(language)
 
     def _analyze_file_chunks(
         self,

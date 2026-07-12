@@ -48,6 +48,16 @@ class MemoryPool(MemoryPoolInterface):
         Returns:
             Resource instance
         """
+        # Tree-sitter parsers must never be shared across threads. Hand back the
+        # calling thread's own parser (IF-0-PARSER-1 thread-local) rather than a
+        # cross-thread pooled instance.
+        if resource_type.startswith("parser:"):
+            language = resource_type.split(":", 1)[1]
+            parser = get_parser(language)
+            with self._lock:
+                self._stats[resource_type]["acquired"] += 1
+                self._stats[resource_type]["created"] += 1
+            return parser
         with self._lock:
             pool = self._pools[resource_type]
             if pool:
@@ -75,6 +85,9 @@ class MemoryPool(MemoryPoolInterface):
         Args:
             resource: Resource to return
         """
+        # Thread-owned parsers are never returned to a shared pool.
+        if isinstance(resource, Parser):
+            return
         resource_type = self._get_resource_type(resource)
         with self._lock:
             if resource in self._in_use[resource_type]:
@@ -172,19 +185,24 @@ class MemoryPool(MemoryPoolInterface):
         return self.acquire(f"parser:{language}")
 
     def release_parser(self, parser: Parser, language: str) -> None:
-        """Release a parser back to the pool."""
+        """Accept a parser release without pooling it.
+
+        Parsers are thread-owned (IF-0-PARSER-1 thread-local) and must never be
+        returned to a cross-thread pool, so this only records the stat.
+        """
         with self._lock:
-            resource_type = f"parser:{language}"
-            if parser in self._in_use[resource_type]:
-                self._in_use[resource_type].discard(parser)
-            pool = self._pools[resource_type]
-            if len(pool) < self._max_size:
-                pool.append(parser)
-                self._stats[resource_type]["released"] += 1
-                logger.debug("Released parser:%s to pool", language)
+            self._stats[f"parser:{language}"]["released"] += 1
 
     def warm_up(self, resource_type: str, count: int) -> None:
         """Pre-create resources for the pool."""
+        if resource_type.startswith("parser:"):
+            # Parsers are thread-local (IF-0-PARSER-1); a shared warm pool would
+            # hand one thread's parser to another, so warm-up is a no-op here.
+            logger.debug(
+                "Skipping warm-up for thread-local parser resource %s",
+                resource_type,
+            )
+            return
         with self._lock:
             pool = self._pools[resource_type]
             current_size = len(pool)

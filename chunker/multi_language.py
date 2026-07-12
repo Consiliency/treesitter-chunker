@@ -7,7 +7,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, ClassVar
 
-from .core import chunk_file
+from .core import chunk_file, chunk_text  # noqa: F401  (chunk_file kept for test patch target)
 from .interfaces.multi_language import (
     CrossLanguageReference,
     EmbeddedLanguageType,
@@ -30,6 +30,9 @@ except ImportError:
         raise ImportError("Tree-sitter parser not available")
 
     def chunk_file(_path: Any, _language: Any = None, **_kwargs: Any) -> Any:  # type: ignore[misc]
+        raise ImportError("Chunker not available")
+
+    def chunk_text(_text: Any, _language: Any = None, **_kwargs: Any) -> Any:  # type: ignore[misc]
         raise ImportError("Chunker not available")
 
 
@@ -939,10 +942,16 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
             try:
                 parser = get_parser(region.language)
                 parser.parse(region_content.encode())
-                region_chunks = chunk_file(  # type: ignore[call-arg]
+                # BUG-1 fix: process_mixed_file holds in-memory region content,
+                # so parse it in-memory via chunk_text(text, language, file_path).
+                # The previous chunk_file(file_path=..., content=..., language=...)
+                # call did not match core.chunk_file(path, language, ...) and raised
+                # TypeError on every mixed file. chunk_file stays imported only as
+                # the patch target for tests/test_multi_language.py.
+                region_chunks = chunk_text(
+                    region_content,
+                    region.language,
                     file_path=file_path,
-                    content=region_content,
-                    language=region.language,
                 )
                 for chunk in region_chunks:
                     chunk.start_line += region.start_line - 1

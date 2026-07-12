@@ -92,32 +92,33 @@ class VFSChunker:
         _language: str,
         chunker: StreamingChunker,
     ) -> Iterator[CodeChunk]:
-        """Streaming chunking for large files."""
-        with optimized_gc("streaming"), self.vfs.Path(path).open("rb") as f:
-            chunk_size = 1024 * 1024
-            content_buffer = b""
-            while True:
-                chunk = f.read(chunk_size)
-                if not chunk:
-                    break
-                content_buffer += chunk
-                if len(content_buffer) > chunk_size * 2:
-                    tree = chunker.parser.parse(content_buffer)
-                    for code_chunk in chunker._walk_streaming(
-                        tree.root_node,
-                        content_buffer,
-                        path,
-                    ):
-                        yield code_chunk
-                    content_buffer = content_buffer[-chunk_size:]
-            if content_buffer:
-                tree = chunker.parser.parse(content_buffer)
-                for code_chunk in chunker._walk_streaming(
-                    tree.root_node,
-                    content_buffer,
-                    path,
-                ):
-                    yield code_chunk
+        """Streaming chunking for large files.
+
+        BUG-2 fix. The previous implementation:
+
+        * reached for ``self.vfs.Path(path)`` — a helper that only
+          ``LocalFileSystem``/``InMemoryFileSystem`` expose, so Zip- and
+          HTTP-backed filesystems raised ``AttributeError``; and
+        * appended 1 MiB reads into a sliding buffer, re-parsed the buffer on
+          every growth, then dropped all but the trailing 1 MiB. That re-parsed
+          overlapping regions (duplicating chunks that straddle a buffer
+          boundary) and emitted byte/line offsets relative to the buffer rather
+          than the file.
+
+        The fix reads the full file bytes through the confined VFS handle
+        (``self.vfs.read_bytes`` -> ``self.vfs.open(path, "rb")``, which routes
+        through the APISAFE confined ``LocalFileSystem`` / whichever backend is
+        mounted — no raw ``Path`` re-open, no path escape) and parses ONCE.
+        Because ``_walk_streaming`` slices ``content[node.start_byte:node.end_byte]``
+        for every chunk's text, the yielded ``byte_start``/``byte_end`` are
+        file-relative and slice straight back to the source with no duplicates.
+        """
+        with optimized_gc("streaming"):
+            content = self.vfs.read_bytes(path)
+            if not content:
+                return
+            tree = chunker.parser.parse(content)
+            yield from chunker._walk_streaming(tree.root_node, content, path)
 
     def chunk_directory(
         self,
@@ -306,4 +307,12 @@ def chunk_from_zip(
     """
     with ZipFileSystem(zip_path) as vfs:
         chunker = VFSChunker(vfs)
-        return chunker.chunk_file(file_path, language, streaming)
+        result = chunker.chunk_file(file_path, language, streaming)
+        # BUG-2 lifecycle fix: chunk_file returns a lazy generator whenever the
+        # streaming path is taken — either explicitly (streaming=True) or
+        # automatically for files >10 MiB. The archive is closed when this
+        # ``with`` block exits, so a returned generator would read from an
+        # already-closed zip. Materialize it here while the archive is open.
+        if isinstance(result, list):
+            return result
+        return list(result)

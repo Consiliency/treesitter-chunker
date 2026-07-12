@@ -42,6 +42,7 @@ class ClusteringEngine:
         fine_resolution: float = 1.5,
         detect_infrastructure: bool = True,
         infrastructure_threshold: float = 0.95,
+        seed: int = 42,
     ) -> None:
         """Initialize the clustering engine.
 
@@ -52,12 +53,17 @@ class ClusteringEngine:
             detect_infrastructure: Whether to identify infrastructure nodes.
             infrastructure_threshold: Percentile threshold (0-1) for betweenness
                 centrality to identify infrastructure nodes.
+            seed: Fixed RNG seed passed to the Leiden algorithm so that clustering
+                is deterministic and reproducible across runs. Leiden's optimisation
+                is randomised; without a fixed seed the partition (and therefore the
+                whole hierarchy) can differ between invocations.
         """
         self.weight_config = weight_config or EdgeWeightConfig()
         self.coarse_resolution = coarse_resolution
         self.fine_resolution = fine_resolution
         self.detect_infrastructure = detect_infrastructure
         self.infrastructure_threshold = infrastructure_threshold
+        self.seed = seed
         self._graph: nx.Graph | None = None
         self._symbols: dict[str, Any] = {}
 
@@ -232,12 +238,15 @@ class ClusteringEngine:
         ig_graph.add_edges(edges)
         ig_graph.es["weight"] = weights
 
-        # Run Leiden algorithm
+        # Run Leiden algorithm with a fixed seed for deterministic partitions.
+        # leidenalg's optimiser is randomised; passing an explicit seed makes the
+        # resulting clusters reproducible across runs (and across processes).
         partition = leidenalg.find_partition(
             ig_graph,
             leidenalg.RBConfigurationVertexPartition,
             weights=weights,
             resolution_parameter=resolution,
+            seed=self.seed,
         )
 
         # Convert partition back to dict[cluster_id, list[symbol_id]]
