@@ -30,6 +30,8 @@ INTERNAL_DOCS = {
 UNTRACKED_INTERNAL_DOCS = {
     "development/xfail-inventory.md",
     "language-coverage.md",
+    # RELEASE traceability matrix — maintainer/internal, like xfail-inventory.
+    "development/traceability-matrix.md",
 }
 
 
