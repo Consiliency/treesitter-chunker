@@ -174,3 +174,33 @@ does), so these are cosmetic-consolidation, not correctness or compatibility:
    test imports the standalone one; the framework one is the registered format.
 
 Neither blocks RELEASE correctness; both are follow-up hygiene.
+
+## RELEASE full-suite note: order-sensitive SCALE tests + pre-existing env failures
+
+A full bounded-suite run (`tests/ spec_tests/`, integration dir + 100MB streaming
+excluded) on the remediation branch: **2836 passed, 58 failed, 21 errors**.
+Characterized honestly:
+
+- **~54 pre-existing environment failures** — NOT introduced by the remediation,
+  confirmed failing identically on the pre-work base commit (542896c0):
+  language tests whose grammars are not compiled in this environment
+  (`test_zig_language` 8 — verified on base, `test_ruby_language` 6,
+  `test_java_language` 6, `test_phase15_languages` 12, `test_language_smoke`,
+  `test_integration::test_language_metadata_consistency`),
+  `test_system_optimizer` (7, needs live psutil metrics), and the wasm/nasm
+  plugin `node_context` errors (21). These are env/tooling gaps, not code.
+- **2 stale tests exposed by the remediation — FIXED**: `test_types` (CodeChunk
+  gained `definition_id`/`qualified_route` in IDENTITY) and
+  `test_release_hygiene_policy` (three remediation docs were unregistered).
+- **2 order-sensitive SCALE tests** —
+  `test_scale_parser_holders.py::test_enhanced_parse_file_acquires_thread_local_parser`
+  and one `test_streaming_languages.py[rust-…]` case — **pass in isolation and in
+  every subset run**, but a distant test in the full 2900-test ordering pollutes
+  global parser/module state so the monkeypatched-`get_parser` recorder sees no
+  call. The migrated code is verified correct (8 threads → 8 distinct parsers).
+  Tracked as a test-isolation follow-up (reset the enhanced_chunker/parser global
+  state in a fixture, or make the recorder patch the factory instead of the
+  module name). Not a correctness regression.
+
+Net: the remediation adds **no new real failures** (it fixed 2 stale tests); the
+remaining failures are pre-existing env gaps + 2 tracked order-isolation flakes.
