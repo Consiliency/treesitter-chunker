@@ -31,7 +31,7 @@ from .file_utils import get_file_metadata
 logger = logging.getLogger(__name__)
 
 # Cache version for compatibility checking
-CACHE_VERSION = "1.0"
+CACHE_VERSION = "2.0"
 
 
 def _compute_checksum(data: bytes) -> str:

@@ -24,12 +24,19 @@ class ParallelChunker:
         num_workers: int | None = None,
         use_cache: bool = True,
         use_streaming: bool = False,
+        timeout_seconds: float | None = None,
     ):
         self.language = language
         self.num_workers = num_workers or mp.cpu_count()
         self.use_cache = use_cache
         self.use_streaming = use_streaming
         self.cache = ASTCache() if use_cache else None
+        # Optional wall-clock budget for collecting all results. When set, a
+        # hung worker cannot exceed it without being cancelled and recorded as a
+        # timeout. Default None = UNBOUNDED: a legitimate large file must not be
+        # killed just for being slow — the timeout is an opt-in safety valve for
+        # callers that need to bound a possibly-hung worker, not a global ceiling.
+        self.timeout_seconds = timeout_seconds
 
     def _process_single_file(self, file_path: Path) -> tuple[Path, list[CodeChunk]]:
         """Process a single file, using cache if available."""
@@ -57,36 +64,83 @@ class ParallelChunker:
     ) -> dict[Path, list[CodeChunk]]:
         """Process multiple files in parallel."""
         results: dict[Path, list[CodeChunk]] = {}
-        start_time = time.time()
-        timeout_seconds = 10.0
-        with ProcessPoolExecutor(max_workers=self.num_workers) as executor:
+        timeout_seconds = self.timeout_seconds
+        # A None timeout means UNBOUNDED — never impose a deadline on a slow but
+        # legitimate worker. deadline stays None and every wait is unbounded.
+        deadline = (
+            time.monotonic() + timeout_seconds if timeout_seconds is not None else None
+        )
+
+        # Manage the executor manually so a hung worker cannot block us on
+        # __exit__: we tear it down with wait=False and cancel pending futures.
+        executor = ProcessPoolExecutor(max_workers=self.num_workers)
+        try:
             # Submit all tasks
             future_to_path = {
                 executor.submit(self._process_single_file, path): path
                 for path in file_paths
             }
 
-            # Collect results as they complete
-            for future in as_completed(future_to_path):
-                path = future_to_path[future]
-                try:
-                    file_path, chunks = future.result(timeout=timeout_seconds)
-                    results[file_path] = chunks
-                except FutureTimeout:
-                    # Timed out – cancel and record failure
-                    future.cancel()
-                    print(
-                        f"Timeout processing {path}: exceeded {timeout_seconds}s",
+            try:
+                # Bounding as_completed with a wall-clock timeout is what makes
+                # the deadline real: a hung worker never *completes*, so without
+                # this the iterator would block forever and result(timeout=...)
+                # would never even be reached. With timeout_seconds=None the
+                # iterator blocks until every worker finishes (unbounded).
+                for future in as_completed(
+                    future_to_path,
+                    timeout=timeout_seconds,
+                ):
+                    path = future_to_path[future]
+                    remaining = (
+                        deadline - time.monotonic() if deadline is not None else None
                     )
-                    results[path] = []
-                except (FileNotFoundError, IndexError, KeyError, PermissionError) as e:
-                    # Normalize known failure classes
-                    print(f"Error processing {path}: {e}")
-                    results[path] = []
-                except Exception as e:
-                    # Handle any other worker crashes or unexpected exceptions
-                    print(f"Unexpected error processing {path}: {e}")
-                    results[path] = []
+                    try:
+                        file_path, chunks = future.result(
+                            timeout=(
+                                max(0.0, remaining) if remaining is not None else None
+                            ),
+                        )
+                        results[file_path] = chunks
+                    except FutureTimeout:
+                        future.cancel()
+                        print(
+                            f"Timeout processing {path}: exceeded {timeout_seconds}s",
+                        )
+                        results[path] = []
+                    except (
+                        FileNotFoundError,
+                        IndexError,
+                        KeyError,
+                        PermissionError,
+                    ) as e:
+                        # Normalize known failure classes
+                        print(f"Error processing {path}: {e}")
+                        results[path] = []
+                    except Exception as e:
+                        # Handle any other worker crashes or unexpected exceptions
+                        print(f"Unexpected error processing {path}: {e}")
+                        results[path] = []
+            except FutureTimeout:
+                # The wall-clock deadline elapsed while waiting on a worker that
+                # never completed. We ABANDON it — record a timeout and stop
+                # waiting so the CALL returns within budget. Note: a future that
+                # is already running cannot truly be cancelled, and shutdown()
+                # below does not join/kill the OS child, so a genuinely hung
+                # worker process is orphaned (it exits on its own or with the
+                # interpreter), not force-killed. That is the ProcessPoolExecutor
+                # limitation; the contract here is "the caller is unblocked",
+                # not "the child is terminated".
+                for outstanding, pending_path in future_to_path.items():
+                    if not outstanding.done():
+                        outstanding.cancel()
+                        results.setdefault(pending_path, [])
+                        print(
+                            f"Timeout processing {pending_path}: "
+                            f"exceeded {timeout_seconds}s",
+                        )
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
 
         return results
 

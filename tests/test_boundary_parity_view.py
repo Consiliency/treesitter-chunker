@@ -12,11 +12,18 @@ hand-stripping volatile fields. They are NOT covered by
 from __future__ import annotations
 
 import copy
+import json
+from pathlib import Path
 
 from chunker.boundary import (
     canonicalize_for_parity,
     canonicalize_for_parity_bytes,
     parity_digest,
+)
+
+
+_PARITY_GOLDEN_PATH = (
+    Path(__file__).parent / "fixtures" / "boundary_ir" / "parity-view.golden.json"
 )
 
 
@@ -70,17 +77,16 @@ def _ir_with_float() -> dict:
     }
 
 
-def test_parity_view_tolerates_floats():
-    """canon rejects floats; the parity view must not raise on a float-bearing IR."""
+def test_parity_view_matches_committed_cross_tool_golden():
+    """The float-bearing parity view matches the committed cross-tool golden."""
     ir = _ir_with_float()
-    # Must not raise -- floats are pre-represented as strings before canon.
+    expected = json.loads(_PARITY_GOLDEN_PATH.read_text(encoding="utf-8"))
+
     raw = canonicalize_for_parity_bytes(ir)
-    assert isinstance(raw, bytes) and raw
-    assert isinstance(parity_digest(ir), str)
-    # The float survives as content (string form), not dropped.
     view = canonicalize_for_parity(ir)
-    assert view["edges"][0]["provenance"]["confidence"] == repr(0.9)
-    assert view["run"]["options"]["semantic_min_confidence"] == repr(0.5)
+    assert raw == expected["parity_bytes"].encode("utf-8")
+    assert view == expected["parity_view"]
+    assert parity_digest(ir) == expected["parity_digest"]
 
 
 def test_parity_view_excludes_volatile_fields():
@@ -132,3 +138,11 @@ def test_parity_view_is_sensitive_to_content():
     changed["nodes"][0]["node_id"] = "DIFFERENT"
     changed["nodes"][0]["id"] = "DIFFERENT"
     assert canonicalize_for_parity_bytes(base) != canonicalize_for_parity_bytes(changed)
+
+
+def test_parity_golden_rejects_a_parity_field_mutation():
+    expected = json.loads(_PARITY_GOLDEN_PATH.read_text(encoding="utf-8"))
+    mutated = _ir_with_float()
+    mutated["edges"][0]["provenance"]["confidence"] = 0.1
+
+    assert parity_digest(mutated) != expected["parity_digest"]

@@ -1,0 +1,44 @@
+HYGIENE_REACHABILITY_V1
+
+Scope: static and dynamic import inspection was limited to chunker/, cli/, api/,
+tests/, and pyproject.toml. No protected, ignored, private, raw-data, credential,
+or evidence-source path was read.
+
+Static import inventory:
+- chunker/__init__.py -> integration: severed.
+- chunker/grammar_management/cli.py -> error_handling.integration: severed.
+- chunker/contracts/__init__.py -> chunker.cicd.pipeline: severed.
+- No surviving production import outside an audited candidate targets any candidate.
+
+Dynamic import inventory:
+- chunker/plugin_manager.py dynamically imports only chunker.languages.*.
+- chunker/languages/base.py dynamically imports sibling language modules.
+- chunker/fallback/sliding_window_fallback.py dynamically loads configured fallback modules.
+- No dynamic import targets an audited candidate package.
+
+Candidate disposition and legacy-test retirement:
+- extractors: deleted; test_extraction_framework.py and tests/unit/extractors/ retired.
+- testing: deleted; no separate legacy test beyond the extractors test fixture tree.
+- integration: deleted; test_core_integration.py, test_phase3_integration.py, and
+  examples/final_integration_testing_demo.py, examples/core_integration_demo.py,
+  docs/final-integration-testing.md retired.
+- error_handling: deleted; test_security.py retired. chunker/_internal/error_handling.py retained.
+- deployment: deleted; no separate legacy test beyond the phase-3 integration suite.
+- devenv: deleted; test_devenv_integration.py, tests/unit/test_devenv.py, and
+  examples/devenv_demo.py retired.
+- distribution: deleted; test_distribution_impl.py and tests/unit/distribution/ retired.
+- cicd: deleted; test_cicd_pipeline.py and test_workflow_validator.py retired.
+- monitoring: deleted; test_observability_system.py and examples/monitoring_demo.py retired.
+
+Final chunker.__all__ exports: ASTCache, AdvancedQueryIndex, ChunkBoundaryAnalyzer,
+ChunkOptimizer, ChunkerConfig, ChunkingDecision, CodeChunk, DecisionMetrics,
+DefaultChangeDetector, DefaultChunkCache, DefaultIncrementalProcessor,
+InMemoryContextCache, IntelligentFallbackChunker, LanguageDetectorImpl,
+LanguageNotFoundError, LibraryNotFoundError, MultiLanguageProcessorImpl,
+NaturalLanguageQueryEngine, OptimizationConfig, OptimizationMetrics,
+OptimizationStrategy, ParserConfig, ParserError, PluginConfig, PluginManager,
+ProjectAnalyzerImpl, SemanticQuery, SmartQueryOptimizer,
+TreeSitterSmartContextProvider, __version__, chunk_directory, chunk_file,
+chunk_file_streaming, chunk_text, chunk_text_with_token_limit, clear_cache,
+count_chunk_tokens, extract_boundary_ir, get_language_info, get_parser,
+get_plugin_manager, list_languages, return_parser.

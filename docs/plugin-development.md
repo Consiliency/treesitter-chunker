@@ -25,6 +25,11 @@ The Tree-sitter Chunker plugin system provides:
 - **Discovery**: Automatic plugin discovery from directories
 - **Hot Loading**: Load plugins at runtime
 
+> **Trust boundary:** a plugin is Python code. Built-in plugins are trusted;
+> only pass a custom directory directly to discovery, or register it with
+> `PluginManager.add_plugin_directory()`, after you have explicitly chosen to
+> trust its contents.
+
 ## Quick Start
 
 Here's a minimal example of a custom language plugin:

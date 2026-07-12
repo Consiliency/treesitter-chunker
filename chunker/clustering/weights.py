@@ -4,7 +4,7 @@ This module provides configuration and calculation utilities for determining
 edge weights in the symbol relationship graph used for clustering.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, Any, Optional
 
 

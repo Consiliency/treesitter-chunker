@@ -78,6 +78,14 @@ python -m chunker.cli grammar remove python
 python -m chunker.cli grammar diagnose python
 ```
 
+### Source trust
+
+Grammar repositories must use an allowlisted HTTPS host (currently exact
+`github.com`; look-alike subdomains and Git transport helpers are rejected).
+Pin downloaded archives to an immutable commit and add its SHA-256 to the
+repository-owned artifact manifest before compiling it. The downloader fails
+closed when no manifest entry is available.
+
 ## CLI Commands Reference
 
 ### `grammar list`

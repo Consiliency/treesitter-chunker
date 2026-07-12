@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from chunker.core import chunk_file
 from chunker.streaming import chunk_file_streaming
 

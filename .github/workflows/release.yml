@@ -1,5 +1,8 @@
 name: Release
 
+permissions:
+  contents: read
+
 concurrency:
   group: release-${{ github.ref || github.event.inputs.version }}
   cancel-in-progress: false
@@ -32,19 +35,22 @@ jobs:
       prerelease: ${{ steps.version.outputs.prerelease }}
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
       with:
         fetch-depth: 0
 
     - name: Determine version
       id: version
+      env:
+        INPUT_VERSION: ${{ github.event.inputs.version }}
+        INPUT_PRERELEASE: ${{ github.event.inputs.prerelease }}
       run: |
         if [ "${{ github.event_name }}" = "push" ]; then
           TAG_NAME=${GITHUB_REF#refs/tags/}
           PRERELEASE=false
         else
-          TAG_NAME=v${{ github.event.inputs.version }}
-          PRERELEASE=${{ github.event.inputs.prerelease }}
+          TAG_NAME="v$INPUT_VERSION"
+          PRERELEASE="$INPUT_PRERELEASE"
         fi
 
         PACKAGE_VERSION=$(python - <<'PY'
@@ -96,7 +102,7 @@ jobs:
         PY
 
     - name: Set up Python
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
       with:
         python-version: '3.12'
 
@@ -120,7 +126,7 @@ jobs:
         sha256sum -- * > checksums.txt
 
     - name: Upload distribution artifacts
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
         name: distribution-artifacts
         path: |
@@ -136,7 +142,7 @@ jobs:
       contents: write
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
       with:
         fetch-depth: 0
 
@@ -165,14 +171,14 @@ jobs:
         } >> "$GITHUB_OUTPUT"
 
     - name: Download build artifacts
-      uses: actions/download-artifact@v8
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
       continue-on-error: true
       with:
         name: distribution-artifacts
         path: ./dist
 
     - name: Create release
-      uses: softprops/action-gh-release@v3
+      uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b
       with:
         tag_name: ${{ needs.build-distributions.outputs.tag_name }}
         name: Release ${{ needs.build-distributions.outputs.tag_name }}
@@ -200,7 +206,7 @@ jobs:
 
     steps:
     - name: Download distribution artifacts
-      uses: actions/download-artifact@v8
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
       with:
         name: distribution-artifacts
         path: dist
@@ -209,7 +215,7 @@ jobs:
       run: rm -f dist/checksums.txt
 
     - name: Publish distribution 📦 to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
+      uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b
 
   update-changelog:
     name: Update CHANGELOG.md
@@ -221,13 +227,13 @@ jobs:
       contents: write
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
       with:
         fetch-depth: 0
         ref: main
 
     - name: Update CHANGELOG.md
-      uses: orhun/git-cliff-action@v4
+      uses: orhun/git-cliff-action@f50e11560dce63f7c33227798f90b924471a88b5
       with:
         config: cliff.toml
         args: --tag ${{ needs.build-distributions.outputs.tag_name }}

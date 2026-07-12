@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -16,7 +17,13 @@ __all__ = [
 # Imported lazily below to avoid circular import with multi_language
 from .metadata import MetadataExtractorFactory
 from .parser import get_parser
-from .types import CodeChunk, compute_file_id, compute_node_id, compute_symbol_id
+from .types import (
+    CodeChunk,
+    compute_definition_id,
+    compute_file_id,
+    compute_node_id,
+    compute_symbol_id,
+)
 
 if TYPE_CHECKING:
     from tree_sitter import Node
@@ -349,19 +356,58 @@ def _apply_retrieval_metadata(chunks: list[CodeChunk]) -> None:
         chunk.metadata.update(_build_retrieval_metadata(chunk))
 
 
-def _walk(
-    node: Node,
-    source: bytes,
+def _svelte_control_flow_chunks(source: bytes) -> list[CodeChunk]:
+    """Extract template control-flow blocks once from the Svelte root."""
+    chunks = []
+    byte_start = 0
+    for line_number, line in enumerate(
+        source.decode("utf-8", errors="replace").splitlines(),
+        start=1,
+    ):
+        node_type = next(
+            (
+                node_type
+                for prefix, node_type in (
+                    ("{#if", "if_block"),
+                    ("{#each", "each_block"),
+                    ("{#await", "await_block"),
+                    ("{#key", "key_block"),
+                )
+                if line.strip().startswith(prefix)
+            ),
+            None,
+        )
+        line_bytes = len(line.encode("utf-8"))
+        if node_type:
+            chunks.append(
+                CodeChunk(
+                    language="svelte",
+                    file_path="",
+                    node_type=node_type,
+                    start_line=line_number,
+                    end_line=line_number,
+                    byte_start=byte_start,
+                    byte_end=byte_start + line_bytes,
+                    parent_context="template",
+                    content=line,
+                    parent_route=[node_type],
+                ),
+            )
+        byte_start += line_bytes + 1
+    return chunks
+
+
+def resolve_chunk_predicates(
     language: str,
-    parent_ctx: str | None = None,
-    parent_chunk: CodeChunk | None = None,
-    extractor=None,
-    analyzer=None,
-    parent_route: list[str] | None = None,
-    parent_qualified_route: list[str] | None = None,
-) -> list[CodeChunk]:
-    """Walk the AST and extract chunks based on language configuration."""
-    # Get language configuration
+) -> tuple[Callable[[str], bool], Callable[[str], bool]]:
+    """Return ``(should_chunk, should_ignore)`` predicates for a language.
+
+    This is the single source of truth for WHICH node types are chunkable per
+    language, derived from ``language_config_registry`` with the same
+    per-language adjustments (Go/Clojure/Dart/C# fallback) that ``_walk`` used
+    inline. The streaming walker imports this so it selects an identical node
+    set without re-parsing or materializing the full chunk list.
+    """
     config = language_config_registry.get(language)
     if not config:
         # Fallback to hardcoded defaults for backward compatibility
@@ -391,50 +437,76 @@ def _walk(
         def should_ignore(_node_type: str) -> bool:
             return False
 
-    else:
-        should_chunk = config.should_chunk_node
-        should_ignore = config.should_ignore_node  # type: ignore[assignment]
-        # Go: ensure common declaration node types are chunked even if rules are minimal
-        if language == "go":
-            go_decl_like = {
-                "function_declaration",
-                "method_declaration",
-                "type_declaration",
-                "type_spec",
-                "const_declaration",
-                "var_declaration",
-            }
+        return should_chunk, should_ignore
 
-            def should_chunk(node_type: str) -> bool:  # type: ignore[no-redef]
-                return config.should_chunk_node(node_type) or node_type in go_decl_like
+    should_chunk = config.should_chunk_node
+    should_ignore = config.should_ignore_node
+    # Go: ensure common declaration node types are chunked even if rules are minimal
+    if language == "go":
+        go_decl_like = {
+            "function_declaration",
+            "method_declaration",
+            "type_declaration",
+            "type_spec",
+            "const_declaration",
+            "var_declaration",
+        }
 
-        # For LISPy languages like Clojure, treat top-level list forms as chunks
-        if language == "clojure":
+        def should_chunk(node_type: str) -> bool:  # type: ignore[no-redef]
+            return config.should_chunk_node(node_type) or node_type in go_decl_like
 
-            def should_chunk(node_type: str) -> bool:  # type: ignore[no-redef]
-                return node_type == "list_lit" or config.should_chunk_node(node_type)
+    # For LISPy languages like Clojure, treat top-level list forms as chunks
+    if language == "clojure":
 
-        # For Dart, the grammar exposes separate signature/body nodes. Treat
-        # signatures as declarations for chunking.
-        elif language == "dart":
-            dart_signature_types = {
-                "function_signature",
-                "method_signature",
-                "getter_signature",
-                "setter_signature",
-                "constructor_signature",
-                "factory_constructor_signature",
-            }
-            dart_extra_decl_like = {"class_definition", "type_alias"}
+        def should_chunk(node_type: str) -> bool:  # type: ignore[no-redef]
+            return node_type == "list_lit" or config.should_chunk_node(node_type)
 
-            def should_chunk(node_type: str) -> bool:  # type: ignore[no-redef]
-                return (
-                    config.should_chunk_node(node_type)
-                    or node_type in dart_signature_types
-                    or node_type in dart_extra_decl_like
-                )
+    # For Dart, the grammar exposes separate signature/body nodes. Treat
+    # signatures as declarations for chunking.
+    elif language == "dart":
+        dart_signature_types = {
+            "function_signature",
+            "method_signature",
+            "getter_signature",
+            "setter_signature",
+            "constructor_signature",
+            "factory_constructor_signature",
+        }
+        dart_extra_decl_like = {"class_definition", "type_alias"}
+
+        def should_chunk(node_type: str) -> bool:  # type: ignore[no-redef]
+            return (
+                config.should_chunk_node(node_type)
+                or node_type in dart_signature_types
+                or node_type in dart_extra_decl_like
+            )
+
+    return should_chunk, should_ignore
+
+
+def _walk(
+    node: Node,
+    source: bytes,
+    language: str,
+    parent_ctx: str | None = None,
+    parent_chunk: CodeChunk | None = None,
+    extractor=None,
+    analyzer=None,
+    parent_route: list[str] | None = None,
+    parent_qualified_route: list[str] | None = None,
+    depth: int = 0,
+) -> list[CodeChunk]:
+    """Walk the AST and extract chunks based on language configuration."""
+    if depth >= 900:
+        raise RecursionError("chunk tree exceeds safe traversal depth")
+    # Get language configuration + the chunk/ignore predicates (shared with the
+    # streaming walker so streaming selects the SAME per-language node types).
+    should_chunk, should_ignore = resolve_chunk_predicates(language)
 
     chunks: list[CodeChunk] = []
+    is_svelte_root = language == "svelte" and node.type in {"document", "source_file"}
+    if is_svelte_root:
+        chunks.extend(_svelte_control_flow_chunks(source))
     current_chunk = None
     current_qualified_route: list[str] | None = None
 
@@ -670,13 +742,7 @@ def _walk(
             file_path="",
             node_type=adjusted_node_type,
             start_line=start_line,
-            end_line=(
-                # Estimate end line from span_end by walking to end_point if same node
-                node.end_point[0] + 1
-                if span_end == node.end_byte
-                else None  # type: ignore[truthy-bool]
-            )
-            or (node.end_point[0] + 1),
+            end_line=source[:span_end].count(b"\n") + 1,
             byte_start=span_start,
             byte_end=span_end,
             parent_context=parent_ctx or "",
@@ -842,9 +908,16 @@ def _walk(
                 body = script_text
                 gt = script_text.find(">")
                 end_tag = script_text.rfind("</")
+                body_offset = 0
                 if gt != -1 and end_tag != -1 and gt + 1 < end_tag:
                     body = script_text[gt + 1 : end_tag]
+                    body_offset = gt + 1
                 lines = body.splitlines()
+                # FILE-ABSOLUTE byte offset per line so two byte-identical `$:`
+                # lines in DIFFERENT script blocks (module vs instance) never
+                # collide to one chunk_id (IDENTITY panel: body-relative offsets
+                # reset per <script> and collided across blocks).
+                _line_byte = node.start_byte + body_offset
                 for idx, line in enumerate(lines):
                     stripped = line.strip()
                     if stripped.startswith("$:"):
@@ -854,22 +927,33 @@ def _walk(
                             node_type="reactive_statement",
                             start_line=current_chunk.start_line + idx,
                             end_line=current_chunk.start_line + idx,
-                            byte_start=0,
-                            byte_end=0,
+                            byte_start=_line_byte,
+                            byte_end=_line_byte + len(line.encode("utf-8")),
                             parent_context="script_element",
                             content=line,
                             parent_chunk_id=current_chunk.parent_chunk_id,
                             parent_route=[*current_route, "reactive_statement"],
                         )
                         chunks.append(reactive_chunk)
+                    _line_byte += len(line.encode("utf-8")) + 1  # +1 for '\n'
             except Exception:
                 pass
         # Svelte: synthesize control-flow chunks by scanning entire file once at top-level
-        if language == "svelte" and parent_chunk is None:
+        if (
+            language == "svelte"
+            and node.type in {"document", "source_file"}
+            and not is_svelte_root
+        ):
             try:
                 full_text = source.decode("utf-8", errors="replace")
                 lines = full_text.splitlines()
+                # Real byte offset per line so two byte-identical control-flow
+                # lines (e.g. repeated `{#each ...}`) get distinct, stable
+                # byte_start -> distinct chunk_ids (IDENTITY).
+                _cf_byte = 0
                 for idx, line in enumerate(lines, start=1):
+                    _line_start = _cf_byte
+                    _cf_byte += len(line.encode("utf-8")) + 1  # +1 for '\n'
                     stripped = line.strip()
                     cf_type = None
                     if stripped.startswith("{#if"):
@@ -887,8 +971,8 @@ def _walk(
                             node_type=cf_type,
                             start_line=idx,
                             end_line=idx,
-                            byte_start=0,
-                            byte_end=0,
+                            byte_start=_line_start,
+                            byte_end=_line_start + len(line.encode("utf-8")),
                             parent_context="template",
                             content=line,
                             parent_chunk_id=None,
@@ -914,6 +998,7 @@ def _walk(
                 analyzer,
                 parent_route=parent_route,
                 parent_qualified_route=parent_qualified_route,
+                depth=depth + 1,
             ),
         )
 
@@ -1008,11 +1093,6 @@ def _detect_matlab_scripts(
 
     # Check if there are top-level statements that make this a script
     has_top_level_code = False
-    has_functions_or_classes = any(
-        chunk.node_type in {"function_definition", "classdef", "class_definition"}
-        for chunk in chunks
-    )
-
     # Look for top-level statements in the node children
     for child in node.children:
         if child.type in {"assignment", "function_call", "command", "comment"}:
@@ -1071,35 +1151,49 @@ def chunk_text(
         extractor = MetadataExtractorFactory.create_extractor(language)
         analyzer = MetadataExtractorFactory.create_analyzer(language)
 
-    chunks = _walk(
-        tree.root_node,
-        src,
-        language,
-        extractor=extractor,
-        analyzer=analyzer,
-    )
+    try:
+        chunks = _walk(
+            tree.root_node,
+            src,
+            language,
+            extractor=extractor,
+            analyzer=analyzer,
+        )
+    except RecursionError:
+        from .fallback.sliding_window_fallback import SlidingWindowFallback
+
+        chunks = SlidingWindowFallback().chunk_text(text, file_path)
+
+    def _effective_route(c: CodeChunk) -> list[str]:
+        # Fallback chunks (line/window/csv) carry NO qualified/parent route, so a
+        # route-only definition_id would be identical for every chunk in the file
+        # and incremental MODIFIED classification (which keys on definition_id)
+        # would collapse them all into one — dropping chunks. Seed a synthetic,
+        # position-based route for routeless chunks so each is distinct while
+        # staying stable under in-place edits that don't move its start line.
+        route = c.qualified_route or c.parent_route
+        if route:
+            return route
+        return [f"{c.node_type or 'chunk'}@L{c.start_line}"]
 
     # Build mapping from temporary IDs (no path) to final IDs (with path)
     tmp_to_final: dict[str, str] = {}
     for c in chunks:
-        tmp_id = compute_node_id("", c.language, c.parent_route, c.content)
+        route = _effective_route(c)
+        tmp_id = compute_node_id("", c.language, route, c.byte_start, c.content)
         final_id = compute_node_id(
-            file_path,
-            c.language,
-            c.parent_route,
-            c.content,
+            file_path, c.language, route, c.byte_start, c.content
         )
         tmp_to_final[tmp_id] = final_id
 
     for c in chunks:
+        route = _effective_route(c)
         c.file_path = file_path
         # update file/node ids now that path is known
         c.file_id = compute_file_id(file_path)
+        c.definition_id = compute_definition_id(file_path, c.language, route)
         c.node_id = compute_node_id(
-            file_path,
-            c.language,
-            c.parent_route,
-            c.content,
+            file_path, c.language, route, c.byte_start, c.content
         )
         c.chunk_id = c.node_id
         # fix parent id if it was set using temporary id

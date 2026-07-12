@@ -1,0 +1,1243 @@
+chunker/analysis/complexity.py: error: Argument 1 to "len" has
+chunker/analysis/complexity.py: error: Argument 1 to "_safe_decode" of
+chunker/analysis/complexity.py: error: Argument 2 to
+chunker/analysis/complexity.py: error: Argument 2 to "_increases_nesting"
+chunker/analysis/complexity.py: error: Function is missing a return type
+chunker/analysis/complexity.py: error: Item "None" of "bytes | None" has
+chunker/analysis/complexity.py: error: No overload variant of "list"
+chunker/analysis/complexity.py: error: Signature of "process_node"
+chunker/analysis/complexity.py: error: Unsupported operand types for *
+chunker/analysis/coupling.py: error: Function is missing a return type
+chunker/analysis/coupling.py: error: Item "None" of
+chunker/analysis/coupling.py: error: Item "None" of "bytes | None" has
+chunker/analysis/coupling.py: error: Item "str" of
+chunker/analysis/coupling.py: error: Need type annotation for
+chunker/analysis/coupling.py: error: No overload variant of "dict"
+chunker/analysis/coupling.py: error: No overload variant of "list"
+chunker/analysis/coupling.py: error: "Sequence[str]" has no attribute
+chunker/analysis/coupling.py: error: Signature of "process_node"
+chunker/analysis/semantics.py: error: Argument 1 to "get" of "dict" has
+chunker/analysis/semantics.py: error: Argument 1 to "set" has
+chunker/analysis/semantics.py: error: Function is missing a return type
+chunker/analysis/semantics.py: error: Incompatible types in assignment
+chunker/analysis/semantics.py: error: Item "None" of "bytes | None" has
+chunker/analysis/semantics.py: error: Need type annotation for "context"
+chunker/analysis/semantics.py: error: No overload variant of
+chunker/analysis/semantics.py: error: Signature of "process_node"
+chunker/analysis/semantics.py: error: Value of type
+chunker/auto.py: error: Argument 1 to "append" of "list" has
+chunker/auto.py: error: Argument "chunks" to "AutoChunkResult" has
+chunker/auto.py: error: Incompatible types in assignment (expression has
+chunker/auto.py: error: Signature of "auto_chunk_file" incompatible with
+chunker/auto.py: error: Signature of "chunk_text" incompatible with
+chunker/auto.py: error: Signature of "detect_language" incompatible with
+chunker/auto.py: error: Signature of "ensure_language" incompatible with
+chunker/auto.py: error: Signature of "get_chunker_for_language"
+chunker/auto.py: error: Signature of "list_supported_extensions"
+chunker/auto.py: error: Signature of "preload_languages" incompatible
+chunker/boundary/adapter.py: error: Incompatible types in assignment
+chunker/boundary/adapter.py: error: Statement is unreachable 
+chunker/boundary/_canon.py: error: Missing type parameters for generic
+chunker/boundary/__init__.py: error: Missing type parameters for generic
+chunker/boundary/__init__.py: error: Returning Any from function declared
+chunker/boundary/serialization.py: error: Returning Any from function
+chunker/build/builder.py: error: Function is missing a return type
+chunker/build/builder.py: error: Incompatible types in assignment
+chunker/build/builder.py: error: Missing type parameters for generic
+chunker/build/builder.py: error: Need type annotation for "all_c_files"
+chunker/build/builder.py: error: "object" has no attribute "append" 
+chunker/build/builder.py: error: Signature of "build_wheel" incompatible
+chunker/build/builder.py: error: Signature of "compile_grammars"
+chunker/build/builder.py: error: Signature of "create_conda_package"
+chunker/build/builder.py: error: Signature of "verify_build" incompatible
+chunker/build/builder.py: error: Statement is unreachable  [unreachable]
+chunker/build/builder.py: error: "str" has no attribute "is_file" 
+chunker/build/builder.py: error: "str" has no attribute "relative_to" 
+chunker/build/cross_compile.py: error: Call to untyped function
+chunker/build/cross_compile.py: error: Function is missing a return type
+chunker/build/cross_compile.py: error: If x = b'abc' then f"{x}" or
+chunker/build/cross_compile.py: error: Incompatible types in assignment
+chunker/build/platform.py: error: Dict entry 7 has incompatible type
+chunker/build/platform.py: error: Signature of
+chunker/build/platform.py: error: Signature of "detect_platform"
+chunker/build/system.py: error: Call to untyped function "BuildSystem" in
+chunker/build/system.py: error: Function is missing a return type
+chunker/build/system.py: error: Signature of "build_wheel" incompatible
+chunker/build/system.py: error: Signature of "compile_grammars"
+chunker/build/system.py: error: Signature of "create_conda_package"
+chunker/build/system.py: error: Signature of "detect_platform"
+chunker/build/system.py: error: Signature of "install_build_dependencies"
+chunker/build/system.py: error: Signature of "verify_build" incompatible
+chunker/chunker_config.py: error: Function is missing a type annotation 
+chunker/chunker_config.py: error: Incompatible types in assignment
+chunker/chunker.py: error: Call to untyped function "TiktokenCounter" in
+chunker/cli/cluster_commands.py: error: Missing type parameters for
+chunker/cli/grammar_commands.py: error: Missing type parameters for
+chunker/cli/__main__.py: error: Returning Any from function declared to
+chunker/cli/symbol_commands.py: error: Missing type parameters for
+chunker/clustering/engine.py: error: Argument "key" to "sort" of "list"
+chunker/clustering/engine.py: error: Incompatible return value type (got
+chunker/clustering/engine.py: error: Missing type parameters for generic
+chunker/clustering/hierarchy.py: error: Incompatible types in assignment
+chunker/clustering/hierarchy.py: error: "MetricsCalculator" has no
+chunker/clustering/hierarchy.py: error: Missing type parameters for
+chunker/clustering/metrics.py: error: Returning Any from function
+chunker/config/profiles.py: error: Function is missing a return type
+chunker/config/profiles.py: error: Incompatible types in assignment
+chunker/config/profiles.py: error: Missing type parameters for generic
+chunker/config/profiles.py: error: Statement is unreachable 
+chunker/config/strategy_config.py: error: Function is missing a return
+chunker/context/extractor.py: error: Function is missing a return type
+chunker/context/extractor.py: error: Function is missing a type
+chunker/context/extractor.py: error: Need type annotation for "lines"
+chunker/context/extractor.py: error: Signature of
+chunker/context/extractor.py: error: Signature of "extract_dependencies"
+chunker/context/extractor.py: error: Signature of "extract_imports"
+chunker/context/extractor.py: error: Signature of "find_decorators"
+chunker/context/extractor.py: error: Unused "type: ignore" comment 
+chunker/context/filter.py: error: Signature of "is_relevant" incompatible
+chunker/context/filter.py: error: Signature of "score_relevance"
+chunker/context/languages/javascript.py: error:
+chunker/context/languages/javascript.py: error: Call to untyped function
+chunker/context/languages/javascript.py: error: Function is missing a
+chunker/context/languages/javascript.py: error: Incompatible types in
+chunker/context/languages/javascript.py: error: Need type annotation for
+chunker/context/languages/javascript.py: error: Signature of
+chunker/context/languages/python.py: error: Call to untyped function
+chunker/context/languages/python.py: error: Function is missing a return
+chunker/context/languages/python.py: error: Incompatible types in
+chunker/context/languages/python.py: error: Item "None" of
+chunker/context/languages/python.py: error: Need type annotation for
+chunker/context/languages/python.py: error: Signature of
+chunker/context/languages/python.py: error: Signature of "_is_scope_node"
+chunker/context/languages/python.py: error: Statement is unreachable 
+chunker/context/scope_analyzer.py: error: Function is missing a return
+chunker/context/scope_analyzer.py: error: Signature of
+chunker/context/scope_analyzer.py: error: Signature of "get_scope_chain"
+chunker/context/scope_analyzer.py: error: Signature of "get_scope_type"
+chunker/context/symbol_resolver.py: error: Function is missing a return
+chunker/context/symbol_resolver.py: error: Incompatible types in
+chunker/context/symbol_resolver.py: error: Signature of
+chunker/context/symbol_resolver.py: error: Signature of "get_symbol_type"
+chunker/context/symbol_resolver.py: error: Statement is unreachable 
+chunker/contracts/auto_stub.py: error: Call to untyped function
+chunker/contracts/auto_stub.py: error: Function is missing a type
+chunker/contracts/language_plugin_contract.py: error: Function
+chunker/contracts/language_plugin_stub.py: error: Function "builtins.any"
+chunker/contracts/template_generator_contract.py: error: Function
+chunker/contracts/template_generator_stub.py: error: Function
+chunker/core.py: error: Function is missing a type annotation for one or
+chunker/core.py: error: Incompatible types in assignment (expression has
+chunker/core.py: error: Statement is unreachable  [unreachable]
+chunker/core.py: error: Unused "type: ignore" comment  [unused-ignore]
+chunker/debug/comparison.py: error: Signature of "compare_strategies"
+chunker/debug/interactive/chunk_debugger.py: error: "object" has no
+chunker/debug/interactive/chunk_debugger.py: error: Unsupported left
+chunker/debug/interactive/node_explorer.py: error: Argument 1 to
+chunker/debug/interactive/node_explorer.py: error: Function is missing a
+chunker/debug/interactive/node_explorer.py: error: Incompatible types in
+chunker/debug/interactive/node_explorer.py: error: Item "None" of
+chunker/debug/interactive/node_explorer.py: error: Need type annotation
+chunker/debug/interactive/node_explorer.py: error: Statement is
+chunker/debug/interactive/query_debugger.py: error: Argument 1 to
+chunker/debug/interactive/query_debugger.py: error: Call to untyped
+chunker/debug/interactive/query_debugger.py: error: Function is missing
+chunker/debug/interactive/query_debugger.py: error: Item "None" of
+chunker/debug/interactive/query_debugger.py: error: Need type annotation
+chunker/debug/interactive/query_debugger.py: error: Returning Any from
+chunker/debug/interactive/repl.py: error: Argument 1 to "ASTVisualizer"
+chunker/debug/interactive/repl.py: error: Argument 1 to "explore_code"
+chunker/debug/interactive/repl.py: error: Argument 1 to "write" of
+chunker/debug/interactive/repl.py: error: Argument 2 to "debug_query" of
+chunker/debug/interactive/repl.py: error: Call to untyped function
+chunker/debug/interactive/repl.py: error: Function is missing a return
+chunker/debug/interactive/repl.py: error: Item "None" of
+chunker/debug/interactive/repl.py: error: Missing type parameters for
+chunker/debug/tools/comparison.py: error: Call to untyped function
+chunker/debug/tools/comparison.py: error: Function is missing a return
+chunker/debug/tools/comparison.py: error: Function is missing a type
+chunker/debug/tools/comparison.py: error: Need type annotation for
+chunker/debug/tools/comparison.py: error: Signature of
+chunker/debug/tools/comparison.py: error: Unexpected keyword argument
+chunker/debug/tools/visualization.py: error: Call to untyped function
+chunker/debug/tools/visualization.py: error: Function is missing a type
+chunker/debug/tools/visualization.py: error: Incompatible return value
+chunker/debug/tools/visualization.py: error: "object" has no attribute
+chunker/debug/tools/visualization.py: error: Returning Any from function
+chunker/debug/tools/visualization.py: error: Unsupported operand types
+chunker/debug/tools/visualization.py: error: Value of type "object" is
+chunker/debug/visualization/ast_visualizer.py: error: Module
+chunker/debug/visualization/ast_visualizer.py: error: Returning Any from
+chunker/debug/visualization/chunk_visualizer.py: error: "CodeChunk" has
+chunker/debug/visualization/chunk_visualizer.py: error: Need type
+chunker/debug/visualization_impl.py: error: Signature of
+chunker/debug/visualization_impl.py: error: Signature of "inspect_chunk"
+chunker/debug/visualization_impl.py: error: Signature of "visualize_ast"
+chunker/export/database_exporter_base.py: error: Function is missing a
+chunker/export/dot_exporter.py: error: Call to untyped function "__init__"
+chunker/export/dot_exporter.py: error: Function is missing a return type
+chunker/export/dot_exporter.py: error: Function is missing a type
+chunker/export/dot_exporter.py: error: Signature of "export" incompatible
+chunker/export/dot_exporter.py: error: Signature of "export_string"
+chunker/exporters/parquet.py: error: Function is missing a type
+chunker/exporters/parquet.py: error: Need type annotation for
+chunker/export/formats/database.py: error: Function is missing a return
+chunker/export/formats/database.py: error: Signature of
+chunker/export/formats/database.py: error: Signature of "create_indexes"
+chunker/export/formats/database.py: error: Signature of "export"
+chunker/export/formats/database.py: error: Signature of "export_streaming"
+chunker/export/formats/database.py: error: Signature of "get_schema"
+chunker/export/formats/database.py: error: Signature of "set_batch_size"
+chunker/export/formats/database.py: error: Signature of "set_table_names"
+chunker/export/formats/graph.py: error: Argument 1 to "index" of "list"
+chunker/export/formats/graph.py: error: Function is missing a return type
+chunker/export/formats/graph.py: error: Incompatible types in assignment
+chunker/export/formats/graph.py: error: Non-overlapping container check
+chunker/export/formats/graph.py: error: Signature of
+chunker/export/formats/graph.py: error: Signature of "add_layout_hints"
+chunker/export/formats/graph.py: error: Signature of "export"
+chunker/export/formats/graph.py: error: Signature of "export" incompatible
+chunker/export/formats/graph.py: error: Signature of "export_streaming"
+chunker/export/formats/graph.py: error: Signature of "get_schema"
+chunker/export/formats/graph.py: error: Signature of "set_edge_attributes"
+chunker/export/formats/graph.py: error: Signature of "set_node_attributes"
+chunker/export/formats/__init__.py: error: Cannot assign to a type  [misc]
+chunker/export/formats/__init__.py: error: Unused "type: ignore" comment 
+chunker/export/formats/json.py: error: Module has no attribute "Path" 
+chunker/export/formats/json.py: error: Signature of "export" incompatible
+chunker/export/formats/json.py: error: Signature of "export_streaming"
+chunker/export/formats/json.py: error: Signature of "get_schema"
+chunker/export/formats/neo4j.py: error: Function is missing a return type
+chunker/export/formats/neo4j.py: error: Incompatible types in assignment
+chunker/export/formats/neo4j.py: error: Need type annotation for
+chunker/export/formats/neo4j.py: error: Signature of "export" incompatible
+chunker/export/formats/neo4j.py: error: Signature of "export_streaming"
+chunker/export/formats/neo4j.py: error: Signature of "get_schema"
+chunker/export/formats/parquet.py: error: Need type annotation for
+chunker/export/formats/parquet.py: error: Signature of "export"
+chunker/export/formats/parquet.py: error: Signature of "export_streaming"
+chunker/export/formats/parquet.py: error: Signature of "get_schema"
+chunker/export/formats/semantic_lens.py: error: Call to untyped function
+chunker/export/formats/semantic_lens.py: error: Incompatible default for
+chunker/export/formats/semantic_lens.py: error: Missing type parameters
+chunker/export/formats/semantic_lens.py: error: Signature of
+chunker/export/formats/semantic_lens.py: error: Signature of "export"
+chunker/export/formats/semantic_lens.py: error: Signature of "get_schema"
+chunker/export/formats/semantic_lens.py: error: Statement is unreachable
+chunker/export/formatters.py: error: Incompatible return value type (got
+chunker/export/formatters.py: error: Need type annotation for
+chunker/export/graph_exporter_base.py: error: Function is missing a
+chunker/export/graph_exporter_base.py: error: Function is missing a type
+chunker/export/graph_exporter_base.py: error: Returning Any from
+chunker/export/graphml_exporter.py: error: Call to untyped function
+chunker/export/graphml_exporter.py: error: Function is missing a return
+chunker/export/graphml_exporter.py: error: Function is missing a type
+chunker/export/graphml_exporter.py: error: Signature of "export"
+chunker/export/graphml_exporter.py: error: Signature of "export_string"
+chunker/export/graphml_yed_exporter.py: error: Argument 2 for "super" not
+chunker/export/graphml_yed_exporter.py: error: Call to untyped function
+chunker/export/graphml_yed_exporter.py: error: Function is missing a
+chunker/export/graphml_yed_exporter.py: error: Function is missing a type
+chunker/export/graphml_yed_exporter.py: error: Signature of
+chunker/export/graphml_yed_exporter.py: error: Value of type
+chunker/export/__init__.py: error: Cannot assign to a type  [misc]
+chunker/export/__init__.py: error: Unused "type: ignore" comment 
+chunker/export/json_export.py: error: Function is missing a type
+chunker/export/neo4j_exporter.py: error: Call to untyped function
+chunker/export/neo4j_exporter.py: error: Function is missing a return type
+chunker/export/neo4j_exporter.py: error: Function is missing a type
+chunker/export/neo4j_exporter.py: error: Incompatible types in
+chunker/export/neo4j_exporter.py: error: Need type annotation for
+chunker/export/neo4j_exporter.py: error: Signature of "export"
+chunker/export/neo4j_exporter.py: error: Signature of "export_string"
+chunker/export/postgres_exporter.py: error: Argument 1 to "append" of
+chunker/export/postgres_exporter.py: error: Function is missing a type
+chunker/export/postgres_exporter.py: error: Incompatible types in
+chunker/export/postgres_exporter.py: error: Returning Any from function
+chunker/export/postgres_exporter.py: error: Signature of
+chunker/export/postgres_exporter.py: error: Signature of "export"
+chunker/export/postgres_exporter.py: error: Statement is unreachable 
+chunker/export/postgres_exporter.py: error: "super()" requires one or
+chunker/export/postgres_exporter.py: error: Value of type "CodeChunk" is
+chunker/export/postgres_spec_exporter.py: error: Assignment to variable
+chunker/export/postgres_spec_exporter.py: error: Missing type parameters
+chunker/export/relationships/tracker.py: error: "ASTRelationshipTracker"
+chunker/export/relationships/tracker.py: error: Function is missing a
+chunker/export/relationships/tracker.py: error: Signature of
+chunker/export/relationships/tracker.py: error: Signature of "clear"
+chunker/export/sqlite_exporter.py: error: Function is missing a type
+chunker/export/sqlite_exporter.py: error: Need type annotation for
+chunker/export/sqlite_exporter.py: error: Returning Any from function
+chunker/export/sqlite_exporter.py: error: Signature of "export"
+chunker/export/sqlite_exporter.py: error: "super()" requires one or two
+chunker/export/structured_exporter.py: error: Function is missing a return
+chunker/export/structured_exporter.py: error: Signature of
+chunker/export/structured_exporter.py: error: Signature of "export"
+chunker/export/structured_exporter.py: error: Signature of "get_schema"
+chunker/fallback/base.py: error: Missing type parameters for generic
+chunker/fallback/base.py: error: Signature of "chunk_by_delimiter"
+chunker/fallback/base.py: error: Signature of "chunk_by_lines"
+chunker/fallback/base.py: error: Signature of "chunk_by_pattern"
+chunker/fallback/base.py: error: Signature of "chunk" incompatible with
+chunker/fallback/base.py: error: Signature of "configure" incompatible
+chunker/fallback/base.py: error: Signature of "emit_warning" incompatible
+chunker/fallback/base.py: error: Signature of "set_fallback_reason"
+chunker/fallback/detection/file_type.py: error: Function is missing a
+chunker/fallback/detection/file_type.py: error: Incompatible types in
+chunker/fallback/detection/file_type.py: error: Signature of
+chunker/fallback/fallback_manager.py: error: Call to untyped function
+chunker/fallback/fallback_manager.py: error: "FallbackChunker" has no
+chunker/fallback/fallback_manager.py: error: Function "builtins.any" is
+chunker/fallback/fallback_manager.py: error: Function is missing a return
+chunker/fallback/fallback_manager.py: error: Returning Any from function
+chunker/fallback/intelligent_fallback.py: error: Argument 3 to
+chunker/fallback/intelligent_fallback.py: error: Argument "config" to
+chunker/fallback/intelligent_fallback.py: error: Call to untyped
+chunker/fallback/intelligent_fallback.py: error: Call to untyped function
+chunker/fallback/intelligent_fallback.py: error: Function is missing a
+chunker/fallback/intelligent_fallback.py: error: Incompatible types in
+chunker/fallback/intelligent_fallback.py: error: Signature of
+chunker/fallback_overlap/chunker.py: error: Function is missing a return
+chunker/fallback_overlap/chunker.py: error: Function is missing a type
+chunker/fallback_overlap/chunker.py: error: Signature of
+chunker/fallback_overlap/__init__.py: error: Module
+chunker/fallback/overlapping.py: error: Signature of
+chunker/fallback/overlapping.py: error: Signature of "chunk_with_overlap"
+chunker/fallback/sliding_window_fallback.py: error: Argument 1 to
+chunker/fallback/sliding_window_fallback.py: error: Call to untyped
+chunker/fallback/sliding_window_fallback.py: error: Function is missing a
+chunker/fallback/sliding_window_fallback.py: error: Item "None" of
+chunker/fallback/sliding_window_fallback.py: error: Returning Any from
+chunker/fallback/sliding_window_fallback.py: error: Signature of
+chunker/fallback/strategies/line_based.py: error: Generator has
+chunker/fallback/strategies/line_based.py: error: Need type annotation
+chunker/fallback/strategies/log_chunker.py: error: Function
+chunker/fallback/strategies/log_chunker.py: error: Function is missing a
+chunker/fallback/strategies/log_chunker.py: error: Incompatible types in
+chunker/fallback/strategies/log_chunker.py: error: Item "bool" of
+chunker/fallback/strategies/log_chunker.py: error: Item "None" of
+chunker/fallback/strategies/log_chunker.py: error: Missing type
+chunker/fallback/strategies/log_chunker.py: error: Need type annotation
+chunker/fallback/strategies/log_chunker.py: error: Signature of
+chunker/fallback/strategies/log_chunker.py: error: Statement is
+chunker/fallback/strategies/markdown.py: error: Function is missing a
+chunker/fallback/strategies/markdown.py: error: Need type annotation for
+chunker/fallback/strategies/markdown.py: error: Signature of
+chunker/grammar/builder.py: error: Call to untyped function
+chunker/grammar/builder.py: error: Function is missing a return type
+chunker/grammar/builder.py: error: Signature of "build" incompatible with
+chunker/grammar/builder.py: error: Signature of "clean" incompatible with
+chunker/grammar/builder.py: error: Signature of "get_build_log"
+chunker/grammar/builder.py: error: Signature of "set_build_directory"
+chunker/grammar/builder.py: error: Signature of "set_source_directory"
+chunker/grammar/builder.py: error: "type[Language]" has no attribute
+chunker/grammar/discovery.py: error: Function is missing a return type
+chunker/grammar/discovery.py: error: Library stubs not installed for
+chunker/grammar/discovery.py: error: Missing type parameters for generic
+chunker/grammar/discovery.py: error: Signature of
+chunker/grammar/discovery.py: error: Signature of "check_grammar_updates"
+chunker/grammar/discovery.py: error: Signature of "get_grammar_info"
+chunker/grammar/discovery.py: error: Signature of "refresh_cache"
+chunker/grammar/discovery.py: error: Signature of "search_grammars"
+chunker/grammar/download.py: error: Call to untyped function
+chunker/grammar/download.py: error: Function is missing a return type
+chunker/grammar/download.py: error: Signature of "clean_cache"
+chunker/grammar/download.py: error: Signature of "compile_grammar"
+chunker/grammar/download.py: error: Signature of "download_and_compile"
+chunker/grammar/download.py: error: Signature of "download_grammar"
+chunker/grammar/download.py: error: Signature of "get_grammar_cache_dir"
+chunker/grammar/download.py: error: Signature of "is_grammar_cached"
+chunker/grammar/__init__.py: error: Module "chunker.grammar.repository"
+chunker/grammar_management/cli.py: error: Unused "type: ignore" comment 
+chunker/grammar_management/compatibility.py: error: Argument 1 to
+chunker/grammar_management/compatibility.py: error: Argument "key" to
+chunker/grammar_management/compatibility.py: error: Call to untyped
+chunker/grammar_management/compatibility.py: error: "Collection[object]"
+chunker/grammar_management/compatibility.py: error: Dict entry 0 has
+chunker/grammar_management/compatibility.py: error: Dict entry 3 has
+chunker/grammar_management/compatibility.py: error: Dict entry 4 has
+chunker/grammar_management/compatibility.py: error: Function is missing
+chunker/grammar_management/compatibility.py: error: Function is missing a
+chunker/grammar_management/compatibility.py: error: Incompatible return
+chunker/grammar_management/compatibility.py: error: Incompatible types
+chunker/grammar_management/compatibility.py: error: Need type annotation
+chunker/grammar_management/compatibility.py: error: "object" has no
+chunker/grammar_management/compatibility.py: error: Returning Any from
+chunker/grammar_management/compatibility.py: error: Unsupported left
+chunker/grammar_management/compatibility.py: error: Unsupported operand
+chunker/grammar_management/compatibility.py: error: Value of type
+chunker/grammar_management/config.py: error: Argument "key" to "sort"
+chunker/grammar_management/config.py: error: Call to untyped function
+chunker/grammar_management/config.py: error: Function is missing a
+chunker/grammar_management/config.py: error: Function is missing a type
+chunker/grammar_management/config.py: error: Incompatible return value
+chunker/grammar_management/config.py: error: "object" has no attribute
+chunker/grammar_management/config.py: error: Returning Any from function
+chunker/grammar_management/config.py: error: Unsupported operand types
+chunker/grammar_management/core.py: error: Argument 1 to
+chunker/grammar_management/core.py: error: Argument 2 to
+chunker/grammar_management/core.py: error: Argument "install_path" to
+chunker/grammar_management/core.py: error: Function is missing a return
+chunker/grammar_management/core.py: error: Incompatible types in
+chunker/grammar_management/core.py: error: Need type annotation for
+chunker/grammar_management/core.py: error: "object" has no attribute
+chunker/grammar_management/core.py: error: Returning Any from function
+chunker/grammar_management/core.py: error: Statement is unreachable 
+chunker/grammar_management/core.py: error: Unsupported operand types
+chunker/grammar_management/__init__.py: error: Name "GrammarStatus"
+chunker/grammar_management/testing.py: error: Argument 1 to
+chunker/grammar_management/testing.py: error: Argument 1 to "len" has
+chunker/grammar_management/testing.py: error: Argument 2 to
+chunker/grammar_management/testing.py: error: "CacheManager" has no
+chunker/grammar_management/testing.py: error: Call to untyped function
+chunker/grammar_management/testing.py: error: "Collection[Any]" has no
+chunker/grammar_management/testing.py: error: "Collection[str]" has no
+chunker/grammar_management/testing.py: error: "ComprehensiveGrammarCLI"
+chunker/grammar_management/testing.py: error: Function is missing a
+chunker/grammar_management/testing.py: error: "GrammarInstaller" has no
+chunker/grammar_management/testing.py: error: "GrammarManager" has no
+chunker/grammar_management/testing.py: error: "GrammarValidator" has no
+chunker/grammar_management/testing.py: error: Missing positional
+chunker/grammar_management/testing.py: error: Missing positional argument
+chunker/grammar_management/testing.py: error: Missing type parameters
+chunker/grammar_management/testing.py: error: Need type annotation for
+chunker/grammar_management/testing.py: error: "object" has no attribute
+chunker/grammar_management/testing.py: error: "Sequence[str]" has no
+chunker/grammar_management/testing.py: error: "SmartSelector" has no
+chunker/grammar_management/testing.py: error: Statement is unreachable 
+chunker/grammar_management/testing.py: error: Unexpected keyword
+chunker/grammar_management/testing.py: error: Unsupported operand types
+chunker/grammar_management/testing.py: error: Unsupported target for
+chunker/grammar_management/testing.py: error: "ValidationResult" has no
+chunker/grammar_management/testing.py: error: Value of type
+chunker/grammar_management/testing.py: error: Value of type "object" is
+chunker/grammar/manager.py: error: Function is missing a return type
+chunker/grammar_manager.py: error: Need type annotation for "c_files"
+chunker/grammar_manager.py: error: Returning Any from function declared
+chunker/grammar/manager.py: error: Signature of "add_grammar" incompatible
+chunker/grammar_manager.py: error: Signature of "add_grammar_source"
+chunker/grammar/manager.py: error: Signature of "build_grammar"
+chunker/grammar_manager.py: error: Signature of "compile_grammars"
+chunker/grammar/manager.py: error: Signature of "fetch_grammar"
+chunker/grammar_manager.py: error: Signature of "fetch_grammars"
+chunker/grammar_manager.py: error: Signature of "get_available_languages"
+chunker/grammar/manager.py: error: Signature of "get_grammar_info"
+chunker/grammar/manager.py: error: Signature of "list_grammars"
+chunker/grammar/manager.py: error: Signature of "remove_grammar"
+chunker/grammar/manager.py: error: Signature of "update_grammar"
+chunker/grammar/manager.py: error: Signature of "validate_grammar"
+chunker/grammar/manager.py: error: Unused "type: ignore" comment 
+chunker/grammar/registry.py: error: Incompatible types in assignment
+chunker/grammar/registry.py: error: Need type annotation for
+chunker/grammar/registry.py: error: Returning Any from function declared
+chunker/grammar/registry.py: error: Signature of
+chunker/grammar/registry.py: error: Signature of "get_language_metadata"
+chunker/grammar/registry.py: error: Signature of "get_language_version"
+chunker/grammar/registry.py: error: Signature of "get_parser" incompatible
+chunker/grammar/registry.py: error: Signature of "install_language"
+chunker/grammar/registry.py: error: Signature of "is_language_installed"
+chunker/grammar/registry.py: error: Signature of "uninstall_language"
+chunker/grammar/registry.py: error: Signature of "update_language"
+chunker/grammar/repository.py: error: Argument "repository_url" to
+chunker/grammar/repository.py: error: "Sequence[str]" has no attribute
+chunker/grammar/repository.py: error: Signature of
+chunker/grammar/repository.py: error: Signature of "get_popular_grammars"
+chunker/grammar/repository.py: error: Signature of "refresh_repository"
+chunker/grammar/repository.py: error: Signature of "search" incompatible
+chunker/grammar/validator.py: error: Call to untyped function
+chunker/grammar/validator.py: error: Dict entry 0 has incompatible type
+chunker/grammar/validator.py: error: Function is missing a return type
+chunker/grammar/validator.py: error: Function is missing a type
+chunker/grammar/validator.py: error: Missing positional argument
+chunker/grammar/validator.py: error: Need type annotation for
+chunker/grammar/validator.py: error: "Parser" has no attribute
+chunker/grammar/validator.py: error: Signature of "test_parse"
+chunker/grammar/validator.py: error: Signature of "validate_node_types"
+chunker/grammar/validator.py: error: Statement is unreachable 
+chunker/graph/xref.py: error: Invalid index type
+chunker/graph/xref.py: error: Need type annotation for "calls" (hint:
+chunker/graph/xref.py: error: Need type annotation for "inherits" (hint:
+chunker/incremental.py: error: Function is missing a return type
+chunker/incremental.py: error: Item "list[CodeChunk]" of
+chunker/incremental.py: error: Module "chunker.chunker" does not
+chunker/incremental.py: error: Need type annotation for "changed_lines"
+chunker/incremental.py: error: Need type annotation for "changes" (hint:
+chunker/incremental.py: error: Need type annotation for "stats" 
+chunker/incremental.py: error: Returning Any from function declared to
+chunker/incremental.py: error: Signature of "batch_update" incompatible
+chunker/incremental.py: error: Signature of "compute_diff" incompatible
+chunker/incremental.py: error: Signature of "export_cache" incompatible
+chunker/incremental.py: error: Signature of "get_statistics" incompatible
+chunker/incremental.py: error: Signature of "get_update_cost"
+chunker/incremental.py: error: Signature of "import_cache" incompatible
+chunker/incremental.py: error: Signature of "invalidate" incompatible
+chunker/incremental.py: error: Signature of "retrieve" incompatible with
+chunker/incremental.py: error: Signature of "store" incompatible with
+chunker/incremental.py: error: Signature of "update_chunk" incompatible
+chunker/incremental.py: error: Signature of "update_chunks" incompatible
+chunker/incremental.py: error: Unused "type: ignore" comment 
+chunker/__init__.py: error: Cannot assign to a type  [misc]
+chunker/__init__.py: error: Function is missing a return type annotation 
+chunker/__init__.py: error: Function is missing a type annotation for one
+chunker/__init__.py: error: Module "chunker.optimization" does not
+chunker/interfaces/export.py: error: Incompatible types in assignment
+chunker/interfaces/fallback.py: error: Missing type parameters for
+chunker/interfaces/optimization.py: error: Function is missing a return
+chunker/interfaces/performance.py: error: Incompatible types in
+chunker/interfaces/rules.py: error: Missing type parameters for generic
+chunker/interfaces/stubs.py: error: Missing type parameters for generic
+chunker/_internal/cache.py: error: Call to untyped function "_init_db" in
+chunker/_internal/cache.py: error: Function is missing a return type
+chunker/_internal/cache.py: error: Missing type parameters for generic
+chunker/_internal/factory.py: error: Argument 1 to "get_parser" has
+chunker/_internal/factory.py: error: Call to untyped function "validate"
+chunker/_internal/factory.py: error: Function is missing a return type
+chunker/_internal/factory.py: error: Incompatible types in assignment
+chunker/_internal/factory.py: error: Property "timeout_micros" defined
+chunker/_internal/factory.py: error: Statement is unreachable 
+chunker/_internal/gc_tuning.py: error: Call to untyped function
+chunker/_internal/gc_tuning.py: error: Function is missing a return type
+chunker/_internal/gc_tuning.py: error: Missing type parameters for
+chunker/_internal/gc_tuning.py: error: Need type annotation for "_in_use"
+chunker/_internal/gc_tuning.py: error: Need type annotation for "_pool"
+chunker/_internal/gc_tuning.py: error: Unused "type: ignore" comment 
+chunker/_internal/language_pack.py: error: Argument 1 to "get_language"
+chunker/_internal/registry.py: error: Statement is unreachable 
+chunker/_internal/user_grammar_tools.py: error: "Collection[str]" has no
+chunker/_internal/user_grammar_tools.py: error: Incompatible types in
+chunker/_internal/user_grammar_tools.py: error: Item "None" of
+chunker/_internal/user_grammar_tools.py: error: Item "str" of
+chunker/_internal/user_grammar_tools.py: error: "Sequence[str]" has no
+chunker/_internal/user_grammar_tools.py: error: Unsupported operand
+chunker/_internal/user_grammar_tools.py: error: Unsupported target for
+chunker/_internal/user_grammar_tools.py: error: Value of type
+chunker/languages/base.py: error: Call to untyped function
+chunker/languages/base.py: error: Call to untyped function "GoConfig" in
+chunker/languages/base.py: error: Call to untyped function "__init__" in
+chunker/languages/base.py: error: Call to untyped function "OCamlConfig"
+chunker/languages/base.py: error: Call to untyped function "PHPConfig"
+chunker/languages/base.py: error: Call to untyped function "SQLConfig"
+chunker/languages/base.py: error: Call to untyped function "TSXConfig"
+chunker/languages/base.py: error: Function is missing a return type
+chunker/languages/base.py: error: Incompatible types in assignment
+chunker/languages/base.py: error: Statement is unreachable  [unreachable]
+chunker/languages/clojure.py: error: Call to untyped function
+chunker/languages/clojure.py: error: Call to untyped function "__init__"
+chunker/languages/clojure.py: error: Function "builtins.any" is not
+chunker/languages/clojure.py: error: Function is missing a return type
+chunker/languages/clojure.py: error: Incompatible types in assignment
+chunker/languages/clojure.py: error: Signature of "default_chunk_types"
+chunker/languages/clojure.py: error: Signature of "get_chunk_node_types"
+chunker/languages/clojure.py: error: Signature of "get_node_context"
+chunker/languages/clojure.py: error: Signature of "get_semantic_chunks"
+chunker/languages/clojure.py: error: Signature of "language_name"
+chunker/languages/clojure.py: error: Signature of "should_chunk_node"
+chunker/languages/clojure.py: error: Signature of "supported_extensions"
+chunker/languages/compatibility/database.py: error: Call to untyped
+chunker/languages/compatibility/database.py: error: "Collection[str]"
+chunker/languages/compatibility/database.py: error: Function is missing a
+chunker/languages/compatibility/database.py: error: Incompatible types
+chunker/languages/compatibility/database.py: error: "None" has no
+chunker/languages/compatibility/grammar_analyzer.py: error: Call to
+chunker/languages/compatibility/grammar_analyzer.py: error: Function is
+chunker/languages/compatibility/grammar_analyzer.py: error: Incompatible
+chunker/languages/compatibility/grammar_analyzer.py: error: Need type
+chunker/languages/compatibility/grammar_analyzer.py: error: Returning
+chunker/languages/compatibility/schema.py: error: Function is missing a
+chunker/languages/compatibility/schema.py: error: Incompatible types in
+chunker/languages/compatibility/schema.py: error: Missing type
+chunker/languages/cpp.py: error: Call to untyped function "CppConfig" in
+chunker/languages/cpp.py: error: Function is missing a return type
+chunker/languages/cpp.py: error: Function is missing a type annotation
+chunker/languages/cpp.py: error: Returning Any from function declared to
+chunker/languages/cpp.py: error: Signature of "default_chunk_types"
+chunker/languages/cpp.py: error: Signature of "get_context_for_children"
+chunker/languages/cpp.py: error: Signature of "get_node_name" incompatible
+chunker/languages/cpp.py: error: Signature of "language_name" incompatible
+chunker/languages/cpp.py: error: Signature of "supported_extensions"
+chunker/languages/c.py: error: Call to untyped function "CConfig" in
+chunker/languages/c.py: error: Signature of "default_chunk_types"
+chunker/languages/c.py: error: Signature of "get_context_for_children"
+chunker/languages/c.py: error: Signature of "language_name" incompatible
+chunker/languages/c.py: error: Signature of "supported_extensions"
+chunker/languages/cs_plugin.py: error: Signature of "default_chunk_types"
+chunker/languages/cs_plugin.py: error: Signature of "language_name"
+chunker/languages/cs_plugin.py: error: Signature of "supported_extensions"
+chunker/languages/cs.py: error: Call to untyped function "CSharpConfig"
+chunker/languages/dart.py: error: Argument 2 to "get_node_name" of
+chunker/languages/dart.py: error: Call to untyped function "DartConfig"
+chunker/languages/dart.py: error: Call to untyped function "__init__" in
+chunker/languages/dart.py: error: Function "builtins.any" is not valid
+chunker/languages/dart.py: error: Function is missing a return type
+chunker/languages/dart.py: error: Signature of "default_chunk_types"
+chunker/languages/dart.py: error: Signature of "get_chunk_node_types"
+chunker/languages/dart.py: error: Signature of "get_node_context"
+chunker/languages/dart.py: error: Signature of "get_semantic_chunks"
+chunker/languages/dart.py: error: Signature of "language_name"
+chunker/languages/dart.py: error: Signature of "should_chunk_node"
+chunker/languages/dart.py: error: Signature of "supported_extensions"
+chunker/languages/dart.py: error: Value of type "object" is not
+chunker/languages/dockerfile.py: error: Call to untyped function
+chunker/languages/dockerfile.py: error: Function "builtins.any" is not
+chunker/languages/dockerfile.py: error: Function is missing a return type
+chunker/languages/dockerfile.py: error: Signature of
+chunker/languages/dockerfile.py: error: Signature of "default_chunk_types"
+chunker/languages/dockerfile.py: error: Signature of "get_node_context"
+chunker/languages/dockerfile.py: error: Signature of "language_name"
+chunker/languages/elixir.py: error: Call to untyped function
+chunker/languages/elixir.py: error: Call to untyped function "__init__" in
+chunker/languages/elixir.py: error: Function "builtins.any" is not valid
+chunker/languages/elixir.py: error: Function is missing a return type
+chunker/languages/elixir.py: error: Incompatible types in assignment
+chunker/languages/elixir.py: error: Signature of "default_chunk_types"
+chunker/languages/elixir.py: error: Signature of "get_chunk_node_types"
+chunker/languages/elixir.py: error: Signature of "get_node_context"
+chunker/languages/elixir.py: error: Signature of "get_semantic_chunks"
+chunker/languages/elixir.py: error: Signature of "language_name"
+chunker/languages/elixir.py: error: Signature of "should_chunk_node"
+chunker/languages/elixir.py: error: Signature of "supported_extensions"
+chunker/languages/go_plugin.py: error: Call to untyped function
+chunker/languages/go_plugin.py: error: Function is missing a return type
+chunker/languages/go_plugin.py: error: Item "None" of "bytes | None" has
+chunker/languages/go_plugin.py: error: Signature of "language_name"
+chunker/languages/go.py: error: Argument 1 to "safe_decode_bytes" has
+chunker/languages/go.py: error: Missing type parameters for generic type
+chunker/languages/go.py: error: Need type annotation for "method_groups"
+chunker/languages/go.py: error: Returning Any from function declared to
+chunker/languages/go.py: error: Signature of "file_extensions"
+chunker/languages/go.py: error: Signature of "should_chunk_node"
+chunker/languages/haskell.py: error: Call to untyped function "__init__"
+chunker/languages/haskell.py: error: Function "builtins.any" is not
+chunker/languages/haskell.py: error: Function is missing a return type
+chunker/languages/haskell.py: error: Signature of "default_chunk_types"
+chunker/languages/haskell.py: error: Signature of "get_chunk_node_types"
+chunker/languages/haskell.py: error: Signature of "get_node_context"
+chunker/languages/haskell.py: error: Signature of "get_semantic_chunks"
+chunker/languages/haskell.py: error: Signature of "language_name"
+chunker/languages/haskell.py: error: Signature of "should_chunk_node"
+chunker/languages/haskell.py: error: Signature of "supported_extensions"
+chunker/languages/java_plugin.py: error: Argument 1 to
+chunker/languages/java_plugin.py: error: Call to untyped function
+chunker/languages/java_plugin.py: error: Function is missing a return
+chunker/languages/java_plugin.py: error: Signature of "language_name"
+chunker/languages/java.py: error: Item "None" of "bytes | None" has no
+chunker/languages/java.py: error: Missing type parameters for generic
+chunker/languages/java.py: error: Need type annotation for "field_groups"
+chunker/languages/java.py: error: Signature of "file_extensions"
+chunker/languages/java.py: error: Signature of "should_chunk_node"
+chunker/languages/javascript.py: error: Call to untyped function
+chunker/languages/javascript.py: error: Function is missing a return type
+chunker/languages/javascript.py: error: Function is missing a type
+chunker/languages/javascript.py: error: Signature of
+chunker/languages/javascript.py: error: Signature of "default_chunk_types"
+chunker/languages/javascript.py: error: Signature of "language_name"
+chunker/languages/julia.py: error: Call to untyped function "__init__" in
+chunker/languages/julia.py: error: Function "builtins.any" is not valid
+chunker/languages/julia.py: error: Function is missing a return type
+chunker/languages/julia.py: error: Function is missing a type annotation
+chunker/languages/julia.py: error: Returning Any from function declared
+chunker/languages/julia.py: error: Signature of
+chunker/languages/julia.py: error: Signature of "default_chunk_types"
+chunker/languages/julia.py: error: Signature of "get_chunk_node_types"
+chunker/languages/julia.py: error: Signature of "get_node_context"
+chunker/languages/julia.py: error: Signature of "get_semantic_chunks"
+chunker/languages/julia.py: error: Signature of "language_name"
+chunker/languages/julia.py: error: Signature of "supported_extensions"
+chunker/languages/kotlin.py: error: Call to untyped function
+chunker/languages/kotlin.py: error: Call to untyped function "__init__" in
+chunker/languages/kotlin.py: error: Function "builtins.any" is not valid
+chunker/languages/kotlin.py: error: Function is missing a return type
+chunker/languages/kotlin.py: error: Signature of "default_chunk_types"
+chunker/languages/kotlin.py: error: Signature of "get_chunk_node_types"
+chunker/languages/kotlin.py: error: Signature of "get_node_context"
+chunker/languages/kotlin.py: error: Signature of "get_semantic_chunks"
+chunker/languages/kotlin.py: error: Signature of "language_name"
+chunker/languages/kotlin.py: error: Signature of "supported_extensions"
+chunker/languages/matlab.py: error: Call to untyped function
+chunker/languages/matlab.py: error: Call to untyped function "__init__" in
+chunker/languages/matlab.py: error: Function "builtins.any" is not valid
+chunker/languages/matlab.py: error: Function is missing a return type
+chunker/languages/matlab.py: error: Function is missing a type annotation
+chunker/languages/matlab.py: error: Returning Any from function declared
+chunker/languages/matlab.py: error: Signature of
+chunker/languages/matlab.py: error: Signature of "default_chunk_types"
+chunker/languages/matlab.py: error: Signature of "get_chunk_node_types"
+chunker/languages/matlab.py: error: Signature of "get_node_context"
+chunker/languages/matlab.py: error: Signature of "get_semantic_chunks"
+chunker/languages/matlab.py: error: Signature of "language_name"
+chunker/languages/matlab.py: error: Signature of "supported_extensions"
+chunker/languages/nasm.py: error: Call to untyped function "__init__" in
+chunker/languages/nasm.py: error: Function "builtins.any" is not valid
+chunker/languages/nasm.py: error: Function is missing a return type
+chunker/languages/nasm.py: error: Need type annotation for "instructions"
+chunker/languages/nasm.py: error: Signature of "default_chunk_types"
+chunker/languages/nasm.py: error: Signature of "get_chunk_node_types"
+chunker/languages/nasm.py: error: Signature of "get_node_context"
+chunker/languages/nasm.py: error: Signature of "get_semantic_chunks"
+chunker/languages/nasm.py: error: Signature of "language_name"
+chunker/languages/nasm.py: error: Signature of "should_chunk_node"
+chunker/languages/nasm.py: error: Signature of "supported_extensions"
+chunker/languages/nasm.py: error: Statement is unreachable 
+chunker/languages/normalizers.py: error: Returning Any from function
+chunker/languages/ocaml.py: error: Call to untyped function "__init__" in
+chunker/languages/ocaml.py: error: Call to untyped function "OCamlConfig"
+chunker/languages/ocaml.py: error: Function "builtins.any" is not valid
+chunker/languages/ocaml.py: error: Function is missing a return type
+chunker/languages/ocaml.py: error: Function is missing a type annotation
+chunker/languages/ocaml.py: error: Returning Any from function declared
+chunker/languages/ocaml.py: error: Signature of
+chunker/languages/ocaml.py: error: Signature of "default_chunk_types"
+chunker/languages/ocaml.py: error: Signature of "get_chunk_node_types"
+chunker/languages/ocaml.py: error: Signature of "get_node_context"
+chunker/languages/ocaml.py: error: Signature of "get_semantic_chunks"
+chunker/languages/ocaml.py: error: Signature of "language_name"
+chunker/languages/ocaml.py: error: Signature of "supported_extensions"
+chunker/languages/php.py: error: Call to untyped function "__init__" in
+chunker/languages/php.py: error: Call to untyped function "PHPConfig" in
+chunker/languages/php.py: error: Function "builtins.any" is not valid as
+chunker/languages/php.py: error: Function is missing a return type
+chunker/languages/php.py: error: Signature of "default_chunk_types"
+chunker/languages/php.py: error: Signature of "get_chunk_node_types"
+chunker/languages/php.py: error: Signature of "get_node_context"
+chunker/languages/php.py: error: Signature of "get_semantic_chunks"
+chunker/languages/php.py: error: Signature of "language_name" incompatible
+chunker/languages/php.py: error: Signature of "supported_extensions"
+chunker/languages/plugin_base.py: error: Argument "language" to
+chunker/languages/plugin_base.py: error: Incompatible return value type
+chunker/languages/plugin_base.py: error: Only instance methods can be
+chunker/languages/python.py: error: Call to untyped function
+chunker/languages/python.py: error: Call to untyped function "__init__" in
+chunker/languages/python.py: error: Function is missing a return type
+chunker/languages/python.py: error: Function is missing a type annotation
+chunker/languages/python.py: error: Returning Any from function declared
+chunker/languages/python.py: error: Signature of
+chunker/languages/python.py: error: Signature of "default_chunk_types"
+chunker/languages/python.py: error: Signature of "language_name"
+chunker/languages/python.py: error: Signature of "supported_extensions"
+chunker/languages/r.py: error: Call to untyped function "__init__" in
+chunker/languages/r.py: error: Call to untyped function "RConfig" in
+chunker/languages/r.py: error: Function "builtins.any" is not valid as a
+chunker/languages/r.py: error: Function is missing a return type
+chunker/languages/r.py: error: Function is missing a type annotation for
+chunker/languages/r.py: error: Returning Any from function declared to
+chunker/languages/r.py: error: Signature of "default_chunk_types"
+chunker/languages/r.py: error: Signature of "get_chunk_node_types"
+chunker/languages/r.py: error: Signature of "get_context_for_children"
+chunker/languages/r.py: error: Signature of "get_node_context"
+chunker/languages/r.py: error: Signature of "get_semantic_chunks"
+chunker/languages/r.py: error: Signature of "language_name" incompatible
+chunker/languages/r.py: error: Signature of "supported_extensions"
+chunker/languages/ruby_plugin.py: error: Call to untyped function
+chunker/languages/ruby_plugin.py: error: Function is missing a return
+chunker/languages/ruby_plugin.py: error: Item "None" of "bytes | None"
+chunker/languages/ruby_plugin.py: error: Signature of "language_name"
+chunker/languages/ruby.py: error: Incompatible types in assignment
+chunker/languages/ruby.py: error: Missing type parameters for generic
+chunker/languages/ruby.py: error: Need type annotation for "args" (hint:
+chunker/languages/ruby.py: error: Need type annotation for "attr_groups"
+chunker/languages/ruby.py: error: Signature of "file_extensions"
+chunker/languages/ruby.py: error: Signature of "should_chunk_node"
+chunker/languages/rust_config.py: error: Call to untyped function
+chunker/languages/rust.py: error: Function is missing a return type
+chunker/languages/rust.py: error: Function is missing a type annotation
+chunker/languages/rust.py: error: Returning Any from function declared to
+chunker/languages/rust.py: error: Signature of "default_chunk_types"
+chunker/languages/rust.py: error: Signature of "get_context_for_children"
+chunker/languages/rust.py: error: Signature of "language_name"
+chunker/languages/rust.py: error: Signature of "supported_extensions"
+chunker/languages/scala.py: error: Call to untyped function "__init__" in
+chunker/languages/scala.py: error: Call to untyped function "ScalaConfig"
+chunker/languages/scala.py: error: Function "builtins.any" is not valid
+chunker/languages/scala.py: error: Function is missing a return type
+chunker/languages/scala.py: error: Function is missing a type annotation
+chunker/languages/scala.py: error: Signature of "default_chunk_types"
+chunker/languages/scala.py: error: Signature of "get_chunk_node_types"
+chunker/languages/scala.py: error: Signature of "get_node_context"
+chunker/languages/scala.py: error: Signature of "get_semantic_chunks"
+chunker/languages/scala.py: error: Signature of "language_name"
+chunker/languages/scala.py: error: Signature of "should_chunk_node"
+chunker/languages/scala.py: error: Signature of "supported_extensions"
+chunker/languages/sql.py: error: Call to untyped function "__init__" in
+chunker/languages/sql.py: error: Call to untyped function "SQLConfig" in
+chunker/languages/sql.py: error: Function "builtins.any" is not valid as
+chunker/languages/sql.py: error: Function is missing a return type
+chunker/languages/sql.py: error: Signature of "default_chunk_types"
+chunker/languages/sql.py: error: Signature of "get_chunk_node_types"
+chunker/languages/sql.py: error: Signature of "get_node_context"
+chunker/languages/sql.py: error: Signature of "get_semantic_chunks"
+chunker/languages/sql.py: error: Signature of "language_name" incompatible
+chunker/languages/sql.py: error: Signature of "supported_extensions"
+chunker/languages/svelte.py: error: Argument "node_type" to "CodeChunk"
+chunker/languages/svelte.py: error: Call to untyped function "__init__" in
+chunker/languages/svelte.py: error: Function "builtins.any" is not valid
+chunker/languages/svelte.py: error: Function is missing a return type
+chunker/languages/svelte.py: error: Item "None" of "bytes | None" has no
+chunker/languages/svelte.py: error: Non-overlapping container check
+chunker/languages/svelte.py: error: Signature of "default_chunk_types"
+chunker/languages/svelte.py: error: Signature of "get_chunk_node_types"
+chunker/languages/svelte.py: error: Signature of "get_node_context"
+chunker/languages/svelte.py: error: Signature of "language_name"
+chunker/languages/svelte.py: error: Signature of "should_chunk_node"
+chunker/languages/svelte.py: error: Signature of "supported_extensions"
+chunker/languages/swift.py: error: Call to untyped function
+chunker/languages/swift.py: error: Call to untyped function "__init__" in
+chunker/languages/swift.py: error: Function "builtins.any" is not valid
+chunker/languages/swift.py: error: Function is missing a return type
+chunker/languages/swift.py: error: Signature of "default_chunk_types"
+chunker/languages/swift.py: error: Signature of "get_chunk_node_types"
+chunker/languages/swift.py: error: Signature of "get_node_context"
+chunker/languages/swift.py: error: Signature of "get_semantic_chunks"
+chunker/languages/swift.py: error: Signature of "language_name"
+chunker/languages/swift.py: error: Signature of "supported_extensions"
+chunker/languages/toml.py: error: Call to untyped function "__init__" in
+chunker/languages/toml.py: error: Call to untyped function "TOMLConfig"
+chunker/languages/toml.py: error: Function is missing a return type
+chunker/languages/toml.py: error: "is_chunk_node" undefined in superclass
+chunker/languages/toml.py: error: Signature of "language_name"
+chunker/languages/typescript.py: error: Call to untyped function
+chunker/languages/typescript.py: error: Function is missing a return type
+chunker/languages/typescript.py: error: Function is missing a type
+chunker/languages/typescript.py: error: Signature of
+chunker/languages/typescript.py: error: Signature of "language_name"
+chunker/languages/version_detection/cpp_detector.py: error: Function is
+chunker/languages/version_detection/cpp_detector.py: error: Incompatible
+chunker/languages/version_detection/cpp_detector.py: error: Returning
+chunker/languages/version_detection/cpp_detector.py: error: Value of
+chunker/languages/version_detection/go_detector.py: error: Function is
+chunker/languages/version_detection/go_detector.py: error: Incompatible
+chunker/languages/version_detection/go_detector.py: error: Invalid index
+chunker/languages/version_detection/go_detector.py: error: Item "None"
+chunker/languages/version_detection/go_detector.py: error: Unsupported
+chunker/languages/version_detection/go_detector.py: error: Value of type
+chunker/languages/version_detection/java_detector.py: error:
+chunker/languages/version_detection/java_detector.py: error: Argument 1
+chunker/languages/version_detection/java_detector.py: error: Function is
+chunker/languages/version_detection/javascript_detector.py: error:
+chunker/languages/version_detection/javascript_detector.py: error: Value
+chunker/languages/version_detection/python_detector.py: error: Function is
+chunker/languages/version_detection/rust_detector.py: error:
+chunker/languages/version_detection/rust_detector.py: error: Function is
+chunker/languages/vue.py: error: Call to untyped function "__init__" in
+chunker/languages/vue.py: error: Function "builtins.any" is not valid as
+chunker/languages/vue.py: error: Function is missing a return type
+chunker/languages/vue.py: error: Non-overlapping container check
+chunker/languages/vue.py: error: Signature of "default_chunk_types"
+chunker/languages/vue.py: error: Signature of "get_chunk_node_types"
+chunker/languages/vue.py: error: Signature of "get_node_context"
+chunker/languages/vue.py: error: Signature of "get_semantic_chunks"
+chunker/languages/vue.py: error: Signature of "language_name" incompatible
+chunker/languages/vue.py: error: Signature of "supported_extensions"
+chunker/languages/vue.py: error: Statement is unreachable  [unreachable]
+chunker/languages/wasm.py: error: Call to untyped function "__init__" in
+chunker/languages/wasm.py: error: Function "builtins.any" is not valid
+chunker/languages/wasm.py: error: Function is missing a return type
+chunker/languages/wasm.py: error: Missing type parameters for generic
+chunker/languages/wasm.py: error: Signature of "default_chunk_types"
+chunker/languages/wasm.py: error: Signature of "get_chunk_node_types"
+chunker/languages/wasm.py: error: Signature of "get_node_context"
+chunker/languages/wasm.py: error: Signature of "get_semantic_chunks"
+chunker/languages/wasm.py: error: Signature of "language_name"
+chunker/languages/wasm.py: error: Signature of "should_chunk_node"
+chunker/languages/wasm.py: error: Signature of "supported_extensions"
+chunker/languages/xml.py: error: Call to untyped function "__init__" in
+chunker/languages/xml.py: error: Call to untyped function "XMLConfig" in
+chunker/languages/xml.py: error: Function is missing a return type
+chunker/languages/xml.py: error: "is_chunk_node" undefined in superclass 
+chunker/languages/xml.py: error: Signature of "language_name" incompatible
+chunker/languages/yaml.py: error: Call to untyped function "__init__" in
+chunker/languages/yaml.py: error: Call to untyped function "YAMLConfig"
+chunker/languages/yaml.py: error: Function is missing a return type
+chunker/languages/yaml.py: error: "is_chunk_node" undefined in superclass
+chunker/languages/yaml.py: error: Signature of "language_name"
+chunker/languages/zig.py: error: Call to untyped function "__init__" in
+chunker/languages/zig.py: error: Function "builtins.any" is not valid as
+chunker/languages/zig.py: error: Function is missing a return type
+chunker/languages/zig.py: error: Missing type parameters for generic
+chunker/languages/zig.py: error: Signature of "default_chunk_types"
+chunker/languages/zig.py: error: Signature of "get_chunk_node_types"
+chunker/languages/zig.py: error: Signature of "get_node_context"
+chunker/languages/zig.py: error: Signature of "get_semantic_chunks"
+chunker/languages/zig.py: error: Signature of "language_name" incompatible
+chunker/languages/zig.py: error: Signature of "should_chunk_node"
+chunker/languages/zig.py: error: Signature of "supported_extensions"
+chunker/metadata/extractor.py: error: Function is missing a return type
+chunker/metadata/extractor.py: error: Function is missing a type
+chunker/metadata/extractor.py: error: Missing type parameters for
+chunker/metadata/extractor.py: error: Missing type parameters for generic
+chunker/metadata/extractor.py: error: Need type annotation for
+chunker/metadata/extractor.py: error: Signature of "extract_calls"
+chunker/metadata/factory.py: error: Too many arguments for
+chunker/metadata/languages/c.py: error: Argument "parameters" to
+chunker/metadata/languages/c.py: error: Function is missing a return type
+chunker/metadata/languages/c.py: error: Incompatible types in assignment
+chunker/metadata/languages/c.py: error: Need type annotation for
+chunker/metadata/languages/c.py: error: Return type "list[str]" of
+chunker/metadata/languages/c.py: error: Signature of
+chunker/metadata/languages/c.py: error: Signature of "extract_calls"
+chunker/metadata/languages/c.py: error: Signature of "extract_docstring"
+chunker/metadata/languages/c.py: error: Signature of "extract_imports"
+chunker/metadata/languages/c.py: error: Signature of "extract_signature"
+chunker/metadata/languages/c.py: error: Statement is unreachable 
+chunker/metadata/languages/go.py: error: Argument "parameters" to
+chunker/metadata/languages/go.py: error: Function is missing a return
+chunker/metadata/languages/go.py: error: Function is missing a return type
+chunker/metadata/languages/go.py: error: Return type "list[str]" of
+chunker/metadata/languages/go.py: error: Signature of
+chunker/metadata/languages/go.py: error: Signature of "extract_calls"
+chunker/metadata/languages/go.py: error: Signature of "extract_docstring"
+chunker/metadata/languages/go.py: error: Signature of "extract_imports"
+chunker/metadata/languages/go.py: error: Signature of "extract_signature"
+chunker/metadata/languages/javascript.py: error: Function is missing a
+chunker/metadata/languages/javascript.py: error: Incompatible types in
+chunker/metadata/languages/javascript.py: error: Missing type parameters
+chunker/metadata/languages/javascript.py: error: Need type annotation for
+chunker/metadata/languages/javascript.py: error: Returning Any from
+chunker/metadata/languages/javascript.py: error: Signature of
+chunker/metadata/languages/javascript.py: error: Unsupported left
+chunker/metadata/languages/python.py: error: Function is missing a return
+chunker/metadata/languages/python.py: error: Incompatible types in
+chunker/metadata/languages/python.py: error: Need type annotation for
+chunker/metadata/languages/python.py: error: Signature of
+chunker/metadata/languages/python.py: error: Signature of "extract_calls"
+chunker/metadata/languages/rust.py: error: Argument "parameters" to
+chunker/metadata/languages/rust.py: error: Function is missing a return
+chunker/metadata/languages/rust.py: error: Need type annotation for
+chunker/metadata/languages/rust.py: error: Return type "list[str]" of
+chunker/metadata/languages/rust.py: error: Signature of
+chunker/metadata/languages/rust.py: error: Signature of "extract_calls"
+chunker/metadata/languages/rust.py: error: Signature of "extract_imports"
+chunker/metadata/languages/typescript.py: error: Function is missing a
+chunker/metadata/languages/typescript.py: error: Need type annotation for
+chunker/metadata/languages/typescript.py: error: Signature of
+chunker/metadata/metrics.py: error: Function is missing a return type
+chunker/metadata/metrics.py: error: Signature of
+chunker/metadata/metrics.py: error: Signature of "analyze_complexity"
+chunker/metadata/metrics.py: error: Signature of "count_logical_lines"
+chunker/metadata/metrics.py: error: Unsupported operand types for in
+chunker/optimization.py: error: Call to untyped function
+chunker/optimization.py: error: Function is missing a return type
+chunker/optimization.py: error: Need type annotation for
+chunker/optimization.py: error: Need type annotation for "boundaries"
+chunker/optimization.py: error: Need type annotation for "current_group"
+chunker/optimization.py: error: Need type annotation for "split_points"
+chunker/optimization.py: error: Signature of "find_natural_boundaries"
+chunker/optimization.py: error: Signature of "merge_small_chunks"
+chunker/optimization.py: error: Signature of "optimize_for_embedding"
+chunker/optimization.py: error: Signature of "optimize_for_llm"
+chunker/optimization.py: error: Signature of "rebalance_chunks"
+chunker/optimization.py: error: Signature of "split_large_chunks"
+chunker/optimization.py: error: Signature of "suggest_merge_points"
+chunker/optimization.py: error: Statement is unreachable  [unreachable]
+chunker/parallel.py: error: Need type annotation for "file_paths" (hint:
+chunker/performance/cache/lru.py: error: Missing type parameters for
+chunker/performance/cache/manager.py: error: Signature of
+chunker/performance/cache/manager.py: error: Signature of "clear"
+chunker/performance/cache/manager.py: error: Signature of "evict_expired"
+chunker/performance/cache/manager.py: error: Signature of "get"
+chunker/performance/cache/manager.py: error: Signature of "get_stats"
+chunker/performance/cache/manager.py: error: Signature of "invalidate"
+chunker/performance/cache/manager.py: error: Signature of "memory_usage"
+chunker/performance/cache/manager.py: error: Signature of "put"
+chunker/performance/cache/manager.py: error: Signature of "size"
+chunker/performance/cache/multi_level.py: error: Unsupported target for
+chunker/performance/core/performance_framework.py: error:
+chunker/performance/core/performance_framework.py: error: Call to
+chunker/performance/core/performance_framework.py: error: Cannot
+chunker/performance/core/performance_framework.py: error: Function is
+chunker/performance/core/performance_framework.py: error: Incompatible
+chunker/performance/core/performance_framework.py: error: Missing type
+chunker/performance/core/performance_framework.py: error: Need type
+chunker/performance/core/performance_framework.py: error: No overload
+chunker/performance/core/performance_framework.py: error: "object" has
+chunker/performance/core/performance_framework.py: error: Returning Any
+chunker/performance/core/performance_framework.py: error: Unsupported
+chunker/performance/core/performance_framework.py: error: Value of type
+chunker/performance/enhanced_chunker.py: error: Call to untyped function
+chunker/performance/enhanced_chunker.py: error: Function is missing a
+chunker/performance/enhanced_chunker.py: error: Missing type parameters
+chunker/performance/enhanced_chunker.py: error: Returning Any from
+chunker/performance/optimization/batch.py: error: Call to untyped
+chunker/performance/optimization/batch.py: error: Need type annotation
+chunker/performance/optimization/batch.py: error: Signature of
+chunker/performance/optimization/batch.py: error: Signature of "add_file"
+chunker/performance/optimization/incremental.py: error: Argument
+chunker/performance/optimization/incremental.py: error: Argument 1 of
+chunker/performance/optimization/incremental.py: error: Argument 2 of
+chunker/performance/optimization/incremental.py: error: Argument 3 of
+chunker/performance/optimization/incremental.py: error: Function is
+chunker/performance/optimization/incremental.py: error: Incompatible
+chunker/performance/optimization/incremental.py: error: Returning Any
+chunker/performance/optimization/incremental.py: error: Return type "Tree"
+chunker/performance/optimization/incremental.py: error: Signature of
+chunker/performance/optimization/incremental.py: error: "Tree" has no
+chunker/performance/optimization/memory_pool.py: error: Need type
+chunker/performance/optimization/memory_pool.py: error: Returning Any
+chunker/performance/optimization/memory_pool.py: error: Signature of
+chunker/performance/optimization/monitor.py: error: Function is missing a
+chunker/performance/optimization/monitor.py: error: Incompatible types
+chunker/performance/optimization/monitor.py: error: Signature of
+chunker/performance/optimization/monitor.py: error: Signature of "reset"
+chunker/performance/optimization/monitor.py: error: Statement is
+chunker/performance/optimization/system_optimizer.py: error:
+chunker/performance/optimization/system_optimizer.py: error: Call to
+chunker/performance/optimization/system_optimizer.py: error: Function is
+chunker/performance/optimization/system_optimizer.py: error: Incompatible
+chunker/performance/optimization/system_optimizer.py: error: Missing
+chunker/performance/optimization/system_optimizer.py: error: Need type
+chunker/performance/optimization/system_optimizer.py: error: No
+chunker/performance/optimization/system_optimizer.py: error: Returning
+chunker/plugin_manager.py: error: "Callable[[], set[str]]" has no
+chunker/plugin_manager.py: error: Call to untyped function
+chunker/plugin_manager.py: error: Function is missing a return type
+chunker/plugin_manager.py: error: Only concrete class can be given where
+chunker/plugin_manager.py: error: Statement is unreachable 
+chunker/plugin_manager.py: error: Too few arguments  [call-arg]
+chunker/plugin_manager.py: error: Unused "type: ignore" comment 
+chunker/processors/base.py: error: Function is missing a return type
+chunker/processors/base.py: error: Incompatible return value type (got
+chunker/processors/base.py: error: Incompatible types in assignment
+chunker/processors/base.py: error: Statement is unreachable 
+chunker/processors/config.py: error: "Collection[str]" has no attribute
+chunker/processors/config.py: error: Item "int" of
+chunker/processors/config.py: error: Item "None" of "Match[str] | None"
+chunker/processors/config.py: error: Item "str" of
+chunker/processors/config.py: error: Library stubs not installed for
+chunker/processors/config.py: error: Need type annotation for
+chunker/processors/config.py: error: Signature of "can_handle"
+chunker/processors/config.py: error: Signature of "chunk_content"
+chunker/processors/config.py: error: Signature of "detect_format"
+chunker/processors/config.py: error: Signature of "parse_structure"
+chunker/processors/config.py: error: Signature of "process" incompatible
+chunker/processors/config.py: error: Unsupported target for indexed
+chunker/processors/config.py: error: Unused "type: ignore" comment 
+chunker/processors/config.py: error: Value of type "Collection[str]" is
+chunker/processors/logs.py: error: Argument 1 of "can_process" is
+chunker/processors/logs.py: error: Incompatible return value type (got
+chunker/processors/logs.py: error: Incompatible types in assignment
+chunker/processors/logs.py: error: Library stubs not installed for
+chunker/processors/logs.py: error: Need type annotation for
+chunker/processors/logs.py: error: Returning Any from function declared
+chunker/processors/logs.py: error: Signature of "can_handle" incompatible
+chunker/processors/logs.py: error: Signature of "process" incompatible
+chunker/processors/markdown.py: error: Incompatible types in assignment
+chunker/processors/markdown.py: error: Item "None" of "list[Any] | None"
+chunker/processors/markdown.py: error: Missing type parameters for
+chunker/processors/markdown.py: error: Need type annotation for
+chunker/processors/markdown.py: error: Return type "list[CodeChunk]" of
+chunker/processors/markdown.py: error: Signature of "can_handle"
+chunker/processors/markdown.py: error: Signature of "can_process"
+chunker/repo/git_aware.py: error: Function is missing a return type
+chunker/repo/git_aware.py: error: Returning Any from function declared
+chunker/repo/git_aware.py: error: Signature of "get_changed_files"
+chunker/repo/git_aware.py: error: Signature of "get_file_history"
+chunker/repo/git_aware.py: error: Signature of "load_incremental_state"
+chunker/repo/git_aware.py: error: Signature of "save_incremental_state"
+chunker/repo/git_aware.py: error: Signature of "should_process_file"
+chunker/repo/processor.py: error: Argument 1 to
+chunker/repo/processor.py: error: Argument 1 to "add" of "set" has
+chunker/repo/processor.py: error: Argument 1 to "_traverse_depth_first"
+chunker/repo/processor.py: error: Argument 2 to
+chunker/repo/processor.py: error: Argument 2 to "_process_single_file"
+chunker/repo/processor.py: error: Function is missing a return type
+chunker/repo/processor.py: error: Function is missing a type annotation
+chunker/repo/processor.py: error: Function is missing a type annotation 
+chunker/repo/processor.py: error: Incompatible types in assignment
+chunker/repo/processor.py: error: Missing type parameters for generic
+chunker/repo/processor.py: error: Need type annotation for
+chunker/repo/processor.py: error: "RepoProcessor" has no attribute
+chunker/repo/processor.py: error: Returning Any from function declared
+chunker/repo/processor.py: error: Signature of "estimate_processing_time"
+chunker/repo/processor.py: error: Signature of "get_changed_files"
+chunker/repo/processor.py: error: Signature of "get_file_history"
+chunker/repo/processor.py: error: Signature of "get_processable_files"
+chunker/repo/processor.py: error: Signature of "load_gitignore_patterns"
+chunker/repo/processor.py: error: Signature of "load_incremental_state"
+chunker/repo/processor.py: error: Signature of "process_files_iterator"
+chunker/repo/processor.py: error: Signature of "process_repository"
+chunker/repo/processor.py: error: Signature of "save_incremental_state"
+chunker/repo/processor.py: error: Signature of "should_process_file"
+chunker/repo/processor.py: error: "str" has no attribute "exists" 
+chunker/rules/builtin.py: error: List item 10 has incompatible type
+chunker/rules/builtin.py: error: List item 7 has incompatible type
+chunker/rules/builtin.py: error: Signature of "extract_chunk"
+chunker/rules/comment.py: error: Argument 2 for "super" not an instance
+chunker/rules/comment.py: error: Need type annotation for
+chunker/rules/comment.py: error: Returning Any from function declared to
+chunker/rules/comment.py: error: Signature of "extract_chunk"
+chunker/rules/comment.py: error: Signature of "extract_chunk" incompatible
+chunker/rules/comment.py: error: Signature of "matches" incompatible with
+chunker/rules/engine.py: error: Argument 1 to "_apply_single_regex_rule"
+chunker/rules/engine.py: error: Argument "key" to "sort" of "list" has
+chunker/rules/engine.py: error: Call to untyped function "_sort_rules" in
+chunker/rules/engine.py: error: Function is missing a return type
+chunker/rules/engine.py: error: Incompatible return value type (got
+chunker/rules/engine.py: error: Signature of
+chunker/rules/engine.py: error: Signature of "add_rule" incompatible with
+chunker/rules/engine.py: error: Signature of "apply_regex_rules"
+chunker/rules/engine.py: error: Signature of "apply_rules" incompatible
+chunker/rules/engine.py: error: Signature of "list_rules" incompatible
+chunker/rules/engine.py: error: Signature of "remove_rule" incompatible
+chunker/rules/regex.py: error: Function is missing a type annotation for
+chunker/rules/regex.py: error: Need type annotation for "matches" (hint:
+chunker/rules/regex.py: error: Signature of "extract_chunk" incompatible
+chunker/semantic/analyzer.py: error: Function is missing a return type
+chunker/semantic/analyzer.py: error: Incompatible return value type (got
+chunker/semantic/analyzer.py: error: Missing type parameters for generic
+chunker/semantic/analyzer.py: error: Need type annotation for
+chunker/semantic/analyzer.py: error: Returning Any from function
+chunker/semantic/analyzer.py: error: Signature of
+chunker/semantic/analyzer.py: error: Signature of "find_related_chunks"
+chunker/semantic/merger.py: error: Call to untyped function
+chunker/semantic/merger.py: error: Call to untyped function "find" in
+chunker/semantic/merger.py: error: Call to untyped function "union" in
+chunker/semantic/merger.py: error: Function is missing a return type
+chunker/semantic/merger.py: error: Function is missing a type annotation 
+chunker/semantic/merger.py: error: Incompatible return value type (got
+chunker/semantic/merger.py: error: Missing type parameters for generic
+chunker/semantic/merger.py: error: Need type annotation for "_merge_cache"
+chunker/semantic/merger.py: error: Need type annotation for "processed"
+chunker/semantic/merger.py: error: Signature of "get_merge_reason"
+chunker/semantic/merger.py: error: Signature of "merge_chunks"
+chunker/semantic/merger.py: error: Signature of "should_merge"
+chunker/semantic_query.py: error: Function is missing a return type
+chunker/semantic_query.py: error: Function is missing a type annotation
+chunker/sliding_window/error_safe_adapter.py: error: Argument 1 to
+chunker/sliding_window/error_safe_adapter.py: error: Argument 3 to
+chunker/sliding_window/error_safe_adapter.py: error: Function is missing
+chunker/sliding_window/error_safe_adapter.py: error: Missing type
+chunker/smart_context.py: error: Function is missing a return type
+chunker/smart_context.py: error: Incompatible return value type (got
+chunker/smart_context.py: error: Incompatible types in assignment
+chunker/smart_context.py: error: Need type annotation for "exports" 
+chunker/smart_context.py: error: Need type annotation for "_parsers"
+chunker/smart_context.py: error: Need type annotation for "references"
+chunker/smart_context.py: error: Signature of "get_dependency_context"
+chunker/smart_context.py: error: Signature of "get" incompatible with
+chunker/smart_context.py: error: Signature of "get_semantic_context"
+chunker/smart_context.py: error: Signature of "get_structural_context"
+chunker/smart_context.py: error: Signature of "get_usage_context"
+chunker/smart_context.py: error: Signature of "invalidate" incompatible
+chunker/smart_context.py: error: Signature of "rank_candidates"
+chunker/smart_context.py: error: Signature of "select_context"
+chunker/smart_context.py: error: Signature of "set" incompatible with
+chunker/smart_context.py: error: Unsupported operand types for -
+chunker/strategies/adaptive.py: error: Call to untyped function
+chunker/strategies/adaptive.py: error: Function is missing a return type
+chunker/strategies/adaptive.py: error: Incompatible return value type
+chunker/strategies/adaptive.py: error: Incompatible types in assignment
+chunker/strategies/adaptive.py: error: Item "None" of "bytes | None" has
+chunker/strategies/adaptive.py: error: Need type annotation for
+chunker/strategies/adaptive.py: error: Need type annotation for "chunks"
+chunker/strategies/adaptive.py: error: Signature of "chunk" incompatible
+chunker/strategies/adaptive.py: error: Signature of "configure"
+chunker/strategies/composite.py: error: Argument 1 to "ConsensusFilter"
+chunker/strategies/composite.py: error: Argument 2 to "ConsensusFilter"
+chunker/strategies/composite.py: error: Call to untyped function
+chunker/strategies/composite.py: error: "CodeChunk" has no attribute
+chunker/strategies/composite.py: error: Function is missing a return type
+chunker/strategies/composite.py: error: Incompatible return value type
+chunker/strategies/composite.py: error: "object" has no attribute
+chunker/strategies/composite.py: error: "object" has no attribute "get" 
+chunker/strategies/composite.py: error: Signature of "can_handle"
+chunker/strategies/composite.py: error: Signature of "chunk" incompatible
+chunker/strategies/composite.py: error: Signature of "configure"
+chunker/strategies/composite.py: error: Signature of "should_include"
+chunker/strategies/composite.py: error: Signature of "should_merge"
+chunker/strategies/composite.py: error: Unsupported operand types for >=
+chunker/strategies/hierarchical.py: error: Function is missing a return
+chunker/strategies/hierarchical.py: error: Item "None" of "bytes | None"
+chunker/strategies/hierarchical.py: error: Missing type parameters for
+chunker/strategies/hierarchical.py: error: Need type annotation for
+chunker/strategies/hierarchical.py: error: Signature of "can_handle"
+chunker/strategies/hierarchical.py: error: Signature of "chunk"
+chunker/strategies/hierarchical.py: error: Signature of "configure"
+chunker/strategies/hierarchical.py: error: Unsupported operand types for
+chunker/strategies/semantic.py: error: Call to untyped function
+chunker/strategies/semantic.py: error: Function is missing a return type
+chunker/strategies/semantic.py: error: Incompatible return value type
+chunker/strategies/semantic.py: error: Item "None" of "bytes | None" has
+chunker/strategies/semantic.py: error: Signature of "chunk" incompatible
+chunker/strategies/semantic.py: error: Signature of "configure"
+chunker/strategies/semantic.py: error: Statement is unreachable 
+chunker/strategies/semantic.py: error: Unsupported target for indexed
+chunker/strategies/semantic.py: error: Value of type "object" is not
+chunker/streaming.py: error: Argument 2 to "_extract_definition_name"
+chunker/streaming.py: error: No overload variant of "parse" of "Parser"
+chunker/template_generator.py: error: any? has no attribute "__iter__"
+chunker/template_generator.py: error: Function "builtins.any" is not
+chunker/template_generator.py: error: Need type annotation for
+chunker/template_generator.py: error: Signature of "generate_plugin"
+chunker/template_generator.py: error: Signature of "generate_test"
+chunker/token/chunker.py: error: Call to untyped function
+chunker/token/chunker.py: error: Need type annotation for "chunks" (hint:
+chunker/token/chunker.py: error: Signature of "add_token_info"
+chunker/token/chunker.py: error: Signature of "chunk" incompatible with
+chunker/token/chunker.py: error: Signature of "chunk_with_token_limit"
+chunker/token/chunker.py: error: Signature of "configure" incompatible
+chunker/token/counter.py: error: Function is missing a return type
+chunker/token/counter.py: error: Need type annotation for
+chunker/token/counter.py: error: Need type annotation for "current_chunk"
+chunker/token/counter.py: error: Need type annotation for "current_lines"
+chunker/token/counter.py: error: Signature of "count_tokens" incompatible
+chunker/token/counter.py: error: Signature of "get_token_limit"
+chunker/token/counter.py: error: Signature of "split_text_by_tokens"
+chunker/tooling/developer.py: error: "Collection[Any]" has no attribute
+chunker/tooling/developer.py: error: "Collection[str]" has no attribute
+chunker/tooling/developer.py: error: Function is missing a return type
+chunker/tooling/developer.py: error: Need type annotation for "result" 
+chunker/tooling/developer.py: error: Need type annotation for "results"
+chunker/tooling/developer.py: error: Signature of "format_code"
+chunker/tooling/developer.py: error: Signature of "run_linting"
+chunker/tooling/developer.py: error: Signature of "run_pre_commit_checks"
+chunker/tooling/developer.py: error: Signature of "run_type_checking"
+chunker/tooling/developer.py: error: Unsupported target for indexed
+chunker/tooling/developer.py: error: Value of type "Collection[str]" is
+chunker/types.py: error: Function is missing a return type annotation 
+chunker/utils/ast.py: error: Missing type parameters for generic type
+chunker/utils/ast.py: error: Returning Any from function declared to
+chunker/utils/json.py: error: Argument 2 to "ConfigurationError" has
+chunker/utils/json.py: error: Returning Any from function declared to
+chunker/utils/text.py: error: Statement is unreachable  [unreachable]
+chunker/utils/text.py: error: Subclass of "bytes" and "str" cannot exist:
+chunker/utils/text.py: error: Subclass of "str" and "bytes" cannot
+chunker/validation/validation_framework.py: error: Argument 1 to
+chunker/validation/validation_framework.py: error: Argument 2 to
+chunker/validation/validation_framework.py: error: Call to untyped
+chunker/validation/validation_framework.py: error: "Collection[str]"
+chunker/validation/validation_framework.py: error: Function is missing a
+chunker/validation/validation_framework.py: error: Generator has
+chunker/validation/validation_framework.py: error: Incompatible return
+chunker/validation/validation_framework.py: error: Missing type
+chunker/validation/validation_framework.py: error: "object" has no
+chunker/validation/validation_framework.py: error: "Sequence[str]" has
+chunker/validation/validation_framework.py: error: Unsupported target
+chunker/validation/validation_framework.py: error: Value of type
+chunker/vfs_chunker.py: error: Argument 2 to "_walk_streaming" of
+chunker/vfs_chunker.py: error: Incompatible return value type (got
+chunker/vfs_chunker.py: error: Missing type parameters for generic type
+chunker/vfs_chunker.py: error: Module "chunker.chunker" does not
+chunker/vfs_chunker.py: error: Need type annotation for "_chunkers" (hint:
+chunker/vfs_chunker.py: error: "VirtualFileSystem" has no attribute
+cli/debug/commands.py: error: All conditional function variants must have
+cli/debug/commands.py: error: Call to untyped function "check_node" in
+cli/debug/commands.py: error: Call to untyped function "DebugREPL" in
+cli/debug/commands.py: error: Function is missing a return type
+cli/debug/commands.py: error: Function is missing a return type annotation
+cli/debug/commands.py: error: Function is missing a type annotation 
+cli/debug/commands.py: error: Name "ASTVisualizer" already defined
+cli/debug/commands.py: error: Name "ChunkDebugger" already defined
+cli/debug/commands.py: error: Name "DebugREPL" already defined (possibly
+cli/debug/commands.py: error: Name "NodeExplorer" already defined
+cli/debug/commands.py: error: Name "QueryDebugger" already defined
+cli/debug/__init__.py: error: Module has no attribute "app" 
+cli/main.py: error: Function is missing a return type annotation 
+cli/main.py: error: Need type annotation for "summary" (hint:
+cli/repo_command.py: error: Call to untyped function
+cli/repo_command.py: error: "CodeChunk" has no attribute "chunk_type" 
+cli/repo_command.py: error: "CodeChunk" has no attribute "name" 
+cli/repo_command.py: error: Function is missing a return type annotation 
+cli/repo_command.py: error: Need type annotation for "lang_counts" (hint:
+cli/repo_command.py: error: "object" has no attribute "append" 
+cli/setup_command.py: error: Function is missing a return type annotation
+cli/setup_command.py: error: Function is missing a return type annotation 
+                result["errors"].append(f"Unexpected error: {e}")

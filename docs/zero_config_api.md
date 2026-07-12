@@ -186,7 +186,10 @@ result = api.auto_chunk_file("script.txt", language="python")
 
 ### Fallback Behavior
 
-When tree-sitter is unavailable, the API automatically falls back to intelligent text chunking:
+When tree-sitter is unavailable or grammar/parser loading fails, the API
+automatically falls back to intelligent text chunking. File decoding uses UTF-8
+replacement mode on invalid input so fallback remains available for imperfect
+source files:
 
 ```python
 # If grammar download fails or language unsupported

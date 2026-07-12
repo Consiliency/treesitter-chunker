@@ -8,7 +8,7 @@ try:
     import igraph
     import leidenalg
 
-    HAS_CLUSTERING_DEPS = True
+    HAS_CLUSTERING_DEPS = all((nx, igraph, leidenalg))
 except ImportError:
     HAS_CLUSTERING_DEPS = False
 

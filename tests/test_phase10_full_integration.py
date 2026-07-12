@@ -331,7 +331,7 @@ def clear_cache():
         ml_processor = MultiLanguageProcessorImpl()
         result = ml_processor.detect_project_languages(str(empty_file.parent))
         assert isinstance(result, dict)
-        empty_index = AdvancedQueryIndex()
+        AdvancedQueryIndex()
         query_engine = NaturalLanguageQueryEngine()
         results = query_engine.search("anything")
         assert results == []

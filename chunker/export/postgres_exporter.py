@@ -1,6 +1,5 @@
 """PostgreSQL export implementation for code chunks."""
 
-import csv
 import json
 import re
 from pathlib import Path

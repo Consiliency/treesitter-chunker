@@ -11,6 +11,7 @@ import pytest
 
 from chunker.boundary import dumps_boundary_ir, extract_boundary_ir
 from chunker.boundary.types import METRIC_KEYS, TIMING_KEYS, TOP_LEVEL_KEYS
+from chunker._internal.pack_pin import resolve_pack_pin
 from chunker.parser import list_languages
 
 P0_BOUNDARY_LANGUAGES = ("python", "javascript", "typescript", "go")
@@ -55,7 +56,7 @@ GOLDEN_TOOL_VERSION = "<tool-version>"
 # closed if an unintended transitive bump moves either dist outside its range, so
 # pack stays pinned at 0.9.x and the IR stays byte-stable.
 PINNED_TREE_SITTER = (("0.25", "0.26"), "tree_sitter")
-PINNED_LANGUAGE_PACK = (("0.9", "1.0"), "tree-sitter-language-pack")
+PINNED_LANGUAGE_PACK = (resolve_pack_pin(), "tree-sitter-language-pack")
 
 FILE_KEYS = (
     "id",

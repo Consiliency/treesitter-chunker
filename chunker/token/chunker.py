@@ -224,6 +224,40 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
             return self._split_by_lines(chunk, max_tokens, model)
         current_part = class_header_lines.copy()
         current_tokens = header_tokens
+        # Running cursor into the original content so two byte-identical methods
+        # in separate sub-chunks anchor to their OWN occurrence, not the first
+        # (COREFIX: class-split duplicate-method disambiguation).
+        search_from = 0
+
+        def _emit(part_lines: list[str]) -> None:
+            nonlocal search_from
+            # The stored content MUST be a contiguous slice of the source so its
+            # byte span slices back to it (README token-split span contract:
+            # "slicing the original file bytes at a chunk span reproduces its
+            # content", incl. token-split chunks). So content is the method
+            # portion only; the class header is preserved as context in
+            # parent_context, NOT prepended into content (which would make the
+            # content non-contiguous and break slice-back).
+            method_lines = part_lines[len(class_header_lines) :]
+            chunk_content = "\n".join(method_lines)
+            new_chunk = self._create_sub_chunk(
+                chunk,
+                chunk_content,
+                len(chunks),
+                search_from=search_from,
+            )
+            if class_header:
+                base = new_chunk.parent_context or ""
+                new_chunk.parent_context = (
+                    f"{class_header}\n{base}" if base else class_header
+                )
+            chunks.append(new_chunk)
+            # Advance the cursor past this sub-chunk's own occurrence so two
+            # byte-identical methods anchor to distinct offsets.
+            found = chunk.content.find(chunk_content, search_from)
+            if found >= 0:
+                search_from = found + len(chunk_content)
+
         for i, start_idx in enumerate(method_starts):
             end_idx = method_starts[i + 1] if i + 1 < len(method_starts) else len(lines)
             method_lines = lines[start_idx:end_idx]
@@ -236,25 +270,13 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
                 current_tokens + method_tokens > max_tokens
                 and current_part != class_header_lines
             ):
-                chunk_content = "\n".join(current_part)
-                new_chunk = self._create_sub_chunk(
-                    chunk,
-                    chunk_content,
-                    len(chunks),
-                )
-                chunks.append(new_chunk)
+                _emit(current_part)
                 current_part = class_header_lines.copy()
                 current_tokens = header_tokens
             current_part.extend(method_lines)
             current_tokens += method_tokens
         if current_part and current_part != class_header_lines:
-            chunk_content = "\n".join(current_part)
-            new_chunk = self._create_sub_chunk(
-                chunk,
-                chunk_content,
-                len(chunks),
-            )
-            chunks.append(new_chunk)
+            _emit(current_part)
         return chunks if chunks else [chunk]
 
     def _split_by_lines(
@@ -270,9 +292,14 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
             model,
         )
         chunks = []
+        search_from = 0
         for i, part in enumerate(text_parts):
-            new_chunk = self._create_sub_chunk(chunk, part, i)
+            new_chunk = self._create_sub_chunk(chunk, part, i, search_from=search_from)
             chunks.append(new_chunk)
+            # Advance the search cursor past this part so a repeated part maps to
+            # its OWN occurrence, not the first (COREFIX token-offset fix).
+            found = chunk.content.find(part, search_from)
+            search_from = (found + len(part)) if found >= 0 else search_from + len(part)
         return chunks
 
     def _create_sub_chunk(
@@ -280,23 +307,35 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
         original_chunk: CodeChunk,
         content: str,
         index: int,
+        search_from: int = 0,
     ) -> CodeChunk:
-        """Create a sub-chunk from an original chunk."""
-        original_lines = original_chunk.content.split("\n")
-        new_lines = content.split("\n")
-        start_offset = 0
-        for i, line in enumerate(original_lines):
-            if new_lines and line.strip() == new_lines[0].strip():
-                start_offset = i
-                break
+        """Create a sub-chunk from an original chunk.
+
+        ``content`` MUST be a contiguous slice of ``original_chunk.content`` so
+        the sub-chunk's byte span slices back to it (README token-split span
+        contract). ``search_from`` locates ``content`` STARTING at a running
+        position so repeated identical parts map to their OWN occurrence, not
+        the first (COREFIX).
+        """
+        found = original_chunk.content.find(content, search_from)
+        content_offset = (
+            found if found >= 0 else max(original_chunk.content.find(content), 0)
+        )
+        start_offset = original_chunk.content[:content_offset].count("\n")
+        byte_offset = len(original_chunk.content[:content_offset].encode("utf-8"))
+        # The byte/line span describes ``content``'s real, contiguous region in
+        # the parent, so slicing the source at [byte_start, byte_end] reproduces
+        # ``content`` exactly and never overshoots the parent's byte_end.
         new_chunk = CodeChunk(
             language=original_chunk.language,
             file_path=original_chunk.file_path,
             node_type=f"{original_chunk.node_type}_part_{index + 1}",
             start_line=original_chunk.start_line + start_offset,
-            end_line=(original_chunk.start_line + start_offset + len(new_lines) - 1),
-            byte_start=original_chunk.byte_start,
-            byte_end=original_chunk.byte_start + len(content.encode()),
+            end_line=original_chunk.start_line + start_offset + content.count("\n"),
+            byte_start=original_chunk.byte_start + byte_offset,
+            byte_end=original_chunk.byte_start
+            + byte_offset
+            + len(content.encode("utf-8")),
             parent_context=original_chunk.parent_context,
             content=content,
             parent_chunk_id=original_chunk.chunk_id,

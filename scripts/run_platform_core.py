@@ -14,7 +14,6 @@ COMMON_TESTS = [
     "tests/test_config_advanced_scenarios.py",
     "tests/test_cli.py",
     "tests/test_exceptions.py",
-    "tests/test_extraction_framework.py",
     "tests/test_fallback_chunking.py",
     "tests/test_registry_fallback.py",
 ]

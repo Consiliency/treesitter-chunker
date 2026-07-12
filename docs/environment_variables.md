@@ -57,6 +57,22 @@ Environment variables with the `CHUNKER_` prefix can override configuration valu
 | `CHUNKER_ENABLED_LANGUAGES` | Comma-separated list of enabled languages | `python,rust,javascript` |
 | `CHUNKER_PLUGIN_DIRS` | Comma-separated list of plugin directories | `/path/one,/path/two` |
 
+### REST API Security
+
+The optional FastAPI server is safe-by-default but must be configured before
+filesystem-backed endpoints can serve requests.
+
+| Environment Variable | Description | Example |
+|---------------------|-------------|---------|
+| `TREE_SITTER_CHUNKER_API_TOKEN` | Required Bearer token for `/chunk/file`, `/graph/xref`, and `/export/postgres` | `change-me` |
+| `TREE_SITTER_CHUNKER_API_ROOT` | Canonical root for relative filesystem paths; defaults to the process working directory | `/srv/source` |
+| `TREE_SITTER_CHUNKER_API_CORS_ORIGINS` | Comma-separated allowed browser origins; wildcard origins are ignored | `https://app.example.com` |
+| `TREE_SITTER_CHUNKER_POSTGRES_HOSTS` | Exact comma-separated host allowlist for direct Postgres exports | `db.internal,localhost` |
+
+The API rejects absolute paths, `..` traversal, and symlink escapes. `/graph/cut`
+accepts the graph's `nodes` and `edges` directly and returns a bounded subgraph
+around the supplied seed IDs.
+
 ### Default Plugin Configuration
 
 | Environment Variable | Description | Example |

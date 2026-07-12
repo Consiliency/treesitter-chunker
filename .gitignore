@@ -8,6 +8,7 @@ build/
 dist/
 *.so
 *.egg-info/
+treesitter_chunker.egg-info/
 
 # Python
 __pycache__/
@@ -21,6 +22,9 @@ __pycache__/
 pytest_cache/
 pytest_*.log
 *.log
+mcp_server.log
+*.db
+ide/**/node_modules/
 
 # Generated files
 generated_config.yaml

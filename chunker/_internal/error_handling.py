@@ -1,8 +1,7 @@
 """Error handling utilities for consistent user guidance and error formatting."""
 
 import logging
-from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 

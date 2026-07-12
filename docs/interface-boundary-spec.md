@@ -175,6 +175,19 @@ Incremental cache keys, warm-run invalidation rules, and impacted-neighbor
 recompute behavior are downstream additive contracts. They do not change the
 syntax-only `1.0` baseline or the Phase 0 canonical JSON rules.
 
+Each cache key includes the installed `tree-sitter-language-pack` and
+`tree-sitter` runtime versions. A grammar-pack or runtime change therefore
+invalidates persisted per-file records instead of combining stale records with
+new extraction output.
+
+### Parity extension
+
+The parity view represents floats with the ECMAScript
+`Number.prototype.toString` spelling before canon serialization: `1e-05` is
+`"0.00001"`, `1e-07` is `"1e-7"`, and `-0.0` is `"0"`. Its byte view and
+digest are checked against a committed cross-tool golden, so an in-process
+agreement cannot silently redefine the contract.
+
 ### Semantic extension
 
 Optional semantic resolvers are a downstream additive extension. When callers

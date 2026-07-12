@@ -1,0 +1,12 @@
+{
+  "touched_by_phases": [
+    "SUPPLY",
+    "APISAFE",
+    "GATES",
+    "PARSER",
+    "BOUNDARYFIX",
+    "IDENTITY",
+    "COREFIX"
+  ],
+  "refresh_note": "scaffold_docs_catalog.py is unavailable; COREFIX updated this catalog manually"
+}

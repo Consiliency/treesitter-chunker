@@ -83,7 +83,7 @@ def temp_cache_dir():
             try:
                 shutil.rmtree(cache_dir.parent)
                 break
-            except (PermissionError, OSError) as e:
+            except (PermissionError, OSError):
                 if attempt < max_attempts - 1:
                     time.sleep(0.1 * (2**attempt))  # Exponential backoff
                 # Log the failure but don't fail the test

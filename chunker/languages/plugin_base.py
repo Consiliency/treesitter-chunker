@@ -9,10 +9,11 @@ from __future__ import annotations
 import logging
 import subprocess
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from chunker.types import CodeChunk
+
+from .base import PluginConfig
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -23,21 +24,6 @@ if TYPE_CHECKING:
 
     from .base import LanguageConfig
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class PluginConfig:
-    """Configuration for a language plugin."""
-
-    enabled: bool = True
-    chunk_types: set[str] | None = None
-    min_chunk_size: int = 1
-    max_chunk_size: int | None = None
-    custom_options: dict[str, Any] = None
-
-    def __post_init__(self):
-        if self.custom_options is None:
-            self.custom_options = {}
 
 
 class LanguagePlugin(ABC):
@@ -52,6 +38,7 @@ class LanguagePlugin(ABC):
     def __init__(self, config: PluginConfig | None = None):
         self.config = config or PluginConfig()
         self._parser: Parser | None = None
+        self._parser_injected: bool = False
         self._language_config: LanguageConfig | None = None
         self._validate_plugin()
 
@@ -131,6 +118,7 @@ class LanguagePlugin(ABC):
     def set_parser(self, parser: Parser) -> None:
         """Set the tree-sitter parser for this plugin."""
         self._parser = parser
+        self._parser_injected = True
 
     def process_node(
         self,
@@ -231,11 +219,31 @@ class LanguagePlugin(ABC):
 
     def chunk_file(self, file_path: Path) -> list[CodeChunk]:
         """Parse a file and return chunks."""
-        if not self._parser:
-            raise RuntimeError(f"Parser not set for {self.language_name} plugin")
         source = file_path.read_bytes()
-        tree = self._parser.parse(source)
+        tree = self._thread_safe_parser().parse(source)
         return self.walk_tree(tree.root_node, source, str(file_path))
+
+    def _thread_safe_parser(self) -> Parser:
+        """Return a parser owned by the calling thread.
+
+        A plugin instance is cached globally (plugin_manager._instances) and thus
+        shared across threads, so its stored `self._parser` must NOT be used for
+        production parsing — that would run one Parser on multiple threads
+        (segfault). Production instances are never injected, so they fetch the
+        calling thread's own thread-local parser via `get_parser` (PARSER phase),
+        and any failure PROPAGATES — it must never fail open to the shared parser.
+
+        The only path that uses the stored parser is an EXPLICIT single-threaded
+        test injection via `set_parser()` (e.g. custom test grammars like zig/julia
+        that the factory registry cannot provide), gated on `self._parser_injected`.
+        """
+        if self._parser_injected and self._parser is not None:
+            return self._parser
+        from chunker.parser import get_parser
+
+        # language_name is an abstract @property (str) whose base def omits self,
+        # so mypy infers Callable[[], str]; at runtime it is the str value.
+        return get_parser(cast("str", self.language_name))
 
     @staticmethod
     @abstractmethod

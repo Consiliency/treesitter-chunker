@@ -1,9 +1,11 @@
 """Smart context implementation for intelligent chunk context selection."""
 
 import builtins
+import hashlib
 import re
 import time
 from collections import defaultdict
+from collections.abc import Iterable
 from typing import Any
 
 from .interfaces.smart_context import (
@@ -34,7 +36,11 @@ class TreeSitterSmartContextProvider(SmartContextProvider):
         self.cache = cache or InMemoryContextCache()
         # Back-compat alias used by some tests
         self._cache = self.cache
-        self._parsers = {}
+        # Memoize per-chunk semantic features by chunk_id so the all-pairs
+        # similarity scan extracts each chunk's features ONCE, not once per
+        # (request, candidate) pair -- turns repeated O(n^2) extraction into
+        # O(n) amortized (COREFIX).
+        self._feature_cache: dict[str, dict[str, Any]] = {}
 
     def get_semantic_context(
         self,
@@ -54,13 +60,18 @@ class TreeSitterSmartContextProvider(SmartContextProvider):
         Returns:
             Tuple of (context_string, metadata)
         """
-        chunk_features = self._extract_semantic_features(chunk)
+        chunk_features = self._features_for(chunk)
         file_chunks = self._get_file_chunks(chunk.file_path, chunk.language)
+        # BOUNDED candidate selection (COREFIX): instead of comparing against every
+        # chunk in the file (O(n^2) across requests), use an inverted identifier
+        # index to consider only candidates that share >= 1 identifier with the
+        # query, capped at _MAX_CONTEXT_CANDIDATES.
+        candidates = self._candidate_subset(chunk, chunk_features, file_chunks)
         similar_chunks = []
-        for candidate in file_chunks:
+        for candidate in candidates:
             if candidate.chunk_id == chunk.chunk_id:
                 continue
-            candidate_features = self._extract_semantic_features(candidate)
+            candidate_features = self._features_for(candidate)
             similarity_score = self._calculate_semantic_similarity(
                 chunk_features,
                 candidate_features,
@@ -113,7 +124,8 @@ class TreeSitterSmartContextProvider(SmartContextProvider):
         Returns:
             List of (chunk, metadata) tuples for dependencies
         """
-        cached = self.cache.get(chunk.chunk_id, "dependency")
+        cache_type = self._candidate_cache_type("dependency", chunks)
+        cached = self.cache.get(chunk.chunk_id, cache_type)
         if cached is not None:
             return cached
         dependencies = []
@@ -137,7 +149,7 @@ class TreeSitterSmartContextProvider(SmartContextProvider):
                 )
                 dependencies.append((candidate, metadata))
         dependencies.sort(key=lambda x: x[1].relevance_score, reverse=True)
-        self.cache.set(chunk.chunk_id, "dependency", dependencies)
+        self.cache.set(chunk.chunk_id, cache_type, dependencies)
         return dependencies
 
     def get_usage_context(
@@ -157,7 +169,8 @@ class TreeSitterSmartContextProvider(SmartContextProvider):
         Returns:
             List of (chunk, metadata) tuples for usages
         """
-        cached = self.cache.get(chunk.chunk_id, "usage")
+        cache_type = self._candidate_cache_type("usage", chunks)
+        cached = self.cache.get(chunk.chunk_id, cache_type)
         if cached is not None:
             return cached
         usages = []
@@ -224,7 +237,7 @@ class TreeSitterSmartContextProvider(SmartContextProvider):
                 )
                 usages.append((candidate, metadata))
         usages.sort(key=lambda x: x[1].relevance_score, reverse=True)
-        self.cache.set(chunk.chunk_id, "usage", usages)
+        self.cache.set(chunk.chunk_id, cache_type, usages)
         return usages
 
     def get_structural_context(
@@ -244,7 +257,8 @@ class TreeSitterSmartContextProvider(SmartContextProvider):
         Returns:
             List of (chunk, metadata) tuples for structural relations
         """
-        cached = self.cache.get(chunk.chunk_id, "structural")
+        cache_type = self._candidate_cache_type("structural", chunks)
+        cached = self.cache.get(chunk.chunk_id, cache_type)
         if cached is not None:
             return cached
         structural_relations = []
@@ -273,8 +287,97 @@ class TreeSitterSmartContextProvider(SmartContextProvider):
             key=lambda x: (x[1].relevance_score, -x[1].distance),
             reverse=True,
         )
-        self.cache.set(chunk.chunk_id, "structural", structural_relations)
+        self.cache.set(chunk.chunk_id, cache_type, structural_relations)
         return structural_relations
+
+    @staticmethod
+    def _candidate_cache_type(context_type: str, chunks: list[CodeChunk]) -> str:
+        identities = sorted(
+            f"{candidate.chunk_id}:{candidate.node_id}:{candidate.file_path}:{candidate.byte_start}"
+            for candidate in chunks
+        )
+        digest = hashlib.sha256("\0".join(identities).encode("utf-8")).hexdigest()[:16]
+        return f"{context_type}:{digest}"
+
+    _MAX_CONTEXT_CANDIDATES = 200
+
+    def _candidate_subset(
+        self,
+        chunk: CodeChunk,
+        chunk_features: dict[str, Any],
+        file_chunks: list[CodeChunk],
+    ) -> list[CodeChunk]:
+        """Return a BOUNDED candidate set sharing an identifier with the query.
+
+        Uses an inverted identifier index (identifier -> chunks) so the similarity
+        scan considers only candidates that share >= 1 identifier, capped at
+        _MAX_CONTEXT_CANDIDATES — bounding the former O(n^2) all-pairs pass (COREFIX).
+        """
+        index = self._identifier_index(chunk.file_path, chunk.language, file_chunks)
+        query_ids = chunk_features.get("identifiers") or set()
+        seen: dict[Any, Any] = {}
+        # Iterate identifiers in a STABLE (sorted) order so the cap-truncated
+        # candidate set is a deterministic function of the input, not of the
+        # process's hash seed (COREFIX determinism).
+        for ident in sorted(query_ids):
+            for cand in index.get(ident, ()):
+                if cand.chunk_id != chunk.chunk_id:
+                    seen[cand.chunk_id or id(cand)] = cand
+                    if len(seen) >= self._MAX_CONTEXT_CANDIDATES:
+                        return self._ordered(seen.values())
+        if seen:
+            return self._ordered(seen.values())
+        return sorted(
+            (c for c in file_chunks if c.chunk_id != chunk.chunk_id),
+            key=self._candidate_sort_key,
+        )[: self._MAX_CONTEXT_CANDIDATES]
+
+    @staticmethod
+    def _candidate_sort_key(cand: CodeChunk) -> tuple[str, int]:
+        return (cand.chunk_id or "", cand.byte_start)
+
+    def _ordered(self, candidates: Iterable[CodeChunk]) -> list[CodeChunk]:
+        return sorted(candidates, key=self._candidate_sort_key)
+
+    def _identifier_index(
+        self,
+        file_path: str,
+        language: str,
+        file_chunks: list[CodeChunk],
+    ) -> dict[str, list[CodeChunk]]:
+        # The key includes a CONTENT digest (not just len) so a same-length
+        # rechunk with different content does not serve a stale index
+        # (COREFIX cache-freshness). The digest is content-derived via node_id.
+        digest = self._candidate_cache_type("ident-index", file_chunks)
+        key = f"{file_path}|{language}|{digest}"
+        cache = getattr(self, "_ident_index_cache", None)
+        if cache is None:
+            cache = {}
+            self._ident_index_cache = cache
+        idx = cache.get(key)
+        if idx is None:
+            idx = {}
+            for cand in file_chunks:
+                feats = self._features_for(cand)
+                # Index only DISCRIMINATIVE identifiers: drop language keywords and
+                # ubiquitous short tokens so common words (def/return/self/...) don't
+                # make every chunk a candidate for every query (keeps the pass bounded).
+                keywords = feats.get("keywords") or set()
+                for ident in feats.get("identifiers") or set():
+                    if ident in keywords or len(ident) <= 2:
+                        continue
+                    idx.setdefault(ident, []).append(cand)
+            cache[key] = idx
+        return idx
+
+    def _features_for(self, chunk: CodeChunk) -> dict[str, Any]:
+        """Return cached semantic features for a chunk (computed once per chunk_id)."""
+        key = chunk.chunk_id or f"{chunk.file_path}:{chunk.byte_start}:{chunk.byte_end}"
+        cached = self._feature_cache.get(key)
+        if cached is None:
+            cached = self._extract_semantic_features(chunk)
+            self._feature_cache[key] = cached
+        return cached
 
     @staticmethod
     def _extract_semantic_features(chunk: CodeChunk) -> dict[str, Any]:
@@ -549,10 +652,14 @@ class TreeSitterSmartContextProvider(SmartContextProvider):
             return []
 
     def _get_parser(self, language: str):
-        """Get a cached parser for the language."""
-        if language not in self._parsers:
-            self._parsers[language] = get_parser(language)
-        return self._parsers[language]
+        """Return the calling thread's parser for the language.
+
+        Delegates to the thread-local ``get_parser`` (IF-0-PARSER-1) on every
+        call rather than caching one Parser in a shared instance dict — a
+        SmartContextProvider shared across threads must never hand one Parser to
+        two threads (the shared-parser segfault class SCALE closes).
+        """
+        return get_parser(language)
 
 
 class RelevanceContextStrategy(ContextStrategy):

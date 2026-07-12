@@ -317,6 +317,13 @@ Brief description of changes
 Any additional information
 ```
 
+## Quality gates
+
+Before opening a pull request, run the blocking Ruff and mypy checks plus the
+smoke tier. The complete contract suite runs nightly and is available locally
+as `uv run --with toml --all-extras python scripts/run_full_suite.py`; it runs
+both `tests/` and `spec_tests/`.
+
 ## 🏷️ Release Process
 
 ### **Version Bumping**

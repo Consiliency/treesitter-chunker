@@ -22,7 +22,6 @@ Features:
 
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
 import sqlite3
@@ -31,16 +30,14 @@ import time
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any
 
 from chunker.grammar_management.core import (
     GrammarManager,
     GrammarPriority,
     GrammarValidator,
     ValidationLevel,
-    ValidationResult,
 )
-from chunker.interfaces.grammar import GrammarInfo, GrammarStatus
 
 logger = logging.getLogger(__name__)
 
@@ -1676,9 +1673,6 @@ class SmartSelector:
     def _score_recency(self, candidate: SelectionCandidate) -> float:
         """Score recency of a grammar candidate."""
         try:
-            # Get installation date from metadata
-            metadata = candidate.metadata
-
             # This would calculate recency based on installation date, commit date, etc.
             # For now, return a neutral score
             return 0.5

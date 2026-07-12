@@ -15,6 +15,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from chunker._internal.path_confinement import resolve_within_root
+
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
@@ -76,15 +78,15 @@ class LocalFileSystem(VirtualFileSystem):
 
     def __init__(self, root_path: Path | None = None):
         """Initialize with optional root path for sandboxing."""
-        self.root = Path(root_path) if root_path else Path("/")
+        self.root = Path(root_path).resolve() if root_path else Path("/")
         # Expose Path for tests that access LocalFileSystem.Path, rooted to self.root
         self.Path = self._resolve_path
 
     def _resolve_path(self, path: str) -> Path:  # noqa: D102
         """Resolve a virtual path to actual path."""
-        if Path(path).is_absolute():
-            return Path(path)
-        return self.root / path
+        if path == "/" and self.root != Path("/"):
+            return self.root
+        return resolve_within_root(path, self.root)
 
     def open(self, path: str, mode: str = "r") -> io.IOBase:
         """Open a local file."""

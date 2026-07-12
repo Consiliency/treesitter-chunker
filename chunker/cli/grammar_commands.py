@@ -1,10 +1,8 @@
 """CLI commands for grammar management."""
 
 import argparse
-import json
 import sys
 from pathlib import Path
-from typing import List, Optional
 
 from chunker._internal.user_grammar_tools import UserGrammarTools
 
@@ -384,9 +382,6 @@ def cmd_diagnose_grammar(args: argparse.Namespace) -> int:
     """
     try:
         print(f"🔍 Diagnosing grammar for {args.language}...")
-
-        tools = get_grammar_tools()
-        result = tools.get_grammar_info(args.language)
 
         # This is similar to grammar info but focused on issues
         return cmd_grammar_info(args)

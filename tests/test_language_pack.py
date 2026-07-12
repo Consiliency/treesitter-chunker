@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 
 class TestLanguagePackProvider:
     """Tests for LanguagePackProvider wrapper."""

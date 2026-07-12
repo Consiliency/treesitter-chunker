@@ -1,10 +1,9 @@
 """Tests for the grammar management system."""
 
-import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -420,12 +419,18 @@ class TestUserGrammarTools:
         source_dir.mkdir()
         (source_dir / ".git").mkdir()  # Mock git directory
 
-        # Mock git commands
+        # Mock git commands. SUPPLY hardening re-validates the stored origin
+        # (git remote get-url origin → validate_grammar_source) before fetching,
+        # so the first call now reads an allowlisted (github.com) remote URL.
         mock_run.side_effect = [
+            Mock(
+                returncode=0,
+                stdout="https://github.com/tree-sitter/tree-sitter-test_lang\n",
+            ),  # git remote get-url origin
             Mock(returncode=0),  # git fetch
             Mock(returncode=0, stdout=b"old_commit\n"),  # git rev-parse HEAD
             Mock(returncode=0, stdout=b"new_commit\n"),  # git rev-parse origin/main
-            Mock(returncode=0),  # git checkout
+            Mock(returncode=0),  # git checkout --detach origin/main
             Mock(returncode=0),  # tree-sitter generate
         ]
 
@@ -446,8 +451,13 @@ class TestUserGrammarTools:
         source_dir.mkdir()
         (source_dir / ".git").mkdir()
 
-        # Mock git commands - same commit
+        # Mock git commands - same commit. SUPPLY hardening prepends a
+        # get-url + validate step before fetching.
         mock_run.side_effect = [
+            Mock(
+                returncode=0,
+                stdout="https://github.com/tree-sitter/tree-sitter-test_lang\n",
+            ),  # git remote get-url origin
             Mock(returncode=0),  # git fetch
             Mock(returncode=0, stdout=b"same_commit\n"),  # git rev-parse HEAD
             Mock(returncode=0, stdout=b"same_commit\n"),  # git rev-parse origin/main

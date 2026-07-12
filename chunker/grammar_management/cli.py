@@ -18,97 +18,34 @@ Phase 1.8 Compliance:
 - All specified CLI commands with exact signatures
 - Error handling for all failure scenarios
 
-Integration with Task E1:
-- Uses ErrorHandlingPipeline for comprehensive error processing
-- Uses ErrorHandlingOrchestrator for session management
-- Uses CLIErrorIntegration for CLI-specific error handling
-- Provides intelligent error guidance and troubleshooting
+Error handling:
+- Surfaces grammar-management failures with actionable guidance and troubleshooting
 """
 
 from __future__ import annotations
 
-import asyncio
 import builtins
 import json
 import logging
-import os
 import platform
 import shutil
 import subprocess
 import sys
-import tempfile
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
-from urllib.parse import urlparse
-from urllib.request import urlopen, urlretrieve
+from typing import Any
 
 import click
 
-# Import error handling components from Task E1
-try:
-    from ..error_handling.integration import (
-        CLIErrorIntegration,
-        ErrorHandlingOrchestrator,
-        ErrorHandlingPipeline,
-        create_error_handling_system,
-        get_system_health_report,
-    )
-
-    ERROR_HANDLING_AVAILABLE = True
-except ImportError as e:
-    logging.debug(f"Error handling integration not available: {e}")
-    ERROR_HANDLING_AVAILABLE = False
-
-    # Create stub classes for graceful fallback
-    class ErrorHandlingPipeline:  # type: ignore[no-redef]
-        def __init__(self, **kwargs: Any) -> None:
-            pass
-
-        def process_error(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
-            return {"success": False}
-
-    class ErrorHandlingOrchestrator:  # type: ignore[no-redef]
-        def __init__(self, *args: Any, **kwargs: Any) -> None:
-            pass
-
-        def create_session(self, *args: Any, **kwargs: Any) -> None:
-            return None
-
-        def close_session(self, *args: Any) -> bool:
-            return True
-
-    class CLIErrorIntegration:  # type: ignore[no-redef]
-        def __init__(self, *args: Any) -> None:
-            pass
-
-        def handle_grammar_validation_error(
-            self, *args: Any, **kwargs: Any
-        ) -> dict[str, Any]:
-            return {"success": False, "guidance": [], "quick_fixes": []}
-
-        def handle_grammar_download_error(
-            self, *args: Any, **kwargs: Any
-        ) -> dict[str, Any]:
-            return {"success": False, "guidance": [], "troubleshooting_steps": []}
-
+from chunker.grammar.source_validation import validate_grammar_source
 
 # Import grammar management components from core
 try:
     from .core import (
-        GrammarInstallationError,
-        GrammarInstaller,
-        GrammarManagementError,
         GrammarManager,
         GrammarPriority,
-        GrammarRegistry,
-        GrammarValidationError,
-        GrammarValidator,
-        InstallationInfo,
         ValidationLevel,
-        ValidationResult,
     )
 
     GRAMMAR_COMPONENTS_AVAILABLE = True
@@ -276,27 +213,6 @@ class ComprehensiveGrammarCLI:
         ]:
             directory.mkdir(parents=True, exist_ok=True)
 
-        # Initialize error handling system (Task E1 integration)
-        self.error_handling_available = ERROR_HANDLING_AVAILABLE
-        self.pipeline = None
-        self.orchestrator = None
-        self.cli_integration = None
-
-        if self.error_handling_available:
-            try:
-                self.pipeline, self.orchestrator, self.cli_integration = (
-                    create_error_handling_system(
-                        max_concurrent_processes=2,
-                        max_sessions=50,
-                        session_timeout_minutes=15,
-                    )
-                )
-                if self.verbose:
-                    click.echo("✅ Error handling system initialized")
-            except Exception as e:
-                logger.warning(f"Failed to initialize error handling system: {e}")
-                self.error_handling_available = False
-
         # Initialize grammar management components
         self.grammar_manager = None
         self.compatibility_manager = None
@@ -366,102 +282,13 @@ class ComprehensiveGrammarCLI:
         language: str | None = None,
         context: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """Handle error using integrated error handling pipeline.
-
-        Args:
-            error_msg: Error message
-            language: Optional language context
-            context: Optional additional context
-
-        Returns:
-            Dictionary with error handling results
-        """
-        if not self.error_handling_available or not self.cli_integration:
-            return {
-                "success": False,
-                "guidance": [f"Error: {error_msg}"],
-                "quick_fixes": [],
-                "suggested_commands": [],
-            }
-
-        try:
-            if language and "grammar" in error_msg.lower():
-                return self.cli_integration.handle_grammar_validation_error(
-                    language,
-                    error_msg,
-                    context.get("grammar_path") if context else None,
-                )
-            if "download" in error_msg.lower() or "fetch" in error_msg.lower():
-                return self.cli_integration.handle_grammar_download_error(
-                    language or "unknown",
-                    error_msg,
-                    context.get("url") if context else None,
-                )
-            # General error handling
-            if self.orchestrator is None:
-                return {
-                    "success": False,
-                    "guidance": [f"Error: {error_msg}"],
-                    "quick_fixes": [],
-                    "suggested_commands": [],
-                }
-            session = self.orchestrator.create_session(
-                context={"cli_operation": True},
-            )
-            try:
-                result = self.orchestrator.process_error_in_session(
-                    session.session_id,
-                    error_msg,
-                    context,
-                )
-                return {
-                    "success": result.success,
-                    "guidance": self._extract_guidance_messages(result),
-                    "quick_fixes": self._extract_quick_fixes(result),
-                    "suggested_commands": self._extract_commands(result),
-                }
-            finally:
-                self.orchestrator.close_session(session.session_id)
-        except Exception as e:
-            logger.error(f"Error in error handling pipeline: {e}")
-            return {
-                "success": False,
-                "guidance": [f"Error: {error_msg}"],
-                "quick_fixes": [],
-                "suggested_commands": [],
-            }
-
-    def _extract_guidance_messages(self, result: Any) -> builtins.list[str]:
-        """Extract guidance messages from pipeline result."""
-        messages = []
-        if hasattr(result, "guidance_sequence") and result.guidance_sequence:
-            for action in result.guidance_sequence.actions:
-                messages.append(f"{action.title}: {action.description}")
-        if hasattr(result, "fallback_response") and result.fallback_response:
-            messages.extend(result.fallback_response.get("general_guidance", []))
-        return messages
-
-    def _extract_quick_fixes(self, result: Any) -> builtins.list[str]:
-        """Extract quick fixes from pipeline result."""
-        fixes = []
-        if hasattr(result, "guidance_sequence") and result.guidance_sequence:
-            for action in result.guidance_sequence.actions:
-                if hasattr(action, "command") and action.command:
-                    fixes.append(action.command)
-        return fixes[:3]  # Limit to 3 quick fixes
-
-    def _extract_commands(self, result: Any) -> builtins.list[str]:
-        """Extract suggested CLI commands from pipeline result."""
-        commands = []
-        if hasattr(result, "guidance_sequence") and result.guidance_sequence:
-            for action in result.guidance_sequence.actions:
-                if (
-                    hasattr(action, "command")
-                    and action.command
-                    and "treesitter-chunker" in action.command
-                ):
-                    commands.append(action.command)
-        return commands
+        """Return the local CLI's generic error result."""
+        return {
+            "success": False,
+            "guidance": [f"Error: {error_msg}"],
+            "quick_fixes": [],
+            "suggested_commands": [],
+        }
 
     def _get_grammar_priority_order(self) -> builtins.list[tuple[Path, str, Any]]:
         """Get grammar search paths in priority order (Phase 1.8 specification).
@@ -1445,6 +1272,9 @@ class ComprehensiveGrammarCLI:
         Returns:
             Exit code
         """
+        repo_url = validate_grammar_source(repo_url)
+        if (version or branch).startswith("-"):
+            raise ValueError("Grammar branch or version must not start with '-'")
         target_dir = self.user_grammars_dir / language
 
         click.echo(f"Repository: {repo_url}")
@@ -1468,11 +1298,19 @@ class ComprehensiveGrammarCLI:
             git_cmd = ["git", "clone"]
             if version:
                 # For specific version, we'll clone then checkout
-                git_cmd.extend([repo_url, str(target_dir)])
+                git_cmd.extend(["--", repo_url, str(target_dir)])
             else:
                 # For branch, clone specific branch
                 git_cmd.extend(
-                    ["--branch", branch, "--depth", "1", repo_url, str(target_dir)],
+                    [
+                        "--branch",
+                        branch,
+                        "--depth",
+                        "1",
+                        "--",
+                        repo_url,
+                        str(target_dir),
+                    ],
                 )
 
             progress.update("Cloning repository...")
@@ -1487,8 +1325,12 @@ class ComprehensiveGrammarCLI:
 
             # If specific version requested, checkout that version
             if version:
+                if version.startswith("-"):
+                    raise ValueError(
+                        f"Refusing unsafe grammar version (leading dash): {version!r}"
+                    )
                 progress.update(f"Checking out version {version}...")
-                checkout_cmd = ["git", "checkout", version]
+                checkout_cmd = ["git", "checkout", "--detach", version]
                 returncode, _stdout, stderr = self._run_command(
                     checkout_cmd,
                     cwd=target_dir,
@@ -2406,7 +2248,7 @@ if __name__ == "__main__":
         try:
             import ctypes
 
-            lib = ctypes.CDLL(str(grammar_path))
+            ctypes.CDLL(str(grammar_path))
 
             # Basic load test passed
             result["valid"] = True

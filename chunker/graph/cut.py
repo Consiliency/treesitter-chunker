@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict, deque
 from collections.abc import Iterable
-from typing import Any, Tuple
+from typing import Any
 
 
 def graph_cut(
@@ -71,8 +71,12 @@ def graph_cut(
         )
 
     candidates = [nid for nid in visited if nid in id_to_node]
-    # Sort by score descending
-    candidates.sort(key=score, reverse=True)
+    # Sort by score descending, breaking ties on the node id ascending.
+    # ``visited`` is a set, so its iteration order is hash-randomised across
+    # processes; sorting only by score leaves equal-score nodes in that
+    # non-deterministic order. Using ``(-score, node_id)`` gives a stable,
+    # reproducible ordering so that truncation to ``budget`` is deterministic.
+    candidates.sort(key=lambda nid: (-score(nid), nid))
 
     selected: list[str] = []
     for nid in candidates:

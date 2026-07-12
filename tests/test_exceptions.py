@@ -13,7 +13,6 @@ from chunker.exceptions import (
     LibraryError,
     LibraryLoadError,
     LibraryNotFoundError,
-    LibrarySymbolError,
     ParserConfigError,
     ParserError,
     ParserInitError,
@@ -140,21 +139,6 @@ class TestLibraryErrors:
         assert "ldd" in error_str
         assert "build_lib.py" in error_str
 
-    @classmethod
-    def test_library_symbol_error(cls):
-        """Test LibrarySymbolError."""
-        path = Path("/path/to/lib.so")
-        err = LibrarySymbolError("tree_sitter_golang", path)
-        assert isinstance(err, LibraryError)
-        assert err.symbol == "tree_sitter_golang"
-        assert err.library_path == path
-        assert "Symbol 'tree_sitter_golang' not found" in str(err)
-        assert "recovery" in err.details
-        assert "Rebuild library" in err.details["recovery"]
-        error_str = str(err)
-        assert "build_lib.py" in error_str
-        assert "verify grammar files" in error_str
-
 
 class TestConfigurationError:
     """Test ConfigurationError class."""
@@ -221,7 +205,6 @@ class TestExceptionHierarchy:
             ParserConfigError("config", "value", "reason"),
             LibraryNotFoundError(Path("test.so")),
             LibraryLoadError(Path("test.so"), "reason"),
-            LibrarySymbolError("symbol", Path("test.so")),
             ConfigurationError("test error", "/test/path.json"),
         ]
         for exc in exceptions:
@@ -237,7 +220,6 @@ class TestExceptionHierarchy:
         assert isinstance(ParserConfigError("config", "value", "reason"), ParserError)
         assert isinstance(LibraryNotFoundError(Path("test")), LibraryError)
         assert isinstance(LibraryLoadError(Path("test"), "reason"), LibraryError)
-        assert isinstance(LibrarySymbolError("symbol", Path("test")), LibraryError)
 
     @classmethod
     def test_exception_catching(cls):
@@ -263,7 +245,6 @@ class TestErrorMessages:
             ParserConfigError("timeout", -1, "Must be positive"),
             LibraryNotFoundError(Path("/lib.so")),
             LibraryLoadError(Path("/lib.so"), "Permission denied"),
-            LibrarySymbolError("tree_sitter_go", Path("/lib.so")),
             ConfigurationError("Invalid JSON", "/path/to/config.json"),
         ]
         for err in errors:

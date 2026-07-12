@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import gzip
 import json
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -65,7 +65,8 @@ class StructuredJSONExporter(StructuredExporter):
         if isinstance(output, str | Path):
             output_path = Path(output)
             if self.compress:
-                with gzip.Path(f"{output_path}.gz").open(
+                with gzip.open(
+                    f"{output_path}.gz",
                     "wt",
                     encoding="utf-8",
                 ) as f:
@@ -199,7 +200,8 @@ class StructuredJSONLExporter(StructuredExporter):
         if isinstance(output, str | Path):
             output_path = Path(output)
             if self.compress:
-                with gzip.Path(f"{output_path}.gz").open(
+                with gzip.open(
+                    f"{output_path}.gz",
                     "wt",
                     encoding="utf-8",
                 ) as f:
@@ -220,7 +222,8 @@ class StructuredJSONLExporter(StructuredExporter):
         if isinstance(output, str | Path):
             output_path = Path(output)
             if self.compress:
-                with gzip.Path(f"{output_path}.gz").open(
+                with gzip.open(
+                    f"{output_path}.gz",
                     "wt",
                     encoding="utf-8",
                 ) as f:

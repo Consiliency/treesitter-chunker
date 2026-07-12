@@ -44,9 +44,19 @@ Send a detailed report to our security team at:
 ### **Input Validation**
 
 - **File Paths**: Strict validation of file paths to prevent path traversal attacks
+- **API Filesystem Access**: Filesystem-backed REST endpoints require Bearer
+  authentication and canonically confine relative paths to the configured API
+  root, including rejection of symlink escapes
+- **API Exposure**: The directly-run server binds loopback by default, limits
+  request bodies to 1 MiB, and does not allow credentialed wildcard CORS
+- **PostgreSQL Exports**: Direct connections require an exact host allowlist;
+  generated SQL escapes every interpolated string literal
 - **Language Detection**: Safe language detection without code execution
 - **Configuration Files**: Secure parsing of configuration files
-- **Grammar Sources**: Validation of grammar repository URLs
+- **Grammar Sources**: Exact-host HTTPS validation, immutable-version checksum
+  manifests, and verification before grammar archives are extracted or compiled
+- **Plugin Directories**: Custom plugin directories require explicit opt-in
+  before their Python modules are executed
 
 ### **Sandboxing**
 

@@ -1,5 +1,8 @@
 name: Test Suite
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [ main, develop ]
@@ -28,15 +31,15 @@ jobs:
             platform-family: macos
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
       with:
         python-version: ${{ matrix.python-version }}
 
     - name: Cache dependencies
-      uses: actions/cache@v5
+      uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25
       with:
         path: |
           ~/.cache/pip
@@ -66,11 +69,16 @@ jobs:
         uv run --all-extras black --check chunker/ tests/
 
     - name: Run type checking
+      # The baseline-relative mypy gate runs on Linux only: the baseline
+      # (docs/development/mypy-baseline.txt) is generated on Linux, and mypy
+      # re-derives PLATFORM-SPECIFIC errors on Windows/macOS (e.g. the Unix-only
+      # `resource` module in performance_framework.py) that a Linux baseline can
+      # never contain — so a per-OS run would flag those as spurious "new"
+      # errors. Type-checking the code once on Linux is sufficient and correct.
+      if: matrix.platform-family == 'linux'
       shell: bash
       run: |
-        if ! mypy chunker/ cli/ --ignore-missing-imports; then
-          echo "::warning::mypy reported known non-blocking type issues"
-        fi
+        uv run --all-extras python scripts/mypy_gate.py
 
     - name: Run platform core tests
       run: |
@@ -79,7 +87,7 @@ jobs:
 
     - name: Upload coverage
       if: matrix.platform-family == 'linux' && matrix.python-version == '3.11'
-      uses: codecov/codecov-action@v6
+      uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f
       with:
         files: ./coverage.xml
         fail_ci_if_error: false

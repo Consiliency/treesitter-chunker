@@ -1,6 +1,6 @@
 [project]
 name            = "treesitter-chunker"
-version = "3.2.2"
+version = "4.0.0"
 description     = "Semantic code chunker using Tree-sitter for intelligent code analysis"
 readme          = "README.md"
 requires-python = ">=3.11"
@@ -331,7 +331,6 @@ ignore = [
     "S311",    # random for non-crypto (fine for IDs)
     # "B903",    # dataclass without methods (that's the point) -- not supported by current ruff plugin
     # "B909",    # loop mutation (already fixed critical ones) -- not supported by current ruff plugin
-    "E722",    # bare except (sometimes needed)
     "PLR0904", # too many public methods (large classes sometimes needed)
     "PLR0911", # too many return statements (sometimes clearer)
     # "RUF039",  # unraw regex (false positives) -- not supported in this ruff version
@@ -339,8 +338,6 @@ ignore = [
     "S105",    # hardcoded password (in examples only)
     "S605",    # shell usage (controlled inputs)
     "N815",    # mixed case variable (following conventions)
-    "F401",    # unused import (in __init__ files)
-    "F403",    # star import (in __init__ files)
     "PLE0604", # invalid __all__ (false positives)
     "A001",    # builtin shadowing (copyright is standard in conf.py)
     "INP001",  # implicit namespace (scripts/examples don't need __init__)
@@ -349,7 +346,6 @@ ignore = [
     "TID252",  # relative imports from parent modules - valid for package structure
     "ARG002",  # unused method argument - often needed for interface compatibility
     "ARG004",  # unused static method argument - often for interface
-    "F841",    # local variable assigned but never used - sometimes for debugging
     "SIM102",  # nested if statements - sometimes clearer than combined condition
     "PERF401", # use list comprehension - not always clearer
     "PLW1514", # unspecified encoding - UTF-8 is default in Python 3
@@ -366,7 +362,6 @@ ignore = [
     "SIM118",  # use key in dict - not always applicable
     "B904",    # raise from within except - not always desirable
     "S110",    # try-except-pass - sometimes acceptable for optional operations
-    "F821",    # undefined name - some modules have conditional availability
     "ARG001",  # unused function argument - often for interface compatibility
     "E402",    # module import not at top - conditional imports need to be after checks
     "PLC1901", # empty string comparison - explicit "" clearer than falsy check
@@ -379,7 +374,6 @@ ignore = [
     "N814",    # camelCase import - following external library conventions
     "B023",    # function in loop - often intentional for closures
     "PLC2801", # unnecessary dunder - sometimes for compatibility
-    "F811",    # redefinition - sometimes intentional for conditional defs
     "B017",    # assertRaises - test code style preference
     "PTH122",  # Path.cwd - acceptable alternative to os.getcwd
     "PT018",   # composite assertion - sometimes clearer

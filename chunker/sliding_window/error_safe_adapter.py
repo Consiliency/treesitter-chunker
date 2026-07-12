@@ -9,7 +9,6 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from chunker.chunker_config import ChunkerConfig
 from chunker.fallback.sliding_window_fallback import SlidingWindowFallback
 from chunker.types import CodeChunk
 

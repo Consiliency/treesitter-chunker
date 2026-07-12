@@ -2,15 +2,13 @@
 
 import gc
 import logging
-import os
 import threading
 import time
 import weakref
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 # Conditional imports
 try:
@@ -745,8 +743,6 @@ class MemoryOptimizer:
         """Optimize garbage collection settings."""
         try:
             old_thresholds = gc.get_threshold()
-            old_counts = gc.get_count()
-
             # Store original settings
             self.gc_settings["original_thresholds"] = old_thresholds
 

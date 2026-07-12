@@ -314,6 +314,12 @@ class TestFallbackManager:
         with tempfile.NamedTemporaryFile(
             encoding="utf-8",
             mode="w",
+            # newline="" disables the platform newline translation so the file
+            # on disk is LF (not CRLF on Windows). The chunker's byte offsets are
+            # relative to the newline-normalized content it reads, so the raw
+            # file bytes must also be LF for the slice-back assertion below to
+            # hold cross-platform.
+            newline="",
             suffix=".csv",
             delete=False,
         ) as f:
@@ -333,8 +339,22 @@ class TestFallbackManager:
                 > 1
             ), "Need multiple chunks to test header inclusion"
             assert chunks[0].start_line == 2
-            assert "id,name,score" not in chunks[0].content
-            for i, chunk in enumerate(chunks[1:], 1):
-                assert "id,name,score" in chunk.content, f"Chunk {i} missing header"
+            # The CSV header is preserved OUT-OF-BAND in metadata (not prepended
+            # into content), so every chunk's content is a contiguous data-row
+            # slice that slices back to its byte span (README universal
+            # slice-back contract, incl. fallback chunks). Prepending the header
+            # made content non-contiguous and broke that.
+            source_bytes = temp_path.read_bytes()
+            for i, chunk in enumerate(chunks):
+                assert (
+                    "id,name,score" not in chunk.content
+                ), f"Chunk {i} must not inline the header into content"
+                assert (
+                    chunk.metadata.get("csv_header") == "id,name,score"
+                ), f"Chunk {i} lost the CSV header from metadata"
+                sliced = source_bytes[chunk.byte_start : chunk.byte_end].decode("utf-8")
+                assert (
+                    sliced == chunk.content
+                ), f"Chunk {i} byte span does not slice back to content"
         finally:
             temp_path.unlink(missing_ok=True)

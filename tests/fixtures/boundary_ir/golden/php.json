@@ -48,8 +48,8 @@
         "parent_symbol": "Widget",
         "semantic_text": "language: php\nfile: widget.php\nkind: method\nsymbol: helper\nqualified name: Widget.helper\nparent symbol: Widget\nsemantic path: widget.php::Widget.helper\ncontent:\npublic function helper($value)\n    {\n        return $value + 1;\n    }"
       },
-      "node_id": "b7ef83705199e5c1f8eed0a4b78fd496c4565b0a",
-      "parent": "b52b300aeacf6ceff1dcaf8fa60eb96eb74ef17a",
+      "node_id": "7f0d7f519fab9f0dcb6b8fd7a6d39a5ef56e9072",
+      "parent": "d30b2c8263189caae8dd5e7043520b38c044cc82",
       "path": "widget.php",
       "provenance": {
         "extractor": "chunk_file",
@@ -85,8 +85,8 @@
         "parent_symbol": null,
         "semantic_text": "language: php\nfile: widget.php\nkind: property_declaration\nsymbol: Widget\nqualified name: Widget\nsemantic path: widget.php::Widget\ncontent:\npublic $count = 0;"
       },
-      "node_id": "ea1fb64f623a4414bf2046a82b4178f85f6afa4e",
-      "parent": "b52b300aeacf6ceff1dcaf8fa60eb96eb74ef17a",
+      "node_id": "65a688d329a799fcfefb19a12868527243fb13a0",
+      "parent": "d30b2c8263189caae8dd5e7043520b38c044cc82",
       "path": "widget.php",
       "provenance": {
         "extractor": "chunk_file",
@@ -122,7 +122,7 @@
         "parent_symbol": null,
         "semantic_text": "language: php\nfile: widget.php\nkind: function\nsymbol: run\nqualified name: run\nsemantic path: widget.php::run\ncontent:\nfunction run()\n{\n    $w = new Widget();\n    return $w->render();\n}"
       },
-      "node_id": "f0882a64384472e5bc80036eb5de9ee3adfa1bbb",
+      "node_id": "5d129c64fe75575da839413f05e87f88a686c297",
       "parent": null,
       "path": "widget.php",
       "provenance": {
@@ -159,7 +159,7 @@
         "parent_symbol": null,
         "semantic_text": "language: php\nfile: widget.php\nkind: class\nsymbol: Widget\nqualified name: Widget\nsemantic path: widget.php::Widget\ncontent:\nclass Widget\n{\n    public $count = 0;\n\n    public function render()\n    {\n        return $this->helper($this->count);\n    }\n\n    public function helper($value)\n    {\n        return $value + 1;\n    }\n}"
       },
-      "node_id": "b52b300aeacf6ceff1dcaf8fa60eb96eb74ef17a",
+      "node_id": "d30b2c8263189caae8dd5e7043520b38c044cc82",
       "parent": null,
       "path": "widget.php",
       "provenance": {
@@ -196,8 +196,8 @@
         "parent_symbol": "Widget",
         "semantic_text": "language: php\nfile: widget.php\nkind: method\nsymbol: render\nqualified name: Widget.render\nparent symbol: Widget\nsemantic path: widget.php::Widget.render\ncontent:\npublic function render()\n    {\n        return $this->helper($this->count);\n    }"
       },
-      "node_id": "e2c4a7b4212dce8944f0fc48afdad6f93346d782",
-      "parent": "b52b300aeacf6ceff1dcaf8fa60eb96eb74ef17a",
+      "node_id": "a45c18ef806b113e6aea6f4a7aa81144dfa14084",
+      "parent": "d30b2c8263189caae8dd5e7043520b38c044cc82",
       "path": "widget.php",
       "provenance": {
         "extractor": "chunk_file",

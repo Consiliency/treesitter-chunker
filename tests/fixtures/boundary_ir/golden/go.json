@@ -388,7 +388,7 @@
         "parent_symbol": null,
         "semantic_text": "language: go\nfile: beta.go\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: beta.go::helper\nsignature text: helper(value string)\ndependencies: value\ncontent:\nfunc helper(value string) string {\n\treturn value\n}"
       },
-      "node_id": "87ce9d788f8360374946c0e5e84daab4eb5778f7",
+      "node_id": "22964bd4e18f1f061ee862fc2387f4686bf7b5a0",
       "parent": null,
       "path": "beta.go",
       "provenance": {
@@ -429,7 +429,7 @@
         "parent_symbol": null,
         "semantic_text": "language: go\nfile: format.go\nkind: type\nsemantic path: format.go\nexports: Widget\ncontent:\ntype Widget struct {\n\tName string\n}"
       },
-      "node_id": "56ff4bac387a01697da4772475e0b3080d98f819",
+      "node_id": "29160835d25daf502eccf87a999462a9f9901fbe",
       "parent": null,
       "path": "format.go",
       "provenance": {
@@ -471,7 +471,7 @@
         "parent_symbol": null,
         "semantic_text": "language: go\nfile: format.go\nkind: function\nsymbol: Format\nqualified name: Format\nsemantic path: format.go::Format\nsignature text: Format(value string)\nexports: Format\ndependencies: strings, value\ncontent:\nfunc Format(value string) string {\n\treturn strings.TrimSpace(value)\n}"
       },
-      "node_id": "fa8191478fe3963d11925259c5cec76ef9a22bd3",
+      "node_id": "a811951b89c596317c2fab81c4278ef5be021e55",
       "parent": null,
       "path": "format.go",
       "provenance": {
@@ -514,7 +514,7 @@
         "parent_symbol": null,
         "semantic_text": "language: go\nfile: alpha.go\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: alpha.go::helper\nsignature text: helper(value string)\ndependencies: value\ncontent:\nfunc helper(value string) string {\n\treturn value\n}"
       },
-      "node_id": "caf07603c95ce42e118ea9ac760515cf5abb49a6",
+      "node_id": "56168a7175d65a85aaaa9d42e017e4ef08f2b307",
       "parent": null,
       "path": "alpha.go",
       "provenance": {
@@ -560,7 +560,7 @@
         "parent_symbol": null,
         "semantic_text": "language: go\nfile: service.go\nkind: function\nsymbol: Render\nqualified name: Render\nsemantic path: service.go::Render\nsignature text: Render(value string)\nexports: Render\ndependencies: Format, Ghost, helper, value\ncontent:\nfunc Render(value string) string {\n\tcleaned := Format(value)\n\tduplicate := helper(cleaned)\n\treturn Ghost(duplicate)\n}"
       },
-      "node_id": "4a0e1f0506d85bd069d04b3fb57508b756962599",
+      "node_id": "4aa1a0d8a5534c8c5d44bdc3ef695d698e5f22d4",
       "parent": null,
       "path": "service.go",
       "provenance": {
@@ -607,8 +607,8 @@
         "parent_symbol": null,
         "semantic_text": "language: go\nfile: format.go\nkind: type\nsymbol: Widget\nqualified name: Widget\nsemantic path: format.go::Widget\nexports: Widget\ncontent:\nWidget struct {\n\tName string\n}"
       },
-      "node_id": "9828c43e61ce4d7bafbc712f1d7fbd86ec7f1807",
-      "parent": "56ff4bac387a01697da4772475e0b3080d98f819",
+      "node_id": "750b192dc45de654fde5acca6579468ea0433242",
+      "parent": "29160835d25daf502eccf87a999462a9f9901fbe",
       "path": "format.go",
       "provenance": {
         "extractor": "chunk_file",

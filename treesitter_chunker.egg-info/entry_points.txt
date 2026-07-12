@@ -1,3 +1,0 @@
-[console_scripts]
-treesitter-chunker = cli.main:app
-tsc = cli.main:app

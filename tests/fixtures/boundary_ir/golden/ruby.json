@@ -48,8 +48,8 @@
         "parent_symbol": "Widget",
         "semantic_text": "language: ruby\nfile: widget.rb\nkind: method\nsymbol: render\nqualified name: Widget.render\nparent symbol: Widget\nsemantic path: widget.rb::Widget.render\ncontent:\ndef render\n    helper(@count)\n  end"
       },
-      "node_id": "418f302615f111752a66464d1b3f8eb5475fc123",
-      "parent": "624eb47dadf0e6619172cc828db43cd340bf6d33",
+      "node_id": "6161be3e7c4fc22053a9d5dbc063bea2f57fd6b7",
+      "parent": "c0eb064312dcd232d3b39d41151fd86650dffde6",
       "path": "widget.rb",
       "provenance": {
         "extractor": "chunk_file",
@@ -85,8 +85,8 @@
         "parent_symbol": "Widget",
         "semantic_text": "language: ruby\nfile: widget.rb\nkind: method\nsymbol: helper\nqualified name: Widget.helper\nparent symbol: Widget\nsemantic path: widget.rb::Widget.helper\ncontent:\ndef helper(value)\n    value + 1\n  end"
       },
-      "node_id": "d1a4c6a33da93dd9d0df4a8d147fd86fc783ad98",
-      "parent": "624eb47dadf0e6619172cc828db43cd340bf6d33",
+      "node_id": "2defa7d72022ebe997466d66c30f87748221bc42",
+      "parent": "c0eb064312dcd232d3b39d41151fd86650dffde6",
       "path": "widget.rb",
       "provenance": {
         "extractor": "chunk_file",
@@ -122,8 +122,8 @@
         "parent_symbol": null,
         "semantic_text": "language: ruby\nfile: widget.rb\nkind: class\nsymbol: Widget\nqualified name: Widget\nsemantic path: widget.rb::Widget\ncontent:\nclass"
       },
-      "node_id": "a1b67bffde8b1283953cb837d01b93c6482c0127",
-      "parent": "624eb47dadf0e6619172cc828db43cd340bf6d33",
+      "node_id": "437e5906be4fff98c7d87d7e4e7a7f2f80c8173c",
+      "parent": "c0eb064312dcd232d3b39d41151fd86650dffde6",
       "path": "widget.rb",
       "provenance": {
         "extractor": "chunk_file",
@@ -159,7 +159,7 @@
         "parent_symbol": null,
         "semantic_text": "language: ruby\nfile: widget.rb\nkind: class\nsymbol: Widget\nqualified name: Widget\nsemantic path: widget.rb::Widget\ncontent:\nclass Widget\n  def initialize(count)\n    @count = count\n  end\n\n  def render\n    helper(@count)\n  end\n\n  def helper(value)\n    value + 1\n  end\nend"
       },
-      "node_id": "624eb47dadf0e6619172cc828db43cd340bf6d33",
+      "node_id": "c0eb064312dcd232d3b39d41151fd86650dffde6",
       "parent": null,
       "path": "widget.rb",
       "provenance": {
@@ -196,8 +196,8 @@
         "parent_symbol": "Widget",
         "semantic_text": "language: ruby\nfile: widget.rb\nkind: method\nsymbol: initialize\nqualified name: Widget.initialize\nparent symbol: Widget\nsemantic path: widget.rb::Widget.initialize\ncontent:\ndef initialize(count)\n    @count = count\n  end"
       },
-      "node_id": "66963847b8aff81b52f225b9f3e5e2f537c95e2d",
-      "parent": "624eb47dadf0e6619172cc828db43cd340bf6d33",
+      "node_id": "17ca2efba621bffeedc50bb05ee2072270d8f5a6",
+      "parent": "c0eb064312dcd232d3b39d41151fd86650dffde6",
       "path": "widget.rb",
       "provenance": {
         "extractor": "chunk_file",

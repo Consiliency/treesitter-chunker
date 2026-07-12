@@ -255,10 +255,13 @@ class PluginRegistry:
                 # Surface original exception for proper error handling in other tests
                 raise
             try:
-                parser = get_parser(language)
-                instance.set_parser(parser)
+                # Validate the language is available (raises if not), but do NOT
+                # inject a shared parser onto this globally-cached instance —
+                # chunk_file() fetches a thread-local parser per parse instead, so
+                # the instance is safe to share across threads (PARSER phase).
+                get_parser(language)
             except Exception as e:
-                logger.error("Failed to set parser for %s: %s", language, e)
+                logger.error("Failed to resolve parser for %s: %s", language, e)
                 # Surface original exception for proper error handling in tests
                 raise
             if config is None:

@@ -1,15 +1,13 @@
 """User-friendly tools for managing tree-sitter grammars."""
 
-import json
 import logging
 import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
-from urllib.parse import urlparse
-
-from .grammar_management import GrammarCompatibility, GrammarHealth, SmartGrammarManager
+from typing import Any
+from .grammar_management import SmartGrammarManager
+from ..grammar.source_validation import validate_grammar_source
 
 logger = logging.getLogger(__name__)
 
@@ -53,12 +51,24 @@ class UserGrammarTools:
         }
 
         try:
+            repo_url = validate_grammar_source(repo_url)
+            if branch.startswith("-"):
+                raise ValueError("Grammar branch must not start with '-'")
             # Step 1: Clone repository
             target_dir = self.grammars_dir / f"tree-sitter-{language}"
             if target_dir.exists():
                 result["warnings"].append(f"Directory {target_dir} already exists")
                 # Try to update instead
                 try:
+                    # Re-pin origin to the validated URL before fetching so the
+                    # update never trusts a tampered stored remote (SUPPLY hardening).
+                    subprocess.run(
+                        ["git", "remote", "set-url", "origin", "--", repo_url],
+                        cwd=target_dir,
+                        check=False,
+                        capture_output=True,
+                        text=True,
+                    )
                     subprocess.run(
                         ["git", "fetch", "origin"],
                         cwd=target_dir,
@@ -67,7 +77,7 @@ class UserGrammarTools:
                         text=True,
                     )
                     subprocess.run(
-                        ["git", "checkout", branch],
+                        ["git", "checkout", "--detach", branch],
                         cwd=target_dir,
                         check=True,
                         capture_output=True,
@@ -81,7 +91,15 @@ class UserGrammarTools:
             else:
                 try:
                     subprocess.run(
-                        ["git", "clone", "--branch", branch, repo_url, str(target_dir)],
+                        [
+                            "git",
+                            "clone",
+                            "--branch",
+                            branch,
+                            "--",
+                            repo_url,
+                            str(target_dir),
+                        ],
                         check=True,
                         capture_output=True,
                         text=True,
@@ -222,6 +240,17 @@ class UserGrammarTools:
 
             # Update repository
             try:
+                # Re-validate the stored origin before fetching so an existing
+                # checkout with a tampered remote cannot pull attacker code
+                # (SUPPLY hardening — codex finding on the update path).
+                stored_origin = subprocess.run(
+                    ["git", "remote", "get-url", "origin"],
+                    cwd=source_dir,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                ).stdout.strip()
+                validate_grammar_source(stored_origin)
                 subprocess.run(
                     ["git", "fetch", "origin"],
                     cwd=source_dir,
@@ -255,7 +284,7 @@ class UserGrammarTools:
 
                 # Checkout latest
                 subprocess.run(
-                    ["git", "checkout", "origin/main"],
+                    ["git", "checkout", "--detach", "origin/main"],
                     cwd=source_dir,
                     check=True,
                     capture_output=True,

@@ -7,7 +7,10 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, ClassVar
 
-from .core import chunk_file
+from .core import (
+    chunk_file,
+    chunk_text,
+)  # noqa: F401  (chunk_file kept for test patch target)
 from .interfaces.multi_language import (
     CrossLanguageReference,
     EmbeddedLanguageType,
@@ -17,7 +20,7 @@ from .interfaces.multi_language import (
     ProjectAnalyzer,
 )
 from .parser import get_parser, list_languages
-from .types import CodeChunk
+from .types import CodeChunk, compute_node_id
 
 try:
     pass
@@ -30,6 +33,9 @@ except ImportError:
         raise ImportError("Tree-sitter parser not available")
 
     def chunk_file(_path: Any, _language: Any = None, **_kwargs: Any) -> Any:  # type: ignore[misc]
+        raise ImportError("Chunker not available")
+
+    def chunk_text(_text: Any, _language: Any = None, **_kwargs: Any) -> Any:  # type: ignore[misc]
         raise ImportError("Chunker not available")
 
 
@@ -939,16 +945,41 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
             try:
                 parser = get_parser(region.language)
                 parser.parse(region_content.encode())
-                region_chunks = chunk_file(  # type: ignore[call-arg]
+                # BUG-1 fix: process_mixed_file holds in-memory region content,
+                # so parse it in-memory via chunk_text(text, language, file_path).
+                # The previous chunk_file(file_path=..., content=..., language=...)
+                # call did not match core.chunk_file(path, language, ...) and raised
+                # TypeError on every mixed file. chunk_file stays imported only as
+                # the patch target for tests/test_multi_language.py.
+                region_chunks = chunk_text(
+                    region_content,
+                    region.language,
                     file_path=file_path,
-                    content=region_content,
-                    language=region.language,
                 )
+                # region.start_pos is a CHARACTER index into ``content`` (region
+                # detection slices/counts on the str), but chunk byte offsets are
+                # UTF-8 BYTE positions. Convert the region's char prefix to its
+                # byte length so multibyte text before the region does not skew
+                # the offsets (Codex panel finding: char index added to a byte
+                # offset yielded a wrong slice-back on non-ASCII content).
+                region_byte_start = len(content[: region.start_pos].encode("utf-8"))
                 for chunk in region_chunks:
                     chunk.start_line += region.start_line - 1
                     chunk.end_line += region.start_line - 1
-                    chunk.byte_start += region.start_pos
-                    chunk.byte_end += region.start_pos
+                    chunk.byte_start += region_byte_start
+                    chunk.byte_end += region_byte_start
+                    # node_id embeds byte_start, so it MUST be recomputed after
+                    # the offset shift — otherwise two identical functions in
+                    # separate fences collapse to the same id despite distinct
+                    # final offsets (Codex panel finding).
+                    chunk.node_id = compute_node_id(
+                        file_path,
+                        chunk.language,
+                        chunk.qualified_route or chunk.parent_route,
+                        chunk.byte_start,
+                        chunk.content,
+                    )
+                    chunk.chunk_id = chunk.node_id
                     if region.embedding_type:
                         chunk.metadata["embedding_type"] = region.embedding_type.value
                     if region.parent_language:

@@ -60,8 +60,15 @@ class PythonMetadataExtractor(BaseMetadataExtractor):
         if not body_node:
             return None
         for child in body_node.children:
-            if child.type == "expression_statement":
-                string_node = self._find_string_node(child)
+            # A docstring is the first statement's string. Across tree-sitter-
+            # python grammar versions this is either an ``expression_statement``
+            # wrapping a ``string`` (older packs) OR a bare ``string`` node
+            # (newer packs) — handle both so a grammar bump doesn't silently
+            # drop docstrings.
+            if child.type in ("expression_statement", "string"):
+                string_node = (
+                    child if child.type == "string" else self._find_string_node(child)
+                )
                 if string_node:
                     docstring = self._get_node_text(string_node, source)
                     if docstring.startswith(('"""', "'''")):
@@ -69,6 +76,9 @@ class PythonMetadataExtractor(BaseMetadataExtractor):
                     elif docstring.startswith(('"', "'")):
                         docstring = docstring[1:-1]
                     return docstring.strip()
+            # Stop at the first real statement — a docstring must be first.
+            if child.type not in ("comment", "expression_statement", "string"):
+                break
         comment = self._extract_leading_comment(node, source)
         if comment:
             return comment.strip("#").strip()

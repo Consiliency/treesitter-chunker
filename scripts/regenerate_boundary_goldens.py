@@ -35,6 +35,7 @@ from tests.boundary_ir_conformance import (  # noqa: E402
     extract_fixture_ir,
     normalize_ir_for_golden,
 )
+from chunker._internal.pack_pin import resolve_pack_pin  # noqa: E402
 
 
 def _golden_text(language: str) -> str:
@@ -49,6 +50,8 @@ def main() -> int:
     # Fail closed before writing anything if the stack drifted off-pin -- we must
     # never bake goldens on an unpinned grammar/runtime.
     assert_grammar_runtime_pins()
+    lower, upper = resolve_pack_pin()
+    print(f"tree-sitter-language-pack pin: >={lower},<{upper}")
 
     golden_root = REPO_ROOT / GOLDEN_ROOT
     golden_root.mkdir(parents=True, exist_ok=True)

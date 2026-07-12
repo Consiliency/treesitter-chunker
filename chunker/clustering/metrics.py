@@ -298,8 +298,6 @@ class MetricsCalculator:
         if total_edges == 0:
             return 0.0
 
-        member_set = set(members)
-
         # Calculate sum of degrees for cluster members
         degree_sum = 0
         for member in members:

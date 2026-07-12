@@ -40,11 +40,20 @@ def _score_test_file(path: Path, symbols: Iterable[str]) -> float:
 
 
 def nearest_tests(symbols: list[str], repo_root: str) -> list[dict[str, Any]]:
-    root = Path(repo_root)
+    root = Path(repo_root).resolve()
     candidates: list[tuple[Path, float]] = []
-    for dirpath, _, filenames in os.walk(root):
+    # followlinks=False (default) stops directory-symlink descent; we additionally
+    # skip file symlinks and anything resolving outside root so a planted symlink
+    # cannot read/expose files from elsewhere on disk (APISAFE hardening).
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if not (Path(dirpath) / d).is_symlink()]
         for fname in filenames:
             fpath = Path(dirpath) / fname
+            if fpath.is_symlink():
+                continue
+            resolved = fpath.resolve()
+            if root != resolved and root not in resolved.parents:
+                continue
             if _is_test_file(fpath):
                 s = _score_test_file(fpath, symbols)
                 if s > 0:

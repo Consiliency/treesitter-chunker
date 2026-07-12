@@ -4,17 +4,13 @@ Integration and testing module for Phase 1.8 grammar management system.
 
 import json
 import logging
-import queue
 import shutil
-import subprocess
 import tempfile
 import threading
 import time
-import traceback
-from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import psutil
 
@@ -25,10 +21,10 @@ from .compatibility import (
     GrammarTester,
     SmartSelector,
 )
-from .config import CacheManager, ConfigurationCLI, DirectoryManager, UserConfig
+from .config import CacheManager, DirectoryManager, UserConfig
 
 # Import from all other Phase 1.8 tasks
-from .core import GrammarInstaller, GrammarManager, GrammarRegistry, GrammarValidator
+from .core import GrammarInstaller, GrammarManager, GrammarValidator
 
 logger = logging.getLogger(__name__)
 
@@ -333,7 +329,7 @@ class IntegrationTester:
         # Simulate network failure by using invalid URL
         try:
             installer = GrammarInstaller(self.grammar_dir)
-            result = installer.download_grammar(
+            installer.download_grammar(
                 "python",
                 "1.0.0",
                 "https://invalid.url.test",
@@ -362,7 +358,7 @@ class IntegrationTester:
         readonly_dir.chmod(0o444)
 
         try:
-            dm = DirectoryManager(readonly_dir)
+            DirectoryManager(readonly_dir)
             return False  # Should not succeed
         except PermissionError as e:
             logger.debug("Expected error during permission denied test: %s", e)
@@ -690,7 +686,7 @@ class SystemValidator:
 
         # Check compatibility database
         try:
-            db = CompatibilityDatabase()
+            CompatibilityDatabase()
             results["components"]["compatibility_db"] = "healthy"
         except Exception as e:
             logger.debug("Compatibility DB health check failed: %s", e)

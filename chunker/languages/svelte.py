@@ -156,7 +156,6 @@ class SveltePlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 chunks.append(chunk)
 
                 # Extract reactive statements from script content
-                script_text = content
                 # Find the actual script content (between <script> tags)
                 script_start = content.find(">") + 1 if ">" in content else 0
                 script_end = (

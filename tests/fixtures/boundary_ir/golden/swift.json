@@ -48,7 +48,7 @@
         "parent_symbol": null,
         "semantic_text": "language: swift\nfile: Widget.swift\nkind: class\nsymbol: Widget\nqualified name: Widget\nsemantic path: Widget.swift::Widget\ncontent:\nclass Widget {\n    var count: Int = 0\n\n    func render() -> Int {\n        return helper(count)\n    }\n\n    func helper(_ value: Int) -> Int {\n        return value + 1\n    }\n}"
       },
-      "node_id": "b1e80617ae1a4d3e5ab0176b97524c3b9504e728",
+      "node_id": "e4c75054d4ce9bbae37b9bd0c1c4a67e25c6d72b",
       "parent": null,
       "path": "Widget.swift",
       "provenance": {
@@ -85,7 +85,7 @@
         "parent_symbol": null,
         "semantic_text": "language: swift\nfile: Widget.swift\nkind: function\nsymbol: run\nqualified name: run\nsemantic path: Widget.swift::run\ncontent:\nfunc run() -> Int {\n    return Widget().render()\n}"
       },
-      "node_id": "40ac2f910e6e3bb1854ee0aacc4370e122f4bd11",
+      "node_id": "7f63c1febda628cdde0c2d7a0b997a834745e612",
       "parent": null,
       "path": "Widget.swift",
       "provenance": {
@@ -122,8 +122,8 @@
         "parent_symbol": "Widget",
         "semantic_text": "language: swift\nfile: Widget.swift\nkind: method\nsymbol: helper\nqualified name: Widget.helper\nparent symbol: Widget\nsemantic path: Widget.swift::Widget.helper\ncontent:\nfunc helper(_ value: Int) -> Int {\n        return value + 1\n    }"
       },
-      "node_id": "4169568e3b87dbe6eec14ccc64851482b8055f87",
-      "parent": "b1e80617ae1a4d3e5ab0176b97524c3b9504e728",
+      "node_id": "813c227fc2ae2abb5b9faf2a6bab345c9a2af652",
+      "parent": "e4c75054d4ce9bbae37b9bd0c1c4a67e25c6d72b",
       "path": "Widget.swift",
       "provenance": {
         "extractor": "chunk_file",
@@ -159,8 +159,8 @@
         "parent_symbol": "Widget",
         "semantic_text": "language: swift\nfile: Widget.swift\nkind: property_declaration\nsymbol: count\nqualified name: Widget.count\nparent symbol: Widget\nsemantic path: Widget.swift::Widget.count\ncontent:\nvar count: Int = 0"
       },
-      "node_id": "12c60e889bc83d289e0faf8f8093ab2919f60546",
-      "parent": "b1e80617ae1a4d3e5ab0176b97524c3b9504e728",
+      "node_id": "0ca32793f31947dc3979cf1bf9f9c89fc591c125",
+      "parent": "e4c75054d4ce9bbae37b9bd0c1c4a67e25c6d72b",
       "path": "Widget.swift",
       "provenance": {
         "extractor": "chunk_file",
@@ -196,8 +196,8 @@
         "parent_symbol": "Widget",
         "semantic_text": "language: swift\nfile: Widget.swift\nkind: method\nsymbol: render\nqualified name: Widget.render\nparent symbol: Widget\nsemantic path: Widget.swift::Widget.render\ncontent:\nfunc render() -> Int {\n        return helper(count)\n    }"
       },
-      "node_id": "30e21bf6c32b82d3bd359a674cfefdc71aa8df4e",
-      "parent": "b1e80617ae1a4d3e5ab0176b97524c3b9504e728",
+      "node_id": "7710809d8820a01ddf511f8a4a9d746ab9e517b0",
+      "parent": "e4c75054d4ce9bbae37b9bd0c1c4a67e25c6d72b",
       "path": "Widget.swift",
       "provenance": {
         "extractor": "chunk_file",

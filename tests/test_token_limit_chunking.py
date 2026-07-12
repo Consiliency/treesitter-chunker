@@ -125,10 +125,10 @@ class Calculator:
         split_chunks = [c for c in chunks if c.metadata.get("is_split", False)]
         if split_chunks:
             for chunk in split_chunks:
-                assert (
-                    "class Calculator" in chunk.content
-                    or chunk.node_type.startswith("method_")
-                )
+                # Class context is preserved in parent_context (not prepended
+                # into content) so the span slices back to content. Assert the
+                # invariant directly — no always-true node_type escape hatch.
+                assert "class Calculator" in (chunk.parent_context or "")
 
     @classmethod
     def test_count_chunk_tokens(cls):

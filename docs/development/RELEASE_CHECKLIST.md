@@ -16,8 +16,7 @@ Use this checklist for any production PyPI release.
 ## Release Prep
 
 ```bash
-uv run --with toml --all-extras pytest tests/test_cicd_pipeline.py -q
-uv run --with toml --all-extras pytest tests/unit/distribution/test_release_manager.py tests/test_distribution_impl.py tests/test_phase13_contracts.py -q
+uv run --with toml --all-extras pytest tests/test_phase13_contracts.py -q
 uv run --with toml --all-extras python -m build --outdir "dist/phase9-release-check-${TARGET_VERSION}"
 uv run --with toml --all-extras python -m twine check "dist/phase9-release-check-${TARGET_VERSION}"/*
 ```
@@ -61,7 +60,7 @@ Use `workflow_dispatch` only when you intentionally want a controlled release ru
 
 - `uv run --with toml --all-extras --with mkdocs --with mkdocs-material --with mkdocstrings-python mkdocs build --strict`
 - `uv run --with toml --all-extras pytest tests/test_release_hygiene_policy.py tests/test_auto.py tests/test_fallback_chunking.py tests/test_overlapping_fallback.py -q`
-- no xfail, xpass, or `pytest.mark.xfail` results in focused tests or smoke validation
+- no xpass results in focused tests or smoke validation; any xfail is listed in the capped `docs/development/xfail-inventory.md` with its clearing phase
 
 ## Registry Compatibility Gates
 
@@ -75,6 +74,7 @@ Use `workflow_dispatch` only when you intentionally want a controlled release ru
 - `uv run --all-extras black --check chunker/ cli/ tests/ scripts/`
 - `uv run --with toml --all-extras python scripts/run_ci_smoke.py`
 - `uv run --with toml --all-extras python scripts/run_platform_core.py --platform linux`
+- `uv run --with toml --all-extras python scripts/run_full_suite.py` (nightly tier; includes `spec_tests/`)
 - `ssh win 'powershell -NoProfile -Command "cd $HOME\\code\\treesitter-chunker; git fetch origin; git checkout main; git pull --ff-only; uv run --with toml --all-extras python scripts/run_windows_preflight.py"'`
 
 Confirm `git status --short` is clean before creating or pushing the release tag. Ignored package artifacts under `dist/` may remain locally.

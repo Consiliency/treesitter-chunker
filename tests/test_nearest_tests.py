@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from chunker.helpers.nearest_tests import nearest_tests
 
 

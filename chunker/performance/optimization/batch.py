@@ -10,6 +10,7 @@ from threading import Event, RLock
 
 from chunker.core import chunk_file as chunk_file_original
 from chunker.interfaces.performance import BatchProcessor as BatchProcessorInterface
+from chunker.parser import get_parser
 from chunker.types import CodeChunk
 
 from .memory_pool import MemoryPool
@@ -235,15 +236,21 @@ class BatchProcessor(BatchProcessorInterface):
                 if not language:
                     logger.warning("Unknown file_path type: %s", file_path)
                     return None
-                parser = self._memory_pool.acquire_parser(language)
-                try:
-                    chunks = chunk_file_original(file_path, language)
-                    self._monitor.record_metric("batch.file_size", path.stat().st_size)
-                    self._monitor.record_metric("batch.chunk_count", len(chunks))
-                    logger.debug("Processed %s: %s chunks", file_path, len(chunks))
-                    return chunks
-                finally:
-                    self._memory_pool.release_parser(parser, language)
+                # Obtain the calling thread's own parser (IF-0-PARSER-1
+                # thread-local) instead of pulling from a cross-thread pool; each
+                # worker thread is guaranteed a parser it exclusively owns.
+                parser = get_parser(language)
+                logger.debug(
+                    "Using thread-local %s parser %r for %s",
+                    language,
+                    parser,
+                    file_path,
+                )
+                chunks = chunk_file_original(file_path, language)
+                self._monitor.record_metric("batch.file_size", path.stat().st_size)
+                self._monitor.record_metric("batch.chunk_count", len(chunks))
+                logger.debug("Processed %s: %s chunks", file_path, len(chunks))
+                return chunks
         except (FileNotFoundError, OSError, SyntaxError) as e:
             logger.error("Failed to process %s: %s", file_path, e)
             self._monitor.record_metric("batch.errors", 1)

@@ -1,25 +1,30 @@
 name: CI
 
+permissions:
+  contents: read
+
 on:
   pull_request:
   push:
     branches: [main]
+  schedule:
+    - cron: "17 3 * * *"
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
         with:
           fetch-depth: 0  # Full history for git operations
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: '3.11'
 
       - name: Cache grammars
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25
         with:
           path: |
             grammars/
@@ -88,14 +93,13 @@ jobs:
       - name: Mypy
         shell: bash
         run: |
-          # Run mypy on production code only, excluding tests and scripts
-          if ! mypy chunker/ cli/ --ignore-missing-imports; then
-            echo "::warning::mypy reported known non-blocking type issues"
-          fi
+          uv run --all-extras python scripts/mypy_gate.py
 
       - name: Pytest
         run: |
-          # Run a small smoke suite in CI and keep broad coverage in the
-          # local-first workflow plus the separate Test Suite matrix.
-          python scripts/run_ci_smoke.py
+          if [ "$GITHUB_EVENT_NAME" = "schedule" ]; then
+            uv run --with toml --all-extras python scripts/run_full_suite.py
+          else
+            uv run --with toml --all-extras python scripts/run_ci_smoke.py
+          fi
         timeout-minutes: 60

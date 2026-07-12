@@ -100,11 +100,14 @@ Use `--force-rebuild` to bypass cache reads and refresh all records:
 treesitter-chunker boundary src/ --lang python --incremental --cache-dir .cache/boundary --force-rebuild
 ```
 
-Cache keys include file path, content hash, language, grammar/tool/schema
-versions, resolution mode, `fail_fast`, and retrieval metadata mode. Timing
-fields and cache directory paths are excluded, so warm output remains
-byte-identical to cold output for the same snapshot when `--include-timings` is
-not used. Cache stats are intentionally kept out of stdout JSON.
+Cache keys include file path, content hash, language, a grammar fingerprint
+containing the installed `tree-sitter-language-pack` and `tree-sitter` runtime
+versions, tool/schema versions, resolution mode, `fail_fast`, and retrieval
+metadata mode. A grammar-pack or runtime update therefore invalidates old
+records before they can be mixed with new extraction output. Timing fields and
+cache directory paths are excluded, so warm output remains byte-identical to
+cold output for the same snapshot when `--include-timings` is not used. Cache
+stats are intentionally kept out of stdout JSON.
 
 ### Advanced Caching
 

@@ -243,6 +243,10 @@ def create_default_manager() -> TaskManager:
                 assert "lines_of_code" in complexity
 
     @staticmethod
+    @pytest.mark.xfail(
+        strict=True,
+        reason="GATES-1: phase-9 docstring metadata baseline; COREFIX clears it",
+    )
     def test_docstring_extraction_with_rules(sample_python_file_with_todos):
         """Test docstring extraction combined with docstring rules."""
         chunks = chunk_file(

@@ -37,6 +37,9 @@ class TestCodeChunkBasics:
             "file_id",
             "symbol_id",
             "parent_route",
+            # IDENTITY phase: stable name-based id + qualified route
+            "definition_id",
+            "qualified_route",
         }
         assert field_names == expected_fields
 

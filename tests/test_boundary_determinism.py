@@ -74,7 +74,6 @@ import copy
 import hashlib
 import os
 
-import pytest
 
 from chunker.boundary import dumps_boundary_ir, extract_boundary_ir
 from chunker.boundary.adapter import _stable_value
@@ -364,8 +363,16 @@ def test_node_id_uses_relative_path(tmp_path):
     # Recompute node_id from the relative display path. This is what node_id
     # SHOULD equal once IDs key on the repo-relative POSIX path.
     chunk = chunk_file(str(src_file), "python")[0]
+    # IDENTITY phase: node_id now keys on the qualified (named) route + byte_start
+    # (collision-free), not the type-only parent_route. Recompute with the chunk's
+    # actual identity fields; the invariant under test — node_id uses the
+    # repo-relative path, not the absolute caller path — is unchanged.
     node_id_from_relative = compute_node_id(
-        "m.py", chunk.language, chunk.parent_route, chunk.content
+        "m.py",
+        chunk.language,
+        chunk.qualified_route,
+        chunk.byte_start,
+        chunk.content,
     )
 
     assert node["node_id"] == node_id_from_relative, (

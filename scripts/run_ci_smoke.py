@@ -18,6 +18,7 @@ CI_SMOKE_TESTS = [
     "tests/test_fallback_chunking.py",
     "tests/test_boundary_ir_golden_snapshots.py",
     "tests/test_boundary_ir_incremental_benchmark.py",
+    "tests/test_canon_vectors.py",
     # Blocking determinism + parity + schema gates (P0/P1/P2). These guard the
     # Boundary-IR contract spec consumers hash against; they must be honestly
     # green in CI, not just present in the tree.
@@ -27,6 +28,7 @@ CI_SMOKE_TESTS = [
     # Determinism gate: per-language golden non-empty guard + fail-closed
     # grammar/runtime pin assertion (the silent-{} and ABI-drift failure modes).
     "tests/test_boundary_ir_determinism.py",
+    "tests/test_pack_pin_drift.py",
     # Smoke-tier coverage gate: comprehensive LOAD smoke across the ENTIRE pack
     # (every grammar must load under the pin -- forward ABI-drift tripwire) plus
     # per-language coverage diffed against the committed docs/language-coverage

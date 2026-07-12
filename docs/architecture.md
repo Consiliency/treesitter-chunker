@@ -325,8 +325,7 @@ ChunkerError (base)
 │   └── ParserConfigError
 └── LibraryError
     ├── LibraryNotFoundError
-    ├── LibraryLoadError
-    └── LibrarySymbolError
+    └── LibraryLoadError
 ```
 
 ### 6. Plugin Manager (`chunker/plugins/manager.py`)

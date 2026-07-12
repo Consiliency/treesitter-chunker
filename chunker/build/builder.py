@@ -6,14 +6,48 @@ import json
 import os
 import shutil
 import subprocess
+import tarfile
 import tempfile
 import zipfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from chunker.contracts.build_contract import BuildSystemContract
 
 from .platform import PlatformSupport
+
+
+def _safe_extract_tar(tar: tarfile.TarFile, destination: Path) -> None:
+    """Extract only ordinary files and directories contained by destination.
+
+    Containment is enforced by resolving each member against the destination and
+    requiring the result to stay under it. This catches POSIX ``..`` traversal,
+    absolute paths, AND Windows drive-qualified members (e.g. ``C:/escaped``) that
+    a ``PurePosixPath``-only check would miss — important because the ``filter=``
+    fallback below (pre-3.11.4) performs no containment of its own.
+    """
+    dest_root = destination.resolve()
+    members = tar.getmembers()
+    for member in members:
+        name = member.name.replace("\\", "/")
+        member_path = PurePosixPath(name)
+        # Reject Windows drive letters (e.g. "C:/x") — not absolute under posix parsing.
+        has_drive = len(name) >= 2 and name[1] == ":" and name[0].isalpha()
+        if (
+            member_path.is_absolute()
+            or has_drive
+            or ".." in member_path.parts
+            or not (member.isfile() or member.isdir())
+        ):
+            raise ValueError(f"Unsafe tar member: {member.name}")
+        # Authoritative guard: the resolved target must stay under destination.
+        resolved = (dest_root / member_path).resolve()
+        if resolved != dest_root and dest_root not in resolved.parents:
+            raise ValueError(f"Tar member escapes destination: {member.name}")
+    try:
+        tar.extractall(destination, members=members, filter="data")
+    except TypeError:
+        tar.extractall(destination, members=members)
 
 
 class BuildSystem(BuildSystemContract):
@@ -621,10 +655,8 @@ Summary: Tree-sitter based code chunking library""",
                 extract_dir = Path(tmpdir)
 
                 # Extract tar.bz2
-                import tarfile
-
                 with tarfile.open(package_path, "r:bz2") as tar:
-                    tar.extractall(extract_dir)
+                    _safe_extract_tar(tar, extract_dir)
 
                 # Check for required components
                 info_dir = extract_dir / "info"

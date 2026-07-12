@@ -422,8 +422,8 @@
         "parent_symbol": "run",
         "semantic_text": "language: javascript\nfile: service.js\nkind: variable_declarator\nsymbol: cleaned\nqualified name: run.cleaned\nparent symbol: run\nsemantic path: service.js::run.cleaned\ndependencies: formatName, value\ncontent:\ncleaned = formatName(value)"
       },
-      "node_id": "4485b79b57db3ea482a2e6ae7d880c9998218682",
-      "parent": "dcdb38178db8a5cb54fbcad7b71b42e47fff79f8",
+      "node_id": "f41819d1a1f28231293f39280c246ff51543891a",
+      "parent": "e90c12cd4920c5bb24a8d0a2c4eccb5673acc022",
       "path": "service.js",
       "provenance": {
         "extractor": "chunk_file",
@@ -461,8 +461,8 @@
         "parent_symbol": null,
         "semantic_text": "language: javascript\nfile: format.js\nkind: function\nsymbol: formatName\nqualified name: formatName\nsemantic path: format.js::formatName\nsignature text: formatName(value)\nexports: formatName\ncontent:\nfunction formatName(value) {\n  return value.trim();\n}"
       },
-      "node_id": "6b574be4b0a45dabf262574ce93e166d861e7a81",
-      "parent": "ef1570ad367c15ad79d083a2b5b97ce2b52a1e89",
+      "node_id": "27f863d89bb097a3c1270c3c2b1725c470878192",
+      "parent": "e731e0af565bdd04d1ec13b03d11d74e69deafd8",
       "path": "format.js",
       "provenance": {
         "extractor": "chunk_file",
@@ -502,7 +502,7 @@
         "parent_symbol": null,
         "semantic_text": "language: javascript\nfile: beta.js\nkind: export_statement\nsemantic path: beta.js\nexports: helper\ncontent:\nexport function helper(value) {\n  return value.toUpperCase();\n}"
       },
-      "node_id": "f7c5c85a3998e87da870ec9f4731480bc8f9ef0c",
+      "node_id": "bc420fc03fae831d7fbdadb0cbf0fad5fff312d4",
       "parent": null,
       "path": "beta.js",
       "provenance": {
@@ -543,8 +543,8 @@
         "parent_symbol": "Renderer",
         "semantic_text": "language: javascript\nfile: service.js\nkind: method\nsymbol: render\nqualified name: Renderer.render\nparent symbol: Renderer\nsemantic path: service.js::Renderer.render\nsignature text: render(value)\nexports: render\ndependencies: formatName\ncontent:\nrender(value) {\n    return formatName(value);\n  }"
       },
-      "node_id": "93b8bc67d830640e1b1ae72e02a77455790cef8a",
-      "parent": "241723aa1af9d42ff01c7e69b9c9155d6a9366be",
+      "node_id": "c0a4b819ccedcf8a10a3eff96b6d3707073f503e",
+      "parent": "ffe1d5f7b7f0ce24a8c3125841ee1cf406398654",
       "path": "service.js",
       "provenance": {
         "extractor": "chunk_file",
@@ -585,8 +585,8 @@
         "parent_symbol": null,
         "semantic_text": "language: javascript\nfile: alpha.js\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: alpha.js::helper\nsignature text: helper(value)\nexports: helper\ncontent:\nfunction helper(value) {\n  return value.toLowerCase();\n}"
       },
-      "node_id": "309c20375ea6c3b4345028b9bf13f7ad73084ab6",
-      "parent": "08f8cd26961c161a8f6e3ab65d5574790f5e3e75",
+      "node_id": "7dc96195511cfc101950c3eb34e18435a51688fb",
+      "parent": "7c3883758031560ac964e21329445fc724bb5af5",
       "path": "alpha.js",
       "provenance": {
         "extractor": "chunk_file",
@@ -630,8 +630,8 @@
         "parent_symbol": null,
         "semantic_text": "language: javascript\nfile: service.js\nkind: function\nsymbol: run\nqualified name: run\nsemantic path: service.js::run\nsignature text: run(value)\nexports: run\ndependencies: formatName, helper, missingCall\ncontent:\nfunction run(value) {\n  const cleaned = formatName(value);\n  const duplicate = helper(cleaned);\n  return missingCall(duplicate);\n}"
       },
-      "node_id": "dcdb38178db8a5cb54fbcad7b71b42e47fff79f8",
-      "parent": "499684ec51372ed18680e9154ae0de14595dadb4",
+      "node_id": "e90c12cd4920c5bb24a8d0a2c4eccb5673acc022",
+      "parent": "677d23316b040198fee21922eb430e81b0e1d6e2",
       "path": "service.js",
       "provenance": {
         "extractor": "chunk_file",
@@ -678,8 +678,8 @@
         "parent_symbol": null,
         "semantic_text": "language: javascript\nfile: service.js\nkind: class\nsymbol: Renderer\nqualified name: Renderer\nsemantic path: service.js::Renderer\nexports: Renderer\ndependencies: formatName\ncontent:\nclass Renderer {\n  render(value) {\n    return formatName(value);\n  }\n}"
       },
-      "node_id": "241723aa1af9d42ff01c7e69b9c9155d6a9366be",
-      "parent": "547bae8a0fcd8921e21f8a4ba45f7983b23ced30",
+      "node_id": "ffe1d5f7b7f0ce24a8c3125841ee1cf406398654",
+      "parent": "13f15829809bab09aed594100d4b8c683e647f7a",
       "path": "service.js",
       "provenance": {
         "extractor": "chunk_file",
@@ -723,7 +723,7 @@
         "parent_symbol": null,
         "semantic_text": "language: javascript\nfile: service.js\nkind: import_statement\nsemantic path: service.js\nimports: import { formatName } from './format.js';, { formatName }\ndependencies: formatName\ncontent:\nimport { formatName } from './format.js';"
       },
-      "node_id": "4f31f95cca13c9d50d2d588ccb9ae518304660d2",
+      "node_id": "f95f02894b806b1da0670d91f812f95925dae767",
       "parent": null,
       "path": "service.js",
       "provenance": {
@@ -762,7 +762,7 @@
         "parent_symbol": null,
         "semantic_text": "language: javascript\nfile: alpha.js\nkind: export_statement\nsemantic path: alpha.js\nexports: helper\ncontent:\nexport function helper(value) {\n  return value.toLowerCase();\n}"
       },
-      "node_id": "08f8cd26961c161a8f6e3ab65d5574790f5e3e75",
+      "node_id": "7c3883758031560ac964e21329445fc724bb5af5",
       "parent": null,
       "path": "alpha.js",
       "provenance": {
@@ -801,8 +801,8 @@
         "parent_symbol": null,
         "semantic_text": "language: javascript\nfile: beta.js\nkind: function\nsymbol: helper\nqualified name: helper\nsemantic path: beta.js::helper\nsignature text: helper(value)\nexports: helper\ncontent:\nfunction helper(value) {\n  return value.toUpperCase();\n}"
       },
-      "node_id": "adf72758af0d5ce86b88bcd24a885baa0c9aded5",
-      "parent": "f7c5c85a3998e87da870ec9f4731480bc8f9ef0c",
+      "node_id": "790914dd47b81327020eb676290995088ab7f599",
+      "parent": "bc420fc03fae831d7fbdadb0cbf0fad5fff312d4",
       "path": "beta.js",
       "provenance": {
         "extractor": "chunk_file",
@@ -842,7 +842,7 @@
         "parent_symbol": null,
         "semantic_text": "language: javascript\nfile: format.js\nkind: export_statement\nsemantic path: format.js\nexports: formatName\ncontent:\nexport function formatName(value) {\n  return value.trim();\n}"
       },
-      "node_id": "ef1570ad367c15ad79d083a2b5b97ce2b52a1e89",
+      "node_id": "e731e0af565bdd04d1ec13b03d11d74e69deafd8",
       "parent": null,
       "path": "format.js",
       "provenance": {
@@ -885,7 +885,7 @@
         "parent_symbol": null,
         "semantic_text": "language: javascript\nfile: service.js\nkind: export_statement\nsemantic path: service.js\nexports: run\ndependencies: formatName, helper, missingCall\ncontent:\nexport function run(value) {\n  const cleaned = formatName(value);\n  const duplicate = helper(cleaned);\n  return missingCall(duplicate);\n}"
       },
-      "node_id": "499684ec51372ed18680e9154ae0de14595dadb4",
+      "node_id": "677d23316b040198fee21922eb430e81b0e1d6e2",
       "parent": null,
       "path": "service.js",
       "provenance": {
@@ -926,7 +926,7 @@
         "parent_symbol": null,
         "semantic_text": "language: javascript\nfile: service.js\nkind: export_statement\nsemantic path: service.js\nexports: Renderer\ndependencies: formatName\ncontent:\nexport class Renderer {\n  render(value) {\n    return formatName(value);\n  }\n}"
       },
-      "node_id": "547bae8a0fcd8921e21f8a4ba45f7983b23ced30",
+      "node_id": "13f15829809bab09aed594100d4b8c683e647f7a",
       "parent": null,
       "path": "service.js",
       "provenance": {
@@ -966,8 +966,8 @@
         "parent_symbol": "run",
         "semantic_text": "language: javascript\nfile: service.js\nkind: variable_declarator\nsymbol: duplicate\nqualified name: run.duplicate\nparent symbol: run\nsemantic path: service.js::run.duplicate\ndependencies: cleaned, helper\ncontent:\nduplicate = helper(cleaned)"
       },
-      "node_id": "7b1bd90fdea64b097dfaba2a6d7dfedc75e564c7",
-      "parent": "dcdb38178db8a5cb54fbcad7b71b42e47fff79f8",
+      "node_id": "4ea8f6c7a56843396b201476828cc27c73723d14",
+      "parent": "e90c12cd4920c5bb24a8d0a2c4eccb5673acc022",
       "path": "service.js",
       "provenance": {
         "extractor": "chunk_file",

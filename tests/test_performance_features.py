@@ -196,39 +196,49 @@ class TestMemoryPool:
     """Test memory pool functionality."""
 
     @classmethod
-    def test_parser_pooling(cls):
-        """Test parser pooling."""
+    def test_parser_acquisition_is_thread_local_not_pooled(cls):
+        """Parsers are NO LONGER pooled — they are acquired thread-locally.
+
+        SCALE SL-1 (C1 fix): pooling one tree-sitter Parser and handing it to
+        multiple threads is the shared-parser segfault. ``acquire_parser`` now
+        short-circuits to the thread-local ``get_parser``; within one thread it
+        returns that thread's own parser, but the pool never stores/counts it,
+        so there is no ``parser:python`` pool entry.
+        """
         pool = MemoryPool(max_pool_size=5)
         parser1 = pool.acquire_parser("python")
         assert parser1 is not None
-        pool.release_parser(parser1, "python")
+        pool.release_parser(parser1, "python")  # no-op: parsers are thread-owned
         parser2 = pool.acquire_parser("python")
+        # Same thread → same thread-local parser.
         assert parser2 is parser1
-        stats = pool.get_stats()
-        assert stats["parser:python"]["created"] == 1
-        assert stats["parser:python"]["acquired"] == 2
-        assert stats["parser:python"]["released"] == 1
+        # But the pool does NOT actually pool parsers (would re-introduce
+        # sharing): nothing is ever stored, so pooled size stays 0.
+        assert pool.size("parser:python") == 0
+        stats = pool.get_stats().get("parser:python", {})
+        # Nothing is retained in the pool (pooled/size 0) even though acquisition
+        # may be counted — the invariant is that no Parser is ever stored/shared.
+        assert stats.get("pooled", 0) == 0
 
     @classmethod
-    def test_pool_size_limit(cls):
-        """Test pool size limits."""
+    def test_parser_pool_size_stays_zero(cls):
+        """Parsers are never pooled, so the parser pool size is always 0
+        regardless of how many are acquired/released (SCALE SL-1)."""
         pool = MemoryPool(max_pool_size=2)
-        parsers = []
-        for _i in range(3):
-            p = pool.acquire_parser("python")
-            parsers.append(p)
+        parsers = [pool.acquire_parser("python") for _ in range(3)]
         for p in parsers:
             pool.release_parser(p, "python")
-        assert pool.size("parser:python") == 2
+        assert pool.size("parser:python") == 0
 
     @classmethod
-    def test_warm_up(cls):
-        """Test pool warm-up."""
+    def test_warm_up_does_not_pool_parsers(cls):
+        """Warming a parser pool is a no-op — a shared warm parser would leak
+        one thread's parser to another (SCALE SL-1)."""
         pool = MemoryPool(max_pool_size=10)
         pool.warm_up("parser:python", 3)
-        assert pool.size("parser:python") == 3
-        stats = pool.get_stats()
-        assert stats["parser:python"]["created"] == 3
+        assert pool.size("parser:python") == 0
+        stats = pool.get_stats().get("parser:python", {})
+        assert stats.get("pooled", 0) == 0
 
 
 class TestPerformanceMonitor:
@@ -349,15 +359,17 @@ class TestEnhancedChunker:
             test_file.unlink()
 
     @classmethod
-    def test_warm_up(cls):
-        """Test cache warm-up."""
+    def test_warm_up_does_not_pool_parsers(cls):
+        """warm_up must not pool parsers (SCALE SL-1: parsers are thread-local;
+        a shared warm pool would leak one thread's parser to another). It should
+        complete without error and without creating parser pool entries."""
         chunker = EnhancedChunker()
-        chunker.warm_up(["python", "javascript"])
+        chunker.warm_up(["python", "javascript"])  # no-op for parsers, no error
         pool_stats = chunker._pool.get_stats()
-        assert "parser:python" in pool_stats
-        assert pool_stats["parser:python"]["pooled"] > 0
-        assert "parser:javascript" in pool_stats
-        assert pool_stats["parser:javascript"]["pooled"] > 0
+        # No parser is actually pooled (thread-local), whether or not a
+        # zero-count stats entry exists.
+        assert pool_stats.get("parser:python", {}).get("pooled", 0) == 0
+        assert pool_stats.get("parser:javascript", {}).get("pooled", 0) == 0
 
 
 if __name__ == "__main__":

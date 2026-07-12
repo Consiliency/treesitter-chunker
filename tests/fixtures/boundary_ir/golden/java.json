@@ -48,8 +48,8 @@
         "parent_symbol": "Widget",
         "semantic_text": "language: java\nfile: Widget.java\nkind: field_declaration\nsymbol: count\nqualified name: Widget.count\nparent symbol: Widget\nsemantic path: Widget.java::Widget.count\ncontent:\nprivate int count;"
       },
-      "node_id": "ba4dc48d6151421e3bd9b9a4ac03250f0e42e152",
-      "parent": "7283643a995241b5bda153a2f07868e7ebaf78fb",
+      "node_id": "d7d6fb80306ad5fe3d4398ba5cbc7f8228f2075b",
+      "parent": "1aa23c15fca0cf888ef4ffe667d9317be239216d",
       "path": "Widget.java",
       "provenance": {
         "extractor": "chunk_file",
@@ -85,7 +85,7 @@
         "parent_symbol": null,
         "semantic_text": "language: java\nfile: Widget.java\nkind: class\nsymbol: Widget\nqualified name: Widget\nsemantic path: Widget.java::Widget\ncontent:\npublic class Widget {\n    private int count;\n\n    public Widget(int count) {\n        this.count = count;\n    }\n\n    public int render() {\n        return helper(count);\n    }\n\n    private int helper(int value) {\n        return value + 1;\n    }\n}"
       },
-      "node_id": "7283643a995241b5bda153a2f07868e7ebaf78fb",
+      "node_id": "1aa23c15fca0cf888ef4ffe667d9317be239216d",
       "parent": null,
       "path": "Widget.java",
       "provenance": {
@@ -122,8 +122,8 @@
         "parent_symbol": "Widget",
         "semantic_text": "language: java\nfile: Widget.java\nkind: method\nsymbol: render\nqualified name: Widget.render\nparent symbol: Widget\nsemantic path: Widget.java::Widget.render\ncontent:\npublic int render() {\n        return helper(count);\n    }"
       },
-      "node_id": "c76ce267c33547067ab1449fee4ac170b5897e27",
-      "parent": "7283643a995241b5bda153a2f07868e7ebaf78fb",
+      "node_id": "e9eeb9b6e79f27c2fc2596b042a704c54af37cbe",
+      "parent": "1aa23c15fca0cf888ef4ffe667d9317be239216d",
       "path": "Widget.java",
       "provenance": {
         "extractor": "chunk_file",
@@ -159,8 +159,8 @@
         "parent_symbol": "Widget",
         "semantic_text": "language: java\nfile: Widget.java\nkind: method\nsymbol: helper\nqualified name: Widget.helper\nparent symbol: Widget\nsemantic path: Widget.java::Widget.helper\ncontent:\nprivate int helper(int value) {\n        return value + 1;\n    }"
       },
-      "node_id": "6ffeb6db764f5be488dbe7a872f38f1a3cfc82e0",
-      "parent": "7283643a995241b5bda153a2f07868e7ebaf78fb",
+      "node_id": "e5a98318969c7a2163f09bba3ac034786f00717b",
+      "parent": "1aa23c15fca0cf888ef4ffe667d9317be239216d",
       "path": "Widget.java",
       "provenance": {
         "extractor": "chunk_file",
@@ -196,8 +196,8 @@
         "parent_symbol": "Widget",
         "semantic_text": "language: java\nfile: Widget.java\nkind: constructor\nsymbol: Widget\nqualified name: Widget.Widget\nparent symbol: Widget\nsemantic path: Widget.java::Widget.Widget\ncontent:\npublic Widget(int count) {\n        this.count = count;\n    }"
       },
-      "node_id": "a65f0ee8f4baf57fe99a8294d02120ac241ea650",
-      "parent": "7283643a995241b5bda153a2f07868e7ebaf78fb",
+      "node_id": "07fc1cd9bbd3aec4738b6c19a415bb427b0365f0",
+      "parent": "1aa23c15fca0cf888ef4ffe667d9317be239216d",
       "path": "Widget.java",
       "provenance": {
         "extractor": "chunk_file",
@@ -233,7 +233,7 @@
         "parent_symbol": null,
         "semantic_text": "language: java\nfile: Widget.java\nkind: enum\nsymbol: Color\nqualified name: Color\nsemantic path: Widget.java::Color\ncontent:\nenum Color {\n    RED,\n    GREEN,\n    BLUE\n}"
       },
-      "node_id": "5c1ffad1d9a5572b6c47f08abad6a96de2bae1b3",
+      "node_id": "c5183a2b282c6b167cf87aacb5cdd4aa59f8b6eb",
       "parent": null,
       "path": "Widget.java",
       "provenance": {

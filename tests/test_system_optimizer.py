@@ -5,14 +5,12 @@ Tests cover all optimization components with 95%+ coverage.
 """
 
 import gc
-import os
 import sys
 import tempfile
-import threading
 import time
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 # Add the project root to the Python path
 project_root = Path(__file__).parent.parent

@@ -2,7 +2,6 @@
 
 from typing import Any
 
-import pytest
 from tree_sitter import Node
 
 from chunker.metadata.extractor import BaseMetadataExtractor
