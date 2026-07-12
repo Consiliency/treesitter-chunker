@@ -69,6 +69,13 @@ jobs:
         uv run --all-extras black --check chunker/ tests/
 
     - name: Run type checking
+      # The baseline-relative mypy gate runs on Linux only: the baseline
+      # (docs/development/mypy-baseline.txt) is generated on Linux, and mypy
+      # re-derives PLATFORM-SPECIFIC errors on Windows/macOS (e.g. the Unix-only
+      # `resource` module in performance_framework.py) that a Linux baseline can
+      # never contain — so a per-OS run would flag those as spurious "new"
+      # errors. Type-checking the code once on Linux is sufficient and correct.
+      if: matrix.platform-family == 'linux'
       shell: bash
       run: |
         uv run --all-extras python scripts/mypy_gate.py
