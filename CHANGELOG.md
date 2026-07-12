@@ -5,6 +5,69 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — v3.2.2 remediation
+
+A comprehensive correctness/security/determinism remediation driven by the
+`CODE_REVIEW_v3.2.2.md` cross-vendor board review. All CRITICAL (C1–C7) and
+MAJOR findings are fixed; see `docs/development/traceability-matrix.md` for the
+finding→phase→test mapping.
+
+### ⚠️ BREAKING
+
+- **Chunk identities are recomputed.** `chunk_id`, `node_id`, and `definition_id`
+  are now collision-free and content+position-seeded (IDENTITY phase), so they
+  no longer silently drop chunks — but their **values differ** from prior
+  releases. Any consumer persisting these IDs as stable keys (DB/cache/graph)
+  must **force a full re-index**. Downstream impact filed:
+  ViperJuice/Code-Index-MCP#76 (CRITICAL), ViperJuice/semantic-lens#14 (HIGH),
+  Consiliency/codegraph-de#21 (deferred).
+- **Public `chunk_text()` chunks in memory.** It no longer round-trips through a
+  temp file, so its returned `node_id`/`chunk_id` are now **deterministic across
+  calls** (they were random per-call before). Values differ from prior releases.
+
+### 🔒 Security
+
+- FastAPI endpoints now require auth; file access is confined to a canonical
+  root (path/symlink confinement), closing the arbitrary-file-read + SSRF hole
+  (C5, APISAFE). Grammar download now has an integrity gate before execution.
+
+### 🐛 Fixes (correctness)
+
+- **Thread safety:** no code path shares a tree-sitter `Parser` across threads;
+  every holder acquires a thread-local parser — closes the segfault/UB class
+  (C1, PARSER + SCALE).
+- **Mixed-language + VFS:** `process_mixed_file` works (was TypeError on every
+  file); VFS large-file streaming yields non-duplicated, file-relative,
+  confined offsets (C3/C4, SCALE). Multibyte-safe offsets + recomputed node_ids.
+- **Streaming per-language:** streaming derives chunkable node types per language
+  (Rust/Go/JS/… no longer silently empty), staying lazy (SCALE).
+- **Determinism:** boundary serializer rejects non-finite floats (no bare `NaN`);
+  Leiden clustering seeded; graph cut tie-order + xref edge order deterministic;
+  xref is index-based (was O(n²)) (BOUNDARYFIX, SCALE).
+- **Fallback robustness:** invalid-UTF-8 files chunk via `errors="replace"`;
+  grammar-load failure falls back instead of crashing (COREFIX).
+- **Repo processing:** git handles closed (no fd leak); batched (ARG_MAX-safe)
+  ignore query; stale-commit → full scan (no crash, no silent data loss);
+  bounded watch loop (SCALE).
+- **Exporters:** `StructuredJSONExporter(compress=True)` works (`gzip.Path` →
+  `gzip.open`) (IFACE).
+
+### ✅ Quality gates
+
+- ruff F-rules enforced; mypy is a **blocking, baseline-relative** gate
+  (`scripts/mypy_gate.py`), so new type errors fail CI while tracked debt is
+  paid down (GATES). Determinism pin-mirror drift closed (C6, SUPPLY).
+- Language-detection uses one canonical extension map (`.ts`→typescript
+  everywhere; unknown extensions warn, not silent `[]`); version single-sourced
+  (IFACE).
+
+### 📝 Notes
+
+- Version bump + tag are intentionally left for the maintainer (see
+  `docs/development/traceability-matrix.md`; the semver-correct bump given the
+  breaking ID change is at least a minor, arguably a major).
+- Tracked residuals (not silent gaps) are in `docs/development/xfail-inventory.md`.
+
 ## [3.2.1] - 2026-06-25
 
 ### ✨ Features
