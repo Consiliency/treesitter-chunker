@@ -225,6 +225,7 @@ jobs:
 
     permissions:
       contents: write
+      pull-requests: write
 
     steps:
     - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
@@ -241,12 +242,27 @@ jobs:
         OUTPUT: CHANGELOG.md
         GITHUB_REPO: ${{ github.repository }}
 
-    - name: Commit and push
+    - name: Open changelog PR
+      # main is a protected branch (required status checks), so a bot cannot push
+      # to it directly — the old `git push origin main` failed every release with
+      # GH006. Route the regenerated changelog through a PR instead; nothing about
+      # the release (build / PyPI publish / GitHub Release) depends on this step.
       env:
         TAG: ${{ needs.build-distributions.outputs.tag_name }}
+        GH_TOKEN: ${{ github.token }}
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
+        if git diff --quiet -- CHANGELOG.md; then
+          echo "CHANGELOG.md unchanged for ${TAG}; nothing to open."
+          exit 0
+        fi
+        branch="chore/changelog-${TAG}"
+        git checkout -b "$branch"
         git add CHANGELOG.md
-        git diff --cached --quiet || git commit -m "docs(changelog): update for ${TAG}"
-        git push origin main
+        git commit -m "docs(changelog): update for ${TAG}"
+        git push origin "$branch"
+        gh pr create --base main --head "$branch" \
+          --title "docs(changelog): update for ${TAG}" \
+          --body "Automated changelog regeneration for ${TAG} (git-cliff). Merge to keep CHANGELOG.md current; the release itself is already published." \
+          || echo "PR may already exist for ${branch}"
