@@ -122,6 +122,29 @@ class TestBatchedIgnoreQuery:
             assert check_ignore_calls["n"] == 1
 
 
+class TestWatchStaleCommitFullScan:
+    """SCALE panel: a stale last_commit in the WATCH path must fall back to a
+    full scan, not silently return [] (which would drop every update while the
+    caller advances last_commit to HEAD)."""
+
+    def test_collect_watch_changes_stale_commit_falls_back_to_full_scan(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo = _init_repo(
+                root,
+                extra_files={"mod_a.py": "def a():\n    return 1\n"},
+            )
+            proc = GitAwareRepoProcessor(show_progress=False)
+
+            # A stale/vanished last_commit makes get_changed_files raise; the
+            # watch collector must return the FULL processable set, not [].
+            changed = proc._collect_watch_changes(repo, root, "vanished-ref")
+
+            assert changed, "stale commit dropped all files (silent data loss)"
+            assert any(c.endswith("main.py") for c in changed)
+            assert any(c.endswith("mod_a.py") for c in changed)
+
+
 class TestWatchRepositoryTermination:
     """Bug 3: watch loop must be bounded and must not busy-loop non-git dirs."""
 

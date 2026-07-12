@@ -17,7 +17,6 @@ Every test here is designed to FAIL on the pre-fix code and pass after it.
 
 from __future__ import annotations
 
-import io
 import zipfile
 from pathlib import Path
 
@@ -101,6 +100,50 @@ class TestProcessMixedFile:
                 "python chunk offsets are not file-relative: "
                 f"{sliced!r} != {chunk.content!r}"
             )
+
+    def test_multibyte_prefix_offsets_slice_back_and_ids_distinct(self) -> None:
+        """With multibyte text before the code fence, chunk byte offsets must be
+        true UTF-8 byte positions (not char indexes) and slice back; two
+        identical functions in separate fences must get DISTINCT node_ids
+        (SCALE panel: char-vs-byte offset + node_id not recomputed after shift).
+        """
+        # Multibyte header (emoji + accents) so a char index != a byte offset,
+        # then TWO fences each containing a byte-identical function.
+        content = (
+            "# Café 🚀 documentation with multibyte chars\n"
+            "\n"
+            "```python\n"
+            "def greet():\n"
+            "    return 1\n"
+            "```\n"
+            "\n"
+            "more café ☕ prose in between\n"
+            "\n"
+            "```python\n"
+            "def greet():\n"
+            "    return 1\n"
+            "```\n"
+        )
+        processor = MultiLanguageProcessorImpl()
+        chunks = processor.process_mixed_file("doc.md", "markdown", content=content)
+        py = [c for c in chunks if c.language == "python"]
+        assert py, "expected python chunks from the fenced blocks"
+
+        src = content.encode("utf-8")
+        for chunk in py:
+            sliced = src[chunk.byte_start : chunk.byte_end].decode("utf-8")
+            assert sliced == chunk.content, (
+                f"multibyte offset wrong: {sliced!r} != {chunk.content!r}"
+            )
+
+        # The two byte-identical `def greet` functions live at different file
+        # positions, so their node_ids must differ (no collision).
+        greet = [c for c in py if "def greet" in c.content]
+        assert len(greet) >= 2, "expected both fenced greet() functions"
+        ids = {c.node_id for c in greet}
+        assert len(ids) == len(greet), (
+            f"identical functions collapsed to one node_id: {ids}"
+        )
 
     def test_jsx_file_returns_chunks(self) -> None:
         """A JSX source (javascript base region) yields chunks, no TypeError."""

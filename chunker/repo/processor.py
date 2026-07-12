@@ -801,12 +801,20 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
         rel_paths = [str(f.relative_to(resolved_root)) for f in files]
 
         ignored: set[str] = set()
-        if rel_paths:
+        # Batch the check-ignore query so a huge file set (tens of thousands of
+        # paths, e.g. an unfiltered node_modules) cannot exceed the OS ARG_MAX
+        # command-line limit — which would raise OSError from subprocess and
+        # bypass the GitCommandError handler entirely (Gemini panel finding).
+        # This still spawns O(files/BATCH) subprocesses, not one-per-file.
+        _IGNORE_BATCH = 1000
+        for i in range(0, len(rel_paths), _IGNORE_BATCH):
+            batch = rel_paths[i : i + _IGNORE_BATCH]
             try:
-                # Repo.ignored issues exactly one `git check-ignore` subprocess.
-                ignored = set(repo.ignored(*rel_paths))
-            except self.git.GitCommandError:
-                ignored = set()
+                ignored.update(repo.ignored(*batch))
+            except (self.git.GitCommandError, OSError):
+                # OSError covers ARG_MAX/E2BIG on pathological batches; skip the
+                # ignore filter for that batch rather than crashing the scan.
+                continue
 
         tracked = {path for path, _stage in repo.index.entries.keys()}
         untracked = set(repo.untracked_files)
@@ -920,7 +928,19 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
                     for p in self.get_processable_files(str(repo_root))
                 ]
             except Exception:
-                return []
+                # A stale/rewritten last_commit makes get_changed_files raise
+                # (BadName/ValueError). Returning [] here would skip every file
+                # AND the caller would still advance last_commit to HEAD, so all
+                # updates since the stale commit are lost forever (Gemini panel
+                # finding). Fall back to a FULL scan — mirroring the batch path's
+                # `changed_files = None` behaviour — so nothing is dropped.
+                try:
+                    return [
+                        str(p.relative_to(repo_root))
+                        for p in self.get_processable_files(str(repo_root))
+                    ]
+                except Exception:
+                    return []
         # Non-git directory fallback: process all files.
         return [
             str(p.relative_to(repo_root))

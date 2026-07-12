@@ -17,7 +17,7 @@ from .interfaces.multi_language import (
     ProjectAnalyzer,
 )
 from .parser import get_parser, list_languages
-from .types import CodeChunk
+from .types import CodeChunk, compute_node_id
 
 try:
     pass
@@ -953,11 +953,32 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
                     region.language,
                     file_path=file_path,
                 )
+                # region.start_pos is a CHARACTER index into ``content`` (region
+                # detection slices/counts on the str), but chunk byte offsets are
+                # UTF-8 BYTE positions. Convert the region's char prefix to its
+                # byte length so multibyte text before the region does not skew
+                # the offsets (Codex panel finding: char index added to a byte
+                # offset yielded a wrong slice-back on non-ASCII content).
+                region_byte_start = len(
+                    content[: region.start_pos].encode("utf-8")
+                )
                 for chunk in region_chunks:
                     chunk.start_line += region.start_line - 1
                     chunk.end_line += region.start_line - 1
-                    chunk.byte_start += region.start_pos
-                    chunk.byte_end += region.start_pos
+                    chunk.byte_start += region_byte_start
+                    chunk.byte_end += region_byte_start
+                    # node_id embeds byte_start, so it MUST be recomputed after
+                    # the offset shift — otherwise two identical functions in
+                    # separate fences collapse to the same id despite distinct
+                    # final offsets (Codex panel finding).
+                    chunk.node_id = compute_node_id(
+                        file_path,
+                        chunk.language,
+                        chunk.qualified_route or chunk.parent_route,
+                        chunk.byte_start,
+                        chunk.content,
+                    )
+                    chunk.chunk_id = chunk.node_id
                     if region.embedding_type:
                         chunk.metadata["embedding_type"] = region.embedding_type.value
                     if region.parent_language:
