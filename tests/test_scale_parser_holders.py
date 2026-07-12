@@ -71,9 +71,9 @@ def test_memory_pool_hands_distinct_parsers_to_distinct_threads():
     _run_threads(worker)
 
     assert len(held) == _NUM_THREADS
-    assert len({id(p) for p in held}) == _NUM_THREADS, (
-        "MemoryPool handed the same parser object to multiple threads"
-    )
+    assert (
+        len({id(p) for p in held}) == _NUM_THREADS
+    ), "MemoryPool handed the same parser object to multiple threads"
 
 
 @needs_python_grammar
@@ -140,9 +140,9 @@ def test_tracker_hands_distinct_parsers_to_distinct_threads():
     _run_threads(worker)
 
     assert len(held) == _NUM_THREADS
-    assert len({id(p) for p in held}) == _NUM_THREADS, (
-        "ASTRelationshipTracker shared one cached parser across threads"
-    )
+    assert (
+        len({id(p) for p in held}) == _NUM_THREADS
+    ), "ASTRelationshipTracker shared one cached parser across threads"
 
 
 # ---------------------------------------------------------------------------
@@ -284,8 +284,8 @@ def test_parallel_timeout_stops_hung_worker(monkeypatch):
     runner.join(timeout=4.0)
     elapsed = time.monotonic() - start
 
-    assert not runner.is_alive(), (
-        "chunk_files_parallel hung past the deadline instead of timing out"
-    )
+    assert (
+        not runner.is_alive()
+    ), "chunk_files_parallel hung past the deadline instead of timing out"
     assert elapsed < 3.5, f"timeout was not enforced promptly (took {elapsed:.2f}s)"
     assert box["result"] == {Path("a.py"): [], Path("b.py"): []}

@@ -50,9 +50,9 @@ def test_class_split_spans_slice_back_and_disambiguate_identical_methods():
     assert len(parts) >= 2, f"expected the two methods to split, got {len(parts)}"
     for p in parts:
         # Contract: slicing the source at the span reproduces the content exactly.
-        assert source[p.byte_start : p.byte_end].decode("utf-8") == p.content, (
-            f"span {p.byte_start}:{p.byte_end} does not slice back to content"
-        )
+        assert (
+            source[p.byte_start : p.byte_end].decode("utf-8") == p.content
+        ), f"span {p.byte_start}:{p.byte_end} does not slice back to content"
         # And it stays within the parent's byte range (no overshoot).
         assert original.byte_start <= p.byte_start <= p.byte_end <= original.byte_end, (
             f"sub-chunk {p.byte_start}:{p.byte_end} escapes parent "
@@ -60,15 +60,15 @@ def test_class_split_spans_slice_back_and_disambiguate_identical_methods():
         )
         # The class header is preserved as context (not lost) even though it is
         # no longer prepended into the sliceable content.
-        assert "class C:" in (p.parent_context or ""), (
-            "class header context was dropped from parent_context"
-        )
+        assert "class C:" in (
+            p.parent_context or ""
+        ), "class header context was dropped from parent_context"
     # Identical methods must land at DISTINCT byte offsets (no collapse-to-first).
     method_parts = [p for p in parts if "def run" in p.content]
     starts = [p.byte_start for p in method_parts]
-    assert len(set(starts)) == len(starts), (
-        f"identical methods collapsed to the same byte_start: {starts}"
-    )
+    assert len(set(starts)) == len(
+        starts
+    ), f"identical methods collapsed to the same byte_start: {starts}"
 
 
 def test_delimiter_line_numbers_multiline_delimiter():
@@ -79,9 +79,9 @@ def test_delimiter_line_numbers_multiline_delimiter():
     # "A\n\n\n\nB".split("\n\n") -> ["A", "", "B"]; B truly begins on line 5.
     chunks = fc.chunk_by_delimiter("A\n\n\n\nB", "\n\n", include_delimiter=True)
     b_chunk = next(c for c in chunks if c.content.strip() == "B")
-    assert b_chunk.start_line == 5, (
-        f"B should start on line 5, got {b_chunk.start_line}"
-    )
+    assert (
+        b_chunk.start_line == 5
+    ), f"B should start on line 5, got {b_chunk.start_line}"
 
 
 def test_identifier_index_not_stale_on_same_length_rechunk():

@@ -103,9 +103,7 @@ def test_graph_cut_tie_order_is_deterministic():
     edges: list[dict] = []
     budget = 10
 
-    selected, induced = graph_cut(
-        shuffled, nodes, edges, radius=2, budget=budget
-    )
+    selected, induced = graph_cut(shuffled, nodes, edges, radius=2, budget=budget)
 
     # With ties broken on ascending id, the surviving `budget` nodes must be
     # the lexicographically smallest ids, in ascending order.

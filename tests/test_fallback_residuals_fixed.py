@@ -23,13 +23,13 @@ def test_csv_chunk_slices_back_and_header_in_metadata():
     )
     assert len(chunks) > 1
     for c in chunks:
-        assert src[c.byte_start : c.byte_end].decode("utf-8") == c.content, (
-            "CSV chunk byte span must slice back to content"
-        )
+        assert (
+            src[c.byte_start : c.byte_end].decode("utf-8") == c.content
+        ), "CSV chunk byte span must slice back to content"
         assert "náme,valüe" not in c.content, "header must not be inlined into content"
-        assert c.metadata.get("csv_header") == "náme,valüe", (
-            "header must be preserved in metadata"
-        )
+        assert (
+            c.metadata.get("csv_header") == "náme,valüe"
+        ), "header must be preserved in metadata"
 
 
 def test_fallback_definition_ids_are_distinct():
@@ -45,11 +45,18 @@ def test_fallback_definition_ids_are_distinct():
 
     # Enough content to exceed the sliding window so multiple chunks are emitted.
     code = "\n".join(f"line {i} of plain text content here" for i in range(1000))
-    with patch.object(
-        core, "_walk", side_effect=RecursionError("forced")
-    ), patch.object(core, "get_parser", lambda _l: type(
-        "P", (), {"parse": lambda self, s: type("T", (), {"root_node": object()})()}
-    )()):
+    with (
+        patch.object(core, "_walk", side_effect=RecursionError("forced")),
+        patch.object(
+            core,
+            "get_parser",
+            lambda _l: type(
+                "P",
+                (),
+                {"parse": lambda self, s: type("T", (), {"root_node": object()})()},
+            )(),
+        ),
+    ):
         chunks = chunk_text(code, "python", file_path="big.py")
     assert len(chunks) > 1, "expected multiple fallback chunks"
     dids = [c.definition_id for c in chunks]

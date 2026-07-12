@@ -1178,7 +1178,9 @@ def chunk_text(
     for c in chunks:
         route = _effective_route(c)
         tmp_id = compute_node_id("", c.language, route, c.byte_start, c.content)
-        final_id = compute_node_id(file_path, c.language, route, c.byte_start, c.content)
+        final_id = compute_node_id(
+            file_path, c.language, route, c.byte_start, c.content
+        )
         tmp_to_final[tmp_id] = final_id
 
     for c in chunks:

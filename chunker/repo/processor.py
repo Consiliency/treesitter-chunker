@@ -871,7 +871,9 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
                 if stop_event is not None and stop_event.is_set():
                     break
 
-                changed_files = self._collect_watch_changes(repo, repo_root, last_commit)
+                changed_files = self._collect_watch_changes(
+                    repo, repo_root, last_commit
+                )
                 deltas = self._build_watch_deltas(repo_root, changed_files, known_ids)
                 try:
                     on_update(deltas)

@@ -231,7 +231,7 @@ class MarkdownChunker(FallbackChunker, IMarkdownChunker):
                         current_start_line,
                         i,
                         current_section_type,
-                            line_byte_starts=_line_byte_starts,
+                        line_byte_starts=_line_byte_starts,
                     )
                     chunks.append(chunk)
 
@@ -291,7 +291,7 @@ class MarkdownChunker(FallbackChunker, IMarkdownChunker):
                                 current_start_line,
                                 i,
                                 current_section_type,
-                            line_byte_starts=_line_byte_starts,
+                                line_byte_starts=_line_byte_starts,
                             )
                             chunks.append(chunk)
 

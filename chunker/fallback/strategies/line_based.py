@@ -80,7 +80,9 @@ class LineBasedChunker(FallbackChunker):
             parent_context = f"csv_rows_{start_line}_{end_line}"
             if include_header and header:
                 metadata["csv_header"] = header.rstrip("\n")
-                parent_context = f"csv_header={header.rstrip()};rows_{start_line}_{end_line}"
+                parent_context = (
+                    f"csv_header={header.rstrip()};rows_{start_line}_{end_line}"
+                )
             chunk = CodeChunk(
                 language="csv",
                 file_path=self.file_path or "",
@@ -88,9 +90,7 @@ class LineBasedChunker(FallbackChunker):
                 start_line=start_line,
                 end_line=end_line,
                 byte_start=offsets.byte_offset(char_cursor),
-                byte_end=offsets.byte_offset(
-                    char_cursor + len(chunk_content)
-                ),
+                byte_end=offsets.byte_offset(char_cursor + len(chunk_content)),
                 parent_context=parent_context,
                 content=chunk_content,
                 metadata=metadata,

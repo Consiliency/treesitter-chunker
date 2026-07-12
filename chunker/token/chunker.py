@@ -238,7 +238,7 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
             # portion only; the class header is preserved as context in
             # parent_context, NOT prepended into content (which would make the
             # content non-contiguous and break slice-back).
-            method_lines = part_lines[len(class_header_lines):]
+            method_lines = part_lines[len(class_header_lines) :]
             chunk_content = "\n".join(method_lines)
             new_chunk = self._create_sub_chunk(
                 chunk,
@@ -318,8 +318,8 @@ class TreeSitterTokenAwareChunker(TokenAwareChunker):
         the first (COREFIX).
         """
         found = original_chunk.content.find(content, search_from)
-        content_offset = found if found >= 0 else max(
-            original_chunk.content.find(content), 0
+        content_offset = (
+            found if found >= 0 else max(original_chunk.content.find(content), 0)
         )
         start_offset = original_chunk.content[:content_offset].count("\n")
         byte_offset = len(original_chunk.content[:content_offset].encode("utf-8"))

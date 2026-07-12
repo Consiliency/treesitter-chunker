@@ -6,7 +6,6 @@ returned [] silently on an unknown extension. It now delegates to
 ZeroConfigAPI.EXTENSION_MAP and warns on an unknown extension.
 """
 
-
 from chunker.auto import ZeroConfigAPI
 from cli.main import process_file
 
@@ -32,6 +31,6 @@ def test_cli_unknown_extension_warns_not_silent(tmp_path, capsys):
     result = process_file(f, None)
     assert result == []
     err = capsys.readouterr().err
-    assert "no language mapping" in err and ".unknownext" in err, (
-        "unknown extension must warn, not silently return []"
-    )
+    assert (
+        "no language mapping" in err and ".unknownext" in err
+    ), "unknown extension must warn, not silently return []"

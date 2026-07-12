@@ -68,9 +68,7 @@ class ParallelChunker:
         # A None timeout means UNBOUNDED — never impose a deadline on a slow but
         # legitimate worker. deadline stays None and every wait is unbounded.
         deadline = (
-            time.monotonic() + timeout_seconds
-            if timeout_seconds is not None
-            else None
+            time.monotonic() + timeout_seconds if timeout_seconds is not None else None
         )
 
         # Manage the executor manually so a hung worker cannot block us on
@@ -99,7 +97,9 @@ class ParallelChunker:
                     )
                     try:
                         file_path, chunks = future.result(
-                            timeout=(max(0.0, remaining) if remaining is not None else None),
+                            timeout=(
+                                max(0.0, remaining) if remaining is not None else None
+                            ),
                         )
                         results[file_path] = chunks
                     except FutureTimeout:

@@ -65,9 +65,9 @@ def test_markdown_section_chunks_true_byte_offsets():
     for c in chunks:
         if c.node_type.startswith("markdown_"):
             # byte range must slice back to the chunk content
-            assert src[c.byte_start : c.byte_end].decode("utf-8") == c.content, (
-                f"markdown section byte offsets wrong: {c.byte_start}:{c.byte_end}"
-            )
+            assert (
+                src[c.byte_start : c.byte_end].decode("utf-8") == c.content
+            ), f"markdown section byte offsets wrong: {c.byte_start}:{c.byte_end}"
 
 
 def test_smart_context_memoizes_features():
@@ -89,15 +89,15 @@ def test_smart_context_memoizes_features():
         calls["n"] += 1
         return real(chunk)
 
-    with patch.object(
-        type(prov), "_extract_semantic_features", staticmethod(counting)
-    ):
+    with patch.object(type(prov), "_extract_semantic_features", staticmethod(counting)):
         prov._feature_cache.clear()
         for c in chunks:
             with patch.object(prov, "_get_file_chunks", return_value=chunks):
                 prov.get_semantic_context(c)
     # Without memoization this would be O(n^2) ~ 36+; memoized it is O(n) ~ <= len(chunks)+few.
-    assert calls["n"] <= len(chunks) + 2, f"features extracted {calls['n']}x (not memoized)"
+    assert (
+        calls["n"] <= len(chunks) + 2
+    ), f"features extracted {calls['n']}x (not memoized)"
 
 
 def test_candidate_subset_is_bounded_at_scale():

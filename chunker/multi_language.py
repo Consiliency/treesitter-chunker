@@ -7,7 +7,10 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, ClassVar
 
-from .core import chunk_file, chunk_text  # noqa: F401  (chunk_file kept for test patch target)
+from .core import (
+    chunk_file,
+    chunk_text,
+)  # noqa: F401  (chunk_file kept for test patch target)
 from .interfaces.multi_language import (
     CrossLanguageReference,
     EmbeddedLanguageType,
@@ -959,9 +962,7 @@ class MultiLanguageProcessorImpl(MultiLanguageProcessor):
                 # byte length so multibyte text before the region does not skew
                 # the offsets (Codex panel finding: char index added to a byte
                 # offset yielded a wrong slice-back on non-ASCII content).
-                region_byte_start = len(
-                    content[: region.start_pos].encode("utf-8")
-                )
+                region_byte_start = len(content[: region.start_pos].encode("utf-8"))
                 for chunk in region_chunks:
                     chunk.start_line += region.start_line - 1
                     chunk.end_line += region.start_line - 1

@@ -132,18 +132,18 @@ class TestProcessMixedFile:
         src = content.encode("utf-8")
         for chunk in py:
             sliced = src[chunk.byte_start : chunk.byte_end].decode("utf-8")
-            assert sliced == chunk.content, (
-                f"multibyte offset wrong: {sliced!r} != {chunk.content!r}"
-            )
+            assert (
+                sliced == chunk.content
+            ), f"multibyte offset wrong: {sliced!r} != {chunk.content!r}"
 
         # The two byte-identical `def greet` functions live at different file
         # positions, so their node_ids must differ (no collision).
         greet = [c for c in py if "def greet" in c.content]
         assert len(greet) >= 2, "expected both fenced greet() functions"
         ids = {c.node_id for c in greet}
-        assert len(ids) == len(greet), (
-            f"identical functions collapsed to one node_id: {ids}"
-        )
+        assert len(ids) == len(
+            greet
+        ), f"identical functions collapsed to one node_id: {ids}"
 
     def test_jsx_file_returns_chunks(self) -> None:
         """A JSX source (javascript base region) yields chunks, no TypeError."""
@@ -180,7 +180,9 @@ class TestVFSStreaming:
     """Streaming chunking over confined-local and zip-backed large files."""
 
     @staticmethod
-    def _assert_stream_ok(chunks: list, content: bytes, expected_names: set[str]) -> None:
+    def _assert_stream_ok(
+        chunks: list, content: bytes, expected_names: set[str]
+    ) -> None:
         assert chunks, "streaming produced no chunks"
 
         func_chunks = [c for c in chunks if c.node_type == "function_definition"]

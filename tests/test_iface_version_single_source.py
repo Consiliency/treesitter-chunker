@@ -35,10 +35,13 @@ def test_init_fallback_matches_pyproject():
     # The literal fallback in __init__ (used when metadata is unavailable) must
     # equal pyproject, so an editable import never reports a stale version.
     init_src = (
-        Path(__file__).resolve().parent.parent.joinpath("chunker/__init__.py").read_text()
+        Path(__file__)
+        .resolve()
+        .parent.parent.joinpath("chunker/__init__.py")
+        .read_text()
     )
     # The fallback is a literal `__version__ = "X.Y.Z"` assignment.
     fallbacks = re.findall(r'__version__ = "(\d+\.\d+\.\d+)"', init_src)
-    assert _pyproject_version() in fallbacks, (
-        f"__init__ fallback does not match pyproject {_pyproject_version()}: {fallbacks}"
-    )
+    assert (
+        _pyproject_version() in fallbacks
+    ), f"__init__ fallback does not match pyproject {_pyproject_version()}: {fallbacks}"

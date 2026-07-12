@@ -340,15 +340,15 @@ class TestFallbackManager:
             # made content non-contiguous and broke that.
             source_bytes = temp_path.read_bytes()
             for i, chunk in enumerate(chunks):
-                assert "id,name,score" not in chunk.content, (
-                    f"Chunk {i} must not inline the header into content"
-                )
-                assert chunk.metadata.get("csv_header") == "id,name,score", (
-                    f"Chunk {i} lost the CSV header from metadata"
-                )
+                assert (
+                    "id,name,score" not in chunk.content
+                ), f"Chunk {i} must not inline the header into content"
+                assert (
+                    chunk.metadata.get("csv_header") == "id,name,score"
+                ), f"Chunk {i} lost the CSV header from metadata"
                 sliced = source_bytes[chunk.byte_start : chunk.byte_end].decode("utf-8")
-                assert sliced == chunk.content, (
-                    f"Chunk {i} byte span does not slice back to content"
-                )
+                assert (
+                    sliced == chunk.content
+                ), f"Chunk {i} byte span does not slice back to content"
         finally:
             temp_path.unlink(missing_ok=True)
