@@ -56,7 +56,8 @@ class IncrementalParser(IncrementalParserInterface):
         parser = self._get_parser_for_tree(old_tree, language)
         # Capture the OLD source before any edits so ``old_end_point`` is
         # computed in the pre-edit coordinate space.
-        old_source = old_tree.root_node.text
+        # Node.text is Optional in the tree-sitter stubs; coerce to bytes.
+        old_source = old_tree.root_node.text or b""
         for start_byte, old_end_byte, new_end_byte, start_point in changed_ranges:
             old_tree.edit(
                 start_byte=start_byte,

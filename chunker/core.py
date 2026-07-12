@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -396,7 +397,9 @@ def _svelte_control_flow_chunks(source: bytes) -> list[CodeChunk]:
     return chunks
 
 
-def resolve_chunk_predicates(language: str):
+def resolve_chunk_predicates(
+    language: str,
+) -> tuple[Callable[[str], bool], Callable[[str], bool]]:
     """Return ``(should_chunk, should_ignore)`` predicates for a language.
 
     This is the single source of truth for WHICH node types are chunkable per

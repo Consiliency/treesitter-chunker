@@ -36,9 +36,9 @@ from .parser import get_parser
 from .types import CodeChunk, compute_node_id
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
 
-    from tree_sitter import Node
+    from tree_sitter import Node, Parser
 
 
 @dataclass
@@ -99,7 +99,7 @@ class StreamingChunker:
         self.language = language
 
     @property
-    def parser(self):
+    def parser(self) -> Parser:
         # Fetch the caller thread's own parser each access. get_parser() is
         # thread-local by construction (PARSER phase), so a StreamingChunker
         # instance shared across threads never hands one Parser to two threads.
@@ -108,14 +108,14 @@ class StreamingChunker:
     def _walk_streaming(
         self,
         node: Node,
-        mmap_data,
+        mmap_data: mmap.mmap | bytes,
         file_path: str,
         parent_ctx: str | None = None,
         parent_chunk: CodeChunk | None = None,
         parent_route: list[str] | None = None,
         parent_qualified_route: list[str] | None = None,
         include_retrieval_metadata: bool = False,
-        should_chunk=None,
+        should_chunk: Callable[[str], bool] | None = None,
     ) -> Iterator[CodeChunk]:
         """Yield chunks as they're found without building a full list in memory.
 

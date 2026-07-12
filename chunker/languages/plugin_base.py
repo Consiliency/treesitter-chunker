@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 import subprocess
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from chunker.types import CodeChunk
 
@@ -241,7 +241,9 @@ class LanguagePlugin(ABC):
             return self._parser
         from chunker.parser import get_parser
 
-        return get_parser(self.language_name)
+        # language_name is an abstract @property (str) whose base def omits self,
+        # so mypy infers Callable[[], str]; at runtime it is the str value.
+        return get_parser(cast("str", self.language_name))
 
     @staticmethod
     @abstractmethod

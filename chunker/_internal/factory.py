@@ -8,7 +8,7 @@ import threading
 from collections import OrderedDict
 from dataclasses import dataclass
 from queue import Empty, Full, Queue
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from tree_sitter import Parser, Range
 
@@ -264,7 +264,8 @@ class ParserFactory:
         if getattr(self._thread_local, "generation", None) != self._cache_generation:
             self._thread_local.parsers = {}
             self._thread_local.generation = self._cache_generation
-        return self._thread_local.parsers
+        # threading.local attributes are typed Any; the dict is populated above.
+        return cast("dict[str, Parser]", self._thread_local.parsers)
 
     def get_parser(
         self,

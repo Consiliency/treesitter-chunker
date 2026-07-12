@@ -64,8 +64,12 @@ class _ParserState:
         if self.factory is not None:
             return
         with self._init_lock:
+            # Double-checked locking: another thread may have initialized the
+            # factory between the first check and acquiring the lock. mypy narrows
+            # self.factory to None from the check above (it assumes single-thread)
+            # and flags this re-check as unreachable — but it is load-bearing.
             if self.factory is not None:
-                return
+                return  # type: ignore[unreachable]
             path = library_path or self.default_library_path
             # If the compiled library doesn't exist or fails to load, initialize registry
             # with no shared library so that list_languages() can still function for tests

@@ -5,6 +5,7 @@ import hashlib
 import re
 import time
 from collections import defaultdict
+from collections.abc import Iterable
 from typing import Any
 
 from .interfaces.smart_context import (
@@ -300,7 +301,12 @@ class TreeSitterSmartContextProvider(SmartContextProvider):
 
     _MAX_CONTEXT_CANDIDATES = 200
 
-    def _candidate_subset(self, chunk, chunk_features, file_chunks):
+    def _candidate_subset(
+        self,
+        chunk: CodeChunk,
+        chunk_features: dict[str, Any],
+        file_chunks: list[CodeChunk],
+    ) -> list[CodeChunk]:
         """Return a BOUNDED candidate set sharing an identifier with the query.
 
         Uses an inverted identifier index (identifier -> chunks) so the similarity
@@ -327,13 +333,18 @@ class TreeSitterSmartContextProvider(SmartContextProvider):
         )[: self._MAX_CONTEXT_CANDIDATES]
 
     @staticmethod
-    def _candidate_sort_key(cand: CodeChunk):
+    def _candidate_sort_key(cand: CodeChunk) -> tuple[str, int]:
         return (cand.chunk_id or "", cand.byte_start)
 
-    def _ordered(self, candidates):
+    def _ordered(self, candidates: Iterable[CodeChunk]) -> list[CodeChunk]:
         return sorted(candidates, key=self._candidate_sort_key)
 
-    def _identifier_index(self, file_path, language, file_chunks):
+    def _identifier_index(
+        self,
+        file_path: str,
+        language: str,
+        file_chunks: list[CodeChunk],
+    ) -> dict[str, list[CodeChunk]]:
         # The key includes a CONTENT digest (not just len) so a same-length
         # rechunk with different content does not serve a stale index
         # (COREFIX cache-freshness). The digest is content-derived via node_id.

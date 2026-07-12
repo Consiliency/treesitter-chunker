@@ -76,7 +76,7 @@ class LineBasedChunker(FallbackChunker):
             chunk_content = "".join(lines[i:chunk_end])
             start_line = i + 1
             end_line = chunk_end
-            metadata: dict = {}
+            metadata: dict[str, str] = {}
             parent_context = f"csv_rows_{start_line}_{end_line}"
             if include_header and header:
                 metadata["csv_header"] = header.rstrip("\n")
