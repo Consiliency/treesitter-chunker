@@ -80,7 +80,10 @@ try:
 
     __version__ = version("treesitter-chunker")
 except ImportError:
-    __version__ = "1.0.8"  # Fallback version
+    # Fallback when package metadata is unavailable (editable import without an
+    # installed dist). Must match pyproject.toml `version` — the single source of
+    # truth — so an uninstalled import does not report a stale version (IFACE).
+    __version__ = "3.2.2"
 
 
 # Simple text chunking
