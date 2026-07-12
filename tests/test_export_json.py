@@ -142,6 +142,25 @@ def test_json_export_compressed(sample_chunks, tmp_path):
     assert len(data) == 2
 
 
+def test_structured_json_exporter_compress_writes_gzip(sample_chunks, tmp_path):
+    """StructuredJSONExporter(compress=True) must produce a readable .gz file.
+
+    IFACE gzip.Path bug: the exporter called the nonexistent ``gzip.Path`` API,
+    so compress=True raised AttributeError. It must use gzip.open and round-trip.
+    """
+    from chunker.export.formats.json import StructuredJSONExporter
+
+    exporter = StructuredJSONExporter(compress=True)
+    output_path = tmp_path / "structured.json"
+    exporter.export(sample_chunks, [], output_path)
+
+    gz = Path(f"{output_path}.gz")
+    assert gz.exists(), "compress=True did not write the .gz file"
+    with gzip.open(gz, "rt", encoding="utf-8") as f:
+        data = json.load(f)
+    assert len(data["chunks"]) == 2
+
+
 def test_json_export_custom_indent(sample_chunks):
     """Test JSON export with custom indentation."""
     exporter = JSONExporter(SchemaType.FLAT)
