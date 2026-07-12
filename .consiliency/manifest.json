@@ -1,0 +1,236 @@
+{
+  "adoption": {
+    "adopted": true,
+    "adopted_scope": [
+      "layout",
+      "gates"
+    ],
+    "archetype": "library",
+    "contract_version": "0.3.0"
+  },
+  "contract_version": "0.3.0",
+  "declaration": {
+    "archetypes": [
+      "library"
+    ],
+    "mode": "archetyped",
+    "modifiers": [
+      "public"
+    ]
+  },
+  "documents": [
+    {
+      "class": "intent-ground",
+      "id": "adr-index",
+      "maturity": "presence-only",
+      "path": ".consiliency/docs/adr-index.md",
+      "required": true,
+      "target_level": "L0"
+    },
+    {
+      "class": "proj-code",
+      "id": "api-spec",
+      "maturity": "presence-only",
+      "path": ".consiliency/docs/api-spec.md",
+      "required": true,
+      "target_level": "L0"
+    },
+    {
+      "class": "intent-plan",
+      "id": "changelog",
+      "maturity": "presence-only",
+      "path": "CHANGELOG.md",
+      "required": true,
+      "target_level": "L0"
+    },
+    {
+      "class": "static",
+      "id": "code-of-conduct",
+      "maturity": "presence-only",
+      "path": ".consiliency/docs/code-of-conduct.md",
+      "required": true,
+      "target_level": "L0"
+    },
+    {
+      "class": "index",
+      "id": "codeowners",
+      "maturity": "presence-only",
+      "path": "CODEOWNERS",
+      "required": true,
+      "target_level": "L0"
+    },
+    {
+      "class": "index",
+      "id": "contract-version-status",
+      "maturity": "presence-only",
+      "path": ".consiliency/status.json",
+      "required": true,
+      "target_level": "L0"
+    },
+    {
+      "class": "static",
+      "id": "contributing",
+      "maturity": "presence-only",
+      "path": "CONTRIBUTING.md",
+      "required": true,
+      "target_level": "L0"
+    },
+    {
+      "class": "index",
+      "id": "dev-setup",
+      "maturity": "presence-only",
+      "path": ".consiliency/docs/dev-setup.md",
+      "required": true,
+      "target_level": "L0"
+    },
+    {
+      "class": "index",
+      "id": "doc-contract-index",
+      "maturity": "presence-only",
+      "path": ".consiliency/docs/doc-contract-index.md",
+      "required": true,
+      "target_level": "L0"
+    },
+    {
+      "class": "proj-S",
+      "id": "glossary",
+      "maturity": "presence-only",
+      "path": ".consiliency/docs/glossary.md",
+      "required": true,
+      "target_level": "L0"
+    },
+    {
+      "class": "index",
+      "id": "interface-declaration",
+      "maturity": "presence-only",
+      "path": ".consiliency/interfaces.json",
+      "required": true,
+      "target_level": "L0"
+    },
+    {
+      "class": "static",
+      "id": "license",
+      "maturity": "presence-only",
+      "path": "LICENSE",
+      "required": true,
+      "target_level": "L0"
+    },
+    {
+      "class": "index",
+      "id": "readme",
+      "maturity": "presence-only",
+      "path": "README.md",
+      "required": true,
+      "target_level": "L0"
+    },
+    {
+      "class": "intent-ground",
+      "id": "release-policy",
+      "maturity": "presence-only",
+      "path": ".consiliency/docs/release-policy.md",
+      "required": true,
+      "target_level": "L0"
+    },
+    {
+      "class": "proj-code",
+      "id": "sbom",
+      "maturity": "presence-only",
+      "path": ".consiliency/docs/sbom.md",
+      "required": true,
+      "target_level": "L0"
+    },
+    {
+      "class": "static",
+      "id": "security",
+      "maturity": "presence-only",
+      "path": ".consiliency/docs/security.md",
+      "required": true,
+      "target_level": "L0"
+    },
+    {
+      "class": "static",
+      "id": "support",
+      "maturity": "presence-only",
+      "path": ".consiliency/docs/support.md",
+      "required": true,
+      "target_level": "L0"
+    }
+  ],
+  "governed_set": [
+    {
+      "by": "path",
+      "value": ".consiliency/docs/adr-index.md"
+    },
+    {
+      "by": "path",
+      "value": ".consiliency/docs/api-spec.md"
+    },
+    {
+      "by": "path",
+      "value": "CHANGELOG.md"
+    },
+    {
+      "by": "path",
+      "value": ".consiliency/docs/code-of-conduct.md"
+    },
+    {
+      "by": "path",
+      "value": "CODEOWNERS"
+    },
+    {
+      "by": "path",
+      "value": ".consiliency/status.json"
+    },
+    {
+      "by": "path",
+      "value": "CONTRIBUTING.md"
+    },
+    {
+      "by": "path",
+      "value": ".consiliency/docs/dev-setup.md"
+    },
+    {
+      "by": "path",
+      "value": ".consiliency/docs/doc-contract-index.md"
+    },
+    {
+      "by": "path",
+      "value": ".consiliency/docs/glossary.md"
+    },
+    {
+      "by": "path",
+      "value": ".consiliency/interfaces.json"
+    },
+    {
+      "by": "path",
+      "value": "LICENSE"
+    },
+    {
+      "by": "path",
+      "value": "README.md"
+    },
+    {
+      "by": "path",
+      "value": ".consiliency/docs/release-policy.md"
+    },
+    {
+      "by": "path",
+      "value": ".consiliency/docs/sbom.md"
+    },
+    {
+      "by": "path",
+      "value": ".consiliency/docs/security.md"
+    },
+    {
+      "by": "path",
+      "value": ".consiliency/docs/support.md"
+    }
+  ],
+  "interfaces": ".consiliency/interfaces.json",
+  "repo": {
+    "default_branch": "main",
+    "display_name": "treesitter-chunker",
+    "id": "treesitter-chunker"
+  },
+  "schema": "consiliency.manifest.v1"
+}

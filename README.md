@@ -1,16 +1,72 @@
 # Tree-sitter Chunker
 
-A high-performance semantic code chunker that leverages [Tree-sitter](https://tree-sitter.github.io/) parsers to intelligently split source code into meaningful chunks like functions, classes, and methods.
-
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Tree-sitter](https://img.shields.io/badge/tree--sitter-latest-green.svg)](https://tree-sitter.github.io/)
 [![PyPI](https://img.shields.io/pypi/v/treesitter-chunker.svg)](https://pypi.org/project/treesitter-chunker/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Test Suite](https://github.com/ViperJuice/treesitter-chunker/actions/workflows/test.yml/badge.svg)](https://github.com/ViperJuice/treesitter-chunker/actions/workflows/test.yml)
-[![codecov](https://codecov.io/gh/ViperJuice/treesitter-chunker/branch/main/graph/badge.svg)](https://codecov.io/gh/ViperJuice/treesitter-chunker)
+[![Test Suite](https://github.com/Consiliency/treesitter-chunker/actions/workflows/test.yml/badge.svg)](https://github.com/Consiliency/treesitter-chunker/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/Consiliency/treesitter-chunker/branch/main/graph/badge.svg)](https://codecov.io/gh/Consiliency/treesitter-chunker)
 [![Platforms](https://img.shields.io/badge/platforms-Linux%20%7C%20macOS%20%7C%20Windows-blue.svg)]()
 
+**Splits big codebases into clean, meaningful pieces — whole functions and classes instead of arbitrary fragments — so AI tools and code search can actually work with them.**
+
+Before an AI assistant or a search engine can work with a large codebase, the code has to be broken into smaller pieces it can handle one at a time. The naive way is to cut every N lines — but that slices functions in half and scrambles the meaning. Tree-sitter Chunker cuts along the *natural seams* of the code instead: each piece is a complete function, class, or method that still makes sense on its own.
+
+## What it does, in one picture
+
+- **Naive splitting:** `chop every 50 lines` → half a function here, the tail of a class there. The AI sees nonsense.
+- **Tree-sitter Chunker:** `chop along real code structure` → one clean function per piece, one class per piece. The AI sees meaning.
+
+It knows the real structure because it uses [Tree-sitter](https://tree-sitter.github.io/) — a widely-used engine that reads source code the way a compiler does, understanding where each function and class actually begins and ends, across **36+ programming languages**.
+
+## Who it's for
+
+Developers and teams who feed code into AI tools or search systems and need the pieces to be clean and meaningful. Typical uses:
+
+- **AI coding assistants & "chat with your codebase"** — give the model complete, relevant pieces instead of scrambled fragments.
+- **Code search & retrieval (RAG)** — build a searchable index where each result is a whole, understandable unit of code.
+- **Code analysis at scale** — process entire repositories and map how the pieces connect.
+
+## What you get
+
+- **🧩 Structure-aware splitting** — pieces follow real code boundaries (functions, classes, methods), not line counts.
+- **🌍 36+ languages built in** — with 100+ more grammars downloaded automatically as needed.
+- **🔢 Fits your AI's context window** — optional token-aware mode packs pieces to a target size so they slot neatly into an LLM's limit.
+- **🗺️ Sees how code connects** — can map calls, symbols, and cross-references between pieces, not just isolate them.
+- **📤 Exports anywhere** — JSON, JSONL, Parquet, GraphML, or straight into PostgreSQL / Neo4j.
+- **🧰 Three ways to use it** — a command-line tool, a Python library, or a REST API.
+
+## See it in action
+
+Tree-sitter Chunker can also visualize how the pieces of a codebase relate:
+
+![Dependency visualization](examples/visualizations/dependencies.png)
+
+*(A full architecture diagram and end-to-end examples follow further down. A short before/after of chunking a real file — arbitrary slices vs. clean functions — would make a great addition here.)*
+
+## Quick start
+
+```bash
+pip install treesitter-chunker
+```
+
+```python
+from chunker import chunk_file
+
+# Break a source file into clean, meaningful pieces
+for chunk in chunk_file("app.py", "python"):
+    print(chunk.node_type, chunk.start_line, chunk.end_line)
+    # e.g.  function_definition  10  24
+```
+
+*(Full installation options, configuration, the REST API, and the graph model are documented below.)*
+
+---
+
+> Everything below is the existing developer reference (architecture, benchmarks, full feature list, API, security posture). It stays beneath this intro — ideally with the deepest sections eventually linked out to the [docs site](https://consiliency.github.io/treesitter-chunker/) so this page stays scannable.
+
 **PyPI Release Flow**: Published releases come from the GitHub release workflow, not from ordinary `main` CI runs. See `docs/packaging.md` and `docs/development/RELEASE_CHECKLIST.md`.
+
 
 ## 🏗️ Architecture Overview
 
@@ -274,7 +330,7 @@ sudo rpm -i python-treesitter-chunker-2.2.23-1.noarch.rpm
 
 ```bash
 # Clone the repository
-git clone https://github.com/ViperJuice/treesitter-chunker.git
+git clone https://github.com/Consiliency/treesitter-chunker.git
 cd treesitter-chunker
 
 # Install with uv (recommended)
@@ -712,8 +768,8 @@ cache = ASTCache(max_size=1000)
 ### Getting Help
 
 - **Documentation**: [Full documentation](https://treesitter-chunker.readthedocs.io/)
-- **Issues**: [GitHub Issues](https://github.com/ViperJuice/treesitter-chunker/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/ViperJuice/treesitter-chunker/discussions)
+- **Issues**: [GitHub Issues](https://github.com/Consiliency/treesitter-chunker/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/Consiliency/treesitter-chunker/discussions)
 - **Examples**: [Cookbook](docs/cookbook.md) with working examples
 
 ## 📚 API Overview
@@ -786,7 +842,7 @@ We welcome contributions! Tree-sitter Chunker is built by the community for the 
 
 ```bash
 # Clone and setup development environment
-git clone https://github.com/ViperJuice/treesitter-chunker.git
+git clone https://github.com/Consiliency/treesitter-chunker.git
 cd treesitter-chunker
 uv venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
@@ -808,8 +864,8 @@ mkdocs serve
 
 ### Getting Help
 
-- **Issues**: [GitHub Issues](https://github.com/ViperJuice/treesitter-chunker/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/ViperJuice/treesitter-chunker/discussions)
+- **Issues**: [GitHub Issues](https://github.com/Consiliency/treesitter-chunker/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/Consiliency/treesitter-chunker/discussions)
 - **Documentation**: [Contributing Guide](CONTRIBUTING.md)
 
 ## 🔐 Stable IDs & Spans

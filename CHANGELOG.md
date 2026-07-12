@@ -77,6 +77,19 @@ ViperJuice/greenfield#10, ViperJuice/semantic-lens#14, Consiliency/codegraph-de#
   separate maintainer release workflow.
 - Tracked residuals (not silent gaps) are in `docs/development/xfail-inventory.md`.
 
+## [3.2.2] - 2026-07-03
+
+### 🐛 Bug Fixes
+
+- **metadata**: Keep type annotation on TS/JS optional parameters (#87)
+
+
+
+### 📚 Documentation
+
+- **changelog**: Update for v3.2.1
+
+
 ## [3.2.1] - 2026-06-25
 
 ### ✨ Features
