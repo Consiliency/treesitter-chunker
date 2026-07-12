@@ -396,22 +396,15 @@ def _svelte_control_flow_chunks(source: bytes) -> list[CodeChunk]:
     return chunks
 
 
-def _walk(
-    node: Node,
-    source: bytes,
-    language: str,
-    parent_ctx: str | None = None,
-    parent_chunk: CodeChunk | None = None,
-    extractor=None,
-    analyzer=None,
-    parent_route: list[str] | None = None,
-    parent_qualified_route: list[str] | None = None,
-    depth: int = 0,
-) -> list[CodeChunk]:
-    """Walk the AST and extract chunks based on language configuration."""
-    if depth >= 900:
-        raise RecursionError("chunk tree exceeds safe traversal depth")
-    # Get language configuration
+def resolve_chunk_predicates(language: str):
+    """Return ``(should_chunk, should_ignore)`` predicates for a language.
+
+    This is the single source of truth for WHICH node types are chunkable per
+    language, derived from ``language_config_registry`` with the same
+    per-language adjustments (Go/Clojure/Dart/C# fallback) that ``_walk`` used
+    inline. The streaming walker imports this so it selects an identical node
+    set without re-parsing or materializing the full chunk list.
+    """
     config = language_config_registry.get(language)
     if not config:
         # Fallback to hardcoded defaults for backward compatibility
@@ -441,48 +434,71 @@ def _walk(
         def should_ignore(_node_type: str) -> bool:
             return False
 
-    else:
-        should_chunk = config.should_chunk_node
-        should_ignore = config.should_ignore_node  # type: ignore[assignment]
-        # Go: ensure common declaration node types are chunked even if rules are minimal
-        if language == "go":
-            go_decl_like = {
-                "function_declaration",
-                "method_declaration",
-                "type_declaration",
-                "type_spec",
-                "const_declaration",
-                "var_declaration",
-            }
+        return should_chunk, should_ignore
 
-            def should_chunk(node_type: str) -> bool:  # type: ignore[no-redef]
-                return config.should_chunk_node(node_type) or node_type in go_decl_like
+    should_chunk = config.should_chunk_node
+    should_ignore = config.should_ignore_node
+    # Go: ensure common declaration node types are chunked even if rules are minimal
+    if language == "go":
+        go_decl_like = {
+            "function_declaration",
+            "method_declaration",
+            "type_declaration",
+            "type_spec",
+            "const_declaration",
+            "var_declaration",
+        }
 
-        # For LISPy languages like Clojure, treat top-level list forms as chunks
-        if language == "clojure":
+        def should_chunk(node_type: str) -> bool:  # type: ignore[no-redef]
+            return config.should_chunk_node(node_type) or node_type in go_decl_like
 
-            def should_chunk(node_type: str) -> bool:  # type: ignore[no-redef]
-                return node_type == "list_lit" or config.should_chunk_node(node_type)
+    # For LISPy languages like Clojure, treat top-level list forms as chunks
+    if language == "clojure":
 
-        # For Dart, the grammar exposes separate signature/body nodes. Treat
-        # signatures as declarations for chunking.
-        elif language == "dart":
-            dart_signature_types = {
-                "function_signature",
-                "method_signature",
-                "getter_signature",
-                "setter_signature",
-                "constructor_signature",
-                "factory_constructor_signature",
-            }
-            dart_extra_decl_like = {"class_definition", "type_alias"}
+        def should_chunk(node_type: str) -> bool:  # type: ignore[no-redef]
+            return node_type == "list_lit" or config.should_chunk_node(node_type)
 
-            def should_chunk(node_type: str) -> bool:  # type: ignore[no-redef]
-                return (
-                    config.should_chunk_node(node_type)
-                    or node_type in dart_signature_types
-                    or node_type in dart_extra_decl_like
-                )
+    # For Dart, the grammar exposes separate signature/body nodes. Treat
+    # signatures as declarations for chunking.
+    elif language == "dart":
+        dart_signature_types = {
+            "function_signature",
+            "method_signature",
+            "getter_signature",
+            "setter_signature",
+            "constructor_signature",
+            "factory_constructor_signature",
+        }
+        dart_extra_decl_like = {"class_definition", "type_alias"}
+
+        def should_chunk(node_type: str) -> bool:  # type: ignore[no-redef]
+            return (
+                config.should_chunk_node(node_type)
+                or node_type in dart_signature_types
+                or node_type in dart_extra_decl_like
+            )
+
+    return should_chunk, should_ignore
+
+
+def _walk(
+    node: Node,
+    source: bytes,
+    language: str,
+    parent_ctx: str | None = None,
+    parent_chunk: CodeChunk | None = None,
+    extractor=None,
+    analyzer=None,
+    parent_route: list[str] | None = None,
+    parent_qualified_route: list[str] | None = None,
+    depth: int = 0,
+) -> list[CodeChunk]:
+    """Walk the AST and extract chunks based on language configuration."""
+    if depth >= 900:
+        raise RecursionError("chunk tree exceeds safe traversal depth")
+    # Get language configuration + the chunk/ignore predicates (shared with the
+    # streaming walker so streaming selects the SAME per-language node types).
+    should_chunk, should_ignore = resolve_chunk_predicates(language)
 
     chunks: list[CodeChunk] = []
     is_svelte_root = language == "svelte" and node.type in {"document", "source_file"}

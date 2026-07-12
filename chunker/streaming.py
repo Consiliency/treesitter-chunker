@@ -1,10 +1,16 @@
 """Streaming support for large file processing.
 
-This module enables processing of files larger than available memory
-by streaming chunks as they are parsed rather than loading everything.
+Streams ``CodeChunk`` objects from a file without materializing the full chunk
+list. The lazy memory-mapped traversal yields each chunk as its node is visited
+(so a >100MB file never holds all chunks in memory at once). Chunk *selection* —
+which node types are chunkable — is delegated to the shared
+``core.resolve_chunk_predicates`` so every language is chunked exactly as
+non-streaming ``core.chunk_file`` would be. The module no longer hardcodes the
+three Python node types (which silently yielded nothing for Rust/Go/JS/Java and
+every other non-Python language).
 
 Classes:
-    StreamingChunker: Process large files using memory-mapped I/O.
+    StreamingChunker: Stream chunks from a file using memory-mapped I/O.
     FileMetadata: Metadata about a processed file.
 
 Functions:
@@ -21,7 +27,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from .core import _build_retrieval_metadata, _extract_definition_name
+from .core import (
+    _build_retrieval_metadata,
+    _extract_definition_name,
+    resolve_chunk_predicates,
+)
 from .parser import get_parser
 from .types import CodeChunk, compute_node_id
 
@@ -67,7 +77,16 @@ def get_file_metadata(file_path: Path | str) -> FileMetadata:
 
 
 class StreamingChunker:
-    """Process large files using memory-mapped I/O for efficient streaming."""
+    """Stream chunks from a file, yielding each as its node is visited.
+
+    The former hand-rolled traversal hardcoded the three Python node types
+    (``function_definition``/``class_definition``/``method_definition``), so
+    streaming any other language silently yielded nothing. The traversal stays
+    lazy (one chunk in flight at a time, memory-mapped source), but the
+    chunkable-node predicate is now derived per-language from
+    ``core.resolve_chunk_predicates`` — identical selection to non-streaming
+    ``chunk_file`` (Python parity preserved; Rust/Go/JS/… now yield real chunks).
+    """
 
     def __init__(self, language: str):
         self.language = language
@@ -82,28 +101,31 @@ class StreamingChunker:
     def _walk_streaming(
         self,
         node: Node,
-        mmap_data: mmap.mmap,
+        mmap_data,
         file_path: str,
         parent_ctx: str | None = None,
         parent_chunk: CodeChunk | None = None,
         parent_route: list[str] | None = None,
         parent_qualified_route: list[str] | None = None,
         include_retrieval_metadata: bool = False,
+        should_chunk=None,
     ) -> Iterator[CodeChunk]:
+        """Yield chunks as they're found without building a full list in memory.
+
+        ``mmap_data`` is the byte buffer ``node`` was parsed from (an ``mmap`` or
+        a ``bytes`` object — ``vfs_chunker`` calls this directly as
+        ``chunker._walk_streaming(root, content, path)``). ``should_chunk`` is
+        the per-language predicate; it is resolved once at the top of the walk
+        and threaded through the recursion so selection matches ``chunk_file``.
         """
-        Yield chunks as they're found without building full list in memory.
-        """
-        chunk_types = {
-            "function_definition",
-            "class_definition",
-            "method_definition",
-        }
+        if should_chunk is None:
+            should_chunk, _ = resolve_chunk_predicates(self.language)
 
         parent_route = (parent_route or []).copy()
         parent_qualified_route = (parent_qualified_route or []).copy()
 
-        if node.type in chunk_types:
-            # Extract content from memory-mapped data
+        if should_chunk(node.type):
+            # Extract content from the memory-mapped (or bytes) source.
             text = mmap_data[node.start_byte : node.end_byte].decode(
                 "utf-8",
                 errors="replace",
@@ -130,7 +152,8 @@ class StreamingChunker:
                 parent_route=current_route,
                 qualified_route=current_qualified_route,
             )
-            # Ensure node_id reflects file path
+            # Ensure node_id reflects the real file path (streaming ids stay
+            # byte-identical to chunk_file — the test_spans_roundtrip contract).
             chunk.node_id = compute_node_id(
                 file_path,
                 chunk.language,
@@ -142,6 +165,9 @@ class StreamingChunker:
             if include_retrieval_metadata:
                 chunk.metadata = _build_retrieval_metadata(chunk)
             yield chunk
+            # Pre-order: this chunk is the parent of its own descendants, so
+            # parent links are resolved in a single pass (no second materialized
+            # pass needed).
             parent_ctx = node.type
             parent_chunk = chunk
             parent_route = current_route
@@ -157,6 +183,7 @@ class StreamingChunker:
                 parent_route,
                 parent_qualified_route,
                 include_retrieval_metadata,
+                should_chunk,
             )
 
     def chunk_file_streaming(
@@ -164,11 +191,17 @@ class StreamingChunker:
         path: Path,
         include_retrieval_metadata: bool = False,
     ) -> Iterator[CodeChunk]:
-        """Stream chunks from a file using memory-mapped I/O."""
+        """Stream chunks from a file using memory-mapped I/O.
+
+        Unknown/unsupported languages raise ``LanguageNotFoundError`` (from the
+        thread-local ``get_parser`` via ``self.parser``) — an explicit error,
+        never a silent empty result.
+        """
         # Check if file is empty
         if path.stat().st_size == 0:
             return
 
+        should_chunk, _ = resolve_chunk_predicates(self.language)
         with (
             Path(path).open("rb") as f,
             mmap.mmap(
@@ -184,6 +217,7 @@ class StreamingChunker:
                 mmap_data,
                 str(path),
                 include_retrieval_metadata=include_retrieval_metadata,
+                should_chunk=should_chunk,
             )
 
 
