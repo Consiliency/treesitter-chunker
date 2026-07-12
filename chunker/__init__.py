@@ -83,7 +83,7 @@ except ImportError:
     # Fallback when package metadata is unavailable (editable import without an
     # installed dist). Must match pyproject.toml `version` — the single source of
     # truth — so an uninstalled import does not report a stale version (IFACE).
-    __version__ = "3.2.2"
+    __version__ = "4.0.0"
 
 
 # Simple text chunking

@@ -5,12 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — v3.2.2 remediation
+## [4.0.0] — v3.2.2 remediation
 
 A comprehensive correctness/security/determinism remediation driven by the
 `CODE_REVIEW_v3.2.2.md` cross-vendor board review. All CRITICAL (C1–C7) and
 MAJOR findings are fixed; see `docs/development/traceability-matrix.md` for the
 finding→phase→test mapping.
+
+**Major version bump (3.2.2 → 4.0.0):** the chunk-identity recomputation and the
+Boundary IR byte-output change are backward-incompatible for any consumer that
+persists `chunk_id`/`node_id`/`definition_id` or asserts Boundary-IR
+byte-reproducibility. Bumping to 4.0.0 (not 3.x) makes the `>=3.1.0,<4` pins in
+downstream consumers (Code-Index-MCP, greenfield) *protective* — they will not
+silently pull the break — and trips `spec`'s exact-version guard. Downstream
+impact filed: Consiliency/spec#105, ViperJuice/Code-Index-MCP#76,
+ViperJuice/greenfield#10, ViperJuice/semantic-lens#14, Consiliency/codegraph-de#21.
 
 ### ⚠️ BREAKING
 
@@ -63,9 +72,9 @@ finding→phase→test mapping.
 
 ### 📝 Notes
 
-- Version bump + tag are intentionally left for the maintainer (see
-  `docs/development/traceability-matrix.md`; the semver-correct bump given the
-  breaking ID change is at least a minor, arguably a major).
+- Version bumped to **4.0.0** (from 3.2.2) — major, per the breaking
+  chunk-identity + Boundary-IR change. The git tag / PyPI publish remains the
+  separate maintainer release workflow.
 - Tracked residuals (not silent gaps) are in `docs/development/xfail-inventory.md`.
 
 ## [3.2.1] - 2026-06-25
