@@ -293,23 +293,24 @@ def process_file(
     max_size: int | None = None,
 ) -> list[dict[str, Any]]:
     """Process a single file_path and return chunks."""
-    # Auto-detect language if not specified
+    # Auto-detect language if not specified. Use the ONE canonical
+    # extension→language map (ZeroConfigAPI.EXTENSION_MAP) shared by the API and
+    # exporters, rather than a divergent CLI-local copy — the old inline map
+    # mis-resolved `.ts` to "javascript" (it is "typescript") and covered only
+    # 10 extensions (IFACE: single shared detection map).
     if not language:
-        ext_map = {
-            ".py": "python",
-            ".js": "javascript",
-            ".ts": "javascript",
-            ".c": "c",
-            ".h": "c",
-            ".cpp": "cpp",
-            ".cc": "cpp",
-            ".cxx": "cpp",
-            ".hpp": "cpp",
-            ".rs": "rust",
-        }
+        from chunker.auto import ZeroConfigAPI
+
         ext = file_path.suffix.lower()
-        language = ext_map.get(ext)
+        language = ZeroConfigAPI.EXTENSION_MAP.get(ext)
         if not language:
+            # Unknown extension: WARN rather than silently returning [] (which
+            # reads as "file has no chunks" and hides the real cause).
+            print(
+                f"warning: no language mapping for extension {ext or '(none)'!r} "
+                f"({file_path}); skipping. Pass --language to override.",
+                file=sys.stderr,
+            )
             return []
 
     try:
