@@ -83,9 +83,16 @@ class StreamingChunker:
     (``function_definition``/``class_definition``/``method_definition``), so
     streaming any other language silently yielded nothing. The traversal stays
     lazy (one chunk in flight at a time, memory-mapped source), but the
-    chunkable-node predicate is now derived per-language from
-    ``core.resolve_chunk_predicates`` — identical selection to non-streaming
-    ``chunk_file`` (Python parity preserved; Rust/Go/JS/… now yield real chunks).
+    chunkable-node PREDICATE is now derived per-language from
+    ``core.resolve_chunk_predicates``. For mainstream languages
+    (Python/Go/Rust/JS/TS/Java/C/C++/Ruby/C#) the selected node set matches
+    non-streaming ``chunk_file`` exactly (spans + ids). Streaming does NOT yet
+    replicate ``_walk``'s per-language span ADJUSTMENTS — Dart signature→body
+    merge, R ``setClass`` force-chunk, Elixir ``call`` reinterpretation, Svelte
+    control-flow — so for those four languages a streamed chunk's node_type/span
+    (and therefore node_id) can differ from ``chunk_file``. This is a strict
+    improvement over the prior silent-empty output and is tracked in
+    ``docs/development/xfail-inventory.md`` (SCALE follow-up).
     """
 
     def __init__(self, language: str):

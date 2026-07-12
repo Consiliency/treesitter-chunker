@@ -123,8 +123,14 @@ class ParallelChunker:
                         results[path] = []
             except FutureTimeout:
                 # The wall-clock deadline elapsed while waiting on a worker that
-                # never completed. Cancel everything still outstanding, record it
-                # as a timeout, and stop waiting instead of blocking the pool.
+                # never completed. We ABANDON it — record a timeout and stop
+                # waiting so the CALL returns within budget. Note: a future that
+                # is already running cannot truly be cancelled, and shutdown()
+                # below does not join/kill the OS child, so a genuinely hung
+                # worker process is orphaned (it exits on its own or with the
+                # interpreter), not force-killed. That is the ProcessPoolExecutor
+                # limitation; the contract here is "the caller is unblocked",
+                # not "the child is terminated".
                 for outstanding, pending_path in future_to_path.items():
                     if not outstanding.done():
                         outstanding.cancel()

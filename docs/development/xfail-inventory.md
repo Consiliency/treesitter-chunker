@@ -117,3 +117,29 @@ fix). Verified real by direct probe/inspection on 2026-07-11.
    this fallback prefix-scan is a separate, lower-severity performance residual.
    Fix direction: carry a running byte cursor (the `TextPositionIndex` already
    built) instead of re-summing prefixes.
+
+## SCALE follow-up: streaming special-case node adjustments (panel-found, tracked)
+
+SL-2 made `chunker/streaming.py` derive its chunkable-node PREDICATE per-language
+from the shared `core.resolve_chunk_predicates`, so streaming now matches
+non-streaming `chunk_file` node selection for mainstream languages
+(Python/Go/Rust/JS/TS/Java/C/C++/Ruby/C#) — spans and ids identical (proven by
+`tests/test_spans_roundtrip.py` + `tests/test_streaming_languages.py`).
+
+What streaming does NOT yet replicate (Fable SCALE panel finding): `core._walk`'s
+per-language span/node-type ADJUSTMENTS applied AFTER selection —
+- Dart: `*_signature` → `*_declaration` rename + signature+body span merge
+  (streamed chunk is `method_signature` bytes 14–35; `chunk_file` is
+  `method_declaration` bytes 14–59, so node_type/byte_end/node_id differ).
+- R: `setClass`/`setMethod`/`setGeneric` `call` force-chunk.
+- Elixir: `call` reinterpretation.
+- Svelte: control-flow chunk synthesis.
+
+For these four languages a STREAMED chunk's node_type/span (hence node_id) can
+diverge from `chunk_file`. This is a strict improvement over the prior
+silent-empty streaming output (which yielded NOTHING for any non-Python
+language), not a regression. Fix direction: factor `_walk`'s post-selection
+adjustment pass into a shared helper (like `resolve_chunk_predicates`) and apply
+it in the streaming walk, OR route these four languages' streaming through
+`core.chunk_file`. Not blocking: mainstream-language streaming is exact, and the
+divergence never drops chunks — it only changes span granularity for 4 langs.
