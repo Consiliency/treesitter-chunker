@@ -84,26 +84,19 @@ except ImportError:
 
 
 # Simple text chunking
-def chunk_text(text: str, language: str, **kwargs):
-    """Chunk text content directly without file I/O."""
-    import tempfile
-    from pathlib import Path
+def chunk_text(text: str, language: str, file_path: str = "", **kwargs):
+    """Chunk text content directly, in memory (no temp-file round-trip).
 
-    # Write to temporary file and chunk it
-    with tempfile.NamedTemporaryFile(
-        encoding="utf-8",
-        mode="w",
-        suffix=".tmp",
-        delete=False,
-    ) as f:
-        f.write(text)
-        temp_path = f.name
+    Delegates to ``core.chunk_text``, which parses ``text`` directly. The former
+    implementation wrote ``text`` to a randomly-named temporary file and chunked
+    that path, which (a) did needless disk I/O and (b) made the returned
+    ``node_id``/``chunk_id`` NONDETERMINISTIC across calls, because the temp
+    file name fed ``compute_node_id`` (IFACE). Passing an explicit ``file_path``
+    (default ``""``) makes identities stable and reproducible.
+    """
+    from .core import chunk_text as _core_chunk_text
 
-    try:
-        chunks = chunk_file(temp_path, language, **kwargs)
-        return chunks
-    finally:
-        Path(temp_path).unlink(missing_ok=True)
+    return _core_chunk_text(text, language, file_path=file_path, **kwargs)
 
 
 # Convenient exports for common use cases
