@@ -62,29 +62,41 @@ class LineBasedChunker(FallbackChunker):
             header = lines[0]
             data_start = 1
         lines_per_chunk = lines_per_chunk or self.config.chunk_size
+        # Running CHAR cursor over the source so each chunk's byte span is
+        # derived in O(1), not by re-summing every preceding line (was O(n^2)).
+        char_cursor = sum(len(line) for line in lines[:data_start])
         for i in range(data_start, len(lines), lines_per_chunk):
-            chunk_lines = []
-            if include_header and header and i > data_start:
-                chunk_lines.append(header)
             chunk_end = min(i + lines_per_chunk, len(lines))
-            chunk_lines.extend(lines[i:chunk_end])
-            chunk_content = "".join(chunk_lines)
+            # Content is the CONTIGUOUS data-row slice only. The CSV header is
+            # NOT prepended into content — doing so made content non-contiguous
+            # so byte_start:byte_end (which covers the data rows) no longer
+            # sliced back to content (README universal slice-back contract,
+            # incl. fallback chunks). The header is preserved out-of-band in
+            # metadata + parent_context so retrieval still has it.
+            chunk_content = "".join(lines[i:chunk_end])
             start_line = i + 1
             end_line = chunk_end
+            metadata: dict = {}
+            parent_context = f"csv_rows_{start_line}_{end_line}"
+            if include_header and header:
+                metadata["csv_header"] = header.rstrip("\n")
+                parent_context = f"csv_header={header.rstrip()};rows_{start_line}_{end_line}"
             chunk = CodeChunk(
                 language="csv",
                 file_path=self.file_path or "",
                 node_type="csv_chunk",
                 start_line=start_line,
                 end_line=end_line,
-                byte_start=offsets.byte_offset(sum(len(line) for line in lines[:i])),
+                byte_start=offsets.byte_offset(char_cursor),
                 byte_end=offsets.byte_offset(
-                    sum(len(line) for line in lines[:chunk_end])
+                    char_cursor + len(chunk_content)
                 ),
-                parent_context=f"csv_rows_{start_line}_{end_line}",
+                parent_context=parent_context,
                 content=chunk_content,
+                metadata=metadata,
             )
             chunks.append(chunk)
+            char_cursor += len(chunk_content)
         return chunks
 
     def chunk_config(

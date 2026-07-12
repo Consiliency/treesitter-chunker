@@ -75,15 +75,15 @@ signature is semantic-resolution work owned by **COREFIX** (the roadmap defers a
 semantic resolver). Clearing owner: COREFIX. This does NOT drop chunks and does NOT leave
 edges pointing at non-nodes for resolvable references.
 
-## COREFIX follow-up: fallback-path residuals (panel-found, tracked)
+## COREFIX follow-up: fallback-path residuals — **RESOLVED at v4.0.0 release**
 
 The COREFIX iteration-3 merge panel (codex red-team leg) surfaced three real,
-PRE-EXISTING defects in the fallback / identity paths. They are OUTSIDE the
-class-split contract fix that was the merge subject (which all four panel legs
-confirmed correct) and outside COREFIX's stated acceptance-criteria tests (all
-passing). They are tracked here for a dedicated follow-up (candidate: fold into
-SCALE, which already touches identity-keyed maps and fallback, or a RELEASE-gate
-fix). Verified real by direct probe/inspection on 2026-07-11.
+PRE-EXISTING defects in the fallback / identity paths. All three were **FIXED
+before the v4.0.0 publish** (the final release CR re-raised the CSV slice-back as
+a contract-consistency concern — same byte-span contract COREFIX fixed for
+class-splits). Regression coverage in `tests/test_fallback_residuals_fixed.py`;
+CI smoke gate (401 passed) confirms the normal-chunk path is unaffected. Details
+below (kept for provenance):
 
 1. **Fallback `definition_id` collision (identity contract).**
    `chunker/core.py:1171` assigns fallback chunks

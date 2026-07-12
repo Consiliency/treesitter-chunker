@@ -176,6 +176,12 @@ class FallbackChunker(IFallbackChunker):
         """
         lines = content.splitlines(keepends=True)
         offsets = TextPositionIndex(content)
+        # Precompute prefix char-offsets ONCE so each chunk's start is an O(1)
+        # lookup instead of re-summing every preceding line per chunk (was
+        # O(n^2) over the line count). prefix[k] = chars before line k.
+        prefix = [0] * (len(lines) + 1)
+        for k, line in enumerate(lines):
+            prefix[k + 1] = prefix[k] + len(line)
         chunks = []
         i = 0
         while i < len(lines):
@@ -183,7 +189,7 @@ class FallbackChunker(IFallbackChunker):
             end_idx = min(i + lines_per_chunk, len(lines))
             chunk_lines = lines[start_idx:end_idx]
             chunk_content = "".join(chunk_lines)
-            char_start = sum(len(line) for line in lines[:start_idx])
+            char_start = prefix[start_idx]
             byte_start = offsets.byte_offset(char_start)
             byte_end = offsets.byte_offset(char_start + len(chunk_content))
             chunk = CodeChunk(

@@ -1161,40 +1161,34 @@ def chunk_text(
 
         chunks = SlidingWindowFallback().chunk_text(text, file_path)
 
+    def _effective_route(c: CodeChunk) -> list[str]:
+        # Fallback chunks (line/window/csv) carry NO qualified/parent route, so a
+        # route-only definition_id would be identical for every chunk in the file
+        # and incremental MODIFIED classification (which keys on definition_id)
+        # would collapse them all into one — dropping chunks. Seed a synthetic,
+        # position-based route for routeless chunks so each is distinct while
+        # staying stable under in-place edits that don't move its start line.
+        route = c.qualified_route or c.parent_route
+        if route:
+            return route
+        return [f"{c.node_type or 'chunk'}@L{c.start_line}"]
+
     # Build mapping from temporary IDs (no path) to final IDs (with path)
     tmp_to_final: dict[str, str] = {}
     for c in chunks:
-        tmp_id = compute_node_id(
-            "",
-            c.language,
-            c.qualified_route or c.parent_route,
-            c.byte_start,
-            c.content,
-        )
-        final_id = compute_node_id(
-            file_path,
-            c.language,
-            c.qualified_route or c.parent_route,
-            c.byte_start,
-            c.content,
-        )
+        route = _effective_route(c)
+        tmp_id = compute_node_id("", c.language, route, c.byte_start, c.content)
+        final_id = compute_node_id(file_path, c.language, route, c.byte_start, c.content)
         tmp_to_final[tmp_id] = final_id
 
     for c in chunks:
+        route = _effective_route(c)
         c.file_path = file_path
         # update file/node ids now that path is known
         c.file_id = compute_file_id(file_path)
-        c.definition_id = compute_definition_id(
-            file_path,
-            c.language,
-            c.qualified_route or c.parent_route,
-        )
+        c.definition_id = compute_definition_id(file_path, c.language, route)
         c.node_id = compute_node_id(
-            file_path,
-            c.language,
-            c.qualified_route or c.parent_route,
-            c.byte_start,
-            c.content,
+            file_path, c.language, route, c.byte_start, c.content
         )
         c.chunk_id = c.node_id
         # fix parent id if it was set using temporary id
