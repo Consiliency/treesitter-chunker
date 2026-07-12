@@ -40,7 +40,6 @@ class TreeSitterSmartContextProvider(SmartContextProvider):
         # (request, candidate) pair -- turns repeated O(n^2) extraction into
         # O(n) amortized (COREFIX).
         self._feature_cache: dict[str, dict[str, Any]] = {}
-        self._parsers = {}
 
     def get_semantic_context(
         self,
@@ -642,10 +641,14 @@ class TreeSitterSmartContextProvider(SmartContextProvider):
             return []
 
     def _get_parser(self, language: str):
-        """Get a cached parser for the language."""
-        if language not in self._parsers:
-            self._parsers[language] = get_parser(language)
-        return self._parsers[language]
+        """Return the calling thread's parser for the language.
+
+        Delegates to the thread-local ``get_parser`` (IF-0-PARSER-1) on every
+        call rather than caching one Parser in a shared instance dict — a
+        SmartContextProvider shared across threads must never hand one Parser to
+        two threads (the shared-parser segfault class SCALE closes).
+        """
+        return get_parser(language)
 
 
 class RelevanceContextStrategy(ContextStrategy):

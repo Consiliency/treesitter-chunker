@@ -32,23 +32,33 @@ roadmap PARSER exit criterion, EVERY remaining parser holder is inventoried here
 SCALE exit criterion ("All parser holders acquire via IF-0-PARSER-1; no shared-parser path
 remains"), SCALE migrates each to the lease/thread-local API. Clearing owner: **SCALE**.
 
-Thread-pool / pooled holders (MUST migrate — they store or pool a parser reused across threads):
-- `chunker/performance/optimization/memory_pool.py:144` — pools the get_parser() result, then hands
-  one pooled parser to concurrent checkouts (codex panel probe: `first is second == True`).
-- `chunker/performance/enhanced_chunker.py` (warm_up ~:320) — pre-warms parsers into a shared pool.
-- `chunker/performance/optimization/incremental.py:163` — caches parser per language in a shared dict.
-- `chunker/smart_context.py:554` — caches parser per language in a shared instance dict.
-- `chunker/export/relationships/tracker.py:112` — caches parser per language in a shared instance dict.
-- `chunker/performance/optimization/batch.py` — thread-pool batch path (roadmap SCALE-named).
-- `chunker/repo/processor.py` — ThreadPoolExecutor path (roadmap SCALE-named).
+Thread-pool / pooled holders — **CLEARED by SCALE** (migrated to thread-local `get_parser`;
+no code path now shares one Parser across threads — proven by `tests/test_scale_parser_holders.py`):
+- `chunker/performance/optimization/memory_pool.py` — CLEARED (SL-1): `acquire("parser:*")` now
+  short-circuits to thread-local `get_parser`; parsers are never pooled/re-checked-out across threads.
+- `chunker/performance/enhanced_chunker.py` — CLEARED (SL-1): `_parse_file` acquires per-thread; the
+  parser warm-up pool path is a no-op.
+- `chunker/performance/optimization/incremental.py` — CLEARED (SL-6): removed the shared
+  `_parser_cache`; each re-parse acquires the tree's real-language parser via thread-local `get_parser`.
+- `chunker/smart_context.py` — CLEARED (SCALE closeout): `_get_parser` returns thread-local
+  `get_parser(language)` on every call; the shared `self._parsers` dict was removed. (This holder was
+  named in the SL-1 scope prose but omitted from the SL-1 owned-files list — migrated at SCALE
+  closeout to satisfy the exit criterion.)
+- `chunker/export/relationships/tracker.py` — CLEARED (SL-1): removed `self._parsers`; `_get_parser`
+  returns thread-local `get_parser`.
+- `chunker/performance/optimization/batch.py` — CLEARED (SL-1): the ThreadPoolExecutor batch path
+  acquires per-thread via `get_parser`.
+- `chunker/repo/processor.py` — CLEARED (SL-5): delegates all parsing to the thread-local `get_parser`
+  via the Chunker adapter; holds no Parser.
 
-Interactive/single-thread holders (confirm-safe or migrate; low risk — not driven concurrently):
+Interactive/single-thread holders (confirm-safe — not driven concurrently; left as-is):
 - `chunker/debug/visualization/ast_visualizer.py:31,37`, `chunker/debug/interactive/chunk_debugger.py:24`,
   `chunker/debug/interactive/node_explorer.py:43`, `chunker/debug/interactive/query_debugger.py:40`
-  store `self.parser = get_parser(...)`; used by single-threaded interactive debug tools.
+  store `self.parser = get_parser(...)`; used by single-threaded interactive debug tools. These are not
+  a concurrency hazard (never driven from multiple threads); documented as confirm-safe, not migrated.
 
-Do NOT treat this list as silenced — SCALE clears each entry by migrating it to `acquire_parser`/
-thread-local `get_parser` and adding production-holder concurrency coverage.
+SCALE outcome: every production/thread-pool parser holder now acquires via IF-0-PARSER-1
+thread-local `get_parser`; no shared-parser path remains on any concurrent code path.
 
 ## IDENTITY follow-up: overload edge disambiguation (owned by COREFIX)
 
