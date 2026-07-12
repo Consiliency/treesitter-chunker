@@ -143,3 +143,34 @@ adjustment pass into a shared helper (like `resolve_chunk_predicates`) and apply
 it in the streaming walk, OR route these four languages' streaming through
 `core.chunk_file`. Not blocking: mainstream-language streaming is exact, and the
 divergence never drops chunks — it only changes span granularity for 4 langs.
+
+## IFACE residual: CLI-stack + parquet-exporter consolidation (internal, low-risk)
+
+IFACE closed 4 of its 6 exit criteria with tests — the ones with downstream
+consumer impact or correctness bugs:
+- shared detection map (`.ts`→typescript everywhere; unknown-ext warns) — DONE.
+- gzip.Path→gzip.open so `compress=True` works — DONE + tested.
+- public `chunk_text` in-memory (deterministic node_ids, no temp round-trip) — DONE + tested.
+- version single-sourced (pyproject 3.2.2; `__init__` fallback + `_version.py` corrected) — DONE + tested.
+
+Two exit criteria remain as tracked INTERNAL refactors — the sister-repo scan
+proved NO external consumer invokes either CLI stack (`cli/` or `chunker/cli/`)
+or imports `chunker.exporters.parquet` (only `tests/test_parquet_export.py`
+does), so these are cosmetic-consolidation, not correctness or compatibility:
+
+1. **CLI stack consolidation.** Two stacks coexist: `cli/` (main.py + repo/setup/
+   debug commands) and `chunker/cli/` (grammar/cluster/symbol commands, the
+   packaged `__main__`). The exit criterion wants one to own grammar-management/
+   resolution-mode defaults/flag conventions and the other to thinly delegate.
+   Deferred because it is a pure internal refactor with real regression surface
+   and zero external blast radius; safest as its own focused change with the CLI
+   integration tests run, not rushed. Any `-o` / `--resolution-mode` default
+   divergence should be reconciled there.
+2. **Parquet exporter split.** `chunker/exporters/parquet.py` (`ParquetExporter`,
+   standalone chunks-only, columns/partition_by) vs
+   `chunker/export/formats/parquet.py` (`StructuredExporter` subclass, chunks +
+   relationships). They serve different shapes; "resolving" the split means
+   picking one schema authority or a shared schema helper. Deferred: only the
+   test imports the standalone one; the framework one is the registered format.
+
+Neither blocks RELEASE correctness; both are follow-up hygiene.
