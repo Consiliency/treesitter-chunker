@@ -37,8 +37,14 @@ _LINE = re.compile(r":\d+:")
 
 
 def _signature(line: str) -> str:
-    """Strip line/column numbers so a signature is stable across unrelated edits."""
-    return _LINE.sub(":", _LINECOL.sub(":", line)).strip()
+    """Strip line/column numbers so a signature is stable across unrelated edits.
+
+    Path separators are normalized to ``/`` so a signature is also stable across
+    platforms: mypy emits ``chunker\\foo.py`` on Windows but ``chunker/foo.py``
+    on Linux, and the baseline is generated on Linux — without this the gate
+    would flag EVERY baseline signature as "new" on Windows.
+    """
+    return _LINE.sub(":", _LINECOL.sub(":", line)).strip().replace("\\", "/")
 
 
 def _run_mypy() -> list[str]:
