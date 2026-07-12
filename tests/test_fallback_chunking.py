@@ -314,6 +314,12 @@ class TestFallbackManager:
         with tempfile.NamedTemporaryFile(
             encoding="utf-8",
             mode="w",
+            # newline="" disables the platform newline translation so the file
+            # on disk is LF (not CRLF on Windows). The chunker's byte offsets are
+            # relative to the newline-normalized content it reads, so the raw
+            # file bytes must also be LF for the slice-back assertion below to
+            # hold cross-platform.
+            newline="",
             suffix=".csv",
             delete=False,
         ) as f:
