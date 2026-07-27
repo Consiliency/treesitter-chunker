@@ -24,7 +24,7 @@ jobs:
             platform: ubuntu-latest
             platform-family: linux
           - python-version: '3.11'
-            platform: windows-latest
+            platform: blacksmith-4vcpu-windows-2025
             platform-family: windows
           - python-version: '3.11'
             platform: macos-latest
