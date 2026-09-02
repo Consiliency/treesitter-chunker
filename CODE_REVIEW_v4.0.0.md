@@ -441,6 +441,10 @@ installed.
 - `cli/main.py:252` `base_path: Path = Path.cwd()` is evaluated once at import (B008).
 - `examples/` (51 files, 9.5k lines) has a validator (`scripts/validate_examples.py`) that no workflow runs;
   `benchmarks/` is likewise unwired.
+- `grammars/grammars.json` is a tracked file that `TreeSitterGrammarManager` treats as mutable state
+  (`chunker/grammar/manager.py:56`); running the test suite flipped the `nasm` entry from `"ready"` to
+  `"building"` and left the working tree dirty. Tests should point the manager at `tmp_path`, and the file should
+  either be untracked state under the cache directory or a read-only manifest.
 - `chunker/languages/__init__.py:129`: `*_plugin_exports` inside `__all__` (PLE0604) — harmless but confuses tools.
 - Windows-specific tests are limited to 8 files; nothing in the Windows job touches `repo/`, `vfs`, `parallel` or
   export paths beyond `test_export_integration_advanced.py`.
