@@ -20,7 +20,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, blacksmith-4vcpu-windows-2025, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ['3.11', '3.12']
 
     steps:
@@ -61,7 +61,7 @@ jobs:
 
   build-sdist:
     name: Build source distribution
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     
     steps:
     - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
@@ -87,7 +87,7 @@ jobs:
 
   build-manylinux:
     name: Build manylinux wheels
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     container:
       image: quay.io/pypa/manylinux_2_28_x86_64
     
@@ -123,7 +123,7 @@ jobs:
   collect-artifacts:
     name: Collect all artifacts
     needs: [build-wheels, build-sdist, build-manylinux]
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     
     steps:
     - name: Download all artifacts
