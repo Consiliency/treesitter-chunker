@@ -13,6 +13,16 @@ possible, a reproduction. Items that could not be verified in this environment a
 This review deliberately does not re-litigate `CODE_REVIEW_v3.2.2.md`; Section 3 scores that remediation, and
 everything after it is new.
 
+**Merge review, 2026-09-09.** Revalidated against `main` at
+`834a1ca9213761d502757baec50cca86d2745d6a` and the documentation-only head of
+Consiliency/treesitter-chunker#95 at `0addbb3f41c297e8af52e31ca10e4fcec4e6303e`.
+Intervening main changes concern CI runners, not the affected runtime code.
+Unless explicitly refreshed below, measurements and line references belong to the
+2026-09-02 review, not a new full-suite run. Appendix E records the fresh checks.
+This document is an assessment baseline, not an approved implementation plan or
+release acceptance. Architecture, deletion, performance and version suggestions
+require consumer-impact review and targeted proof before implementation.
+
 ---
 
 ## 1. Executive summary
@@ -20,24 +30,24 @@ everything after it is new.
 The v3.2.2 remediation was real and substantial. Thread safety, the API surface, the Boundary IR determinism gate,
 the grammar-download trust boundary and the identity scheme are all materially better than they were, and the code
 carries unusually good in-line rationale. The codebase is nonetheless **not yet a release-quality library**, for
-five reasons that are new, or newly visible, in 4.0.0:
+six critical findings, grouped into five concerns that are new, or newly visible, in 4.0.0:
 
-1. **The nightly "full suite" has never executed.** Every one of the 51 scheduled CI runs since the schedule was
-   added has failed in about five seconds at test collection, because `tests/integration/conftest.py` declares
+1. **The nightly "full suite" fails during collection.** At the 2026-09-02 snapshot, all 51 scheduled runs were
+   marked failed; the inspected latest run failed because `tests/integration/conftest.py` declares
    `pytest_plugins` in a non-root conftest. Push/PR CI stays green because it runs ~15% of the tests by explicit
-   file list. Nobody noticed for a month, which means nobody reads the nightly signal (C1).
+   file list. Green PR status therefore does not establish full-suite health (C1).
 2. **The core walk is quadratic in file size.** `_walk` recounts newlines over the whole file prefix for every
-   chunk (`chunker/core.py:745`). An 8.4 MB Python file never finishes; the VFS path routes it to that code path
+   chunk (`chunker/core.py:745`). An 8.4 MB Python probe exceeded a 25-second observation window; the VFS path routes it to that code path
    because it is under the 10 MB streaming threshold. Metadata extraction re-walks every subtree five times (C2).
 3. **Identity is still not stable where it matters most.** `treesitter-chunker repo process` writes every file to a
    temp file before chunking, so every run produces different `node_id`s and reports `file_path` as
    `/tmp/tmpXXXX.python` (C3). Overloaded methods share a `definition_id`, so incremental diffs silently drop them
    (C4) — the same "silently drops chunks" class the 4.0.0 identity work was meant to close.
 4. **The public `chunk_directory` only works for six languages** and returns `{}` for the rest (C5); at least twelve
-   extension maps still disagree (three of them map `.ts` to JavaScript), despite the changelog's claim of one map.
-5. **The repository itself is 97% junk by bytes**: two committed virtualenvs and 84 MB of Claude Code session logs,
+   extension maps still disagree (three Python maps plus `.chunkerrc` map `.ts` to JavaScript), despite the changelog's claim of one map.
+5. **Generated files, logs and archives occupy 96.2% of tracked file bytes**: two committed virtualenvs and 88.2 MB of Claude Code session logs,
    one of which contains a (truncated) PyPI token in a `.pypirc` block, plus the developer's personal Claude Code
-   hooks that execute on every tool call for anyone who opens the repo in Claude Code (C6).
+   hooks configured for tool-call events once enabled/trusted in Claude Code (C6).
 
 Beneath those: chunk explosion in Clojure/Elixir (one `defn` becomes nine chunks), a whole-file structural collapse
 whenever any statement nests 900 levels deep, 16 of 26 language configs declaring node types that do not exist in the
@@ -110,18 +120,23 @@ work (Sections 7–10) is the real "future of the codebase" and is where the rem
 
 ## 4. CRITICAL
 
-### C1 · The nightly full suite has never run (gate is false-green by construction)
+### C1 · The nightly full suite fails during collection (PR green does not cover it)
 
 **Evidence.** `scripts/run_full_suite.py:11` runs `pytest -q tests spec_tests`. `tests/integration/conftest.py:4`
 declares `pytest_plugins = ["tests.integration.fixtures"]`. Because that conftest is discovered lazily during
 collection, pytest ≥ 7 aborts with *"Defining 'pytest_plugins' in a non-top-level conftest is no longer supported"*
 and exits 2 before running a single test. Reproduced locally (`pytest --collect-only -q` → `1 error`), and confirmed
 in the log of the latest scheduled run (job 99727716128: `Interrupted: 1 error during collection`, Pytest step
-4.6 s). All 30 most recent scheduled runs listed by the Actions API (of 51 total) are failures; push runs are green
-because `run_ci_smoke.py` passes explicit file arguments, which makes that conftest an "initial" conftest.
+4.6 s). At the 2026-09-02 snapshot, the 30 most recent scheduled runs listed by the Actions API
+(of 51 total) were failures. Push runs avoid this error because `run_ci_smoke.py` selects files
+outside `tests/integration`, so pytest does not discover the offending conftest.
+On 2026-09-09, all 59 scheduled runs listed by the API were failed; the latest run and a fresh
+local collection reproduced the same error (Appendix E). Failure summaries alone do not prove
+that every historical run failed for this identical reason.
 
-**Impact.** Roughly 85% of the suite (≈2,550 of ≈3,000 tests) has not been executed by CI since the schedule was
-added. The v3.2.2 traceability matrix cites nightly-only tests as proof of fixes.
+**Impact.** Roughly 85% of the suite (≈2,550 of ≈3,000 tests) sits outside the smoke/platform-core
+selection and has no passing scheduled-run evidence in this review. The v3.2.2 traceability matrix
+cites nightly-only tests as proof of fixes.
 
 **Fix (one line).** Delete `tests/integration/conftest.py`; `tests/conftest.py:1` already registers the same
 plugin. Then: (a) add `pytest --collect-only -q tests spec_tests` to the PR gate so collection errors fail fast;
@@ -129,7 +144,7 @@ plugin. Then: (a) add `pytest --collect-only -q tests spec_tests` to the PR gate
 on the schedule workflow); (c) record the first honest nightly result and triage it (a full local run is reported in
 Appendix D).
 
-### C2 · `_walk` is quadratic in file size; large files never finish
+### C2 · `_walk` has a quadratic prefix scan; the large-file probe exceeded its time budget
 
 **Evidence.** `chunker/core.py:745` builds each chunk with `end_line=source[:span_end].count(b"\n") + 1`, scanning
 the whole prefix of the file for every chunk. Measured with `extract_metadata=False`:
@@ -212,22 +227,28 @@ derive it from the registered `LanguageConfig.file_extensions` plus the pack's k
 map; add a test that greps the tree for `".ts":` outside that module. `chunk_directory` should use
 `extensions_for(language)` and raise on an unknown language instead of returning `{}`.
 
-### C6 · The repository ships 299 MB of junk, a token fragment, developer-personal data, and auto-executing hooks
+### C6 · The repository tracks 269.3 MB of generated files/logs/archives, credential-like material, and personal hooks
 
-**Evidence.** Of 6,310 tracked files (309 MB), 97% of bytes are: `.pubenv/` (2,850 files, 160 MB — a full
-virtualenv including pyarrow `.so`s), `logs/` (85 files, 84 MB of Claude Code session transcripts),
-`.toxenv/` (1,846 files, 45 MB), `site/` (built mkdocs output) and `archive/`. All were added in one commit
-(`425fe73`, 2026-04-23) and are listed in `.gitignore` (lines 4, 88, 89), which does not un-track them. The pack
-file is 68 MB, so every clone pays. `logs/ebb2220f-…/chat.json` contains a `.pypirc` block with
-`password = pypi-AgEIcHl…` — a 29-character fragment followed by `…`, so truncated rather than directly usable, but
-it proves a live token was pasted into a session. The logs also contain 92,205 occurrences of the developer's home
+**Evidence (size correction, 2026-09-09).** `git ls-tree -r` object sizes at `main` `834a1ca9`
+sum to 279,895,008 bytes across 6,310 tracked files, before adding this report. The five
+directories below total 269,328,937 bytes (96.225%): `.pubenv/` (2,850 files, 148.197 MB),
+`logs/` (85 files, 88.200 MB), `.toxenv/` (1,846 files, 22.991 MB), `site/` (6.468 MB)
+and `archive/` (3.472 MB). MB here means 1,000,000 bytes; these are summed tracked blob
+sizes, not compressed pack size, installed distribution size, or clone-transfer size.
+The original checkout's 68 MB pack measurement is host-specific. `.gitignore` entries
+do not untrack existing files. `logs/ebb2220f-…/chat.json` contains a `.pypirc` block with
+`password = [REDACTED]` (a truncated credential-like value; no credential bytes reproduced here).
+The fragment does not establish whether a complete credential is valid or has been revoked;
+the owner must investigate privately. The original scan also counted 92,205 occurrences of the developer's home
 path and 159 of an internal email address. `.claude/settings.json:61-116` registers hooks that run
 `uv run --script .claude/hooks/*.py` on every tool call and POST event summaries to `http://localhost:4000/events`
-(`.claude/hooks/send_event.py:62`); these run for any contributor who opens the repo in Claude Code.
+(`.claude/hooks/send_event.py:62`); actual execution depends on the contributor's CLI trust and hook settings.
 
-**Fix.** Rotate the PyPI token regardless. `git rm -r --cached .pubenv .toxenv logs site` and commit. Then decide
-on history: a `git filter-repo` purge shrinks clones from ~70 MB to a few MB but invalidates existing clones/forks —
-coordinate once, do it once. Add `gitleaks` (or GitHub secret scanning push protection) to CI. Move personal hooks
+**Fix.** Privately identify and revoke/rotate the source credential if it remains active; no rotation is
+claimed by this review. Inventory retention needs before untracking generated environments, logs and site output;
+archive deletion needs a separate ownership decision. Decide on history rewriting separately: it changes commit
+identities and requires coordination with existing clones/forks, and its size benefit must be measured.
+Add `gitleaks` (or GitHub secret scanning push protection) to CI. Move personal hooks
 to `.claude/settings.local.json` (gitignored) or a separate dotfiles repo; keep only project-level, opt-in tooling
 in the repo.
 
@@ -313,9 +334,13 @@ always an iterator with an explicit `stream=` flag); require a root or default t
 object (including `ASTCache`) per task (`parallel.py:78-81`); errors are `print()`ed to stdout rather than logged
 or raised (`:107`, `:118`, `:122`, `:138`); the convenience functions `chunk_files_parallel`/`chunk_directory_parallel` do not expose
 `timeout_seconds` (`:171-196`); a `ProcessPoolExecutor` is spun up even for a handful of files (each worker
-re-imports the 654-module package); hung workers are orphaned by design (documented at `:118-130`). Since
-`Parser.parse` releases the GIL, a `ThreadPoolExecutor` default with a module-level worker function and an
-`initializer` would be simpler and faster for typical inputs.
+re-imports the 654-module package); hung workers are orphaned by design (documented at `:118-130`).
+**Correction, 2026-09-09:** the pinned py-tree-sitter 0.25.2 binding does not release the GIL
+around the parse calls in `parser_parse`; its GIL-release block is in `parser_print_dot_graphs`,
+not parsing ([upstream source](https://github.com/tree-sitter/py-tree-sitter/blob/v0.25.2/tree_sitter/binding/parser.c#L101)).
+A thread-pool default therefore has no demonstrated CPU-parallel speedup here. Benchmark process
+versus thread execution, including the Python walk, cancellation and worker ownership, before
+changing the default; a module-level process worker remains a bounded design candidate.
 
 ### M7 · `repo/processor.py` residuals
 
@@ -366,7 +391,8 @@ so one unsupported embedded language aborts the whole file; regions in unsupport
   `grammar/download.py:56` `ARTIFACT_MANIFEST = {}` is only populated by a test monkeypatch, and
   `grammar_management/core.py` and `grammar/manager.py` never call `verify_artifact`. The real control is the host
   allowlist + HTTPS + pinned-ref requirement, which is reasonable; say so in the docs, or populate the manifest.
-- `Dockerfile:19` `COPY . .` with no `.dockerignore` copies the 299 MB of junk into every image build.
+- `Dockerfile:19` `COPY . .` with no `.dockerignore` includes the tracked generated files/logs/archives
+  (269.3 MB by the corrected C6 measurement) and may include additional untracked local files.
 - `chunker/build/platform.py:208-217` runs `sudo apt-get install` on the user's behalf.
 
 ### M11 · Dependency footprint and import cost
@@ -513,13 +539,13 @@ targeted `# noqa` where an exception truly must be broad.
 
 | # | change | where | expected effect |
 |---|---|---|---|
-| 1 | `end_line` from `node.end_point` (+ delta count for extended spans) | `core.py:745` | removes the quadratic term; 8 MB file from "never" to seconds |
+| 1 | `end_line` from `node.end_point` (+ delta count for extended spans) | `core.py:745` | removes the quadratic prefix scan; benchmark the 8 MB case after correction |
 | 2 | Single-pass metadata extraction (one subtree walk per chunk) | `metadata/extractor.py:186` and callers in `_walk` | −35–40% on default `chunk_file` (1.37 s of 5.2 s at 6k defs) |
 | 3 | Hoist `resolve_chunk_predicates` to `chunk_text`; pass predicates down | `core.py:503` | −6%; also removes a registry lookup per node |
 | 4 | Iterative `_walk` with explicit stack | `core.py:487` | removes recursion overhead (0.76 s tottime at 6k defs) and the depth-900 collapse (M2) |
 | 5 | Stop chunking every `list_lit`/`call` (M1) | `core.py:462`, `languages/elixir.py:32` | 5–10× fewer chunks for Clojure/Elixir |
 | 6 | Lazy public API (`__getattr__`) and optional-dependency extras | `chunker/__init__.py`, `chunker.py`, `query_advanced.py` | `import chunker` from 0.45 s/654 modules to ~0.1 s; CLI startup and worker spawn cost drop accordingly |
-| 7 | Threads instead of processes by default in `ParallelChunker`; module-level worker; no per-task `self` pickling | `parallel.py` | faster for small/medium directories; no orphaned processes |
+| 7 | Benchmark executor choice; module-level process worker; avoid per-task `self` pickling | `parallel.py` | potential startup/serialization savings; thread speedup and bounded worker cleanup are unproven (M6) |
 | 8 | Region parsed once in `process_mixed_file` | `multi_language.py:947` | −50% on mixed files |
 | 9 | Cache `Path.home()`/`XDG` resolution and open one sqlite connection per `ASTCache` (currently one per call) | `_internal/cache.py:140-147` | cheaper cache hits; note the hit path still hashes the whole file (`compute_file_hash`) — compare `size+mtime` first and hash only on match |
 | 10 | Avoid `list(parent.children)` + `.index(node)` for Dart sibling search | `core.py:556-566` | minor; use `node.next_named_sibling` |
@@ -573,8 +599,10 @@ targeted `# noqa` where an exception truly must be broad.
 
 Fix the drift listed in M14, then make the docs *generated where possible*: the language table from the specs
 (7.1), the CLI reference from `typer`'s `--help`, the coverage table from `docs/language-coverage.json` (already
-done for that one). Pick one docs system (mkdocs is configured and current; `docs/sphinx/` looks abandoned) and add a
-`.readthedocs.yaml` if the hosted site is meant to exist. Retire `CODE_REVIEW_v3.2.2.md` and this file into
+done for that one). Reconcile the two docs systems: mkdocs is configured, while
+`.github/workflows/docs.yml` actively builds `docs/sphinx/` and deploys it to GitHub Pages;
+the Sphinx tree is not abandoned. Add a `.readthedocs.yaml` only if that separate hosted
+site is intended. Retire `CODE_REVIEW_v3.2.2.md` and this file into
 `docs/development/reviews/` once their action items are tracked as issues.
 
 ---
@@ -590,7 +618,7 @@ done for that one). Pick one docs system (mkdocs is configured and current; `doc
 5. `chunk_directory` extensions from the canonical map; delete the other maps (C5).
 6. Pin/remove the git dependency in `release.yml`; `uv sync --locked` (M10).
 
-**Month 1 — correctness that changes outputs (batch into one 5.0.0 or a clearly announced 4.1.0):**
+**Month 1 — correctness that changes outputs (version after compatibility review; breaking identity changes require a major):**
 7. Overload-safe `definition_id` (C4) + identity contract doc (7.2).
 8. Clojure/Elixir chunk selection (M1); per-subtree recursion handling with an iterative walk (M2).
 9. Node-type validation test and the resulting config fixes (M3).
@@ -611,16 +639,16 @@ done for that one). Pick one docs system (mkdocs is configured and current; `doc
 | Source lines (`chunker/`, `cli/`, `api/`) | 97,363 (`languages/` 15,847; `grammar_management/` 9,296; `export/` 6,531; `performance/` 5,087; `interfaces/` 5,079) |
 | Test lines / files / collected tests | 74,729 / 247 / ≈3,004 (2,926 + 78 in `tests/integration`) |
 | Tests run per PR | 401 (smoke) + 148 (platform core, overlapping) ≈ 15% |
-| Tests run nightly | 0 (collection error) — 51/51 scheduled runs failed |
+| Scheduled CI at the 2026-09-02 snapshot | 51/51 runs marked failed; inspected latest run executes 0 tests due to collection error (fresh check in Appendix E) |
 | Local smoke batch | 401 passed in 3.8 s |
-| Tracked files / bytes | 6,310 / 309 MB; `.pubenv` 160 MB, `logs/` 84 MB, `.toxenv` 45 MB, `site/` 6 MB, `archive/` 3 MB (97%); pack file 68 MB |
+| Tracked files / bytes (corrected 2026-09-09, main `834a1ca9`) | 6,310 / 279,895,008 bytes; `.pubenv` 148.197 MB, `logs/` 88.200 MB, `.toxenv` 22.991 MB, `site/` 6.468 MB, `archive/` 3.472 MB (96.225%); compressed clone size not measured |
 | `import chunker` | 0.45 s, 654 modules, 35 language modules, numpy + tiktoken + yaml loaded |
 | ruff findings hidden by the ignore list (F,B,BLE,E722,S,PLW,PLE,PERF) | 742 (BLE001 453, F401 81, S110 50, PERF203 43, B008 25) |
 | mypy baseline | 1,243 signatures (≈2,244 raw errors) |
 | `chunk_file` scaling (no metadata) | 1k defs 0.14 s → 8k defs 2.05 s; 260k defs (8.4 MB) not finished at 25 s |
 | Profile, 6k defs, default options | 5.2 s total; `bytes.count` 0.83 s; metadata `_walk_tree` 750k calls / 1.37 s; `_walk` 132k calls |
 | Language configs with non-existent node types | 16 of 26 |
-| Extension→language maps | 12+ (three map `.ts` → javascript) |
+| Extension→language maps | 12+ (three Python maps plus `.chunkerrc` map `.ts` → javascript) |
 | Exception classes never raised | 5 |
 | `print()` calls in library code | 40 |
 | Empty `try: pass` blocks in `languages/__init__.py` | 26 |
@@ -630,7 +658,7 @@ done for that one). Pick one docs system (mkdocs is configured and current; `doc
 ```bash
 # C1: collection error (0 tests run) and the nightly job log
 .venv/bin/python -m pytest --collect-only -q            # -> "1 error during collection"
-# GitHub Actions API: workflow ci.yml, event=schedule -> 51 runs, all conclusion=failure;
+# Historical 2026-09-02 GitHub Actions API snapshot: ci.yml, event=schedule -> 51 failures;
 # job 99727716128 log: "Defining 'pytest_plugins' in a non-top-level conftest is no longer supported"
 
 # C2: scaling and profile
@@ -661,11 +689,11 @@ EOF
 
 - Windows behaviour of `repo/processor.py` path comparison (M7) and of the export writers.
 - Whether `treesitter-chunker.readthedocs.io` resolves (network to that host was not permitted).
-- Whether the truncated PyPI token fragment corresponds to a still-active token (rotate regardless).
+- Whether the credential-like fragment corresponds to a still-active token; owner investigation and any rotation remain unverified.
 - Bandit's 22 medium / 193 low findings were not triaged individually *(scout)*.
 - Runtime of the full suite on CI hardware; local numbers are in Appendix D.
 
-## Appendix D — The honest full-suite result (first run since the nightly broke)
+## Appendix D — Original review's local full-suite result (2026-09-02)
 
 Run locally on this checkout with the collection error bypassed (`pytest -n 4 --timeout=300 --ignore=tests/integration
 tests spec_tests`, then `tests/integration` separately), tree-sitter 0.25.2, language pack 0.9.0, no locally built
@@ -688,4 +716,47 @@ The failures fall into four classes:
 Two conclusions. First, the nightly, once it runs, will be red until the environment-dependent tests are made
 conditional and the ≈30 real failures are triaged — budget for that before re-enabling it as a gate. Second, the
 full suite is only 6.5 minutes on four cores; there is no reason it cannot run on every PR once the
-environment-dependent tests skip cleanly (Section 9).
+environment-dependent tests skip cleanly (Section 9). This is the original reviewer's
+environment-specific result, not a new run performed for the merge review. Prerequisite
+skips must not replace acceptance on a host where the relevant feature is supported.
+
+## Appendix E - Merge-time verification (2026-09-09)
+
+The PR changes only this report. Source at `834a1ca9` remains affected; merging this
+assessment does not fix the findings or authorize a release. A clean dedicated
+worktree used `uv sync --locked --all-extras`, tree-sitter 0.25.2, language pack 0.9.0,
+pytest 8.4.1 and CPython 3.13.12. The parser/pack pair agrees with current
+`pyproject.toml`; the older 0.24-runtime note in `AGENTS.md` is stale.
+The worktree was then re-synced with `--python 3.11` (CPython 3.11.14) to repeat the
+smoke gate on CI's Python minor and run the mypy baseline gate and Sphinx build.
+
+| Check | Result |
+|---|---|
+| Ruff, existing production/test configuration | Passed |
+| Black check, production/tests/scripts | Passed; 597 files unchanged |
+| Standing smoke batch, four xdist workers | 401 passed on Python 3.13 (2.53 s) and 3.11 (3.84 s), four deprecation warnings each |
+| Mypy baseline gate, Python 3.11 | Passed; no new errors, 1,231 tracked debt signatures; baseline not rewritten |
+| Sphinx HTML build, Python 3.11 | Passed; output outside the worktree |
+| Gitleaks scan of this report only, fully redacted output | Passed; this is not a clean-history or source-log attestation |
+| Full-suite collection, `tests spec_tests` | Exit 2; duplicate non-root `pytest_plugins` declaration (C1), not a regression from this documentation change |
+| Scheduled CI API, all 59 returned runs | All marked failure; [latest run](https://github.com/Consiliency/treesitter-chunker/actions/runs/34307402678) reproduces the collection error |
+| Repeated `RepoProcessor.process_repository`, Python/Go fixture | Two files, two chunks, no processing errors on each run; `node_id` and `file_path` sets differ (C3) |
+| Java overload fixture from Appendix B | Four chunks, two distinct `definition_id` values; editing the second overload yields one modified and one unchanged entry (C4) |
+| Public `chunk_directory` on a directory containing one Go file | Zero returned files with `language="go"` and caching disabled (C5) |
+| Extension maps | Intended auto map has 64 entries; `.ts` disagreement is three Python maps plus the shipped config |
+| Tracked-size inventory | Exact corrected byte totals recorded in C6; no source logs or credential values copied into this report |
+
+C2 was also reproduced through `chunk_text(..., extract_metadata=False)` after a warmup:
+1,000/2,000/4,000/8,000 generated Python definitions took 0.0921/0.1985/0.5217/1.5361 s
+for 34,780/71,780/145,780/293,780 source bytes. These one-shot timings support the
+source-level scaling finding; they are not a calibrated performance budget or proof
+of nontermination. The original 8.4 MB experiment and full execution of Appendix D
+were not repeated. No production code, grammar pins, Boundary IR bytes or credentials
+were changed, and no existing repository history was rewritten during this review.
+
+Recommended follow-up is one new v3 remediation roadmap with a finding disposition
+matrix and bounded plans per phase; keep completed v2 closed. Prioritize C1 and
+release-install controls, use Consiliency/treesitter-chunker#89 for hygiene, then
+address scaling/discovery and versioned identity/output changes. Existing public
+imports and downstream consumers must be audited before deleting supposedly unused
+modules. Document compatibility decisions before selecting patch/minor/major versions.
