@@ -12,7 +12,6 @@ import sys
 import threading
 import time
 
-import psutil
 import pytest
 
 from chunker import chunk_file
@@ -214,7 +213,7 @@ class TestScalabilityLimits:
 
     @classmethod
     def test_very_large_file_handling(cls, tmp_path):
-        """Test handling of very large files."""
+        """Measure a large-file workload without prior tests' allocator state."""
         huge_file = tmp_path / "huge_module.py"
         content_lines = []
         for i in range(5000):
@@ -222,19 +221,36 @@ class TestScalabilityLimits:
             if i % 100 == 0:
                 content_lines.append("")
         huge_file.write_text("\n".join(content_lines))
-        start_time = time.time()
-        chunks = chunk_file(huge_file, language="python")
-        chunk_time = time.time() - start_time
-        assert len(chunks) >= 5000
-        assert chunk_time < 10.0
-        process = psutil.Process()
-        memory_mb = process.memory_info().rss / 1024 / 1024
-        assert memory_mb < 500
-        export_start = time.time()
-        json_exporter = JSONExporter(schema_type=SchemaType.FLAT)
-        json_exporter.export(chunks, tmp_path / "huge_export.json")
-        export_time = time.time() - export_start
-        assert export_time < 5.0
+        probe = """
+import json, sys, time
+import psutil
+from chunker import chunk_file
+from chunker.export import JSONExporter, SchemaType
+start = time.perf_counter()
+chunks = chunk_file(sys.argv[1], language='python')
+chunk_time = time.perf_counter() - start
+memory_mb = psutil.Process().memory_info().rss / 1024 / 1024
+start = time.perf_counter()
+JSONExporter(schema_type=SchemaType.FLAT).export(chunks, sys.argv[2])
+print(json.dumps({'chunks': len(chunks), 'chunk_time': chunk_time,
+                  'memory_mb': memory_mb, 'export_time': time.perf_counter() - start}))
+"""
+        output = subprocess.check_output(
+            [
+                sys.executable,
+                "-c",
+                probe,
+                str(huge_file),
+                str(tmp_path / "huge_export.json"),
+            ],
+            text=True,
+            timeout=60,
+        )
+        measurement = json.loads(output)
+        assert measurement["chunks"] >= 5000
+        assert measurement["chunk_time"] < 10.0
+        assert measurement["memory_mb"] < 500
+        assert measurement["export_time"] < 5.0
 
     @staticmethod
     def test_deep_nesting_performance(tmp_path):
