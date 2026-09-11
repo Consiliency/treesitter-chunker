@@ -151,6 +151,12 @@ class TestQueryDebugger:
         matches2 = debugger.debug_query(query, code)
         assert len(matches1) == len(matches2)
 
+    @classmethod
+    def test_invalid_query_preserves_diagnostic(cls):
+        debugger = QueryDebugger("python")
+        with pytest.raises(ValueError, match="Invalid node type 'invalid_node_type'"):
+            debugger._compile_query("(invalid_node_type)")
+
 
 class TestChunkDebugger:
     """Test chunk debugging functionality."""
