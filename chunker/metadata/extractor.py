@@ -129,9 +129,20 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
                 syntax_depth = max(0, syntax_depth - 1)
             elif ancestor.type == "quoting_lit" and syntax_depth == 0:
                 return None
-            elif ancestor.type == "list_lit" and syntax_depth == 0:
+            elif ancestor.type == "list_lit":
                 values = ancestor.children_by_field_name("value")
-                if values and self._get_node_text(values[0], source) == "quote":
+                head = self._get_node_text(values[0], source) if values else ""
+                if syntax_depth and head in {
+                    "clojure.core/unquote",
+                    "clojure.core/unquote-splicing",
+                }:
+                    if len(values) < 2 or not (
+                        values[1].start_byte <= node.start_byte
+                        and node.end_byte <= values[1].end_byte
+                    ):
+                        return None
+                    syntax_depth -= 1
+                elif syntax_depth == 0 and head == "quote":
                     return None
         return callee if syntax_depth == 0 else None
 
