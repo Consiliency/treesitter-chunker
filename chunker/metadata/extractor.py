@@ -114,23 +114,26 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
             "import*",
         }:
             return None
+        ancestors = []
         ancestor = node.parent
-        unquotes = 0
         while ancestor is not None:
-            if ancestor.type in {"quoting_lit", "dis_expr"}:
+            ancestors.append(ancestor)
+            ancestor = ancestor.parent
+        syntax_depth = 0
+        for ancestor in reversed(ancestors):
+            if ancestor.type == "dis_expr":
                 return None
-            if ancestor.type in {"unquoting_lit", "unquote_splicing_lit"}:
-                unquotes += 1
-            elif ancestor.type == "syn_quoting_lit":
-                if not unquotes:
-                    return None
-                unquotes -= 1
-            elif ancestor.type == "list_lit":
+            if ancestor.type == "syn_quoting_lit":
+                syntax_depth += 1
+            elif ancestor.type in {"unquoting_lit", "unquote_splicing_lit"}:
+                syntax_depth = max(0, syntax_depth - 1)
+            elif ancestor.type == "quoting_lit" and syntax_depth == 0:
+                return None
+            elif ancestor.type == "list_lit" and syntax_depth == 0:
                 values = ancestor.children_by_field_name("value")
                 if values and self._get_node_text(values[0], source) == "quote":
                     return None
-            ancestor = ancestor.parent
-        return callee
+        return callee if syntax_depth == 0 else None
 
     def _extract_call_info(
         self,
