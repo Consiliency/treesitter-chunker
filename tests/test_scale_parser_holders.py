@@ -219,11 +219,15 @@ def test_enhanced_parse_file_acquires_thread_local_parser(monkeypatch):
     from chunker.parser import get_parser as real_get_parser
 
     seen: dict[int, set[str]] = {}
+    # Thread-local parsers die with their threads; retain them so CPython cannot
+    # recycle an address and make distinct parsers look shared.
+    parsers: list[object] = []
     lock = threading.Lock()
 
     def recording_get_parser(language: str):
         parser = real_get_parser(language)
         with lock:
+            parsers.append(parser)
             seen.setdefault(id(parser), set()).add(threading.current_thread().name)
         return parser
 
