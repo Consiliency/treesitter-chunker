@@ -126,10 +126,15 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
             if ancestor.type == "syn_quoting_lit":
                 syntax_depth += 1
             elif ancestor.type in {"unquoting_lit", "unquote_splicing_lit"}:
+                operand = ancestor.child_by_field_name("value")
+                if operand is not None and not (
+                    operand.start_byte <= node.start_byte
+                    and node.end_byte <= operand.end_byte
+                ):
+                    return None
                 syntax_depth = max(0, syntax_depth - 1)
-            elif syntax_depth == 0 and (
-                ancestor.type == "quoting_lit"
-                or self._clojure_reference_metadata(ancestor, source)
+            elif (syntax_depth == 0 and ancestor.type == "quoting_lit") or (
+                self._clojure_ignored_metadata(ancestor, node, source, syntax_depth)
             ):
                 return None
             elif ancestor.type == "list_lit":
@@ -159,14 +164,49 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
             text = self._get_node_text(namespace, source) + "/" + text
         return text
 
-    def _clojure_reference_metadata(self, node: Node, source: bytes) -> bool:
+    def _clojure_ignored_metadata(
+        self, node: Node, call: Node, source: bytes, syntax_depth: int
+    ) -> bool:
         target = node.parent
         if target is None or node not in target.children_by_field_name("meta"):
             return False
-        if target.type == "list_lit":
+        keys = set()
+        retained = False
+        for annotation in target.children_by_field_name("meta"):
+            value = annotation.child_by_field_name("value")
+            if value is None:
+                continue
+            if value.type == "map_lit":
+                entries = value.children_by_field_name("value")
+                pairs = [
+                    (self._get_node_text(key, source), key, item)
+                    for key, item in zip(entries[::2], entries[1::2])
+                ]
+            else:
+                key = (
+                    self._get_node_text(value, source)
+                    if value.type == "kwd_lit"
+                    else ":param-tags" if value.type == "vec_lit" else ":tag"
+                )
+                pairs = [(key, value, value)]
+            for key, key_node, item in pairs:
+                if key in keys:
+                    continue
+                keys.add(key)
+                if annotation == node and any(
+                    part.start_byte <= call.start_byte
+                    and call.end_byte <= part.end_byte
+                    for part in (key_node, item)
+                ):
+                    retained = True
+        if not retained or (syntax_depth and keys <= {":line", ":column"}):
             return True
-        if target.type != "sym_lit":
+        if syntax_depth:
             return False
+        if target.type == "list_lit":
+            return bool(target.children_by_field_name("value"))
+        if target.type != "sym_lit":
+            return self._clojure_binding_metadata(target, source)
         form = target.parent
         values = (
             form.children_by_field_name("value")
@@ -179,6 +219,84 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
             return False
         declarations = {"def", "defn", "defn-", "defmacro", "defonce"}
         return not (head in declarations and len(values) > 1 and target == values[1])
+
+    def _clojure_binding_metadata(self, target: Node, source: bytes) -> bool:
+        functions = {"fn", "fn*", "defn", "defn-", "defmacro"}
+        bindings = {"let", "let*", "loop", "loop*", "binding", "with-open"}
+        ancestor = target.parent
+        while ancestor is not None:
+            values = ancestor.children_by_field_name("value")
+            if ancestor.type == "list_lit" and values:
+                head = self._clojure_symbol_text(values[0], source).removeprefix(
+                    "clojure.core/"
+                )
+                params = None
+                if head in functions:
+                    params = next((v for v in values[1:] if v.type == "vec_lit"), None)
+                elif values[0].type == "vec_lit" and ancestor.parent is not None:
+                    outer = ancestor.parent.children_by_field_name("value")
+                    outer_head = (
+                        self._clojure_symbol_text(outer[0], source).removeprefix(
+                            "clojure.core/"
+                        )
+                        if outer
+                        else ""
+                    )
+                    if (
+                        ancestor.parent.type == "list_lit"
+                        and outer_head in functions
+                        and not any(v.type == "vec_lit" for v in outer[1:])
+                    ):
+                        params = values[0]
+                if params is not None and self._clojure_pattern_metadata(
+                    params, target, source
+                ):
+                    return True
+                if head in bindings and len(values) > 1 and values[1].type == "vec_lit":
+                    vector = values[1]
+                    if vector == target or any(
+                        self._clojure_pattern_metadata(pattern, target, source)
+                        for pattern in vector.children_by_field_name("value")[::2]
+                    ):
+                        return True
+            ancestor = ancestor.parent
+        return False
+
+    def _clojure_pattern_metadata(
+        self, pattern: Node, target: Node, source: bytes
+    ) -> bool:
+        if pattern == target:
+            return True
+        if not (
+            pattern.start_byte <= target.start_byte
+            and target.end_byte <= pattern.end_byte
+        ):
+            return False
+        values = pattern.children_by_field_name("value")
+        if pattern.type == "vec_lit":
+            return any(
+                self._clojure_pattern_metadata(value, target, source)
+                for value in values
+            )
+        if pattern.type == "map_lit":
+            for key, value in zip(values[::2], values[1::2]):
+                keyword = self._get_node_text(key, source)
+                if key.type == "kwd_lit" and keyword == ":or":
+                    if value == target:
+                        return True
+                elif key.type == "kwd_lit" and keyword.rsplit("/", 1)[-1].lstrip(
+                    ":"
+                ) in {
+                    "keys",
+                    "syms",
+                    "strs",
+                    "as",
+                }:
+                    if self._clojure_pattern_metadata(value, target, source):
+                        return True
+                elif self._clojure_pattern_metadata(key, target, source):
+                    return True
+        return False
 
     def _extract_call_info(
         self,
