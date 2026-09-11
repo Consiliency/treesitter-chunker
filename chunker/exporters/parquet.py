@@ -124,6 +124,7 @@ class ParquetExporter:
                 partition_cols=self.partition_by,
                 compression=self.compression,
                 existing_data_behavior="delete_matching",
+                max_partitions=max(1, table.num_rows),
             )
 
         else:

@@ -152,6 +152,27 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
                     syntax_depth -= 1
                 elif syntax_depth == 0 and head == "quote":
                     return None
+                if syntax_depth == 0 and values:
+                    function_head, params = self._clojure_function_parameters(
+                        ancestor, source
+                    )
+                    if params is not None and function_head != "fn*":
+                        body = values[values.index(params) + 1 :]
+                        if (
+                            len(body) > 1
+                            and body[0].type == "map_lit"
+                            and body[0].start_byte <= node.start_byte
+                            and node.end_byte <= body[0].end_byte
+                        ):
+                            entries = body[0].children_by_field_name("value")
+                            if not any(
+                                key.type == "kwd_lit"
+                                and self._get_node_text(key, source)
+                                in {":pre", ":post"}
+                                and self._clojure_condition_contains_call(item, node)
+                                for key, item in zip(entries[::2], entries[1::2])
+                            ):
+                                return None
         return callee if syntax_depth == 0 else None
 
     def _clojure_symbol_text(self, node: Node, source: bytes) -> str:
@@ -172,6 +193,7 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
             return False
         keys = set()
         retained_key = None
+        condition_contains_call = False
         for annotation in target.children_by_field_name("meta"):
             value = annotation.child_by_field_name("value")
             if value is None:
@@ -199,6 +221,9 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
                     for part in (key_node, item)
                 ):
                     retained_key = key
+                    condition_contains_call = self._clojure_condition_contains_call(
+                        item, call
+                    )
         if retained_key is None or (syntax_depth and keys <= {":line", ":column"}):
             return True
         if syntax_depth:
@@ -206,7 +231,9 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
         if target.type == "list_lit":
             return bool(target.children_by_field_name("value"))
         if target.type != "sym_lit":
-            return self._clojure_binding_metadata(target, source, retained_key)
+            return self._clojure_binding_metadata(
+                target, source, retained_key, condition_contains_call
+            )
         form = target.parent
         values = (
             form.children_by_field_name("value")
@@ -221,9 +248,12 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
         return not (head in declarations and len(values) > 1 and target == values[1])
 
     def _clojure_binding_metadata(
-        self, target: Node, source: bytes, metadata_key: str
+        self,
+        target: Node,
+        source: bytes,
+        metadata_key: str,
+        condition_contains_call: bool,
     ) -> bool:
-        functions = {"fn", "fn*", "defn", "defn-", "defmacro"}
         bindings = {"let", "let*", "loop", "loop*", "binding", "with-open"}
         ancestor = target.parent
         while ancestor is not None:
@@ -232,26 +262,9 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
                 head = self._clojure_symbol_text(values[0], source).removeprefix(
                     "clojure.core/"
                 )
-                params = None
-                function_head = head
-                if head in functions:
-                    params = next((v for v in values[1:] if v.type == "vec_lit"), None)
-                elif values[0].type == "vec_lit" and ancestor.parent is not None:
-                    outer = ancestor.parent.children_by_field_name("value")
-                    outer_head = (
-                        self._clojure_symbol_text(outer[0], source).removeprefix(
-                            "clojure.core/"
-                        )
-                        if outer
-                        else ""
-                    )
-                    if (
-                        ancestor.parent.type == "list_lit"
-                        and outer_head in functions
-                        and not any(v.type == "vec_lit" for v in outer[1:])
-                    ):
-                        params = values[0]
-                        function_head = outer_head
+                function_head, params = self._clojure_function_parameters(
+                    ancestor, source
+                )
                 if params is not None and self._clojure_pattern_metadata(
                     params, target, source
                 ):
@@ -261,7 +274,9 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
                         and metadata_key in {":pre", ":post"}
                     ):
                         body = values[values.index(params) + 1 :]
-                        return len(body) > 1 and body[0].type == "map_lit"
+                        return not condition_contains_call or (
+                            len(body) > 1 and body[0].type == "map_lit"
+                        )
                     return True
                 if head in bindings and len(values) > 1 and values[1].type == "vec_lit":
                     vector = values[1]
@@ -272,6 +287,39 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
                         return True
             ancestor = ancestor.parent
         return False
+
+    def _clojure_function_parameters(
+        self, form: Node, source: bytes
+    ) -> tuple[str, Node | None]:
+        functions = {"fn", "fn*", "defn", "defn-", "defmacro"}
+        values = form.children_by_field_name("value")
+        head = self._clojure_symbol_text(values[0], source).removeprefix(
+            "clojure.core/"
+        )
+        if head in functions:
+            return head, next((v for v in values[1:] if v.type == "vec_lit"), None)
+        if values[0].type == "vec_lit" and form.parent is not None:
+            outer = form.parent.children_by_field_name("value")
+            outer_head = (
+                self._clojure_symbol_text(outer[0], source).removeprefix(
+                    "clojure.core/"
+                )
+                if outer
+                else ""
+            )
+            if (
+                form.parent.type == "list_lit"
+                and outer_head in functions
+                and not any(v.type == "vec_lit" for v in outer[1:])
+            ):
+                return outer_head, values[0]
+        return head, None
+
+    def _clojure_condition_contains_call(self, conditions: Node, call: Node) -> bool:
+        return any(
+            form.start_byte <= call.start_byte and call.end_byte <= form.end_byte
+            for form in conditions.children_by_field_name("value")
+        )
 
     def _clojure_pattern_metadata(
         self, pattern: Node, target: Node, source: bytes

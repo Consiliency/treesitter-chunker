@@ -1,6 +1,7 @@
 """Tests for Parquet export functionality."""
 
 import tempfile
+from dataclasses import replace
 from pathlib import Path
 
 import pyarrow as pa
@@ -220,3 +221,25 @@ def test_partitioned_reexport_replaces_matching_partitions(sample_chunks, tmp_pa
     rows = pq.ParquetDataset(str(tmp_path)).read().to_pylist()
     assert sum(row["language"] == "python" for row in rows) == 1
     assert sum(row["language"] == "rust" for row in rows) == 1
+
+
+def test_partitioned_export_above_default_partition_limit(sample_chunks, tmp_path):
+    chunks = [
+        replace(sample_chunks[0], file_path=f"source-{i}.py", content=f"content-{i}")
+        for i in range(1025)
+    ]
+    exporter = ParquetExporter(partition_by=["file_path"])
+    exporter.export(chunks, tmp_path)
+    rows = pq.ParquetDataset(str(tmp_path)).read().to_pylist()
+    assert len(rows) == len(chunks)
+    assert {(row["file_path"], row["content"]) for row in rows} == {
+        (chunk.file_path, chunk.content) for chunk in chunks
+    }
+    replacement = replace(chunks[0], content="replacement")
+    exporter.export([replacement], tmp_path)
+    exporter.export([], tmp_path)
+    rows = pq.ParquetDataset(str(tmp_path)).read().to_pylist()
+    assert len(rows) == len(chunks)
+    assert {(row["file_path"], row["content"]) for row in rows} == {
+        (chunk.file_path, chunk.content) for chunk in [replacement, *chunks[1:]]
+    }

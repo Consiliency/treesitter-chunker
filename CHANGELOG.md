@@ -43,7 +43,9 @@ the Ruby correctness repair below intentionally removes one false node.
   annotations and metadata on core function parameters or let/loop binding patterns
   do not create call candidates; function pre/postconditions, collection values,
   initializers, destructuring defaults and declaration metadata remain traversable.
-  Explicit function condition maps override parameter-metadata conditions. Empty-list metadata,
+  Explicit function condition maps override parameter-metadata conditions; only
+  their predicate forms are traversed, not the condition container or its annotations.
+  Empty-list metadata,
   annotation overrides and syntax-quote metadata omission have explicit reader
   regressions. This is syntax analysis, not macro expansion, execution counts
   or runtime name resolution. Reader-injected metadata is not modeled: stacked
@@ -54,7 +56,8 @@ the Ruby correctness repair below intentionally removes one false node.
 - Incremental Boundary IR retries cached extraction errors, so an unchanged file
   can recover after a transient parser-download or metadata failure.
 - Partitioned Parquet exports replace the partitions supplied by each export and
-  retain other partitions. Repeated exports do not append duplicate rows. PyArrow
+  retain other partitions, including exports above 1,024 partitions. Repeated exports
+  do not append duplicate rows. PyArrow
   controls physical filenames; partition columns must exist in the selected schema.
 - Repository processing uses stable repository-relative identity paths instead of
   temporary files, and selects TypeScript or TSX grammars for their file types. Windows Git filtering uses
