@@ -127,7 +127,10 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
                 syntax_depth += 1
             elif ancestor.type in {"unquoting_lit", "unquote_splicing_lit"}:
                 syntax_depth = max(0, syntax_depth - 1)
-            elif ancestor.type == "quoting_lit" and syntax_depth == 0:
+            elif syntax_depth == 0 and (
+                ancestor.type == "quoting_lit"
+                or self._clojure_reference_metadata(ancestor, source)
+            ):
                 return None
             elif ancestor.type == "list_lit":
                 values = ancestor.children_by_field_name("value")
@@ -155,6 +158,27 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
         if namespace is not None:
             text = self._get_node_text(namespace, source) + "/" + text
         return text
+
+    def _clojure_reference_metadata(self, node: Node, source: bytes) -> bool:
+        target = node.parent
+        if target is None or node not in target.children_by_field_name("meta"):
+            return False
+        if target.type == "list_lit":
+            return True
+        if target.type != "sym_lit":
+            return False
+        form = target.parent
+        values = (
+            form.children_by_field_name("value")
+            if form is not None and form.type == "list_lit"
+            else []
+        )
+        head = self._clojure_symbol_text(values[0], source) if values else ""
+        head = head.removeprefix("clojure.core/")
+        if head == "declare" and target in values[1:]:
+            return False
+        declarations = {"def", "defn", "defn-", "defmacro", "defonce"}
+        return not (head in declarations and len(values) > 1 and target == values[1])
 
     def _extract_call_info(
         self,
