@@ -197,7 +197,7 @@ Tree-sitter Chunker is designed for high-performance code analysis:
 - 📈 **Graph Export** - Visualize code structure in yEd, Neo4j, or Graphviz
 - 🐛 **Debug Tools** - AST visualization, chunk inspection, performance profiling
 - 🔧 **Developer Tools** - Pre-commit hooks, CI/CD generation, quality metrics
-- 📦 **Multi-Platform Distribution** - PyPI, Docker, Homebrew packages
+- 📦 **Distribution** - v5 targets PyPI; native packages are suspended pending rebuild
 - 🌐 **Zero-Configuration** - Automatic language detection and grammar download
 - 🚀 **Production Ready** - Prebuilt parser libraries are cached on first use, with no local compilation required
 
@@ -303,28 +303,20 @@ If you need languages not included in prebuilt wheels, the package can still bui
 See [Cross-Language Usage Guide](docs/cross-language-usage.md) for using from JavaScript, Go, Ruby, etc.
 
 #### Using Docker
+
+The existing container instructions are not a validated v5 distribution path.
+The v5 release scope is PyPI only.
+
 ```bash
 docker pull ghcr.io/consiliency/treesitter-chunker:latest
 docker run -v $(pwd):/workspace treesitter-chunker chunk /workspace/example.py -l python
 ```
 
-#### Using Homebrew (macOS/Linux)
-```bash
-brew tap consiliency/treesitter-chunker
-brew install treesitter-chunker
-```
+#### Native packages (suspended for v5)
 
-#### For Debian/Ubuntu
-```bash
-# Download .deb package from releases
-sudo dpkg -i python3-treesitter-chunker_2.2.23-1_all.deb
-```
-
-#### For Fedora/RHEL
-```bash
-# Download .rpm package from releases
-sudo rpm -i python-treesitter-chunker-2.2.23-1.noarch.rpm
-```
+Debian, RPM and Homebrew distribution is suspended while their recipes are
+rebuilt and validated. Use the PyPI installation above. See the
+[native rebuild requirements](docs/packaging.md#native-distribution-rebuild-backlog).
 
 ### Quick Install (Development)
 

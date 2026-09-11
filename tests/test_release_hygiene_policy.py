@@ -193,3 +193,22 @@ def test_publication_requires_full_validation_and_verified_artifacts():
             )
         )
         assert verify < publish
+
+
+def test_native_distribution_stays_suspended():
+    """Neither a tag nor manual dispatch may publish unvalidated native assets."""
+    workflow = yaml.safe_load((ROOT / ".github/workflows/packages.yml").read_text())
+    assert set(workflow["on"]) == {"workflow_dispatch"}
+    assert workflow["permissions"] == {"contents": "read"}
+    assert set(workflow["jobs"]) == {"native-packages-suspended"}
+    job = workflow["jobs"]["native-packages-suspended"]
+    assert "permissions" not in job
+    assert not job.get("continue-on-error")
+    assert len(job["steps"]) == 1
+    step = job["steps"][0]
+    assert set(step) == {"name", "run"}
+    commands = step["run"].splitlines()
+    assert len(commands) == 2
+    assert commands[0].startswith('echo "::error::')
+    assert "distribution is suspended for v5" in commands[0]
+    assert commands[1] == "exit 1"

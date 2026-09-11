@@ -18,14 +18,34 @@ This document is the source of truth for packaging and PyPI publishing.
 
 ### Native package status for the v5 candidate
 
-The Debian/RPM/Homebrew recipes are not validated for v5. They still contain
-incomplete dependency declarations; RPM/Homebrew version fields are stale and
-the Homebrew source checksum is a placeholder. The native-package workflow is
-separate from the PyPI release workflow and is not covered by its validation job.
-Do not tag or dispatch a v5 release while that path remains unresolved. Campaign
-scope is pending an owner decision between suspending native packages for v5 and
-rebuilding all three native distribution paths. No native support removal is
-implied by the PyPI workflow changes.
+The owner approved **PyPI-only v5 distribution on 2026-09-11**. Debian, RPM and
+Homebrew distribution is suspended. `.github/workflows/packages.yml` has no tag
+trigger, build, artifact upload or release job. Manual dispatch fails with an
+explicit suspension notice. The recipes under `packaging/` are retained for
+future repair, but are not supported v5 installation methods. This decision does
+not disable local source builds or local grammar compilation.
+
+### Native distribution rebuild backlog
+
+Re-enablement is deferred beyond this v5 PyPI scope. Close all of the following
+before restoring native release triggers or advertising native installation:
+
+- **Debian:** reconcile all runtime dependencies and supported Python/parser
+  ranges with `pyproject.toml`; fix the build/install procedure and verify a
+  clean installation with no undeclared dependencies.
+- **RPM:** derive the version from the release source, declare complete runtime
+  dependencies, and correct architecture metadata for bundled native libraries.
+- **Homebrew:** replace the obsolete source URL/version, placeholder checksum,
+  Python/runtime resources and CLI test with verified release inputs.
+- **All three:** establish grammar artifact hashes, acquisition and offline cache
+  behavior for the supported OS/architecture matrix; run clean package install,
+  CLI, parser and dependency checks. Record supported platform minimums.
+- **Publication:** require the accepted source-validation gate and verified
+  artifacts before any native asset upload. Review the exact recipe/workflow
+  candidate and its platform receipts before restoring distribution.
+
+This suspension resolves the native release-path scope question only. The v5
+candidate still has unresolved full-suite failures and has not been released.
 
 ## Version Source of Truth
 
