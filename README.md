@@ -253,7 +253,9 @@ The pinned language pack supplies precompiled Tree-sitter grammars. This means:
 - ✅ **No Local Compiler**: The default parser path does not build grammars from source
 - ✅ **Versioned Cache**: A locked pack version supplies the same parser bundle to every installation
 - ✅ **Offline After Prefetch**: A warmed parser cache works without network access
-- ✅ **Explicit Cold Failure**: A missing offline cache raises `DownloadError`
+- ✅ **Cold Cache Requires Network**: Without a prefetched cache, the pack raises
+  `DownloadError`. Chunker logs that cause and its public parser API raises
+  `LanguageNotFoundError`; prefetch before taking the installation offline.
 
 The committed [language coverage report](docs/language-coverage.md) lists every
 pack parser and the smaller set for which Chunker verifies a boundary-extraction

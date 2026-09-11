@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import importlib
 import importlib.util
 import inspect
@@ -319,7 +320,7 @@ class PluginManager:
     def __init__(self):
         self.registry = PluginRegistry()
         self._plugin_dirs: list[Path] = []
-        self._loaded_modules: set[str] = set()
+        self._loaded_modules: dict[str, list[type[LanguagePlugin]]] = {}
 
     def add_plugin_directory(self, directory: Path) -> None:
         """Add a directory to search for plugins."""
@@ -352,9 +353,10 @@ class PluginManager:
 
     def _load_plugin_from_file(self, file_path: Path) -> list[type[LanguagePlugin]]:
         """Load plugin classes from a Python file."""
-        module_name = f"chunker_plugin_{file_path.stem}_{id(file_path)}"
+        path_digest = hashlib.sha256(str(file_path.resolve()).encode()).hexdigest()
+        module_name = f"chunker_plugin_{file_path.stem}_{path_digest}"
         if module_name in self._loaded_modules:
-            return []
+            return self._loaded_modules[module_name].copy()
         if str(file_path).startswith(str(Path(__file__).parent / "languages")):
             try:
                 if file_path.stem == "base":
@@ -395,7 +397,6 @@ class PluginManager:
             if file_path.parent.name == "languages":
                 module.__package__ = "chunker.languages"
             spec.loader.exec_module(module)
-            self._loaded_modules.add(module_name)
             plugins = []
             for _name, obj in inspect.getmembers(module):
                 if (
@@ -409,6 +410,7 @@ class PluginManager:
                 ):
                     plugins.append(obj)
                     logger.info("Found plugin class: %s in %s", obj.__name__, file_path)
+            self._loaded_modules[module_name] = plugins.copy()
             return plugins
         except (FileNotFoundError, IndexError, KeyError, ImportError, SyntaxError) as e:
             logger.error("Failed to load plugin from %s: %s", file_path, e)

@@ -112,10 +112,17 @@ class TestPluginInitializationFailures:
         manager = PluginManager()
         manager.registry.register(ParserFailPlugin)
         with patch("chunker.plugin_manager.get_parser") as mock_get_parser:
-            mock_get_parser.return_value = MagicMock()
+            mock_get_parser.side_effect = RuntimeError("Parser initialization failed!")
             with pytest.raises(RuntimeError) as exc_info:
                 manager.get_plugin("parser_fail")
             assert "Parser initialization failed!" in str(exc_info.value)
+            assert "parser_fail" not in manager.registry._instances
+            mock_get_parser.side_effect = None
+            mock_get_parser.return_value = MagicMock()
+            # Resolution is retried without injecting a parser into shared plugins.
+            plugin = manager.get_plugin("parser_fail")
+            assert plugin is manager.get_plugin("parser_fail")
+            assert mock_get_parser.call_count == 2
 
     @classmethod
     def test_plugin_with_invalid_language_name(cls):

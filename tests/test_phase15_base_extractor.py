@@ -8,6 +8,22 @@ from chunker.metadata.extractor import BaseMetadataExtractor
 from chunker.parser import get_parser
 
 
+def test_leading_comment_stays_attached_to_its_immediate_sibling():
+    source = (
+        b"# first\ndef first(): pass\ndef second(): pass\n# third\ndef third(): pass\n"
+    )
+    tree = get_parser("python").parse(source)
+    definitions = [
+        n for n in tree.root_node.named_children if n.type == "function_definition"
+    ]
+    extractor = SimpleMetadataExtractor("python")
+    assert [extractor._extract_leading_comment(n, source) for n in definitions] == [
+        "# first",
+        None,
+        "# third",
+    ]
+
+
 class SimpleMetadataExtractor(BaseMetadataExtractor):
     """Simple concrete implementation for testing."""
 

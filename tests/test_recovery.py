@@ -93,12 +93,13 @@ def problematic_function():
                 raise MemoryError("Out of memory!")
             return original_chunk_file(file_path, language)
 
-        with patch("chunker.chunk_file", side_effect=mock_chunk_file):
+        with patch(f"{__name__}.chunk_file", side_effect=mock_chunk_file):
             try:
                 chunks = chunk_file(large_file, language="python")
             except MemoryError:
                 chunks = list(chunk_file_streaming(large_file, language="python"))
-            assert len(chunks) > 0
+            assert call_count == 1
+            assert len(chunks) == 10000
 
     @staticmethod
     def test_segfault_isolation(tmp_path):

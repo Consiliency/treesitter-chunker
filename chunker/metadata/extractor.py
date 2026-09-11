@@ -23,6 +23,20 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
         calls = []
 
         def collect_calls(n: Node, _depth: int):
+            if self.language == "dart" and n.type == "selector":
+                if n.named_children and n.named_children[0].type == "argument_part":
+                    callee = n.prev_named_sibling
+                    if callee is not None and n.parent is not None:
+                        info = self._extract_call_info(n.parent, callee, source)
+                        if info:
+                            info.update(
+                                start=callee.start_byte,
+                                end=n.end_byte,
+                                arguments_start=n.start_byte,
+                                arguments_end=n.end_byte,
+                            )
+                            calls.append(info)
+                return
             # Handle call expressions across multiple languages
             if n.type in {
                 "call",  # Python
@@ -31,12 +45,36 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
                 "function_call",  # Some languages
                 "method_call",  # Some languages
                 "macro_invocation",  # Rust: println!("hello")
+                "method_invocation",  # Java
+                "function_call_expression",  # PHP
+                "member_call_expression",  # PHP
+                "scoped_call_expression",  # PHP
+                "application_expression",  # OCaml
+                "apply",  # Haskell
+                "list_lit",  # Clojure
             }:
-                if n.children:
-                    func_node = n.children[0]
-                    call_info = self._extract_call_info(n, func_node, source)
-                    if call_info:
-                        calls.append(call_info)
+                if n.named_children:
+                    func_node: Node | None = (
+                        n.child_by_field_name("function")
+                        or n.child_by_field_name("method")
+                        or n.child_by_field_name("name")
+                        or n.child_by_field_name("target")
+                        or n.named_children[0]
+                    )
+                    if n.type == "apply":
+                        func_node = n.child_by_field_name("function")
+                        if func_node is None:  # Type application, not a call.
+                            return
+                        if n.parent and n.parent.child_by_field_name("function") == n:
+                            return
+                        while func_node.type == "apply":
+                            func_node = func_node.child_by_field_name("function")
+                            if func_node is None:
+                                return
+                    if func_node is not None:
+                        call_info = self._extract_call_info(n, func_node, source)
+                        if call_info:
+                            calls.append(call_info)
 
         self._walk_tree(node, collect_calls)
         return calls
@@ -48,9 +86,24 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
         source: bytes,
     ) -> dict | None:
         """Extract call information from a call node."""
-        if func_node.type == "identifier":
+        if func_node.type in {"identifier", "simple_identifier", "name", "variable"}:
             # Simple function call: func()
             return self._create_call_info(call_node, func_node, source)
+        if func_node.type in {
+            "qualified_identifier",
+            "member_access_expression",
+            "navigation_expression",
+            "dot",
+            "value_path",
+            "sym_lit",
+            "selector",
+        }:
+            identifiers = []
+            self._collect_identifiers_recursive(func_node, identifiers, source)
+            if identifiers:
+                return self._create_call_info(
+                    call_node, func_node, source, identifiers[-1]
+                )
         if func_node.type in {
             "member_expression",  # JavaScript, C++
             "attribute",  # Python
@@ -160,6 +213,9 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
             "property_identifier",
             "field_identifier",
             "name",
+            "simple_identifier",
+            "value_name",
+            "sym_name",
         }:
             identifiers.append(self._get_node_text(node, source))
         for child in node.children:
@@ -223,18 +279,8 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
 
     def _extract_leading_comment(self, node: Node, source: bytes) -> str | None:
         """Extract comment immediately before a node."""
-        if not node.parent:
-            return None
-        siblings = node.parent.children
-        node_index = None
-        for i, sibling in enumerate(siblings):
-            if sibling == node:
-                node_index = i
-                break
-        if node_index is None or node_index == 0:
-            return None
-        prev_sibling = siblings[node_index - 1]
-        if self._is_comment_node(prev_sibling):
+        prev_sibling = node.prev_sibling
+        if prev_sibling is not None and self._is_comment_node(prev_sibling):
             return self._get_node_text(prev_sibling, source)
         return None
 

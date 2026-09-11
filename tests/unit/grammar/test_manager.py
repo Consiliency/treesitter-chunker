@@ -93,17 +93,41 @@ class TestTreeSitterGrammarManager:
         # Create the directory to simulate existing clone
         grammar_path = self.manager.grammars_dir / "tree-sitter-ruby"
         grammar_path.mkdir(parents=True, exist_ok=True)
+        (grammar_path / ".git").mkdir()
 
         # Fetch it (should pull)
         result = self.manager.fetch_grammar("ruby")
 
         assert result is True
 
-        # Check git pull was called
-        mock_run.assert_called_once()
-        args = mock_run.call_args[0][0]
-        assert args[0] == "git"
-        assert args[1] == "pull"
+        assert [call.args[0] for call in mock_run.call_args_list] == [
+            [
+                "git",
+                "remote",
+                "set-url",
+                "origin",
+                "--",
+                "https://github.com/tree-sitter/tree-sitter-ruby.git",
+            ],
+            ["git", "pull"],
+        ]
+        assert all(
+            call.kwargs["cwd"] == grammar_path for call in mock_run.call_args_list
+        )
+
+    @patch("subprocess.run")
+    def test_fetch_stops_when_validated_remote_cannot_be_set(self, mock_run):
+        mock_run.return_value = Mock(returncode=1, stderr="remote reset failed")
+        self.manager.add_grammar(
+            "ruby", "https://github.com/tree-sitter/tree-sitter-ruby.git"
+        )
+        grammar_path = self.manager.grammars_dir / "tree-sitter-ruby"
+        (grammar_path / ".git").mkdir(parents=True)
+
+        assert self.manager.fetch_grammar("ruby") is False
+        assert [call.args[0][1:3] for call in mock_run.call_args_list] == [
+            ["remote", "set-url"]
+        ]
 
     def test_fetch_unknown_grammar(self):
         """Test fetching a grammar that wasn't added."""

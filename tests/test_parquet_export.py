@@ -63,8 +63,8 @@ def sample_chunks():
 
 def test_basic_export(sample_chunks):
     """Test basic Parquet export functionality."""
-    with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as tmp:
-        output_path = Path(tmp.name)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_path = Path(tmpdir) / "chunks.parquet"
 
         exporter = ParquetExporter()
         exporter.export(sample_chunks, output_path)
@@ -92,8 +92,8 @@ def test_basic_export(sample_chunks):
 
 def test_column_selection(sample_chunks):
     """Test exporting with selected columns only."""
-    with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as tmp:
-        output_path = Path(tmp.name)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_path = Path(tmpdir) / "chunks.parquet"
 
         exporter = ParquetExporter(columns=["language", "node_type", "lines_of_code"])
         exporter.export(sample_chunks, output_path)
@@ -121,19 +121,14 @@ def test_partitioned_export(sample_chunks):
         assert (output_path / "language=python").exists()
         assert (output_path / "language=rust").exists()
 
-        # Read back partitioned dataset - use compatibility approach
-        if int(pa.__version__.split(".")[0]) < 16:
-            # For older pyarrow, read partitions directly
-            tables = []
-            for lang_dir in output_path.glob("language=*"):
-                for parquet_file in lang_dir.glob("*.parquet"):
-                    with pa.OSFile(str(parquet_file), "rb") as source:
-                        tables.append(pq.read_table(source))
-            table = pa.concat_tables(tables) if tables else pa.table({})
-        else:
-            dataset = pq.ParquetDataset(str(output_path))
-            table = dataset.read()
-        assert len(table) == 3
+        table = pq.ParquetDataset(str(output_path)).read()
+        assert len(table) == len(sample_chunks)
+        actual = sorted(table.to_pylist(), key=lambda row: row["content"])
+        expected = sorted(
+            [exporter._chunk_to_dict(chunk) for chunk in sample_chunks],
+            key=lambda row: row["content"],
+        )
+        assert actual == expected
 
 
 def test_compression_options(sample_chunks):
@@ -141,8 +136,8 @@ def test_compression_options(sample_chunks):
     compressions = ["snappy", "gzip", "zstd", None]
 
     for compression in compressions:
-        with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as tmp:
-            output_path = Path(tmp.name)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_path = Path(tmpdir) / "chunks.parquet"
 
             exporter = ParquetExporter(compression=compression)
             exporter.export(sample_chunks, output_path)
@@ -158,8 +153,8 @@ def test_compression_options(sample_chunks):
 
 def test_streaming_export(sample_chunks):
     """Test streaming export for large datasets."""
-    with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as tmp:
-        output_path = Path(tmp.name)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_path = Path(tmpdir) / "chunks.parquet"
 
         exporter = ParquetExporter()
 
@@ -179,8 +174,8 @@ def test_streaming_export(sample_chunks):
 
 def test_empty_chunks():
     """Test exporting empty chunks list."""
-    with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as tmp:
-        output_path = Path(tmp.name)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_path = Path(tmpdir) / "chunks.parquet"
 
         exporter = ParquetExporter()
         exporter.export([], output_path)
@@ -195,8 +190,8 @@ def test_empty_chunks():
 
 def test_metadata_structure(sample_chunks):
     """Test nested metadata structure is correctly preserved."""
-    with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as tmp:
-        output_path = Path(tmp.name)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_path = Path(tmpdir) / "chunks.parquet"
 
         exporter = ParquetExporter()
         exporter.export(sample_chunks, output_path)

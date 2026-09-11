@@ -245,6 +245,9 @@ def _edge_record(
         "end_line": line if isinstance(line, int) else None,
         "start_line": line if isinstance(line, int) else None,
     }
+    relationship_file = relationship.get("file")
+    if relationship_file is not None:
+        relationship_file = normalize_boundary_path(str(relationship_file))
     edge_id = (
         "edge:"
         + _stable_hash(
@@ -253,7 +256,7 @@ def _edge_record(
             relationship_type,
             reference,
             line,
-            relationship.get("file") or "",
+            relationship_file or "",
         )[:16]
     )
     provenance = {
@@ -274,7 +277,7 @@ def _edge_record(
         "location": location,
         "provenance": provenance,
         "metadata": {
-            "file": relationship.get("file"),
+            "file": relationship_file,
             "is_internal": is_internal,
         },
     }
@@ -923,7 +926,7 @@ def _assemble_boundary_ir(
         ),
         "source": {
             "kind": "file" if root.is_file() else "repository",
-            "path": str(root),
+            "path": root.as_posix(),
         },
         "files": file_records,
         "nodes": node_records,
@@ -956,7 +959,7 @@ def _assemble_boundary_ir(
         "run": {
             "tool": "treesitter-chunker",
             "tool_version": TOOL_VERSION,
-            "root": str(root),
+            "root": root.as_posix(),
             "created_at": created_at,
             "canonical": canonical,
             "options": run_options,
@@ -1216,7 +1219,7 @@ def extract_boundary_ir(
         ),
         "source": {
             "kind": "file" if root.is_file() else "repository",
-            "path": str(root),
+            "path": root.as_posix(),
         },
         "files": file_records,
         "nodes": node_records,
@@ -1249,7 +1252,7 @@ def extract_boundary_ir(
         "run": {
             "tool": "treesitter-chunker",
             "tool_version": TOOL_VERSION,
-            "root": str(root),
+            "root": root.as_posix(),
             "created_at": created_at,
             "canonical": canonical,
             "options": run_options,

@@ -9,15 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Tree-sitter Chunker now uses `tree-sitter==0.26.0` with
 `tree-sitter-language-pack==1.17.0`. The pack expands the audited grammar set
-from 167 to 371 and keeps the twelve frozen Boundary IR fixtures byte-identical.
+from 167 to 371. Eleven frozen Boundary IR fixtures remain byte-identical;
+the Ruby correctness repair below intentionally removes one false node.
 
 ### ⚠️ BREAKING
 
 - **Parser delivery is now cache-backed.** Language-pack 1.17 downloads parser
   libraries on first use into a versioned cache. Offline images and deployments
   must prefetch their required languages while network access is available.
-  A warm cache works offline; a cold offline cache fails with an explicit
-  `DownloadError`.
+  A warm cache works offline. For a cold offline cache the pack raises
+  `DownloadError`; Chunker logs that cause and its public parser API raises
+  `LanguageNotFoundError`.
 - **The supported dependency range moves to Tree-sitter 0.26 and language-pack
   1.17.** Downstream constraints that intentionally held the 4.x parser stack
   must opt into this release and rerun their Boundary IR acceptance gates.
@@ -32,13 +34,37 @@ from 167 to 371 and keeps the twelve frozen Boundary IR fixtures byte-identical.
   not advertise or load that pack grammar; the coverage report records it as an
   explicit extraction gap until an upstream release fixes the parser.
 
+### Correctness repairs
+
+- Registry discovery includes pack languages without eagerly downloading grammars;
+  individual metadata requests validate the loaded grammar's ABI and node count.
+  Undetermined scanner/compatibility capabilities remain explicitly unknown.
+- Partitioned Parquet exports round-trip through the standard dataset reader.
+- Call extraction recognizes the current grammar shapes for the extended language
+  set. Property reads and PHP `echo` statements are not reported as explicit calls.
+- Ruby chunking ignores unnamed keyword tokens and includes brace blocks. Its
+  Boundary IR fixture loses only the false `class` keyword node at bytes 0–5
+  (`definition_id` `5903643579d7686c6fb23f3c2144bbaf977d1009`); the four retained
+  nodes, their identities, and all edges are unchanged. Consumers with Ruby
+  snapshots must review this intentional correction before adoption.
+- Zig semantic and public/streaming chunking recognize the pack's declaration
+  grammar. System metrics restore CPU-frequency and optional resource fallbacks.
+- Large flat files no longer rescan sibling lists and copy source prefixes for
+  every chunk when finding comments and line numbers.
+- Grammar updates stop if the validated remote cannot be set, before any pull.
+- Custom plugin discovery caches classes by resolved file path, so repeated
+  discovery and loading do not lose plugins when temporary Path objects reuse IDs.
+- Boundary IR uses portable root and relationship paths on Windows, preserving
+  the same edge identities and committed golden output as Unix.
+
 ### ✅ Verification
 
 - The committed coverage oracle now records 370/371 load-safe grammars, with
-  20 rich and 7 sparse extraction-verified languages.
+  20 rich and 8 sparse extraction-verified languages.
 - CI installs the exact parser pair and prefetches the pack before parallel
   tests. The release workflow no longer installs an unbounded GitHub head of
-  py-tree-sitter, and the package workflow installs the same exact pair.
+  py-tree-sitter. v5 distribution is PyPI-only; native-package publication is
+  suspended pending the rebuild gates in `docs/packaging.md`.
 
 ## [4.0.0] — v3.2.2 remediation
 

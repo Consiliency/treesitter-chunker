@@ -37,7 +37,12 @@ class TestPhase15Languages:
     """Test call span extraction for 15+ languages."""
 
     @staticmethod
-    def _test_language_calls(language: str, code: str, expected_calls: list[str]):
+    def _test_language_calls(
+        language: str,
+        code: str,
+        expected_calls: list[str],
+        excluded_calls: tuple[str, ...] = (),
+    ):
         """Helper to test call extraction for a language."""
         # Use base extractor for languages without specific extractors
         extractor = MetadataExtractorFactory.create_extractor(language)
@@ -55,6 +60,8 @@ class TestPhase15Languages:
             assert (
                 expected in extracted_names
             ), f"Expected call '{expected}' not found in {extracted_names}"
+
+        assert not set(excluded_calls).intersection(extracted_names)
 
         # Verify span information is present
         for call in calls:
@@ -98,41 +105,41 @@ class TestPhase15Languages:
         code = """
         <?php
         function test() {
-            echo "hello";                 // Should detect "echo"
+            echo "hello";                 // Language statement, not a function call
             $result = strlen("test");     // Should detect "strlen"
             $obj->method();               // Should detect "method"
             array_map($fn, $array);       // Should detect "array_map"
         }
         ?>
         """
-        expected_calls = ["echo", "strlen", "method", "array_map"]
-        self._test_language_calls("php", code, expected_calls)
+        expected_calls = ["strlen", "method", "array_map"]
+        self._test_language_calls("php", code, expected_calls, ("echo",))
 
     def test_kotlin_method_calls(self):
         """Test Kotlin method call extraction."""
         code = """
         fun test() {
             println("hello")              // Should detect "println"
-            val result = "test".length   // Should detect "length"
+            val result = "test".length   // Property read, not an explicit call
             obj.method()                  // Should detect "method"
             listOf(1, 2, 3).map { it * 2 } // Should detect "map"
         }
         """
-        expected_calls = ["println", "length", "method", "map"]
-        self._test_language_calls("kotlin", code, expected_calls)
+        expected_calls = ["println", "method", "map"]
+        self._test_language_calls("kotlin", code, expected_calls, ("length",))
 
     def test_swift_method_calls(self):
         """Test Swift method call extraction."""
         code = """
         func test() {
             print("hello")                // Should detect "print"
-            let result = "test".count     // Should detect "count"
+            let result = "test".count     // Property read, not an explicit call
             obj.method()                  // Should detect "method"
             [1, 2, 3].map { $0 * 2 }     // Should detect "map"
         }
         """
-        expected_calls = ["print", "count", "method", "map"]
-        self._test_language_calls("swift", code, expected_calls)
+        expected_calls = ["print", "method", "map"]
+        self._test_language_calls("swift", code, expected_calls, ("count",))
 
     def test_csharp_method_calls(self):
         """Test C# method call extraction."""
@@ -140,27 +147,27 @@ class TestPhase15Languages:
         public class Test {
             public void test() {
                 Console.WriteLine("hello");     // Should detect "WriteLine"
-                string result = "test".Length;  // Should detect "Length"
+                string result = "test".Length;  // Property read, not an explicit call
                 obj.Method();                    // Should detect "Method"
                 Math.Max(1, 2);                  // Should detect "Max"
             }
         }
         """
-        expected_calls = ["WriteLine", "Length", "Method", "Max"]
-        self._test_language_calls("csharp", code, expected_calls)
+        expected_calls = ["WriteLine", "Method", "Max"]
+        self._test_language_calls("csharp", code, expected_calls, ("Length",))
 
     def test_dart_method_calls(self):
         """Test Dart method call extraction."""
         code = """
         void test() {
             print("hello");                 // Should detect "print"
-            var result = "test".length;     // Should detect "length"
+            var result = "test".length;     // Property read, not an explicit call
             obj.method();                   // Should detect "method"
             [1, 2, 3].map((x) => x * 2);   // Should detect "map"
         }
         """
-        expected_calls = ["print", "length", "method", "map"]
-        self._test_language_calls("dart", code, expected_calls)
+        expected_calls = ["print", "method", "map"]
+        self._test_language_calls("dart", code, expected_calls, ("length",))
 
     def test_haskell_function_calls(self):
         """Test Haskell function application extraction."""
@@ -191,13 +198,13 @@ class TestPhase15Languages:
         code = """
         def test(): Unit = {
             println("hello")                // Should detect "println"
-            val result = "test".length      // Should detect "length"
+            val result = "test".length      // Property read, not an explicit call
             obj.method()                    // Should detect "method"
             List(1, 2, 3).map(_ * 2)       // Should detect "map"
         }
         """
-        expected_calls = ["println", "length", "method", "map"]
-        self._test_language_calls("scala", code, expected_calls)
+        expected_calls = ["println", "method", "map"]
+        self._test_language_calls("scala", code, expected_calls, ("length",))
 
     def test_elixir_function_calls(self):
         """Test Elixir function call extraction."""

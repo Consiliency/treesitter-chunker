@@ -127,6 +127,8 @@ class StreamingChunker:
         """
         if should_chunk is None:
             should_chunk, _ = resolve_chunk_predicates(self.language)
+        if self.language == "ruby" and not node.is_named:
+            return
 
         parent_route = (parent_route or []).copy()
         parent_qualified_route = (parent_qualified_route or []).copy()

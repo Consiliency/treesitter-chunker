@@ -334,12 +334,28 @@ class LanguageRegistry:
                 logger.warning("Failed to load symbol '%s': %s", symbol_name, e)
             except (IndexError, KeyError, OSError) as e:
                 logger.error("Error loading language '%s': %s", lang_name, e)
-        # No more hardcoded baseline languages - only what's actually discovered
+        local_languages = list(discovered)
+        # Advertise pack languages without downloading or loading every grammar.
+        from chunker._internal.language_pack import list_pack_languages
+
+        for name in list_pack_languages():
+            if name not in self._languages:
+                metadata = LanguageMetadata(
+                    name=name,
+                    symbol_name=f"tree_sitter_{name}",
+                    capabilities={
+                        "external_scanner": None,
+                        "compatible": None,
+                        "language_version": "unknown",
+                    },
+                )
+                self._languages[name] = (None, metadata)
+                discovered[name] = metadata
         self._discovered = True
 
         # Use enhanced error logging for discovery summary
         log_grammar_discovery_summary(
-            list(discovered.keys()),
+            local_languages,
             total_expected=30,
             available_languages=self._get_all_available_languages(),
         )
@@ -537,6 +553,15 @@ class LanguageRegistry:
             available = list(self._languages.keys())
             raise LanguageNotFoundError(name, available)
         _, metadata = self._languages[name]
+        if metadata.version == "unknown":
+            language = self.get_language(name)
+            # Assignment validates ABI compatibility without parsing any input.
+            Parser(language)
+            metadata.version = str(language.abi_version)
+            metadata.node_types_count = language.node_kind_count
+            metadata.capabilities.update(
+                compatible=True, language_version=metadata.version
+            )
         return metadata
 
     def has_language(self, name: str) -> bool:

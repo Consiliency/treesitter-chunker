@@ -1277,7 +1277,7 @@
         "method"
       ],
       "load": "loads",
-      "node_count": 5,
+      "node_count": 4,
       "sample": "golden-fixture"
     },
     "rust": {
@@ -1727,10 +1727,12 @@
       "load": "loads"
     },
     "zig": {
-      "extraction": "empty",
-      "kinds": [],
+      "extraction": "sparse",
+      "kinds": [
+        "Decl"
+      ],
       "load": "loads",
-      "node_count": 0,
+      "node_count": 2,
       "sample": "tests/fixtures/language_smoke/samples/sample.zig"
     },
     "ziggy": {
@@ -1753,11 +1755,11 @@
   "summary": {
     "advertised_no_pack_grammar": 3,
     "extraction": {
-      "empty": 16,
+      "empty": 15,
       "extraction_gap": 4,
       "load_only": 327,
       "rich": 20,
-      "sparse": 7
+      "sparse": 8
     },
     "fails_to_load": 1,
     "loads": 370,

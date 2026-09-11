@@ -7,8 +7,8 @@ Pinned stack: `tree_sitter >=0.26,<0.27` + `tree-sitter-language-pack ==1.17.0` 
 ## Headline
 
 - **370 / 371** pack languages **LOAD** (grammar loads + parses a trivial input under the pinned runtime); **1** fail to load.
-- **20 RICH** (>= 2 distinct boundary kinds) + **7 SPARSE** (exactly 1 kind) extraction-verified on a curated valid sample.
-- **16 EMPTY** (parse clean, 0 boundaries) and **4 EXTRACTION-GAP** (chunker advertises the extension but no parser resolves -- a real, fixable bug surfaced here).
+- **20 RICH** (>= 2 distinct boundary kinds) + **8 SPARSE** (exactly 1 kind) extraction-verified on a curated valid sample.
+- **15 EMPTY** (parse clean, 0 boundaries) and **4 EXTRACTION-GAP** (chunker advertises the extension but no parser resolves -- a real, fixable bug surfaced here).
 - **327 LOAD-ONLY** -- the long tail with no curated sample, honestly *not* extraction-tested rather than guessed.
 
 ## Honest tiers
@@ -21,11 +21,11 @@ Pinned stack: `tree_sitter >=0.26,<0.27` + `tree-sitter-language-pack ==1.17.0` 
 
 **EXTRACTION-GAP (no safe backing parser):** `assembly`, `cobol`, `raku`, `restructuredtext`. chunker's `EXTENSION_MAP` routes these file types to a language the parser layer cannot safely resolve; the IR records `boundary.parse_error` ("Language 'X' not found") and emits 0 nodes. The JSON `load_error` distinguishes name-mapping gaps from grammars disabled after a bounded malformed-input probe.
 
-**EMPTY -- genuine extraction gaps (code that parses but yields no boundaries):** `erlang`, `fortran`, `fsharp`, `lua`, `nim`, `pascal`, `perl`, `powershell`, `verilog`, `vhdl`, `zig`. These are real source languages whose grammar loads and parses cleanly, but chunker emits no boundary nodes for them today.
+**EMPTY -- genuine extraction gaps (code that parses but yields no boundaries):** `erlang`, `fortran`, `fsharp`, `lua`, `nim`, `pascal`, `perl`, `powershell`, `verilog`, `vhdl`. These are real source languages whose grammar loads and parses cleanly, but chunker emits no boundary nodes for them today.
 
 **EMPTY -- expected (data/markup, no function/type surface):** `css`, `html`, `json`, `latex`, `markdown`. 0 boundaries is correct for these formats.
 
-**SPARSE (1 kind -- thin surface):** `bash`, `elisp`, `julia`, `matlab`, `r`, `vim`, `xml`. Mostly single-construct (function-oriented) languages where 1 kind is the honest ceiling.
+**SPARSE (1 kind -- thin surface):** `bash`, `elisp`, `julia`, `matlab`, `r`, `vim`, `xml`, `zig`. Mostly single-construct (function-oriented) languages where 1 kind is the honest ceiling.
 
 ## Full per-language table
 
@@ -304,7 +304,7 @@ Pinned stack: `tree_sitter >=0.26,<0.27` + `tree-sitter-language-pack ==1.17.0` 
 | `rshtml` | yes | load_only | - | - |
 | `rst` | yes | load_only | - | - |
 | `rtf` | yes | load_only | - | - |
-| `ruby` | yes | rich | 5 | `class`, `method` |
+| `ruby` | yes | rich | 4 | `class`, `method` |
 | `rust` | yes | rich | 4 | `function`, `impl_item`, `struct` |
 | `sas` | yes | load_only | - | - |
 | `scala` | yes | rich | 3 | `method`, `object_definition` |
@@ -401,7 +401,7 @@ Pinned stack: `tree_sitter >=0.26,<0.27` + `tree-sitter-language-pack ==1.17.0` 
 | `yang` | yes | load_only | - | - |
 | `yuck` | yes | load_only | - | - |
 | `yul` | yes | load_only | - | - |
-| `zig` | yes | empty | 0 | - |
+| `zig` | yes | sparse | 2 | `Decl` |
 | `ziggy` | yes | load_only | - | - |
 | `ziggy_schema` | yes | load_only | - | - |
 | `zsh` | yes | load_only | - | - |

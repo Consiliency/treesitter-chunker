@@ -116,39 +116,15 @@ class ParquetExporter:
                 root_path = output_path.parent
             else:
                 root_path = output_path
-            # Ensure the root directory exists
-            root_path.mkdir(parents=True, exist_ok=True)
+            # Hive partition values belong in the directory names, not duplicated
+            # as plain-string columns inside files (which conflicts on readback).
+            pq.write_to_dataset(
+                table,
+                root_path=str(root_path),
+                partition_cols=self.partition_by,
+                compression=self.compression,
+            )
 
-            # Group records by partition columns
-            partitions = {}
-            for i in range(len(table)):
-                # Get partition key values for this row
-                partition_key = tuple(
-                    table.column(col)[i].as_py()
-                    for col in self.partition_by
-                    if col in table.schema.names
-                )
-                if partition_key not in partitions:
-                    partitions[partition_key] = []
-                partitions[partition_key].append(i)
-
-            # Write each partition to its own file
-            for partition_values, row_indices in partitions.items():
-                # Create partition directory path
-                partition_dir = root_path
-                for i, col in enumerate(self.partition_by):
-                    if col in table.schema.names:
-                        partition_dir /= f"{col}={partition_values[i]}"
-
-                partition_dir.mkdir(parents=True, exist_ok=True)
-
-                # Create subset table for this partition
-                subset_table = table.take(row_indices)
-
-                # Write to parquet file in partition directory
-                partition_file = partition_dir / "data.parquet"
-                with pa.OSFile(str(partition_file), "wb") as sink:
-                    pq.write_table(subset_table, sink, compression=self.compression)
         else:
             # Ensure parent directory exists before writing file
             output_path.parent.mkdir(parents=True, exist_ok=True)
