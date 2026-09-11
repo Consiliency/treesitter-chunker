@@ -11,6 +11,7 @@ Tests cover:
 """
 
 import concurrent.futures
+import gc
 import mmap
 import shutil
 import tempfile
@@ -484,14 +485,16 @@ class TestBufferOptimization:
 
         times = []
         for _ in range(3):
-            start_time = time.time()
+            # Start each sample at the same GC phase; collection remains enabled.
+            gc.collect()
+            start_time = time.perf_counter()
             list(chunk_file_streaming(medium_python_file, "python"))
-            elapsed = time.time() - start_time
+            elapsed = time.perf_counter() - start_time
             times.append(elapsed)
         avg_time = sum(times) / len(times)
         variance = sum((t - avg_time) ** 2 for t in times) / len(times)
-        # Increased tolerance from 0.01 to 0.05 (5% variance is acceptable)
-        assert variance < 0.05, f"High variance in streaming times: {variance}"
+        # Absolute variance in seconds squared, not a percentage.
+        assert variance < 0.05, f"High variance in streaming times: {variance}; {times}"
 
 
 class TestProgressCallbacks:
