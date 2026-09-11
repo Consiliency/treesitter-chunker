@@ -70,6 +70,8 @@ class SimpleMetadataExtractor(BaseMetadataExtractor):
         ("`(quote (clojure.core/unquote (actual)))", ["actual"]),
         ("`(data '(clojure.core/unquote (actual)))", ["actual"]),
         ("`(data (; comment\n clojure.core/unquote (actual)))", ["actual"]),
+        ("(^:x quote (actual))", []),
+        ("`(data (^:x clojure.core/unquote (actual)))", ["actual"]),
         ("#_(discarded) (actual)", ["actual"]),
         ("(if true 1 2)", []),
         ("(if (condition) (f) (g))", ["condition", "f", "g"]),

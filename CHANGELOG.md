@@ -39,7 +39,8 @@ the Ruby correctness repair below intentionally removes one false node.
 - Clojure call metadata excludes special-form heads and quoted or discarded data,
   while retaining evaluated calls inside syntax-quote unquotes, including quote
   forms themselves being constructed as data and explicitly qualified unquote
-  forms. This is syntax analysis, not macro expansion or runtime name resolution.
+  forms with or without symbol metadata. This is syntax analysis, not macro
+  expansion or runtime name resolution.
 - Incremental move matching uses stable source order for ambiguous candidates.
   Matching remains greedy; it does not infer globally optimal logical identity.
 - Incremental Boundary IR retries cached extraction errors, so an unchanged file

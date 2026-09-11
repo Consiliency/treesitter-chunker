@@ -86,7 +86,7 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
         if not values:
             return None
         callee = values[0]
-        if self._get_node_text(callee, source) in {
+        if self._clojure_symbol_text(callee, source) in {
             "def",
             "if",
             "do",
@@ -131,7 +131,7 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
                 return None
             elif ancestor.type == "list_lit":
                 values = ancestor.children_by_field_name("value")
-                head = self._get_node_text(values[0], source) if values else ""
+                head = self._clojure_symbol_text(values[0], source) if values else ""
                 if syntax_depth and head in {
                     "clojure.core/unquote",
                     "clojure.core/unquote-splicing",
@@ -145,6 +145,16 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
                 elif syntax_depth == 0 and head == "quote":
                     return None
         return callee if syntax_depth == 0 else None
+
+    def _clojure_symbol_text(self, node: Node, source: bytes) -> str:
+        name = node.child_by_field_name("name")
+        if node.type != "sym_lit" or name is None:
+            return ""
+        text = self._get_node_text(name, source)
+        namespace = node.child_by_field_name("namespace")
+        if namespace is not None:
+            text = self._get_node_text(namespace, source) + "/" + text
+        return text
 
     def _extract_call_info(
         self,
