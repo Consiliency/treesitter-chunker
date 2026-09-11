@@ -391,9 +391,25 @@ def test_default_repository_identity_is_relative_and_repeatable(tmp_path):
     assert {c.file_path for c in a + b} == {"src/a.py"}
 
 
-def test_repository_typescript_detection():
-    extensions = RepoProcessor._build_language_extension_map()
-    assert extensions[".ts"] == extensions[".tsx"] == "typescript"
+def test_repository_typescript_detection(tmp_path):
+    source = (
+        "interface Props { label: string }\n"
+        "export function Card(props: Props) { "
+        "return <section><span>{props.label}</span></section>; }\n"
+    )
+    (tmp_path / "Card.tsx").write_text(source, encoding="utf-8")
+    result = RepoProcessor(show_progress=False).process_repository(
+        str(tmp_path), incremental=False
+    )
+    assert result.errors == []
+    chunks = result.file_results[0].chunks
+    assert {c.language for c in chunks} == {"tsx"}
+    assert "interface_declaration" in {c.node_type for c in chunks}
+    assert [c.content for c in chunks if c.node_type == "jsx_element"] == [
+        "<section><span>{props.label}</span></section>",
+        "<span>{props.label}</span>",
+    ]
+    assert RepoProcessor._build_language_extension_map()[".ts"] == "typescript"
 
 
 def test_repository_preserves_custom_two_argument_adapter(tmp_path):

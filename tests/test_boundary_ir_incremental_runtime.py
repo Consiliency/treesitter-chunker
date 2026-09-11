@@ -128,7 +128,10 @@ def test_incremental_fail_fast_parser_failure_raises(tmp_path: Path, monkeypatch
         extract_boundary_ir(tmp_path, "python", incremental=True, fail_fast=True)
 
 
-def test_transient_parse_error_is_retried_without_source_change(tmp_path, monkeypatch):
+@pytest.mark.parametrize("failing_operation", ["chunk_file", "_node_record"])
+def test_transient_extraction_error_is_retried_without_source_change(
+    tmp_path, monkeypatch, failing_operation
+):
     from chunker.boundary import adapter
 
     (tmp_path / "app.py").write_text("def ok():\n    return 1\n", encoding="utf-8")
@@ -136,9 +139,9 @@ def test_transient_parse_error_is_retried_without_source_change(tmp_path, monkey
     with monkeypatch.context() as patch:
         patch.setattr(
             adapter,
-            "chunk_file",
+            failing_operation,
             lambda *args, **kwargs: (_ for _ in ()).throw(
-                RuntimeError("temporary download failure")
+                RuntimeError("temporary extraction failure")
             ),
         )
         failed = extract_boundary_ir(

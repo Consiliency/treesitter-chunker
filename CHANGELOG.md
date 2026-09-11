@@ -42,12 +42,14 @@ the Ruby correctness repair below intentionally removes one false node.
   retain other partitions. Repeated exports do not append duplicate rows. PyArrow
   controls physical filenames; partition columns must exist in the selected schema.
 - Repository processing uses stable repository-relative identity paths instead of
-  temporary files, and detects TypeScript correctly. Windows Git filtering uses
+  temporary files, and selects TypeScript or TSX grammars for their file types. Windows Git filtering uses
   the same slash-separated paths as Git's index. Caller-supplied two-argument
   chunker adapters retain their existing interface.
 - Incremental diffs retain overloaded definitions by using occurrence identities
   where definition routes collide. Public definition IDs are unchanged; ambiguous
   overload edits may appear as removal/addition instead of a guessed match.
+  Move matching reserves each target once and leaves ambiguous overload groups
+  as removal/addition, including simultaneous deletion and relocation.
   Applying diffs removes previous occurrences and refreshes unchanged positions.
 - Directory chunking derives extensions from the existing language map and
   registered configurations, including Go, Ruby and Java. Languages without known

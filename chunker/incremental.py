@@ -422,11 +422,26 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
     ) -> list[tuple[CodeChunk, CodeChunk]]:
         """Detect chunks that have been moved."""
         moved_pairs = []
+        collisions = {
+            key
+            for chunks in (old_chunks, new_chunks)
+            for key, count in Counter(
+                c.definition_id or c.chunk_id for c in chunks
+            ).items()
+            if count > 1
+        }
+        matched_targets = set()
         for old_chunk in old_chunks:
+            if (old_chunk.definition_id or old_chunk.chunk_id) in collisions:
+                continue
             best_match = None
             best_similarity = 0.0
             for new_chunk in new_chunks:
-                if old_chunk.node_type != new_chunk.node_type:
+                if (
+                    old_chunk.node_type != new_chunk.node_type
+                    or new_chunk.chunk_id in matched_targets
+                    or (new_chunk.definition_id or new_chunk.chunk_id) in collisions
+                ):
                     continue
                 similarity = difflib.SequenceMatcher(
                     None,
@@ -445,6 +460,7 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
                     best_similarity = similarity
             if best_match:
                 moved_pairs.append((old_chunk, best_match))
+                matched_targets.add(best_match.chunk_id)
         return moved_pairs
 
     @staticmethod

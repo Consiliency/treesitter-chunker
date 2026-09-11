@@ -90,3 +90,59 @@ def test_update_refreshes_unchanged_chunk_positions():
     updated = processor.update_chunks(old, diff)
     assert [c.chunk_id for c in updated] == [c.chunk_id for c in new]
     assert [c.byte_start for c in updated] == [c.byte_start for c in new]
+
+
+def test_multiline_overload_deletion_and_relocation_reconstructs_new_file():
+    from chunker import chunk_text
+
+    old_source = (
+        "class A {\n"
+        "  int foo(int a) { return 1; }\n"
+        "  int foo(long a) { return 1; }\n"
+        "}\n"
+    )
+    new_source = "class A {\n\n\n  int foo(int a) { return 1; }\n}\n"
+    old = chunk_text(old_source, "java", file_path="A.java")
+    new = chunk_text(new_source, "java", file_path="A.java")
+    processor = DefaultIncrementalProcessor()
+    for previous in (old, list(reversed(old))):
+        diff = processor.compute_diff(previous, new_source, "java")
+        updated = processor.update_chunks(previous, diff)
+        assert len(updated) == len(new) == 2
+        assert updated == new
+        assert diff.summary["moved"] == 0
+        assert sum(
+            diff.summary[k] for k in ("added", "modified", "moved", "unchanged")
+        ) == len(new)
+        assert sum(
+            diff.summary[k] for k in ("deleted", "modified", "moved", "unchanged")
+        ) == len(old)
+
+
+def test_move_detection_never_reuses_a_target():
+    from chunker import chunk_text
+
+    old = chunk_text(
+        "def foo():\n    return 1\n\ndef bar():\n    return 1\n",
+        "python",
+        file_path="a.py",
+    )
+    new = chunk_text("\n\n\n\n\ndef baz():\n    return 1\n", "python", file_path="a.py")
+    matches = DefaultIncrementalProcessor.detect_moved_chunks(old, new)
+    assert len(matches) == 1
+    assert len({after.chunk_id for _, after in matches}) == len(matches)
+
+
+def test_duplicate_python_definition_reduction_and_relocation():
+    from chunker import chunk_text
+
+    body = "def f():\n    return 1\n"
+    old = chunk_text(body + "\n" + body, "python", file_path="a.py")
+    new_source = "\n" + body
+    expected = chunk_text(new_source, "python", file_path="a.py")
+    processor = DefaultIncrementalProcessor()
+    diff = processor.compute_diff(old, new_source, "python")
+    assert processor.update_chunks(old, diff) == expected
+    assert diff.summary["moved"] == 0
+    assert diff.summary["deleted"] == 2
+    assert diff.summary["added"] == 1
