@@ -9,6 +9,23 @@ This document is the source of truth for packaging and PyPI publishing.
 - `.github/workflows/build-wheels.yml` builds wheel artifacts but does not publish them
 - Production publishing uses GitHub trusted publishing
 - A release tag must match the version in `pyproject.toml`
+- The PyPI release workflow requires the full `tests/` and `spec_tests/` tier,
+  lint, formatting and the baseline type gate on Python 3.11, 3.12 and 3.13.
+  A failing or timed-out validation job blocks its build and publication jobs.
+- The built wheel is installed in a fresh environment using hashed, locked runtime
+  dependencies and exercised outside the source checkout. Distribution checksums
+  are retained with the artifacts and verified before publication.
+
+### Native package status for the v5 candidate
+
+The Debian/RPM/Homebrew recipes are not validated for v5. They still contain
+incomplete dependency declarations; RPM/Homebrew version fields are stale and
+the Homebrew source checksum is a placeholder. The native-package workflow is
+separate from the PyPI release workflow and is not covered by its validation job.
+Do not tag or dispatch a v5 release while that path remains unresolved. Campaign
+scope is pending an owner decision between suspending native packages for v5 and
+rebuilding all three native distribution paths. No native support removal is
+implied by the PyPI workflow changes.
 
 ## Version Source of Truth
 

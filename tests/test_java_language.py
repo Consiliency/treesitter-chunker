@@ -104,7 +104,10 @@ public interface UserRepository {
         chunks = chunk_text(code, "java", "UserRepository.java")
         interface_chunks = [c for c in chunks if c.node_type == "interface_declaration"]
         assert len(interface_chunks) == 1
-        assert "UserRepository" in interface_chunks[0].parent_context
+        assert interface_chunks[0].qualified_route == [
+            "interface_declaration:UserRepository"
+        ]
+        assert interface_chunks[0].parent_chunk_id is None
         method_chunks = [c for c in chunks if "method" in c.node_type]
         assert len(method_chunks) >= 1
 
@@ -141,7 +144,8 @@ public enum UserRole {
         chunks = chunk_text(code, "java", "UserRole.java")
         enum_chunks = [c for c in chunks if c.node_type == "enum_declaration"]
         assert len(enum_chunks) == 1
-        assert "UserRole" in enum_chunks[0].parent_context
+        assert enum_chunks[0].qualified_route == ["enum_declaration:UserRole"]
+        assert enum_chunks[0].parent_chunk_id is None
         assert len(chunks) >= 4
 
     @pytest.mark.skipif(

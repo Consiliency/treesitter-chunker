@@ -14,6 +14,9 @@
 - Release tags must use the form `vX.Y.Z`
 - The tag version must exactly match `pyproject.toml`
 - The release workflow must fail before publish if that version already exists on PyPI
+- Build and publication depend on full source validation across Python 3.11–3.13
+- The built wheel must pass a fresh installation with hashed locked runtime requirements
+- Missing artifacts or checksum verification failures stop publication
 
 ## Supported Release Triggers
 

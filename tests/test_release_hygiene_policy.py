@@ -151,3 +151,45 @@ def test_internal_phase7_docs_keep_maintainer_notices():
         joined = "\n".join(lines)
         assert "Maintainer/internal documentation." in joined
         assert "intentionally omitted from" in joined
+
+
+def test_publication_requires_full_validation_and_verified_artifacts():
+    """A release cannot bypass failed source checks or missing build artifacts."""
+    jobs = yaml.safe_load((ROOT / ".github/workflows/release.yml").read_text())["jobs"]
+    validation = jobs["release-validation"]
+    assert not validation.get("continue-on-error", False)
+    assert validation["strategy"]["matrix"]["python-version"] == [
+        "3.11",
+        "3.12",
+        "3.13",
+    ]
+    assert any(
+        "scripts/run_full_suite.py" in step.get("run", "")
+        for step in validation["steps"]
+    )
+    assert all(not step.get("continue-on-error", False) for step in validation["steps"])
+    build = jobs["build-distributions"]
+    assert build["needs"] == "release-validation"
+    uploads = [
+        s for s in build["steps"] if "actions/upload-artifact@" in s.get("uses", "")
+    ]
+    assert "dist/checksums.txt" in uploads[0]["with"]["path"].splitlines()
+    for name in ("create-release", "publish-to-pypi", "update-changelog"):
+        job = jobs[name]
+        assert job["needs"] == "build-distributions"
+        assert not job.get("continue-on-error", False)
+        assert all(not s.get("continue-on-error", False) for s in job["steps"])
+    for name in ("create-release", "publish-to-pypi"):
+        steps = jobs[name]["steps"]
+        verify = next(
+            i for i, s in enumerate(steps) if "sha256sum --check" in s.get("run", "")
+        )
+        publish = next(
+            i
+            for i, s in enumerate(steps)
+            if any(
+                action in s.get("uses", "")
+                for action in ("action-gh-release@", "gh-action-pypi-publish@")
+            )
+        )
+        assert verify < publish

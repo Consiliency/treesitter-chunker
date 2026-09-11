@@ -17,8 +17,9 @@ import multiprocessing as mp
 import shutil
 import tempfile
 import time
+from concurrent.futures import Future
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -437,22 +438,24 @@ class TestMemoryUsage:
 class TestCancellationAndTimeout:
     """Test cancellation and timeout handling."""
 
-    @classmethod
-    def test_timeout_handling(cls):
-        """Test handling of operations that exceed timeout."""
-        temp_file = Path(tempfile.NamedTemporaryFile(suffix=".py", delete=False).name)
-        content = []
-        for i in range(50000):
-            content.append(PYTHON_FUNCTION_TEMPLATE.format(idx=i, complexity=100))
-            content.append(PYTHON_CLASS_TEMPLATE.format(idx=i, complexity=100))
-        temp_file.write_text("\n".join(content), encoding="utf-8")
-        try:
-            chunker = ParallelChunker("python", num_workers=1)
-            results = chunker.chunk_files_parallel([temp_file])
-            assert temp_file in results
-            assert len(results[temp_file]) > 0
-        finally:
-            temp_file.unlink(missing_ok=True)
+    @staticmethod
+    def test_timeout_handling(tmp_path, monkeypatch):
+        """A deadline retains completed results and abandons unfinished work."""
+        completed_path = tmp_path / "completed.py"
+        pending_path = tmp_path / "pending.py"
+        completed = Future()
+        completed.set_result((completed_path, ["completed chunk"]))
+        pending = Future()
+        executor = Mock()
+        executor.submit.side_effect = [completed, pending]
+        monkeypatch.setattr(
+            "chunker.parallel.ProcessPoolExecutor", lambda **_: executor
+        )
+        chunker = ParallelChunker("python", num_workers=1, timeout_seconds=0.01)
+        results = chunker.chunk_files_parallel([completed_path, pending_path])
+        assert results == {completed_path: ["completed chunk"], pending_path: []}
+        assert pending.cancelled()
+        executor.shutdown.assert_called_once_with(wait=False, cancel_futures=True)
 
     @classmethod
     def test_graceful_shutdown(cls):
