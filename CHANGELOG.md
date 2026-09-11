@@ -41,8 +41,9 @@ the Ruby correctness repair below intentionally removes one false node.
   forms themselves being constructed as data and explicitly qualified unquote
   forms with or without symbol metadata. Unevaluated reference-symbol and call
   annotations and metadata on core function parameters or let/loop binding patterns
-  do not create call candidates; collection values, initializers, destructuring
-  defaults and declaration metadata remain traversable. Empty-list metadata,
+  do not create call candidates; function pre/postconditions, collection values,
+  initializers, destructuring defaults and declaration metadata remain traversable.
+  Explicit function condition maps override parameter-metadata conditions. Empty-list metadata,
   annotation overrides and syntax-quote metadata omission have explicit reader
   regressions. This is syntax analysis, not macro expansion, execution counts
   or runtime name resolution. Reader-injected metadata is not modeled: stacked

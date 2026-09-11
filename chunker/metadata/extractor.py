@@ -171,7 +171,7 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
         if target is None or node not in target.children_by_field_name("meta"):
             return False
         keys = set()
-        retained = False
+        retained_key = None
         for annotation in target.children_by_field_name("meta"):
             value = annotation.child_by_field_name("value")
             if value is None:
@@ -198,15 +198,15 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
                     and call.end_byte <= part.end_byte
                     for part in (key_node, item)
                 ):
-                    retained = True
-        if not retained or (syntax_depth and keys <= {":line", ":column"}):
+                    retained_key = key
+        if retained_key is None or (syntax_depth and keys <= {":line", ":column"}):
             return True
         if syntax_depth:
             return False
         if target.type == "list_lit":
             return bool(target.children_by_field_name("value"))
         if target.type != "sym_lit":
-            return self._clojure_binding_metadata(target, source)
+            return self._clojure_binding_metadata(target, source, retained_key)
         form = target.parent
         values = (
             form.children_by_field_name("value")
@@ -220,7 +220,9 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
         declarations = {"def", "defn", "defn-", "defmacro", "defonce"}
         return not (head in declarations and len(values) > 1 and target == values[1])
 
-    def _clojure_binding_metadata(self, target: Node, source: bytes) -> bool:
+    def _clojure_binding_metadata(
+        self, target: Node, source: bytes, metadata_key: str
+    ) -> bool:
         functions = {"fn", "fn*", "defn", "defn-", "defmacro"}
         bindings = {"let", "let*", "loop", "loop*", "binding", "with-open"}
         ancestor = target.parent
@@ -231,6 +233,7 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
                     "clojure.core/"
                 )
                 params = None
+                function_head = head
                 if head in functions:
                     params = next((v for v in values[1:] if v.type == "vec_lit"), None)
                 elif values[0].type == "vec_lit" and ancestor.parent is not None:
@@ -248,9 +251,17 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
                         and not any(v.type == "vec_lit" for v in outer[1:])
                     ):
                         params = values[0]
+                        function_head = outer_head
                 if params is not None and self._clojure_pattern_metadata(
                     params, target, source
                 ):
+                    if (
+                        params == target
+                        and function_head != "fn*"
+                        and metadata_key in {":pre", ":post"}
+                    ):
+                        body = values[values.index(params) + 1 :]
+                        return len(body) > 1 and body[0].type == "map_lit"
                     return True
                 if head in bindings and len(values) > 1 and values[1].type == "vec_lit":
                     vector = values[1]
