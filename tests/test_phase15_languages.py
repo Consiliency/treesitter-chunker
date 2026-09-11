@@ -2,6 +2,7 @@
 
 from typing import Any
 
+import pytest
 from tree_sitter import Node
 
 from chunker.metadata import MetadataExtractorFactory
@@ -31,6 +32,47 @@ class SimpleMetadataExtractor(BaseMetadataExtractor):
     def extract_docstring(self, node: Node, source: bytes) -> str | None:
         """Extract docstring (not needed for call testing)."""
         return None
+
+
+@pytest.mark.parametrize(
+    ("code", "expected"),
+    [
+        ("(dangerous)", ["dangerous"]),
+        ("(quote (dangerous))", []),
+        ("'(dangerous)", []),
+        ("'(outer (dangerous))", []),
+        ("(quote ; comment\n (dangerous))", []),
+        ("(; comment\n quote (dangerous))", []),
+        ("`(data ~(actual))", ["actual"]),
+        ("`(data ~@(actual))", ["actual"]),
+        ("`(data `(nested ~(still-data)))", []),
+        ("`(data `(nested ~~(actual)))", ["actual"]),
+        ("`(data ~(quote (still-data)))", []),
+        ("#_(discarded) (actual)", ["actual"]),
+        ("(if true 1 2)", []),
+        ("(if (condition) (f) (g))", ["condition", "f", "g"]),
+        ("(let [x (init)] (do (use x)))", ["init", "use"]),
+        ("(fn [x] (if x (f) (g)))", ["f", "g"]),
+        ("(try (f) (catch Exception e (g)) (finally (h)))", ["f", "g", "h"]),
+        ("(qualified/if (actual))", ["if", "actual"]),
+    ],
+)
+def test_clojure_call_evaluation_context(code, expected):
+    source = code.encode()
+    root = get_parser("clojure").parse(source).root_node
+    extractor = SimpleMetadataExtractor("clojure")
+    calls = extractor.extract_calls(root, source)
+    assert [call["name"] for call in calls] == expected
+    stack = [root]
+    while stack:
+        node = stack.pop()
+        if node.type == "list_lit":
+            assert extractor.extract_calls(node, source) == [
+                call
+                for call in calls
+                if node.start_byte <= call["start"] < node.end_byte
+            ]
+        stack.extend(node.named_children)
 
 
 class TestPhase15Languages:

@@ -401,12 +401,17 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
             if count > 1
         }
         matched_targets = set()
-        for old_chunk in old_chunks:
+
+        def source_order(chunk: CodeChunk) -> tuple[str, int, int, str]:
+            return (chunk.file_path, chunk.byte_start, chunk.byte_end, chunk.chunk_id)
+
+        ordered_new = sorted(new_chunks, key=source_order)
+        for old_chunk in sorted(old_chunks, key=source_order):
             if (old_chunk.definition_id or old_chunk.chunk_id) in collisions:
                 continue
             best_match = None
             best_similarity = 0.0
-            for new_chunk in new_chunks:
+            for new_chunk in ordered_new:
                 if (
                     old_chunk.node_type != new_chunk.node_type
                     or new_chunk.chunk_id in matched_targets

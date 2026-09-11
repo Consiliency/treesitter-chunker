@@ -5,6 +5,33 @@ from chunker.interfaces.incremental import ChangeType
 from chunker.types import CodeChunk
 
 
+def test_move_attribution_uses_source_order_for_ambiguous_candidates():
+    from chunker import chunk_text
+
+    old = chunk_text(
+        "def foo():\n    return 1\n\ndef bar():\n    return 1\n",
+        "python",
+        file_path="a.py",
+    )
+    source = "\n" * 5 + "def baz():\n    return 1\n"
+    new = chunk_text(source, "python", file_path="a.py")
+    processor = DefaultIncrementalProcessor()
+    for ordered in (old, list(reversed(old))):
+        pairs = processor.detect_moved_chunks(ordered, new)
+        assert [(a.chunk_id, b.chunk_id) for a, b in pairs] == [
+            (old[0].chunk_id, new[0].chunk_id)
+        ]
+        diff = processor.compute_diff(ordered, source, "python")
+        assert [
+            (change.old_chunk.chunk_id, change.new_chunk.chunk_id)
+            for change in diff.changes
+            if change.change_type == ChangeType.MOVED
+        ] == [(old[0].chunk_id, new[0].chunk_id)]
+        assert [asdict(c) for c in processor.update_chunks(ordered, diff)] == [
+            asdict(c) for c in new
+        ]
+
+
 def _chunk(
     content: str, *, definition_id: str, file_path: str = "src/example.py"
 ) -> CodeChunk:

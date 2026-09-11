@@ -61,6 +61,8 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
                         or n.child_by_field_name("target")
                         or n.named_children[0]
                     )
+                    if self.language == "clojure" and n.type == "list_lit":
+                        func_node = self._clojure_callee(n, source)
                     if n.type == "apply":
                         func_node = n.child_by_field_name("function")
                         if func_node is None:  # Type application, not a call.
@@ -78,6 +80,57 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
 
         self._walk_tree(node, collect_calls)
         return calls
+
+    def _clojure_callee(self, node: Node, source: bytes) -> Node | None:
+        values = node.children_by_field_name("value")
+        if not values:
+            return None
+        callee = values[0]
+        if self._get_node_text(callee, source) in {
+            "def",
+            "if",
+            "do",
+            "let",
+            "let*",
+            "quote",
+            "var",
+            "fn",
+            "fn*",
+            "loop",
+            "loop*",
+            "recur",
+            "throw",
+            "try",
+            "catch",
+            "finally",
+            "monitor-enter",
+            "monitor-exit",
+            ".",
+            "new",
+            "set!",
+            "deftype*",
+            "reify*",
+            "case*",
+            "import*",
+        }:
+            return None
+        ancestor = node.parent
+        unquotes = 0
+        while ancestor is not None:
+            if ancestor.type in {"quoting_lit", "dis_expr"}:
+                return None
+            if ancestor.type in {"unquoting_lit", "unquote_splicing_lit"}:
+                unquotes += 1
+            elif ancestor.type == "syn_quoting_lit":
+                if not unquotes:
+                    return None
+                unquotes -= 1
+            elif ancestor.type == "list_lit":
+                values = ancestor.children_by_field_name("value")
+                if values and self._get_node_text(values[0], source) == "quote":
+                    return None
+            ancestor = ancestor.parent
+        return callee
 
     def _extract_call_info(
         self,
