@@ -4,7 +4,7 @@ import difflib
 import hashlib
 import json
 import pickle
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -138,14 +138,38 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
     def _identity_key(chunk: CodeChunk) -> str:
         return chunk.definition_id or chunk.chunk_id
 
+    @classmethod
+    def _identity_maps(
+        cls, old_chunks: list[CodeChunk], new_chunks: list[CodeChunk]
+    ) -> tuple[dict[str, CodeChunk], dict[str, CodeChunk]]:
+        # A repeated definition route is not sufficient to identify an overload.
+        # Use occurrence IDs on BOTH sides when either side has a collision.
+        collisions = {
+            key
+            for chunks in (old_chunks, new_chunks)
+            for key, count in Counter(cls._identity_key(c) for c in chunks).items()
+            if count > 1
+        }
+
+        def keyed(chunks: list[CodeChunk]) -> dict[str, CodeChunk]:
+            return {
+                (
+                    "occurrence:" + chunk.chunk_id
+                    if cls._identity_key(chunk) in collisions
+                    else "definition:" + cls._identity_key(chunk)
+                ): chunk
+                for chunk in chunks
+            }
+
+        return keyed(old_chunks), keyed(new_chunks)
+
     def _compute_chunks_diff(
         self,
         old_chunks: list[CodeChunk],
         new_chunks: list[CodeChunk],
     ) -> ChunkDiff:
         """Compute diff between two chunk lists."""
-        old_map = {self._identity_key(chunk): chunk for chunk in old_chunks}
-        new_map = {self._identity_key(chunk): chunk for chunk in new_chunks}
+        old_map, new_map = self._identity_maps(old_chunks, new_chunks)
 
         old_ids = set(old_map.keys())
         new_ids = set(new_map.keys())
@@ -241,8 +265,7 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
         """Compute difference between old chunks and new content."""
         identity_path = file_path or (old_chunks[0].file_path if old_chunks else "")
         new_chunks = chunk_text(new_content, language, file_path=identity_path)
-        old_map = {self._identity_key(chunk): chunk for chunk in old_chunks}
-        new_map = {self._identity_key(chunk): chunk for chunk in new_chunks}
+        old_map, new_map = self._identity_maps(old_chunks, new_chunks)
         old_ids = set(old_map.keys())
         new_ids = set(new_map.keys())
         unchanged_ids = old_ids & new_ids
@@ -378,8 +401,15 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
                 in {ChangeType.ADDED, ChangeType.MODIFIED, ChangeType.MOVED}
                 and change.new_chunk
             ):
+                if change.old_chunk is not None:
+                    chunk_map.pop(change.old_chunk.chunk_id, None)
                 chunk_map[change.new_chunk.chunk_id] = change.new_chunk
-        for chunk in diff.unchanged_chunks:
+        previous, unchanged = self._identity_maps(
+            list(chunk_map.values()), diff.unchanged_chunks
+        )
+        for key, chunk in unchanged.items():
+            if key in previous:
+                chunk_map.pop(previous[key].chunk_id, None)
             chunk_map[chunk.chunk_id] = chunk
         result = list(chunk_map.values())
         result.sort(key=lambda c: (c.file_path, c.start_line))

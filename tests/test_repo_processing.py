@@ -114,7 +114,7 @@ def test_goodbye():
             str(temp_repo),
             incremental=False,
         )
-        assert result.repo_path == str(temp_repo)
+        assert result.repo_path == str(temp_repo.resolve())
         assert result.total_files == 3
         assert len(result.file_results) == 3
         assert result.total_chunks > 0
@@ -225,7 +225,10 @@ class TestGitAwareRepoProcessor:
             )
             repo.index.add(["main.py", ".gitignore"])
             repo.index.commit("Initial commit")
-            yield repo_path, repo
+            try:
+                yield repo_path, repo
+            finally:
+                repo.close()
 
     @pytest.fixture
     def git_processor(self):
@@ -372,3 +375,37 @@ def new_function():
         )
         assert result.total_files == 11
         assert len(result.errors) == 0
+
+
+def test_default_repository_identity_is_relative_and_repeatable(tmp_path):
+    source = tmp_path / "src" / "a.py"
+    source.parent.mkdir()
+    source.write_text("def f():\n    return 1\n", encoding="utf-8")
+    processor = RepoProcessor(show_progress=False)
+    first = processor.process_repository(str(tmp_path), incremental=False)
+    second = processor.process_repository(str(tmp_path), incremental=False)
+    a = first.file_results[0].chunks
+    b = second.file_results[0].chunks
+    assert a and b
+    assert [c.node_id for c in a] == [c.node_id for c in b]
+    assert {c.file_path for c in a + b} == {"src/a.py"}
+
+
+def test_repository_typescript_detection():
+    extensions = RepoProcessor._build_language_extension_map()
+    assert extensions[".ts"] == extensions[".tsx"] == "typescript"
+
+
+def test_repository_preserves_custom_two_argument_adapter(tmp_path):
+    class CustomAdapter:
+        def chunk(self, content, language):
+            from chunker import chunk_text
+
+            return chunk_text(content, language, file_path="custom.py")
+
+    path = tmp_path / "a.py"
+    path.write_text("def f():\n    return 1\n", encoding="utf-8")
+    result = RepoProcessor(
+        chunker=CustomAdapter(), show_progress=False
+    ).process_repository(str(tmp_path), incremental=False)
+    assert result.file_results[0].chunks[0].file_path == "custom.py"

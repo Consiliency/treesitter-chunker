@@ -30,7 +30,7 @@ Developers and teams who feed code into AI tools or search systems and need the 
 ## What you get
 
 - **🧩 Structure-aware splitting** — pieces follow real code boundaries (functions, classes, methods), not line counts.
-- **🌍 Broad language coverage** — 370 language-pack parsers pass the bounded load gate, with 27 languages extraction-verified against real or curated samples.
+- **🌍 Broad language coverage** — 370 language-pack parsers pass the bounded load gate, with 28 languages extraction-verified against real or curated samples.
 - **🔢 Fits your AI's context window** — optional token-aware mode packs pieces to a target size so they slot neatly into an LLM's limit.
 - **🗺️ Sees how code connects** — can map calls, symbols, and cross-references between pieces, not just isolate them.
 - **📤 Exports anywhere** — JSON, JSONL, Parquet, GraphML, or straight into PostgreSQL / Neo4j.
@@ -251,7 +251,7 @@ languages needed by offline deployments while network access is available.
 The pinned language pack supplies precompiled Tree-sitter grammars. This means:
 
 - ✅ **No Local Compiler**: The default parser path does not build grammars from source
-- ✅ **Versioned Cache**: A locked pack version supplies the same parser bundle to every installation
+- ✅ **Versioned Cache**: Parser downloads use a versioned, platform-specific cache; retain the manifest and grammar hashes for reproducible deployments
 - ✅ **Offline After Prefetch**: A warmed parser cache works without network access
 - ✅ **Cold Cache Requires Network**: Without a prefetched cache, the pack raises
   `DownloadError`. Chunker logs that cause and its public parser API raises
@@ -292,7 +292,7 @@ Honest tiers:
 
 - **12** languages with full byte-level **golden conformance** + determinism gate
   (extraction-verified against authoritative golden fixture repos).
-- **27** extraction-verified overall (20 rich and 7 sparse boundary surfaces).
+- **28** extraction-verified overall (20 rich and 8 sparse boundary surfaces).
 - **370 / 371** pack grammars **load** under the pinned runtime. The one unsafe
   native parser is contained behind a hard process deadline and excluded from
   Chunker's runtime surface.

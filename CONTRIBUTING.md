@@ -35,18 +35,12 @@ We welcome contributions from the community! Here are the main ways you can help
 
 2. **Set up development environment**
    ```bash
-   # Create virtual environment
-   uv venv
+   # Install the reviewed lock with development tools and optional extras
+   uv sync --locked --all-extras
    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-   
-   # Install in development mode
-   uv pip install -e ".[dev]"
-   
-   # Install py-tree-sitter with ABI 15 support
-   uv pip install git+https://github.com/tree-sitter/py-tree-sitter.git
    ```
 
-3. **Build language grammars (development only)**
+3. **Build language grammars (optional, for local grammar development)**
    ```bash
    python scripts/fetch_grammars.py
    python scripts/build_lib.py

@@ -151,16 +151,25 @@ class ParallelChunker:
     ) -> dict[Path, list[CodeChunk]]:
         """Process all files in a directory in parallel."""
         if extensions is None:
-            # Default extensions based on language
-            ext_map = {
-                "python": [".py"],
-                "rust": [".rs"],
-                "javascript": [".js", ".jsx"],
-                "typescript": [".ts", ".tsx"],
-                "c": [".c", ".h"],
-                "cpp": [".cpp", ".cxx", ".cc", ".hpp", ".h"],
+            from .auto import ZeroConfigAPI
+            from .languages import language_config_registry
+
+            known_extensions = {
+                ext
+                for ext, language in ZeroConfigAPI.EXTENSION_MAP.items()
+                if language == self.language
             }
-            extensions = ext_map.get(self.language, [])
+            config = language_config_registry.get(self.language)
+            if config is not None:
+                known_extensions.update(config.file_extensions)
+            # C and C++ share headers even though automatic detection picks C.
+            if self.language == "cpp":
+                known_extensions.add(".h")
+            if not known_extensions:
+                raise ValueError(
+                    f"No default extensions for {self.language!r}; supply extensions"
+                )
+            extensions = sorted(known_extensions)
 
         # Find all matching files
         file_paths = []

@@ -49,15 +49,12 @@ If you want to contribute or need the latest development version:
 git clone https://github.com/ViperJuice/treesitter-chunker.git
 cd treesitter-chunker
 
-# Install in development mode
-uv pip install -e ".[dev]"
+# Install the reviewed lock, including development tools and optional extras
+uv sync --locked --all-extras
 
-# Install the locked Tree-sitter runtime and language pack
-uv pip install "tree-sitter>=0.26,<0.27" "tree-sitter-language-pack>=1.17,<1.18"
+# Prefetch the grammars required by your work while online
+uv run --locked python -c "import tree_sitter_language_pack as p; p.prefetch(['python', 'javascript', 'typescript'])"
 
-# Build language grammars (only needed for development)
-python scripts/fetch_grammars.py
-python scripts/build_lib.py
 ```
 
 ### Verify Installation

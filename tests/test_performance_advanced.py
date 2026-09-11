@@ -5,7 +5,10 @@ identifies optimization opportunities.
 """
 
 import gc
+import json
 import multiprocessing as mp
+import subprocess
+import sys
 import threading
 import time
 
@@ -16,7 +19,6 @@ from chunker import chunk_file
 from chunker._internal.cache import ASTCache
 from chunker.export import JSONExporter, JSONLExporter, SchemaType
 from chunker.parallel import ParallelChunker, chunk_files_parallel
-from chunker.streaming import chunk_file_streaming
 
 # Mark all tests in this module as integration tests
 pytestmark = pytest.mark.integration
@@ -152,21 +154,31 @@ class TestMemoryOptimization:
                 ],
             )
         large_file.write_text("\n".join(content_lines))
-        process = psutil.Process()
-        gc_collect()
-        batch_start_mem = process.memory_info().rss / 1024 / 1024
-        batch_chunks = chunk_file(large_file, language="python")
-        batch_peak_mem = process.memory_info().rss / 1024 / 1024
-        batch_mem_used = batch_peak_mem - batch_start_mem
-        del batch_chunks
-        gc_collect()
-        stream_start_mem = process.memory_info().rss / 1024 / 1024
-        list(chunk_file_streaming(large_file, language="python"))
-        stream_peak_mem = process.memory_info().rss / 1024 / 1024
-        stream_mem_used = stream_peak_mem - stream_start_mem
-        assert stream_mem_used <= batch_mem_used * 2.5
-        assert batch_mem_used < 50
-        assert stream_mem_used < 50
+        # Independent interpreters avoid allocator history and negative RSS deltas.
+        # Measure Python allocation peaks; native grammar memory is not traced.
+        probe = """
+import json, sys, tracemalloc
+from chunker import chunk_file
+from chunker.parser import get_parser
+from chunker.streaming import chunk_file_streaming
+get_parser('python')
+tracemalloc.start()
+chunks = (chunk_file(sys.argv[1], 'python') if sys.argv[2] == 'batch'
+          else list(chunk_file_streaming(sys.argv[1], 'python')))
+print(json.dumps({'peak': tracemalloc.get_traced_memory()[1], 'chunks': len(chunks)}))
+"""
+        measurements = {}
+        for mode in ("batch", "stream"):
+            output = subprocess.check_output(
+                [sys.executable, "-c", probe, str(large_file), mode],
+                text=True,
+                timeout=60,
+            )
+            measurement = json.loads(output)
+            assert measurement["chunks"] == 500
+            assert 0 < measurement["peak"] < 50 * 1024 * 1024
+            measurements[mode] = measurement["peak"]
+        assert measurements["stream"] <= measurements["batch"] * 2.5
 
     @classmethod
     def test_cache_memory_bounds(cls, tmp_path):

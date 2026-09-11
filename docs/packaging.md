@@ -45,7 +45,25 @@ before restoring native release triggers or advertising native installation:
   candidate and its platform receipts before restoring distribution.
 
 This suspension resolves the native release-path scope question only. The v5
-candidate still has unresolved full-suite failures and has not been released.
+candidate has passed the local full-suite matrix but still requires accepted
+review and release gates. It has not been released.
+
+## Parser artifact integrity and offline custody
+
+The Python lock authenticates the selected package distributions, not every
+first-use native parser download. In language-pack 1.17.0's
+[download implementation](https://github.com/xberg-io/tree-sitter-language-pack/blob/8201d74b22b8175d44117eb1b88a69b37d752e2b/crates/ts-pack-core/src/download.rs),
+new and cached bundle archives are checked against SHA-256 values in the parser
+manifest. That manifest is fetched separately from the versioned upstream release
+(or a configured mirror); its digest is not pinned in this repository's lock.
+Package version pinning therefore does not independently freeze those remote bytes.
+
+For reproducible/offline installations, retain the tested platform's manifest,
+bundle and extracted grammar hashes alongside the wheel hash, prefetch required
+languages while online, and validate the prepared cache with networking disabled.
+Do not treat a cache directory from a different OS/architecture as interchangeable.
+The accepted binary Linux path uses glibc 2.34 or newer. musl and older-glibc
+source-build/runtime paths have not been accepted for this candidate.
 
 ## Version Source of Truth
 

@@ -63,8 +63,8 @@ class RepoProcessor(RepoProcessorInterface):
             ".py": "python",
             ".js": "javascript",
             ".jsx": "javascript",
-            ".ts": "javascript",
-            ".tsx": "javascript",
+            ".ts": "typescript",
+            ".tsx": "typescript",
             ".c": "c",
             ".h": "c",
             ".cpp": "cpp",
@@ -320,11 +320,11 @@ class RepoProcessor(RepoProcessorInterface):
                         file_results.append(result)
                         total_chunks += len(result.chunks)
                     else:
-                        skipped_files.append(str(rel_path))
+                        skipped_files.append(rel_path.as_posix())
                 except Exception as e:
                     errors.append(
                         {
-                            "file": str(rel_path),
+                            "file": rel_path.as_posix(),
                             "error": str(e),
                             "type": type(e).__name__,
                         },
@@ -377,20 +377,26 @@ class RepoProcessor(RepoProcessorInterface):
             # Chunking (and thus parser acquisition) is delegated to the Chunker
             # adapter, which routes through the frozen thread-local get_parser
             # API; this processor never caches a shared Parser itself.
-            chunks = self.chunker.chunk(content, language=language)
+            if type(self.chunker) is Chunker:
+                chunks = self.chunker.chunk(
+                    content, language=language, identity_path=rel_path.as_posix()
+                )
+            else:
+                # Preserve the two-argument interface of caller-supplied adapters.
+                chunks = self.chunker.chunk(content, language=language)
             for chunk in chunks:
                 if not chunk.metadata:
                     chunk.metadata = {}
-                chunk.metadata["file_path"] = str(rel_path)
+                chunk.metadata["file_path"] = rel_path.as_posix()
                 chunk.metadata["repo_path"] = str(repo_path)
             return FileChunkResult(
-                file_path=str(rel_path),
+                file_path=rel_path.as_posix(),
                 chunks=chunks,
                 processing_time=time.time() - start_time,
             )
         except (FileNotFoundError, IndexError, KeyError) as e:
             return FileChunkResult(
-                file_path=str(rel_path),
+                file_path=rel_path.as_posix(),
                 chunks=[],
                 error=e,
                 processing_time=time.time() - start_time,
@@ -475,7 +481,7 @@ class RepoProcessor(RepoProcessorInterface):
     ) -> bool:
         """Check if directory should be included in traversal."""
         rel_path = directory.relative_to(repo_path)
-        return not exclude_spec.match_file(str(rel_path))
+        return not exclude_spec.match_file(rel_path.as_posix())
 
     def _should_include_file(
         self,
@@ -486,7 +492,9 @@ class RepoProcessor(RepoProcessorInterface):
     ) -> bool:
         """Check if file should be included in processing."""
         rel_path = file_path.relative_to(repo_path)
-        return not exclude_spec.match_file(str(rel_path)) and self._should_process_file(
+        return not exclude_spec.match_file(
+            rel_path.as_posix()
+        ) and self._should_process_file(
             file_path,
             file_pattern,
         )
@@ -512,7 +520,7 @@ class RepoProcessor(RepoProcessorInterface):
 
         # Unable to decode file
         return FileChunkResult(
-            file_path=str(rel_path),
+            file_path=rel_path.as_posix(),
             chunks=[],
             error=ChunkerError(f"Unable to decode file: {rel_path}"),
             processing_time=time.time() - start_time,
@@ -609,8 +617,8 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
                     pass
                 rel_path = Path(file_path).relative_to(repo_path)
                 tracked_files = {path for path, _stage in repo.index.entries.keys()}
-                if str(rel_path) not in tracked_files:
-                    return str(rel_path) in repo.untracked_files
+                if rel_path.as_posix() not in tracked_files:
+                    return rel_path.as_posix() in repo.untracked_files
                 return True
         except (FileNotFoundError, IndexError, KeyError):
             return True
@@ -635,7 +643,9 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
         try:
             with self.git.Repo(repo_path) as repo:
                 rel_path = Path(file_path).relative_to(repo_path)
-                commits = list(repo.iter_commits(paths=str(rel_path), max_count=limit))
+                commits = list(
+                    repo.iter_commits(paths=rel_path.as_posix(), max_count=limit)
+                )
             history = [
                 {
                     "hash": commit.hexsha,
@@ -798,7 +808,7 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
         ``git check-ignore`` invocation (``Repo.ignored``) for the whole file
         set instead of spawning one ``check-ignore`` subprocess per file.
         """
-        rel_paths = [str(f.relative_to(resolved_root)) for f in files]
+        rel_paths = [f.relative_to(resolved_root).as_posix() for f in files]
 
         ignored: set[str] = set()
         # Batch the check-ignore query so a huge file set (tens of thousands of

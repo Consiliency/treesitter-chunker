@@ -36,6 +36,22 @@ the Ruby correctness repair below intentionally removes one false node.
 
 ### Correctness repairs
 
+- Incremental Boundary IR retries cached extraction errors, so an unchanged file
+  can recover after a transient parser-download or metadata failure.
+- Partitioned Parquet exports replace the partitions supplied by each export and
+  retain other partitions. Repeated exports do not append duplicate rows. PyArrow
+  controls physical filenames; partition columns must exist in the selected schema.
+- Repository processing uses stable repository-relative identity paths instead of
+  temporary files, and detects TypeScript correctly. Windows Git filtering uses
+  the same slash-separated paths as Git's index. Caller-supplied two-argument
+  chunker adapters retain their existing interface.
+- Incremental diffs retain overloaded definitions by using occurrence identities
+  where definition routes collide. Public definition IDs are unchanged; ambiguous
+  overload edits may appear as removal/addition instead of a guessed match.
+  Applying diffs removes previous occurrences and refreshes unchanged positions.
+- Directory chunking derives extensions from the existing language map and
+  registered configurations, including Go, Ruby and Java. Languages without known
+  extensions require an explicit extension list instead of silently matching none.
 - Registry discovery includes pack languages without eagerly downloading grammars;
   individual metadata requests validate the loaded grammar's ABI and node count.
   Undetermined scanner/compatibility capabilities remain explicitly unknown.

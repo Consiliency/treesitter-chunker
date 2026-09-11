@@ -12,7 +12,6 @@ The tests use a variety of Python code templates to simulate different scenarios
 and stress test the parallel processing system.
 """
 
-import contextlib
 import multiprocessing as mp
 import shutil
 import tempfile
@@ -162,6 +161,11 @@ class TestWorkerPoolSizing:
         assert cached_duration < 1.0
 
 
+class PermissionDeniedChunker(ParallelChunker):
+    def _process_single_file(self, file_path):
+        raise PermissionError("Permission denied by worker")
+
+
 class TestFailureHandling:
     """Test failure handling in parallel workers."""
 
@@ -192,23 +196,14 @@ class TestFailureHandling:
         assert results[non_existent] == []
 
     @classmethod
-    def test_permission_denied_handling(cls):
-        """Test handling of permission errors."""
-        temp_dir = Path(tempfile.mkdtemp())
-        try:
-            restricted_file = temp_dir / "restricted.py"
-            restricted_file.write_text(
-                PYTHON_FUNCTION_TEMPLATE.format(idx=1, complexity=10),
-            )
-            Path(restricted_file).chmod(0)
-            chunker = ParallelChunker("python")
-            results = chunker.chunk_files_parallel([restricted_file])
-            assert restricted_file in results
-            assert results[restricted_file] == []
-        finally:
-            with contextlib.suppress(FileNotFoundError, IndexError, KeyError):
-                Path(restricted_file).chmod(0o644)
-            shutil.rmtree(temp_dir)
+    def test_permission_denied_handling(cls, tmp_path, capsys):
+        """A worker permission failure is reported on every supported platform."""
+        restricted_file = tmp_path / "restricted.py"
+        restricted_file.write_text("def f():\n    pass\n", encoding="utf-8")
+        chunker = PermissionDeniedChunker("python", num_workers=1, use_cache=False)
+        results = chunker.chunk_files_parallel([restricted_file])
+        assert results[restricted_file] == []
+        assert "Permission denied by worker" in capsys.readouterr().out
 
     @classmethod
     def test_worker_crash_handling(cls):
@@ -603,3 +598,20 @@ def temp_directory_with_files():
         file_path.write_text(content)
     yield temp_dir
     shutil.rmtree(temp_dir)
+
+
+@pytest.mark.parametrize(
+    ("language", "filename", "source"),
+    [
+        ("go", "a.go", "package main\nfunc f() int { return 1 }\n"),
+        ("ruby", "a.rb", "def f\n  1\nend\n"),
+        ("java", "A.java", "class A { int f() { return 1; } }"),
+    ],
+)
+def test_directory_discovers_supported_languages(tmp_path, language, filename, source):
+    from chunker import chunk_directory
+
+    path = tmp_path / filename
+    path.write_text(source, encoding="utf-8")
+    result = chunk_directory(tmp_path, language=language, num_workers=1)
+    assert path in result and result[path]

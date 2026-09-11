@@ -212,3 +212,15 @@ def test_metadata_structure(sample_chunks):
 
         # Cleanup
         output_path.unlink()
+
+
+def test_partitioned_reexport_replaces_matching_partitions(sample_chunks, tmp_path):
+    exporter = ParquetExporter(partition_by=["language"])
+    exporter.export(sample_chunks, tmp_path)
+    exporter.export(sample_chunks, tmp_path)
+    assert len(pq.ParquetDataset(str(tmp_path)).read()) == len(sample_chunks)
+    python_chunk = next(c for c in sample_chunks if c.language == "python")
+    exporter.export([python_chunk], tmp_path)
+    rows = pq.ParquetDataset(str(tmp_path)).read().to_pylist()
+    assert sum(row["language"] == "python" for row in rows) == 1
+    assert sum(row["language"] == "rust" for row in rows) == 1

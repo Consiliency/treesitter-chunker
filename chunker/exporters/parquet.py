@@ -111,7 +111,7 @@ class ParquetExporter:
             schema = self._schema
         table = pa.Table.from_pylist(records, schema=schema)
         if self.partition_by:
-            # For partitioned writes, manually create partitions
+            # Replace each supplied partition, retaining partitions not exported.
             if output_path.suffix:  # If it has a file extension, use parent directory
                 root_path = output_path.parent
             else:
@@ -123,6 +123,7 @@ class ParquetExporter:
                 root_path=str(root_path),
                 partition_cols=self.partition_by,
                 compression=self.compression,
+                existing_data_behavior="delete_matching",
             )
 
         else:

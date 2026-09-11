@@ -1338,7 +1338,7 @@ def _extract_boundary_ir_incremental(
         previous_key = index.records.get(display_path)
         if previous_key == cache_key and not force_rebuild:
             record = load_cache_record(cache_root, cache_key)
-            if record is None:
+            if record is None or record.file_record.get("status") == "error":
                 invalid_paths.add(display_path)
             else:
                 cached_records[display_path] = record

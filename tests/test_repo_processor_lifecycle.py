@@ -53,7 +53,7 @@ class TestStaleCommitFullScan:
         ``ValueError`` -- the processor must survive both.
         """
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
+            root = Path(tmp).resolve()
             _init_repo(root)
             proc = GitAwareRepoProcessor(show_progress=False)
             with pytest.raises(git.BadName):
@@ -65,7 +65,7 @@ class TestStaleCommitFullScan:
     def test_process_repository_stale_commit_full_scan(self, stale):
         """Incremental run with a stale state file scans everything, no crash."""
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
+            root = Path(tmp).resolve()
             _init_repo(root)
             # Seed a stale/nonexistent last_commit.
             (root / ".chunker_state.json").write_text(
@@ -87,7 +87,7 @@ class TestBatchedIgnoreQuery:
 
     def test_single_batched_check_ignore_for_many_files(self, monkeypatch):
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
+            root = Path(tmp).resolve()
             extra = {f"mod_{i}.py": f"def f_{i}():\n    return {i}\n" for i in range(5)}
             # A non-empty .gitignore ensures the git-ignore filter path runs.
             extra[".gitignore"] = "ignored/\n*.log\n"
@@ -129,7 +129,7 @@ class TestWatchStaleCommitFullScan:
 
     def test_collect_watch_changes_stale_commit_falls_back_to_full_scan(self):
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
+            root = Path(tmp).resolve()
             repo = _init_repo(
                 root,
                 extra_files={"mod_a.py": "def a():\n    return 1\n"},
@@ -138,7 +138,10 @@ class TestWatchStaleCommitFullScan:
 
             # A stale/vanished last_commit makes get_changed_files raise; the
             # watch collector must return the FULL processable set, not [].
-            changed = proc._collect_watch_changes(repo, root, "vanished-ref")
+            try:
+                changed = proc._collect_watch_changes(repo, root, "vanished-ref")
+            finally:
+                repo.close()
 
             assert changed, "stale commit dropped all files (silent data loss)"
             assert any(c.endswith("main.py") for c in changed)
@@ -150,7 +153,7 @@ class TestWatchRepositoryTermination:
 
     def test_watch_terminates_on_stop_event(self):
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
+            root = Path(tmp).resolve()
             _init_repo(root)
             proc = GitAwareRepoProcessor(show_progress=False)
 
@@ -180,7 +183,7 @@ class TestWatchRepositoryTermination:
 
     def test_watch_non_git_dir_does_not_busy_loop(self):
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
+            root = Path(tmp).resolve()
             (root / "solo.py").write_text("def solo():\n    return 0\n")
             proc = GitAwareRepoProcessor(show_progress=False)
 
@@ -205,7 +208,7 @@ class TestWatchRepositoryTermination:
 
     def test_watch_respects_max_iterations(self):
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
+            root = Path(tmp).resolve()
             _init_repo(root)
             proc = GitAwareRepoProcessor(show_progress=False)
 
@@ -226,3 +229,30 @@ class TestWatchRepositoryTermination:
 
             assert done.wait(timeout=10), "watch_repository ignored max_iterations"
             assert len(updates) == 2
+
+
+def test_windows_git_filter_uses_posix_index_paths():
+    from pathlib import PureWindowsPath
+    from types import SimpleNamespace
+
+    import pathspec
+
+    root = PureWindowsPath("C:/repo")
+    paths = [root / "src" / "main.py", root / "src" / "new.py"]
+    queries = []
+
+    def ignored(*names):
+        queries.extend(names)
+        return []
+
+    repo = SimpleNamespace(
+        ignored=ignored,
+        index=SimpleNamespace(entries={("src/main.py", 0): object()}),
+        untracked_files=["src/new.py"],
+    )
+    processor = GitAwareRepoProcessor(show_progress=False)
+    selected = processor._filter_tracked_files(
+        repo, root, paths, pathspec.PathSpec.from_lines("gitwildmatch", [])
+    )
+    assert selected == paths
+    assert queries == ["src/main.py", "src/new.py"]
