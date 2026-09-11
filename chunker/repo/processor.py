@@ -377,7 +377,11 @@ class RepoProcessor(RepoProcessorInterface):
             # Chunking (and thus parser acquisition) is delegated to the Chunker
             # adapter, which routes through the frozen thread-local get_parser
             # API; this processor never caches a shared Parser itself.
-            if type(self.chunker) is Chunker:
+            default_chunk = getattr(Chunker.chunk, "__func__", None)
+            if (
+                default_chunk is not None
+                and getattr(self.chunker.chunk, "__func__", None) is default_chunk
+            ):
                 chunks = self.chunker.chunk(
                     content, language=language, identity_path=rel_path.as_posix()
                 )

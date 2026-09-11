@@ -1,3 +1,5 @@
+from dataclasses import asdict
+
 from chunker.incremental import DefaultIncrementalProcessor
 from chunker.interfaces.incremental import ChangeType
 from chunker.types import CodeChunk
@@ -53,15 +55,15 @@ def test_overload_diff_preserves_every_definition():
     diff = processor.compute_diff("A.java", new)
     assert len(old) == len(new) == 4
     assert sum(diff.summary[k] for k in ("added", "modified", "unchanged")) == len(new)
-    assert {c.chunk_id for c in processor.update_chunks(old, diff)} == {
-        c.chunk_id for c in new
-    }
+    assert [asdict(c) for c in processor.update_chunks(old, diff)] == [
+        asdict(c) for c in new
+    ]
     content_diff = processor.compute_diff(
         old, source.replace("return 2", "return 4"), "java"
     )
-    assert {c.chunk_id for c in processor.update_chunks(old, content_diff)} == {
-        c.chunk_id for c in new
-    }
+    assert [asdict(c) for c in processor.update_chunks(old, content_diff)] == [
+        asdict(c) for c in new
+    ]
 
 
 def test_update_body_edit_removes_previous_occurrence():
@@ -109,7 +111,7 @@ def test_multiline_overload_deletion_and_relocation_reconstructs_new_file():
         diff = processor.compute_diff(previous, new_source, "java")
         updated = processor.update_chunks(previous, diff)
         assert len(updated) == len(new) == 2
-        assert updated == new
+        assert [asdict(c) for c in updated] == [asdict(c) for c in new]
         assert diff.summary["moved"] == 0
         assert sum(
             diff.summary[k] for k in ("added", "modified", "moved", "unchanged")
@@ -142,7 +144,54 @@ def test_duplicate_python_definition_reduction_and_relocation():
     expected = chunk_text(new_source, "python", file_path="a.py")
     processor = DefaultIncrementalProcessor()
     diff = processor.compute_diff(old, new_source, "python")
-    assert processor.update_chunks(old, diff) == expected
+    assert [asdict(c) for c in processor.update_chunks(old, diff)] == [
+        asdict(c) for c in expected
+    ]
     assert diff.summary["moved"] == 0
     assert diff.summary["deleted"] == 2
     assert diff.summary["added"] == 1
+
+
+def test_move_detection_preserves_complete_collision_context():
+    from chunker import chunk_text
+
+    body = "def f():\n    return 1\n"
+    old = chunk_text(body + "\n" + body, "python", file_path="a.py")
+    new_source = body + "\n\n" + body
+    expected = chunk_text(new_source, "python", file_path="a.py")
+    processor = DefaultIncrementalProcessor()
+    diff = processor.compute_diff(old, new_source, "python")
+    assert diff.summary["unchanged"] == 1
+    assert diff.summary["moved"] == 0
+    assert diff.summary["added"] == diff.summary["deleted"] == 1
+    assert [asdict(c) for c in processor.update_chunks(old, diff)] == [
+        asdict(c) for c in expected
+    ]
+
+
+def test_unchanged_method_refreshes_parent_identity_and_stored_state():
+    from chunker import chunk_text
+
+    source = "class A { int f() { return 1; } int x = 1; }"
+    old = [
+        c
+        for c in chunk_text(source, "java", file_path="A.java")
+        if c.node_type == "method_declaration"
+    ]
+    expected = [
+        c
+        for c in chunk_text(
+            source.replace("x = 1", "x = 2"), "java", file_path="A.java"
+        )
+        if c.node_type == "method_declaration"
+    ]
+    assert old[0].chunk_id == expected[0].chunk_id
+    assert old[0].parent_chunk_id != expected[0].parent_chunk_id
+    processor = DefaultIncrementalProcessor()
+    processor.store_chunks("A.java", old)
+    diff = processor.compute_diff("A.java", expected)
+    assert diff.changes == []
+    fields = [asdict(c) for c in expected]
+    assert [asdict(c) for c in diff.unchanged_chunks] == fields
+    assert [asdict(c) for c in processor.update_chunks(old, diff)] == fields
+    assert [asdict(c) for c in processor.file_chunks["A.java"]] == fields

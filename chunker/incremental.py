@@ -63,41 +63,6 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
             if not old_chunks and not new_chunks:
                 return ChunkDiff([], [], [], [], [], {})
 
-            # Early-out: if structurally identical, return empty diff
-            if len(old_chunks) == len(new_chunks):
-                same = True
-                for o, n in zip(old_chunks, new_chunks, strict=False):
-                    if not (
-                        o.chunk_id == n.chunk_id
-                        and o.node_type == n.node_type
-                        and o.start_line == n.start_line
-                        and o.end_line == n.end_line
-                        and o.content == n.content
-                    ):
-                        same = False
-                        break
-                if same:
-                    empty = ChunkDiff(
-                        [],
-                        [],
-                        [],
-                        [],
-                        [],
-                        {
-                            "total_old_chunks": len(old_chunks),
-                            "total_new_chunks": len(new_chunks),
-                            "added": 0,
-                            "deleted": 0,
-                            "modified": 0,
-                            "unchanged": len(new_chunks),
-                        },
-                    )
-                    # Back-compat convenience lists
-                    empty.added = []  # type: ignore[attr-defined]
-                    empty.removed = []  # type: ignore[attr-defined]
-                    empty.modified = []  # type: ignore[attr-defined]
-                    return empty
-
             diff = self._compute_chunks_diff(old_chunks, new_chunks)
             # Promote new state into both latest and baseline for idempotent subsequent diffs
             self.file_chunks[file_path] = new_chunks
@@ -325,7 +290,10 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
                     confidence=0.9,
                 ),
             )
-        moved_pairs = self.detect_moved_chunks(deleted_chunks, added_chunks)
+        moved_pairs = self.detect_moved_chunks(
+            [old_map[key] for key in deleted_ids if key.startswith("definition:")],
+            [new_map[key] for key in added_ids if key.startswith("definition:")],
+        )
         for old_chunk, new_chunk in moved_pairs:
             added_chunks = [c for c in added_chunks if c.chunk_id != new_chunk.chunk_id]
             deleted_chunks = [
@@ -412,7 +380,9 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
                 chunk_map.pop(previous[key].chunk_id, None)
             chunk_map[chunk.chunk_id] = chunk
         result = list(chunk_map.values())
-        result.sort(key=lambda c: (c.file_path, c.start_line))
+        result.sort(
+            key=lambda c: (c.file_path, c.start_line, c.byte_start, -c.byte_end)
+        )
         return result
 
     @staticmethod

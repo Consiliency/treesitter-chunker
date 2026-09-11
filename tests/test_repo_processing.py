@@ -425,3 +425,37 @@ def test_repository_preserves_custom_two_argument_adapter(tmp_path):
         chunker=CustomAdapter(), show_progress=False
     ).process_repository(str(tmp_path), incremental=False)
     assert result.file_results[0].chunks[0].file_path == "custom.py"
+
+
+def test_inherited_default_adapter_preserves_file_identity(tmp_path):
+    from chunker.repo.chunker_adapter import Chunker
+
+    class InheritedChunker(Chunker):
+        pass
+
+    for name in ("a.py", "b.py"):
+        (tmp_path / name).write_text("def f():\n    return 1\n", encoding="utf-8")
+    processor = RepoProcessor(chunker=InheritedChunker(), show_progress=False)
+    first = processor.process_repository(str(tmp_path), incremental=False)
+    second = processor.process_repository(str(tmp_path), incremental=False)
+
+    def identities(result):
+        return {f.file_path: [c.node_id for c in f.chunks] for f in result.file_results}
+
+    assert identities(first) == identities(second)
+    chunks = [c for result in first.file_results for c in result.chunks]
+    assert {c.file_path for c in chunks} == {"a.py", "b.py"}
+    assert len({c.node_id for c in chunks}) == len(chunks) == 2
+
+    class OverrideChunker(Chunker):
+        def chunk(self, content, language):
+            from chunker import chunk_text
+
+            return chunk_text(content, language, file_path="custom.py")
+
+    overridden = RepoProcessor(
+        chunker=OverrideChunker(), show_progress=False
+    ).process_repository(str(tmp_path), incremental=False)
+    assert {
+        c.file_path for result in overridden.file_results for c in result.chunks
+    } == {"custom.py"}

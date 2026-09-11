@@ -44,12 +44,14 @@ the Ruby correctness repair below intentionally removes one false node.
 - Repository processing uses stable repository-relative identity paths instead of
   temporary files, and selects TypeScript or TSX grammars for their file types. Windows Git filtering uses
   the same slash-separated paths as Git's index. Caller-supplied two-argument
-  chunker adapters retain their existing interface.
+  chunker adapters retain their existing interface; subclasses that inherit the
+  default adapter retain repository identity paths.
 - Incremental diffs retain overloaded definitions by using occurrence identities
   where definition routes collide. Public definition IDs are unchanged; ambiguous
   overload edits may appear as removal/addition instead of a guessed match.
-  Move matching reserves each target once and leaves ambiguous overload groups
-  as removal/addition, including simultaneous deletion and relocation.
+  Move matching reserves each target once and preserves complete-input collision
+  context, leaving ambiguous overload groups as removal/addition. Applying a diff
+  preserves source order for declarations sharing a line.
   Applying diffs removes previous occurrences and refreshes unchanged positions.
 - Directory chunking derives extensions from the existing language map and
   registered configurations, including Go, Ruby and Java. Languages without known
