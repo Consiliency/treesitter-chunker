@@ -471,7 +471,7 @@ class LanguageRegistry:
         """Attempt to load a language from tree-sitter-language-pack.
 
         This provides a fallback when no local compiled grammar is available.
-        The language pack provides pre-compiled grammars for 165+ languages.
+        The language pack provides downloadable pre-compiled grammars for 371 languages.
 
         Args:
             name: Language name (e.g., "python", "typescript")

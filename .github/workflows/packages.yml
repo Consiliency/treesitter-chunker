@@ -24,7 +24,7 @@ jobs:
         apt-get update
         apt-get install -y debhelper dh-python python3-all python3-setuptools \
           python3-wheel python3-pip git cmake build-essential devscripts
-        pip3 install --break-system-packages tree_sitter
+        pip3 install --break-system-packages "tree-sitter==0.26.0" "tree-sitter-language-pack==1.17.0"
 
     - name: Prepare source package
       run: |

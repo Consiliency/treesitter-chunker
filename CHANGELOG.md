@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.0] — Tree-sitter 0.26 supply normalization
+
+Tree-sitter Chunker now uses `tree-sitter==0.26.0` with
+`tree-sitter-language-pack==1.17.0`. The pack expands the audited grammar set
+from 167 to 371 and keeps the twelve frozen Boundary IR fixtures byte-identical.
+
+### ⚠️ BREAKING
+
+- **Parser delivery is now cache-backed.** Language-pack 1.17 downloads parser
+  libraries on first use into a versioned cache. Offline images and deployments
+  must prefetch their required languages while network access is available.
+  A warm cache works offline; a cold offline cache fails with an explicit
+  `DownloadError`.
+- **The supported dependency range moves to Tree-sitter 0.26 and language-pack
+  1.17.** Downstream constraints that intentionally held the 4.x parser stack
+  must opt into this release and rerun their Boundary IR acceptance gates.
+- **Linux wheels now require glibc 2.34 or newer.** This follows the published
+  language-pack 1.17 wheel baseline; older Linux images cannot use its wheel.
+
+### 🔒 Native-parser containment
+
+- Every language-pack load smoke runs behind an OS-process deadline, so a
+  native grammar loop cannot hang CI.
+- The 1.17 COBOL grammar still loops on malformed input. Chunker therefore does
+  not advertise or load that pack grammar; the coverage report records it as an
+  explicit extraction gap until an upstream release fixes the parser.
+
+### ✅ Verification
+
+- The committed coverage oracle now records 370/371 load-safe grammars, with
+  20 rich and 7 sparse extraction-verified languages.
+- CI installs the exact parser pair and prefetches the pack before parallel
+  tests. The release workflow no longer installs an unbounded GitHub head of
+  py-tree-sitter, and the package workflow installs the same exact pair.
+
 ## [4.0.0] — v3.2.2 remediation
 
 A comprehensive correctness/security/determinism remediation driven by the

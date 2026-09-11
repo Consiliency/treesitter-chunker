@@ -34,14 +34,10 @@ CI_SMOKE_TESTS = [
     # per-language coverage diffed against the committed docs/language-coverage
     # .json oracle. Complements the deep 12-language golden gate above.
     #
-    # Re-landed (previously reverted in #84) now that the CI install pins the pack
-    # to ==0.9.0. The 60-min Pytest hang was NOT the test logic or the
-    # built-grammar-lib path: `uv pip install` ignores uv.lock, so the pack
-    # floated to 0.13.0, whose `cobol` grammar infinite-loops in parser.parse() at
-    # the C level -- and pytest-timeout's signal-based interrupt cannot kill a C
-    # loop, so the load smoke hung the whole step. Under the pinned 0.9.0 (the
-    # byte-stable, ABI-paired env this gate is baked against) cobol is not even a
-    # pack grammar; the full batch runs in seconds. See .github/workflows/ci.yml.
+    # The 0.13.0 pack's COBOL grammar previously infinite-looped inside native
+    # code, beyond pytest-timeout's signal interrupt. The 1.17 gate therefore
+    # includes an OS-subprocess probe that is killed and reaped at its deadline.
+    # See .github/workflows/ci.yml for the exact pack install and prefetch.
     "tests/test_language_smoke.py",
 ]
 

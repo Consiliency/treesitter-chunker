@@ -1,5 +1,13 @@
 {
   "languages": {
+    "abl": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "abnf": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "actionscript": {
       "extraction": "load_only",
       "load": "loads"
@@ -12,11 +20,31 @@
       "extraction": "load_only",
       "load": "loads"
     },
+    "aiken": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "al": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "angular": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "apex": {
       "extraction": "load_only",
       "load": "loads"
     },
+    "applescript": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "arduino": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "asciidoc": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -36,6 +64,18 @@
       "extraction": "load_only",
       "load": "loads"
     },
+    "avro": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "awk": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "ballerina": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "bash": {
       "extraction": "sparse",
       "kinds": [
@@ -44,6 +84,14 @@
       "load": "loads",
       "node_count": 2,
       "sample": "tests/fixtures/language_smoke/samples/sample.sh"
+    },
+    "bass": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "batch": {
+      "extraction": "load_only",
+      "load": "loads"
     },
     "beancount": {
       "extraction": "load_only",
@@ -61,6 +109,22 @@
       "extraction": "load_only",
       "load": "loads"
     },
+    "blade": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "bpftrace": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "brightscript": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "bsl": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "c": {
       "extraction": "rich",
       "kinds": [
@@ -71,6 +135,14 @@
       "node_count": 4,
       "sample": "golden-fixture"
     },
+    "c3": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "caddy": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "cairo": {
       "extraction": "load_only",
       "load": "loads"
@@ -79,7 +151,31 @@
       "extraction": "load_only",
       "load": "loads"
     },
+    "cedar": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "cedarschema": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "cel": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "cfml": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "chatito": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "chuck": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "circom": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -105,7 +201,7 @@
       "extraction": "extraction_gap",
       "kinds": [],
       "load": "fails_to_load",
-      "load_error": "no pack grammar enumerated under this name",
+      "load_error": "parse exceeded the 5-second hard-kill deadline",
       "node_count": 0,
       "sample": "tests/fixtures/language_smoke/samples/sample.cob"
     },
@@ -114,6 +210,14 @@
       "load": "loads"
     },
     "commonlisp": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "cooklang": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "corn": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -133,6 +237,10 @@
       "load": "loads",
       "node_count": 6,
       "sample": "golden-fixture"
+    },
+    "crystal": {
+      "extraction": "load_only",
+      "load": "loads"
     },
     "csharp": {
       "extraction": "rich",
@@ -155,6 +263,10 @@
       "node_count": 0,
       "sample": "tests/fixtures/language_smoke/samples/sample.css"
     },
+    "cst": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "csv": {
       "extraction": "load_only",
       "load": "loads"
@@ -163,7 +275,27 @@
       "extraction": "load_only",
       "load": "loads"
     },
+    "cue": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "cylc": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "cypher": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "cython": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "d": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "d2": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -178,7 +310,35 @@
       "node_count": 4,
       "sample": "tests/fixtures/language_smoke/samples/sample.dart"
     },
+    "desktop": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "devicetree": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "dhall": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "diff": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "djot": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "dockerfile": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "dot": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "dotenv": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -187,6 +347,34 @@
       "load": "loads"
     },
     "dtd": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "earthfile": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "ebnf": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "editorconfig": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "edoc": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "eds": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "eex": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "eiffel": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -214,7 +402,19 @@
       "extraction": "load_only",
       "load": "loads"
     },
+    "elsa": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "elvish": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "embeddedtemplate": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "enforce": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -225,7 +425,19 @@
       "node_count": 0,
       "sample": "tests/fixtures/language_smoke/samples/sample.erl"
     },
+    "facility": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "faust": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "fennel": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "fidl": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -237,6 +449,22 @@
       "extraction": "load_only",
       "load": "loads"
     },
+    "flatbuffers": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "fluent": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "foam": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "forth": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "fortran": {
       "extraction": "empty",
       "kinds": [],
@@ -245,18 +473,49 @@
       "sample": "tests/fixtures/language_smoke/samples/sample.f90"
     },
     "fsharp": {
-      "extraction": "extraction_gap",
+      "extraction": "empty",
       "kinds": [],
-      "load": "fails_to_load",
-      "load_error": "no pack grammar enumerated under this name",
+      "load": "loads",
       "node_count": 0,
       "sample": "tests/fixtures/language_smoke/samples/sample.fs"
+    },
+    "fsharp_signature": {
+      "extraction": "load_only",
+      "load": "loads"
     },
     "func": {
       "extraction": "load_only",
       "load": "loads"
     },
+    "fusion": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "gap": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "gcode": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "gdscript": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "gdshader": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "gherkin": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "git_config": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "git_rebase": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -276,11 +535,19 @@
       "extraction": "load_only",
       "load": "loads"
     },
+    "glimmer": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "glsl": {
       "extraction": "load_only",
       "load": "loads"
     },
     "gn": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "gnuplot": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -294,6 +561,10 @@
       "node_count": 6,
       "sample": "golden-fixture"
     },
+    "godot_resource": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "gomod": {
       "extraction": "load_only",
       "load": "loads"
@@ -302,7 +573,23 @@
       "extraction": "load_only",
       "load": "loads"
     },
+    "gotmpl": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "gowork": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "gpg": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "graphql": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "gren": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -318,11 +605,19 @@
       "extraction": "load_only",
       "load": "loads"
     },
+    "haml": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "hare": {
       "extraction": "load_only",
       "load": "loads"
     },
     "haskell": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "haskell_persistent": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -338,7 +633,19 @@
       "extraction": "load_only",
       "load": "loads"
     },
+    "hjson": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "hlsl": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "hocon": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "hoon": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -349,7 +656,27 @@
       "node_count": 0,
       "sample": "tests/fixtures/language_smoke/samples/sample.html"
     },
+    "htmldjango": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "http": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "hurl": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "hyprlang": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "idl": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "idris": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -358,6 +685,10 @@
       "load": "loads"
     },
     "ispc": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "jai": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -378,6 +709,10 @@
       "node_count": 6,
       "sample": "golden-fixture"
     },
+    "javadoc": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "javascript": {
       "extraction": "rich",
       "kinds": [
@@ -392,6 +727,18 @@
       "node_count": 14,
       "sample": "golden-fixture"
     },
+    "jinja2": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "jjdescription": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "jq": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "jsdoc": {
       "extraction": "load_only",
       "load": "loads"
@@ -402,6 +749,10 @@
       "load": "loads",
       "node_count": 0,
       "sample": "tests/fixtures/language_smoke/samples/sample.json"
+    },
+    "json5": {
+      "extraction": "load_only",
+      "load": "loads"
     },
     "jsonnet": {
       "extraction": "load_only",
@@ -416,11 +767,27 @@
       "node_count": 2,
       "sample": "tests/fixtures/language_smoke/samples/sample.jl"
     },
+    "just": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "kcl": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "kconfig": {
       "extraction": "load_only",
       "load": "loads"
     },
     "kdl": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "kitty": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "koka": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -435,6 +802,18 @@
       "node_count": 4,
       "sample": "golden-fixture"
     },
+    "koto": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "kusto": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "lalrpop": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "latex": {
       "extraction": "empty",
       "kinds": [],
@@ -442,11 +821,35 @@
       "node_count": 0,
       "sample": "tests/fixtures/language_smoke/samples/sample.tex"
     },
+    "lean": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "ledger": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "leo": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "less": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "linkerscript": {
       "extraction": "load_only",
       "load": "loads"
     },
+    "liquid": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "llvm": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "llvm_mir": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -466,6 +869,10 @@
       "load": "loads"
     },
     "luau": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "m68k": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -497,6 +904,10 @@
       "node_count": 2,
       "sample": "tests/fixtures/language_smoke/samples/sample.m"
     },
+    "menhir": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "mermaid": {
       "extraction": "load_only",
       "load": "loads"
@@ -505,7 +916,39 @@
       "extraction": "load_only",
       "load": "loads"
     },
+    "mlir": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "mojo": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "moonbit": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "motoko": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "move": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "nasm": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "netlinx": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "nginx": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "nickel": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -524,7 +967,19 @@
       "extraction": "load_only",
       "load": "loads"
     },
+    "norg": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "norg_meta": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "nqc": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "nushell": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -546,7 +1001,15 @@
       "extraction": "load_only",
       "load": "loads"
     },
+    "ocamllex": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "odin": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "openscad": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -562,6 +1025,10 @@
       "sample": "tests/fixtures/language_smoke/samples/sample.pas"
     },
     "pem": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "penrose": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -588,11 +1055,39 @@
       "node_count": 5,
       "sample": "golden-fixture"
     },
+    "phpdoc": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "picat": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "pkl": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "plantuml": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "po": {
       "extraction": "load_only",
       "load": "loads"
     },
+    "poe_filter": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "pony": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "postgres": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "postscript": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -611,6 +1106,18 @@
       "extraction": "load_only",
       "load": "loads"
     },
+    "prolog": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "promela": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "promql": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "properties": {
       "extraction": "load_only",
       "load": "loads"
@@ -619,7 +1126,15 @@
       "extraction": "load_only",
       "load": "loads"
     },
+    "prql": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "psv": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "pug": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -645,6 +1160,10 @@
       "load": "loads",
       "node_count": 6,
       "sample": "golden-fixture"
+    },
+    "ql": {
+      "extraction": "load_only",
+      "load": "loads"
     },
     "qmldir": {
       "extraction": "load_only",
@@ -679,11 +1198,31 @@
       "node_count": 0,
       "sample": "tests/fixtures/language_smoke/samples/sample.raku"
     },
+    "rasi": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "razor": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "rbs": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "re2c": {
       "extraction": "load_only",
       "load": "loads"
     },
     "readline": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "reason": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "regex": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -695,6 +1234,10 @@
       "extraction": "load_only",
       "load": "loads"
     },
+    "rescript": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "restructuredtext": {
       "extraction": "extraction_gap",
       "kinds": [],
@@ -703,11 +1246,27 @@
       "node_count": 0,
       "sample": "tests/fixtures/language_smoke/samples/sample.rst"
     },
+    "robot": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "roc": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "ron": {
       "extraction": "load_only",
       "load": "loads"
     },
+    "rshtml": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "rst": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "rtf": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -732,6 +1291,10 @@
       "node_count": 4,
       "sample": "tests/fixtures/language_smoke/samples/sample.rs"
     },
+    "sas": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "scala": {
       "extraction": "rich",
       "kinds": [
@@ -742,6 +1305,10 @@
       "node_count": 3,
       "sample": "tests/fixtures/language_smoke/samples/sample.scala"
     },
+    "scfg": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "scheme": {
       "extraction": "load_only",
       "load": "loads"
@@ -750,7 +1317,27 @@
       "extraction": "load_only",
       "load": "loads"
     },
+    "sflog": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "slang": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "slim": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "slint": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "smali": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "smalltalk": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -758,11 +1345,43 @@
       "extraction": "load_only",
       "load": "loads"
     },
+    "sml": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "snakemake": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "snl": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "solidity": {
       "extraction": "load_only",
       "load": "loads"
     },
+    "soql": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "sosl": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "souffle": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "sourcepawn": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "sparql": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "spicedb": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -777,7 +1396,19 @@
       "node_count": 4,
       "sample": "tests/fixtures/language_smoke/samples/sample.sql"
     },
+    "sql_bigquery": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "squirrel": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "ssh_config": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "stan": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -785,7 +1416,23 @@
       "extraction": "load_only",
       "load": "loads"
     },
+    "strace": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "styled": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "superhtml": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "svelte": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "sway": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -801,11 +1448,51 @@
       "node_count": 5,
       "sample": "golden-fixture"
     },
+    "sxhkdrc": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "sysml": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "systemtap": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "systemverilog": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "t32": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "tablegen": {
       "extraction": "load_only",
       "load": "loads"
     },
+    "tact": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "task": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "tcl": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "teal": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "templ": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "tera": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -817,11 +1504,31 @@
       "extraction": "load_only",
       "load": "loads"
     },
+    "textproto": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "thrift": {
       "extraction": "load_only",
       "load": "loads"
     },
+    "tlaplus": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "tmux": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "todotxt": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "toml": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "tsql": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -830,6 +1537,10 @@
       "load": "loads"
     },
     "tsx": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "turtle": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -852,6 +1563,14 @@
       "node_count": 18,
       "sample": "golden-fixture"
     },
+    "typespec": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "typoscript": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "typst": {
       "extraction": "load_only",
       "load": "loads"
@@ -864,11 +1583,27 @@
       "extraction": "load_only",
       "load": "loads"
     },
+    "unison": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "uxntal": {
       "extraction": "load_only",
       "load": "loads"
     },
     "v": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "vala": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "vb": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "vento": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -886,6 +1621,10 @@
       "node_count": 0,
       "sample": "tests/fixtures/language_smoke/samples/sample.vhdl"
     },
+    "vhs": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "vim": {
       "extraction": "sparse",
       "kinds": [
@@ -895,7 +1634,27 @@
       "node_count": 2,
       "sample": "tests/fixtures/language_smoke/samples/sample.vim"
     },
+    "vimdoc": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "vrl": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "vue": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "wast": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "wat": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "wdl": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -903,7 +1662,27 @@
       "extraction": "load_only",
       "load": "loads"
     },
+    "wgsl_bevy": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "wit": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "wolfram": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "x86asm": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "xcompose": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "xit": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -916,6 +1695,14 @@
       "node_count": 3,
       "sample": "tests/fixtures/language_smoke/samples/sample.xml"
     },
+    "xquery": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "xresources": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "yaml": {
       "extraction": "rich",
       "kinds": [
@@ -927,7 +1714,15 @@
       "node_count": 7,
       "sample": "tests/fixtures/language_smoke/samples/sample.yaml"
     },
+    "yang": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
     "yuck": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "yul": {
       "extraction": "load_only",
       "load": "loads"
     },
@@ -937,23 +1732,35 @@
       "load": "loads",
       "node_count": 0,
       "sample": "tests/fixtures/language_smoke/samples/sample.zig"
+    },
+    "ziggy": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "ziggy_schema": {
+      "extraction": "load_only",
+      "load": "loads"
+    },
+    "zsh": {
+      "extraction": "load_only",
+      "load": "loads"
     }
   },
   "pins": {
-    "tree_sitter": ">=0.25,<0.26",
-    "tree_sitter_language_pack": "==0.9.0"
+    "tree_sitter": ">=0.26,<0.27",
+    "tree_sitter_language_pack": "==1.17.0"
   },
   "summary": {
-    "advertised_no_pack_grammar": 5,
+    "advertised_no_pack_grammar": 3,
     "extraction": {
-      "empty": 15,
-      "extraction_gap": 5,
-      "load_only": 125,
+      "empty": 16,
+      "extraction_gap": 4,
+      "load_only": 327,
       "rich": 20,
       "sparse": 7
     },
-    "fails_to_load": 0,
-    "loads": 167,
-    "pack_total": 167
+    "fails_to_load": 1,
+    "loads": 370,
+    "pack_total": 371
   }
 }

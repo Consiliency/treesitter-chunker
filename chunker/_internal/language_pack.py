@@ -1,9 +1,9 @@
 """Wrapper for tree-sitter-language-pack integration.
 
 This module provides a fallback source of pre-compiled grammars
-via the tree-sitter-language-pack PyPI package. When installed,
-it provides immediate access to 165+ languages without requiring
-manual grammar compilation.
+via the tree-sitter-language-pack PyPI package. Version 1.17 exposes 371
+languages and downloads their parser libraries into a versioned cache on first
+use, without requiring local grammar compilation.
 
 Resolution order in LanguageRegistry:
 1. Compiled grammar in package data directory
@@ -25,6 +25,10 @@ logger = logging.getLogger(__name__)
 # Cached state to avoid repeated import attempts
 _pack_available: bool | None = None
 _pack_module: object | None = None
+
+# The 1.17 COBOL grammar loops in native code on malformed input. Keep it out of
+# chunker's runtime surface until an upstream pack release fixes that behavior.
+UNSAFE_PACK_LANGUAGES = frozenset({"cobol"})
 
 _COMMON_LANGUAGE_NAMES = (
     "python",
@@ -95,6 +99,9 @@ def get_language_from_pack(name: str) -> Language | None:
     """
     if not is_language_pack_available():
         return None
+    if name in UNSAFE_PACK_LANGUAGES:
+        logger.warning("Refusing unsafe language-pack grammar '%s'", name)
+        return None
 
     try:
         import tree_sitter_language_pack
@@ -131,16 +138,28 @@ def list_pack_languages() -> list[str]:
         if hasattr(tree_sitter_language_pack, "SupportedLanguage"):
             languages = list(get_args(tree_sitter_language_pack.SupportedLanguage))
             if languages:
-                return languages
+                return [
+                    language
+                    for language in languages
+                    if language not in UNSAFE_PACK_LANGUAGES
+                ]
         # Fallback: try to import and list from the internal module
         if hasattr(tree_sitter_language_pack, "LANGUAGES"):
             languages = list(tree_sitter_language_pack.LANGUAGES.keys())
             if languages:
-                return languages
+                return [
+                    language
+                    for language in languages
+                    if language not in UNSAFE_PACK_LANGUAGES
+                ]
         # Some pack builds can load languages by name but cannot enumerate them.
         # Keep list operations side-effect-light: do not eagerly load many binary
         # grammar modules just to report fallback availability.
-        return list(_COMMON_LANGUAGE_NAMES)
+        return [
+            language
+            for language in _COMMON_LANGUAGE_NAMES
+            if language not in UNSAFE_PACK_LANGUAGES
+        ]
     except Exception as e:
         logger.warning("Error listing languages from pack: %s", e)
         return []
