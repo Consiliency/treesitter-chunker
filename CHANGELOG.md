@@ -45,7 +45,9 @@ the Ruby correctness repair below intentionally removes one false node.
   defaults and declaration metadata remain traversable. Empty-list metadata,
   annotation overrides and syntax-quote metadata omission have explicit reader
   regressions. This is syntax analysis, not macro expansion, execution counts
-  or runtime name resolution.
+  or runtime name resolution. Reader-injected metadata is not modeled: stacked
+  sequence annotations can retain a candidate that Clojure's file reader removes
+  through implicit line/column overrides, while `read-string` evaluates it.
 - Incremental move matching uses stable source order for ambiguous candidates.
   Matching remains greedy; it does not infer globally optimal logical identity.
 - Incremental Boundary IR retries cached extraction errors, so an unchanged file
