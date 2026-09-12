@@ -41,6 +41,10 @@ the Ruby correctness repair below intentionally removes one false node.
 
 ### Correctness repairs
 
+- Completed parallel batches without an opt-in deadline now join their worker
+  cleanup before returning, preventing repeated calls from forking while the
+  previous pool's shutdown locks are held. Deadline calls keep nonblocking
+  shutdown; they still do not guarantee worker termination.
 - Clojure call metadata excludes special-form heads (including `letfn*`) and
   quoted or discarded data,
   while retaining evaluated calls inside syntax-quote unquotes, including quote

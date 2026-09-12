@@ -16,13 +16,19 @@ import multiprocessing as mp
 import shutil
 import tempfile
 import time
-from concurrent.futures import Future
+from concurrent.futures import Future, ProcessPoolExecutor
+from multiprocessing.util import Finalize
 from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
 
 from chunker.parallel import ParallelChunker, chunk_directory_parallel
+
+
+def _delay_worker_exit():
+    Finalize(None, time.sleep, args=(0.5,), exitpriority=0)
+
 
 # Mark all tests in this module as integration tests
 pytestmark = pytest.mark.integration
@@ -432,6 +438,32 @@ class TestMemoryUsage:
 
 class TestCancellationAndTimeout:
     """Test cancellation and timeout handling."""
+
+    @staticmethod
+    def test_completed_batch_joins_workers(tmp_path, monkeypatch):
+        path = tmp_path / "completed.py"
+        path.write_text("def completed(): return 1\n", encoding="utf-8")
+        previous = {process.pid for process in mp.active_children()}
+        monkeypatch.setattr(
+            "chunker.parallel.ProcessPoolExecutor",
+            lambda **kwargs: ProcessPoolExecutor(
+                **kwargs, initializer=_delay_worker_exit
+            ),
+        )
+        try:
+            chunks = ParallelChunker("python", num_workers=1).chunk_files_parallel(
+                [path]
+            )
+            assert len(chunks[path]) == 1
+            assert not [
+                process
+                for process in mp.active_children()
+                if process.pid not in previous
+            ]
+        finally:
+            for process in mp.active_children():
+                if process.pid not in previous:
+                    process.join(timeout=2)
 
     @staticmethod
     def test_timeout_handling(tmp_path, monkeypatch):

@@ -71,9 +71,11 @@ class ParallelChunker:
             time.monotonic() + timeout_seconds if timeout_seconds is not None else None
         )
 
-        # Manage the executor manually so a hung worker cannot block us on
-        # __exit__: we tear it down with wait=False and cancel pending futures.
+        # Join completed unbounded batches before another call can fork while
+        # this pool's manager is still cleaning up. Deadline calls retain their
+        # nonblocking shutdown so worker cleanup cannot exceed the caller budget.
         executor = ProcessPoolExecutor(max_workers=self.num_workers)
+        completed = False
         try:
             # Submit all tasks
             future_to_path = {
@@ -121,6 +123,7 @@ class ParallelChunker:
                         # Handle any other worker crashes or unexpected exceptions
                         print(f"Unexpected error processing {path}: {e}")
                         results[path] = []
+                completed = True
             except FutureTimeout:
                 # The wall-clock deadline elapsed while waiting on a worker that
                 # never completed. We ABANDON it — record a timeout and stop
@@ -140,7 +143,9 @@ class ParallelChunker:
                             f"exceeded {timeout_seconds}s",
                         )
         finally:
-            executor.shutdown(wait=False, cancel_futures=True)
+            executor.shutdown(
+                wait=completed and timeout_seconds is None, cancel_futures=True
+            )
 
         return results
 
