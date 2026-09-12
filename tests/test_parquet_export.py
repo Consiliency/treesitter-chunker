@@ -1,5 +1,7 @@
 """Tests for Parquet export functionality."""
 
+import subprocess
+import sys
 import tempfile
 from dataclasses import replace
 from pathlib import Path
@@ -294,3 +296,33 @@ def test_partitioned_selected_schema_is_preserved(sample_chunks, tmp_path):
         for p in tmp_path.rglob("*")
         if p.is_file()
     } == before
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX file-descriptor limit")
+def test_partitioned_export_under_file_descriptor_limit(tmp_path):
+    script = """
+import resource, runpy, sys
+from pathlib import Path
+soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+limit = 1024 if hard == resource.RLIM_INFINITY else min(1024, hard)
+resource.setrlimit(resource.RLIMIT_NOFILE, (limit, hard))
+tests = runpy.run_path(sys.argv[1])
+tests['test_partitioned_export_above_default_partition_limit'](
+    tests['sample_chunks'].__wrapped__(), Path(sys.argv[2]))
+print('Partitioned readback completed under file-descriptor limit', limit)
+"""
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-c",
+            script,
+            str(Path(__file__).resolve()),
+            str(tmp_path),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert "Partitioned readback completed under file-descriptor limit" in result.stdout

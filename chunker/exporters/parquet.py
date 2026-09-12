@@ -137,6 +137,7 @@ class ParquetExporter:
                 compression=self.compression,
                 existing_data_behavior="delete_matching",
                 max_partitions=max(1, table.num_rows),
+                max_open_files=64,
             )
             if not metadata_path.exists():
                 pq.write_metadata(schema, metadata_path)

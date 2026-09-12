@@ -63,7 +63,9 @@ the Ruby correctness repair below intentionally removes one false node.
   can recover after a transient parser-download or metadata failure.
 - Partitioned Parquet exports replace the partitions supplied by each export and
   retain other partitions, including exports above 1,024 partitions. Repeated exports
-  do not append duplicate rows. PyArrow
+  do not append duplicate rows. The writer keeps at most 64 data files open,
+  avoiding Arrow's stall when its default budget exhausts a 1,024-file process
+  limit. PyArrow
   controls physical filenames; partition columns must exist in the selected schema.
 - Repository processing uses stable repository-relative identity paths instead of
   temporary files, and selects TypeScript or TSX grammars for their file types. Windows Git filtering uses
