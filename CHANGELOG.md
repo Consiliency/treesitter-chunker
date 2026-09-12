@@ -19,6 +19,9 @@ the Ruby correctness repair below intentionally removes one false node.
   to `pq.ParquetDataset`. Unconfigured Hive inference still turns numeric-looking
   strings into integers and can collapse distinct paths such as `"001"` and `"1"`.
   Directories without this metadata need an explicit original schema or re-export.
+  The reserved string `__HIVE_DEFAULT_PARTITION__` is rejected in partition
+  columns before writing, because Hive would read it as null. It remains allowed
+  in non-partition columns and non-partitioned exports.
 - **Parser delivery is now cache-backed.** Language-pack 1.17 downloads parser
   libraries on first use into a versioned cache. Offline images and deployments
   must prefetch their required languages while network access is available.

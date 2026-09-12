@@ -298,6 +298,51 @@ def test_partitioned_selected_schema_is_preserved(sample_chunks, tmp_path):
     } == before
 
 
+@pytest.mark.parametrize("field", ["file_path", "language"])
+def test_reserved_partition_value_rejected_before_writing(
+    sample_chunks, tmp_path, field
+):
+    reserved = "__HIVE_DEFAULT_PARTITION__"
+    original = sample_chunks[0]
+    invalid = replace(original, **{field: reserved})
+    exporter = ParquetExporter(partition_by=[field])
+    fresh = tmp_path / "fresh"
+    with pytest.raises(ValueError, match="reserved Hive"):
+        exporter.export([invalid], fresh)
+    assert not fresh.exists()
+
+    existing = tmp_path / "existing"
+    exporter.export([original], existing)
+    before = {
+        p.relative_to(existing): p.read_bytes()
+        for p in existing.rglob("*")
+        if p.is_file()
+    }
+    with pytest.raises(ValueError, match="reserved Hive"):
+        exporter.export([replace(original, content="replacement"), invalid], existing)
+    assert {
+        p.relative_to(existing): p.read_bytes()
+        for p in existing.rglob("*")
+        if p.is_file()
+    } == before
+    schema = pq.read_schema(existing / "_common_metadata")
+    assert pq.ParquetDataset(existing, schema=schema).read().to_pylist()[0][
+        field
+    ] == getattr(original, field)
+
+    other_field = "language" if field == "file_path" else "file_path"
+    allowed = tmp_path / "nonpartition"
+    ParquetExporter(partition_by=[other_field]).export([invalid], allowed)
+    schema = pq.read_schema(allowed / "_common_metadata")
+    assert (
+        pq.ParquetDataset(allowed, schema=schema).read().to_pylist()[0][field]
+        == reserved
+    )
+    flat = tmp_path / "flat.parquet"
+    ParquetExporter().export([invalid], flat)
+    assert pq.read_table(flat).to_pylist()[0][field] == reserved
+
+
 @pytest.mark.skipif(sys.platform == "win32", reason="POSIX file-descriptor limit")
 def test_partitioned_export_under_file_descriptor_limit(tmp_path):
     script = """

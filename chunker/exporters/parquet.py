@@ -102,6 +102,7 @@ class ParquetExporter:
 
         Read partitioned output with ParquetDataset(schema=read_schema(
         root / "_common_metadata")) to preserve partition value types.
+        The reserved Hive null-marker string is rejected in partition columns.
         """
         # Normalize output path
         output_path = Path(output_path)
@@ -116,6 +117,15 @@ class ParquetExporter:
         if self.partition_by:
             if not table.num_rows:
                 return
+            if any(
+                record.get(field) == "__HIVE_DEFAULT_PARTITION__"
+                for record in records
+                for field in self.partition_by
+            ):
+                raise ValueError(
+                    "The reserved Hive null marker '__HIVE_DEFAULT_PARTITION__' "
+                    "cannot be used as a partition value"
+                )
             # Replace each supplied partition, retaining partitions not exported.
             if output_path.suffix:  # If it has a file extension, use parent directory
                 root_path = output_path.parent

@@ -424,6 +424,13 @@ nonempty exports to one directory must use the same selected-column schema;
 incompatible schemas are rejected before replacing partitions. Empty exports
 leave existing data and schema unchanged.
 
+The string `__HIVE_DEFAULT_PARTITION__` cannot be used as a partition value:
+Hive reserves it for null, even when the reader receives an explicit schema.
+The exporter rejects an entire batch containing that value in a partition column
+before creating or replacing any partitions. The string remains supported in
+non-partition columns and non-partitioned exports. Choose a different partition
+column when this is a required data value.
+
 ```python
 import pyarrow as pa
 import pyarrow.parquet as pq
