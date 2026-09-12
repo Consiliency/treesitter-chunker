@@ -415,6 +415,9 @@ exporter.export(chunks, "output_dir/")
 
 ### Advanced Parquet Features
 
+Parquet export requires PyArrow 21.0.0 or newer. This is the tested minimum for
+formatting and validating partition directory names before writes.
+
 Partitioned exports save their complete schema in `_common_metadata`. Read with
 that schema explicitly, as shown below. PyArrow's default Hive discovery does not
 automatically use this file and can interpret string paths such as `"001"` and

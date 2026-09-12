@@ -14,6 +14,9 @@ the Ruby correctness repair below intentionally removes one false node.
 
 ### ⚠️ BREAKING
 
+- **PyArrow 21.0.0 or newer is required.** Partition-directory validation uses
+  `HivePartitioning.format`, which is absent from the previous minimum, PyArrow 15.
+
 - **Partitioned Parquet readers must use the saved schema.** Exports write
   `_common_metadata`; pass `schema=pq.read_schema(root / "_common_metadata")`
   to `pq.ParquetDataset`. Unconfigured Hive inference still turns numeric-looking
