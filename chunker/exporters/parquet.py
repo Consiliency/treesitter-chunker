@@ -99,6 +99,9 @@ class ParquetExporter:
         Args:
             chunks: List of CodeChunk objects to export
             output_path: Path to output file or directory (if partitioned)
+
+        Read partitioned output with ParquetDataset(schema=read_schema(
+        root / "_common_metadata")) to preserve partition value types.
         """
         # Normalize output path
         output_path = Path(output_path)
@@ -111,11 +114,20 @@ class ParquetExporter:
             schema = self._schema
         table = pa.Table.from_pylist(records, schema=schema)
         if self.partition_by:
+            if not table.num_rows:
+                return
             # Replace each supplied partition, retaining partitions not exported.
             if output_path.suffix:  # If it has a file extension, use parent directory
                 root_path = output_path.parent
             else:
                 root_path = output_path
+            metadata_path = root_path / "_common_metadata"
+            if metadata_path.exists() and not pq.read_schema(metadata_path).equals(
+                schema
+            ):
+                raise ValueError(
+                    "Partitioned dataset schema differs from export schema"
+                )
             # Hive partition values belong in the directory names, not duplicated
             # as plain-string columns inside files (which conflicts on readback).
             pq.write_to_dataset(
@@ -126,6 +138,8 @@ class ParquetExporter:
                 existing_data_behavior="delete_matching",
                 max_partitions=max(1, table.num_rows),
             )
+            if not metadata_path.exists():
+                pq.write_metadata(schema, metadata_path)
 
         else:
             # Ensure parent directory exists before writing file

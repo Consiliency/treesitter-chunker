@@ -92,6 +92,7 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
             "do",
             "let",
             "let*",
+            "letfn*",
             "quote",
             "var",
             "fn",
@@ -254,7 +255,7 @@ class BaseMetadataExtractor(MetadataExtractor, ABC):
         metadata_key: str,
         condition_contains_call: bool,
     ) -> bool:
-        bindings = {"let", "let*", "loop", "loop*", "binding", "with-open"}
+        bindings = {"let", "let*", "letfn*", "loop", "loop*", "binding", "with-open"}
         ancestor = target.parent
         while ancestor is not None:
             values = ancestor.children_by_field_name("value")

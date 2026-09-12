@@ -243,3 +243,54 @@ def test_partitioned_export_above_default_partition_limit(sample_chunks, tmp_pat
     assert {(row["file_path"], row["content"]) for row in rows} == {
         (chunk.file_path, chunk.content) for chunk in [replacement, *chunks[1:]]
     }
+
+
+@pytest.mark.parametrize("partition_by", [["file_path"], ["language", "file_path"]])
+def test_partitioned_string_paths_round_trip(sample_chunks, tmp_path, partition_by):
+    chunks = [
+        replace(sample_chunks[0], file_path=path, content=f"content-{i}")
+        for i, path in enumerate(["001", "1", "2"])
+    ]
+    exporter = ParquetExporter(partition_by=partition_by)
+
+    def read_rows():
+        schema = pq.read_schema(tmp_path / "_common_metadata")
+        assert schema.field("file_path").type == pa.string()
+        return pq.ParquetDataset(str(tmp_path), schema=schema).read().to_pylist()
+
+    exporter.export(chunks, tmp_path)
+    assert {(row["file_path"], row["content"]) for row in read_rows()} == {
+        (chunk.file_path, chunk.content) for chunk in chunks
+    }
+    metadata = (tmp_path / "_common_metadata").read_bytes()
+    replacement = replace(chunks[0], content="replacement")
+    exporter.export([replacement], tmp_path)
+    exporter.export([], tmp_path)
+    assert (tmp_path / "_common_metadata").read_bytes() == metadata
+    assert {(row["file_path"], row["content"]) for row in read_rows()} == {
+        (chunk.file_path, chunk.content) for chunk in [replacement, *chunks[1:]]
+    }
+
+
+def test_partitioned_selected_schema_is_preserved(sample_chunks, tmp_path):
+    exporter = ParquetExporter(
+        columns=["file_path", "content"], partition_by=["file_path"]
+    )
+    exporter.export([replace(sample_chunks[0], file_path="001")], tmp_path)
+    schema = pq.read_schema(tmp_path / "_common_metadata")
+    assert schema.names == ["file_path", "content"]
+    assert pq.ParquetDataset(str(tmp_path), schema=schema).read().to_pylist() == [
+        {"file_path": "001", "content": sample_chunks[0].content}
+    ]
+    before = {
+        str(p.relative_to(tmp_path)): p.read_bytes()
+        for p in tmp_path.rglob("*")
+        if p.is_file()
+    }
+    with pytest.raises(ValueError, match="schema"):
+        ParquetExporter(partition_by=["file_path"]).export(sample_chunks, tmp_path)
+    assert {
+        str(p.relative_to(tmp_path)): p.read_bytes()
+        for p in tmp_path.rglob("*")
+        if p.is_file()
+    } == before

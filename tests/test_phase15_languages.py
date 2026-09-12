@@ -212,6 +212,12 @@ class SimpleMetadataExtractor(BaseMetadataExtractor):
         ("(fn [x] (if x (f) (g)))", ["f", "g"]),
         ("(try (f) (catch Exception e (g)) (finally (h)))", ["f", "g", "h"]),
         ("(qualified/if (actual))", ["if", "actual"]),
+        ("(letfn* [f (fn* [] 1)] (f))", ["f"]),
+        ("(letfn* ^{:x (actual)} [f (fn* [] 1)] (f))", ["f"]),
+        ("(letfn* [^{:x (actual)} f (fn* [] 1)] (f))", ["f"]),
+        ("'(letfn* [f (fn* [] 1)] (f))", []),
+        ("`(letfn* [f (fn* [] 1)] ~(actual))", ["actual"]),
+        ("(qualified/letfn* (actual))", ["letfn*", "actual"]),
     ],
 )
 def test_clojure_call_evaluation_context(code, expected):

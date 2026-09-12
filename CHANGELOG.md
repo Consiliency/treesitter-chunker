@@ -14,6 +14,11 @@ the Ruby correctness repair below intentionally removes one false node.
 
 ### ⚠️ BREAKING
 
+- **Partitioned Parquet readers must use the saved schema.** Exports write
+  `_common_metadata`; pass `schema=pq.read_schema(root / "_common_metadata")`
+  to `pq.ParquetDataset`. Unconfigured Hive inference still turns numeric-looking
+  strings into integers and can collapse distinct paths such as `"001"` and `"1"`.
+  Directories without this metadata need an explicit original schema or re-export.
 - **Parser delivery is now cache-backed.** Language-pack 1.17 downloads parser
   libraries on first use into a versioned cache. Offline images and deployments
   must prefetch their required languages while network access is available.
@@ -36,7 +41,8 @@ the Ruby correctness repair below intentionally removes one false node.
 
 ### Correctness repairs
 
-- Clojure call metadata excludes special-form heads and quoted or discarded data,
+- Clojure call metadata excludes special-form heads (including `letfn*`) and
+  quoted or discarded data,
   while retaining evaluated calls inside syntax-quote unquotes, including quote
   forms themselves being constructed as data and explicitly qualified unquote
   forms with or without symbol metadata. Unevaluated reference-symbol and call
@@ -77,7 +83,9 @@ the Ruby correctness repair below intentionally removes one false node.
 - Registry discovery includes pack languages without eagerly downloading grammars;
   individual metadata requests validate the loaded grammar's ABI and node count.
   Undetermined scanner/compatibility capabilities remain explicitly unknown.
-- Partitioned Parquet exports round-trip through the standard dataset reader.
+- Partitioned Parquet exports retain exact string partition values when read
+  through the standard dataset reader with their saved schema. Nonempty exports
+  reject a schema change before replacing existing partitions.
 - Call extraction recognizes the current grammar shapes for the extended language
   set. Property reads and PHP `echo` statements are not reported as explicit calls.
 - Ruby chunking ignores unnamed keyword tokens and includes brace blocks. Its
