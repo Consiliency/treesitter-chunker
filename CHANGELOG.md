@@ -22,6 +22,16 @@ the Ruby correctness repair below intentionally removes one false node.
   The reserved string `__HIVE_DEFAULT_PARTITION__` is rejected in partition
   columns before writing, because Hive would read it as null. It remains allowed
   in non-partition columns and non-partitioned exports.
+- **Partitioned datasets keep a fixed ordered partition specification.** It is
+  saved with `_common_metadata`; changing the columns or their order is rejected
+  before replacement. Older datasets without this specification must be
+  re-exported into a fresh directory before further writes.
+- **Partition directory names follow consistent cross-platform restrictions.**
+  Case-insensitive aliases are rejected across the incoming batch and existing
+  directories, including empty directories and parent partition components.
+  Encoded names ending in a period or space are rejected, since Windows strips
+  those characters. These checks apply on every platform; the data values remain
+  supported in non-partition columns and flat exports.
 - **Parser delivery is now cache-backed.** Language-pack 1.17 downloads parser
   libraries on first use into a versioned cache. Offline images and deployments
   must prefetch their required languages while network access is available.

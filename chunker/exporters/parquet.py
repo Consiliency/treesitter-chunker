@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
+import pyarrow.dataset as ds
 import pyarrow.parquet as pq
 
 if TYPE_CHECKING:
@@ -117,40 +119,116 @@ class ParquetExporter:
         if self.partition_by:
             if not table.num_rows:
                 return
-            if any(
-                record.get(field) == "__HIVE_DEFAULT_PARTITION__"
-                for record in records
-                for field in self.partition_by
-            ):
-                raise ValueError(
-                    "The reserved Hive null marker '__HIVE_DEFAULT_PARTITION__' "
-                    "cannot be used as a partition value"
-                )
+            partition_spec = list(self.partition_by)
             # Replace each supplied partition, retaining partitions not exported.
             if output_path.suffix:  # If it has a file extension, use parent directory
                 root_path = output_path.parent
             else:
                 root_path = output_path
             metadata_path = root_path / "_common_metadata"
-            if metadata_path.exists() and not pq.read_schema(metadata_path).equals(
-                schema
+            partition_key = b"treesitter_chunker.partition_by"
+            existing_files = list(root_path.rglob("*.parquet"))
+            partition_paths = [
+                path.relative_to(root_path).parts
+                for path in root_path.rglob("*")
+                if path.is_dir() and "=" in path.name
+            ]
+            if metadata_path.exists():
+                saved_schema = pq.read_schema(metadata_path)
+                if not saved_schema.equals(schema):
+                    raise ValueError(
+                        "Partitioned dataset schema differs from export schema"
+                    )
+                if (
+                    json.loads(
+                        (saved_schema.metadata or {}).get(partition_key, b"null")
+                    )
+                    != partition_spec
+                ):
+                    raise ValueError(
+                        "Dataset partition specification differs or is missing; "
+                        "re-export into a fresh directory"
+                    )
+            elif existing_files or partition_paths:
+                raise ValueError(
+                    "Dataset partition specification is missing; "
+                    "re-export into a fresh directory"
+                )
+            if any(
+                len(path.relative_to(root_path).parent.parts) != len(partition_spec)
+                for path in existing_files
             ):
                 raise ValueError(
-                    "Partitioned dataset schema differs from export schema"
+                    "Existing files do not match the partition specification"
                 )
+            partitioning = ds.HivePartitioning(
+                pa.schema([schema.field(name) for name in partition_spec])
+            )
+            partition_rows = (
+                table.select(partition_spec)
+                .group_by(partition_spec, use_threads=False)
+                .aggregate([])
+                .to_pylist()
+            )
+            for row in partition_rows:
+                if "__HIVE_DEFAULT_PARTITION__" in row.values():
+                    raise ValueError(
+                        "The reserved Hive null marker '__HIVE_DEFAULT_PARTITION__' "
+                        "cannot be used as a partition value"
+                    )
+                conditions = [
+                    (
+                        ds.field(name).is_null()
+                        if row[name] is None
+                        else ds.field(name) == row[name]
+                    )
+                    for name in partition_spec
+                ]
+                expression = conditions[0]
+                for condition in conditions[1:]:
+                    expression &= condition
+                directory, _ = partitioning.format(expression)
+                partition_paths.append(Path(directory).parts)
+            prefixes: dict[tuple[str, ...], tuple[str, ...]] = {}
+            for parts in partition_paths:
+                if not 0 < len(parts) <= len(partition_spec) or any(
+                    not part.startswith(name + "=")
+                    for name, part in zip(partition_spec, parts, strict=False)
+                ):
+                    raise ValueError(
+                        "Directory does not match the partition specification"
+                    )
+                if any(part != part.rstrip(" .") for part in parts):
+                    raise ValueError("Unsupported portable partition directory ending")
+                for depth in range(1, len(parts) + 1):
+                    prefix = parts[:depth]
+                    key = tuple(part.casefold() for part in prefix)
+                    if key in prefixes and prefixes[key] != prefix:
+                        raise ValueError(
+                            "Conflicting portable partition directory names"
+                        )
+                    prefixes[key] = prefix
             # Hive partition values belong in the directory names, not duplicated
             # as plain-string columns inside files (which conflicts on readback).
             pq.write_to_dataset(
                 table,
                 root_path=str(root_path),
-                partition_cols=self.partition_by,
+                partition_cols=partition_spec,
                 compression=self.compression,
                 existing_data_behavior="delete_matching",
                 max_partitions=max(1, table.num_rows),
                 max_open_files=64,
             )
             if not metadata_path.exists():
-                pq.write_metadata(schema, metadata_path)
+                pq.write_metadata(
+                    schema.with_metadata(
+                        {
+                            **(schema.metadata or {}),
+                            partition_key: json.dumps(partition_spec).encode(),
+                        }
+                    ),
+                    metadata_path,
+                )
 
         else:
             # Ensure parent directory exists before writing file

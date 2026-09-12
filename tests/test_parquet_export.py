@@ -2,6 +2,7 @@
 
 import subprocess
 import sys
+import json
 import tempfile
 from dataclasses import replace
 from pathlib import Path
@@ -341,6 +342,127 @@ def test_reserved_partition_value_rejected_before_writing(
     flat = tmp_path / "flat.parquet"
     ParquetExporter().export([invalid], flat)
     assert pq.read_table(flat).to_pylist()[0][field] == reserved
+
+
+@pytest.mark.parametrize("changed", [["file_path", "language"], ["file_path"]])
+def test_partition_specification_cannot_change(sample_chunks, tmp_path, changed):
+    original = replace(sample_chunks[0], file_path="001", content="old")
+    columns = ["language", "file_path"]
+    ParquetExporter(partition_by=columns).export([original], tmp_path)
+    before = {
+        p.relative_to(tmp_path): p.read_bytes()
+        for p in tmp_path.rglob("*")
+        if p.is_file()
+    }
+    with pytest.raises(ValueError, match="partition specification"):
+        ParquetExporter(partition_by=changed).export(
+            [replace(original, content="new")], tmp_path
+        )
+    assert {
+        p.relative_to(tmp_path): p.read_bytes()
+        for p in tmp_path.rglob("*")
+        if p.is_file()
+    } == before
+    schema = pq.read_schema(tmp_path / "_common_metadata")
+    assert json.loads(schema.metadata[b"treesitter_chunker.partition_by"]) == columns
+    assert (
+        pq.ParquetDataset(tmp_path, schema=schema).read().to_pylist()[0]["content"]
+        == "old"
+    )
+
+
+@pytest.mark.parametrize("keep_schema", [True, False])
+def test_legacy_partitioned_dataset_requires_reexport(
+    sample_chunks, tmp_path, keep_schema
+):
+    exporter = ParquetExporter(partition_by=["file_path"])
+    exporter.export(sample_chunks, tmp_path)
+    metadata = tmp_path / "_common_metadata"
+    if keep_schema:
+        pq.write_metadata(pq.read_schema(metadata).remove_metadata(), metadata)
+    else:
+        metadata.unlink()
+    before = {
+        p.relative_to(tmp_path): p.read_bytes()
+        for p in tmp_path.rglob("*")
+        if p.is_file()
+    }
+    with pytest.raises(ValueError, match="partition specification"):
+        exporter.export([replace(sample_chunks[0], content="new")], tmp_path)
+    assert {
+        p.relative_to(tmp_path): p.read_bytes()
+        for p in tmp_path.rglob("*")
+        if p.is_file()
+    } == before
+
+
+@pytest.mark.parametrize(
+    ("partition_by", "first_path", "second_path"),
+    [
+        (["file_path"], "A.py", "a.py"),
+        (["file_path"], "trailing", "trailing."),
+        (["file_path", "node_type"], "A.py", "a.py"),
+    ],
+)
+def test_portable_partition_aliases_rejected_before_writing(
+    sample_chunks, tmp_path, partition_by, first_path, second_path
+):
+    first = replace(sample_chunks[0], file_path=first_path, node_type="function")
+    second = replace(first, file_path=second_path, node_type="class", content="new")
+    exporter = ParquetExporter(partition_by=partition_by)
+    fresh = tmp_path / "fresh"
+    with pytest.raises(ValueError, match="portable partition"):
+        exporter.export([first, second], fresh)
+    assert not fresh.exists()
+    existing = tmp_path / "existing"
+    exporter.export([first], existing)
+    before = {
+        p.relative_to(existing): p.read_bytes()
+        for p in existing.rglob("*")
+        if p.is_file()
+    }
+    with pytest.raises(ValueError, match="portable partition"):
+        exporter.export([replace(first, content="replacement"), second], existing)
+    assert {
+        p.relative_to(existing): p.read_bytes()
+        for p in existing.rglob("*")
+        if p.is_file()
+    } == before
+    schema = pq.read_schema(existing / "_common_metadata")
+    assert (
+        pq.ParquetDataset(existing, schema=schema).read().to_pylist()[0]["file_path"]
+        == first_path
+    )
+    exporter.export([replace(first, content="replacement")], existing)
+    assert (
+        pq.ParquetDataset(existing, schema=schema).read().to_pylist()[0]["content"]
+        == "replacement"
+    )
+
+    empty = tmp_path / "empty"
+    exporter.export([first], empty)
+    for path in empty.rglob("*.parquet"):
+        path.unlink()
+    before = {
+        p.relative_to(empty): p.read_bytes() for p in empty.rglob("*") if p.is_file()
+    }
+    with pytest.raises(ValueError, match="portable partition"):
+        exporter.export([second], empty)
+    assert {
+        p.relative_to(empty): p.read_bytes() for p in empty.rglob("*") if p.is_file()
+    } == before
+    if second_path.endswith("."):
+        single = tmp_path / "single"
+        with pytest.raises(ValueError, match="portable partition"):
+            exporter.export([second], single)
+        assert not single.exists()
+    allowed = tmp_path / "allowed"
+    ParquetExporter(partition_by=["language"]).export([first, second], allowed)
+    schema = pq.read_schema(allowed / "_common_metadata")
+    assert {
+        row["file_path"]
+        for row in pq.ParquetDataset(allowed, schema=schema).read().to_pylist()
+    } == {first_path, second_path}
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="POSIX file-descriptor limit")

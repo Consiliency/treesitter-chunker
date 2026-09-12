@@ -431,6 +431,20 @@ before creating or replacing any partitions. The string remains supported in
 non-partition columns and non-partitioned exports. Choose a different partition
 column when this is a required data value.
 
+Partition columns and their order are fixed for a dataset and stored in the
+schema metadata. Later writes with a different specification are rejected before
+replacement. Older datasets lacking this specification, including earlier
+schema-only `_common_metadata` files, must be re-exported into a fresh directory
+before additional writes.
+
+Directory names are checked consistently on every platform. Distinct keys such
+as `A.py` and `a.py` cannot share a dataset: case-insensitive aliases are rejected
+across all incoming rows and existing partition directories, including empty
+directories and shared parent components. Encoded directory names ending in a
+period or space are also rejected because Windows removes those endings. Values
+such as `trailing.` can still be stored in non-partition columns or flat exports;
+select different partition columns when these values are needed.
+
 ```python
 import pyarrow as pa
 import pyarrow.parquet as pq
