@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import multiprocessing as mp
+import sys
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from concurrent.futures import TimeoutError as FutureTimeout
@@ -28,6 +29,9 @@ class ParallelChunker:
     ):
         self.language = language
         self.num_workers = num_workers or mp.cpu_count()
+        if sys.platform == "win32":
+            # ProcessPoolExecutor rejects larger pools on Windows.
+            self.num_workers = min(self.num_workers, 61)
         self.use_cache = use_cache
         self.use_streaming = use_streaming
         self.cache = ASTCache() if use_cache else None

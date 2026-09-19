@@ -14,6 +14,7 @@ and stress test the parallel processing system.
 
 import multiprocessing as mp
 import shutil
+import sys
 import tempfile
 import time
 from concurrent.futures import Future, ProcessPoolExecutor
@@ -72,9 +73,12 @@ class TestParallelChunkerInit:
 
     @classmethod
     def test_default_initialization(cls):
-        """Test default worker count is CPU count."""
+        """Default worker count respects the platform's process-pool limit."""
         chunker = ParallelChunker("python")
-        assert chunker.num_workers == mp.cpu_count()
+        expected = (
+            min(61, mp.cpu_count()) if sys.platform == "win32" else mp.cpu_count()
+        )
+        assert chunker.num_workers == expected
         assert chunker.use_cache is True
         assert chunker.use_streaming is False
         assert chunker.cache is not None
@@ -100,6 +104,17 @@ class TestParallelChunkerInit:
 
 class TestWorkerPoolSizing:
     """Test various worker pool sizing strategies."""
+
+    @pytest.mark.parametrize("platform", ["win32", "linux", "darwin"])
+    @pytest.mark.parametrize("requested", [None, 4, 61, 64])
+    def test_platform_worker_limit(self, monkeypatch, platform, requested):
+        monkeypatch.setattr("chunker.parallel.sys", Mock(platform=platform))
+        monkeypatch.setattr("chunker.parallel.mp.cpu_count", lambda: 128)
+        chunker = ParallelChunker("python", num_workers=requested, use_cache=False)
+        expected = requested or 128
+        if platform == "win32":
+            expected = min(61, expected)
+        assert chunker.num_workers == expected
 
     @classmethod
     def test_single_worker(cls, temp_directory_with_files):

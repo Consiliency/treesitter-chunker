@@ -57,6 +57,8 @@ the Ruby correctness repair below intentionally removes one false node.
 
 ### Correctness repairs
 
+- Windows parallel worker counts are capped at the process pool's supported
+  maximum of 61, including explicit requests and defaults on high-core hosts.
 - Completed parallel batches without an opt-in deadline now join their worker
   cleanup before returning, preventing repeated calls from forking while the
   previous pool's shutdown locks are held. Deadline calls keep nonblocking
