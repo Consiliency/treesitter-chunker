@@ -35,7 +35,7 @@ CI_SMOKE_TESTS = [
     # .json oracle. Complements the deep 12-language golden gate above.
     #
     # The 0.13.0 pack's COBOL grammar previously infinite-looped inside native
-    # code, beyond pytest-timeout's signal interrupt. The 1.17 gate therefore
+    # code, beyond pytest-timeout's signal interrupt. The 1.20 gate therefore
     # includes an OS-subprocess probe that is killed and reaped at its deadline.
     # See .github/workflows/ci.yml for the exact pack install and prefetch.
     "tests/test_language_smoke.py",

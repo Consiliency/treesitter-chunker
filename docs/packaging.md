@@ -51,8 +51,8 @@ review and release gates. It has not been released.
 ## Parser artifact integrity and offline custody
 
 The Python lock authenticates the selected package distributions, not every
-first-use native parser download. In language-pack 1.17.0's
-[download implementation](https://github.com/xberg-io/tree-sitter-language-pack/blob/8201d74b22b8175d44117eb1b88a69b37d752e2b/crates/ts-pack-core/src/download.rs),
+first-use native parser download. In language-pack 1.20.0's
+[download implementation](https://github.com/xberg-io/tree-sitter-language-pack/blob/v1.20.0/crates/ts-pack-core/src/download.rs),
 new and cached bundle archives are checked against SHA-256 values in the parser
 manifest. That manifest is fetched separately from the versioned upstream release
 (or a configured mirror); its digest is not pinned in this repository's lock.

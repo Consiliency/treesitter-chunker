@@ -31,13 +31,13 @@ classifiers     = [
 dependencies = [
     # tree_sitter and tree-sitter-language-pack MUST stay ABI-paired. The pairing
     # is asymmetric: the runtime is ABI-additive while the pack carries grammars.
-    # 0.26.x core + 1.17.x pack is the reviewed pairing. Pack 1.17.0 retains the
+    # 0.26.x core + 1.20.x pack is the candidate pairing. Pack 1.20.0 retains the
     # 0.26 runtime and ships 371 grammars as versioned, on-demand downloads. The
     # committed coverage oracle holds the exact locked pack version, and the
     # COBOL smoke runs behind a hard-kill subprocess boundary because pack 0.13.0
     # previously exposed an uninterruptible native-parser loop.
     "tree_sitter>=0.26,<0.27",
-    "tree-sitter-language-pack>=1.17,<1.18",  # Pre-compiled grammars; ABI-paired with tree_sitter above
+    "tree-sitter-language-pack>=1.20,<1.21",  # Pre-compiled grammars; ABI-paired with tree_sitter above
     "rich>=13.0.0",
     "typer>=0.9.0",
     "pyarrow>=21.0.0",

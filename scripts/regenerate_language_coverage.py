@@ -8,7 +8,7 @@ the committed JSON, so any *unintended* coverage change -- a language that stops
 loading, or one that gains/loses an extraction surface -- fails loudly in CI.
 
 It MUST be run on the pinned, ABI-paired stack (tree_sitter 0.26 /
-tree-sitter-language-pack 1.17.0). ``assert_grammar_runtime_pins`` fails closed
+tree-sitter-language-pack 1.20.0). ``assert_grammar_runtime_pins`` fails closed
 before anything is written if the stack drifted off-pin. Running it twice
 produces no git diff: the JSON is byte-stable (``sort_keys`` + fixed indent) and
 the volatile ``pins`` block is normalized to placeholders so the report does not
@@ -64,7 +64,7 @@ def _normalize_for_commit(coverage: dict) -> dict:
     normalized = json.loads(json.dumps(coverage))  # deep copy
     normalized["pins"] = {
         "tree_sitter": ">=0.26,<0.27",
-        "tree_sitter_language_pack": "==1.17.0",
+        "tree_sitter_language_pack": "==1.20.0",
     }
     return normalized
 

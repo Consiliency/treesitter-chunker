@@ -9,14 +9,14 @@ from tests import boundary_ir_conformance
 
 
 def test_resolve_pack_pin_uses_pyproject_as_the_single_source_of_truth():
-    assert resolve_pack_pin() == ("1.17", "1.18")
+    assert resolve_pack_pin() == ("1.20", "1.21")
     assert boundary_ir_conformance.PINNED_LANGUAGE_PACK == (
-        ("1.17", "1.18"),
+        ("1.20", "1.21"),
         "tree-sitter-language-pack",
     )
 
 
-@pytest.mark.parametrize("drifted_version", ["1.18.0", "2.0.0"])
+@pytest.mark.parametrize("drifted_version", ["1.21.0", "2.0.0"])
 def test_grammar_runtime_pin_gate_rejects_pack_drift(monkeypatch, drifted_version):
     original_version = metadata.version
 

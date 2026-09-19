@@ -44,16 +44,16 @@ jobs:
           # Pin the parser stack to the versions used by the committed coverage
           # oracle. `uv pip install` does not consult uv.lock, so both versions
           # are repeated here to prevent CI from floating independently.
-          # Pack 1.17 downloads its parser bundle on first use; the prefetch step
+          # Pack 1.20 downloads its parser bundle on first use; the prefetch step
           # below moves that network boundary ahead of the parallel smoke tests.
           uv pip install --system -e ".[dev,api,viz,templates,advanced]" \
             "tree-sitter==0.26.0" \
-            "tree-sitter-language-pack==1.17.0"
+            "tree-sitter-language-pack==1.20.0"
           # Fail loudly (not silently green) if the install resolved a different
           # pack than the gate's oracle was baked against.
           python - <<'PY'
           import importlib.metadata as m
-          expected = {"tree-sitter": "0.26.0", "tree-sitter-language-pack": "1.17.0"}
+          expected = {"tree-sitter": "0.26.0", "tree-sitter-language-pack": "1.20.0"}
           installed = {name: m.version(name) for name in expected}
           assert installed == expected, f"parser stack drifted: {installed} != {expected}"
           print(f"parser stack pinned at {installed}")

@@ -45,7 +45,7 @@ GOLDEN_ROOT = Path("tests/fixtures/boundary_ir/golden")
 GOLDEN_TOOL_VERSION = "<tool-version>"
 
 # Pinned grammar/runtime ranges. These MUST mirror pyproject.toml's dependency
-# pins. Pack 1.17 retains the 0.26 runtime and its grammar revisions are part of
+# pins. Pack 1.20 retains the 0.26 runtime and its grammar revisions are part of
 # the Boundary IR contract, so an unintended drift must fail closed.
 PINNED_TREE_SITTER = (("0.26", "0.27"), "tree_sitter")
 PINNED_LANGUAGE_PACK = (resolve_pack_pin(), "tree-sitter-language-pack")

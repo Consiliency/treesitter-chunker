@@ -9,7 +9,7 @@
 
 **Solution**: Install the pinned py-tree-sitter version used by treesitter-chunker:
 ```bash
-uv pip install "tree-sitter>=0.26,<0.27" "tree-sitter-language-pack>=1.17,<1.18"
+uv pip install "tree-sitter>=0.26,<0.27" "tree-sitter-language-pack>=1.20,<1.21"
 ```
 
 #### Windows: Grammar Library Fails to Load (WinError 126)

@@ -1,7 +1,7 @@
 """Wrapper for tree-sitter-language-pack integration.
 
 This module provides a fallback source of pre-compiled grammars
-via the tree-sitter-language-pack PyPI package. Version 1.17 exposes 371
+via the tree-sitter-language-pack PyPI package. Version 1.20 exposes 371
 languages and downloads their parser libraries into a versioned cache on first
 use, without requiring local grammar compilation.
 
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 _pack_available: bool | None = None
 _pack_module: object | None = None
 
-# The 1.17 COBOL grammar loops in native code on malformed input. Keep it out of
+# The 1.20 COBOL grammar loops in native code on malformed input. Keep it out of
 # chunker's runtime surface until an upstream pack release fixes that behavior.
 UNSAFE_PACK_LANGUAGES = frozenset({"cobol"})
 

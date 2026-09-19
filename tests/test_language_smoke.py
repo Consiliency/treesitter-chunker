@@ -58,8 +58,8 @@ def test_pack_pinned_exactly_at_committed_version() -> None:
 
     The committed coverage JSON's per-language ``node_count`` / ``kinds`` are
     baked against the EXACT pack version the report was generated on. The
-    pyproject range (``>=1.17,<1.18``) and ``assert_grammar_runtime_pins`` would
-    both stay green on a future ``1.17.x`` whose grammars shifted, turning the
+    pyproject range (``>=1.20,<1.21``) and ``assert_grammar_runtime_pins`` would
+    both stay green on a future ``1.20.x`` whose grammars shifted, turning the
     coverage diff red with a confusing message. Assert the exact committed pack
     version here so any float fails loudly with a clear cause: regenerate the
     oracle on the new pin, or hold the pack.
@@ -72,7 +72,7 @@ def test_pack_pinned_exactly_at_committed_version() -> None:
     assert installed == expected, (
         f"tree-sitter-language-pack=={installed} but the committed coverage "
         f"oracle was baked against {expected}. The coverage JSON's per-language "
-        "node_count/kinds are version-exact; a different 1.17.x can shift them. "
+        "node_count/kinds are version-exact; a different 1.20.x can shift them. "
         "Regenerate via scripts/regenerate_language_coverage.py on the new pin "
         "(and review the diff), or hold the pack at the committed version."
     )
@@ -105,7 +105,7 @@ def test_unsafe_pack_grammars_are_contained_and_not_advertised() -> None:
     """A broken native grammar must not hang tests or reach chunker users.
 
     Pack 0.13.0's COBOL parser could loop inside native code indefinitely, where
-    Python signal timeouts could not interrupt it. Pack 1.17 still loops on a
+    Python signal timeouts could not interrupt it. Pack 1.20 still loops on a
     malformed one-byte input, so the smoke probe must kill and reap it and
     chunker must omit the unsafe pack grammar from its runtime surface.
     """
@@ -191,7 +191,7 @@ def test_coverage_matches_committed_oracle() -> None:
     # a patch bump inside the pinned range does not fail the gate.
     live["pins"] = {
         "tree_sitter": ">=0.26,<0.27",
-        "tree_sitter_language_pack": "==1.17.0",
+        "tree_sitter_language_pack": "==1.20.0",
     }
 
     assert live["summary"] == committed["summary"], (

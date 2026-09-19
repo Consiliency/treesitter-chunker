@@ -13,7 +13,7 @@ Two tiers, deliberately honest about what each proves:
 LOAD tier (comprehensive)
     Every language enumerated by the pinned pack is loaded and made to parse a
     trivial input. ``LOADS`` vs ``FAILS_TO_LOAD`` (the C#/ABI-15 class). Pack
-    1.17 downloads grammars on demand into a versioned cache; CI prefetches the
+    1.20 downloads grammars on demand into a versioned cache; CI prefetches the
     locked pack before this gate. Every grammar except an explicitly documented
     unsafe native parser is expected to load, and unexpected drift turns RED.
 
@@ -35,7 +35,7 @@ EXTRACTION tier (best-effort, for the languages we can author a valid sample for
     Languages with no curated sample (the long tail) are ``LOAD_ONLY`` --
     honestly *not* extraction-tested rather than guessed EMPTY.
 
-The pack is held at 1.17.x with an exact 1.17.0 coverage oracle. It retains the
+The pack is held at 1.20.x with an exact 1.20.0 coverage oracle. It retains the
 tree_sitter 0.26 runtime. ``assert_grammar_runtime_pins`` (imported from the
 boundary conformance harness) fails closed if either drifts off-range.
 """

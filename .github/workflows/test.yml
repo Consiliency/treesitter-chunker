@@ -54,7 +54,7 @@ jobs:
         pip install uv
         uv pip install --system -e ".[dev,api,viz,templates,advanced]" \
           "tree-sitter==0.26.0" \
-          "tree-sitter-language-pack==1.17.0"
+          "tree-sitter-language-pack==1.20.0"
         uv pip install --system toml httpx  # Required by tests
 
     - name: Fetch grammars

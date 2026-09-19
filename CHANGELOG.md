@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [5.0.0] — Tree-sitter 0.26 supply normalization
 
 Tree-sitter Chunker now uses `tree-sitter==0.26.0` with
-`tree-sitter-language-pack==1.17.0`. The pack expands the audited grammar set
+`tree-sitter-language-pack==1.20.0`. The pack expands the audited grammar set
 from 167 to 371. Eleven frozen Boundary IR fixtures remain byte-identical;
 the Ruby correctness repair below intentionally removes one false node.
 
@@ -35,23 +35,23 @@ the Ruby correctness repair below intentionally removes one false node.
   Encoded names ending in a period or space are rejected, since Windows strips
   those characters. These checks apply on every platform; the data values remain
   supported in non-partition columns and flat exports.
-- **Parser delivery is now cache-backed.** Language-pack 1.17 downloads parser
+- **Parser delivery is now cache-backed.** Language-pack 1.20 downloads parser
   libraries on first use into a versioned cache. Offline images and deployments
   must prefetch their required languages while network access is available.
   A warm cache works offline. For a cold offline cache the pack raises
   `DownloadError`; Chunker logs that cause and its public parser API raises
   `LanguageNotFoundError`.
 - **The supported dependency range moves to Tree-sitter 0.26 and language-pack
-  1.17.** Downstream constraints that intentionally held the 4.x parser stack
+  1.20.** Downstream constraints that intentionally held the 4.x parser stack
   must opt into this release and rerun their Boundary IR acceptance gates.
 - **Linux wheels now require glibc 2.34 or newer.** This follows the published
-  language-pack 1.17 wheel baseline; older Linux images cannot use its wheel.
+  language-pack 1.20 wheel baseline; older Linux images cannot use its wheel.
 
 ### 🔒 Native-parser containment
 
 - Every language-pack load smoke runs behind an OS-process deadline, so a
   native grammar loop cannot hang CI.
-- The 1.17 COBOL grammar still loops on malformed input. Chunker therefore does
+- The 1.20 COBOL grammar still loops on malformed input. Chunker therefore does
   not advertise or load that pack grammar; the coverage report records it as an
   explicit extraction gap until an upstream release fixes the parser.
 
