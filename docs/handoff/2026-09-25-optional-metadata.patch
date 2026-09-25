@@ -1,0 +1,81 @@
+diff --git a/treesitter_chunker.egg-info/PKG-INFO b/treesitter_chunker.egg-info/PKG-INFO
+--- a/treesitter_chunker.egg-info/PKG-INFO
++++ b/treesitter_chunker.egg-info/PKG-INFO
+@@ -1,4 +1,4 @@
+ Metadata-Version: 2.4
+ Name: treesitter-chunker
+-Version: 3.1.0
++Version: 3.2.2
+ Summary: Semantic code chunker using Tree-sitter for intelligent code analysis
+@@ -32,7 +32,7 @@
+ Description-Content-Type: text/markdown
+ License-File: LICENSE
+ Requires-Dist: tree_sitter<0.26,>=0.25
+-Requires-Dist: tree-sitter-language-pack<1.0,>=0.9
++Requires-Dist: tree-sitter-language-pack<0.10,>=0.9
+ Requires-Dist: rich>=13.0.0
+ Requires-Dist: typer>=0.9.0
+ Requires-Dist: pyarrow>=15.0.0
+@@ -316,6 +316,25 @@
+ 
+ **Legend**: ✅ Production Ready, 🔧 Buildable on-demand, 🚧 Experimental
+ 
++#### 📋 Honest, machine-verified coverage
++
++We do not just *hope* the ~167 pack languages work — we measure and publish it. See
++**[docs/language-coverage.md](docs/language-coverage.md)** (and the machine-readable
++[`docs/language-coverage.json`](docs/language-coverage.json)) for the per-language
++coverage sweep across the entire
++[tree-sitter-language-pack](https://github.com/Goldziher/tree-sitter-language-pack),
++continuously enforced by a smoke-tier CI gate (`tests/test_language_smoke.py`).
++Honest tiers:
++
++- **12** languages with full byte-level **golden conformance** + determinism gate
++  (extraction-verified against authoritative golden fixture repos).
++- **27** extraction-verified overall (a real boundary surface — the 12 above plus
++  15 more checked against small curated samples; rich = 2+ kinds, sparse = 1 kind).
++- **167 / 167** pack grammars **load** under the pinned runtime (a forward ABI-drift
++  tripwire — it would have flagged the C# ABI break and the pre-fix C++ sparseness
++  instantly).
++- The **broken / sparse / empty** languages are named openly in the report, not hidden.
++
+ **For Advanced Usage:**
+ If you need languages not included in prebuilt wheels, the package can still build them locally using the same build system used during wheel creation.
+ 
+diff --git a/treesitter_chunker.egg-info/SOURCES.txt b/treesitter_chunker.egg-info/SOURCES.txt
+--- a/treesitter_chunker.egg-info/SOURCES.txt
++++ b/treesitter_chunker.egg-info/SOURCES.txt
+@@ -384,6 +384,7 @@
+ scripts/fetch_grammars.py
+ scripts/package.py
+ scripts/regenerate_boundary_goldens.py
++scripts/regenerate_language_coverage.py
+ scripts/run_ci_smoke.py
+ scripts/run_platform_core.py
+ scripts/run_windows_preflight.py
+@@ -493,6 +494,7 @@
+ tests/test_language_config.py
+ tests/test_language_integration.py
+ tests/test_language_pack.py
++tests/test_language_smoke.py
+ tests/test_log_processor.py
+ tests/test_log_processor_integration.py
+ tests/test_markdown_processor.py
+@@ -601,6 +603,7 @@
+ tests/fixtures/boundary_ir/repos/python/app/formatting.py
+ tests/fixtures/boundary_ir/repos/python/app/service.py
+ tests/fixtures/boundary_ir/repos/ruby/widget.rb
++tests/fixtures/language_smoke/samples/sample.rs
+ treesitter_chunker.egg-info/PKG-INFO
+ treesitter_chunker.egg-info/SOURCES.txt
+ treesitter_chunker.egg-info/dependency_links.txt
+diff --git a/treesitter_chunker.egg-info/requires.txt b/treesitter_chunker.egg-info/requires.txt
+--- a/treesitter_chunker.egg-info/requires.txt
++++ b/treesitter_chunker.egg-info/requires.txt
+@@ -1,5 +1,5 @@
+ tree_sitter<0.26,>=0.25
+-tree-sitter-language-pack<1.0,>=0.9
++tree-sitter-language-pack<0.10,>=0.9
+ rich>=13.0.0
+ typer>=0.9.0
+ pyarrow>=15.0.0

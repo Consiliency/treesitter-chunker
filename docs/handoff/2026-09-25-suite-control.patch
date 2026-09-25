@@ -1,0 +1,11 @@
+diff --git a/tests/integration/conftest.py b/tests/integration/conftest.py
+--- a/tests/integration/conftest.py
++++ b/tests/integration/conftest.py
+@@ -1,4 +1,4 @@
+-"""Pytest configuration for integration tests."""
++"""Pytest configuration for integration tests.
+ 
+-# Load the integration fixtures as a pytest plugin instead of star-importing them.
+-pytest_plugins = ["tests.integration.fixtures"]
++The integration fixtures are registered by the top-level ``tests/conftest.py``.
++"""
