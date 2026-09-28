@@ -1,0 +1,28 @@
+{
+  "upstream": {
+    "repository": "https://github.com/BoundaryML/baml-treesitter",
+    "commit": "276b4d8471f1c2f2ce80f182ab46d171b825f2b7",
+    "grammar_sha256": "68c53e9317282aa413249ee461074ee4b7def16a995ae3898c127501639465d6",
+    "parser_sha256": "f59dfe525992dd7106a46f9d4956a5900c31fb1a6fa554ba7fd441c20fc4b6ff",
+    "node_types_sha256": "2ff3bf962c1490b1c2bdf3fc7e90ce125ecd5437f0cec761f84f15b7c3e12d7f",
+    "tree_sitter_config_sha256": "54d57c8eafb3ccd982d7f1b7f37b5e43df276bc3e752eca7fd5c2a1da63fa826",
+    "parser_header_sha256": "180b893c8734778fd32f372dfbc27bd6ad1cd2221f26150b31256ff6716320d2",
+    "license_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  "overlay": {
+    "description": "Allow backtick_string as a prompt_field value alongside raw_string",
+    "patch_sha256": "d184a5149bc885248b3ce771c98f4aea9eee40764c4eaa02f062e103a64911f9",
+    "grammar_sha256": "ed0f3dc6902c5db774c110d974615511682e38d95168f8f33dd03d93c284a855"
+  },
+  "generator": {
+    "npm_package": "tree-sitter-cli",
+    "version": "0.25.10",
+    "npm_integrity": "sha512-KoebQguKMCIghisEOdA372TIbrUl0kdnfZ9YQIBRAeOvNSKe85XbU4LuFW7hduRUwJj0rAG7pX5wo9sZhbBF1g==",
+    "executable_sha256": "de21a99ed95e683526b26eee456e12352752487daed0d20afc85157212ab8e3d"
+  },
+  "generated": {
+    "abi": 15,
+    "parser_sha256": "8ebd06974ee7e4fcca4d5c15a278fce768bd5c91241edf35483b953c537ffd27",
+    "node_types_sha256": "c6d9116d4ac95c82fe1a929f84ed41631d2c57e927fdb3815b0d5598eede3111"
+  }
+}

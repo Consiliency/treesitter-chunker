@@ -1,0 +1,8 @@
+{
+  "name": "treesitter-chunker-baml-grammar-build",
+  "private": true,
+  "version": "0.1.0",
+  "devDependencies": {
+    "tree-sitter-cli": "0.25.10"
+  }
+}

@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=75", "wheel>=0.44"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "treesitter-chunker-baml-grammar"
+version = "0.1.0"
+description = "Pinned BAML Tree-sitter grammar for treesitter-chunker"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+dependencies = ["tree-sitter>=0.26,<0.27"]
+classifiers = [
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: C",
+]
+
+[project.urls]
+Source = "https://github.com/Consiliency/treesitter-chunker"
+Grammar = "https://github.com/BoundaryML/baml-treesitter"
+
+[tool.setuptools]
+package-dir = {"" = "python"}
+
+[tool.setuptools.packages.find]
+where = ["python"]
+include = ["treesitter_chunker_baml_grammar"]
