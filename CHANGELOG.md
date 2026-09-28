@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.1] — First published v5 package
+
+This is the first published v5 package. It includes the Tree-sitter 0.26 supply
+normalization and breaking changes documented under 5.0.0 below. The v5.0.0
+tag did not produce a package because release validation lacked the Graphviz
+`dot` executable; the release workflow now installs it before the full suite.
+
 ## [5.0.0] — Tree-sitter 0.26 supply normalization
 
 Tree-sitter Chunker now uses `tree-sitter==0.26.0` with
