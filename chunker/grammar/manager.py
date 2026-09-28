@@ -142,13 +142,17 @@ class TreeSitterGrammarManager(GrammarManager):
                     logger.info("Updating grammar '%s'...", name)
                     # Re-pin origin to the validated URL so the update never
                     # trusts a possibly-tampered stored remote (SUPPLY hardening).
-                    subprocess.run(
+                    remote_result = subprocess.run(
                         ["git", "remote", "set-url", "origin", "--", repository_url],
                         check=False,
                         cwd=grammar_path,
                         capture_output=True,
                         text=True,
                     )
+                    if remote_result.returncode != 0:
+                        raise GrammarManagementError(
+                            f"Cannot set validated grammar remote: {remote_result.stderr}"
+                        )
                     result = subprocess.run(
                         ["git", "pull"],
                         check=False,

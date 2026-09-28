@@ -149,6 +149,7 @@ class RubyConfig(LanguageConfig):
             ChunkRule(
                 node_types={
                     "do_block",
+                    "block",
                     "lambda",
                 },
                 include_children=True,

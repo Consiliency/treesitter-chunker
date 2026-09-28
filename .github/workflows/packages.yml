@@ -1,114 +1,18 @@
-name: Build Packages
+name: Native Packages Suspended
 
 permissions:
   contents: read
 
-on:
-  push:
-    tags:
-      - 'v*'
+# Owner-approved v5 scope (2026-09-11): PyPI only. Never run on release tags.
+'on':
   workflow_dispatch:
 
 jobs:
-  build-deb:
+  native-packages-suspended:
     runs-on: ubuntu-latest
-    container: debian:bookworm
-
+    timeout-minutes: 1
     steps:
-    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
-      with:
-        fetch-depth: 0
-    
-    - name: Install build dependencies
-      run: |
-        apt-get update
-        apt-get install -y debhelper dh-python python3-all python3-setuptools \
-          python3-wheel python3-pip git cmake build-essential devscripts
-        pip3 install --break-system-packages tree_sitter
-
-    - name: Prepare source package
-      run: |
-        cp -r packaging/debian debian/
-        VERSION=$(python3 -c "import re; print(re.search(r'version = \"([^\"]+)\"', open('pyproject.toml').read()).group(1))")
-        dch --newversion "${VERSION}" --distribution unstable "Automated build"
-    
-    - name: Build package
-      run: |
-        dpkg-buildpackage -us -uc -b
-        mkdir -p /tmp/debs
-        cp ../*.deb /tmp/debs/
-
-    - name: Upload deb packages
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-      with:
-        name: debian-packages
-        path: /tmp/debs/*.deb
-
-  build-rpm:
-    runs-on: ubuntu-latest
-    container: fedora:latest
-
-    steps:
-    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
-      with:
-        fetch-depth: 0
-
-    - name: Install build dependencies
-      run: |
-        dnf install -y rpm-build python3-devel python3-pip python3-wheel \
-          python3-setuptools pyproject-rpm-macros gcc gcc-c++ cmake git
-    
-    - name: Setup build environment
-      run: |
-        mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
-        cp packaging/rpm/treesitter-chunker.spec ~/rpmbuild/SPECS/
-        
-        # Create source tarball
-        version=$(grep "^Version:" packaging/rpm/treesitter-chunker.spec | awk '{print $2}')
-        tar czf "$HOME/rpmbuild/SOURCES/treesitter-chunker-${version}.tar.gz" \
-          --transform "s,^,treesitter-chunker-${version}/," \
-          --exclude=.git --exclude=__pycache__ .
-    
-    - name: Build RPM
-      run: |
-        cd ~/rpmbuild
-        rpmbuild -ba SPECS/treesitter-chunker.spec
-        mkdir -p /tmp/rpms
-        find ~/rpmbuild/RPMS -name "*.rpm" -exec cp {} /tmp/rpms/ \;
-
-    - name: Upload RPM packages
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-      with:
-        name: rpm-packages
-        path: /tmp/rpms/*.rpm
-
-  release-packages:
-    needs: [build-deb, build-rpm]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-    permissions:
-      contents: write
-    
-    steps:
-    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
-    
-    - name: Download all artifacts
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
-    
-    - name: Create package directory
-      run: |
-        mkdir -p packages
-        mv debian-packages/*.deb packages/
-        mv rpm-packages/*.rpm packages/
-    
-    - name: Generate package checksums
-      run: |
-        cd packages
-        sha256sum -- * > checksums.txt
-    
-    - name: Upload packages to release
-      uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b
-      with:
-        files: packages/*
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Reject native package release
+        run: |
+          echo "::error::Debian, RPM and Homebrew distribution is suspended for v5. See docs/packaging.md for re-enablement requirements."
+          exit 1

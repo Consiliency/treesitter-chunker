@@ -32,7 +32,7 @@ def test_extraction_nonempty(language: str):
 def test_grammar_runtime_pins_match():
     """The installed grammar/runtime versions must stay inside the pyproject pins.
 
-    Fails closed on an unintended transitive bump (e.g. tree_sitter 0.24 -> 0.25)
+    Fails closed on an unintended transitive runtime or grammar-pack bump
     that would silently corrupt the Boundary IR.
     """
     assert_grammar_runtime_pins()

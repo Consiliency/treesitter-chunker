@@ -1,7 +1,7 @@
 # Tree-sitter Chunker
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![Tree-sitter](https://img.shields.io/badge/tree--sitter-latest-green.svg)](https://tree-sitter.github.io/)
+[![Tree-sitter](https://img.shields.io/badge/tree--sitter-0.26-green.svg)](https://tree-sitter.github.io/)
 [![PyPI](https://img.shields.io/pypi/v/treesitter-chunker.svg)](https://pypi.org/project/treesitter-chunker/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Test Suite](https://github.com/Consiliency/treesitter-chunker/actions/workflows/test.yml/badge.svg)](https://github.com/Consiliency/treesitter-chunker/actions/workflows/test.yml)
@@ -30,7 +30,7 @@ Developers and teams who feed code into AI tools or search systems and need the 
 ## What you get
 
 - **🧩 Structure-aware splitting** — pieces follow real code boundaries (functions, classes, methods), not line counts.
-- **🌍 36+ languages built in** — with 100+ more grammars downloaded automatically as needed.
+- **🌍 Broad language coverage** — 370 language-pack parsers pass the bounded load gate, with 28 languages extraction-verified against real or curated samples.
 - **🔢 Fits your AI's context window** — optional token-aware mode packs pieces to a target size so they slot neatly into an LLM's limit.
 - **🗺️ Sees how code connects** — can map calls, symbols, and cross-references between pieces, not just isolate them.
 - **📤 Exports anywhere** — JSON, JSONL, Parquet, GraphML, or straight into PostgreSQL / Neo4j.
@@ -95,7 +95,7 @@ flowchart TB
         subgraph lang["Language Support"]
             PARSER[Parser Factory<br/>caching・pooling]
             PLUGINS[Language Plugins<br/>36+ built-in]
-            GRAMMAR[Grammar Manager<br/>100+ auto-download]
+            GRAMMAR[Language Pack<br/>371 cached parsers]
         end
 
         subgraph graph["Graph & Analysis"]
@@ -176,7 +176,7 @@ Tree-sitter Chunker is designed for high-performance code analysis:
 |--------|-------------|------------|
 | **Speed** | 11.9x faster with AST caching | vs. repeated parsing |
 | **Memory** | Streaming support for 10GB+ files | vs. loading entire files |
-| **Languages** | 36+ built-in, 100+ auto-download | vs. manual grammar setup |
+| **Languages** | 370 load-safe pack parsers | vs. manual grammar setup |
 | **Parallel** | 8x speedup on 8-core systems | vs. single-threaded |
 | **Cache Hit** | 95%+ for repeated files | vs. no caching |
 
@@ -184,7 +184,7 @@ Tree-sitter Chunker is designed for high-performance code analysis:
 
 - 🎯 **Semantic Understanding** - Extracts functions, classes, methods based on AST
 - 🚀 **Blazing Fast** - 11.9x speedup with intelligent AST caching
-- 🌍 **Universal Language Support** - Auto-download and support for 100+ Tree-sitter grammars
+- 🌍 **Broad Language Support** - 370 load-safe parsers from the pinned language pack
 - 🔌 **Plugin Architecture** - Built-in plugins for 29 languages + auto-download support for 100+ more including all major programming languages
 - 🎛️ **Flexible Configuration** - TOML/YAML/JSON config files with per-language settings
 - 📊 **14 Export Formats** - JSON, JSONL, Parquet, CSV, XML, GraphML, Neo4j, DOT, SQLite, PostgreSQL, and more
@@ -197,15 +197,15 @@ Tree-sitter Chunker is designed for high-performance code analysis:
 - 📈 **Graph Export** - Visualize code structure in yEd, Neo4j, or Graphviz
 - 🐛 **Debug Tools** - AST visualization, chunk inspection, performance profiling
 - 🔧 **Developer Tools** - Pre-commit hooks, CI/CD generation, quality metrics
-- 📦 **Multi-Platform Distribution** - PyPI, Docker, Homebrew packages
+- 📦 **Distribution** - v5 targets PyPI; native packages are suspended pending rebuild
 - 🌐 **Zero-Configuration** - Automatic language detection and grammar download
-- 🚀 **Production Ready** - Prebuilt wheels with embedded grammars, no local compilation required
+- 🚀 **Production Ready** - Prebuilt parser libraries are cached on first use, with no local compilation required
 
 ## 📦 Installation
 
 ### Prerequisites
 - Python 3.11+ (for Python usage)
-- C compiler (for building Tree-sitter grammars - only needed if using languages not included in prebuilt wheels)
+- Network access on first use, or a parser cache prefetched during image construction
 
 ### Installation Methods
 
@@ -242,21 +242,24 @@ uv pip install "treesitter-chunker[viz]"
 uv pip install "treesitter-chunker[all]"
 ```
 
-**Note**: Prebuilt wheels include compiled Tree-sitter grammars for common languages (Python, JavaScript, Rust, C, C++), so no local compilation is required for basic usage.
+**Note**: The language pack downloads precompiled parser libraries on first use
+and caches them by pack version. No local compilation is required. Prefetch the
+languages needed by offline deployments while network access is available.
 
 ### No Local Builds Required
 
-Current PyPI releases include precompiled Tree-sitter grammars for common languages. This means:
+The pinned language pack supplies precompiled Tree-sitter grammars. This means:
 
-- ✅ **Immediate Use**: No C compiler or build tools required for basic languages
-- ✅ **Faster Installation**: Wheels install instantly without compilation
-- ✅ **Consistent Performance**: Same grammar versions across all installations
-- ✅ **Offline Capable**: Works without internet access after installation
+- ✅ **No Local Compiler**: The default parser path does not build grammars from source
+- ✅ **Versioned Cache**: Parser downloads use a versioned, platform-specific cache; retain the manifest and grammar hashes for reproducible deployments
+- ✅ **Offline After Prefetch**: A warmed parser cache works without network access
+- ✅ **Cold Cache Requires Network**: Without a prefetched cache, the pack raises
+  `DownloadError`. Chunker logs that cause and its public parser API raises
+  `LanguageNotFoundError`; prefetch before taking the installation offline.
 
-**Supported Languages in Prebuilt Wheels:**
-- Python, JavaScript, TypeScript, JSX, TSX
-- C, C++, Rust
-- Additional languages can be built on-demand if needed
+The committed [language coverage report](docs/language-coverage.md) lists every
+pack parser and the smaller set for which Chunker verifies a boundary-extraction
+surface.
 
 ### 🌍 Language Support Matrix
 
@@ -279,21 +282,20 @@ Current PyPI releases include precompiled Tree-sitter grammars for common langua
 
 #### 📋 Honest, machine-verified coverage
 
-We do not just *hope* the ~167 pack languages work — we measure and publish it. See
+We do not just *hope* the 371 pack languages work — we measure and publish them. See
 **[docs/language-coverage.md](docs/language-coverage.md)** (and the machine-readable
 [`docs/language-coverage.json`](docs/language-coverage.json)) for the per-language
 coverage sweep across the entire
-[tree-sitter-language-pack](https://github.com/Goldziher/tree-sitter-language-pack),
+[tree-sitter-language-pack](https://github.com/xberg-io/tree-sitter-language-pack),
 continuously enforced by a smoke-tier CI gate (`tests/test_language_smoke.py`).
 Honest tiers:
 
 - **12** languages with full byte-level **golden conformance** + determinism gate
   (extraction-verified against authoritative golden fixture repos).
-- **27** extraction-verified overall (a real boundary surface — the 12 above plus
-  15 more checked against small curated samples; rich = 2+ kinds, sparse = 1 kind).
-- **167 / 167** pack grammars **load** under the pinned runtime (a forward ABI-drift
-  tripwire — it would have flagged the C# ABI break and the pre-fix C++ sparseness
-  instantly).
+- **28** extraction-verified overall (20 rich and 8 sparse boundary surfaces).
+- **370 / 371** pack grammars **load** under the pinned runtime. The one unsafe
+  native parser is contained behind a hard process deadline and excluded from
+  Chunker's runtime surface.
 - The **broken / sparse / empty** languages are named openly in the report, not hidden.
 
 **For Advanced Usage:**
@@ -303,28 +305,20 @@ If you need languages not included in prebuilt wheels, the package can still bui
 See [Cross-Language Usage Guide](docs/cross-language-usage.md) for using from JavaScript, Go, Ruby, etc.
 
 #### Using Docker
+
+The existing container instructions are not a validated v5 distribution path.
+The v5 release scope is PyPI only.
+
 ```bash
 docker pull ghcr.io/consiliency/treesitter-chunker:latest
 docker run -v $(pwd):/workspace treesitter-chunker chunk /workspace/example.py -l python
 ```
 
-#### Using Homebrew (macOS/Linux)
-```bash
-brew tap consiliency/treesitter-chunker
-brew install treesitter-chunker
-```
+#### Native packages (suspended for v5)
 
-#### For Debian/Ubuntu
-```bash
-# Download .deb package from releases
-sudo dpkg -i python3-treesitter-chunker_2.2.23-1_all.deb
-```
-
-#### For Fedora/RHEL
-```bash
-# Download .rpm package from releases
-sudo rpm -i python-treesitter-chunker-2.2.23-1.noarch.rpm
-```
+Debian, RPM and Homebrew distribution is suspended while their recipes are
+rebuilt and validated. Use the PyPI installation above. See the
+[native rebuild requirements](docs/packaging.md#native-distribution-rebuild-backlog).
 
 ### Quick Install (Development)
 
@@ -336,21 +330,21 @@ cd treesitter-chunker
 # Install with uv (recommended)
 uv venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-uv pip install -e ".[dev]"
-uv pip install git+https://github.com/tree-sitter/py-tree-sitter.git@v0.25.2
+uv sync --locked --all-extras
 
-# Build language grammars
-python scripts/fetch_grammars.py
-python scripts/build_lib.py
+# Prefetch the complete locked parser bundle for offline development
+uv run python -c "from typing import get_args; from tree_sitter_language_pack import SupportedLanguage, prefetch; prefetch(list(get_args(SupportedLanguage)))"
 
 # Verify installation
 python -c "from chunker.parser import list_languages; print(list_languages())"
-# Output: ['c', 'cpp', 'javascript', 'python', 'rust']
+# Output includes the safe languages available from the pinned pack
 ```
 
 ### Grammar Setup
 
-Tree-sitter Chunker requires compiled grammar libraries for parsing. Prebuilt wheels include common languages (Python, JavaScript, Rust), but you can set up additional grammars using the CLI.
+Tree-sitter Chunker uses the pinned language pack by default. The source-grammar
+manager remains available for custom or locally compiled grammars, which take
+precedence over the pack when installed.
 
 #### CLI Setup (Recommended)
 

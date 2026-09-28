@@ -10,12 +10,12 @@ the *entire* tree-sitter-language-pack. It is consumed by:
 
 Two tiers, deliberately honest about what each proves:
 
-LOAD tier (comprehensive, cheap)
+LOAD tier (comprehensive)
     Every language enumerated by the pinned pack is loaded and made to parse a
-    trivial input. ``LOADS`` vs ``FAILS_TO_LOAD`` (the C#/ABI-15 class). Under
-    the verified-byte-stable pin (tree_sitter 0.25 + pack 0.9.0) every pack
-    grammar is expected to load; the gate's value is forward drift detection --
-    a future ABI break that silently breaks a language turns this RED.
+    trivial input. ``LOADS`` vs ``FAILS_TO_LOAD`` (the C#/ABI-15 class). Pack
+    1.20 downloads grammars on demand into a versioned cache; CI prefetches the
+    locked pack before this gate. Every grammar except an explicitly documented
+    unsafe native parser is expected to load, and unexpected drift turns RED.
 
 EXTRACTION tier (best-effort, for the languages we can author a valid sample for)
     The 12 golden languages route through their authoritative golden fixture
@@ -35,14 +35,17 @@ EXTRACTION tier (best-effort, for the languages we can author a valid sample for
     Languages with no curated sample (the long tail) are ``LOAD_ONLY`` --
     honestly *not* extraction-tested rather than guessed EMPTY.
 
-The pack is held at 0.9.0 on purpose: that is the byte-stable pairing with
-tree_sitter 0.25. ``assert_grammar_runtime_pins`` (imported from the boundary
-conformance harness) fails closed if either drifts off-pin.
+The pack is held at 1.20.x with an exact 1.20.0 coverage oracle. It retains the
+tree_sitter 0.26 runtime. ``assert_grammar_runtime_pins`` (imported from the
+boundary conformance harness) fails closed if either drifts off-range.
 """
 
 from __future__ import annotations
 
+import subprocess
+import sys
 import typing
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
@@ -132,22 +135,33 @@ def pack_languages() -> tuple[str, ...]:
 
 
 def load_language(name: str) -> tuple[str, str | None]:
-    """Attempt to load a pack grammar and parse a trivial input.
+    """Load and parse in a child process with an enforceable wall deadline.
 
     Returns ``(LOADS, None)`` on success or ``(FAILS_TO_LOAD, error)`` with the
-    captured error string (the C#/ABI-15 failure class).
+    captured error string. The OS process boundary contains native parser loops
+    that Python signal handlers cannot interrupt.
     """
-    from tree_sitter import Parser
-    from tree_sitter_language_pack import get_language
+    probe = """
+import sys
+from tree_sitter import Parser
+from tree_sitter_language_pack import get_language
 
+tree = Parser(get_language(sys.argv[1])).parse(b"a")
+assert tree.root_node is not None
+"""
     try:
-        language = get_language(name)  # type: ignore[arg-type]
-        parser = Parser(language)
-        tree = parser.parse(b"a")
-        if tree.root_node is None:  # pragma: no cover - defensive
-            return FAILS_TO_LOAD, "parse returned no root node"
-    except Exception as exc:  # noqa: BLE001 - we want to record any failure
-        return FAILS_TO_LOAD, f"{type(exc).__name__}: {exc}"
+        result = subprocess.run(
+            [sys.executable, "-c", probe, name],
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=5,
+        )
+    except subprocess.TimeoutExpired:
+        return FAILS_TO_LOAD, "parse exceeded the 5-second hard-kill deadline"
+    if result.returncode != 0:
+        error = result.stderr.strip() or result.stdout.strip()
+        return FAILS_TO_LOAD, error
     return LOADS, None
 
 
@@ -206,8 +220,11 @@ def compute_coverage() -> dict[str, Any]:
 
     extraction_targets = set(GOLDEN_LANGUAGES) | set(SAMPLE_LANGUAGES)
 
+    with ThreadPoolExecutor(max_workers=16) as executor:
+        load_results = dict(zip(pack, executor.map(load_language, pack), strict=True))
+
     for name in pack:
-        load_status, load_error = load_language(name)
+        load_status, load_error = load_results[name]
         record: dict[str, Any] = {"load": load_status}
         if load_error is not None:
             record["load_error"] = load_error
@@ -222,6 +239,11 @@ def compute_coverage() -> dict[str, Any]:
                 if name in GOLDEN_LANGUAGES
                 else (SAMPLES_ROOT / SAMPLE_LANGUAGES[name]).as_posix()
             )
+        elif name in extraction_targets:
+            record["extraction"] = EXTRACTION_GAP
+            record["node_count"] = 0
+            record["kinds"] = []
+            record["sample"] = (SAMPLES_ROOT / SAMPLE_LANGUAGES[name]).as_posix()
         else:
             record["extraction"] = LOAD_ONLY
 

@@ -987,11 +987,10 @@ class TestEdgeCases(unittest.TestCase):
         pool_name = next(iter(optimizer.memory_pools.keys()))
         pool = optimizer.memory_pools[pool_name]
 
-        # Simulate using all buffers
-        available_copy = pool["available"].copy()
-        for buffer_idx in available_copy:
-            pool["available"].remove(buffer_idx)
-            pool["in_use"].add(buffer_idx)
+        # A larger pool can satisfy the request when the smallest is exhausted.
+        for candidate in optimizer.memory_pools.values():
+            candidate["in_use"].update(candidate["available"])
+            candidate["available"].clear()
 
         # Try to get another buffer (should return None since all are in use)
         buffer = optimizer.get_memory_pool(pool["size"])
@@ -1139,11 +1138,10 @@ class TestComprehensiveCoverage(unittest.TestCase):
         optimizer = MemoryOptimizer()
 
         # Mock tracemalloc
-        with patch(
-            "chunker.performance.optimization.system_optimizer.tracemalloc",
-        ) as mock_tracemalloc:
-            mock_tracemalloc.is_tracing.return_value = True
-            mock_tracemalloc.get_traced_memory.return_value = (1000000, 2000000)
+        with (
+            patch("tracemalloc.get_traced_memory", return_value=(1000000, 2000000)),
+            patch("tracemalloc.is_tracing", return_value=True),
+        ):
 
             mock_vmem = Mock()
             mock_vmem.total = 8000000000
@@ -1159,14 +1157,21 @@ class TestComprehensiveCoverage(unittest.TestCase):
             self.assertEqual(metrics["tracemalloc_current"], 1000000)
 
     @patch("chunker.performance.optimization.system_optimizer.HAS_PSUTIL", False)
-    def test_memory_optimizer_fallback_collection(self):
+    @patch("chunker.performance.optimization.system_optimizer.HAS_RESOURCE", True)
+    @patch("chunker.performance.optimization.system_optimizer.resource")
+    def test_memory_optimizer_fallback_collection(self, mock_resource):
         """Test memory metrics collection fallback."""
         optimizer = MemoryOptimizer()
+        mock_resource.getrusage.return_value.ru_maxrss = 1000
 
         metrics = optimizer._collect_memory_metrics()
 
         # Should collect basic process memory
-        self.assertIn("process_memory_peak", metrics)
+        self.assertEqual(metrics["process_memory_peak"], 1000)
+        with patch(
+            "chunker.performance.optimization.system_optimizer.HAS_RESOURCE", False
+        ):
+            self.assertNotIn("process_memory_peak", optimizer._collect_memory_metrics())
 
     @patch("chunker.performance.optimization.system_optimizer.HAS_PSUTIL", True)
     @patch("chunker.performance.optimization.system_optimizer.psutil")
@@ -1204,14 +1209,23 @@ class TestComprehensiveCoverage(unittest.TestCase):
         )  # Should be missing due to error
 
     @patch("chunker.performance.optimization.system_optimizer.HAS_PSUTIL", False)
-    def test_io_optimizer_fallback_collection(self):
+    @patch("chunker.performance.optimization.system_optimizer.HAS_RESOURCE", True)
+    @patch("chunker.performance.optimization.system_optimizer.resource")
+    def test_io_optimizer_fallback_collection(self, mock_resource):
         """Test I/O metrics collection fallback."""
         optimizer = IOOptimizer()
+        mock_resource.getrusage.return_value.ru_inblock = 2
+        mock_resource.getrusage.return_value.ru_oublock = 3
 
         metrics = optimizer._collect_io_metrics()
 
         # Should collect basic process I/O
-        self.assertIn("process_block_input", metrics)
+        self.assertEqual(metrics["process_block_input"], 2)
+        self.assertEqual(metrics["process_block_output"], 3)
+        with patch(
+            "chunker.performance.optimization.system_optimizer.HAS_RESOURCE", False
+        ):
+            self.assertNotIn("process_block_input", optimizer._collect_io_metrics())
 
     def test_cpu_optimizer_balance_single_core(self):
         """Test CPU load balancing on single core system."""
@@ -1378,15 +1392,23 @@ class TestComprehensiveCoverage(unittest.TestCase):
         optimizer = IOOptimizer()
 
         # Create initial pool
-        pool_name = "test_pool"
-        optimizer.connection_pools[pool_name] = {"max_connections": 5}
+        pool_name = "database_pool"
+        optimizer.connection_pools[pool_name] = {
+            "max_connections": 5,
+            "total_requests": 7,
+        }
+        optimizer.connection_pools["custom_pool"] = {"max_connections": 3}
 
         result = optimizer.optimize_connection_pools()
 
         self.assertTrue(result["success"])
         # Should update existing pool
         updated_pool = optimizer.connection_pools[pool_name]
-        self.assertNotEqual(updated_pool["max_connections"], 5)  # Should be updated
+        self.assertEqual(updated_pool["max_connections"], 10)
+        self.assertEqual(updated_pool["total_requests"], 7)
+        self.assertEqual(
+            optimizer.connection_pools["custom_pool"], {"max_connections": 3}
+        )
 
     def test_system_optimizer_category_improvement_non_percent_metrics(self):
         """Test category improvement with non-percentage metrics."""

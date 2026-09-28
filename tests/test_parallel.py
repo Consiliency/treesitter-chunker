@@ -12,17 +12,24 @@ The tests use a variety of Python code templates to simulate different scenarios
 and stress test the parallel processing system.
 """
 
-import contextlib
 import multiprocessing as mp
 import shutil
+import sys
 import tempfile
 import time
+from concurrent.futures import Future, ProcessPoolExecutor
+from multiprocessing.util import Finalize
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
 from chunker.parallel import ParallelChunker, chunk_directory_parallel
+
+
+def _delay_worker_exit():
+    Finalize(None, time.sleep, args=(0.5,), exitpriority=0)
+
 
 # Mark all tests in this module as integration tests
 pytestmark = pytest.mark.integration
@@ -66,9 +73,12 @@ class TestParallelChunkerInit:
 
     @classmethod
     def test_default_initialization(cls):
-        """Test default worker count is CPU count."""
+        """Default worker count respects the platform's process-pool limit."""
         chunker = ParallelChunker("python")
-        assert chunker.num_workers == mp.cpu_count()
+        expected = (
+            min(61, mp.cpu_count()) if sys.platform == "win32" else mp.cpu_count()
+        )
+        assert chunker.num_workers == expected
         assert chunker.use_cache is True
         assert chunker.use_streaming is False
         assert chunker.cache is not None
@@ -94,6 +104,17 @@ class TestParallelChunkerInit:
 
 class TestWorkerPoolSizing:
     """Test various worker pool sizing strategies."""
+
+    @pytest.mark.parametrize("platform", ["win32", "linux", "darwin"])
+    @pytest.mark.parametrize("requested", [None, 4, 61, 64])
+    def test_platform_worker_limit(self, monkeypatch, platform, requested):
+        monkeypatch.setattr("chunker.parallel.sys", Mock(platform=platform))
+        monkeypatch.setattr("chunker.parallel.mp.cpu_count", lambda: 128)
+        chunker = ParallelChunker("python", num_workers=requested, use_cache=False)
+        expected = requested or 128
+        if platform == "win32":
+            expected = min(61, expected)
+        assert chunker.num_workers == expected
 
     @classmethod
     def test_single_worker(cls, temp_directory_with_files):
@@ -161,6 +182,11 @@ class TestWorkerPoolSizing:
         assert cached_duration < 1.0
 
 
+class PermissionDeniedChunker(ParallelChunker):
+    def _process_single_file(self, file_path):
+        raise PermissionError("Permission denied by worker")
+
+
 class TestFailureHandling:
     """Test failure handling in parallel workers."""
 
@@ -191,23 +217,14 @@ class TestFailureHandling:
         assert results[non_existent] == []
 
     @classmethod
-    def test_permission_denied_handling(cls):
-        """Test handling of permission errors."""
-        temp_dir = Path(tempfile.mkdtemp())
-        try:
-            restricted_file = temp_dir / "restricted.py"
-            restricted_file.write_text(
-                PYTHON_FUNCTION_TEMPLATE.format(idx=1, complexity=10),
-            )
-            Path(restricted_file).chmod(0)
-            chunker = ParallelChunker("python")
-            results = chunker.chunk_files_parallel([restricted_file])
-            assert restricted_file in results
-            assert results[restricted_file] == []
-        finally:
-            with contextlib.suppress(FileNotFoundError, IndexError, KeyError):
-                Path(restricted_file).chmod(0o644)
-            shutil.rmtree(temp_dir)
+    def test_permission_denied_handling(cls, tmp_path, capsys):
+        """A worker permission failure is reported on every supported platform."""
+        restricted_file = tmp_path / "restricted.py"
+        restricted_file.write_text("def f():\n    pass\n", encoding="utf-8")
+        chunker = PermissionDeniedChunker("python", num_workers=1, use_cache=False)
+        results = chunker.chunk_files_parallel([restricted_file])
+        assert results[restricted_file] == []
+        assert "Permission denied by worker" in capsys.readouterr().out
 
     @classmethod
     def test_worker_crash_handling(cls):
@@ -437,22 +454,50 @@ class TestMemoryUsage:
 class TestCancellationAndTimeout:
     """Test cancellation and timeout handling."""
 
-    @classmethod
-    def test_timeout_handling(cls):
-        """Test handling of operations that exceed timeout."""
-        temp_file = Path(tempfile.NamedTemporaryFile(suffix=".py", delete=False).name)
-        content = []
-        for i in range(50000):
-            content.append(PYTHON_FUNCTION_TEMPLATE.format(idx=i, complexity=100))
-            content.append(PYTHON_CLASS_TEMPLATE.format(idx=i, complexity=100))
-        temp_file.write_text("\n".join(content), encoding="utf-8")
+    @staticmethod
+    def test_completed_batch_joins_workers(tmp_path, monkeypatch):
+        path = tmp_path / "completed.py"
+        path.write_text("def completed(): return 1\n", encoding="utf-8")
+        previous = {process.pid for process in mp.active_children()}
+        monkeypatch.setattr(
+            "chunker.parallel.ProcessPoolExecutor",
+            lambda **kwargs: ProcessPoolExecutor(
+                **kwargs, initializer=_delay_worker_exit
+            ),
+        )
         try:
-            chunker = ParallelChunker("python", num_workers=1)
-            results = chunker.chunk_files_parallel([temp_file])
-            assert temp_file in results
-            assert len(results[temp_file]) > 0
+            chunks = ParallelChunker("python", num_workers=1).chunk_files_parallel(
+                [path]
+            )
+            assert len(chunks[path]) == 1
+            assert not [
+                process
+                for process in mp.active_children()
+                if process.pid not in previous
+            ]
         finally:
-            temp_file.unlink(missing_ok=True)
+            for process in mp.active_children():
+                if process.pid not in previous:
+                    process.join(timeout=2)
+
+    @staticmethod
+    def test_timeout_handling(tmp_path, monkeypatch):
+        """A deadline retains completed results and abandons unfinished work."""
+        completed_path = tmp_path / "completed.py"
+        pending_path = tmp_path / "pending.py"
+        completed = Future()
+        completed.set_result((completed_path, ["completed chunk"]))
+        pending = Future()
+        executor = Mock()
+        executor.submit.side_effect = [completed, pending]
+        monkeypatch.setattr(
+            "chunker.parallel.ProcessPoolExecutor", lambda **_: executor
+        )
+        chunker = ParallelChunker("python", num_workers=1, timeout_seconds=0.01)
+        results = chunker.chunk_files_parallel([completed_path, pending_path])
+        assert results == {completed_path: ["completed chunk"], pending_path: []}
+        assert pending.cancelled()
+        executor.shutdown.assert_called_once_with(wait=False, cancel_futures=True)
 
     @classmethod
     def test_graceful_shutdown(cls):
@@ -600,3 +645,20 @@ def temp_directory_with_files():
         file_path.write_text(content)
     yield temp_dir
     shutil.rmtree(temp_dir)
+
+
+@pytest.mark.parametrize(
+    ("language", "filename", "source"),
+    [
+        ("go", "a.go", "package main\nfunc f() int { return 1 }\n"),
+        ("ruby", "a.rb", "def f\n  1\nend\n"),
+        ("java", "A.java", "class A { int f() { return 1; } }"),
+    ],
+)
+def test_directory_discovers_supported_languages(tmp_path, language, filename, source):
+    from chunker import chunk_directory
+
+    path = tmp_path / filename
+    path.write_text(source, encoding="utf-8")
+    result = chunk_directory(tmp_path, language=language, num_workers=1)
+    assert path in result and result[path]

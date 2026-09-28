@@ -249,6 +249,13 @@ class {class_name}(LanguagePlugin):
         manager.add_plugin_directory(root_dir)
         root_plugins = manager.discover_plugins(root_dir)
         assert len(root_plugins) >= 1
+        assert (
+            manager._load_plugin_from_file(root_dir / "root_plugin.py") == root_plugins
+        )
+        assert (
+            manager._load_plugin_from_file(root_dir / "./root_plugin.py")
+            == root_plugins
+        )
         sub1_plugins = manager.discover_plugins(sub_dir1)
         assert len(sub1_plugins) >= 1
         sub2_plugins = manager.discover_plugins(sub_dir2)

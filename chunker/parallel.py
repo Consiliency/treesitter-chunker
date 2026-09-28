@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import multiprocessing as mp
+import sys
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from concurrent.futures import TimeoutError as FutureTimeout
@@ -28,6 +29,9 @@ class ParallelChunker:
     ):
         self.language = language
         self.num_workers = num_workers or mp.cpu_count()
+        if sys.platform == "win32":
+            # ProcessPoolExecutor rejects larger pools on Windows.
+            self.num_workers = min(self.num_workers, 61)
         self.use_cache = use_cache
         self.use_streaming = use_streaming
         self.cache = ASTCache() if use_cache else None
@@ -71,9 +75,11 @@ class ParallelChunker:
             time.monotonic() + timeout_seconds if timeout_seconds is not None else None
         )
 
-        # Manage the executor manually so a hung worker cannot block us on
-        # __exit__: we tear it down with wait=False and cancel pending futures.
+        # Join completed unbounded batches before another call can fork while
+        # this pool's manager is still cleaning up. Deadline calls retain their
+        # nonblocking shutdown so worker cleanup cannot exceed the caller budget.
         executor = ProcessPoolExecutor(max_workers=self.num_workers)
+        completed = False
         try:
             # Submit all tasks
             future_to_path = {
@@ -121,6 +127,7 @@ class ParallelChunker:
                         # Handle any other worker crashes or unexpected exceptions
                         print(f"Unexpected error processing {path}: {e}")
                         results[path] = []
+                completed = True
             except FutureTimeout:
                 # The wall-clock deadline elapsed while waiting on a worker that
                 # never completed. We ABANDON it — record a timeout and stop
@@ -140,7 +147,9 @@ class ParallelChunker:
                             f"exceeded {timeout_seconds}s",
                         )
         finally:
-            executor.shutdown(wait=False, cancel_futures=True)
+            executor.shutdown(
+                wait=completed and timeout_seconds is None, cancel_futures=True
+            )
 
         return results
 
@@ -151,16 +160,25 @@ class ParallelChunker:
     ) -> dict[Path, list[CodeChunk]]:
         """Process all files in a directory in parallel."""
         if extensions is None:
-            # Default extensions based on language
-            ext_map = {
-                "python": [".py"],
-                "rust": [".rs"],
-                "javascript": [".js", ".jsx"],
-                "typescript": [".ts", ".tsx"],
-                "c": [".c", ".h"],
-                "cpp": [".cpp", ".cxx", ".cc", ".hpp", ".h"],
+            from .auto import ZeroConfigAPI
+            from .languages import language_config_registry
+
+            known_extensions = {
+                ext
+                for ext, language in ZeroConfigAPI.EXTENSION_MAP.items()
+                if language == self.language
             }
-            extensions = ext_map.get(self.language, [])
+            config = language_config_registry.get(self.language)
+            if config is not None:
+                known_extensions.update(config.file_extensions)
+            # C and C++ share headers even though automatic detection picks C.
+            if self.language == "cpp":
+                known_extensions.add(".h")
+            if not known_extensions:
+                raise ValueError(
+                    f"No default extensions for {self.language!r}; supply extensions"
+                )
+            extensions = sorted(known_extensions)
 
         # Find all matching files
         file_paths = []

@@ -10,7 +10,10 @@ Maximum active xfails: 1
 
 | Test | Reason | Clearing phase |
 | --- | --- | --- |
-| tests/integration/phase9/test_phase9_metadata_rules.py::test_docstring_extraction_with_rules | GATES-1: phase-9 docstring metadata baseline | COREFIX |
+
+No active xfails. The phase-9 docstring test passes on both the retained v4 control
+and the v5 candidate; its stale strict-xfail marker was removed during release
+validation on 2026-09-11.
 
 ## mypy type-debt baseline (GATES)
 

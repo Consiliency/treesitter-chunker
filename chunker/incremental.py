@@ -4,7 +4,7 @@ import difflib
 import hashlib
 import json
 import pickle
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -63,41 +63,6 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
             if not old_chunks and not new_chunks:
                 return ChunkDiff([], [], [], [], [], {})
 
-            # Early-out: if structurally identical, return empty diff
-            if len(old_chunks) == len(new_chunks):
-                same = True
-                for o, n in zip(old_chunks, new_chunks, strict=False):
-                    if not (
-                        o.chunk_id == n.chunk_id
-                        and o.node_type == n.node_type
-                        and o.start_line == n.start_line
-                        and o.end_line == n.end_line
-                        and o.content == n.content
-                    ):
-                        same = False
-                        break
-                if same:
-                    empty = ChunkDiff(
-                        [],
-                        [],
-                        [],
-                        [],
-                        [],
-                        {
-                            "total_old_chunks": len(old_chunks),
-                            "total_new_chunks": len(new_chunks),
-                            "added": 0,
-                            "deleted": 0,
-                            "modified": 0,
-                            "unchanged": len(new_chunks),
-                        },
-                    )
-                    # Back-compat convenience lists
-                    empty.added = []  # type: ignore[attr-defined]
-                    empty.removed = []  # type: ignore[attr-defined]
-                    empty.modified = []  # type: ignore[attr-defined]
-                    return empty
-
             diff = self._compute_chunks_diff(old_chunks, new_chunks)
             # Promote new state into both latest and baseline for idempotent subsequent diffs
             self.file_chunks[file_path] = new_chunks
@@ -138,14 +103,38 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
     def _identity_key(chunk: CodeChunk) -> str:
         return chunk.definition_id or chunk.chunk_id
 
+    @classmethod
+    def _identity_maps(
+        cls, old_chunks: list[CodeChunk], new_chunks: list[CodeChunk]
+    ) -> tuple[dict[str, CodeChunk], dict[str, CodeChunk]]:
+        # A repeated definition route is not sufficient to identify an overload.
+        # Use occurrence IDs on BOTH sides when either side has a collision.
+        collisions = {
+            key
+            for chunks in (old_chunks, new_chunks)
+            for key, count in Counter(cls._identity_key(c) for c in chunks).items()
+            if count > 1
+        }
+
+        def keyed(chunks: list[CodeChunk]) -> dict[str, CodeChunk]:
+            return {
+                (
+                    "occurrence:" + chunk.chunk_id
+                    if cls._identity_key(chunk) in collisions
+                    else "definition:" + cls._identity_key(chunk)
+                ): chunk
+                for chunk in chunks
+            }
+
+        return keyed(old_chunks), keyed(new_chunks)
+
     def _compute_chunks_diff(
         self,
         old_chunks: list[CodeChunk],
         new_chunks: list[CodeChunk],
     ) -> ChunkDiff:
         """Compute diff between two chunk lists."""
-        old_map = {self._identity_key(chunk): chunk for chunk in old_chunks}
-        new_map = {self._identity_key(chunk): chunk for chunk in new_chunks}
+        old_map, new_map = self._identity_maps(old_chunks, new_chunks)
 
         old_ids = set(old_map.keys())
         new_ids = set(new_map.keys())
@@ -241,8 +230,7 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
         """Compute difference between old chunks and new content."""
         identity_path = file_path or (old_chunks[0].file_path if old_chunks else "")
         new_chunks = chunk_text(new_content, language, file_path=identity_path)
-        old_map = {self._identity_key(chunk): chunk for chunk in old_chunks}
-        new_map = {self._identity_key(chunk): chunk for chunk in new_chunks}
+        old_map, new_map = self._identity_maps(old_chunks, new_chunks)
         old_ids = set(old_map.keys())
         new_ids = set(new_map.keys())
         unchanged_ids = old_ids & new_ids
@@ -302,7 +290,10 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
                     confidence=0.9,
                 ),
             )
-        moved_pairs = self.detect_moved_chunks(deleted_chunks, added_chunks)
+        moved_pairs = self.detect_moved_chunks(
+            [old_map[key] for key in deleted_ids if key.startswith("definition:")],
+            [new_map[key] for key in added_ids if key.startswith("definition:")],
+        )
         for old_chunk, new_chunk in moved_pairs:
             added_chunks = [c for c in added_chunks if c.chunk_id != new_chunk.chunk_id]
             deleted_chunks = [
@@ -378,11 +369,20 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
                 in {ChangeType.ADDED, ChangeType.MODIFIED, ChangeType.MOVED}
                 and change.new_chunk
             ):
+                if change.old_chunk is not None:
+                    chunk_map.pop(change.old_chunk.chunk_id, None)
                 chunk_map[change.new_chunk.chunk_id] = change.new_chunk
-        for chunk in diff.unchanged_chunks:
+        previous, unchanged = self._identity_maps(
+            list(chunk_map.values()), diff.unchanged_chunks
+        )
+        for key, chunk in unchanged.items():
+            if key in previous:
+                chunk_map.pop(previous[key].chunk_id, None)
             chunk_map[chunk.chunk_id] = chunk
         result = list(chunk_map.values())
-        result.sort(key=lambda c: (c.file_path, c.start_line))
+        result.sort(
+            key=lambda c: (c.file_path, c.start_line, c.byte_start, -c.byte_end)
+        )
         return result
 
     @staticmethod
@@ -392,11 +392,31 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
     ) -> list[tuple[CodeChunk, CodeChunk]]:
         """Detect chunks that have been moved."""
         moved_pairs = []
-        for old_chunk in old_chunks:
+        collisions = {
+            key
+            for chunks in (old_chunks, new_chunks)
+            for key, count in Counter(
+                c.definition_id or c.chunk_id for c in chunks
+            ).items()
+            if count > 1
+        }
+        matched_targets = set()
+
+        def source_order(chunk: CodeChunk) -> tuple[str, int, int, str]:
+            return (chunk.file_path, chunk.byte_start, chunk.byte_end, chunk.chunk_id)
+
+        ordered_new = sorted(new_chunks, key=source_order)
+        for old_chunk in sorted(old_chunks, key=source_order):
+            if (old_chunk.definition_id or old_chunk.chunk_id) in collisions:
+                continue
             best_match = None
             best_similarity = 0.0
-            for new_chunk in new_chunks:
-                if old_chunk.node_type != new_chunk.node_type:
+            for new_chunk in ordered_new:
+                if (
+                    old_chunk.node_type != new_chunk.node_type
+                    or new_chunk.chunk_id in matched_targets
+                    or (new_chunk.definition_id or new_chunk.chunk_id) in collisions
+                ):
                     continue
                 similarity = difflib.SequenceMatcher(
                     None,
@@ -415,6 +435,7 @@ class DefaultIncrementalProcessor(IncrementalProcessor):
                     best_similarity = similarity
             if best_match:
                 moved_pairs.append((old_chunk, best_match))
+                matched_targets.add(best_match.chunk_id)
         return moved_pairs
 
     @staticmethod

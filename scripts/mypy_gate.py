@@ -25,6 +25,8 @@ BASELINE = (
     Path(__file__).resolve().parents[1] / "docs" / "development" / "mypy-baseline.txt"
 )
 MYPY_CMD = [
+    sys.executable,
+    "-m",
     "mypy",
     "chunker/",
     "cli/",
@@ -49,7 +51,15 @@ def _signature(line: str) -> str:
 
 def _run_mypy() -> list[str]:
     proc = subprocess.run(MYPY_CMD, capture_output=True, text=True)
-    return [ln for ln in proc.stdout.splitlines() if " error:" in ln]
+    errors = [ln for ln in proc.stdout.splitlines() if " error:" in ln]
+    if proc.returncode not in (0, 1) or (proc.returncode == 1 and not errors):
+        raise RuntimeError(
+            f"mypy did not complete (exit {proc.returncode}):\n"
+            f"{proc.stdout}{proc.stderr}"
+        )
+    if proc.stderr:
+        raise RuntimeError(f"mypy reported unexpected stderr:\n{proc.stderr}")
+    return errors
 
 
 def main(argv: list[str]) -> int:

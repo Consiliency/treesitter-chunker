@@ -24,11 +24,45 @@ on:
         default: false
 
 jobs:
+  release-validation:
+    name: Validate release on Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.12', '3.13']
+    steps:
+    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+    - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install locked test environment
+      run: |
+        python -m pip install uv==0.12.11
+        uv sync --locked --all-extras
+    - name: Prefetch grammar artifacts
+      run: |
+        uv run --locked --all-extras python - <<'PY'
+        from typing import get_args
+        from tree_sitter_language_pack import SupportedLanguage, prefetch
+        prefetch(list(get_args(SupportedLanguage)))
+        PY
+    - name: Validate source and full test tier
+      run: |
+        uv run --locked --all-extras ruff check chunker/ cli/ tests/ --exclude archive --exclude logs --exclude site
+        uv run --locked --all-extras black --check chunker/ cli/ tests/ scripts/
+        uv run --locked --all-extras python scripts/mypy_gate.py
+        uv run --locked --all-extras python scripts/run_full_suite.py
+
   build-distributions:
     name: Build release distributions
     runs-on: ubuntu-latest
+    needs: release-validation
     permissions:
-      contents: write
+      contents: read
     outputs:
       tag_name: ${{ steps.version.outputs.tag_name }}
       package_version: ${{ steps.version.outputs.package_version }}
@@ -108,17 +142,38 @@ jobs:
 
     - name: Install build dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install uv
-        uv pip install --system build wheel twine
-        uv pip install --system git+https://github.com/tree-sitter/py-tree-sitter.git
-        uv pip install --system -e .
+        python -m pip install uv==0.12.11
+        uv sync --locked --all-extras
 
     - name: Build package
-      run: python -m build
+      run: uv run --locked --all-extras python -m build
 
     - name: Check package
-      run: twine check dist/*
+      run: uv run --locked --all-extras python -m twine check dist/*
+
+    - name: Verify installed wheel with locked runtime dependencies
+      run: |
+        uv export --locked --no-dev --no-emit-project --format requirements-txt > "$RUNNER_TEMP/release-requirements.txt"
+        WHEEL_PATH=$(realpath dist/*.whl)
+        WHEEL_SHA=$(sha256sum "$WHEEL_PATH" | cut -d' ' -f1)
+        printf '%s --hash=sha256:%s\n' "$WHEEL_PATH" "$WHEEL_SHA" >> "$RUNNER_TEMP/release-requirements.txt"
+        uv venv .release-venv --python 3.12
+        uv pip install --python .release-venv/bin/python --require-hashes -r "$RUNNER_TEMP/release-requirements.txt"
+        uv pip check --python .release-venv/bin/python
+        cd "$RUNNER_TEMP"
+        "$GITHUB_WORKSPACE/.release-venv/bin/python" - <<'PY'
+        from pathlib import Path
+        import chunker
+        from chunker.parser import get_parser
+        assert "site-packages" in str(Path(chunker.__file__).resolve())
+        for language, source in {
+            "python": b"def answer():\n    return 42\n",
+            "javascript": b"function answer() { return 42; }",
+            "typescript": b"function answer(): number { return 42; }",
+        }.items():
+            tree = get_parser(language).parse(source)
+            assert not tree.root_node.has_error, language
+        PY
 
     - name: Generate checksums
       run: |
@@ -132,6 +187,7 @@ jobs:
         path: |
           dist/*.whl
           dist/*.tar.gz
+          dist/checksums.txt
 
   create-release:
     name: Create GitHub Release
@@ -172,10 +228,13 @@ jobs:
 
     - name: Download build artifacts
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
-      continue-on-error: true
       with:
         name: distribution-artifacts
         path: ./dist
+
+    - name: Verify release artifact checksums
+      working-directory: dist
+      run: sha256sum --check checksums.txt
 
     - name: Create release
       uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b
@@ -212,7 +271,10 @@ jobs:
         path: dist
 
     - name: Remove non-package artifacts
-      run: rm -f dist/checksums.txt
+      run: |
+        cd dist
+        sha256sum --check checksums.txt
+        rm checksums.txt
 
     - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b

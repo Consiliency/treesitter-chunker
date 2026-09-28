@@ -27,6 +27,9 @@ class ZigConfig(LanguageConfig):
     def chunk_types(self) -> set[str]:
         """Zig-specific chunk types."""
         return {
+            "Decl",
+            "TestDecl",
+            "ComptimeDecl",
             "function_declaration",
             "struct_declaration",
             "enum_declaration",
@@ -80,6 +83,10 @@ class ZigPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
     @property
     def default_chunk_types(self) -> set[str]:
         return {
+            "Decl",
+            "VarDecl",
+            "TestDecl",
+            "ComptimeDecl",
             "function_declaration",
             "assignment_statement",  # For const/var declarations that define structs, enums etc
             "test_expression",
@@ -94,10 +101,16 @@ class ZigPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
     @staticmethod
     def get_node_name(node: Node, source: bytes) -> str | None:
         """Extract the name from a Zig node."""
-        if node.type == "test_expression":
+        if node.type == "Decl" and node.named_children:
+            return ZigPlugin.get_node_name(node.named_children[0], source)
+        for field in ("function", "variable_type_function"):
+            name = node.child_by_field_name(field)
+            if name is not None:
+                return safe_decode_bytes(source[name.start_byte : name.end_byte])
+        if node.type in {"test_expression", "TestDecl"}:
             # For test expressions, find the string literal
             for child in node.children:
-                if child.type == "string_literal":
+                if child.type in {"string_literal", "STRINGLITERALSINGLE"}:
                     test_name = safe_decode_bytes(
                         source[child.start_byte : child.end_byte],
                     )
@@ -116,7 +129,11 @@ class ZigPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
         processed_nodes = set()  # Track processed function nodes to avoid duplicates
 
         def extract_chunks(n: Node, container_name: str | None = None):
-            if n.type == "function_declaration" and n not in processed_nodes:
+            is_function = n.type == "function_declaration" or (
+                n.type == "Decl"
+                and any(child.type == "FnProto" for child in n.named_children)
+            )
+            if is_function and n not in processed_nodes:
                 processed_nodes.add(n)
                 content = safe_decode_bytes(source[n.start_byte : n.end_byte])
                 name = self.get_node_name(n, source)
@@ -136,6 +153,12 @@ class ZigPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                         break
                 else:
                     chunk["visibility"] = "private"
+                if n.prev_sibling is not None and n.prev_sibling.type == "pub":
+                    chunk["visibility"] = "public"
+                    chunk["start_line"] = n.prev_sibling.start_point[0] + 1
+                    chunk["content"] = safe_decode_bytes(
+                        source[n.prev_sibling.start_byte : n.end_byte]
+                    )
                 if container_name:
                     chunk["container"] = container_name
                 chunks.append(chunk)
@@ -148,13 +171,18 @@ class ZigPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     processed_nodes,
                     container_name,
                 )
-            elif n.type == "assignment_statement":
+            elif n.type in {"assignment_statement", "VarDecl"}:
                 # Check for struct, enum, union definitions
                 name = None
                 chunk_type = None
                 container_expr = None
                 for child in n.children:
-                    if child.type == "identifier":
+                    while (
+                        child.type in {"ErrorUnionExpr", "SuffixExpr"}
+                        and len(child.named_children) == 1
+                    ):
+                        child = child.named_children[0]
+                    if child.type in {"identifier", "IDENTIFIER"}:
                         name = safe_decode_bytes(
                             source[child.start_byte : child.end_byte]
                         )
@@ -167,8 +195,12 @@ class ZigPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     elif child.type == "union_expression":
                         chunk_type = "union"
                         container_expr = child
-                    elif child.type == "error_expression":
+                    elif child.type in {"error_expression", "ErrorSetDecl"}:
                         chunk_type = "error_set"
+                    elif child.type == "ContainerDecl":
+                        declaration = child.named_children[0]
+                        chunk_type = declaration.children[0].type
+                        container_expr = child
 
                 if chunk_type and name:
                     content = safe_decode_bytes(source[n.start_byte : n.end_byte])
@@ -186,7 +218,7 @@ class ZigPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                         extract_chunks(container_expr, name)
                         return  # Don't recurse further to avoid double-processing
 
-            elif n.type == "test_expression":
+            elif n.type in {"test_expression", "TestDecl"}:
                 content = safe_decode_bytes(source[n.start_byte : n.end_byte])
                 name = self.get_node_name(n, source)
                 chunk = {
@@ -197,7 +229,7 @@ class ZigPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                     "name": name,
                 }
                 chunks.append(chunk)
-            elif n.type == "comptime_block":
+            elif n.type in {"comptime_block", "ComptimeDecl"}:
                 content = safe_decode_bytes(source[n.start_byte : n.end_byte])
                 chunk = {
                     "type": "comptime",
@@ -209,7 +241,7 @@ class ZigPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
                 chunks.append(chunk)
 
             # Recurse into children for other nodes (unless we handled assignment_statement above)
-            if n.type != "assignment_statement" or not chunk_type:
+            if n.type not in {"assignment_statement", "VarDecl"} or not chunk_type:
                 for child in n.children:
                     extract_chunks(child, container_name)
 
@@ -317,6 +349,8 @@ class ZigPlugin(LanguagePlugin, ExtendedLanguagePluginContract):
 
     def should_chunk_node(self, node: Node) -> bool:
         """Determine if a specific node should be chunked."""
+        if node.type in {"Decl", "TestDecl", "ComptimeDecl"}:
+            return True
         if node.type == "function_declaration":
             return True
         if node.type == "test_expression":

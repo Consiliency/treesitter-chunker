@@ -20,10 +20,9 @@ P0_BOUNDARY_LANGUAGES = ("python", "javascript", "typescript", "go")
 # non-empty-extraction guarantee. P0 is the richer semantic-parity contract
 # (manifest.json); this superset is the byte-level / grammar-health contract.
 #
-# csharp is TURNKEY as of the tree_sitter 0.25 runtime bump: the language-pack
-# 0.9.0 C# grammar is ABI-15, which the old 0.24 runtime rejected (silently
-# emitting {} / zero boundaries). The 0.25 runtime loads ABI 13-15, so C# now
-# extracts rich nodes out of the box with no grammar pin / uv override. The
+# csharp is TURNKEY as of the tree_sitter 0.25 runtime bump: its ABI-15 grammar
+# was rejected by the old 0.24 runtime (silently emitting {} / zero boundaries).
+# The 0.26 runtime accepts ABI 15, so C# extracts rich nodes out of the box. The
 # canonical key is ``csharp`` (NOT ``c_sharp`` -- that alias yields zero nodes);
 # see EXTENSION_MAP in chunker/auto.py (.cs -> csharp).
 SUPPORTED_BOUNDARY_LANGUAGES = (
@@ -46,16 +45,9 @@ GOLDEN_ROOT = Path("tests/fixtures/boundary_ir/golden")
 GOLDEN_TOOL_VERSION = "<tool-version>"
 
 # Pinned grammar/runtime ranges. These MUST mirror pyproject.toml's dependency
-# pins. tree_sitter and tree-sitter-language-pack are ABI-paired, but the
-# coupling is asymmetric: the 0.25 runtime is ABI-additive (loads ABI 13-15, so
-# bumping the runtime under a HELD pack is byte-stable), whereas bumping the PACK
-# floats its pre-compiled grammars -- pack >=1.x ships a newer Python grammar
-# that changes docstring node handling and silently drops the ``docstring:``
-# line from semantic_text. That pack-float is the real cause of the historically
-# observed "docstring drop", NOT the runtime bump. The assertion below fails
-# closed if an unintended transitive bump moves either dist outside its range, so
-# pack stays pinned at 0.9.x and the IR stays byte-stable.
-PINNED_TREE_SITTER = (("0.25", "0.26"), "tree_sitter")
+# pins. Pack 1.20 retains the 0.26 runtime and its grammar revisions are part of
+# the Boundary IR contract, so an unintended drift must fail closed.
+PINNED_TREE_SITTER = (("0.26", "0.27"), "tree_sitter")
 PINNED_LANGUAGE_PACK = (resolve_pack_pin(), "tree-sitter-language-pack")
 
 FILE_KEYS = (
@@ -188,10 +180,9 @@ def assert_grammar_runtime_pins() -> None:
     """Fail closed if the installed grammar/runtime versions drift off-pin.
 
     Reads the *installed* distribution versions and checks each against the
-    range pinned in pyproject.toml. An unintended transitive bump (e.g. the
-    language-pack drifting 0.9 -> 1.x, which floats a newer Python grammar that
-    drops docstrings from semantic_text) trips this guard rather than silently
-    corrupting the IR.
+    range pinned in pyproject.toml. An unintended transitive bump can change
+    grammar output, so it must trip this guard rather than silently corrupting
+    the IR.
     """
     for (low, high), dist in (PINNED_TREE_SITTER, PINNED_LANGUAGE_PACK):
         installed = metadata.version(dist)

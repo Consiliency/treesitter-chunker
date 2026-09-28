@@ -397,15 +397,12 @@ Partition data for efficient querying:
 
 ```python
 # Partition by language and node type
-exporter = ParquetExporter()
-exporter.export_partitioned(
-    chunks,
-    "output_dir/",
-    partition_cols=["language", "node_type"]
-)
+exporter = ParquetExporter(partition_by=["language", "node_type"])
+exporter.export(chunks, "output_dir/")
 
 # Creates directory structure:
 # output_dir/
+#   _common_metadata
 #   language=python/
 #     node_type=function_definition/
 #       part-0.parquet
@@ -417,6 +414,39 @@ exporter.export_partitioned(
 ```
 
 ### Advanced Parquet Features
+
+Parquet export requires PyArrow 21.0.0 or newer. This is the tested minimum for
+formatting and validating partition directory names before writes.
+
+Partitioned exports save their complete schema in `_common_metadata`. Read with
+that schema explicitly, as shown below. PyArrow's default Hive discovery does not
+automatically use this file and can interpret string paths such as `"001"` and
+`"1"` as the same integer. Existing directories without this metadata need their
+original export schema supplied explicitly or must be re-exported. Successive
+nonempty exports to one directory must use the same selected-column schema;
+incompatible schemas are rejected before replacing partitions. Empty exports
+leave existing data and schema unchanged.
+
+The string `__HIVE_DEFAULT_PARTITION__` cannot be used as a partition value:
+Hive reserves it for null, even when the reader receives an explicit schema.
+The exporter rejects an entire batch containing that value in a partition column
+before creating or replacing any partitions. The string remains supported in
+non-partition columns and non-partitioned exports. Choose a different partition
+column when this is a required data value.
+
+Partition columns and their order are fixed for a dataset and stored in the
+schema metadata. Later writes with a different specification are rejected before
+replacement. Older datasets lacking this specification, including earlier
+schema-only `_common_metadata` files, must be re-exported into a fresh directory
+before additional writes.
+
+Directory names are checked consistently on every platform. Distinct keys such
+as `A.py` and `a.py` cannot share a dataset: case-insensitive aliases are rejected
+across all incoming rows and existing partition directories, including empty
+directories and shared parent components. Encoded directory names ending in a
+period or space are also rejected because Windows removes those endings. Values
+such as `trailing.` can still be stored in non-partition columns or flat exports;
+select different partition columns when these values are needed.
 
 ```python
 import pyarrow as pa
@@ -481,6 +511,7 @@ class AdvancedParquetExporter(ParquetExporter):
 ```python
 import pyarrow.parquet as pq
 import pandas as pd
+from pathlib import Path
 
 # Read with PyArrow
 def read_parquet_pyarrow(file_path):
@@ -510,18 +541,22 @@ def read_parquet_pandas(file_path):
 # Read partitioned dataset
 def read_partitioned_dataset(directory):
     """Read partitioned Parquet dataset."""
-    dataset = pq.ParquetDataset(directory)
-    
-    # Read with filters
-    table = dataset.read(
+    schema = pq.read_schema(Path(directory) / "_common_metadata")
+    dataset = pq.ParquetDataset(
+        directory,
+        schema=schema,
         filters=[
             ('language', '=', 'python'),
             ('node_type', 'in', ['function_definition', 'class_definition'])
         ]
     )
+    table = dataset.read()
     
     return table.to_pandas()
 ```
+
+The explicit schema is part of the partitioned readback contract; see
+[PyArrow's schema argument](https://arrow.apache.org/docs/21.0/python/generated/pyarrow.parquet.ParquetDataset.html).
 
 ## Format Comparison
 

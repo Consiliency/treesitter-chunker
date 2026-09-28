@@ -469,7 +469,7 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
         initial_handles = len(process.open_files())
         initial_children = len(process.children())
         memory_samples = [initial_memory]
-        leaked_objects = []
+        worker_errors = 0
         test_files = []
         for i in range(5):
             file_path = temp_workspace / f"memory_test_{i}.py"
@@ -490,21 +490,20 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
                         (test_file, iteration),
                     )
                     futures.append(future)
-                for i, future in enumerate(futures):
+                for future in futures:
                     try:
-                        future.result(timeout=1.0)
-                    except (FileNotFoundError, OSError):
-                        if iteration % 3 == 0:
-                            pass
-                        else:
-                            leaked_objects.append(
-                                f"iteration_{iteration}_file_{i}_error",
-                            )
+                        assert future.result(timeout=1.0) == 100
+                        assert iteration % 3 != 0
+                    except RuntimeError as exc:
+                        assert iteration % 3 == 0
+                        assert str(exc) == f"Simulated error in iteration {iteration}"
+                        worker_errors += 1
             resource_monitor.release_resource(iter_resource_id)
             gc.collect()
             time.sleep(0.1)
             current_memory = process.memory_info().rss / 1024 / 1024
             memory_samples.append(current_memory)
+        assert worker_errors == 20
         memory_growth = memory_samples[-1] - memory_samples[0]
         average_growth_per_iteration = memory_growth / len(memory_samples)
         current_handles = len(process.open_files())
@@ -530,9 +529,6 @@ class TestParallelErrorHandling(ErrorPropagationMixin):
             "avg_growth_per_iteration_mb": average_growth_per_iteration,
             "peak_memory_mb": max(memory_samples),
             "iterations": len(memory_samples) - 1,
-            "leaked_objects": len(leaked_objects),
+            "expected_worker_errors": worker_errors,
         }
         print(f"\nMemory Profile: {memory_profile}")
-        assert (
-            memory_profile["leaked_objects"] == 0
-        ), f"Unexpected leaked objects detected: {memory_profile['leaked_objects']}"

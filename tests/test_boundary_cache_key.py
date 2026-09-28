@@ -13,25 +13,25 @@ def _payload() -> dict:
 
 def test_boundary_cache_key_includes_pack_and_runtime_versions(monkeypatch):
     versions = {
-        "tree-sitter-language-pack": "0.9.0",
-        "tree-sitter": "0.25.2",
+        "tree-sitter-language-pack": "1.17.0",
+        "tree-sitter": "0.26.0",
     }
     monkeypatch.setattr(adapter, "version", versions.__getitem__)
 
     first = _payload()
-    assert first["grammar_version"] == "tree-sitter-python:pack=0.9.0:runtime=0.25.2"
-    assert first["runtime_version"] == "0.25.2"
+    assert first["grammar_version"] == "tree-sitter-python:pack=1.17.0:runtime=0.26.0"
+    assert first["runtime_version"] == "0.26.0"
     assert adapter._build_boundary_cache_key(
         first
     ) == adapter._build_boundary_cache_key(_payload())
 
-    versions["tree-sitter-language-pack"] = "0.9.1"
+    versions["tree-sitter-language-pack"] = "1.17.1"
     pack_changed = _payload()
     assert adapter._build_boundary_cache_key(
         pack_changed
     ) != adapter._build_boundary_cache_key(first)
 
-    versions["tree-sitter"] = "0.25.3"
+    versions["tree-sitter"] = "0.26.1"
     runtime_changed = _payload()
     assert adapter._build_boundary_cache_key(
         runtime_changed

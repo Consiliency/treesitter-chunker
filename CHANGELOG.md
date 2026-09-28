@@ -5,6 +5,137 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.0] — Tree-sitter 0.26 supply normalization
+
+Tree-sitter Chunker now uses `tree-sitter==0.26.0` with
+`tree-sitter-language-pack==1.20.0`. The pack expands the audited grammar set
+from 167 to 371. Eleven frozen Boundary IR fixtures remain byte-identical;
+the Ruby correctness repair below intentionally removes one false node.
+
+### ⚠️ BREAKING
+
+- **PyArrow 21.0.0 or newer is required.** Partition-directory validation uses
+  `HivePartitioning.format`, which is absent from the previous minimum, PyArrow 15.
+
+- **Partitioned Parquet readers must use the saved schema.** Exports write
+  `_common_metadata`; pass `schema=pq.read_schema(root / "_common_metadata")`
+  to `pq.ParquetDataset`. Unconfigured Hive inference still turns numeric-looking
+  strings into integers and can collapse distinct paths such as `"001"` and `"1"`.
+  Directories without this metadata need an explicit original schema or re-export.
+  The reserved string `__HIVE_DEFAULT_PARTITION__` is rejected in partition
+  columns before writing, because Hive would read it as null. It remains allowed
+  in non-partition columns and non-partitioned exports.
+- **Partitioned datasets keep a fixed ordered partition specification.** It is
+  saved with `_common_metadata`; changing the columns or their order is rejected
+  before replacement. Older datasets without this specification must be
+  re-exported into a fresh directory before further writes.
+- **Partition directory names follow consistent cross-platform restrictions.**
+  Case-insensitive aliases are rejected across the incoming batch and existing
+  directories, including empty directories and parent partition components.
+  Encoded names ending in a period or space are rejected, since Windows strips
+  those characters. These checks apply on every platform; the data values remain
+  supported in non-partition columns and flat exports.
+- **Parser delivery is now cache-backed.** Language-pack 1.20 downloads parser
+  libraries on first use into a versioned cache. Offline images and deployments
+  must prefetch their required languages while network access is available.
+  A warm cache works offline. For a cold offline cache the pack raises
+  `DownloadError`; Chunker logs that cause and its public parser API raises
+  `LanguageNotFoundError`.
+- **The supported dependency range moves to Tree-sitter 0.26 and language-pack
+  1.20.** Downstream constraints that intentionally held the 4.x parser stack
+  must opt into this release and rerun their Boundary IR acceptance gates.
+- **Linux wheels now require glibc 2.34 or newer.** This follows the published
+  language-pack 1.20 wheel baseline; older Linux images cannot use its wheel.
+
+### 🔒 Native-parser containment
+
+- Every language-pack load smoke runs behind an OS-process deadline, so a
+  native grammar loop cannot hang CI.
+- The 1.20 COBOL grammar still loops on malformed input. Chunker therefore does
+  not advertise or load that pack grammar; the coverage report records it as an
+  explicit extraction gap until an upstream release fixes the parser.
+
+### Correctness repairs
+
+- Windows parallel worker counts are capped at the process pool's supported
+  maximum of 61, including explicit requests and defaults on high-core hosts.
+- Completed parallel batches without an opt-in deadline now join their worker
+  cleanup before returning, preventing repeated calls from forking while the
+  previous pool's shutdown locks are held. Deadline calls keep nonblocking
+  shutdown; they still do not guarantee worker termination.
+- Clojure call metadata excludes special-form heads (including `letfn*`) and
+  quoted or discarded data,
+  while retaining evaluated calls inside syntax-quote unquotes, including quote
+  forms themselves being constructed as data and explicitly qualified unquote
+  forms with or without symbol metadata. Unevaluated reference-symbol and call
+  annotations and metadata on core function parameters or let/loop binding patterns
+  do not create call candidates; function pre/postconditions, collection values,
+  initializers, destructuring defaults and declaration metadata remain traversable.
+  Explicit function condition maps override parameter-metadata conditions; only
+  their predicate forms are traversed, not the condition container or its annotations.
+  Empty-list metadata,
+  annotation overrides and syntax-quote metadata omission have explicit reader
+  regressions. This is syntax analysis, not macro expansion, execution counts
+  or runtime name resolution. Reader-injected metadata is not modeled: stacked
+  sequence annotations can retain a candidate that Clojure's file reader removes
+  through implicit line/column overrides, while `read-string` evaluates it.
+- Incremental move matching uses stable source order for ambiguous candidates.
+  Matching remains greedy; it does not infer globally optimal logical identity.
+- Incremental Boundary IR retries cached extraction errors, so an unchanged file
+  can recover after a transient parser-download or metadata failure.
+- Partitioned Parquet exports replace the partitions supplied by each export and
+  retain other partitions, including exports above 1,024 partitions. Repeated exports
+  do not append duplicate rows. The writer keeps at most 64 data files open,
+  avoiding Arrow's stall when its default budget exhausts a 1,024-file process
+  limit. PyArrow
+  controls physical filenames; partition columns must exist in the selected schema.
+- Repository processing uses stable repository-relative identity paths instead of
+  temporary files, and selects TypeScript or TSX grammars for their file types. Windows Git filtering uses
+  the same slash-separated paths as Git's index. Caller-supplied two-argument
+  chunker adapters retain their existing interface; subclasses that inherit the
+  default adapter retain repository identity paths.
+- Incremental diffs retain overloaded definitions by using occurrence identities
+  where definition routes collide. Public definition IDs are unchanged; ambiguous
+  overload edits may appear as removal/addition instead of a guessed match.
+  Move matching reserves each target once and preserves complete-input collision
+  context, leaving ambiguous overload groups as removal/addition. Applying a diff
+  preserves source order for declarations sharing a line.
+  Applying diffs removes previous occurrences and refreshes unchanged positions.
+- Directory chunking derives extensions from the existing language map and
+  registered configurations, including Go, Ruby and Java. Languages without known
+  extensions require an explicit extension list instead of silently matching none.
+- Registry discovery includes pack languages without eagerly downloading grammars;
+  individual metadata requests validate the loaded grammar's ABI and node count.
+  Undetermined scanner/compatibility capabilities remain explicitly unknown.
+- Partitioned Parquet exports retain exact string partition values when read
+  through the standard dataset reader with their saved schema. Nonempty exports
+  reject a schema change before replacing existing partitions.
+- Call extraction recognizes the current grammar shapes for the extended language
+  set. Property reads and PHP `echo` statements are not reported as explicit calls.
+- Ruby chunking ignores unnamed keyword tokens and includes brace blocks. Its
+  Boundary IR fixture loses only the false `class` keyword node at bytes 0–5
+  (`definition_id` `5903643579d7686c6fb23f3c2144bbaf977d1009`); the four retained
+  nodes, their identities, and all edges are unchanged. Consumers with Ruby
+  snapshots must review this intentional correction before adoption.
+- Zig semantic and public/streaming chunking recognize the pack's declaration
+  grammar. System metrics restore CPU-frequency and optional resource fallbacks.
+- Large flat files no longer rescan sibling lists and copy source prefixes for
+  every chunk when finding comments and line numbers.
+- Grammar updates stop if the validated remote cannot be set, before any pull.
+- Custom plugin discovery caches classes by resolved file path, so repeated
+  discovery and loading do not lose plugins when temporary Path objects reuse IDs.
+- Boundary IR uses portable root and relationship paths on Windows, preserving
+  the same edge identities and committed golden output as Unix.
+
+### ✅ Verification
+
+- The committed coverage oracle now records 370/371 load-safe grammars, with
+  20 rich and 8 sparse extraction-verified languages.
+- CI installs the exact parser pair and prefetches the pack before parallel
+  tests. The release workflow no longer installs an unbounded GitHub head of
+  py-tree-sitter. v5 distribution is PyPI-only; native-package publication is
+  suspended pending the rebuild gates in `docs/packaging.md`.
+
 ## [4.0.0] — v3.2.2 remediation
 
 A comprehensive correctness/security/determinism remediation driven by the

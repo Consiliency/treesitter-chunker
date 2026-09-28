@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
+import pyarrow.dataset as ds
 import pyarrow.parquet as pq
 
 if TYPE_CHECKING:
@@ -99,6 +101,10 @@ class ParquetExporter:
         Args:
             chunks: List of CodeChunk objects to export
             output_path: Path to output file or directory (if partitioned)
+
+        Read partitioned output with ParquetDataset(schema=read_schema(
+        root / "_common_metadata")) to preserve partition value types.
+        The reserved Hive null-marker string is rejected in partition columns.
         """
         # Normalize output path
         output_path = Path(output_path)
@@ -111,44 +117,119 @@ class ParquetExporter:
             schema = self._schema
         table = pa.Table.from_pylist(records, schema=schema)
         if self.partition_by:
-            # For partitioned writes, manually create partitions
+            if not table.num_rows:
+                return
+            partition_spec = list(self.partition_by)
+            # Replace each supplied partition, retaining partitions not exported.
             if output_path.suffix:  # If it has a file extension, use parent directory
                 root_path = output_path.parent
             else:
                 root_path = output_path
-            # Ensure the root directory exists
-            root_path.mkdir(parents=True, exist_ok=True)
-
-            # Group records by partition columns
-            partitions = {}
-            for i in range(len(table)):
-                # Get partition key values for this row
-                partition_key = tuple(
-                    table.column(col)[i].as_py()
-                    for col in self.partition_by
-                    if col in table.schema.names
+            metadata_path = root_path / "_common_metadata"
+            partition_key = b"treesitter_chunker.partition_by"
+            existing_files = list(root_path.rglob("*.parquet"))
+            partition_paths = [
+                path.relative_to(root_path).parts
+                for path in root_path.rglob("*")
+                if path.is_dir() and "=" in path.name
+            ]
+            if metadata_path.exists():
+                saved_schema = pq.read_schema(metadata_path)
+                if not saved_schema.equals(schema):
+                    raise ValueError(
+                        "Partitioned dataset schema differs from export schema"
+                    )
+                if (
+                    json.loads(
+                        (saved_schema.metadata or {}).get(partition_key, b"null")
+                    )
+                    != partition_spec
+                ):
+                    raise ValueError(
+                        "Dataset partition specification differs or is missing; "
+                        "re-export into a fresh directory"
+                    )
+            elif existing_files or partition_paths:
+                raise ValueError(
+                    "Dataset partition specification is missing; "
+                    "re-export into a fresh directory"
                 )
-                if partition_key not in partitions:
-                    partitions[partition_key] = []
-                partitions[partition_key].append(i)
+            if any(
+                len(path.relative_to(root_path).parent.parts) != len(partition_spec)
+                for path in existing_files
+            ):
+                raise ValueError(
+                    "Existing files do not match the partition specification"
+                )
+            partitioning = ds.HivePartitioning(
+                pa.schema([schema.field(name) for name in partition_spec])
+            )
+            partition_rows = (
+                table.select(partition_spec)
+                .group_by(partition_spec, use_threads=False)
+                .aggregate([])
+                .to_pylist()
+            )
+            for row in partition_rows:
+                if "__HIVE_DEFAULT_PARTITION__" in row.values():
+                    raise ValueError(
+                        "The reserved Hive null marker '__HIVE_DEFAULT_PARTITION__' "
+                        "cannot be used as a partition value"
+                    )
+                conditions = [
+                    (
+                        ds.field(name).is_null()
+                        if row[name] is None
+                        else ds.field(name) == row[name]
+                    )
+                    for name in partition_spec
+                ]
+                expression = conditions[0]
+                for condition in conditions[1:]:
+                    expression &= condition
+                directory, _ = partitioning.format(expression)
+                partition_paths.append(Path(directory).parts)
+            prefixes: dict[tuple[str, ...], tuple[str, ...]] = {}
+            for parts in partition_paths:
+                if not 0 < len(parts) <= len(partition_spec) or any(
+                    not part.startswith(name + "=")
+                    for name, part in zip(partition_spec, parts, strict=False)
+                ):
+                    raise ValueError(
+                        "Directory does not match the partition specification"
+                    )
+                if any(part != part.rstrip(" .") for part in parts):
+                    raise ValueError("Unsupported portable partition directory ending")
+                for depth in range(1, len(parts) + 1):
+                    prefix = parts[:depth]
+                    key = tuple(part.casefold() for part in prefix)
+                    if key in prefixes and prefixes[key] != prefix:
+                        raise ValueError(
+                            "Conflicting portable partition directory names"
+                        )
+                    prefixes[key] = prefix
+            # Hive partition values belong in the directory names, not duplicated
+            # as plain-string columns inside files (which conflicts on readback).
+            pq.write_to_dataset(
+                table,
+                root_path=str(root_path),
+                partition_cols=partition_spec,
+                compression=self.compression,
+                existing_data_behavior="delete_matching",
+                max_partitions=max(1, table.num_rows),
+                max_open_files=64,
+            )
+            if not metadata_path.exists():
+                pq.write_metadata(
+                    schema.with_metadata(
+                        {
+                            **(schema.metadata or {}),
+                            partition_key: json.dumps(partition_spec).encode(),
+                        }
+                    ),
+                    metadata_path,
+                )
 
-            # Write each partition to its own file
-            for partition_values, row_indices in partitions.items():
-                # Create partition directory path
-                partition_dir = root_path
-                for i, col in enumerate(self.partition_by):
-                    if col in table.schema.names:
-                        partition_dir /= f"{col}={partition_values[i]}"
-
-                partition_dir.mkdir(parents=True, exist_ok=True)
-
-                # Create subset table for this partition
-                subset_table = table.take(row_indices)
-
-                # Write to parquet file in partition directory
-                partition_file = partition_dir / "data.parquet"
-                with pa.OSFile(str(partition_file), "wb") as sink:
-                    pq.write_table(subset_table, sink, compression=self.compression)
         else:
             # Ensure parent directory exists before writing file
             output_path.parent.mkdir(parents=True, exist_ok=True)

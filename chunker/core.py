@@ -39,6 +39,14 @@ def _extract_definition_name(node: Node, source: bytes) -> str | None:
 
     Returns None if no name can be extracted (anonymous definition).
     """
+    # Zig wraps function prototypes and variable declarations in Decl.
+    if node.type == "Decl" and node.named_children:
+        declaration = node.named_children[0]
+        zig_name = declaration.child_by_field_name(
+            "function"
+        ) or declaration.child_by_field_name("variable_type_function")
+        if zig_name is not None:
+            return source[zig_name.start_byte : zig_name.end_byte].decode("utf-8")
     # Try direct "name" field first (most common)
     name_node = getattr(node, "child_by_field_name", lambda _: None)("name")
     if name_node is not None:
@@ -511,7 +519,7 @@ def _walk(
     current_qualified_route: list[str] | None = None
 
     # Skip ignored nodes
-    if should_ignore(node.type):
+    if should_ignore(node.type) or (language == "ruby" and not node.is_named):
         return chunks
 
     # Ensure route lists
@@ -742,7 +750,11 @@ def _walk(
             file_path="",
             node_type=adjusted_node_type,
             start_line=start_line,
-            end_line=source[:span_end].count(b"\n") + 1,
+            end_line=(
+                node.end_point[0] + 1
+                if span_end == node.end_byte
+                else source.count(b"\n", 0, span_end) + 1
+            ),
             byte_start=span_start,
             byte_end=span_end,
             parent_context=parent_ctx or "",

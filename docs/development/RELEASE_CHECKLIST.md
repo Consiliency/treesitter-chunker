@@ -54,6 +54,12 @@ Use `workflow_dispatch` only when you intentionally want a controlled release ru
 - the top `CHANGELOG.md` heading matches `TARGET_VERSION`
 - version does not already exist on PyPI
 - build and package checks succeed
+- the release workflow's Python 3.11/3.12/3.13 validation matrix succeeds
+- the wheel installs from hashed locked requirements outside the source checkout
+- uploaded distribution checksums are present and verified before publication
+- v5 remains PyPI-only: native package tag/build/upload paths are absent and
+  manual native dispatch fails with the suspension notice; re-enablement requires
+  every native rebuild gate in `docs/packaging.md`
 - wheel artifact workflow uploads artifacts only and does not publish to PyPI
 
 ## Release Hygiene Gates

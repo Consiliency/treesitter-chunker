@@ -9,6 +9,61 @@ This document is the source of truth for packaging and PyPI publishing.
 - `.github/workflows/build-wheels.yml` builds wheel artifacts but does not publish them
 - Production publishing uses GitHub trusted publishing
 - A release tag must match the version in `pyproject.toml`
+- The PyPI release workflow requires the full `tests/` and `spec_tests/` tier,
+  lint, formatting and the baseline type gate on Python 3.11, 3.12 and 3.13.
+  A failing or timed-out validation job blocks its build and publication jobs.
+- The built wheel is installed in a fresh environment using hashed, locked runtime
+  dependencies and exercised outside the source checkout. Distribution checksums
+  are retained with the artifacts and verified before publication.
+
+### Native package status for the v5 candidate
+
+The owner approved **PyPI-only v5 distribution on 2026-09-11**. Debian, RPM and
+Homebrew distribution is suspended. `.github/workflows/packages.yml` has no tag
+trigger, build, artifact upload or release job. Manual dispatch fails with an
+explicit suspension notice. The recipes under `packaging/` are retained for
+future repair, but are not supported v5 installation methods. This decision does
+not disable local source builds or local grammar compilation.
+
+### Native distribution rebuild backlog
+
+Re-enablement is deferred beyond this v5 PyPI scope. Close all of the following
+before restoring native release triggers or advertising native installation:
+
+- **Debian:** reconcile all runtime dependencies and supported Python/parser
+  ranges with `pyproject.toml`; fix the build/install procedure and verify a
+  clean installation with no undeclared dependencies.
+- **RPM:** derive the version from the release source, declare complete runtime
+  dependencies, and correct architecture metadata for bundled native libraries.
+- **Homebrew:** replace the obsolete source URL/version, placeholder checksum,
+  Python/runtime resources and CLI test with verified release inputs.
+- **All three:** establish grammar artifact hashes, acquisition and offline cache
+  behavior for the supported OS/architecture matrix; run clean package install,
+  CLI, parser and dependency checks. Record supported platform minimums.
+- **Publication:** require the accepted source-validation gate and verified
+  artifacts before any native asset upload. Review the exact recipe/workflow
+  candidate and its platform receipts before restoring distribution.
+
+This suspension resolves the native release-path scope question only. The v5
+candidate has passed the local full-suite matrix but still requires accepted
+review and release gates. It has not been released.
+
+## Parser artifact integrity and offline custody
+
+The Python lock authenticates the selected package distributions, not every
+first-use native parser download. In language-pack 1.20.0's
+[download implementation](https://github.com/xberg-io/tree-sitter-language-pack/blob/v1.20.0/crates/ts-pack-core/src/download.rs),
+new and cached bundle archives are checked against SHA-256 values in the parser
+manifest. That manifest is fetched separately from the versioned upstream release
+(or a configured mirror); its digest is not pinned in this repository's lock.
+Package version pinning therefore does not independently freeze those remote bytes.
+
+For reproducible/offline installations, retain the tested platform's manifest,
+bundle and extracted grammar hashes alongside the wheel hash, prefetch required
+languages while online, and validate the prepared cache with networking disabled.
+Do not treat a cache directory from a different OS/architecture as interchangeable.
+The accepted binary Linux path uses glibc 2.34 or newer. musl and older-glibc
+source-build/runtime paths have not been accepted for this candidate.
 
 ## Version Source of Truth
 

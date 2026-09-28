@@ -6,10 +6,23 @@ from chunker.contracts.language_plugin_contract import ExtendedLanguagePluginCon
 from chunker.languages.plugin_base import LanguagePlugin
 from chunker.languages.zig import ZigPlugin
 from chunker.parser import get_parser
+from chunker.core import chunk_text
+from chunker.streaming import chunk_file_streaming
 
 
 class TestZigPlugin:
     """Test suite for Zig language plugin."""
+
+    def test_public_chunking_matches_streaming(self, tmp_path):
+        code = "pub fn main() void {}\nconst Point = struct { x: f32, };\n"
+        path = tmp_path / "example.zig"
+        path.write_bytes(code.encode("utf-8"))
+        chunks = chunk_text(code, "zig", str(path))
+        streamed = list(chunk_file_streaming(path, "zig"))
+        assert [c.qualified_route for c in chunks] == [["Decl:main"], ["Decl:Point"]]
+        assert [(c.byte_start, c.byte_end, c.qualified_route) for c in streamed] == [
+            (c.byte_start, c.byte_end, c.qualified_route) for c in chunks
+        ]
 
     @pytest.fixture
     def plugin(self):

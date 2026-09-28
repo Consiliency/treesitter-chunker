@@ -19,10 +19,14 @@ diff in review.
 from __future__ import annotations
 
 import json
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
+from chunker._internal.language_pack import UNSAFE_PACK_LANGUAGES
 from tests.boundary_ir_conformance import assert_grammar_runtime_pins
 from tests.language_smoke import (
     EMPTY,
@@ -54,8 +58,8 @@ def test_pack_pinned_exactly_at_committed_version() -> None:
 
     The committed coverage JSON's per-language ``node_count`` / ``kinds`` are
     baked against the EXACT pack version the report was generated on. The
-    pyproject range (``>=0.9,<1.0``) and ``assert_grammar_runtime_pins`` would
-    both stay green on a future ``0.9.x`` whose grammars shifted, turning the
+    pyproject range (``>=1.20,<1.21``) and ``assert_grammar_runtime_pins`` would
+    both stay green on a future ``1.20.x`` whose grammars shifted, turning the
     coverage diff red with a confusing message. Assert the exact committed pack
     version here so any float fails loudly with a clear cause: regenerate the
     oracle on the new pin, or hold the pack.
@@ -68,7 +72,7 @@ def test_pack_pinned_exactly_at_committed_version() -> None:
     assert installed == expected, (
         f"tree-sitter-language-pack=={installed} but the committed coverage "
         f"oracle was baked against {expected}. The coverage JSON's per-language "
-        "node_count/kinds are version-exact; a different 0.9.x can shift them. "
+        "node_count/kinds are version-exact; a different 1.20.x can shift them. "
         "Regenerate via scripts/regenerate_language_coverage.py on the new pin "
         "(and review the diff), or hold the pack at the committed version."
     )
@@ -82,9 +86,12 @@ def test_coverage_report_is_committed() -> None:
     )
 
 
-@pytest.mark.parametrize("language", pack_languages())
+@pytest.mark.parametrize(
+    "language",
+    tuple(name for name in pack_languages() if name not in UNSAFE_PACK_LANGUAGES),
+)
 def test_every_pack_language_loads(language: str) -> None:
-    """Comprehensive LOAD smoke: every pack grammar loads + parses under the pin.
+    """Every non-denied pack grammar loads and parses under the pin.
 
     This is the forward-drift tripwire: a future ABI break that silently breaks
     a language (the C#/ABI-15 failure mode) turns this RED instead of passing
@@ -92,6 +99,81 @@ def test_every_pack_language_loads(language: str) -> None:
     """
     status, error = load_language(language)
     assert status == LOADS, f"{language} failed to load under the pinned stack: {error}"
+
+
+def test_unsafe_pack_grammars_are_contained_and_not_advertised() -> None:
+    """A broken native grammar must not hang tests or reach chunker users.
+
+    Pack 0.13.0's COBOL parser could loop inside native code indefinitely, where
+    Python signal timeouts could not interrupt it. Pack 1.20 still loops on a
+    malformed one-byte input, so the smoke probe must kill and reap it and
+    chunker must omit the unsafe pack grammar from its runtime surface.
+    """
+    from chunker._internal.language_pack import list_pack_languages
+
+    status, error = load_language("cobol")
+    assert status == "fails_to_load"
+    assert error == "parse exceeded the 5-second hard-kill deadline"
+    assert "cobol" not in list_pack_languages()
+
+
+def _offline_environment() -> dict[str, str]:
+    environment = os.environ.copy()
+    environment.update(
+        {
+            "ALL_PROXY": "http://127.0.0.1:9",
+            "HTTP_PROXY": "http://127.0.0.1:9",
+            "HTTPS_PROXY": "http://127.0.0.1:9",
+        }
+    )
+    return environment
+
+
+def test_prefetched_parser_loads_without_network() -> None:
+    """A warmed parser cache remains usable when network acquisition is blocked."""
+    from tree_sitter_language_pack import prefetch
+
+    prefetch(["python"])
+    probe = """
+from tree_sitter import Parser
+from tree_sitter_language_pack import get_language
+
+tree = Parser(get_language("python")).parse(b"def f():\\n return 1\\n")
+assert tree.root_node.type == "module"
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", probe],
+        capture_output=True,
+        check=False,
+        env=_offline_environment(),
+        text=True,
+        timeout=15,
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_offline_cache_miss_fails_explicitly(tmp_path: Path) -> None:
+    """A cold offline cache reports a download error instead of a false load."""
+    probe = """
+import sys
+from tree_sitter_language_pack import DownloadError, PackConfig, configure, get_language
+
+configure(PackConfig(cache_dir=sys.argv[1]))
+try:
+    get_language("python")
+except DownloadError:
+    raise SystemExit(0)
+raise SystemExit("cold offline cache unexpectedly loaded python")
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", probe, str(tmp_path / "cold-cache")],
+        capture_output=True,
+        check=False,
+        env=_offline_environment(),
+        text=True,
+        timeout=15,
+    )
+    assert result.returncode == 0, result.stderr or result.stdout
 
 
 def test_coverage_matches_committed_oracle() -> None:
@@ -108,8 +190,8 @@ def test_coverage_matches_committed_oracle() -> None:
     # Normalize the volatile pins block exactly as the regenerate script does, so
     # a patch bump inside the pinned range does not fail the gate.
     live["pins"] = {
-        "tree_sitter": ">=0.25,<0.26",
-        "tree_sitter_language_pack": "==0.9.0",
+        "tree_sitter": ">=0.26,<0.27",
+        "tree_sitter_language_pack": "==1.20.0",
     }
 
     assert live["summary"] == committed["summary"], (

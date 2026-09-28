@@ -34,10 +34,10 @@
   golden snapshots (`tests/test_boundary_ir_golden_snapshots.py`), a non-empty
   extraction guard, and a fail-closed grammar/runtime pin assertion
   (`tests/test_boundary_ir_determinism.py`). Goldens cover all
-  `SUPPORTED_BOUNDARY_LANGUAGES` (C# excluded until its grammar ABI is fixed).
+  `SUPPORTED_BOUNDARY_LANGUAGES`, including C# on the current ABI-compatible runtime.
 - Any *intentional* Boundary IR change MUST be made by running
   `python scripts/regenerate_boundary_goldens.py` on the pinned, ABI-paired
-  stack (tree_sitter 0.24 / tree-sitter-language-pack 0.9) and reviewing the
+  stack (tree_sitter 0.26 / tree-sitter-language-pack 1.20) and reviewing the
   resulting golden diff in the PR. The script is idempotent — running it twice
   produces no git diff.
 - Do NOT hand-edit goldens and do NOT bump `tree_sitter` or

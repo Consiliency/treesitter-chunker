@@ -16,10 +16,6 @@ source .venv/bin/activate
 echo "Installing dependencies..."
 uv pip install -e ".[dev]"
 
-# Install py-tree-sitter from GitHub for ABI 15 support
-echo "Installing py-tree-sitter from GitHub..."
-uv pip install git+https://github.com/tree-sitter/py-tree-sitter.git
-
 # Fetch grammars
 echo "Fetching grammars..."
 python scripts/fetch_grammars.py

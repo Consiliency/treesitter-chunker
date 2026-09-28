@@ -24,7 +24,7 @@
     "files_total": 1,
     "graph_failures": 0,
     "metadata_failures": 0,
-    "nodes_total": 5,
+    "nodes_total": 4,
     "parse_failures": 0,
     "resolved_edges": 0,
     "serialization_failures": 0,
@@ -104,43 +104,6 @@
       },
       "symbol": "helper",
       "symbol_id": "df377cb614d3dd38d8ccf5e7632222158f491836"
-    },
-    {
-      "definition_id": "5903643579d7686c6fb23f3c2144bbaf977d1009",
-      "file_id": "0dc255d17d246a4891b0e6cafdf66be9c9f81d48",
-      "id": "5903643579d7686c6fb23f3c2144bbaf977d1009",
-      "identity": {
-        "source": "definition_id",
-        "value": "5903643579d7686c6fb23f3c2144bbaf977d1009"
-      },
-      "kind": "class",
-      "language": "ruby",
-      "metadata": {
-        "dependencies": [],
-        "exports": [],
-        "imports": [],
-        "parent_symbol": null,
-        "semantic_text": "language: ruby\nfile: widget.rb\nkind: class\nsymbol: Widget\nqualified name: Widget\nsemantic path: widget.rb::Widget\ncontent:\nclass"
-      },
-      "node_id": "437e5906be4fff98c7d87d7e4e7a7f2f80c8173c",
-      "parent": "c0eb064312dcd232d3b39d41151fd86650dffde6",
-      "path": "widget.rb",
-      "provenance": {
-        "extractor": "chunk_file",
-        "metadata": "retrieval"
-      },
-      "qualified_name": "Widget",
-      "relationships": [],
-      "semantic_path": "widget.rb::Widget",
-      "signature": null,
-      "span": {
-        "byte_end": 5,
-        "byte_start": 0,
-        "end_line": 1,
-        "start_line": 1
-      },
-      "symbol": "Widget",
-      "symbol_id": "907a8933e9a738318652743631007fa2ed33b100"
     },
     {
       "definition_id": "7f580379a419db28002fc841ce5f11518bb6b2f5",

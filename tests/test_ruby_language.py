@@ -5,10 +5,22 @@ import pytest
 from chunker.core import chunk_text
 from chunker.languages import language_config_registry
 from chunker.parser import list_languages
+from chunker.streaming import chunk_file_streaming
 
 
 class TestRubyLanguageSupport:
     """Test Ruby language chunking."""
+
+    def test_keyword_tokens_are_not_streamed_as_declarations(self, tmp_path):
+        code = "class Widget\n  def run\n    1\n  end\nend\n"
+        path = tmp_path / "widget.rb"
+        path.write_bytes(code.encode("utf-8"))
+        chunks = chunk_text(code, "ruby", str(path))
+        streamed = list(chunk_file_streaming(path, "ruby"))
+        assert [c.node_type for c in chunks] == ["class", "method"]
+        assert [(c.byte_start, c.byte_end, c.qualified_route) for c in streamed] == [
+            (c.byte_start, c.byte_end, c.qualified_route) for c in chunks
+        ]
 
     @pytest.mark.skipif(
         "ruby" not in list_languages(),
@@ -48,7 +60,8 @@ end
         assert len(method_chunks) >= 3
         class_chunks = [c for c in chunks if c.node_type == "class"]
         assert len(class_chunks) == 1
-        assert class_chunks[0].parent_context == "User"
+        assert class_chunks[0].qualified_route == ["class:User"]
+        assert class_chunks[0].parent_chunk_id is None
 
     @pytest.mark.skipif(
         "ruby" not in list_languages(),
@@ -84,7 +97,7 @@ end
         module_chunks = [c for c in chunks if c.node_type == "module"]
         assert len(module_chunks) >= 1
         auth_modules = [
-            c for c in module_chunks if c.parent_context == "Authentication"
+            c for c in module_chunks if c.qualified_route == ["module:Authentication"]
         ]
         assert len(auth_modules) == 1
 
@@ -124,7 +137,7 @@ namespace :db do
 end
 """
         chunks = chunk_text(code, "ruby", "user_spec.rb")
-        block_chunks = [c for c in chunks if c.node_type == "block"]
+        block_chunks = [c for c in chunks if c.node_type in {"block", "do_block"}]
         assert len(block_chunks) >= 5
 
     @pytest.mark.skipif(
@@ -202,9 +215,9 @@ end
         assert ".rake" in config.file_extensions
         rule_names = [rule.name for rule in config.chunk_rules]
         assert "methods" in rule_names
-        assert "classes" in rule_names
-        assert "modules" in rule_names
-        assert "dsl_blocks" in rule_names
+        assert "classes_modules" in rule_names
+        assert "blocks" in rule_names
+        assert {"class", "module", "block", "do_block"} <= config.chunk_types
         assert "program" in config.scope_node_types
         assert "class" in config.scope_node_types
         assert "module" in config.scope_node_types

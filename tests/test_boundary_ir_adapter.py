@@ -63,7 +63,7 @@ def test_extract_boundary_ir_single_file_uses_file_source_kind(tmp_path: Path):
     ir = extract_boundary_ir(source, "python")
 
     assert ir["source"]["kind"] == "file"
-    assert ir["source"]["path"] == str(source)
+    assert ir["source"]["path"] == source.as_posix()
     assert [item["path"] for item in ir["files"]] == ["service.py"]
     assert all(node["path"] == "service.py" for node in ir["nodes"])
 
@@ -132,3 +132,20 @@ def test_extract_boundary_ir_go_core_fields_when_grammar_available(tmp_path: Pat
     assert ir["files"][0]["language"] == "go"
     assert ir["nodes"]
     assert ir["metrics"]["nodes_total"] == len(ir["nodes"])
+
+
+def test_edge_identity_uses_portable_file_paths():
+    from chunker.boundary.adapter import _edge_record
+
+    relationship = {
+        "from": "service:caller",
+        "to": "service:callee",
+        "type": "call",
+        "line": 2,
+        "file": "app/service.py",
+    }
+    expected = _edge_record(relationship, {}, "heuristic")
+    relationship["file"] = r"app\service.py"
+    actual = _edge_record(relationship, {}, "heuristic")
+    assert actual == expected
+    assert actual["metadata"]["file"] == "app/service.py"

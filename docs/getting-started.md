@@ -35,7 +35,10 @@ pip install "treesitter-chunker[viz]"
 pip install "treesitter-chunker[all]"
 ```
 
-**Note**: Prebuilt wheels include compiled Tree-sitter grammars for common languages (Python, JavaScript, Rust, C, C++), so no local compilation is required!
+**Note**: The language pack provides precompiled Tree-sitter grammars, so no
+local compilation is required. It downloads parser libraries on first use and
+caches them by pack version. Prefetch the languages needed by offline
+deployments while the build environment has network access.
 
 ### Option 2: Development Installation
 
@@ -46,15 +49,12 @@ If you want to contribute or need the latest development version:
 git clone https://github.com/ViperJuice/treesitter-chunker.git
 cd treesitter-chunker
 
-# Install in development mode
-uv pip install -e ".[dev]"
+# Install the reviewed lock, including development tools and optional extras
+uv sync --locked --all-extras
 
-# Install py-tree-sitter with ABI 15 support
-uv pip install git+https://github.com/tree-sitter/py-tree-sitter.git@v0.25.2
+# Prefetch the grammars required by your work while online
+uv run --locked python -c "import tree_sitter_language_pack as p; p.prefetch(['python', 'javascript', 'typescript'])"
 
-# Build language grammars (only needed for development)
-python scripts/fetch_grammars.py
-python scripts/build_lib.py
 ```
 
 ### Verify Installation

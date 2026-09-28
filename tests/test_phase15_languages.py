@@ -2,6 +2,7 @@
 
 from typing import Any
 
+import pytest
 from tree_sitter import Node
 
 from chunker.metadata import MetadataExtractorFactory
@@ -33,11 +34,220 @@ class SimpleMetadataExtractor(BaseMetadataExtractor):
         return None
 
 
+@pytest.mark.parametrize(
+    ("code", "expected"),
+    [
+        ("(dangerous)", ["dangerous"]),
+        ("(quote (dangerous))", []),
+        ("'(dangerous)", []),
+        ("'(outer (dangerous))", []),
+        ("(quote ; comment\n (dangerous))", []),
+        ("(; comment\n quote (dangerous))", []),
+        ("`(data ~(actual))", ["actual"]),
+        ("`(data ~@(actual))", ["actual"]),
+        ("`(data `(nested ~(still-data)))", []),
+        ("`(data `(nested ~~(actual)))", ["actual"]),
+        ("`(data ~(quote (still-data)))", []),
+        ("`(quote ~(actual))", ["actual"]),
+        ("`(data '~(actual))", ["actual"]),
+        ("'`(actual)", []),
+        ("(quote `(actual))", []),
+        ("`'(quote ~(actual))", ["actual"]),
+        ("`(data (clojure.core/unquote (actual)))", ["actual"]),
+        ("`(data (clojure.core/unquote-splicing (actual)))", ["actual"]),
+        ("`(data (unquote (actual)))", []),
+        ("`(data (unquote-splicing (actual)))", []),
+        ("'`(data (clojure.core/unquote (actual)))", []),
+        ("`(data (clojure.core/unquote (quote (actual))))", []),
+        (
+            "`(data `(nested (clojure.core/unquote (clojure.core/unquote (actual)))))",
+            ["actual"],
+        ),
+        ("`(data (clojure.core/unquote (actual) (actual)))", ["actual"]),
+        ("`(data (clojure.core/unquote-splicing (actual) (actual)))", ["actual"]),
+        ("`(data (clojure.core/unquote-splicing [1] (actual)))", []),
+        ("`(data `(nested (clojure.core/unquote (actual))))", []),
+        ("`(quote (clojure.core/unquote (actual)))", ["actual"]),
+        ("`(data '(clojure.core/unquote (actual)))", ["actual"]),
+        ("`(data (; comment\n clojure.core/unquote (actual)))", ["actual"]),
+        ("(^:x quote (actual))", []),
+        ("`(data (^:x clojure.core/unquote (actual)))", ["actual"]),
+        ("(^{:x (actual)} identity 1)", ["identity"]),
+        ("(^{:x (actual)} actual)", ["actual"]),
+        ("^{:x (actual)} identity", []),
+        ("(identity ^{:x (actual)} identity)", ["identity"]),
+        ("[^{:x (actual)} identity]", []),
+        ("^{:x (actual)} [1]", ["actual"]),
+        ("^{:x (actual)} {:a 1}", ["actual"]),
+        ("^{:x (actual)} #{1}", ["actual"]),
+        ("^{:x (actual)} (identity 1)", ["identity"]),
+        ("(def ^{:x (actual)} subject 1)", ["actual"]),
+        ("(defn ^{:x (actual)} subject [] 1)", ["defn", "actual"]),
+        ("(defonce ^{:x (actual)} unique-subject 1)", ["defonce", "actual"]),
+        ("(let [^{:x (actual)} x 1] x)", []),
+        ("(fn ^{:x (actual)} f [] 1)", []),
+        ("(fn [^{:x (actual)} x] x)", []),
+        ("(quote ^{:x (actual)} identity)", []),
+        ("`^{:x (actual)} identity", []),
+        ("`^{:x ~(actual)} identity", ["actual"]),
+        ("`(^{:x ~(actual)} identity 1)", ["actual"]),
+        ("`(data ~^{:x (actual)} identity)", []),
+        ("(def ^{:x (actual)} subject)", ["actual"]),
+        ("(declare ^{:x (actual)} declared-subject)", ["declare", "actual"]),
+        ("(defn- ^{:x (actual)} private-subject [] 1)", ["defn-", "actual"]),
+        ("(defmacro ^{:x (actual)} macro-subject [] 1)", ["defmacro", "actual"]),
+        ("((fn ^{:x (actual)} [] 1))", []),
+        ("(defn parameter-annotation ^{:x (actual)} [] 1)", ["defn"]),
+        ("((fn (^{:x (actual)} [] 1)))", []),
+        ("(defn parameter-arity (^{:x (actual)} [] 1))", ["defn"]),
+        ("(let ^{:x (actual)} [v 1] v)", []),
+        ("(let [^{:x (actual)} [v] [1]] v)", []),
+        ("((fn [^{:x (actual)} [v]] v) [1])", []),
+        ("(let [v ^{:x (actual)} [1]] v)", ["actual"]),
+        ("((fn [] ^{:x (actual)} [1]))", ["actual"]),
+        ("(let [^{:x (actual)} {:keys [v]} {:v 1}] v)", []),
+        ("(let [{:keys [v] :or {v ^{:x (actual)} [1]}} {}] v)", ["actual"]),
+        ("^{:x (actual)} ()", ["actual"]),
+        ("^{:x (actual)} (#_ (ignored))", ["actual"]),
+        ("(let* ^{:x (actual)} [v 1] (identity v))", ["identity"]),
+        ("((fn* ^{:x (actual)} [v] (identity v)) 1)", ["identity"]),
+        ("((fn [] (^{:x (actual)} [1] 0)))", ["actual"]),
+        ("`^{:line ~(actual)} identity", []),
+        ("`^{:column ~(actual)} identity", []),
+        ("`^{:line ~(actual) :column ~(actual)} identity", []),
+        ("`^{:line ~(actual) :x true} identity", ["actual"]),
+        ("`^{:column ~(actual) :x true} identity", ["actual"]),
+        ("`^{:line ~(actual)} [1]", []),
+        ("`^{:line ~(actual)} ()", []),
+        ("`^{:line ~(actual)} (identity 1)", []),
+        ("`^{:line ~(actual) :x true} (identity 1)", ["actual"]),
+        ("`^:private ^{:line ~(actual)} identity", ["actual"]),
+        ("`^{:line ~(actual)} ^:private identity", ["actual"]),
+        ("^{:x true} ^{:x (actual)} [1]", []),
+        ("^{:x (actual)} ^{:x true} [1]", ["actual"]),
+        ("`^{:x true} ^{:x ~(actual)} [1]", []),
+        ("`^{:x ~(actual)} ^{:x true} [1]", ["actual"]),
+        ("`^:private ^{:private ~(actual)} identity", []),
+        ("`^String ^{:tag ~(actual)} identity", []),
+        ("`^{:tag ~(actual)} ^String identity", ["actual"]),
+        ("`^{:x ~(actual)} ~(identity 1)", ["identity"]),
+        ("`(data ^{:x ~(actual)} ~@(identity [1]))", ["identity"]),
+        ("((fn ^{:pre [(actual)]} [] 1))", ["actual"]),
+        ("((fn ^{:post [(actual)]} [] 1))", ["actual"]),
+        ("((fn ^{:pre [(actual)]} [] {} 1))", []),
+        ("((fn ^{:post [(actual)]} [] {:pre [true]} 1))", []),
+        ("((fn ^{:pre [(actual)]} [] {}))", ["actual"]),
+        ("((fn* ^{:pre [(actual)]} [] 1))", []),
+        ("((fn (^{:pre [(actual)]} [] 1)))", ["actual"]),
+        ("((clojure.core/fn ^{:post [(actual)]} [] 1))", ["fn", "actual"]),
+        ("((fn ^{:pre [(actual)] :x (actual)} [] 1))", ["actual"]),
+        ("((fn ^{:pre []} ^{:pre [(actual)]} [] 1))", []),
+        ("((fn ^{:pre [(actual)]} [^{:pre [(actual)]} x] x) 1)", ["actual"]),
+        (
+            "(do (defn pre-subject ^{:pre [(actual)]} [] 1) (pre-subject))",
+            ["defn", "actual", "pre-subject"],
+        ),
+        (
+            "(do (defn post-subject (^{:post [(actual)]} [] 1)) (post-subject))",
+            ["defn", "actual", "post-subject"],
+        ),
+        ("((fn ^{:pre (actual)} [] 1))", []),
+        ("((fn ^{:pre ((actual))} [] 1))", ["actual"]),
+        ("((fn ^{:pre (actual (actual))} [] 1))", ["actual"]),
+        ("((fn ^{:pre ^{:x (actual)} [true]} [] 1))", []),
+        ("((fn ^{:pre ^{:x (actual)} [(actual)]} [] 1))", ["actual"]),
+        ("((fn ^{:pre [^{:x (actual)} [true]]} [] 1))", ["actual"]),
+        ("((fn ^{:pre ^{:x (actual)} ((actual))} [] 1))", ["actual"]),
+        ("((fn ^{:pre #{(actual)}} [] 1))", ["actual"]),
+        ("((fn ^{:pre ^{:x (actual)} #{true}} [] 1))", []),
+        ("((fn ^{:pre {(actual) true}} [] 1))", ["actual"]),
+        ("((fn ^{:pre ^{:x (actual)} {true true}} [] 1))", []),
+        ("((fn ^{:pre [(actual) (actual)]} [] 1))", ["actual", "actual"]),
+        ("((fn ^{:post (actual)} [] 1))", []),
+        ("((fn ^{:post ((actual))} [] 1))", ["actual"]),
+        ("((fn ^{:post (actual (actual))} [] 1))", ["actual"]),
+        ("((fn ^{:post ^{:x (actual)} [true]} [] 1))", []),
+        ("((fn ^{:post ^{:x (actual)} [(actual)]} [] 1))", ["actual"]),
+        ("((fn ^{:post [^{:x (actual)} [true]]} [] 1))", ["actual"]),
+        ("((fn ^{:post ^{:x (actual)} ((actual))} [] 1))", ["actual"]),
+        ("((fn ^{:post #{(actual)}} [] 1))", ["actual"]),
+        ("((fn ^{:post ^{:x (actual)} #{true}} [] 1))", []),
+        ("((fn ^{:post {(actual) true}} [] 1))", ["actual"]),
+        ("((fn ^{:post ^{:x (actual)} {true true}} [] 1))", []),
+        ("((fn ^{:post [(actual) (actual)]} [] 1))", ["actual", "actual"]),
+        ("((fn [] {:pre (actual)} 1))", []),
+        ("((fn [] {:pre ((actual))} 1))", ["actual"]),
+        ("((fn [] {:pre (actual (actual))} 1))", ["actual"]),
+        ("((fn [] {:pre ^{:x (actual)} [true]} 1))", []),
+        ("((fn [] {:pre ^{:x (actual)} [(actual)]} 1))", ["actual"]),
+        ("((fn [] {:pre [^{:x (actual)} [true]]} 1))", ["actual"]),
+        ("((fn [] {:pre ^{:x (actual)} ((actual))} 1))", ["actual"]),
+        ("((fn [] {:pre #{(actual)}} 1))", ["actual"]),
+        ("((fn [] {:pre ^{:x (actual)} #{true}} 1))", []),
+        ("((fn [] {:pre {(actual) true}} 1))", ["actual"]),
+        ("((fn [] {:pre ^{:x (actual)} {true true}} 1))", []),
+        ("((fn [] {:pre [(actual) (actual)]} 1))", ["actual", "actual"]),
+        ("((fn [] {:post (actual)} 1))", []),
+        ("((fn [] {:post ((actual))} 1))", ["actual"]),
+        ("((fn [] {:post (actual (actual))} 1))", ["actual"]),
+        ("((fn [] {:post ^{:x (actual)} [true]} 1))", []),
+        ("((fn [] {:post ^{:x (actual)} [(actual)]} 1))", ["actual"]),
+        ("((fn [] {:post [^{:x (actual)} [true]]} 1))", ["actual"]),
+        ("((fn [] {:post ^{:x (actual)} ((actual))} 1))", ["actual"]),
+        ("((fn [] {:post #{(actual)}} 1))", ["actual"]),
+        ("((fn [] {:post ^{:x (actual)} #{true}} 1))", []),
+        ("((fn [] {:post {(actual) true}} 1))", ["actual"]),
+        ("((fn [] {:post ^{:x (actual)} {true true}} 1))", []),
+        ("((fn [] {:post [(actual) (actual)]} 1))", ["actual", "actual"]),
+        ("((fn [] {:pre [true] :x (actual)} 1))", []),
+        ("((fn [] ^{:x (actual)} {:pre [(actual)]} 1))", ["actual"]),
+        ("((fn [] {:pre [(actual)]}))", ["actual"]),
+        ("((fn ^{:pre [(actual)]} [] {:pre [(actual)]}))", ["actual", "actual"]),
+        ("((fn* [] {:pre [(actual)]} 1))", ["actual"]),
+        ("((fn ([] {:pre (actual)} 1)))", []),
+        ("#_(discarded) (actual)", ["actual"]),
+        ("(if true 1 2)", []),
+        ("(if (condition) (f) (g))", ["condition", "f", "g"]),
+        ("(let [x (init)] (do (use x)))", ["init", "use"]),
+        ("(fn [x] (if x (f) (g)))", ["f", "g"]),
+        ("(try (f) (catch Exception e (g)) (finally (h)))", ["f", "g", "h"]),
+        ("(qualified/if (actual))", ["if", "actual"]),
+        ("(letfn* [f (fn* [] 1)] (f))", ["f"]),
+        ("(letfn* ^{:x (actual)} [f (fn* [] 1)] (f))", ["f"]),
+        ("(letfn* [^{:x (actual)} f (fn* [] 1)] (f))", ["f"]),
+        ("'(letfn* [f (fn* [] 1)] (f))", []),
+        ("`(letfn* [f (fn* [] 1)] ~(actual))", ["actual"]),
+        ("(qualified/letfn* (actual))", ["letfn*", "actual"]),
+    ],
+)
+def test_clojure_call_evaluation_context(code, expected):
+    source = code.encode()
+    root = get_parser("clojure").parse(source).root_node
+    extractor = SimpleMetadataExtractor("clojure")
+    calls = extractor.extract_calls(root, source)
+    assert [call["name"] for call in calls] == expected
+    stack = [root]
+    while stack:
+        node = stack.pop()
+        if node.type == "list_lit":
+            assert extractor.extract_calls(node, source) == [
+                call
+                for call in calls
+                if node.start_byte <= call["start"] < node.end_byte
+            ]
+        stack.extend(node.named_children)
+
+
 class TestPhase15Languages:
     """Test call span extraction for 15+ languages."""
 
     @staticmethod
-    def _test_language_calls(language: str, code: str, expected_calls: list[str]):
+    def _test_language_calls(
+        language: str,
+        code: str,
+        expected_calls: list[str],
+        excluded_calls: tuple[str, ...] = (),
+    ):
         """Helper to test call extraction for a language."""
         # Use base extractor for languages without specific extractors
         extractor = MetadataExtractorFactory.create_extractor(language)
@@ -55,6 +265,8 @@ class TestPhase15Languages:
             assert (
                 expected in extracted_names
             ), f"Expected call '{expected}' not found in {extracted_names}"
+
+        assert not set(excluded_calls).intersection(extracted_names)
 
         # Verify span information is present
         for call in calls:
@@ -98,41 +310,41 @@ class TestPhase15Languages:
         code = """
         <?php
         function test() {
-            echo "hello";                 // Should detect "echo"
+            echo "hello";                 // Language statement, not a function call
             $result = strlen("test");     // Should detect "strlen"
             $obj->method();               // Should detect "method"
             array_map($fn, $array);       // Should detect "array_map"
         }
         ?>
         """
-        expected_calls = ["echo", "strlen", "method", "array_map"]
-        self._test_language_calls("php", code, expected_calls)
+        expected_calls = ["strlen", "method", "array_map"]
+        self._test_language_calls("php", code, expected_calls, ("echo",))
 
     def test_kotlin_method_calls(self):
         """Test Kotlin method call extraction."""
         code = """
         fun test() {
             println("hello")              // Should detect "println"
-            val result = "test".length   // Should detect "length"
+            val result = "test".length   // Property read, not an explicit call
             obj.method()                  // Should detect "method"
             listOf(1, 2, 3).map { it * 2 } // Should detect "map"
         }
         """
-        expected_calls = ["println", "length", "method", "map"]
-        self._test_language_calls("kotlin", code, expected_calls)
+        expected_calls = ["println", "method", "map"]
+        self._test_language_calls("kotlin", code, expected_calls, ("length",))
 
     def test_swift_method_calls(self):
         """Test Swift method call extraction."""
         code = """
         func test() {
             print("hello")                // Should detect "print"
-            let result = "test".count     // Should detect "count"
+            let result = "test".count     // Property read, not an explicit call
             obj.method()                  // Should detect "method"
             [1, 2, 3].map { $0 * 2 }     // Should detect "map"
         }
         """
-        expected_calls = ["print", "count", "method", "map"]
-        self._test_language_calls("swift", code, expected_calls)
+        expected_calls = ["print", "method", "map"]
+        self._test_language_calls("swift", code, expected_calls, ("count",))
 
     def test_csharp_method_calls(self):
         """Test C# method call extraction."""
@@ -140,27 +352,27 @@ class TestPhase15Languages:
         public class Test {
             public void test() {
                 Console.WriteLine("hello");     // Should detect "WriteLine"
-                string result = "test".Length;  // Should detect "Length"
+                string result = "test".Length;  // Property read, not an explicit call
                 obj.Method();                    // Should detect "Method"
                 Math.Max(1, 2);                  // Should detect "Max"
             }
         }
         """
-        expected_calls = ["WriteLine", "Length", "Method", "Max"]
-        self._test_language_calls("csharp", code, expected_calls)
+        expected_calls = ["WriteLine", "Method", "Max"]
+        self._test_language_calls("csharp", code, expected_calls, ("Length",))
 
     def test_dart_method_calls(self):
         """Test Dart method call extraction."""
         code = """
         void test() {
             print("hello");                 // Should detect "print"
-            var result = "test".length;     // Should detect "length"
+            var result = "test".length;     // Property read, not an explicit call
             obj.method();                   // Should detect "method"
             [1, 2, 3].map((x) => x * 2);   // Should detect "map"
         }
         """
-        expected_calls = ["print", "length", "method", "map"]
-        self._test_language_calls("dart", code, expected_calls)
+        expected_calls = ["print", "method", "map"]
+        self._test_language_calls("dart", code, expected_calls, ("length",))
 
     def test_haskell_function_calls(self):
         """Test Haskell function application extraction."""
@@ -191,13 +403,13 @@ class TestPhase15Languages:
         code = """
         def test(): Unit = {
             println("hello")                // Should detect "println"
-            val result = "test".length      // Should detect "length"
+            val result = "test".length      // Property read, not an explicit call
             obj.method()                    // Should detect "method"
             List(1, 2, 3).map(_ * 2)       // Should detect "map"
         }
         """
-        expected_calls = ["println", "length", "method", "map"]
-        self._test_language_calls("scala", code, expected_calls)
+        expected_calls = ["println", "method", "map"]
+        self._test_language_calls("scala", code, expected_calls, ("length",))
 
     def test_elixir_function_calls(self):
         """Test Elixir function call extraction."""

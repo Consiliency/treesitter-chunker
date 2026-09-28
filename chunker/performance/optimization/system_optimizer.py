@@ -660,11 +660,22 @@ class CPUOptimizer:
                     pass
 
                 try:
+                    frequency = psutil.cpu_freq()
+                    if frequency is not None:
+                        metrics["cpu_freq_current"] = frequency.current
+                        metrics["cpu_freq_min"] = frequency.min
+                        metrics["cpu_freq_max"] = frequency.max
+                except (AttributeError, OSError, NotImplementedError):
+                    pass
+
+                try:
                     process = psutil.Process()
                     metrics["cpu_affinity"] = process.cpu_affinity()
                     metrics["process_cpu_percent"] = process.cpu_percent()
                 except Exception:
                     pass
+            else:
+                metrics["process_cpu_time"] = time.process_time()
 
             return metrics
 
@@ -1048,6 +1059,10 @@ class MemoryOptimizer:
                 metrics["process_memory_rss"] = pmem.rss
                 metrics["process_memory_vms"] = pmem.vms
                 metrics["process_memory_percent"] = process.memory_percent()
+            elif HAS_RESOURCE:
+                metrics["process_memory_peak"] = resource.getrusage(
+                    resource.RUSAGE_SELF
+                ).ru_maxrss
 
             # Python memory info
             try:
@@ -1505,6 +1520,10 @@ class IOOptimizer:
                     metrics["process_write_count"] = pio.write_count
                 except Exception:
                     pass
+            elif HAS_RESOURCE:
+                usage = resource.getrusage(resource.RUSAGE_SELF)
+                metrics["process_block_input"] = usage.ru_inblock
+                metrics["process_block_output"] = usage.ru_oublock
 
             # Cache statistics
             if self._file_cache:

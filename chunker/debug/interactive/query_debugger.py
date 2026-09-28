@@ -98,11 +98,8 @@ class QueryDebugger:
         try:
             # Get the language object from parser
             lang = self.parser.language
-            # Prefer the modern constructor if available
-            try:
-                query = Query(lang, query_string)
-            except Exception:
-                query = lang.query(query_string)
+            assert lang is not None
+            query = Query(lang, query_string)
             self._query_cache[query_string] = query
             return query
         except (IndexError, KeyError, SyntaxError, Exception) as e:
@@ -111,7 +108,9 @@ class QueryDebugger:
                 raise ValueError(f"Invalid query syntax: {e}") from e
             if "Invalid node type" in str(e) or "Invalid node type" in repr(e):
                 # Extract the invalid node type
-                match = re.search(r"node type '?(\w+)'?", str(e))
+                match = re.search(
+                    r"node type(?: at row \d+, column \d+:)? '?(\w+)'?", str(e)
+                )
                 if match:
                     invalid_type = match.group(1)
                     raise ValueError(

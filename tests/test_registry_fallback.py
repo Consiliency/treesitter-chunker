@@ -33,6 +33,27 @@ def test_language_pack_list_probes_common_languages_when_enumeration_is_empty(
 class TestRegistryFallback:
     """Tests for the language pack fallback chain in LanguageRegistry."""
 
+    def test_pack_metadata_is_discovered_lazily(self, tmp_path):
+        from chunker._internal.registry import LanguageRegistry
+
+        registry = LanguageRegistry(tmp_path / "missing.so")
+        with (
+            patch.object(registry, "_discover_symbols", return_value=[]),
+            patch.object(registry, "_try_load_from_language_pack") as load,
+        ):
+            metadata = registry.discover_languages()
+            assert set(metadata) == set(registry.list_languages())
+            assert "python" in metadata
+            assert "cobol" not in metadata
+            assert metadata["python"].capabilities["compatible"] is None
+            load.assert_not_called()
+
+        info = registry.get_metadata("python")
+        language = registry.get_language("python")
+        assert info.version == str(language.abi_version)
+        assert info.node_types_count == language.node_kind_count
+        assert info.capabilities["compatible"] is True
+
     @pytest.mark.filterwarnings("error::DeprecationWarning")
     def test_registry_uses_language_pack_fallback(self):
         """Test that registry falls back to language pack when local grammars unavailable."""

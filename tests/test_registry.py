@@ -1,5 +1,6 @@
 """Tests for LanguageRegistry component."""
 
+import sys
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -8,6 +9,13 @@ from chunker._internal.registry import LanguageMetadata, LanguageRegistry
 from chunker.exceptions import (
     LanguageNotFoundError,
     LibraryLoadError,
+)
+
+
+_LIB_EXT = (
+    ".dll"
+    if sys.platform == "win32"
+    else ".dylib" if sys.platform == "darwin" else ".so"
 )
 
 
@@ -52,15 +60,21 @@ class TestLanguageRegistry:
 
     @classmethod
     @pytest.mark.filterwarnings("error::DeprecationWarning")
-    def test_get_language(cls):
+    def test_get_language(cls, tmp_path):
         """Test getting a specific language."""
-        lib_path = Path(__file__).parent.parent / "build" / "my-languages.so"
+        lib_path = tmp_path / "my-languages.so"
+        lib_path.write_bytes(b"mock combined library")
         registry = LanguageRegistry(lib_path)
         # NOTE: The following block mocks the underlying C library and Language construction
         # to ensure the test can pass in environments without a valid compiled shared library.
         # This is intentionally annotated so we remember it's a test-time mock.
         with (
             patch("ctypes.CDLL") as mock_cdll,
+            patch.object(
+                registry,
+                "_discover_symbols",
+                return_value=[("python", "tree_sitter_python")],
+            ),
             patch(
                 "chunker._internal.registry.Language",
             ) as MockLanguage,
@@ -152,9 +166,9 @@ class TestLanguageRegistry:
         """Test symbol discovery scans validated per-language libraries."""
         build_dir = tmp_path / "build"
         build_dir.mkdir()
-        (build_dir / "python.so").write_bytes(b"fake")
-        (build_dir / "javascript.so").write_bytes(b"fake")
-        registry = LanguageRegistry(build_dir / "my-languages.so")
+        (build_dir / f"python{_LIB_EXT}").write_bytes(b"fake")
+        (build_dir / f"javascript{_LIB_EXT}").write_bytes(b"fake")
+        registry = LanguageRegistry(build_dir / f"my-languages{_LIB_EXT}")
 
         with patch.object(registry, "_validate_language_library", return_value=True):
             symbols = registry._discover_symbols()
@@ -167,11 +181,14 @@ class TestLanguageRegistry:
         """Test symbol discovery does not publish failed local grammars."""
         build_dir = tmp_path / "build"
         build_dir.mkdir()
-        (build_dir / "python.so").write_bytes(b"fake")
-        registry = LanguageRegistry(build_dir / "my-languages.so")
+        (build_dir / f"python{_LIB_EXT}").write_bytes(b"fake")
+        registry = LanguageRegistry(build_dir / f"my-languages{_LIB_EXT}")
 
-        with patch.object(registry, "_validate_language_library", return_value=False):
+        with patch.object(
+            registry, "_validate_language_library", return_value=False
+        ) as validate:
             symbols = registry._discover_symbols()
+        validate.assert_called_once()
 
         assert ("python", "tree_sitter_python") not in symbols
 
