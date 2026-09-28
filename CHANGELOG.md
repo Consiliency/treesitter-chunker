@@ -5,215 +5,329 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [5.0.1] — First published v5 package
+## [5.0.1] - 2026-09-28
 
-This is the first published v5 package. It includes the Tree-sitter 0.26 supply
-normalization and breaking changes documented under 5.0.0 below. The v5.0.0
-tag did not produce a package because release validation lacked the Graphviz
-`dot` executable; the release workflow now installs it before the full suite.
+### 🔧 CI/CD
 
-## [5.0.0] — Tree-sitter 0.26 supply normalization
+- Install Graphviz for release validation
 
-Tree-sitter Chunker now uses `tree-sitter==0.26.0` with
-`tree-sitter-language-pack==1.20.0`. The pack expands the audited grammar set
-from 167 to 371. Eleven frozen Boundary IR fixtures remain byte-identical;
-the Ruby correctness repair below intentionally removes one false node.
 
-### ⚠️ BREAKING
 
-- **PyArrow 21.0.0 or newer is required.** Partition-directory validation uses
-  `HivePartitioning.format`, which is absent from the previous minimum, PyArrow 15.
+## [5.0.0] - 2026-09-28
 
-- **Partitioned Parquet readers must use the saved schema.** Exports write
-  `_common_metadata`; pass `schema=pq.read_schema(root / "_common_metadata")`
-  to `pq.ParquetDataset`. Unconfigured Hive inference still turns numeric-looking
-  strings into integers and can collapse distinct paths such as `"001"` and `"1"`.
-  Directories without this metadata need an explicit original schema or re-export.
-  The reserved string `__HIVE_DEFAULT_PARTITION__` is rejected in partition
-  columns before writing, because Hive would read it as null. It remains allowed
-  in non-partition columns and non-partitioned exports.
-- **Partitioned datasets keep a fixed ordered partition specification.** It is
-  saved with `_common_metadata`; changing the columns or their order is rejected
-  before replacement. Older datasets without this specification must be
-  re-exported into a fresh directory before further writes.
-- **Partition directory names follow consistent cross-platform restrictions.**
-  Case-insensitive aliases are rejected across the incoming batch and existing
-  directories, including empty directories and parent partition components.
-  Encoded names ending in a period or space are rejected, since Windows strips
-  those characters. These checks apply on every platform; the data values remain
-  supported in non-partition columns and flat exports.
-- **Parser delivery is now cache-backed.** Language-pack 1.20 downloads parser
-  libraries on first use into a versioned cache. Offline images and deployments
-  must prefetch their required languages while network access is available.
-  A warm cache works offline. For a cold offline cache the pack raises
-  `DownloadError`; Chunker logs that cause and its public parser API raises
-  `LanguageNotFoundError`.
-- **The supported dependency range moves to Tree-sitter 0.26 and language-pack
-  1.20.** Downstream constraints that intentionally held the 4.x parser stack
-  must opt into this release and rerun their Boundary IR acceptance gates.
-- **Linux wheels now require glibc 2.34 or newer.** This follows the published
-  language-pack 1.20 wheel baseline; older Linux images cannot use its wheel.
+### ✨ Features
 
-### 🔒 Native-parser containment
+- Adopt Tree-sitter 0.26 parser stack ⚠️ **BREAKING**
 
-- Every language-pack load smoke runs behind an OS-process deadline, so a
-  native grammar loop cannot hang CI.
-- The 1.20 COBOL grammar still loops on malformed input. Chunker therefore does
-  not advertise or load that pack grammar; the coverage report records it as an
-  explicit extraction gap until an upstream release fixes the parser.
 
-### Correctness repairs
 
-- Windows parallel worker counts are capped at the process pool's supported
-  maximum of 61, including explicit requests and defaults on high-core hosts.
-- Completed parallel batches without an opt-in deadline now join their worker
-  cleanup before returning, preventing repeated calls from forking while the
-  previous pool's shutdown locks are held. Deadline calls keep nonblocking
-  shutdown; they still do not guarantee worker termination.
-- Clojure call metadata excludes special-form heads (including `letfn*`) and
-  quoted or discarded data,
-  while retaining evaluated calls inside syntax-quote unquotes, including quote
-  forms themselves being constructed as data and explicitly qualified unquote
-  forms with or without symbol metadata. Unevaluated reference-symbol and call
-  annotations and metadata on core function parameters or let/loop binding patterns
-  do not create call candidates; function pre/postconditions, collection values,
-  initializers, destructuring defaults and declaration metadata remain traversable.
-  Explicit function condition maps override parameter-metadata conditions; only
-  their predicate forms are traversed, not the condition container or its annotations.
-  Empty-list metadata,
-  annotation overrides and syntax-quote metadata omission have explicit reader
-  regressions. This is syntax analysis, not macro expansion, execution counts
-  or runtime name resolution. Reader-injected metadata is not modeled: stacked
-  sequence annotations can retain a candidate that Clojure's file reader removes
-  through implicit line/column overrides, while `read-string` evaluates it.
-- Incremental move matching uses stable source order for ambiguous candidates.
-  Matching remains greedy; it does not infer globally optimal logical identity.
-- Incremental Boundary IR retries cached extraction errors, so an unchanged file
-  can recover after a transient parser-download or metadata failure.
-- Partitioned Parquet exports replace the partitions supplied by each export and
-  retain other partitions, including exports above 1,024 partitions. Repeated exports
-  do not append duplicate rows. The writer keeps at most 64 data files open,
-  avoiding Arrow's stall when its default budget exhausts a 1,024-file process
-  limit. PyArrow
-  controls physical filenames; partition columns must exist in the selected schema.
-- Repository processing uses stable repository-relative identity paths instead of
-  temporary files, and selects TypeScript or TSX grammars for their file types. Windows Git filtering uses
-  the same slash-separated paths as Git's index. Caller-supplied two-argument
-  chunker adapters retain their existing interface; subclasses that inherit the
-  default adapter retain repository identity paths.
-- Incremental diffs retain overloaded definitions by using occurrence identities
-  where definition routes collide. Public definition IDs are unchanged; ambiguous
-  overload edits may appear as removal/addition instead of a guessed match.
-  Move matching reserves each target once and preserves complete-input collision
-  context, leaving ambiguous overload groups as removal/addition. Applying a diff
-  preserves source order for declarations sharing a line.
-  Applying diffs removes previous occurrences and refreshes unchanged positions.
-- Directory chunking derives extensions from the existing language map and
-  registered configurations, including Go, Ruby and Java. Languages without known
-  extensions require an explicit extension list instead of silently matching none.
-- Registry discovery includes pack languages without eagerly downloading grammars;
-  individual metadata requests validate the loaded grammar's ABI and node count.
-  Undetermined scanner/compatibility capabilities remain explicitly unknown.
-- Partitioned Parquet exports retain exact string partition values when read
-  through the standard dataset reader with their saved schema. Nonempty exports
-  reject a schema change before replacing existing partitions.
-- Call extraction recognizes the current grammar shapes for the extended language
-  set. Property reads and PHP `echo` statements are not reported as explicit calls.
-- Ruby chunking ignores unnamed keyword tokens and includes brace blocks. Its
-  Boundary IR fixture loses only the false `class` keyword node at bytes 0–5
-  (`definition_id` `5903643579d7686c6fb23f3c2144bbaf977d1009`); the four retained
-  nodes, their identities, and all edges are unchanged. Consumers with Ruby
-  snapshots must review this intentional correction before adoption.
-- Zig semantic and public/streaming chunking recognize the pack's declaration
-  grammar. System metrics restore CPU-frequency and optional resource fallbacks.
-- Large flat files no longer rescan sibling lists and copy source prefixes for
-  every chunk when finding comments and line numbers.
-- Grammar updates stop if the validated remote cannot be set, before any pull.
-- Custom plugin discovery caches classes by resolved file path, so repeated
-  discovery and loading do not lose plugins when temporary Path objects reuse IDs.
-- Boundary IR uses portable root and relationship paths on Windows, preserving
-  the same edge identities and committed golden output as Unix.
+### 🐛 Bug Fixes
 
-### ✅ Verification
+- **release**: Route changelog auto-update through a PR (protected main)
 
-- The committed coverage oracle now records 370/371 load-safe grammars, with
-  20 rich and 8 sparse extraction-verified languages.
-- CI installs the exact parser pair and prefetches the pack before parallel
-  tests. The release workflow no longer installs an unbounded GitHub head of
-  py-tree-sitter. v5 distribution is PyPI-only; native-package publication is
-  suspended pending the rebuild gates in `docs/packaging.md`.
 
-## [4.0.0] — v3.2.2 remediation
+- Fail closed on mypy crashes and adapt query errors to Tree-sitter 0.26
 
-A comprehensive correctness/security/determinism remediation driven by the
-`CODE_REVIEW_v3.2.2.md` cross-vendor board review. All CRITICAL (C1–C7) and
-MAJOR findings are fixed; see `docs/development/traceability-matrix.md` for the
-finding→phase→test mapping.
 
-**Major version bump (3.2.2 → 4.0.0):** the chunk-identity recomputation and the
-Boundary IR byte-output change are backward-incompatible for any consumer that
-persists `chunk_id`/`node_id`/`definition_id` or asserts Boundary-IR
-byte-reproducibility. Bumping to 4.0.0 (not 3.x) makes the `>=3.1.0,<4` pins in
-downstream consumers (Code-Index-MCP, greenfield) *protective* — they will not
-silently pull the break — and trips `spec`'s exact-version guard. Downstream
-impact filed: Consiliency/spec#105, ViperJuice/Code-Index-MCP#76,
-ViperJuice/greenfield#10, ViperJuice/semantic-lens#14, Consiliency/codegraph-de#21.
+- **release**: Suspend native distribution for PyPI-only v5
 
-### ⚠️ BREAKING
 
-- **Chunk identities are recomputed.** `chunk_id`, `node_id`, and `definition_id`
-  are now collision-free and content+position-seeded (IDENTITY phase), so they
-  no longer silently drop chunks — but their **values differ** from prior
-  releases. Any consumer persisting these IDs as stable keys (DB/cache/graph)
-  must **force a full re-index**. Downstream impact filed:
-  ViperJuice/Code-Index-MCP#76 (CRITICAL), ViperJuice/semantic-lens#14 (HIGH),
-  Consiliency/codegraph-de#21 (deferred).
-- **Public `chunk_text()` chunks in memory.** It no longer round-trips through a
-  temp file, so its returned `node_id`/`chunk_id` are now **deterministic across
-  calls** (they were random per-call before). Values differ from prior releases.
+- Repair v5 supplier regressions and cross-platform compatibility
 
-### 🔒 Security
 
-- FastAPI endpoints now require auth; file access is confined to a canonical
-  root (path/symlink confinement), closing the arbitrary-file-read + SSRF hole
-  (C5, APISAFE). Grammar download now has an integrity gate before execution.
+- Preserve incremental state and recover parser dependencies
 
-### 🐛 Fixes (correctness)
 
-- **Thread safety:** no code path shares a tree-sitter `Parser` across threads;
-  every holder acquires a thread-local parser — closes the segfault/UB class
-  (C1, PARSER + SCALE).
-- **Mixed-language + VFS:** `process_mixed_file` works (was TypeError on every
-  file); VFS large-file streaming yields non-duplicated, file-relative,
-  confined offsets (C3/C4, SCALE). Multibyte-safe offsets + recomputed node_ids.
-- **Streaming per-language:** streaming derives chunkable node types per language
-  (Rust/Go/JS/… no longer silently empty), staying lazy (SCALE).
-- **Determinism:** boundary serializer rejects non-finite floats (no bare `NaN`);
-  Leiden clustering seeded; graph cut tie-order + xref edge order deterministic;
-  xref is index-based (was O(n²)) (BOUNDARYFIX, SCALE).
-- **Fallback robustness:** invalid-UTF-8 files chunk via `errors="replace"`;
-  grammar-load failure falls back instead of crashing (COREFIX).
-- **Repo processing:** git handles closed (no fd leak); batched (ARG_MAX-safe)
-  ignore query; stale-commit → full scan (no crash, no silent data loss);
-  bounded watch loop (SCALE).
-- **Exporters:** `StructuredJSONExporter(compress=True)` works (`gzip.Path` →
-  `gzip.open`) (IFACE).
+- Retain ambiguous move deletions and parse repository TSX
 
-### ✅ Quality gates
 
-- ruff F-rules enforced; mypy is a **blocking, baseline-relative** gate
-  (`scripts/mypy_gate.py`), so new type errors fail CI while tracked debt is
-  paid down (GATES). Determinism pin-mirror drift closed (C6, SUPPLY).
-- Language-detection uses one canonical extension map (`.ts`→typescript
-  everywhere; unknown extensions warn, not silent `[]`); version single-sourced
-  (IFACE).
+- Preserve complete incremental records and inherited adapter identities
 
-### 📝 Notes
 
-- Version bumped to **4.0.0** (from 3.2.2) — major, per the breaking
-  chunk-identity + Boundary-IR change. The git tag / PyPI publish remains the
-  separate maintainer release workflow.
-- Tracked residuals (not silent gaps) are in `docs/development/xfail-inventory.md`.
+- Respect Clojure evaluation context and stabilize move attribution
+
+
+- Evaluate Clojure quotation context from outer forms inward
+
+
+- Retain calls in qualified Clojure unquotes
+
+
+- Recognize annotated Clojure quotation symbols
+
+
+- Exclude unevaluated Clojure reference metadata
+
+
+- Distinguish Clojure binding and reader metadata contexts
+
+
+- Retain Clojure function metadata conditions
+
+
+- Respect condition containers and high-cardinality Parquet partitions
+
+
+- Preserve typed Parquet readback and exclude letfn compiler calls
+
+
+- Bound Parquet writer file descriptors under normal process limits
+
+
+- Join completed parallel batches before another pool can fork
+
+
+- Reject reserved Hive partition values before dataset mutation
+
+
+- **parquet**: Preserve partition layout and reject filesystem aliases
+
+
+- **packaging**: Require tested PyArrow partition API minimum
+
+
+- Cap Windows parallel workers at supported maximum
+
+
+
+### 📚 Documentation
+
+- Add reconciled v4.0.0 code review (treesitter-chunker#95)
+
+
+- Qualify Clojure reader-dependent metadata candidates
+
+
+
+### 🔧 CI/CD
+
+- Run CI on GitHub-hosted runners
+
+
+- Run docs on GitHub-hosted runners
+
+
+- Run maintenance on GitHub-hosted runners
+
+
+- Run build-wheels on GitHub-hosted runners
+
+
+- Run packages on GitHub-hosted runners
+
+
+- Run release on GitHub-hosted runners
+
+
+- Run build distributions on GitHub-hosted runners
+
+
+- Use a PowerShell-compatible dependency install command
+
+
+
+### 🔧 Maintenance
+
+- Add CODEOWNERS (lead dev @ViperJuice) [Phase 2]
+
+
+- Stop tracking generated virtual environments (agent-harness#906)
+
+
+
+### 🧪 Testing
+
+- Restore full pytest collection
+
+
+- Restore release evidence and gate PyPI publication on validation
+
+
+- Retain parser objects during thread-ownership assertions
+
+
+- Normalize collection state before streaming timing samples
+
+
+- Close Parquet readers before Windows cleanup
+
+
+- Isolate large-file RSS from earlier suite allocations
+
+
+
+## [4.0.0] - 2026-07-12
+
+### ✨ Features
+
+- **hygiene**: Remove dead phase-scaffolding + root cruft (phase 1 of v2 remediation)
+
+
+- **supply**: Harden grammar-install supply chain (phase 3 of v2 remediation)
+
+
+- **apisafe**: Authenticate + confine the API & VFS surface (phase 4 of v2 remediation)
+
+
+- **gates**: Make the quality signal honest (phase 2 of v2 remediation)
+
+
+- **parser**: Thread-safe parser acquisition (phase 7 of v2 remediation)
+
+
+- **boundaryfix**: Serializer determinism corrections (phase 5 of v2 remediation)
+
+
+- **identity**: Collision-free chunk identity (phase 6 of v2 remediation)
+
+
+- **corefix**: Per-chunk correctness fixes (phase 9 of v2 remediation)
+
+
+- **scale**: SL-5 repo/processor git lifecycle + SL-6 incremental real-language (2 of 6 lanes)
+
+
+- **scale**: SL-1 parser-holder migration + parallel timeout, SL-3 multilang/vfs, SL-4 graph determinism
+
+
+- **scale**: SL-2 per-language streaming node types (lazy, no materialization)
+
+
+- **scale**: SL-7 closeout — migrate smart_context parser holder + clear PARSER inventory
+
+
+- **iface**: Public chunk_text chunks in memory (deterministic, no temp-file round-trip)
+
+
+- **consiliency**: Scaffold .consiliency L0 onboarding (library + public) (#90)
+
+
+
+### 🎨 Style
+
+- Apply black formatting (CI lint gate)
+
+
+
+### 🐛 Bug Fixes
+
+- **plan**: SL-5 owns the two surviving exception tests that reference pruned classes
+
+
+- **plan**: Relocate HYGIENE audit evidence out of gitignored logs/ to tracked plans/
+
+
+- **plan**: Scope HYGIENE reachability audit to source trees (avoid protected-path reads)
+
+
+- **plan**: HYGIENE prunes 4 (not 6) exceptions; retire dead example demos + doc
+
+
+- **plan**: BOUNDARYFIX SL-2 owns the incremental-contract test (cache-key field tuple)
+
+
+- **plan**: IDENTITY owns streaming.py + goldens (SL-1) and cache.py (SL-2)
+
+
+- **plan**: IDENTITY SL-1 owns test_boundary_determinism (legacy compute_node_id caller)
+
+
+- **corefix**: Resolve panel iteration-2 residuals (token/fallback offsets, bounded similarity)
+
+
+- **corefix**: Resolve iteration-3 panel findings (class-split spans, delimiter lines, cache freshness, determinism)
+
+
+- **corefix**: Class-split content must slice back to its byte span (Codex contract finding)
+
+
+- **scale**: Resolve panel-found regressions (mixed-lang offsets, ARG_MAX, watch data-loss)
+
+
+- **iface**: StructuredJSONExporter gzip.Path -> gzip.open (compress=True was broken)
+
+
+- **iface**: Single-source the package version (fallback 1.0.8 + _version.py 2.0.0 were stale)
+
+
+- **iface**: CLI uses the canonical extension→language map (.ts was mis-resolved)
+
+
+- **release**: Repair 8 real regressions found by base-suite comparison
+
+
+- **release**: Resolve the 3 fallback-path residuals before v4.0.0 publish
+
+
+- **types**: Annotate remediation code to pass the mypy gate (10 new signatures)
+
+
+- **gates**: Normalize path separators in the mypy gate (Windows CI was red)
+
+
+- **ci**: Run the baseline-relative mypy gate on Linux only (Windows CI was red)
+
+
+
+### 📚 Documentation
+
+- V3.2.2 review report + 11-phase remediation roadmap (board-reviewed)
+
+
+- **parser**: Record 3 more stored-parser holders as SCALE scope (Fable panel finding)
+
+
+- **parser**: Complete the parser-holder inventory (all holders -> SCALE migration)
+
+
+- **scale**: Correct streaming/timeout docstring overclaims + track streaming special-case gap
+
+
+- **iface**: Record CLI-stack + parquet-exporter consolidation as tracked internal residual
+
+
+- **release**: Finding→phase→test traceability matrix
+
+
+- **release**: CHANGELOG for the v3.2.2 remediation (breaking IDs, security, determinism)
+
+
+- **release**: Honest full-suite characterization (pre-existing env failures + 2 tracked flakes)
+
+
+- **release**: Correct the full-suite characterization (8 regressions found + fixed)
+
+
+- **changelog**: Update for v3.2.2
+
+
+- **readme**: Add plain-English intro and fix stale ViperJuice->Consiliency org references (#88)
+
+
+
+### 🔧 Maintenance
+
+- **plan**: Stage v2 root lane plans + executor refinements (HYGIENE plan gap fix, roadmap amendment)
+
+
+- **plan**: Sync root plan roadmap_sha256 to amended roadmap
+
+
+- **plan**: APISAFE SL-2 owns test_api_endpoints_extended (auth updates)
+
+
+
+### 🧪 Testing
+
+- **corefix**: Tighten vacuous class-split assertion + track panel-found fallback residuals
+
+
+- **release**: Update stale tests for IDENTITY fields + register remediation docs
+
+
+- **fallback**: Write CSV test file as LF so slice-back holds on Windows (CRLF)
+
+
 
 ## [3.2.2] - 2026-07-03
 
@@ -226,6 +340,7 @@ ViperJuice/greenfield#10, ViperJuice/semantic-lens#14, Consiliency/codegraph-de#
 ### 📚 Documentation
 
 - **changelog**: Update for v3.2.1
+
 
 
 ## [3.2.1] - 2026-06-25
