@@ -174,7 +174,8 @@ def test_publication_requires_full_validation_and_verified_artifacts():
         s for s in build["steps"] if "actions/upload-artifact@" in s.get("uses", "")
     ]
     assert "dist/checksums.txt" in uploads[0]["with"]["path"].splitlines()
-    for name in ("create-release", "publish-to-pypi", "update-changelog"):
+    assert "update-changelog" not in jobs
+    for name in ("create-release", "publish-to-pypi"):
         job = jobs[name]
         assert job["needs"] == "build-distributions"
         assert not job.get("continue-on-error", False)
