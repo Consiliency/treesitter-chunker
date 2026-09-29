@@ -22,8 +22,10 @@ def verify() -> dict:
     pin = json.loads((ROOT / "pin.json").read_text(encoding="utf-8"))
     locked = json.loads((ROOT / "package-lock.json").read_text(encoding="utf-8"))
     cli = locked["packages"]["node_modules/tree-sitter-cli"]
-    assert cli["version"] == pin["generator"]["version"]
-    assert cli["integrity"] == pin["generator"]["npm_integrity"]
+    if cli["version"] != pin["generator"]["version"]:
+        raise SystemExit("locked Tree-sitter CLI version differs from pin.json")
+    if cli["integrity"] != pin["generator"]["npm_integrity"]:
+        raise SystemExit("locked Tree-sitter CLI integrity differs from pin.json")
 
     checks = {
         ROOT / "src/grammar.js": pin["overlay"]["grammar_sha256"],
@@ -77,7 +79,7 @@ def regenerate(pin: dict, cli: Path) -> None:
         )
         if result.stdout.strip() or result.stderr.strip():
             raise SystemExit("grammar generation emitted a conflict or warning")
-        for name in ("parser.c", "node-types.json"):
+        for name in ("parser.c", "node-types.json", "tree_sitter/parser.h"):
             if (work / "src" / name).read_bytes() != (ROOT / "src" / name).read_bytes():
                 raise SystemExit(f"regenerated {name} differs from vendored output")
 

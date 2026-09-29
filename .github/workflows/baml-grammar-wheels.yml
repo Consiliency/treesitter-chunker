@@ -18,9 +18,19 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: '3.11'
+      - name: Check release tag matches package version
+        if: startsWith(github.ref, 'refs/tags/baml-grammar-v')
+        run: |
+          version=$(python -c "import pathlib, tomllib; print(tomllib.loads(pathlib.Path('packages/baml-grammar/pyproject.toml').read_text(encoding='utf-8'))['project']['version'])")
+          if [ "$GITHUB_REF" != "refs/tags/baml-grammar-v$version" ]; then
+            echo "Release tag $GITHUB_REF does not match package version $version" >&2
+            exit 1
+          fi
       - name: Check vendored grammar hashes
         run: python packages/baml-grammar/scripts/check_baml_grammar.py
       - name: Install locked Tree-sitter generator
@@ -67,6 +77,8 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: '3.11'
@@ -107,6 +119,8 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: ${{ matrix.python-version }}
@@ -118,7 +132,8 @@ jobs:
         shell: bash
         run: |
           python -m pip install 'tree-sitter>=0.26,<0.27' pytest==8.4.2
-          python -m pip install --no-index --no-deps --only-binary=:all: --find-links wheelhouse treesitter-chunker-baml-grammar==0.1.0
+          version=$(python -c "import pathlib, tomllib; print(tomllib.loads(pathlib.Path('packages/baml-grammar/pyproject.toml').read_text(encoding='utf-8'))['project']['version'])")
+          python -m pip install --no-index --no-deps --only-binary=:all: --find-links wheelhouse "treesitter-chunker-baml-grammar==$version"
           python -m pip check
           cd "$RUNNER_TEMP"
           python -m pytest "$GITHUB_WORKSPACE/packages/baml-grammar/tests/test_grammar.py" -q
