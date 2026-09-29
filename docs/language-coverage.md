@@ -4,6 +4,24 @@ Honest, machine-verified per-language coverage across the **entire** [tree-sitte
 
 Pinned stack: `tree_sitter >=0.26,<0.27` + `tree-sitter-language-pack ==1.20.0` -- the reviewed, version-locked pairing.
 
+## Optional BAML grammar
+
+BAML is outside this 371-language pack census and the 12-language Boundary IR
+golden contract. Install `treesitter-chunker[baml]` to add the pinned
+`treesitter-chunker-baml-grammar==0.1.0` companion. It chunks named class,
+enum, interface, implementation, function, client, generator, retry policy,
+template string, type alias, test, and testset declarations. Nested function
+chunks intentionally overlap their parent declaration and carry a distinct
+qualified route. File content and byte spans preserve CRLF and Unicode source.
+Malformed BAML raises `ParsingError` before emitting chunks from that file;
+repository scans report a file error and continue. Without the extra, explicit
+BAML calls give install guidance, automatic file chunking falls back to text,
+and repository scans skip `.baml`.
+
+The companion uses BoundaryML's pinned official grammar plus a one-rule
+temporary overlay for BAML 0.20.1 backtick prompts. The companion distribution
+remains necessary until a reviewed language-pack migration includes BAML.
+
 ## Headline
 
 - **370 / 371** pack languages **LOAD** (grammar loads + parses a trivial input under the pinned runtime); **1** fail to load.

@@ -75,7 +75,7 @@ class LanguageConfig(ABC):
     node filtering, and configuration validation.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the language configuration."""
         self._chunk_rules: list[ChunkRule] = []
         self._ignore_types: set[str] = set()
@@ -116,6 +116,15 @@ class LanguageConfig(ABC):
     def file_extensions(self) -> set[str]:
         """Return the set of file extensions associated with this language."""
         return set()
+
+    @property
+    def strict_parse(self) -> bool:
+        """Require a complete parse before exposing any chunks."""
+        return False
+
+    def get_definition_name(self, node: Any, source: bytes) -> str | None:
+        """Optional language-level resolver for declarations without a name field."""
+        return None
 
     @property
     def chunk_rules(self) -> list[ChunkRule]:

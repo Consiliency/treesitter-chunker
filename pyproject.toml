@@ -60,6 +60,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+baml = ["treesitter-chunker-baml-grammar==0.1.0"]
 dev = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",

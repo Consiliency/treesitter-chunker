@@ -4,6 +4,17 @@ This document is the source of truth for packaging and PyPI publishing.
 
 ## Current Release Model
 
+The optional BAML grammar is a separate native distribution at
+`treesitter-chunker-baml-grammar==0.1.0`. Its
+`.github/workflows/baml-grammar-wheels.yml` release uses the
+`baml-grammar-pypi` trusted publishing environment and a
+`baml-grammar-v*` tag. It publishes `cp311-abi3` wheels for Linux glibc
+x86_64/aarch64, macOS x86_64/arm64, and Windows x86_64, tested on Python
+3.11–3.13, plus an sdist. Other platforms require a compiler for the sdist.
+The main `treesitter-chunker` wheel stays `py3-none-any`; the BAML native
+artifact is installed only by the `baml` extra. Both packages must be installed
+before offline BAML parsing, which then needs no network or compiler.
+
 - `main` CI validates code, docs, and tests only; it does not publish to PyPI
 - `.github/workflows/release.yml` is the only workflow that publishes to PyPI
 - `.github/workflows/build-wheels.yml` builds wheel artifacts but does not publish them

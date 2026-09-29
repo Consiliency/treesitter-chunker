@@ -50,6 +50,20 @@ Tree-sitter Chunker can also visualize how the pieces of a codebase relate:
 pip install treesitter-chunker
 ```
 
+For structural `.baml` chunks, install the optional native grammar:
+
+```bash
+pip install 'treesitter-chunker[baml]'
+```
+
+This extra pins `treesitter-chunker-baml-grammar==0.1.0`, which uses BoundaryML's
+official grammar with a temporary one-rule overlay for BAML 0.20.1 backtick
+prompts. It has prebuilt wheels for Linux x86_64/aarch64, macOS x86_64/arm64,
+and Windows x86_64 on Python 3.11–3.13. Other platforms build from source and
+need a C compiler. Explicit BAML parsing without the extra gives install
+guidance; implicit file detection falls back to text. A malformed BAML file
+raises a parsing error before returning structural chunks.
+
 ```python
 from chunker import chunk_file
 

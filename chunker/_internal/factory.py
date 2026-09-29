@@ -12,7 +12,13 @@ from typing import TYPE_CHECKING, Any, cast
 
 from tree_sitter import Parser, Range
 
-from chunker.exceptions import LanguageNotFoundError, ParserConfigError, ParserInitError
+from chunker.exceptions import (
+    BamlExtraRequiredError,
+    LanguageNotFoundError,
+    ParserConfigError,
+    ParserInitError,
+)
+from chunker._internal.registry import baml_companion_version
 
 if TYPE_CHECKING:
     from chunker._internal.registry import LanguageRegistry
@@ -194,6 +200,8 @@ class ParserFactory:
             )
             return parser
         except ValueError as e:
+            if language == "baml":
+                raise ParserInitError(language, str(e)) from e
             if "Incompatible Language version" in str(e):
                 # Try using tree-sitter-language-pack as a fallback
                 try:
@@ -225,6 +233,8 @@ class ParserFactory:
                         ) from e
                     raise ParserInitError(language, str(e)) from e
             raise ParserInitError(language, str(e)) from e
+        except BamlExtraRequiredError:
+            raise
         except Exception as e:
             raise ParserInitError(language, str(e)) from e
 
@@ -254,6 +264,11 @@ class ParserFactory:
         language: str,
         config: ParserConfig | None,
     ) -> None:
+        if language == "baml" and not self._registry.has_language(language):
+            installed = baml_companion_version()
+            if installed is not None:
+                raise BamlExtraRequiredError(installed)
+            raise BamlExtraRequiredError
         if not self._registry.has_language(language):
             available = self._registry.list_languages()
             raise LanguageNotFoundError(language, available)
