@@ -235,7 +235,8 @@ class ZeroConfigAPI(ZeroConfigContract):
                     },
                 )
         except (LanguageNotFoundError, ParserError, OSError, IndexError):
-            pass
+            if language == "baml":
+                raise
         content = file_path.read_text(encoding="utf-8", errors="replace")
         code_chunks = self._fallback_chunker.chunk_text(
             content,
@@ -391,7 +392,8 @@ class ZeroConfigAPI(ZeroConfigContract):
                     metadata={"tree_sitter_version": "0.20.0"},
                 )
         except (LanguageNotFoundError, ParserError, IndexError, KeyError):
-            pass
+            if language == "baml":
+                raise
         code_chunks = self._fallback_chunker.chunk_text(text, "<text>")
         chunks = []
         for chunk in code_chunks:

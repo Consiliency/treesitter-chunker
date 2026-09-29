@@ -9,7 +9,7 @@ from chunker._internal.registry import LanguageRegistry
 from chunker.auto import ZeroConfigAPI
 from chunker.chunker import chunk_text_with_token_limit
 from chunker.core import chunk_file, chunk_text
-from chunker.exceptions import BamlExtraRequiredError, ParsingError
+from chunker.exceptions import BamlExtraRequiredError, ParserInitError, ParsingError
 from chunker.grammar.registry import UniversalLanguageRegistry
 from chunker.parser import acquire_parser, get_parser
 from chunker.repo.processor import GitAwareRepoProcessor, RepoProcessor
@@ -260,6 +260,22 @@ def test_wrong_companion_version_fails_without_pack_fallback(monkeypatch, tmp_pa
         registry.get_language("baml")
     with pytest.raises(BamlExtraRequiredError, match="0.1.0 required; installed 0.2.0"):
         get_parser("baml")
+
+
+def test_zero_config_does_not_hide_companion_load_failure(monkeypatch, tmp_path):
+    source = tmp_path / "sample.baml"
+    source.write_text("function sample() -> string { prompt: `hi` }", encoding="utf-8")
+
+    def fail(*_args, **_kwargs):
+        raise ParserInitError("baml", "companion ABI incompatible")
+
+    monkeypatch.setattr("chunker.auto.chunk_file", fail)
+    monkeypatch.setattr("chunker.auto.chunk_text", fail)
+    api = ZeroConfigAPI(_InstalledRegistry())
+    with pytest.raises(ParserInitError, match="companion ABI incompatible"):
+        api.auto_chunk_file(source)
+    with pytest.raises(ParserInitError, match="companion ABI incompatible"):
+        api.chunk_text(source.read_text(encoding="utf-8"), "baml")
 
 
 def test_companion_parser_metadata():
