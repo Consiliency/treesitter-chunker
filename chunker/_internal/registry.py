@@ -501,9 +501,9 @@ class LanguageRegistry:
                     raise BamlExtraRequiredError(installed)
                 raise BamlExtraRequiredError
             try:
-                from treesitter_chunker_baml_grammar import language
+                from treesitter_chunker_baml_grammar import language as baml_language
 
-                return Language(language())
+                return Language(baml_language())
             except (ImportError, ValueError, TypeError) as exc:
                 raise ParserInitError("baml", f"companion load failed: {exc}") from exc
         if not self._discovered:

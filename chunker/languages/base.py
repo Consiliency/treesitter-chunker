@@ -75,7 +75,7 @@ class LanguageConfig(ABC):
     node filtering, and configuration validation.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the language configuration."""
         self._chunk_rules: list[ChunkRule] = []
         self._ignore_types: set[str] = set()
