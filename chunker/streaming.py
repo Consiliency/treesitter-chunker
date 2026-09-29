@@ -139,7 +139,7 @@ class StreamingChunker:
             # Extract content from the memory-mapped (or bytes) source.
             text = mmap_data[node.start_byte : node.end_byte].decode(
                 "utf-8",
-                errors="replace",
+                errors="strict" if self.language == "baml" else "replace",
             )
             current_route = [*parent_route, node.type]
             start_line = node.start_point[0] + 1
@@ -221,6 +221,8 @@ class StreamingChunker:
                 access=mmap.ACCESS_READ,
             ) as mmap_data,
         ):
+            if self.language == "baml":
+                mmap_data[:].decode("utf-8")
             tree = self.parser.parse(mmap_data)
             root = tree.root_node
             config = language_config_registry.get(self.language)

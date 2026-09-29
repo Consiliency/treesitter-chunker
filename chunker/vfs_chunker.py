@@ -123,6 +123,8 @@ class VFSChunker:
             content = self.vfs.read_bytes(path)
             if not content:
                 return
+            if chunker.language == "baml":
+                content.decode("utf-8")
             tree = chunker.parser.parse(content)
             config = language_config_registry.get(chunker.language)
             if config and config.strict_parse and tree.root_node.has_error:
@@ -173,7 +175,7 @@ class VFSChunker:
             if streaming:
                 chunks = list(chunks)
             return chunks
-        except (FileNotFoundError, OSError) as e:
+        except (FileNotFoundError, OSError, ParsingError, UnicodeDecodeError) as e:
             logger.error("Error processing %s: %s", file_path, e)
             return None
 

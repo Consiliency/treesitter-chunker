@@ -413,7 +413,13 @@ class RepoProcessor(RepoProcessorInterface):
                 chunks=chunks,
                 processing_time=time.time() - start_time,
             )
-        except (FileNotFoundError, IndexError, KeyError, ParsingError) as e:
+        except (
+            FileNotFoundError,
+            IndexError,
+            KeyError,
+            ParsingError,
+            UnicodeDecodeError,
+        ) as e:
             return FileChunkResult(
                 file_path=rel_path.as_posix(),
                 chunks=[],
@@ -1005,6 +1011,11 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
                     if language == "baml"
                     else path.read_text(encoding="utf-8")
                 )
+            except UnicodeDecodeError as exc:
+                errors.append(
+                    {"file": rel, "error": str(exc), "type": type(exc).__name__}
+                )
+                continue
             except Exception:
                 continue
             # Parsing is delegated to chunk_text, which acquires parsers through

@@ -176,6 +176,53 @@ def test_malformed_file_is_atomic_across_routes(tmp_path):
     assert any(n["file"].endswith("good.baml") for n in deltas["nodes_added"])
 
 
+@pytest.mark.parametrize("streaming", [False, True])
+def test_vfs_directory_continues_after_malformed_baml(tmp_path, streaming):
+    (tmp_path / "broken.baml").write_text("function broken( {", encoding="utf-8")
+    (tmp_path / "good.baml").write_text(
+        "function good() -> string { prompt: `hi` }", encoding="utf-8"
+    )
+    results = list(
+        VFSChunker(LocalFileSystem(tmp_path)).chunk_directory(".", streaming=streaming)
+    )
+    assert len(results) == 1
+    assert results[0][0] == "good.baml"
+    assert results[0][1]
+
+
+def test_invalid_utf8_baml_reports_file_error_and_continues(tmp_path):
+    (tmp_path / "broken.baml").write_bytes(b"\xff")
+    (tmp_path / "good.baml").write_text(
+        "function good() -> string { prompt: `hi` }", encoding="utf-8"
+    )
+    with pytest.raises(UnicodeDecodeError):
+        list(chunk_file_streaming(tmp_path / "broken.baml", "baml"))
+    vfs = VFSChunker(LocalFileSystem(tmp_path))
+    for streaming in (False, True):
+        results = list(vfs.chunk_directory(".", streaming=streaming))
+        assert len(results) == 1 and results[0][0] == "good.baml"
+    processor = RepoProcessor(show_progress=False)
+    iterator_results = list(processor.process_files_iterator(str(tmp_path)))
+    assert any(
+        r.file_path == "broken.baml" and isinstance(r.error, UnicodeDecodeError)
+        for r in iterator_results
+    )
+    assert any(r.file_path == "good.baml" and r.chunks for r in iterator_results)
+    result = processor.process_repository(str(tmp_path), incremental=False)
+    assert any(
+        e["file"] == "broken.baml" and e["type"] == "UnicodeDecodeError"
+        for e in result.errors
+    )
+    deltas = GitAwareRepoProcessor(show_progress=False)._build_watch_deltas(
+        tmp_path, ["broken.baml", "good.baml"], set()
+    )
+    assert any(
+        e["file"] == "broken.baml" and e["type"] == "UnicodeDecodeError"
+        for e in deltas["errors"]
+    )
+    assert any(n["file"].endswith("good.baml") for n in deltas["nodes_added"])
+
+
 def test_absent_companion_never_uses_ambient_grammar(monkeypatch, tmp_path):
     monkeypatch.setattr(
         "chunker._internal.registry.baml_companion_available", lambda: False
