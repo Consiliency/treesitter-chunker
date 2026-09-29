@@ -1,6 +1,31 @@
 {
   "plans": [
     {
+      "acceptance_criteria_count": 5,
+      "created_at": "2026-09-28T07:36:12Z",
+      "file": "plans/detailed-baml-structural-chunking-20260928-0706.md",
+      "handoff_ref": ".dev-skills/handoffs/codex-plan-detailed/20260928T073612Z-baml-structural-plan.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-09-28T07:36:12Z",
+          "by": "codex-plan-detailed",
+          "metadata": {},
+          "transition": "committed"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/2b85efd099e4/codex-baml-chunking-plan/20260928T073612Z-baml-structural-plan.md",
+      "roadmap_ref": null,
+      "slug": "baml-structural-chunking",
+      "status": "committed",
+      "task_summary": "Plan BAML structural chunking with a pinned grammar overlay and optional native companion wheels",
+      "type": "detailed",
+      "updated_at": "2026-09-28T07:36:12Z"
+    },
+    {
       "acceptance_criteria_count": null,
       "created_at": "2026-05-01T03:23:18Z",
       "file": "plans/phase-plan-v1-HYGIENE.md",
