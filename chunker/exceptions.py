@@ -27,6 +27,17 @@ class LanguageError(ChunkerError):
     """Base class for language-related errors."""
 
 
+class BamlExtraRequiredError(LanguageError):
+    """Raised when explicit BAML parsing needs the optional grammar."""
+
+    def __init__(self, installed_version: str | None = None):
+        if installed_version is None:
+            message = "BAML grammar unavailable; install with pip install treesitter-chunker[baml]"
+        else:
+            message = f"BAML grammar companion 0.1.0 required; installed {installed_version}. Install with pip install treesitter-chunker[baml]"
+        super().__init__(message)
+
+
 class LanguageNotFoundError(LanguageError):
     """Raised when requested language is not available."""
 

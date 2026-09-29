@@ -105,7 +105,10 @@ def chunk_file_with_token_limit(
     """
     # errors="replace" so a file with invalid UTF-8 bytes chunks instead of
     # crashing the token-limited path (matches core.chunk_file; COREFIX).
-    src = Path(path).read_text(encoding="utf-8", errors="replace")
+    if language == "baml":
+        src = Path(path).read_bytes().decode("utf-8")
+    else:
+        src = Path(path).read_text(encoding="utf-8", errors="replace")
     return chunk_text_with_token_limit(
         src,
         language,

@@ -91,6 +91,10 @@ class UniversalLanguageRegistry(UniversalRegistryContract):
         Returns:
             Configured parser instance
         """
+        if language == "baml":
+            parser = tree_sitter.Parser()
+            parser.language = self._base_registry.get_language("baml")
+            return parser
         # First try to get from base registry
         if self._base_registry.has_language(language):
             lang = self._base_registry.get_language(language)
@@ -181,6 +185,8 @@ class UniversalLanguageRegistry(UniversalRegistryContract):
         Returns:
             True if language is installed and ready
         """
+        if language == "baml":
+            return self._base_registry.has_language("baml")
         # Check base registry first
         if self._base_registry.has_language(language):
             return True
@@ -198,6 +204,8 @@ class UniversalLanguageRegistry(UniversalRegistryContract):
         Returns:
             True if installation successful
         """
+        if language == "baml":
+            return self._base_registry.has_language("baml")
         # Check if already installed
         if self.is_language_installed(language):
             logger.info("Language %s is already installed", language)

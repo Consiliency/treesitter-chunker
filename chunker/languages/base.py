@@ -118,6 +118,15 @@ class LanguageConfig(ABC):
         return set()
 
     @property
+    def strict_parse(self) -> bool:
+        """Require a complete parse before exposing any chunks."""
+        return False
+
+    def get_definition_name(self, node: Any, source: bytes) -> str | None:
+        """Optional language-level resolver for declarations without a name field."""
+        return None
+
+    @property
     def chunk_rules(self) -> list[ChunkRule]:
         """Return advanced chunking rules for more complex scenarios."""
         return self._chunk_rules

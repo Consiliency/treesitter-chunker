@@ -32,6 +32,8 @@ from .core import (
     _extract_definition_name,
     resolve_chunk_predicates,
 )
+from .exceptions import ParsingError
+from .languages import language_config_registry
 from .parser import get_parser
 from .types import CodeChunk, compute_node_id
 
@@ -141,7 +143,7 @@ class StreamingChunker:
             )
             current_route = [*parent_route, node.type]
             start_line = node.start_point[0] + 1
-            def_name = _extract_definition_name(node, mmap_data)
+            def_name = _extract_definition_name(node, mmap_data, self.language)
             if def_name:
                 qualified_name = f"{node.type}:{def_name}"
             else:
@@ -221,6 +223,9 @@ class StreamingChunker:
         ):
             tree = self.parser.parse(mmap_data)
             root = tree.root_node
+            config = language_config_registry.get(self.language)
+            if config and config.strict_parse and root.has_error:
+                raise ParsingError(self.language, "syntax error in source")
             yield from self._walk_streaming(
                 root,
                 mmap_data,

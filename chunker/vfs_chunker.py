@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING
 
 from ._internal.gc_tuning import get_memory_optimizer, optimized_gc
 from .chunker import chunk_text
+from .exceptions import ParsingError
+from .languages import language_config_registry
 from .streaming import StreamingChunker
 from .vfs import (
     HTTPFileSystem,
@@ -82,7 +84,11 @@ class VFSChunker:
 
     def _chunk_file_standard(self, path: str, language: str) -> list[CodeChunk]:
         """Standard chunking for smaller files."""
-        content = self.vfs.read_text(path)
+        content = (
+            self.vfs.read_bytes(path).decode("utf-8")
+            if language == "baml"
+            else self.vfs.read_text(path)
+        )
         with optimized_gc("batch"):
             return chunk_text(content, file_path=path, language=language)
 
@@ -118,6 +124,9 @@ class VFSChunker:
             if not content:
                 return
             tree = chunker.parser.parse(content)
+            config = language_config_registry.get(chunker.language)
+            if config and config.strict_parse and tree.root_node.has_error:
+                raise ParsingError(chunker.language, "syntax error in source")
             yield from chunker._walk_streaming(tree.root_node, content, path)
 
     def chunk_directory(
@@ -180,6 +189,10 @@ class VFSChunker:
         """Detect language from file path/extension."""
         path_obj = Path(path)
         ext = path_obj.suffix.lower()
+        if ext == ".baml":
+            from ._internal.registry import baml_companion_available
+
+            return "baml" if baml_companion_available() else None
         language_map = {
             ".py": "python",
             ".js": "javascript",

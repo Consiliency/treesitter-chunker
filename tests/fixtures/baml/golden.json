@@ -1,0 +1,132 @@
+[
+  {
+    "type": "class_declaration",
+    "start": 0,
+    "end": 72,
+    "route": [
+      "class_declaration:Box"
+    ],
+    "id": "3136ef54d95d10ac93a12be2bd297c2435f9398f"
+  },
+  {
+    "type": "function_declaration",
+    "start": 32,
+    "end": 70,
+    "route": [
+      "class_declaration:Box",
+      "function_declaration:get"
+    ],
+    "id": "fa07411a1f062b74867183ddd90a6144e4075715"
+  },
+  {
+    "type": "enum_declaration",
+    "start": 74,
+    "end": 103,
+    "route": [
+      "enum_declaration:Level"
+    ],
+    "id": "6ea816ec975ed0fa0675cf016ae1acb5c4cc5f16"
+  },
+  {
+    "type": "interface_declaration",
+    "start": 105,
+    "end": 173,
+    "route": [
+      "interface_declaration:Named"
+    ],
+    "id": "65c89bd508b0b05dda10be138b7006538c9df191"
+  },
+  {
+    "type": "function_declaration",
+    "start": 127,
+    "end": 170,
+    "route": [
+      "interface_declaration:Named",
+      "function_declaration:label"
+    ],
+    "id": "1b0700957111e7196a29375c65fdd37cc3c773b8"
+  },
+  {
+    "type": "implements_for_declaration",
+    "start": 175,
+    "end": 269,
+    "route": [
+      "implements_for_declaration:Named for Box<string>"
+    ],
+    "id": "f10d6f7bcfa9fd6a7f1fef0875da58ba28b6e5b5"
+  },
+  {
+    "type": "function_declaration",
+    "start": 214,
+    "end": 267,
+    "route": [
+      "implements_for_declaration:Named for Box<string>",
+      "function_declaration:label"
+    ],
+    "id": "6fa133cfaf4fc735d4b5e80174a22bb89e56de73"
+  },
+  {
+    "type": "client_declaration",
+    "start": 271,
+    "end": 347,
+    "route": [
+      "client_declaration:GPT4"
+    ],
+    "id": "5baf4f89a56bf185900c7fffdf3dbb77fc46fedb"
+  },
+  {
+    "type": "generator_declaration",
+    "start": 349,
+    "end": 443,
+    "route": [
+      "generator_declaration:ts_target"
+    ],
+    "id": "d08be6032988b2d4d36169424d051c93e3afd047"
+  },
+  {
+    "type": "retry_policy_declaration",
+    "start": 445,
+    "end": 486,
+    "route": [
+      "retry_policy_declaration:SafeRetry"
+    ],
+    "id": "5883982bd6c4701777fc93093503bea23f4dc5d1"
+  },
+  {
+    "type": "template_string_declaration",
+    "start": 488,
+    "end": 549,
+    "route": [
+      "template_string_declaration:Persona"
+    ],
+    "id": "fd2d094329fc4428eeb7a2ef09fdbd7b4a176b27"
+  },
+  {
+    "type": "test_declaration",
+    "start": 551,
+    "end": 598,
+    "route": [
+      "test_declaration:\"box label\""
+    ],
+    "id": "c5af75a51cca6ba8e3689bd4ab802570d82f4ac9"
+  },
+  {
+    "type": "testset_declaration",
+    "start": 600,
+    "end": 664,
+    "route": [
+      "testset_declaration:\"box tests\""
+    ],
+    "id": "bdf15488fbcd2c70952c95bf39f85d6afcc44e30"
+  },
+  {
+    "type": "test_declaration",
+    "start": 626,
+    "end": 662,
+    "route": [
+      "testset_declaration:\"box tests\"",
+      "test_declaration:\"exists\""
+    ],
+    "id": "8e2854795e3c029b0064ba91bd55aef2d7e69483"
+  }
+]

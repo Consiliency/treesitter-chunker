@@ -11,9 +11,15 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from .chunker import chunk_file_with_token_limit, chunk_text_with_token_limit
+from ._internal.registry import baml_companion_available
 from .contracts.auto_contract import AutoChunkResult, ZeroConfigContract
 from .core import chunk_file, chunk_text
-from .exceptions import ChunkerError, LanguageNotFoundError, ParserError
+from .exceptions import (
+    BamlExtraRequiredError,
+    ChunkerError,
+    LanguageNotFoundError,
+    ParserError,
+)
 from .fallback.sliding_window_fallback import SlidingWindowFallback
 
 if TYPE_CHECKING:
@@ -132,6 +138,8 @@ class ZeroConfigAPI(ZeroConfigContract):
         Returns:
             True if language is ready to use
         """
+        if language == "baml":
+            return baml_companion_available()
         if self.registry.is_language_installed(language):
             if version:
                 installed_version = self.registry.get_language_version(
@@ -191,6 +199,8 @@ class ZeroConfigAPI(ZeroConfigContract):
                 )
             language = detected
         grammar_downloaded = False
+        if language == "baml" and not baml_companion_available():
+            raise BamlExtraRequiredError
         if not self.registry.is_language_installed(language):
             grammar_downloaded = self.ensure_language(language)
         try:
@@ -280,6 +290,8 @@ class ZeroConfigAPI(ZeroConfigContract):
     def _detect_by_extension(self, file_path: Path) -> str | None:
         """Detect language by file extension."""
         suffix = file_path.suffix.lower()
+        if suffix == ".baml":
+            return "baml" if baml_companion_available() else None
         return self.EXTENSION_MAP.get(suffix)
 
     def _detect_by_shebang(self, file_path: Path) -> str | None:
@@ -341,6 +353,8 @@ class ZeroConfigAPI(ZeroConfigContract):
         if not language:
             raise ValueError("Language must be specified for text chunking")
         grammar_downloaded = False
+        if language == "baml" and not baml_companion_available():
+            raise BamlExtraRequiredError
         if not self.registry.is_language_installed(language):
             grammar_downloaded = self.ensure_language(language)
         try:
@@ -409,6 +423,8 @@ class ZeroConfigAPI(ZeroConfigContract):
             if lang not in language_extensions:
                 language_extensions[lang] = []
             language_extensions[lang].append(ext)
+        if baml_companion_available():
+            language_extensions["baml"] = [".baml"]
         for exts in language_extensions.values():
             exts.sort()
         return language_extensions

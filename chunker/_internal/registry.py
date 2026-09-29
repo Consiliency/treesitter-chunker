@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import ctypes
+import importlib.util
 import logging
 import os
 import re
 import sys
 from dataclasses import dataclass, field
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any
 
@@ -15,11 +17,28 @@ from tree_sitter import Language, Parser
 
 from chunker._internal.error_handling import log_grammar_discovery_summary
 from chunker.exceptions import (
+    BamlExtraRequiredError,
     LanguageNotFoundError,
     LibraryLoadError,
+    ParserInitError,
 )
 
 logger = logging.getLogger(__name__)
+
+
+def baml_companion_version() -> str | None:
+    """Read the optional distribution version without loading its parser."""
+    try:
+        return version("treesitter-chunker-baml-grammar")
+    except PackageNotFoundError:
+        return None
+
+
+def baml_companion_available() -> bool:
+    """Check the reviewed optional distribution without loading its parser."""
+    return baml_companion_version() == "0.1.0" and (
+        importlib.util.find_spec("treesitter_chunker_baml_grammar") is not None
+    )
 
 
 @dataclass
@@ -264,6 +283,8 @@ class LanguageRegistry:
             )
         logger.info("Discovered %s potential language symbols", len(symbols))
         for lang_name, symbol_name in symbols:
+            if lang_name == "baml":
+                continue
             try:
                 if lib is None:
                     # Try to load from individual library instead of just creating placeholder
@@ -339,6 +360,8 @@ class LanguageRegistry:
         from chunker._internal.language_pack import list_pack_languages
 
         for name in list_pack_languages():
+            if name == "baml":
+                continue
             if name not in self._languages:
                 metadata = LanguageMetadata(
                     name=name,
@@ -351,6 +374,20 @@ class LanguageRegistry:
                 )
                 self._languages[name] = (None, metadata)
                 discovered[name] = metadata
+        if baml_companion_available():
+            metadata = LanguageMetadata(
+                name="baml",
+                version="0.1.0",
+                symbol_name="tree_sitter_baml",
+                capabilities={
+                    "compatible": None,
+                    "language_version": "unknown",
+                    "external_scanner": False,
+                    "companion_version": "0.1.0",
+                },
+            )
+            self._languages["baml"] = (None, metadata)
+            discovered["baml"] = metadata
         self._discovered = True
 
         # Use enhanced error logging for discovery summary
@@ -457,6 +494,18 @@ class LanguageRegistry:
                 LanguageNotFoundError: If language is not available
                 LanguageLoadError: If language fails to load
         """
+        if name == "baml":
+            if not baml_companion_available():
+                installed = baml_companion_version()
+                if installed is not None:
+                    raise BamlExtraRequiredError(installed)
+                raise BamlExtraRequiredError
+            try:
+                from treesitter_chunker_baml_grammar import language
+
+                return Language(language())
+            except (ImportError, ValueError, TypeError) as exc:
+                raise ParserInitError("baml", f"companion load failed: {exc}") from exc
         if not self._discovered:
             self.discover_languages()
         if name not in self._languages:
@@ -513,16 +562,20 @@ class LanguageRegistry:
         Returns:
             Combined list of all available language names
         """
-        available = list(self._languages.keys())
+        available = [name for name in self._languages if name != "baml"]
         try:
             from chunker._internal.language_pack import list_pack_languages
 
             pack_languages = list_pack_languages()
             for lang in pack_languages:
+                if lang == "baml":
+                    continue
                 if lang not in available:
                     available.append(lang)
         except ImportError:
             pass
+        if baml_companion_available() and "baml" not in available:
+            available.append("baml")
         return sorted(available)
 
     def list_languages(self) -> list[str]:
@@ -547,6 +600,31 @@ class LanguageRegistry:
         Raises:
                 LanguageNotFoundError: If language is not available
         """
+        if name == "baml":
+            if not self._discovered:
+                self.discover_languages()
+            language = self.get_language(name)
+            Parser(language)
+            entry = self._languages.get("baml")
+            metadata = (
+                entry[1]
+                if entry
+                else LanguageMetadata(
+                    name="baml",
+                    symbol_name="tree_sitter_baml",
+                    capabilities={
+                        "external_scanner": False,
+                        "companion_version": "0.1.0",
+                    },
+                )
+            )
+            metadata.version = str(language.abi_version)
+            metadata.node_types_count = language.node_kind_count
+            metadata.capabilities.update(
+                compatible=True, language_version=metadata.version
+            )
+            self._languages["baml"] = (language, metadata)
+            return metadata
         if not self._discovered:
             self.discover_languages()
         if name not in self._languages:
@@ -573,6 +651,8 @@ class LanguageRegistry:
         Returns:
                 True if language is available
         """
+        if name == "baml":
+            return baml_companion_available()
         if not self._discovered:
             self.discover_languages()
         if name in self._languages:

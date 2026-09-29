@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+- Add optional BAML structural chunking through the pinned 0.1.0 companion
+  grammar, including BAML 0.20.1 backtick prompts. The base wheel stays
+  universal; malformed BAML files fail atomically, and base installs retain
+  text fallback for implicit `.baml` files.
+
 ## [5.0.1] — First published v5 package
 
 This is the first published v5 package. It includes the Tree-sitter 0.26 supply

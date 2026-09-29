@@ -15,6 +15,8 @@ import pathspec
 from tqdm import tqdm
 
 from chunker.exceptions import ChunkerError
+from chunker._internal.registry import baml_companion_available
+from chunker.exceptions import ParsingError
 from chunker.interfaces.repo import FileChunkResult, GitAwareProcessor, RepoChunkResult
 from chunker.interfaces.repo import RepoProcessor as RepoProcessorInterface
 
@@ -77,6 +79,8 @@ class RepoProcessor(RepoProcessorInterface):
             ".java": "java",
             ".rb": "ruby",
         }
+        if baml_companion_available():
+            extension_map[".baml"] = "baml"
         return extension_map
 
     def process_repository(
@@ -318,7 +322,16 @@ class RepoProcessor(RepoProcessorInterface):
                     result = future.result()
                     if result:
                         file_results.append(result)
-                        total_chunks += len(result.chunks)
+                        if result.error:
+                            errors.append(
+                                {
+                                    "file": rel_path.as_posix(),
+                                    "error": str(result.error),
+                                    "type": type(result.error).__name__,
+                                }
+                            )
+                        else:
+                            total_chunks += len(result.chunks)
                     else:
                         skipped_files.append(rel_path.as_posix())
                 except Exception as e:
@@ -367,10 +380,12 @@ class RepoProcessor(RepoProcessorInterface):
             language = self._language_extensions.get(ext)
             if not language:
                 return None
-            content = RepoProcessor._read_file_with_fallback_encoding(
-                file_path,
-                rel_path,
-                start_time,
+            content = (
+                file_path.read_bytes().decode("utf-8")
+                if language == "baml"
+                else RepoProcessor._read_file_with_fallback_encoding(
+                    file_path, rel_path, start_time
+                )
             )
             if isinstance(content, FileChunkResult):
                 return content
@@ -398,7 +413,7 @@ class RepoProcessor(RepoProcessorInterface):
                 chunks=chunks,
                 processing_time=time.time() - start_time,
             )
-        except (FileNotFoundError, IndexError, KeyError) as e:
+        except (FileNotFoundError, IndexError, KeyError, ParsingError) as e:
             return FileChunkResult(
                 file_path=rel_path.as_posix(),
                 chunks=[],
@@ -976,6 +991,7 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
         nodes_added: list[dict] = []
         nodes_updated: list[dict] = []
         nodes_removed: list[str] = []
+        errors: list[dict[str, str]] = []
         all_chunks = []
         for rel in changed_files:
             path = repo_root / rel
@@ -984,13 +1000,23 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
             if not language or not path.exists():
                 continue
             try:
-                content = path.read_text(encoding="utf-8")
+                content = (
+                    path.read_bytes().decode("utf-8")
+                    if language == "baml"
+                    else path.read_text(encoding="utf-8")
+                )
             except Exception:
                 continue
             # Parsing is delegated to chunk_text, which acquires parsers through
             # the frozen thread-local ``get_parser`` API (chunker.parser); this
             # module never holds a shared cached Parser of its own.
-            chunks = chunk_text(content, language, str(path))
+            try:
+                chunks = chunk_text(content, language, str(path))
+            except ParsingError as exc:
+                errors.append(
+                    {"file": rel, "error": str(exc), "type": type(exc).__name__}
+                )
+                continue
             all_chunks.extend(chunks)
             for c in chunks:
                 node = {
@@ -1024,4 +1050,5 @@ class GitAwareRepoProcessor(RepoProcessor, GitAwareProcessor):
             "nodes_removed": nodes_removed,
             "edges": edges,
             "spans": spans,
+            "errors": errors,
         }

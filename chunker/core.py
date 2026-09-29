@@ -29,7 +29,9 @@ if TYPE_CHECKING:
     from tree_sitter import Node
 
 
-def _extract_definition_name(node: Node, source: bytes) -> str | None:
+def _extract_definition_name(
+    node: Node, source: bytes, language: str | None = None
+) -> str | None:
     """Extract the definition name from an AST node.
 
     Tries common field names used across languages:
@@ -39,6 +41,11 @@ def _extract_definition_name(node: Node, source: bytes) -> str | None:
 
     Returns None if no name can be extracted (anonymous definition).
     """
+    config = language_config_registry.get(language) if language else None
+    if config:
+        resolved = config.get_definition_name(node, source)
+        if resolved:
+            return resolved
     # Zig wraps function prototypes and variable declarations in Decl.
     if node.type == "Decl" and node.named_children:
         declaration = node.named_children[0]
@@ -737,7 +744,7 @@ def _walk(
 
         # Build qualified_route with definition names for content-insensitive ID
         start_line = node.start_point[0] + 1
-        def_name = _extract_definition_name(node, source)
+        def_name = _extract_definition_name(node, source, language)
         if def_name:
             qualified_name = f"{adjusted_node_type}:{def_name}"
         else:
@@ -1156,6 +1163,12 @@ def chunk_text(
     src = text.encode()
     tree = parser.parse(src)
 
+    config = language_config_registry.get(language)
+    if config and config.strict_parse and tree.root_node.has_error:
+        from .exceptions import ParsingError
+
+        raise ParsingError(language, "syntax error in source")
+
     # Create metadata extractors if requested
     extractor = None
     analyzer = None
@@ -1251,11 +1264,14 @@ def chunk_file(
     # Read file contents with robust decoding
     p = Path(path)
     identity = identity_path if identity_path is not None else str(path)
-    try:
-        src = p.read_text(encoding="utf-8")
-    except UnicodeDecodeError:
-        # Fallback: replace invalid bytes to avoid crashing on bad encodings
-        src = p.read_bytes().decode("utf-8", errors="replace")
+    if language == "baml":
+        src = p.read_bytes().decode("utf-8")
+    else:
+        try:
+            src = p.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            # Fallback: replace invalid bytes to avoid crashing on bad encodings
+            src = p.read_bytes().decode("utf-8", errors="replace")
 
     # Special handling for R Markdown: extract embedded R code blocks
     if language == "r" and p.suffix.lower() in {".rmd", ".rmarkdown"}:
