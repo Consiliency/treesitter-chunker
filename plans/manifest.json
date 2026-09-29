@@ -38,6 +38,38 @@
           "by": "codex-plan-detailed",
           "metadata": {},
           "transition": "committed"
+        },
+        {
+          "at": "2026-09-29T14:38:00Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "implementation_commit": "f1d575031acbca650999c1fd20bf8c7c989026d9",
+            "plan_artifact": "plans/detailed-python314-unicode-wheels-20260929.md",
+            "run_id": "issue-102-20260929"
+          },
+          "transition": "executing"
+        },
+        {
+          "at": "2026-09-29T14:45:58Z",
+          "by": "codex-execute-detailed",
+          "metadata": {
+            "diagnostic": "publication_blocked",
+            "dirty_paths": {
+              "non_plan_output": [],
+              "plan_owned": [
+                "artifacts/issue-102-acceptance.json",
+                "plans/manifest.json"
+              ],
+              "pre_existing_unrelated": []
+            },
+            "implementation_commit": "f1d575031acbca650999c1fd20bf8c7c989026d9",
+            "reason": "FABPUB active; no supported human-invoked detailed-plan authority-preimage handoff; owner publication decision pending",
+            "reflection_path": "/home/viperjuice/.codex/skills/codex-execute-detailed/reflections/656e829d0440/codex-issue-102-unicode-wheels/20260929T144443Z-issue102.md",
+            "verification_artifact_path": "artifacts/issue-102-acceptance.json",
+            "verification_artifact_sha256": "9a520524e4ce35b67bd6097fb694de948cfa039491ae0fea18a621bc3fa61baa",
+            "verification_status": "local_candidate_passed; published_release_pending"
+          },
+          "transition": "failed"
         }
       ],
       "owner_skill": "codex-plan-detailed",
@@ -45,10 +77,10 @@
       "reflection_ref": "/home/viperjuice/.codex/skills/codex-plan-detailed/reflections/treesitter-chunker/codex-plan-102-unicode-wheels/20260929T070946Z-python314-unicode-wheels.md",
       "roadmap_ref": null,
       "slug": "python314-unicode-wheels",
-      "status": "committed",
+      "status": "failed",
       "task_summary": "Preserve Unicode 16 canonicalization with a wheel-only CPython 3.14 runtime closure",
       "type": "detailed",
-      "updated_at": "2026-09-29T07:09:46Z"
+      "updated_at": "2026-09-29T14:45:58Z"
     },
     {
       "acceptance_criteria_count": null,
