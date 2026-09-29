@@ -92,11 +92,11 @@ full = ["jinja2>=3.0.0", "numpy>=1.20.0"]
 all = ["treesitter-chunker[dev,viz,docs,profile,api,templates,advanced]"]
 
 [project.urls]
-Homepage = "https://github.com/ViperJuice/treesitter-chunker"
+Homepage = "https://github.com/Consiliency/treesitter-chunker"
 Documentation = "https://treesitter-chunker.readthedocs.io"
-Repository = "https://github.com/ViperJuice/treesitter-chunker"
-Issues = "https://github.com/ViperJuice/treesitter-chunker/issues"
-Changelog = "https://github.com/ViperJuice/treesitter-chunker/blob/main/CHANGELOG.md"
+Repository = "https://github.com/Consiliency/treesitter-chunker"
+Issues = "https://github.com/Consiliency/treesitter-chunker/issues"
+Changelog = "https://github.com/Consiliency/treesitter-chunker/blob/main/CHANGELOG.md"
 
 [project.scripts]
 treesitter-chunker = "cli.main:app"

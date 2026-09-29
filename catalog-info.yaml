@@ -4,7 +4,7 @@ metadata:
   name: treesitter-chunker
   description: High-performance semantic code chunker using Tree-sitter parsers with 48-language support
   annotations:
-    github.com/project-slug: ViperJuice/treesitter-chunker
+    github.com/project-slug: Consiliency/treesitter-chunker
     backstage.io/techdocs-ref: dir:.
   tags:
     - library

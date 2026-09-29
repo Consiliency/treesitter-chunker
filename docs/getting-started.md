@@ -46,7 +46,7 @@ If you want to contribute or need the latest development version:
 
 ```bash
 # Clone the repository
-git clone https://github.com/ViperJuice/treesitter-chunker.git
+git clone https://github.com/Consiliency/treesitter-chunker.git
 cd treesitter-chunker
 
 # Install the reviewed lock, including development tools and optional extras
