@@ -174,10 +174,18 @@ def test_publication_requires_full_validation_and_verified_artifacts():
         s for s in build["steps"] if "actions/upload-artifact@" in s.get("uses", "")
     ]
     assert "dist/checksums.txt" in uploads[0]["with"]["path"].splitlines()
+    wheel_check = jobs["verify-installed-wheel"]
+    assert wheel_check["needs"] == "build-distributions"
+    assert wheel_check["strategy"]["matrix"]["python-version"] == ["3.12", "3.14"]
+    assert any(
+        "--only-binary=:all:" in step.get("run", "")
+        and "--require-hashes" in step.get("run", "")
+        for step in wheel_check["steps"]
+    )
     assert "update-changelog" not in jobs
     for name in ("create-release", "publish-to-pypi"):
         job = jobs[name]
-        assert job["needs"] == "build-distributions"
+        assert job["needs"] == ["build-distributions", "verify-installed-wheel"]
         assert not job.get("continue-on-error", False)
         assert all(not s.get("continue-on-error", False) for s in job["steps"])
     for name in ("create-release", "publish-to-pypi"):

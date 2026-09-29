@@ -37,6 +37,28 @@ while preserving the original provenance and all v1 encoding behavior.
 
 ## Changes
 
+### Bounded amendment: CPython 3.14 PyArrow wheel gap (execution evidence)
+
+On 2026-09-29, after the Unicode marker was locked, a real CPython 3.14/Linux
+x86_64 `pip download --only-binary=:all: --require-hashes` of the exported
+runtime closure failed at locked `pyarrow==21.0.0`: PyPI offered matching wheels
+beginning at 22.0.0. A source install also failed at missing Arrow CMake files.
+This is a second production wheel gap, independent of the dev-only cffi failure.
+Amend this plan to update only the PyArrow minimum/lock to the first version with
+a CPython 3.14 wheel, verify its existing APIs with the focused and local CI
+gates, and rerun the complete wheel-only closure. The next download exposed
+locked `pyyaml==6.0.2`; CPython 3.14 wheels begin at 6.0.3, so raise only its
+minimum and lock entry too. Do not upgrade unrelated
+dependencies or alter Boundary IR. This amendment is pending verification.
+
+The originally specified CPython 3.14 `--all-extras` focused test command could
+not construct its dev environment: locked `cffi==1.17.1` (via dev-only
+twine/keyring) built from source and lacked `ffi.h`. The release workflow does
+not install dev extras on 3.14. For the 3.14 focused and export gates only,
+replace that command with `uv run --python 3.14 --no-dev --with pytest --with toml
+pytest -q ...`; retain the original `--all-extras` gates on 3.11–3.13. Do not
+upgrade unrelated dev dependencies for this package runtime fix.
+
 ### chunker/boundary/_canon.py (modify)
 
 - Backend loading: prefer stdlib unicodedata only when its actual
@@ -74,6 +96,10 @@ is introduced. Preserve key NFC normalization and collision rejection.
 - Retain fallback metadata for older, future, and alternate interpreters.
   Python 3.15 wheel availability is outside this issue's promise.
 - Preserve unrelated dependency ranges and the ABI-paired grammar/runtime pins.
+- Raise the PyArrow minimum from 21.0.0 to 22.0.0 solely for the confirmed
+  CPython 3.14 wheel gap above; retain other dependency ranges.
+- Raise the PyYAML minimum from 6.0 to 6.0.3 solely for its confirmed CPython
+  3.14 wheel gap above.
 
 ### uv.lock (modify through uv lock)
 
@@ -108,6 +134,23 @@ the expected function. process_file catches ChunkerError and returns [], so
 exit status alone is insufficient. Language-pack may fetch grammar artifacts;
 prefetch Python or allow that normal fetch independently of dependency install.
 
+### tests/test_release_hygiene_policy.py (modify; execution amendment)
+
+Update the existing release dependency assertion for the new installed-wheel
+verification job. Require both publication jobs to depend on successful
+CPython 3.12/3.14 wheel acceptance. The prior assertion expects a single string
+dependency and fails once that necessary gate is added.
+
+### .gitattributes (add; Windows conformance amendment)
+
+The candidate's CPython 3.14 run on `leno` passed 100 tests and failed all 12
+Boundary IR goldens only in fixture `content_hash`: `core.autocrlf=true` changes
+committed LF fixture source to CRLF at checkout. Pin the conformance source
+paths `tests/fixtures/boundary_ir/repos/**` as `-text` so checkout preserves
+their committed bytes across platforms. This changes neither golden data nor
+Boundary IR extraction; rerun the Windows candidate golden gate after a fresh
+checkout with the attribute in effect.
+
 ### specs/active/release-process-spec.md and CHANGELOG.md (modify)
 
 Document the focused Python 3.14 wheel-only release gate and unchanged Unicode
@@ -117,7 +160,9 @@ Document the focused Python 3.14 wheel-only release gate and unchanged Unicode
 
 Use the next available patch version, nominally 5.1.1, after checking release
 state. Synchronize pyproject.toml, generated chunker/_version.py, and lock project
-version according to existing packaging conventions. Publish only through
+version according to existing packaging conventions. Also synchronize the
+literal fallback in chunker/__init__.py; the full suite's single-source check
+requires it and caught the initial omission during this execution. Publish only through
 .github/workflows/release.yml with a matching version tag.
 
 ## Documentation impact

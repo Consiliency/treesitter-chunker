@@ -1,7 +1,7 @@
-"""canon v1 vector-fidelity proof for the vendored serializer.
+"""canon v1 vector-fidelity proof for the adapted vendored serializer.
 
-``chunker/boundary/_canon.py`` is vendored verbatim from the spec ``canon`` v1
-reference impl (``canon/py/canon.py``). This module proves byte/digest fidelity
+``chunker/boundary/_canon.py`` adapts only Unicode backend loading from the spec
+``canon`` v1 reference impl (``canon/py/canon.py``). This proves byte/digest fidelity
 by running canon's own conformance vector suite
 (``tests/fixtures/canon-vectors.json``, copied from ``canon/vectors``) through
 the vendored encoder and asserting the canonical bytes and digests match the
@@ -14,10 +14,14 @@ Boundary IR can no longer be hashed soundly against other canon consumers.
 from __future__ import annotations
 
 import base64
+import builtins
 import json
+import tomllib
 from pathlib import Path
+from types import ModuleType
 
 import pytest
+from packaging.requirements import Requirement
 
 from chunker.boundary import _canon
 
@@ -58,3 +62,87 @@ def test_canon_vector_fidelity(vector: dict) -> None:
 def test_unicode_db_is_pinned_16() -> None:
     """The vendored canon enforces the pinned Unicode 16.0 DB (fail-closed)."""
     assert _canon._ACTUAL_UNICODE == "16.0"
+    assert _canon.unicodedata.unidata_version == "16.0.0"
+
+
+def _load_canon_with_tables(
+    stdlib_version: str, backport_version: str | None
+) -> tuple[dict, list[str]]:
+    source = Path(_canon.__file__).read_text(encoding="utf-8")
+    imported: list[str] = []
+
+    def controlled_import(name: str, *args: object, **kwargs: object) -> ModuleType:
+        if name == "unicodedata":
+            return stdlib
+        if name == "unicodedata2":
+            imported.append(name)
+            if backport_version is None:
+                raise ImportError("unicodedata2 unavailable")
+            return backport
+        return builtins.__import__(name, *args, **kwargs)
+
+    stdlib = ModuleType("unicodedata")
+    stdlib.unidata_version = stdlib_version
+    backport = ModuleType("unicodedata2")
+    backport.unidata_version = backport_version
+    namespace = {"__builtins__": {**vars(builtins), "__import__": controlled_import}}
+    exec(compile(source, str(_canon.__file__), "exec"), namespace)  # noqa: S102
+    return namespace, imported
+
+
+def test_exact_stdlib_tables_skip_backport() -> None:
+    namespace, imported = _load_canon_with_tables("16.0.0", None)
+    assert namespace["unicodedata"].__name__ == "unicodedata"
+    assert imported == []
+
+
+@pytest.mark.parametrize("stdlib_version", ["15.0.0", "16.0.1", "17.0.0"])
+def test_other_stdlib_tables_use_exact_backport(stdlib_version: str) -> None:
+    namespace, imported = _load_canon_with_tables(stdlib_version, "16.0.0")
+    assert namespace["unicodedata"].__name__ == "unicodedata2"
+    assert imported == ["unicodedata2"]
+
+
+def test_missing_backport_fails_closed() -> None:
+    with pytest.raises(ImportError, match="unicodedata2==16.0.0"):
+        _load_canon_with_tables("17.0.0", None)
+
+
+@pytest.mark.parametrize("backport_version", ["15.0.0", "16.0.1", "17.0.0"])
+def test_mismatched_backport_fails_closed(backport_version: str) -> None:
+    with pytest.raises(RuntimeError, match=f"got {backport_version}"):
+        _load_canon_with_tables("15.0.0", backport_version)
+
+
+@pytest.mark.parametrize(
+    ("python_version", "implementation", "requires_backport"),
+    [
+        ("3.11", "CPython", True),
+        ("3.12", "CPython", True),
+        ("3.13", "CPython", True),
+        ("3.14", "CPython", False),
+        ("3.15", "CPython", True),
+        ("3.14", "PyPy", True),
+    ],
+)
+def test_backport_requirement_marker(
+    python_version: str, implementation: str, requires_backport: bool
+) -> None:
+    metadata = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+    requirement = next(
+        Requirement(item)
+        for item in metadata["project"]["dependencies"]
+        if Requirement(item).name == "unicodedata2"
+    )
+    assert str(requirement.specifier) == "==16.0.0"
+    marker = requirement.marker
+    assert marker is not None
+    assert (
+        marker.evaluate(
+            {
+                "python_version": python_version,
+                "platform_python_implementation": implementation,
+            }
+        )
+        is requires_backport
+    )

@@ -1,6 +1,6 @@
 [project]
 name            = "treesitter-chunker"
-version = "5.1.0"
+version = "5.1.1"
 description     = "Semantic code chunker using Tree-sitter for intelligent code analysis"
 readme          = "README.md"
 requires-python = ">=3.11"
@@ -21,6 +21,7 @@ classifiers     = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Operating System :: OS Independent",
     "Operating System :: POSIX :: Linux",
     "Operating System :: MacOS :: MacOS X",
@@ -40,8 +41,8 @@ dependencies = [
     "tree-sitter-language-pack>=1.20,<1.21",  # Pre-compiled grammars; ABI-paired with tree_sitter above
     "rich>=13.0.0",
     "typer>=0.9.0",
-    "pyarrow>=21.0.0",
-    "pyyaml>=6.0",
+    "pyarrow>=22.0.0",
+    "pyyaml>=6.0.3",
     "pygments>=2.15.0",
     "chardet>=5.0.0",
     "python-dateutil>=2.9.0",
@@ -53,10 +54,9 @@ dependencies = [
     "networkx>=3.0",
     "leidenalg>=0.10.0",
     "igraph>=0.11.0",  # Required by leidenalg
-    # Pinned Unicode 16.0 DB for the vendored canon v1 serializer (chunker/boundary/_canon.py).
-    # canon's NFC must match the spec reference byte-for-byte; stdlib unicodedata is bound to the
-    # host CPython build, so canon pins this backport. See canon/SPEC.md S5.
-    "unicodedata2==16.0.0",
+    # canon v1 requires exact Unicode 16.0.0 tables. CPython 3.14's stdlib passes
+    # the runtime version gate; other interpreters retain the pinned backport.
+    "unicodedata2==16.0.0; python_version != '3.14' or platform_python_implementation != 'CPython'",
 ]
 
 [project.optional-dependencies]
