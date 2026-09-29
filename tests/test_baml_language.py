@@ -63,7 +63,7 @@ def test_declarations_and_routes():
     assert [c.qualified_route for c in regular] == [c.qualified_route for c in streamed]
     assert [c.node_id for c in regular] == [c.node_id for c in streamed]
     canonical = chunk_text(
-        source.decode("utf-8"),
+        source.replace(b"\r\n", b"\n").decode("utf-8"),
         "baml",
         "fixtures/declarations.baml",
         extract_metadata=False,
