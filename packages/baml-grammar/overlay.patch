@@ -1,0 +1,7 @@
+diff --git a/grammar.js b/grammar.js
+index 2e3af6d..96f08f5 100644
+--- a/grammar.js
++++ b/grammar.js
+@@ -384 +384 @@ module.exports = grammar({
+-        field('value', $.raw_string),
++        field('value', choice($.raw_string, $.backtick_string)),

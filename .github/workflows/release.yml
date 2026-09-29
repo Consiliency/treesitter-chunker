@@ -210,7 +210,7 @@ jobs:
     - name: Generate changelog
       id: changelog
       run: |
-        PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        PREV_TAG=$(git describe --tags --match 'v[0-9]*' --abbrev=0 HEAD^ 2>/dev/null || echo "")
         if [ -z "$PREV_TAG" ]; then
           CHANGELOG=$(git log --pretty=format:"- %s" | head -20)
         else
