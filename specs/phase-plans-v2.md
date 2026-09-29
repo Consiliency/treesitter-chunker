@@ -8,7 +8,7 @@
 
 ## Context
 
-This roadmap turns the findings in `CODE_REVIEW_v3.2.2.md` (a six-subsystem review reconciled against a GPT-5.6 / Grok 4.5 / Claude advisor board) into an executable, parallelism-maximizing remediation plan for `treesitter-chunker`. The review's thesis: a genuinely well-engineered boundary-IR / canon determinism core is wrapped in an unsound concurrency model, a content-hash chunk identity that breaks incremental/graph/export, a demo-grade unauthenticated FastAPI surface, an unvalidated grammar-install chain, hollow quality gates, and ~45–55k LOC of dead phase-scaffolding shipped in the wheel.
+This roadmap turns the findings in `archive/CODE_REVIEW_v3.2.2.md` (a six-subsystem review reconciled against a GPT-5.6 / Grok 4.5 / Claude advisor board) into an executable, parallelism-maximizing remediation plan for `treesitter-chunker`. The review's thesis: a genuinely well-engineered boundary-IR / canon determinism core is wrapped in an unsound concurrency model, a content-hash chunk identity that breaks incremental/graph/export, a demo-grade unauthenticated FastAPI surface, an unvalidated grammar-install chain, hollow quality gates, and ~45–55k LOC of dead phase-scaffolding shipped in the wheel.
 
 The remediation strategy is ordered by leverage: close the externally-reachable safety holes (SUPPLY + APISAFE) immediately as roots, make the gates honest and shrink the surface (HYGIENE → GATES) so all later work is verifiable, correct the boundary-IR serializer determinism gaps (BOUNDARYFIX), freeze the two core contracts (chunk identity and parser acquisition) that unblock the correctness work, fix the core and repo-scale defects against those frozen contracts, consolidate the interface layer, then gate a clean release. The raw material for most fixes already exists in the repo — `definition_id`/`qualified_route` (the correct identity key), the unused `grammar_manager.py` URL validator, and the boundary-IR determinism gate — so lanes reuse rather than rewrite. This is a distinct initiative from `specs/phase-plans-v1.md` (which built the boundary-IR feature) and does not modify v1 phases.
 
@@ -580,7 +580,7 @@ Prove the whole remediation landed and produce a release. Explicitly a RELEASE-P
 - `pyproject.toml`
 - `CHANGELOG.md`
 - `chunker/_version.py`
-- `CODE_REVIEW_v3.2.2.md`
+- `archive/CODE_REVIEW_v3.2.2.md`
 
 **Depends on**
 - SCALE
@@ -613,7 +613,7 @@ Prove the whole remediation landed and produce a release. Explicitly a RELEASE-P
 
 ## Acceptance Criteria
 
-- [ ] Every CRITICAL and MAJOR finding in `CODE_REVIEW_v3.2.2.md` is resolved or explicitly deferred with rationale in the RELEASE traceability matrix — including the three Boundary-IR MAJORs (BOUNDARYFIX) and the deferred config-system MAJOR.
+- [ ] Every CRITICAL and MAJOR finding in `archive/CODE_REVIEW_v3.2.2.md` is resolved or explicitly deferred with rationale in the RELEASE traceability matrix — including the three Boundary-IR MAJORs (BOUNDARYFIX) and the deferred config-system MAJOR.
 - [ ] Honest gates enforced: `ruff` with F-rules, blocking `mypy --strict`, full/tiered CI including canon vectors and `spec_tests/`; no CRITICAL/MAJOR-linked xfail survives to RELEASE.
 - [ ] No shared tree-sitter `Parser` across threads via ANY path including public `get_parser()`; concurrency stress test clean.
 - [ ] Chunk identity contract frozen and collision-free; no dropped chunks on the sibling fixture.

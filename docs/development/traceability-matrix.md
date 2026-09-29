@@ -1,6 +1,6 @@
 # Remediation Traceability Matrix (v3.2.2 review → phases → tests)
 
-Maps every CRITICAL and MAJOR finding from `CODE_REVIEW_v3.2.2.md` to the phase
+Maps every CRITICAL and MAJOR finding from `archive/CODE_REVIEW_v3.2.2.md` to the phase
 that fixed it and the test(s) that prove it. RELEASE gate rule: no CRITICAL- or
 MAJOR-linked finding may remain unmapped or covered only by a quarantined
 xfail/skip.
