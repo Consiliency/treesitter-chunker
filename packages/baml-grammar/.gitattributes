@@ -1,0 +1,8 @@
+tests/fixtures/prompt-crlf.baml -text whitespace=cr-at-eol
+src/grammar.js -text
+src/parser.c -text
+src/node-types.json -text
+src/tree_sitter/parser.h -text
+tree-sitter.json -text
+LICENSE -text
+overlay.patch -text

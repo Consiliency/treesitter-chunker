@@ -1,0 +1,4 @@
+include LICENSE README.md pin.json overlay.patch package.json package-lock.json tree-sitter.json
+recursive-include src *.c *.h *.js *.json
+recursive-include scripts *.py
+recursive-include tests *.py *.baml
