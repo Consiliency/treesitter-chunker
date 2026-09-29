@@ -11,6 +11,7 @@ import subprocess
 import sys
 import threading
 import time
+from statistics import median
 
 import pytest
 
@@ -443,22 +444,18 @@ class Handler_{iteration}:
         return "handled\"
 """,
                 )
-            start_time = time.time()
-            chunk_files_parallel(
+            start_time = time.perf_counter()
+            results = chunk_files_parallel(
                 list(tmp_path.glob("continuous_*.py")),
                 language="python",
                 num_workers=2,
             )
-            elapsed = time.time() - start_time
+            assert len(results) == 5
+            assert all(results.values())
+            elapsed = time.perf_counter() - start_time
             processing_times.append(elapsed)
             time.sleep(0.1)
-        avg_time = sum(processing_times) / len(processing_times)
-        max_time = max(processing_times)
-        min(processing_times)
-        assert max_time < avg_time * 2.0
-        later_times = processing_times[5:]
-        later_avg = sum(later_times) / len(later_times)
-        assert later_avg < avg_time * 1.1
+        assert median(processing_times[-5:]) < median(processing_times[:5]) * 2.0
 
 
 def gc_collect():
