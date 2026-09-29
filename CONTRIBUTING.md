@@ -345,8 +345,8 @@ both `tests/` and `spec_tests/`.
 
 ### **Getting Help**
 
-- **Issues**: [GitHub Issues](https://github.com/ViperJuice/treesitter-chunker/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/ViperJuice/treesitter-chunker/discussions)
+- **Issues**: [GitHub Issues](https://github.com/Consiliency/treesitter-chunker/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/Consiliency/treesitter-chunker/discussions)
 - **Documentation**: [Full Documentation](https://treesitter-chunker.readthedocs.io/)
 
 ## 🙏 Recognition

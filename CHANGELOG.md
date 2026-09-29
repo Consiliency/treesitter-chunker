@@ -153,7 +153,7 @@ the Ruby correctness repair below intentionally removes one false node.
 ## [4.0.0] — v3.2.2 remediation
 
 A comprehensive correctness/security/determinism remediation driven by the
-`CODE_REVIEW_v3.2.2.md` cross-vendor board review. All CRITICAL (C1–C7) and
+`archive/CODE_REVIEW_v3.2.2.md` cross-vendor board review. All CRITICAL (C1–C7) and
 MAJOR findings are fixed; see `docs/development/traceability-matrix.md` for the
 finding→phase→test mapping.
 

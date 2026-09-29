@@ -10,7 +10,7 @@ A security/supply-chain scout (Claude Sonnet) covered `api/`, `grammar*/`, `buil
 findings are marked *(scout)* and were spot-checked where noted. Every finding below carries a `file:line` and, where
 possible, a reproduction. Items that could not be verified in this environment are marked **UNVERIFIED**.
 
-This review deliberately does not re-litigate `CODE_REVIEW_v3.2.2.md`; Section 3 scores that remediation, and
+This review deliberately does not re-litigate `archive/CODE_REVIEW_v3.2.2.md`; Section 3 scores that remediation, and
 everything after it is new.
 
 **Merge review, 2026-09-09.** Revalidated against `main` at
@@ -602,7 +602,7 @@ Fix the drift listed in M14, then make the docs *generated where possible*: the 
 done for that one). Reconcile the two docs systems: mkdocs is configured, while
 `.github/workflows/docs.yml` actively builds `docs/sphinx/` and deploys it to GitHub Pages;
 the Sphinx tree is not abandoned. Add a `.readthedocs.yaml` only if that separate hosted
-site is intended. Retire `CODE_REVIEW_v3.2.2.md` and this file into
+site is intended. Retire `archive/CODE_REVIEW_v3.2.2.md` and this file into
 `docs/development/reviews/` once their action items are tracked as issues.
 
 ---
