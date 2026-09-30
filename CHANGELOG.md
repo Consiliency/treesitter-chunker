@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.1.1] — Python 3.14 wheel-only installation
+
+- CPython 3.14 uses its Unicode 16.0.0 standard-library tables for canon v1,
+  removing the backport wheel gap from its runtime dependency closure. Other
+  interpreters retain the pinned Unicode 16.0.0 backport. Canonical bytes,
+  digests, and Boundary IR remain unchanged.
+- PyArrow 22.0.0 and PyYAML 6.0.3 are the minimum releases with CPython 3.14
+  wheels in the runtime dependency closure.
+- Release validation installs the complete locked runtime closure from wheels
+  with hashes on CPython 3.12 and 3.14, then checks the installed chunk CLI.
+
 ## [5.1.0] — Optional BAML structural chunking
 
 - Add optional BAML structural chunking through the pinned 0.1.0 companion

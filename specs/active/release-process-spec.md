@@ -16,6 +16,11 @@
 - The release workflow must fail before publish if that version already exists on PyPI
 - Build and publication depend on full source validation across Python 3.11–3.13
 - The built wheel must pass a fresh installation with hashed locked runtime requirements
+- CPython 3.12 and 3.14 release acceptance downloads only wheels for the complete
+  locked runtime closure, installs those wheels with hashes, and checks the installed
+  chunk CLI. CPython 3.14 must use exactly Unicode 16.0.0 stdlib tables without
+  unicodedata2; other interpreters retain the pinned backport. Canon v1 bytes,
+  digests, and Boundary IR remain unchanged.
 - Missing artifacts or checksum verification failures stop publication
 - v5 distribution is PyPI-only (owner decision, 2026-09-11); Debian/RPM/Homebrew
   distribution is suspended. `packages.yml` has no automatic trigger or publication

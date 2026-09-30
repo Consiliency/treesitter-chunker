@@ -1,15 +1,14 @@
-"""Vendored copy of canon v1 — the spec canonical serialization contract (S1).
+"""Downstream adaptation of canon v1 — the spec canonical serialization contract (S1).
 
-VENDORED, DO NOT EDIT BY HAND. Source of truth:
+Original upstream source of truth:
     spec repo: canon/py/canon.py  (contract: canon/SPEC.md)
-    source sha256: 53b9447a7f21dc05fabb3fb2505aadad2d494fc79f2ae60970ecfc8c6852bce0
+    original source sha256: 53b9447a7f21dc05fabb3fb2505aadad2d494fc79f2ae60970ecfc8c6852bce0
 
-canon is not yet pip-installable, so it is vendored here verbatim to guarantee
-byte-for-byte fidelity with the spec reference impl. Fidelity is proven against
-the canon conformance vectors in tests/test_canon_vectors.py. To update, re-copy
-canon/py/canon.py from spec, refresh the sha256 above, and re-run that test.
+canon is not yet pip-installable. This copy changes only backend loading to use
+stdlib tables when they are exactly Unicode 16.0.0; serialization remains canon
+v1 and is checked against the conformance vectors in tests/test_canon_vectors.py.
 
-Requires: unicodedata2==16.0.0 (pinned Unicode 16.0 DB; see canon/SPEC.md S5).
+Requires Unicode 16.0.0 tables from stdlib or unicodedata2 (canon/SPEC.md S5).
 """
 
 from __future__ import annotations
@@ -20,22 +19,35 @@ from typing import Any, Iterable, Tuple
 # --------------------------------------------------------------------------- #
 # Unicode database pin (SPEC.md section 5) — load-bearing for cross-language byte-identity.
 #
-# NFC is defined against a Unicode version. Stdlib ``unicodedata`` is bound to whatever Unicode DB
-# the host CPython was built with (3.10 ships 13.0.0; newer builds differ), so it cannot guarantee
-# the SAME NFC as the TS port (Node ICU). We pin a maintained PyPI backport, ``unicodedata2``,
-# exactly to Node's Unicode version (16.0) and use it for ALL NFC. See canon/py/requirements.txt
-# for the exact pin; the assertion below is fail-closed so a wrong build can NEVER silently diverge.
+# NFC depends on the Unicode DB. Use stdlib only if its actual tables are exactly
+# 16.0.0; otherwise require the pinned backport. This preserves canon v1 NFC bytes.
 # --------------------------------------------------------------------------- #
 EXPECTED_UNICODE = "16.0"  # major.minor; matches Node's process.versions.unicode
+_EXPECTED_UNICODE_FULL = "16.0.0"
 
-try:
-    import unicodedata2 as unicodedata  # pinned Unicode 16.0 DB (see requirements.txt)
-except ImportError as exc:  # pragma: no cover - environment misconfiguration
-    raise ImportError(
-        "canon requires the pinned 'unicodedata2' backport for a deterministic Unicode DB "
-        "(install canon/py/requirements.txt: unicodedata2==16.0.0). Stdlib 'unicodedata' is bound "
-        "to the host CPython build and would NOT match the TypeScript port byte-for-byte."
-    ) from exc
+import unicodedata as _stdlib_unicodedata
+
+unicodedata: Any
+if _stdlib_unicodedata.unidata_version == _EXPECTED_UNICODE_FULL:
+    unicodedata = _stdlib_unicodedata
+else:
+    try:
+        import unicodedata2 as _backport_unicodedata
+    except ImportError as exc:  # pragma: no cover - environment misconfiguration
+        raise ImportError(
+            "canon requires Unicode 16.0.0 tables; stdlib unicodedata reports %s "
+            "and the pinned unicodedata2==16.0.0 backport is missing. Install "
+            "unicodedata2==16.0.0 for this interpreter."
+            % _stdlib_unicodedata.unidata_version
+        ) from exc
+    unicodedata = _backport_unicodedata
+
+if unicodedata.unidata_version != _EXPECTED_UNICODE_FULL:
+    raise RuntimeError(
+        "canon Unicode DB mismatch: expected 16.0.0, got %s from %s; "
+        "install unicodedata2==16.0.0 for this interpreter."
+        % (unicodedata.unidata_version, unicodedata.__name__)
+    )
 
 
 def _unicode_major_minor(version: str) -> str:
@@ -43,16 +55,7 @@ def _unicode_major_minor(version: str) -> str:
     return ".".join(version.split(".")[:2])
 
 
-# Fail-closed version assertion (SPEC.md section 5). A mismatch here means the NFC DB in use is NOT
-# the pinned one, which is a determinism hole for a parity engine — so we refuse to load rather than
-# emit silently-divergent bytes. unicodedata2 reports e.g. '16.0.0'; Node reports '16.0'.
 _ACTUAL_UNICODE = _unicode_major_minor(unicodedata.unidata_version)
-if _ACTUAL_UNICODE != EXPECTED_UNICODE:
-    raise RuntimeError(
-        "canon Unicode DB mismatch: expected %s, got %s (from unicodedata2 %s). NFC determinism "
-        "across the Python and TypeScript ports is not guaranteed; refusing to load."
-        % (EXPECTED_UNICODE, _ACTUAL_UNICODE, unicodedata.unidata_version)
-    )
 
 # SPEC.md section 8 — the four digest profiles. ``locator`` is intentionally NOT a profile.
 PROFILES = ("semantic-content", "run", "artifact-byte", "certificate")
