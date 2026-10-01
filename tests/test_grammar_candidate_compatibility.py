@@ -72,6 +72,10 @@ def test_selector_prefers_compatible_candidate_and_keeps_canonical_history(
     assert canonical.score == 0.0
     assert database.get_compatibility_result("baml", "unknown") is not None
 
+    def reject_canonical_parser(_language: str):
+        raise AssertionError("Candidate parsing must use its selected artifact")
+
+    monkeypatch.setattr("chunker.parser.get_parser", reject_canonical_parser)
     candidate = checker.check_compatibility(
         "baml", code_samples=[source], grammar_path=package_library
     )
@@ -90,3 +94,7 @@ def test_selector_prefers_compatible_candidate_and_keeps_canonical_history(
     assert selected is not None
     assert selected.grammar_path == package_library
     assert selected.compatibility_score > 0.0
+    assert (
+        database.get_compatibility_result("baml", "unknown").level
+        == CompatibilityLevel.INCOMPATIBLE
+    )
