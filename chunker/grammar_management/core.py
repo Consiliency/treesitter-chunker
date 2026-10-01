@@ -222,12 +222,14 @@ class GrammarValidator:
         self,
         language: str,
         samples: list[str],
+        grammar_path: Path | None = None,
     ) -> tuple[bool, list[str]]:
         """Test parsing with multiple code samples.
 
         Args:
             language: Language name
             samples: List of code samples to test
+            grammar_path: Local grammar to parse with, when checking a candidate
 
         Returns:
             Tuple of (all_successful, error_messages)
@@ -238,7 +240,11 @@ class GrammarValidator:
             # Lazy import to avoid circular dependencies
             from chunker.parser import get_parser
 
-            parser = get_parser(language)
+            parser = (
+                load_compiled_grammar(grammar_path, language)
+                if grammar_path is not None
+                else get_parser(language)
+            )
 
             for i, sample in enumerate(samples):
                 try:
@@ -302,7 +308,9 @@ class GrammarValidator:
         samples = self._get_test_samples(language)
         if samples:
             start_time = time.time()
-            parse_success, parse_errors = self.test_parse_samples(language, samples)
+            parse_success, parse_errors = self.test_parse_samples(
+                language, samples, grammar_path
+            )
             parse_time = time.time() - start_time
 
             result.performance_metrics["parse_time"] = parse_time

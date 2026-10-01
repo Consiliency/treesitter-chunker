@@ -169,6 +169,7 @@ class CompatibilityChecker:
         grammar_version: str | None = None,
         language_version: str | None = None,
         code_samples: list[str] | None = None,
+        grammar_path: Path | None = None,
     ) -> CompatibilityResult:
         """Check grammar compatibility comprehensively.
 
@@ -177,6 +178,7 @@ class CompatibilityChecker:
             grammar_version: Grammar version to check
             language_version: Language version to check against
             code_samples: Sample code for testing
+            grammar_path: Specific local candidate to check without reusing canonical history
 
         Returns:
             Comprehensive compatibility result
@@ -198,7 +200,7 @@ class CompatibilityChecker:
             grammar_version = grammar_version or grammar_info.get("version", "unknown")
 
             # Check cache first
-            if self.database:
+            if self.database and grammar_path is None:
                 cached_result = self.database.get_compatibility_result(
                     language,
                     grammar_version,
@@ -216,9 +218,14 @@ class CompatibilityChecker:
             )
 
             # Basic validation check
-            validation_result = self.grammar_manager.validate_grammar(
-                language,
-                ValidationLevel.STANDARD,
+            validation_result = (
+                self.grammar_manager._validator.validate_grammar(
+                    grammar_path, language, ValidationLevel.STANDARD
+                )
+                if grammar_path is not None
+                else self.grammar_manager.validate_grammar(
+                    language, ValidationLevel.STANDARD
+                )
             )
 
             if not validation_result.is_valid:
@@ -227,15 +234,25 @@ class CompatibilityChecker:
                 result.warnings.extend(validation_result.warnings)
                 result.score = 0.0
             else:
+                if grammar_path is not None:
+                    grammar_info = {
+                        **grammar_info,
+                        "path": str(grammar_path),
+                        "validation": {
+                            "errors": validation_result.errors,
+                            "warnings": validation_result.warnings,
+                        },
+                    }
                 # Perform detailed compatibility analysis
                 result = self._perform_detailed_compatibility_check(
                     result,
                     grammar_info,
                     code_samples or [],
+                    grammar_path,
                 )
 
             # Store result in database
-            if self.database:
+            if self.database and grammar_path is None:
                 self.database.store_compatibility_result(result)
 
             return result
@@ -471,6 +488,7 @@ class CompatibilityChecker:
         result: CompatibilityResult,
         grammar_info: dict[str, Any],
         code_samples: list[str],
+        grammar_path: Path | None = None,
     ) -> CompatibilityResult:
         """Perform detailed compatibility analysis."""
         try:
@@ -509,7 +527,9 @@ class CompatibilityChecker:
 
             # Test with code samples if provided
             if code_samples:
-                test_results = self._test_code_samples(result.language, code_samples)
+                test_results = self._test_code_samples(
+                    result.language, code_samples, grammar_path
+                )
                 result.test_results = test_results
 
                 # Adjust compatibility based on test results
@@ -542,7 +562,9 @@ class CompatibilityChecker:
         except Exception:
             return ["latest"]
 
-    def _test_code_samples(self, language: str, samples: list[str]) -> dict[str, Any]:
+    def _test_code_samples(
+        self, language: str, samples: list[str], grammar_path: Path | None = None
+    ) -> dict[str, Any]:
         """Test grammar with code samples."""
         try:
             success_count = 0
@@ -555,6 +577,7 @@ class CompatibilityChecker:
                     success, errors = self.validator.test_parse_samples(
                         language,
                         [sample],
+                        grammar_path,
                     )
 
                     sample_result = {
@@ -1584,6 +1607,7 @@ class SmartSelector:
             compat_result = self.compatibility_checker.check_compatibility(
                 candidate.language,
                 candidate.version,
+                grammar_path=candidate.grammar_path,
             )
 
             return self.compatibility_checker._calculate_compatibility_score(
@@ -1702,8 +1726,11 @@ class SmartSelector:
             if len(version_candidates) == 1:
                 resolved.extend(version_candidates)
             else:
-                # Resolve by keeping highest priority
-                best_candidate = min(version_candidates, key=lambda c: c.priority.value)
+                # Compare tested candidates before using source priority as a tie-breaker.
+                best_candidate = max(
+                    version_candidates,
+                    key=lambda c: (c.overall_score, -c.priority.value),
+                )
                 resolved.append(best_candidate)
 
         return resolved
