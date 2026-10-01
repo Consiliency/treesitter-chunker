@@ -25,6 +25,7 @@ Phase 1.8 Compliance:
 
 from __future__ import annotations
 
+import ctypes
 import hashlib
 import json
 import logging
@@ -35,6 +36,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any
+
+from tree_sitter import Language, Parser
 
 from chunker.exceptions import ChunkerError
 from chunker.grammar.source_validation import validate_grammar_source
@@ -111,6 +114,21 @@ class GrammarRegistryError(GrammarManagementError):
     """Exception for grammar registry operations."""
 
 
+def load_compiled_grammar(grammar_path: Path, language: str) -> Parser:
+    """Load a local grammar's own symbol with the pinned Tree-sitter API."""
+    library = ctypes.CDLL(str(grammar_path))
+    symbol = getattr(library, f"tree_sitter_{language.replace('-', '_')}")
+    symbol.restype = ctypes.c_void_p
+    pointer = symbol()
+    if not pointer:
+        raise ValueError(f"Grammar symbol returned null: {grammar_path}")
+    capsule_new = ctypes.PYFUNCTYPE(
+        ctypes.py_object, ctypes.c_void_p, ctypes.c_char_p, ctypes.c_void_p
+    )(("PyCapsule_New", ctypes.pythonapi))
+    grammar = Language(capsule_new(pointer, b"tree_sitter.Language", None))
+    return Parser(grammar)
+
+
 class GrammarValidator:
     """Validates grammar integrity, compatibility, and performance."""
 
@@ -170,11 +188,14 @@ class GrammarValidator:
             result.errors.append(f"Validation error: {e!s}")
             return result
 
-    def check_abi_compatibility(self, grammar_path: Path) -> tuple[bool, str | None]:
+    def check_abi_compatibility(
+        self, grammar_path: Path, language: str | None = None
+    ) -> tuple[bool, str | None]:
         """Check if grammar ABI is compatible with current tree-sitter version.
 
         Args:
             grammar_path: Path to compiled grammar
+            language: Expected grammar symbol, inferred from the filename if absent
 
         Returns:
             Tuple of (is_compatible, error_message)
@@ -183,12 +204,13 @@ class GrammarValidator:
             if not grammar_path.exists():
                 return False, f"Grammar file not found: {grammar_path}"
 
-            # Try to load the grammar to check ABI compatibility
+            # Load this artifact rather than a language with the same name elsewhere.
             try:
-                import tree_sitter
-
-                tree_sitter.Language(str(grammar_path))
-                # If we can create a language object, it's compatible
+                if language is None:
+                    language = grammar_path.stem.removeprefix("lib").removeprefix(
+                        "tree_sitter_"
+                    )
+                load_compiled_grammar(grammar_path, language)
                 return True, None
             except Exception as e:
                 return False, f"ABI compatibility check failed: {e!s}"
@@ -260,7 +282,7 @@ class GrammarValidator:
         result.metadata["file_size"] = file_size
 
         # Basic ABI compatibility check
-        is_compatible, error = self.check_abi_compatibility(grammar_path)
+        is_compatible, error = self.check_abi_compatibility(grammar_path, language)
         if not is_compatible:
             result.is_valid = False
             result.errors.append(f"ABI compatibility issue: {error}")
