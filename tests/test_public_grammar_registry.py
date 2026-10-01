@@ -14,13 +14,13 @@ FIXTURE = Path(__file__).parent / "fixtures/boundary_ir/repos/python/app/service
 def test_registry_selects_user_package_then_fallback(
     tmp_path: Path, monkeypatch
 ) -> None:
-    monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setenv("USERPROFILE", str(tmp_path))
-
     source = FIXTURE.read_text(encoding="utf-8")
     tree = get_parser("python").parse(source.encode("utf-8"))
     assert tree.root_node.type == "module"
     assert not tree.root_node.has_error
+
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
 
     native_spec = importlib.util.find_spec("tree_sitter_language_pack._native")
     assert native_spec is not None and native_spec.origin is not None
