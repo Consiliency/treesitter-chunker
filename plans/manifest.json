@@ -26,6 +26,31 @@
       "updated_at": "2026-09-28T07:36:12Z"
     },
     {
+      "acceptance_criteria_count": 5,
+      "created_at": "2026-10-01T20:12:26Z",
+      "file": "plans/detailed-coverage-contract-slices-20261001.md",
+      "handoff_ref": ".dev-skills/handoffs/codex-plan-detailed/20261001T201226Z-coverage69-contract-slices.md",
+      "if_gates_produced": [],
+      "lanes": [],
+      "lifecycle": [
+        {
+          "at": "2026-10-01T20:12:26Z",
+          "by": "codex-plan-detailed",
+          "metadata": {},
+          "transition": "committed"
+        }
+      ],
+      "owner_skill": "codex-plan-detailed",
+      "phase_alias": null,
+      "reflection_ref": null,
+      "roadmap_ref": null,
+      "slug": "coverage-contract-slices-69",
+      "status": "committed",
+      "task_summary": "Plan observable test and mutation slices for treesitter-chunker#69",
+      "type": "detailed",
+      "updated_at": "2026-10-01T20:12:26Z"
+    },
+    {
       "acceptance_criteria_count": 6,
       "created_at": "2026-09-29T07:09:46Z",
       "file": "plans/detailed-python314-unicode-wheels-20260929.md",
