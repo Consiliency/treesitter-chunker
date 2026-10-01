@@ -130,9 +130,9 @@ the same mutation protocol, followed by local lint, format, smoke, and relevant
 platform checks before review. A full-suite coverage rerun is informational
 after each merge; it is not an acceptance threshold for the slice.
 
-- [ ] Slice 1 real Python fixture parsing and unavailable-language reporting pass.
-- [ ] The named slice 1 mutation is killed by the focused test and restored.
-- [ ] The first PR changes only the plan, metadata/handoff, slice 1 tests, and
+- [x] Slice 1 real Python fixture parsing and unavailable-language reporting pass.
+- [x] The named slice 1 mutation is killed by the focused test and restored.
+- [x] The first PR changes only the plan, metadata/handoff, slice 1 tests, and
       existing CI test selections.
-- [ ] Any product defect observed while testing is filed separately and linked.
+- [x] Any product defect observed while testing is filed separately and linked.
 - [ ] Each later slice is reviewed and lands in its own PR after current-main remeasurement.

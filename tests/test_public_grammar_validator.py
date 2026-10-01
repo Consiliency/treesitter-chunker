@@ -21,6 +21,7 @@ def test_parse_samples_accepts_python_fixtures(tmp_path: Path) -> None:
         assert not tree.root_node.has_error
 
     validator = GrammarValidator(cache_dir=tmp_path / "grammar-cache")
+    assert (tmp_path / "grammar-cache").is_dir()
     success, errors = validator.test_parse_samples("python", sources)
 
     assert success
