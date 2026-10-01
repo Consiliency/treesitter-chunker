@@ -1,10 +1,11 @@
 """Contract tests for the exported Click grammar commands."""
 
-import importlib.util
 import shutil
 from pathlib import Path
 
+import pytest
 from click.testing import CliRunner
+from tree_sitter_language_pack import cache_dir as pack_cache_dir
 
 from chunker import get_parser
 from chunker.grammar_management import grammar_cli
@@ -20,11 +21,12 @@ def test_click_lists_local_grammar_and_reports_missing_language(
     assert tree.root_node.type == "module"
     assert not tree.root_node.has_error
 
+    native_library = Path(pack_cache_dir()) / "libtree_sitter_python.so"
+    if not native_library.exists():
+        pytest.skip("Pinned pack does not expose a Linux grammar library")
+
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("USERPROFILE", str(tmp_path))
-
-    native_spec = importlib.util.find_spec("tree_sitter_language_pack._native")
-    assert native_spec is not None and native_spec.origin is not None
 
     cache_dir = tmp_path / "grammar-cache"
     user_dir = cache_dir / "grammars" / "user"
@@ -32,8 +34,8 @@ def test_click_lists_local_grammar_and_reports_missing_language(
     user_dir.mkdir(parents=True)
     package_dir.mkdir(parents=True)
     user_library = user_dir / "libpython.so"
-    shutil.copyfile(native_spec.origin, user_library)
-    shutil.copyfile(native_spec.origin, package_dir / "libpython.so")
+    shutil.copyfile(native_library, user_library)
+    shutil.copyfile(native_library, package_dir / "libpython.so")
 
     runner = CliRunner()
     command = ["--cache-dir", str(cache_dir)]
@@ -46,7 +48,25 @@ def test_click_lists_local_grammar_and_reports_missing_language(
     info = runner.invoke(grammar_cli, [*command, "info", "python"])
     assert info.exit_code == 0
     assert f"Path: {user_library}" in info.output
+    assert "Status: ✅ Healthy" in info.output
+
+    parsed = runner.invoke(grammar_cli, [*command, "test", "python", str(FIXTURE)])
+    assert parsed.exit_code == 0
+    assert "Grammar test successful" in parsed.output
+
+    malformed = tmp_path / "malformed.py"
+    malformed.write_text("def broken(:\n", encoding="utf-8")
+    rejected = runner.invoke(grammar_cli, [*command, "test", "python", str(malformed)])
+    assert rejected.exit_code == 1
+    assert "Grammar test failed" in rejected.output
 
     missing = runner.invoke(grammar_cli, [*command, "test", "missing", str(FIXTURE)])
     assert missing.exit_code == 1
     assert "Grammar for 'missing' not found" in missing.output
+
+    shutil.copyfile(native_library, user_dir / "libjavascript.so")
+    wrong_grammar = runner.invoke(
+        grammar_cli, [*command, "test", "javascript", str(FIXTURE)]
+    )
+    assert wrong_grammar.exit_code == 1
+    assert "tree_sitter_javascript" in wrong_grammar.output

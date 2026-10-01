@@ -46,6 +46,7 @@ try:
         GrammarManager,
         GrammarPriority,
         ValidationLevel,
+        load_compiled_grammar,
     )
 
     GRAMMAR_COMPONENTS_AVAILABLE = True
@@ -322,9 +323,10 @@ class ComprehensiveGrammarCLI:
         """
         for search_path, description, priority in self._get_grammar_priority_order():
             # Check for compiled grammar
-            so_file = search_path / f"tree_sitter_{language}.so"
-            if so_file.exists():
-                return (so_file, description, priority)
+            for filename in (f"lib{language}.so", f"tree_sitter_{language}.so"):
+                so_file = search_path / filename
+                if so_file.exists():
+                    return (so_file, description, priority)
 
             # Check for source directory
             source_dir = search_path / language
@@ -1916,12 +1918,7 @@ if __name__ == "__main__":
         try:
             # Try to use tree-sitter Python bindings if available
             try:
-                import tree_sitter
-
-                # Load the language
-                language_lib = tree_sitter.Language(str(grammar_path), language)  # type: ignore[call-overload]
-                parser = tree_sitter.Parser()
-                parser.set_language(language_lib)  # type: ignore[attr-defined]
+                parser = load_compiled_grammar(grammar_path, language)
 
                 # Read test file
                 with open(test_file, "rb") as f:
@@ -1942,14 +1939,14 @@ if __name__ == "__main__":
                 node_count = count_nodes(tree.root_node)
 
                 result = {
-                    "success": True,
+                    "success": not tree.root_node.has_error,
                     "nodes": node_count,
                     "parse_time": parse_time,
                     "errors": [],
                 }
 
                 if show_ast:
-                    result["ast"] = tree.root_node.sexp()  # type: ignore[attr-defined]
+                    result["ast"] = str(tree.root_node)
 
                 # Check for parse errors
                 def find_errors(node: Any) -> builtins.list[str]:
