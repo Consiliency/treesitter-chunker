@@ -107,6 +107,8 @@ The plan and each slice's PR description record contracts, mutation evidence,
 and any issue filed for a defect. Update user docs only when a verified public
 contract is clarified. Do not silently correct documentation or implementation
 while adding coverage. Keep README Codecov reporting as currently configured.
+Slice 1 exposed a separate syntax-error acceptance defect, filed as
+treesitter-chunker#116. The slice 1 PR does not change that production behavior.
 
 ## Dependencies and order
 
