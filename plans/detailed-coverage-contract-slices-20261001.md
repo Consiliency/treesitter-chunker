@@ -77,7 +77,7 @@ with the original source restored before committing.
 
 | Slice / separate PR | Target module(s) and observable contract | Real fixture and named mutation to kill |
 | --- | --- | --- |
-| **1 — public grammar validation** | `grammar_management/core.py` `GrammarValidator.test_parse_samples`: a real Python fixture parses successfully; an unavailable language reports setup failure; the validator's cache stays inside `tmp_path`. Add `tests/test_public_grammar_validator.py` only. | Parse `tests/fixtures/boundary_ir/repos/python/app/service.py` with the pinned parser. Mutation **invert sample-success condition** (`len(errors) == 0` to `!= 0`) must fail the valid-fixture test. |
+| **1 — public grammar validation** | `grammar_management/core.py` `GrammarValidator.test_parse_samples`: real Python fixtures parse successfully; an unavailable language reports setup failure; the validator's cache stays inside `tmp_path`. Add `tests/test_public_grammar_validator.py` and enroll it in the existing smoke/platform-core selections. | Parse `tests/fixtures/boundary_ir/repos/python/app/service.py` with the pinned parser. Mutation **invert sample-success condition** (`len(errors) == 0` to `!= 0`) must fail the valid-fixture test. |
 | 2 — grammar registry selection | `grammar_management/core.py` `GrammarRegistry`: user/package/fallback discovery chooses the documented priority and returns metadata for a local grammar; no network fetch. | Parse a fixture with the selected pinned grammar. Mutation **reverse USER/PACKAGE priority** must fail. Add a separate registry contract test. |
 | 3 — grammar CLI | `grammar_management/cli.py`: list/info/test expose the selected local grammar and a missing-language error through the public Click command, without downloads or global cache writes. | Feed the Python fixture to the command and inspect result. Mutation **report missing grammar as success** must fail. Add one CLI contract test file. |
 | 4 — grammar configuration | `grammar_management/config.py`: save/reload of a temporary grammar directory and cache settings preserves values and does not touch the home directory. | Store the directory holding a Python fixture and parse that fixture with the pinned parser. Mutation **ignore saved nested cache setting on reload** must fail. Add one config contract test file. |
@@ -132,6 +132,7 @@ after each merge; it is not an acceptance threshold for the slice.
 
 - [ ] Slice 1 real Python fixture parsing and unavailable-language reporting pass.
 - [ ] The named slice 1 mutation is killed by the focused test and restored.
-- [ ] The first PR changes only the plan, metadata/handoff, and slice 1 tests.
+- [ ] The first PR changes only the plan, metadata/handoff, slice 1 tests, and
+      existing CI test selections.
 - [ ] Any product defect observed while testing is filed separately and linked.
 - [ ] Each later slice is reviewed and lands in its own PR after current-main remeasurement.
