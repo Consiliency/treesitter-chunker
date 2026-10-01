@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pytest
 
-from chunker import get_parser
 from chunker.grammar_management.compatibility import (
     CompatibilityChecker,
     CompatibilityDatabase,
@@ -14,7 +13,7 @@ from chunker.grammar_management.compatibility import (
     SelectionCriterion,
     SmartSelector,
 )
-from chunker.grammar_management.core import GrammarManager
+from chunker.grammar_management.core import GrammarManager, load_compiled_grammar
 
 
 FIXTURE = (
@@ -30,10 +29,6 @@ def test_selector_prefers_compatible_candidate_and_keeps_canonical_history(
         pytest.skip("Local shared-library build is Linux-only")
 
     source = FIXTURE.read_text(encoding="utf-8")
-    tree = get_parser("baml").parse(source.encode("utf-8"))
-    assert tree.root_node.type == "source_file"
-    assert not tree.root_node.has_error
-
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("USERPROFILE", str(tmp_path))
 
@@ -60,6 +55,9 @@ def test_selector_prefers_compatible_candidate_and_keeps_canonical_history(
         check=True,
         capture_output=True,
     )
+    tree = load_compiled_grammar(package_library, "baml").parse(source.encode("utf-8"))
+    assert tree.root_node.type == "source_file"
+    assert not tree.root_node.has_error
 
     manager = GrammarManager(
         user_dir=user_dir,
