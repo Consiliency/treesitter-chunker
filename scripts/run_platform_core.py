@@ -13,6 +13,7 @@ COMMON_TESTS = [
     "tests/test_env_config.py",
     "tests/test_config_advanced_scenarios.py",
     "tests/test_cli.py",
+    "tests/test_public_grammar_validator.py",
     "tests/test_exceptions.py",
     "tests/test_fallback_chunking.py",
     "tests/test_registry_fallback.py",
