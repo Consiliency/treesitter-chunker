@@ -2,18 +2,21 @@
 
 import importlib.util
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
-from tree_sitter_language_pack import cache_dir as pack_cache_dir
-
 from chunker import get_parser
 from chunker.grammar_management import grammar_cli
 
 
 FIXTURE = Path(__file__).parent / "fixtures/boundary_ir/repos/python/app/service.py"
+BAML_FIXTURE = (
+    Path(__file__).parent.parent
+    / "packages/baml-grammar/tests/fixtures/declarations.baml"
+)
 
 
 def test_click_lists_local_grammar_and_reports_missing_language(
@@ -58,42 +61,51 @@ def test_click_lists_local_grammar_and_reports_missing_language(
 
 def test_click_parses_with_selected_local_grammar(tmp_path: Path, monkeypatch) -> None:
     if sys.platform != "linux":
-        pytest.skip("Pinned pack's local grammar artifact is Linux-only")
-
-    tree = get_parser("python").parse(FIXTURE.read_bytes())
-    assert tree.root_node.type == "module"
-    assert not tree.root_node.has_error
-    native_library = Path(pack_cache_dir()) / "libtree_sitter_python.so"
-    assert native_library.is_file()
+        pytest.skip("Local shared-library build is Linux-only")
 
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("USERPROFILE", str(tmp_path))
     cache_dir = tmp_path / "grammar-cache"
     user_dir = cache_dir / "grammars" / "user"
     user_dir.mkdir(parents=True)
-    user_library = user_dir / "libpython.so"
-    shutil.copyfile(native_library, user_library)
+    user_library = user_dir / "libbaml.so"
+    grammar_src = Path(__file__).parent.parent / "packages/baml-grammar/src"
+    subprocess.run(
+        [
+            "cc",
+            "-shared",
+            "-fPIC",
+            "-O2",
+            "-I",
+            str(grammar_src),
+            str(grammar_src / "parser.c"),
+            "-o",
+            str(user_library),
+        ],
+        check=True,
+        capture_output=True,
+    )
     runner = CliRunner()
     command = ["--cache-dir", str(cache_dir)]
 
-    info = runner.invoke(grammar_cli, [*command, "info", "python"])
+    info = runner.invoke(grammar_cli, [*command, "info", "baml"])
     assert info.exit_code == 0
     assert f"Path: {user_library}" in info.output
     assert "Status: ✅ Healthy" in info.output
 
-    parsed = runner.invoke(grammar_cli, [*command, "test", "python", str(FIXTURE)])
+    parsed = runner.invoke(grammar_cli, [*command, "test", "baml", str(BAML_FIXTURE)])
     assert parsed.exit_code == 0
     assert "Grammar test successful" in parsed.output
 
-    malformed = tmp_path / "malformed.py"
-    malformed.write_text("def broken(:\n", encoding="utf-8")
-    rejected = runner.invoke(grammar_cli, [*command, "test", "python", str(malformed)])
+    malformed = tmp_path / "malformed.baml"
+    malformed.write_text("class Broken {\n", encoding="utf-8")
+    rejected = runner.invoke(grammar_cli, [*command, "test", "baml", str(malformed)])
     assert rejected.exit_code == 1
     assert "Grammar test failed" in rejected.output
 
-    shutil.copyfile(native_library, user_dir / "libjavascript.so")
+    shutil.copyfile(user_library, user_dir / "libjavascript.so")
     wrong_grammar = runner.invoke(
-        grammar_cli, [*command, "test", "javascript", str(FIXTURE)]
+        grammar_cli, [*command, "test", "javascript", str(BAML_FIXTURE)]
     )
     assert wrong_grammar.exit_code == 1
     assert "tree_sitter_javascript" in wrong_grammar.output
