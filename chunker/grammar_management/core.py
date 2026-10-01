@@ -122,9 +122,9 @@ def load_compiled_grammar(grammar_path: Path, language: str) -> Parser:
     pointer = symbol()
     if not pointer:
         raise ValueError(f"Grammar symbol returned null: {grammar_path}")
-    capsule_new = ctypes.pythonapi.PyCapsule_New
-    capsule_new.restype = ctypes.py_object
-    capsule_new.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_void_p]
+    capsule_new = ctypes.PYFUNCTYPE(
+        ctypes.py_object, ctypes.c_void_p, ctypes.c_char_p, ctypes.c_void_p
+    )(("PyCapsule_New", ctypes.pythonapi))
     grammar = Language(capsule_new(pointer, b"tree_sitter.Language", None))
     return Parser(grammar)
 
@@ -195,6 +195,7 @@ class GrammarValidator:
 
         Args:
             grammar_path: Path to compiled grammar
+            language: Expected grammar symbol, inferred from the filename if absent
 
         Returns:
             Tuple of (is_compatible, error_message)
