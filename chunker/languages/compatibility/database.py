@@ -344,7 +344,7 @@ class CompatibilityDatabase:
             )
 
             self.conn.commit()
-            self._load_schema()
+            self.schema.add_language_version(lang_version)
             logger.debug(f"Added language version: {lang_version}")
             return True
 
@@ -389,7 +389,7 @@ class CompatibilityDatabase:
             )
 
             self.conn.commit()
-            self._load_schema()
+            self.schema.add_grammar_version(grammar_version)
             logger.debug(f"Added grammar version: {grammar_version}")
             return True
 
@@ -711,22 +711,22 @@ class CompatibilityDatabase:
             }
 
             # Export language versions
-            cursor.execute("SELECT * FROM language_versions ORDER BY id")
+            cursor.execute("SELECT * FROM language_versions")
             for row in cursor.fetchall():
                 export_data["language_versions"].append(dict(row))
 
             # Export grammar versions
-            cursor.execute("SELECT * FROM grammar_versions ORDER BY id")
+            cursor.execute("SELECT * FROM grammar_versions")
             for row in cursor.fetchall():
                 export_data["grammar_versions"].append(dict(row))
 
             # Export compatibility rules
-            cursor.execute("SELECT * FROM compatibility_rules ORDER BY id")
+            cursor.execute("SELECT * FROM compatibility_rules")
             for row in cursor.fetchall():
                 export_data["compatibility_rules"].append(dict(row))
 
             # Export breaking changes
-            cursor.execute("SELECT * FROM breaking_changes ORDER BY id")
+            cursor.execute("SELECT * FROM breaking_changes")
             for row in cursor.fetchall():
                 export_data["breaking_changes"].append(dict(row))
 
@@ -746,7 +746,6 @@ class CompatibilityDatabase:
         Args:
             input_path: Path to the import file
         """
-        previous_schema = self.schema
         try:
             input_path = Path(input_path)
 
@@ -841,14 +840,12 @@ class CompatibilityDatabase:
                     ),
                 )
 
-            self._load_schema()
             self.conn.commit()
             logger.info(f"Imported database from {input_path}")
 
         except Exception as e:
             logger.error(f"Error importing database: {e}")
             self.conn.rollback()
-            self.schema = previous_schema
             raise
 
     def validate_database(self) -> list[str]:
@@ -974,7 +971,8 @@ class CompatibilityDatabase:
             self._conn = sqlite3.connect(str(self.db_path))
             self._conn.row_factory = sqlite3.Row
 
-            self._load_schema()
+            # Reinitialize schema
+            self.schema = CompatibilitySchema()
 
             logger.info(f"Database restored from {backup_path}")
 
