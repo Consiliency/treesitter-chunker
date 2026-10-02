@@ -113,13 +113,13 @@ def test_click_cleanup_honors_requested_age_and_reports_removal(
     recent = builds / "recent.py"
     stale.write_bytes(source)
     recent.write_bytes(source)
-    old_time = time.time() - 45 * 24 * 60 * 60
+    old_time = time.time() - 25 * 24 * 60 * 60
     recent_time = time.time() - 15 * 24 * 60 * 60
     os.utime(stale, (old_time, old_time))
     os.utime(recent, (recent_time, recent_time))
 
     result = CliRunner().invoke(
-        grammar_cli, ["--cache-dir", str(cache_dir), "cleanup", "--days", "30"]
+        grammar_cli, ["--cache-dir", str(cache_dir), "cleanup", "--days", "20"]
     )
     assert result.exit_code == 0, result.output
     assert "Files removed: 1" in result.output
