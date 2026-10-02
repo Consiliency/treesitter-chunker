@@ -17,7 +17,7 @@ def _rewrite_wheel(source: Path, target: Path, suffix: str, replacement: str) ->
         for member in original.infolist():
             data = original.read(member.filename)
             if member.filename.endswith(suffix):
-                decoded = data.decode("utf-8")
+                decoded = data.decode("utf-8").replace("\r\n", "\n")
                 assert replacement in decoded
                 data = decoded.replace(replacement, "").encode("utf-8")
             changed.writestr(member, data)
