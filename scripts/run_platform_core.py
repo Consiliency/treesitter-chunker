@@ -21,6 +21,8 @@ COMMON_TESTS = [
     "tests/test_grammar_compatibility_contract.py",
     "tests/test_python_version_hints_contract.py",
     "tests/test_javascript_version_hints_contract.py",
+    "tests/test_rust_version_hints_contract.py",
+    "tests/test_go_version_hints_contract.py",
     "tests/test_exceptions.py",
     "tests/test_fallback_chunking.py",
     "tests/test_registry_fallback.py",
