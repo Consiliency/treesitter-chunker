@@ -1,6 +1,7 @@
 """User-friendly tools for managing tree-sitter grammars."""
 
 import logging
+import ctypes
 import os
 import shutil
 import subprocess
@@ -25,6 +26,20 @@ class UserGrammarTools:
         self.build_dir = Path(build_dir)
         self.grammars_dir = Path(grammars_dir)
         self.manager = SmartGrammarManager(build_dir, grammars_dir)
+
+    def _compiled_library(self, source_dir: Path, language: str) -> Path | None:
+        native = source_dir / f"{language}{self.manager.library_suffix}"
+        if native.is_file():
+            return native
+        legacy = source_dir / f"{language}.so"
+        if legacy == native or not legacy.is_file():
+            return None
+        try:
+            if hasattr(ctypes.CDLL(str(legacy)), f"tree_sitter_{language}"):
+                return legacy
+        except OSError:
+            pass
+        return None
 
     def install_grammar(
         self,
@@ -142,17 +157,16 @@ class UserGrammarTools:
                 result["status"] = "error"
                 return result
 
-            # Step 4: Copy .so file to build directory
-            so_files = list(target_dir.glob("*.so"))
-            if so_files:
-                for so_file in so_files:
-                    target_so = self.build_dir / f"{language}.so"
-                    shutil.copy2(so_file, target_so)
-                    result["steps_completed"].append(
-                        f"Copied {so_file.name} to build directory",
-                    )
+            # Step 4: Copy the platform's compiled library to the build directory
+            grammar_file = self._compiled_library(target_dir, language)
+            if grammar_file is not None:
+                target_so = self.build_dir / grammar_file.name
+                shutil.copy2(grammar_file, target_so)
+                result["steps_completed"].append(
+                    f"Copied {grammar_file.name} to build directory",
+                )
             else:
-                result["errors"].append("No .so files found after generation")
+                result["errors"].append("No compiled grammar library found")
                 result["status"] = "error"
                 return result
 
@@ -191,10 +205,15 @@ class UserGrammarTools:
         }
 
         try:
-            # Remove .so file
-            so_file = self.build_dir / f"{language}.so"
-            if so_file.exists():
-                so_file.unlink()
+            # Remove native and legacy libraries for this grammar
+            libraries = {
+                self.build_dir / f"{language}{suffix}"
+                for suffix in {self.manager.library_suffix, ".so"}
+            }
+            existing = [library for library in libraries if library.exists()]
+            if existing:
+                for library in existing:
+                    library.unlink()
                 result["steps_completed"].append("Removed compiled grammar library")
             else:
                 result["warnings"].append("No compiled grammar library found")
@@ -326,15 +345,15 @@ class UserGrammarTools:
                 result["errors"].append(f"Failed to regenerate grammar: {e}")
                 return result
 
-            # Copy new .so file
-            so_files = list(source_dir.glob("*.so"))
-            if so_files:
-                for so_file in so_files:
-                    target_so = self.build_dir / f"{language}.so"
-                    shutil.copy2(so_file, target_so)
-                    result["steps_completed"].append("Updated compiled grammar library")
+            # Copy the platform's compiled library
+            grammar_file = self._compiled_library(source_dir, language)
+            if grammar_file is not None:
+                target_so = self.build_dir / grammar_file.name
+                shutil.copy2(grammar_file, target_so)
+                result["steps_completed"].append("Updated compiled grammar library")
             else:
-                result["errors"].append("No .so files found after regeneration")
+                result["errors"].append("No compiled grammar library found")
+                result["status"] = "error"
                 return result
 
             result["status"] = "success"
@@ -358,8 +377,7 @@ class UserGrammarTools:
             "grammars": {},
         }
 
-        # Get all .so files
-        so_files = list(self.build_dir.glob("*.so"))
+        so_files = self.manager._library_files()
         result["total_grammars"] = len(so_files)
 
         for so_file in so_files:
