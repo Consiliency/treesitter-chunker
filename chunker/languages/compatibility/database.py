@@ -116,6 +116,7 @@ class CompatibilityDatabase:
             self._conn = sqlite3.connect(str(self.db_path))
             self._conn.row_factory = sqlite3.Row
             self._create_tables()
+            self._load_schema()
             logger.info("Database initialized successfully")
         except Exception as e:
             logger.error(f"Error initializing database: {e}")
@@ -217,6 +218,93 @@ class CompatibilityDatabase:
             logger.error(f"Error creating tables: {e}")
             self.conn.rollback()
             raise
+
+    def _load_schema(self) -> None:
+        """Restore the in-memory selection schema from persisted records."""
+        schema = CompatibilitySchema()
+        for row in self.conn.execute("SELECT * FROM language_versions ORDER BY id"):
+            schema.add_language_version(
+                LanguageVersion(
+                    language=row["language"],
+                    version=row["version"],
+                    edition=row["edition"],
+                    build=row["build"],
+                    features=json.loads(row["features"]) if row["features"] else [],
+                    release_date=(
+                        datetime.fromisoformat(row["release_date"])
+                        if row["release_date"]
+                        else None
+                    ),
+                    end_of_life=(
+                        datetime.fromisoformat(row["end_of_life"])
+                        if row["end_of_life"]
+                        else None
+                    ),
+                )
+            )
+        for row in self.conn.execute("SELECT * FROM grammar_versions ORDER BY id"):
+            schema.add_grammar_version(
+                GrammarVersion(
+                    language=row["language"],
+                    version=row["version"],
+                    grammar_file=row["grammar_file"],
+                    supported_features=(
+                        json.loads(row["supported_features"])
+                        if row["supported_features"]
+                        else []
+                    ),
+                    min_language_version=row["min_language_version"],
+                    max_language_version=row["max_language_version"],
+                    breaking_changes=(
+                        json.loads(row["breaking_changes"])
+                        if row["breaking_changes"]
+                        else []
+                    ),
+                    release_date=(
+                        datetime.fromisoformat(row["release_date"])
+                        if row["release_date"]
+                        else None
+                    ),
+                )
+            )
+        for row in self.conn.execute("SELECT * FROM compatibility_rules ORDER BY id"):
+            schema.add_compatibility_rule(
+                CompatibilityRule(
+                    language=row["language"],
+                    language_version_constraint=row["language_version_constraint"],
+                    grammar_version_constraint=row["grammar_version_constraint"],
+                    compatibility_level=CompatibilityLevel(row["compatibility_level"]),
+                    notes=row["notes"],
+                    created_at=(
+                        datetime.fromisoformat(row["created_at"])
+                        if row["created_at"]
+                        else datetime.now()
+                    ),
+                )
+            )
+        for row in self.conn.execute("SELECT * FROM breaking_changes ORDER BY id"):
+            schema.add_breaking_change(
+                BreakingChange(
+                    language=row["language"],
+                    from_version=row["from_version"],
+                    to_version=row["to_version"],
+                    change_type=row["change_type"],
+                    description=row["description"],
+                    impact_level=row["impact_level"],
+                    migration_guide=row["migration_guide"],
+                    affected_features=(
+                        json.loads(row["affected_features"])
+                        if row["affected_features"]
+                        else []
+                    ),
+                    detected_at=(
+                        datetime.fromisoformat(row["detected_at"])
+                        if row["detected_at"]
+                        else datetime.now()
+                    ),
+                )
+            )
+        self.schema = schema
 
     def add_language_version(self, lang_version: LanguageVersion) -> bool:
         """Add a language version to the database.
