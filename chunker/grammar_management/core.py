@@ -29,6 +29,7 @@ import ctypes
 import hashlib
 import json
 import logging
+import re
 import shutil
 import subprocess
 import time
@@ -43,6 +44,15 @@ from chunker.exceptions import ChunkerError
 from chunker.grammar.source_validation import validate_grammar_source
 
 logger = logging.getLogger(__name__)
+
+
+def _valid_language_name(language: str) -> bool:
+    """Keep grammar identifiers within one cache-directory component."""
+    return (
+        isinstance(language, str)
+        and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.+#-]*", language) is not None
+        and ".." not in language
+    )
 
 
 class GrammarPriority(Enum):
@@ -581,6 +591,8 @@ class GrammarInstaller:
         Returns:
             Tuple of (success, error_message, installation_info)
         """
+        if not _valid_language_name(language):
+            return False, "Invalid grammar language", None
         try:
             logger.info(f"Installing grammar for {language} from {repository_url}")
 
@@ -671,6 +683,8 @@ class GrammarInstaller:
         Returns:
             Tuple of (success, error_message)
         """
+        if not _valid_language_name(language):
+            return False, "Invalid grammar language"
         try:
             logger.info(f"Removing grammar for {language}")
 
@@ -710,6 +724,8 @@ class GrammarInstaller:
         version: str | None = None,
     ) -> tuple[bool, Path | None, str | None]:
         """Download grammar source code."""
+        if not _valid_language_name(language):
+            return False, None, "Invalid grammar language"
         try:
             repository_url = validate_grammar_source(repository_url)
         except ValueError as e:
@@ -1064,6 +1080,9 @@ class GrammarInstaller:
 
     def _cleanup_cache(self, language: str):
         """Clean up cache files for a language."""
+        if not _valid_language_name(language):
+            logger.warning("Skipping cache cleanup for invalid grammar language")
+            return
         try:
             # Clean downloads
             download_dir = self._downloads_dir / f"tree-sitter-{language}"
