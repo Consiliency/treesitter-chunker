@@ -1,6 +1,7 @@
 """Contract tests for the exported Click grammar commands."""
 
 import importlib.util
+import json
 import shutil
 import subprocess
 import sys
@@ -57,6 +58,37 @@ def test_click_lists_local_grammar_and_reports_missing_language(
     missing = runner.invoke(grammar_cli, [*command, "test", "missing", str(FIXTURE)])
     assert missing.exit_code == 1
     assert "Grammar for 'missing' not found" in missing.output
+
+
+def test_click_exports_selected_local_grammar(tmp_path: Path, monkeypatch) -> None:
+    tree = get_parser("python").parse(FIXTURE.read_bytes())
+    assert tree.root_node.type == "module"
+    assert not tree.root_node.has_error
+
+    native_spec = importlib.util.find_spec("tree_sitter_language_pack._native")
+    assert native_spec is not None and native_spec.origin is not None
+
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    cache_dir = tmp_path / "grammar-cache"
+    user_dir = cache_dir / "grammars" / "user"
+    package_dir = cache_dir / "grammars" / "package"
+    user_dir.mkdir(parents=True)
+    package_dir.mkdir(parents=True)
+    user_library = user_dir / "libpython.so"
+    shutil.copyfile(native_spec.origin, user_library)
+    shutil.copyfile(native_spec.origin, package_dir / "libpython.so")
+
+    output_file = tmp_path / "grammars.json"
+    result = CliRunner().invoke(
+        grammar_cli,
+        ["--cache-dir", str(cache_dir), "export", str(output_file)],
+    )
+    assert result.exit_code == 0, result.output
+    exported = json.loads(output_file.read_text(encoding="utf-8"))
+    assert list(exported["grammars"]) == ["python"]
+    assert exported["grammars"]["python"]["path"] == str(user_library)
+    assert exported["grammars"]["python"]["priority"] == "USER"
 
 
 def test_click_parses_with_selected_local_grammar(tmp_path: Path, monkeypatch) -> None:
