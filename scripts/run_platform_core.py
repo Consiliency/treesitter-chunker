@@ -30,6 +30,7 @@ COMMON_TESTS = [
     "tests/test_java_version_hints_contract.py",
     "tests/test_cpp_version_hints_contract.py",
     "tests/test_graphml_yed_export_contract.py",
+    "tests/test_sqlite_export_contract.py",
     "tests/test_exceptions.py",
     "tests/test_fallback_chunking.py",
     "tests/test_registry_fallback.py",
