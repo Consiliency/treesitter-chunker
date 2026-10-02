@@ -116,6 +116,7 @@ class CompatibilityDatabase:
             self._conn = sqlite3.connect(str(self.db_path))
             self._conn.row_factory = sqlite3.Row
             self._create_tables()
+            self._load_schema()
             logger.info("Database initialized successfully")
         except Exception as e:
             logger.error(f"Error initializing database: {e}")
@@ -217,6 +218,58 @@ class CompatibilityDatabase:
             logger.error(f"Error creating tables: {e}")
             self.conn.rollback()
             raise
+
+    def _load_schema(self) -> None:
+        """Restore the in-memory selection schema from persisted records."""
+        schema = CompatibilitySchema()
+        for language_row in self.conn.execute(
+            "SELECT DISTINCT language FROM language_versions"
+        ):
+            for version in self.get_language_versions(language_row["language"]):
+                schema.add_language_version(version)
+        for language_row in self.conn.execute(
+            "SELECT DISTINCT language FROM grammar_versions"
+        ):
+            for version in self.get_grammar_versions(language_row["language"]):
+                schema.add_grammar_version(version)
+        for row in self.conn.execute("SELECT * FROM compatibility_rules ORDER BY id"):
+            schema.add_compatibility_rule(
+                CompatibilityRule(
+                    language=row["language"],
+                    language_version_constraint=row["language_version_constraint"],
+                    grammar_version_constraint=row["grammar_version_constraint"],
+                    compatibility_level=CompatibilityLevel(row["compatibility_level"]),
+                    notes=row["notes"],
+                    created_at=(
+                        datetime.fromisoformat(row["created_at"])
+                        if row["created_at"]
+                        else datetime.now()
+                    ),
+                )
+            )
+        for row in self.conn.execute("SELECT * FROM breaking_changes ORDER BY id"):
+            schema.add_breaking_change(
+                BreakingChange(
+                    language=row["language"],
+                    from_version=row["from_version"],
+                    to_version=row["to_version"],
+                    change_type=row["change_type"],
+                    description=row["description"],
+                    impact_level=row["impact_level"],
+                    migration_guide=row["migration_guide"],
+                    affected_features=(
+                        json.loads(row["affected_features"])
+                        if row["affected_features"]
+                        else []
+                    ),
+                    detected_at=(
+                        datetime.fromisoformat(row["detected_at"])
+                        if row["detected_at"]
+                        else datetime.now()
+                    ),
+                )
+            )
+        self.schema = schema
 
     def add_language_version(self, lang_version: LanguageVersion) -> bool:
         """Add a language version to the database.
@@ -753,6 +806,7 @@ class CompatibilityDatabase:
                 )
 
             self.conn.commit()
+            self._load_schema()
             logger.info(f"Imported database from {input_path}")
 
         except Exception as e:
@@ -883,8 +937,7 @@ class CompatibilityDatabase:
             self._conn = sqlite3.connect(str(self.db_path))
             self._conn.row_factory = sqlite3.Row
 
-            # Reinitialize schema
-            self.schema = CompatibilitySchema()
+            self._load_schema()
 
             logger.info(f"Database restored from {backup_path}")
 
