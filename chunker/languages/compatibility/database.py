@@ -222,26 +222,50 @@ class CompatibilityDatabase:
     def _load_schema(self) -> None:
         """Restore the in-memory selection schema from persisted records."""
         schema = CompatibilitySchema()
-        for language_row in self.conn.execute(
-            "SELECT DISTINCT language FROM language_versions"
-        ):
-            for language_version in self.get_language_versions(
-                language_row["language"]
-            ):
-                schema.add_language_version(language_version)
-        grammars_by_key = {}
-        for language_row in self.conn.execute(
-            "SELECT DISTINCT language FROM grammar_versions"
-        ):
-            for grammar_version in self.get_grammar_versions(language_row["language"]):
-                grammars_by_key[(grammar_version.language, grammar_version.version)] = (
-                    grammar_version
+        for row in self.conn.execute("SELECT * FROM language_versions ORDER BY id"):
+            schema.add_language_version(
+                LanguageVersion(
+                    language=row["language"],
+                    version=row["version"],
+                    edition=row["edition"],
+                    build=row["build"],
+                    features=json.loads(row["features"]) if row["features"] else [],
+                    release_date=(
+                        datetime.fromisoformat(row["release_date"])
+                        if row["release_date"]
+                        else None
+                    ),
+                    end_of_life=(
+                        datetime.fromisoformat(row["end_of_life"])
+                        if row["end_of_life"]
+                        else None
+                    ),
                 )
-        for row in self.conn.execute(
-            "SELECT language, version FROM grammar_versions ORDER BY id"
-        ):
+            )
+        for row in self.conn.execute("SELECT * FROM grammar_versions ORDER BY id"):
             schema.add_grammar_version(
-                grammars_by_key[(row["language"], row["version"])]
+                GrammarVersion(
+                    language=row["language"],
+                    version=row["version"],
+                    grammar_file=row["grammar_file"],
+                    supported_features=(
+                        json.loads(row["supported_features"])
+                        if row["supported_features"]
+                        else []
+                    ),
+                    min_language_version=row["min_language_version"],
+                    max_language_version=row["max_language_version"],
+                    breaking_changes=(
+                        json.loads(row["breaking_changes"])
+                        if row["breaking_changes"]
+                        else []
+                    ),
+                    release_date=(
+                        datetime.fromisoformat(row["release_date"])
+                        if row["release_date"]
+                        else None
+                    ),
+                )
             )
         for row in self.conn.execute("SELECT * FROM compatibility_rules ORDER BY id"):
             schema.add_compatibility_rule(

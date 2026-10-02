@@ -87,7 +87,19 @@ def test_tied_selection_and_replacement_match_persisted_order(tmp_path: Path) ->
         assert restored.find_compatible_grammar(language) == first
 
 
-def test_invalid_import_preserves_existing_database_and_schema(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("table", "field", "bad_value"),
+    [
+        ("compatibility_rules", "compatibility_level", "invalid"),
+        ("language_versions", "features", "{"),
+        ("language_versions", "release_date", "invalid"),
+        ("language_versions", "version", ""),
+        ("grammar_versions", "supported_features", "{"),
+    ],
+)
+def test_invalid_import_preserves_existing_database_and_schema(
+    tmp_path: Path, table: str, field: str, bad_value: str
+) -> None:
     db_path = tmp_path / "valid.db"
     language = LanguageVersion("python", "3.11")
     grammar = GrammarVersion("python", "1.0", "python.so")
@@ -101,7 +113,7 @@ def test_invalid_import_preserves_existing_database_and_schema(tmp_path: Path) -
         bad_export = tmp_path / "invalid.json"
         db.export_database(bad_export)
         payload = json.loads(bad_export.read_text(encoding="utf-8"))
-        payload["compatibility_rules"][0]["compatibility_level"] = "invalid"
+        payload[table][0][field] = bad_value
         bad_export.write_text(json.dumps(payload), encoding="utf-8")
 
         with pytest.raises(ValueError):
