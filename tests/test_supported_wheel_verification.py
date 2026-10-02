@@ -205,3 +205,16 @@ def test_native_wheel_with_compressed_platform_tags(tmp_path: Path) -> None:
     assert valid, report
     assert report["components"]["platform_match"] is True
     assert report["components"]["grammars"] is True
+
+    no_runtime = tmp_path / "no-runtime"
+    no_runtime.mkdir()
+    missing_runtime_wheel = no_runtime / native_wheel.name
+    _rewrite_wheel(
+        native_wheel,
+        missing_runtime_wheel,
+        ".dist-info/METADATA",
+        "Requires-Dist: tree_sitter<0.27,>=0.26\n",
+    )
+    valid, report = BuildSystem().verify_build(missing_runtime_wheel, "linux")
+    assert valid is False, report
+    assert "tree_sitter_runtime_dependency" in report["missing"]

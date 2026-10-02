@@ -717,12 +717,11 @@ Summary: Tree-sitter based code chunking library""",
                             and requirement.specifier == SpecifierSet(pins)
                             for requirement in matches
                         )
-                    if universal:
-                        if not components["grammar_pack_dependency"]:
-                            report["missing"].append("grammar_pack_dependency")
-                        if not components["tree_sitter_runtime_dependency"]:
-                            report["missing"].append("tree_sitter_runtime_dependency")
-                    elif not grammar_files:
+                    if not components["grammar_pack_dependency"]:
+                        report["missing"].append("grammar_pack_dependency")
+                    if not components["tree_sitter_runtime_dependency"]:
+                        report["missing"].append("tree_sitter_runtime_dependency")
+                    if not universal and not grammar_files:
                         report["missing"].append("grammars")
 
                 corrupt_member = zf.testzip()
