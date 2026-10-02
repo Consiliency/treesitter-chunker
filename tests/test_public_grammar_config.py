@@ -156,8 +156,8 @@ def test_cache_size_cleanup_evicts_oldest_parseable_file_first(
     config.set("directories.base_dir", str(tmp_path / "grammar-state"))
     directory_manager = DirectoryManager(config)
     directories = directory_manager.create_structure()
-    oldest = directories["cache_downloads"] / "oldest.py"
-    newest = directories["cache_builds"] / "newest.py"
+    oldest = directories["cache_builds"] / "oldest.py"
+    newest = directories["cache_downloads"] / "newest.py"
     for path, size in ((oldest, 512 * 1024), (newest, 768 * 1024)):
         content = source + b"\n" + b" " * (size - len(source) - 1)
         path.write_bytes(content)
@@ -169,8 +169,8 @@ def test_cache_size_cleanup_evicts_oldest_parseable_file_first(
     assert cache_manager.cleanup_by_size(target_size_mb=1) == {
         "files_removed": 1,
         "bytes_freed": 512 * 1024,
-        "downloads_cleaned": 1,
-        "builds_cleaned": 0,
+        "downloads_cleaned": 0,
+        "builds_cleaned": 1,
     }
     assert not oldest.exists()
     assert newest.exists()

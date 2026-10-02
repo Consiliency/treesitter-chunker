@@ -22,8 +22,8 @@ to regenerate it. The small platform-core CI subset is a different sample and
 must not be used as the representative baseline.
 
 Remeasurement on merged `main` at `b5de78da67d3764d8096fac2ea36f4ad06a32577`
-used the same representative command with temporary and coverage data on the
-private workspace volume: 3,509 passed, 4 skipped; 28,363 of 39,993
+used the same representative command with pytest temporary files and its
+coverage database on the private workspace volume: 3,509 passed, 4 skipped; 28,363 of 39,993
 statements executed (70.9199%), 11,630 missed. The report is
 `/tmp/treesitter-69-current-main-b5de78da.json`. The five largest gaps are
 `grammar_management/cli.py` (808 missed), `compatibility.py` (536),
@@ -108,7 +108,7 @@ with the original source restored before committing.
 | 19 — debug REPL local session | `debug/interactive/repl.py`: the routed REPL loads a local source fixture, detects its language, and saves the same source and command history to a requested temporary file. | Parse the loaded checked-in Python fixture with the REPL's real parser. Mutation **discard the loaded source before saving** must fail. Script only terminal input; do not mock the REPL or parser. |
 | 20 — grammar CLI JSON export | `grammar_management/cli.py` `export`: a local grammar export retains the selected user path and priority when a package candidate also exists. The command writes to a requested temporary file without fetching anything. | Parse the checked-in Python fixture with the pinned parser, then inspect the JSON export through the public Click command. Mutation **drop selected grammar from export payload** must fail. Extend the existing grammar CLI contract test file. |
 | 21 — grammar cache age cleanup | `grammar_management/config.py` `CacheManager.cleanup_old_files`: stale download and build files under a temporary grammar cache are removed with accurate counts and bytes, while recent files and the caller's home remain untouched. | Parse the checked-in Python fixture and cache copies with the pinned parser. Mutation **skip stale download eviction** must fail. Extend the existing grammar config contract test file. |
-| 22 — grammar cache size cleanup | `grammar_management/config.py` `CacheManager.cleanup_by_size`: when a temporary grammar cache exceeds a requested size, its oldest file is evicted first with accurate counts and bytes, a newer parseable file remains, and a second call below the limit removes nothing. | Pad checked-in Python fixture copies with whitespace to 512 KiB and 768 KiB; parse both with the pinned parser. Mutation **reverse oldest-first eviction order** (`mtime` descending) must fail. Extend the existing grammar config contract test file. |
+| 22 — grammar cache size cleanup | `grammar_management/config.py` `CacheManager.cleanup_by_size`: when a temporary grammar cache exceeds a requested size, its oldest file is evicted first with accurate counts and bytes, a newer parseable file remains, and a second call below the limit removes nothing. | Pad checked-in Python fixture copies with whitespace to 512 KiB and 768 KiB; put the oldest in builds, which is enumerated after downloads, and parse both with the pinned parser. Mutations **reverse oldest-first eviction order** (`mtime` descending) and **omit eviction sort** must fail. Extend the existing grammar config contract test file. |
 
 `interfaces/stubs.py` remains in the ranked inventory but is not promoted into
 a coverage slice until its consumer contract is confirmed. The node explorer
