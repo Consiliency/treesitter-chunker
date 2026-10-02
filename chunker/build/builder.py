@@ -13,6 +13,12 @@ from email.parser import Parser
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+from packaging.requirements import Requirement
+from packaging.specifiers import SpecifierSet
+from packaging.tags import parse_tag
+from packaging.utils import canonicalize_name, parse_wheel_filename
+from packaging.version import Version
+
 from chunker.contracts.build_contract import BuildSystemContract
 
 from .platform import PlatformSupport
@@ -638,10 +644,33 @@ Summary: Tree-sitter based code chunking library""",
                     wheel_info = Parser().parsestr(
                         zf.read(wheel_info_files[0]).decode("utf-8")
                     )
-                    filename_parts = wheel_path.stem.split("-")
-                    filename_tag = "-".join(filename_parts[-3:]).lower()
-                    platform_tag = filename_parts[-1].lower()
-                    tags = {tag.lower() for tag in wheel_info.get_all("Tag", [])}
+                    wheel_name, wheel_version, _, filename_tags = parse_wheel_filename(
+                        wheel_path.name
+                    )
+                    metadata_name = metadata.get("Name")
+                    metadata_version = metadata.get("Version")
+                    dist_info_name = (
+                        metadata_files[0].split("/", 1)[0].removesuffix(".dist-info")
+                    )
+                    dist_name, _, dist_version = dist_info_name.rpartition("-")
+                    if (
+                        not metadata.get("Metadata-Version")
+                        or not metadata_name
+                        or not metadata_version
+                        or not dist_name
+                        or not dist_version
+                        or canonicalize_name(metadata_name) != wheel_name
+                        or canonicalize_name(dist_name) != wheel_name
+                        or Version(metadata_version) != wheel_version
+                        or Version(dist_version) != wheel_version
+                    ):
+                        report["errors"].append("Wheel distribution metadata mismatch")
+                    if wheel_info.get("Wheel-Version") != "1.0":
+                        report["errors"].append("Missing or unsupported Wheel-Version")
+                    metadata_tags = set()
+                    for tag in wheel_info.get_all("Tag", []):
+                        metadata_tags.update(parse_tag(tag))
+                    universal = all(tag.platform == "any" for tag in filename_tags)
                     platform_tokens = {
                         "linux": ("linux", "manylinux", "musllinux"),
                         "macos": ("macosx",),
@@ -649,46 +678,52 @@ Summary: Tree-sitter based code chunking library""",
                         "windows": ("win",),
                         "win32": ("win",),
                     }.get(platform.lower(), (platform.lower(),))
-                    platform_match = (
-                        len(filename_parts) >= 5
-                        and filename_tag in tags
-                        and (
-                            platform_tag == "any"
-                            or platform_tag.startswith(platform_tokens)
-                        )
+                    platform_match = filename_tags == metadata_tags and any(
+                        tag.platform == "any"
+                        or tag.platform.startswith(platform_tokens)
+                        for tag in filename_tags
                     )
-                    if platform_tag == "any":
-                        platform_match = platform_match and (
-                            wheel_info.get("Root-Is-Purelib", "").lower() == "true"
-                        )
+                    platform_match = platform_match and wheel_info.get(
+                        "Root-Is-Purelib", ""
+                    ).lower() == ("true" if universal else "false")
                     components["platform_match"] = platform_match
                     if not platform_match:
                         report["errors"].append("Platform mismatch in wheel metadata")
 
                     requirements = [
-                        "".join(value.lower().split()).replace("_", "-")
+                        Requirement(value)
                         for value in metadata.get_all("Requires-Dist", [])
                     ]
-                    components["grammar_pack_dependency"] = any(
-                        value.startswith("tree-sitter-language-pack")
-                        and ">=1.20" in value
-                        and "<1.21" in value
-                        for value in requirements
-                    )
-                    components["tree_sitter_runtime_dependency"] = any(
-                        value.startswith("tree-sitter")
-                        and not value.startswith("tree-sitter-language-pack")
-                        and ">=0.26" in value
-                        and "<0.27" in value
-                        for value in requirements
-                    )
-                    if not grammar_files:
+                    for component, name, pins in (
+                        (
+                            "grammar_pack_dependency",
+                            "tree-sitter-language-pack",
+                            ">=1.20,<1.21",
+                        ),
+                        (
+                            "tree_sitter_runtime_dependency",
+                            "tree-sitter",
+                            ">=0.26,<0.27",
+                        ),
+                    ):
+                        matches = [
+                            requirement
+                            for requirement in requirements
+                            if canonicalize_name(requirement.name) == name
+                        ]
+                        components[component] = len(matches) == 1 and all(
+                            not requirement.marker
+                            and not requirement.extras
+                            and requirement.specifier == SpecifierSet(pins)
+                            for requirement in matches
+                        )
+                    if universal:
                         if not components["grammar_pack_dependency"]:
                             report["missing"].append("grammar_pack_dependency")
                         if not components["tree_sitter_runtime_dependency"]:
                             report["missing"].append("tree_sitter_runtime_dependency")
-                        if platform_tag != "any":
-                            report["missing"].append("grammars")
+                    elif not grammar_files:
+                        report["missing"].append("grammars")
 
                 corrupt_member = zf.testzip()
                 if corrupt_member:
