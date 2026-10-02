@@ -34,6 +34,7 @@ class IntegrationTester:
 
     def __init__(self, test_dir: Path | None = None):
         """Initialize integration tester."""
+        self._owns_test_dir = test_dir is None
         self.test_dir = test_dir or Path(tempfile.mkdtemp(prefix="grammar_test_"))
         self.test_results = {}
         self.performance_metrics = {}
@@ -53,18 +54,31 @@ class IntegrationTester:
 
         # Initialize components
         self.config = UserConfig(self.config_dir / "config.json")
-        self.dir_manager = DirectoryManager(self.test_dir)
-        self.cache_manager = CacheManager(self.cache_dir)
-        self.grammar_manager = GrammarManager(self.grammar_dir)
-        self.compatibility_checker = CompatibilityChecker(self.grammar_manager)
-        self.grammar_tester = GrammarTester(self.test_dir / "samples")
+        self.config.set("directories.base_dir", str(self.test_dir))
+        self.dir_manager = DirectoryManager(self.config)
+        self.cache_manager = CacheManager(self.config, self.dir_manager)
+        self.grammar_manager = GrammarManager(
+            user_dir=self.grammar_dir,
+            package_dir=self.grammar_dir,
+            cache_dir=self.cache_dir,
+        )
+        self.validator = GrammarValidator(self.cache_dir)
+        self.compatibility_checker = CompatibilityChecker(
+            self.grammar_manager, validator=self.validator
+        )
+        self.grammar_tester = GrammarTester(self.grammar_manager, self.validator)
         self.smart_selector = SmartSelector(
             self.grammar_manager,
             self.compatibility_checker,
         )
 
-    def test_complete_workflow(self) -> dict[str, Any]:
-        """Test complete grammar management workflow."""
+    def test_complete_workflow(
+        self,
+        sample_path: Path | None = None,
+        language: str = "python",
+        grammar_path: Path | None = None,
+    ) -> dict[str, Any]:
+        """Run a bounded local grammar discovery and parse workflow."""
         results = {
             "status": "pass",
             "workflows_tested": [],
@@ -74,30 +88,35 @@ class IntegrationTester:
         }
 
         try:
-            # Test discovery workflow
-            discovery_result = self._test_discovery_workflow()
+            start = time.time()
+            self.grammar_manager.discover_available_grammars()
             results["workflows_tested"].append("discovery")
-            results["performance"]["discovery"] = discovery_result["duration"]
+            results["performance"]["discovery"] = time.time() - start
 
-            # Test installation workflow
-            install_result = self._test_installation_workflow()
-            results["workflows_tested"].append("installation")
-            results["performance"]["installation"] = install_result["duration"]
+            if sample_path is None:
+                raise ValueError("A local sample_path is required")
+            if grammar_path is None:
+                raise ValueError("A local grammar_path is required")
+            source = sample_path.read_text(encoding="utf-8")
+            start = time.time()
+            valid, errors = GrammarValidator(self.cache_dir).test_parse_samples(
+                language, [source], grammar_path
+            )
+            if valid:
+                from .core import load_compiled_grammar
 
-            # Test validation workflow
-            validation_result = self._test_validation_workflow()
+                if (
+                    load_compiled_grammar(grammar_path, language)
+                    .parse(source.encode("utf-8"))
+                    .root_node.has_error
+                ):
+                    valid = False
+                    errors.append("Sample contains parse errors")
             results["workflows_tested"].append("validation")
-            results["performance"]["validation"] = validation_result["duration"]
-
-            # Test usage workflow
-            usage_result = self._test_usage_workflow()
-            results["workflows_tested"].append("usage")
-            results["performance"]["usage"] = usage_result["duration"]
-
-            # Test removal workflow
-            removal_result = self._test_removal_workflow()
-            results["workflows_tested"].append("removal")
-            results["performance"]["removal"] = removal_result["duration"]
+            results["performance"]["validation"] = time.time() - start
+            if not valid:
+                results["status"] = "fail"
+                results["errors"].extend(errors)
 
         except Exception as e:
             results["status"] = "fail"
@@ -110,7 +129,7 @@ class IntegrationTester:
     def _test_discovery_workflow(self) -> dict[str, Any]:
         """Test grammar discovery workflow."""
         start = time.time()
-        grammars = self.grammar_manager.discover_grammars()
+        grammars = self.grammar_manager.discover_available_grammars()
         duration = time.time() - start
 
         return {
@@ -169,7 +188,7 @@ class IntegrationTester:
 
         # Test getting grammar info
         for language in self.test_languages[:2]:
-            info = self.grammar_manager.get_grammar_info(language)
+            info = self.grammar_manager.get_grammar_metadata(language)
             if info:
                 results["successful_uses"] += 1
             else:
@@ -231,13 +250,14 @@ class IntegrationTester:
                 results["integration_points"].append("core-compatibility")
 
             # Test Config-Cache integration
-            self.cache_manager.cleanup_cache()
             cache_size = self.cache_manager.get_cache_size()
-            if cache_size >= 0:
+            if cache_size["total_bytes"] >= 0 and self.cache_manager.cache_dir == (
+                self.dir_manager.get_directory("cache")
+            ):
                 results["integration_points"].append("config-cache")
 
             # Test Compatibility-Selector integration
-            selection = self.smart_selector.select_grammar("python", "3.9.0")
+            selection = self.smart_selector.select_best_grammar("python")
             if selection:
                 results["integration_points"].append("compatibility-selector")
 
@@ -311,7 +331,7 @@ class IntegrationTester:
         corrupt_file.write_text("corrupt data")
 
         try:
-            validator = GrammarValidator()
+            validator = self.validator
             result = validator.validate_integrity(corrupt_file)
             return not result.get("valid", False)
         except (OSError, ValueError) as e:
@@ -384,7 +404,7 @@ class IntegrationTester:
 
             def worker(language: str, times_list: list):
                 start = time.time()
-                self.grammar_manager.get_grammar_info(language)
+                self.grammar_manager.get_grammar_metadata(language)
                 times_list.append(time.time() - start)
 
             # Start concurrent threads
@@ -416,7 +436,7 @@ class IntegrationTester:
 
     def cleanup(self) -> None:
         """Clean up test environment."""
-        if self.test_dir.exists():
+        if self._owns_test_dir and self.test_dir.exists():
             shutil.rmtree(self.test_dir, ignore_errors=True)
 
 
@@ -640,10 +660,15 @@ class CLIValidator:
 class SystemValidator:
     """Validates system health and stability."""
 
-    def __init__(self, grammar_manager: GrammarManager | None = None):
+    def __init__(
+        self,
+        grammar_manager: GrammarManager | None = None,
+        config: UserConfig | None = None,
+    ):
         """Initialize system validator."""
         self.health_metrics = {}
         self.grammar_manager = grammar_manager or GrammarManager()
+        self.config = config or UserConfig()
 
     def check_system_health(self) -> dict[str, Any]:
         """Check overall system health."""
@@ -655,7 +680,7 @@ class SystemValidator:
 
         # Check core component
         try:
-            self.grammar_manager.discover_grammars()
+            self.grammar_manager.discover_available_grammars()
             results["components"]["core"] = "healthy"
         except Exception as e:
             logger.debug("Core component health check failed: %s", e)
@@ -664,8 +689,7 @@ class SystemValidator:
 
         # Check configuration
         try:
-            config = UserConfig()
-            config.get("grammars.default_source")
+            self.config.get("grammars.default_source")
             results["components"]["config"] = "healthy"
         except Exception as e:
             logger.debug("Config component health check failed: %s", e)
@@ -674,9 +698,7 @@ class SystemValidator:
 
         # Check cache
         try:
-            cache = CacheManager(
-                Path.home() / ".cache" / "treesitter-chunker" / "cache",
-            )
+            cache = CacheManager(self.config, DirectoryManager(self.config))
             cache.get_cache_size()
             results["components"]["cache"] = "healthy"
         except Exception as e:
@@ -686,7 +708,7 @@ class SystemValidator:
 
         # Check compatibility database
         try:
-            CompatibilityDatabase()
+            CompatibilityDatabase(self.config.config_dir / "compatibility.db")
             results["components"]["compatibility_db"] = "healthy"
         except Exception as e:
             logger.debug("Compatibility DB health check failed: %s", e)
@@ -735,7 +757,7 @@ class SystemValidator:
         while time.time() < end_time:
             try:
                 # Perform operations
-                self.grammar_manager.discover_grammars()
+                self.grammar_manager.discover_available_grammars()
 
                 # Collect metrics
                 metrics = self.monitor_resource_usage()
