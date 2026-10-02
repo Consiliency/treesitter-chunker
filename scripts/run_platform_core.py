@@ -14,6 +14,7 @@ COMMON_TESTS = [
     "tests/test_config_advanced_scenarios.py",
     "tests/test_cli.py",
     "tests/test_node_explorer_contract.py",
+    "tests/test_debug_repl_contract.py",
     "tests/test_public_grammar_validator.py",
     "tests/test_grammar_self_test_workflow.py",
     "tests/test_grammar_installer_language_safety.py",
