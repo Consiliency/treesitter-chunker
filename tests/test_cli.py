@@ -8,6 +8,7 @@ import json
 import os
 import subprocess
 import sys
+import sysconfig
 import tempfile
 from pathlib import Path
 
@@ -28,7 +29,7 @@ def test_installed_help_with_cp1252_output():
     """Both installed launchers must render help with a Windows-compatible stream."""
     suffix = ".exe" if sys.platform == "win32" else ""
     for name in ("tsc", "treesitter-chunker"):
-        command = Path(sys.executable).with_name(f"{name}{suffix}")
+        command = Path(sysconfig.get_path("scripts")) / f"{name}{suffix}"
         assert command.is_file(), f"Installed command missing: {command}"
         env = os.environ.copy()
         env["PYTHONIOENCODING"] = "cp1252"
