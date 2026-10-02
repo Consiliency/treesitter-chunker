@@ -767,20 +767,27 @@ class DirectoryManager:
             if not self.base_dir.exists():
                 return 0
 
+            cache_dir = self.get_directory("cache")
+            managed_cache_dirs = {cache_dir / "downloads", cache_dir / "builds"}
+
             # Find empty directories (excluding base directories we want to keep)
             for dir_path in self.base_dir.rglob("*"):
                 if dir_path.is_dir() and dir_path != self.base_dir:
                     try:
                         # Check if directory is empty
                         if not any(dir_path.iterdir()):
-                            # Don't remove main structure directories
-                            if dir_path.name not in [
-                                "grammars",
-                                "cache",
-                                "logs",
-                                "backups",
-                                "tmp",
-                            ]:
+                            # Don't remove managed structure directories
+                            if (
+                                dir_path.name
+                                not in [
+                                    "grammars",
+                                    "cache",
+                                    "logs",
+                                    "backups",
+                                    "tmp",
+                                ]
+                                and dir_path not in managed_cache_dirs
+                            ):
                                 dir_path.rmdir()
                                 removed_count += 1
                                 logger.debug(f"Removed empty directory: {dir_path}")
