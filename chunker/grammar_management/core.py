@@ -1093,12 +1093,14 @@ class GrammarRegistry:
         self,
         user_dir: Path | None = None,
         package_dir: Path | None = None,
+        cache_dir: Path | None = None,
     ):
         """Initialize grammar registry.
 
         Args:
             user_dir: User grammar directory
             package_dir: Package grammar directory
+            cache_dir: Directory for installer and validation state
         """
         self._user_dir = user_dir or (
             Path.home() / ".cache" / "treesitter-chunker" / "grammars"
@@ -1113,7 +1115,7 @@ class GrammarRegistry:
 
         self._registry_cache = {}
         self._cache_timestamp = 0
-        self._installer = GrammarInstaller()
+        self._installer = GrammarInstaller(cache_dir)
 
     def discover_grammars(self) -> dict[str, list[tuple[Path, GrammarPriority]]]:
         """Discover all available grammars with their priorities.
@@ -1346,7 +1348,7 @@ class GrammarManager:
         """
         self._cache_dir = cache_dir or (Path.home() / ".cache" / "treesitter-chunker")
 
-        self._registry = GrammarRegistry(user_dir, package_dir)
+        self._registry = GrammarRegistry(user_dir, package_dir, self._cache_dir)
         self._installer = GrammarInstaller(self._cache_dir)
         self._validator = GrammarValidator(self._cache_dir)
 

@@ -133,16 +133,18 @@ class CompatibilityChecker:
         self,
         grammar_manager: GrammarManager,
         database: CompatibilityDatabase | None = None,
+        validator: GrammarValidator | None = None,
     ):
         """Initialize compatibility checker.
 
         Args:
             grammar_manager: Grammar manager instance
             database: Compatibility database instance
+            validator: Optional validator with an isolated cache directory
         """
         self.grammar_manager = grammar_manager
         self.database = database
-        self.validator = GrammarValidator()
+        self.validator = validator or GrammarValidator()
 
         # Language version patterns for detection
         self.version_patterns = {
@@ -742,14 +744,17 @@ class CompatibilityChecker:
 class GrammarTester:
     """Tests grammar functionality and performance with comprehensive benchmarking."""
 
-    def __init__(self, grammar_manager: GrammarManager):
+    def __init__(
+        self, grammar_manager: GrammarManager, validator: GrammarValidator | None = None
+    ):
         """Initialize grammar tester.
 
         Args:
             grammar_manager: Grammar manager instance
+            validator: Optional validator with an isolated cache directory
         """
         self.grammar_manager = grammar_manager
-        self.validator = GrammarValidator()
+        self.validator = validator or GrammarValidator()
 
         # Built-in test suites
         self.test_suites = {

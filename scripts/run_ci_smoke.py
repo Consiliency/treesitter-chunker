@@ -12,6 +12,7 @@ CI_SMOKE_TESTS = [
     "tests/test_chunking.py",
     "tests/test_cli.py",
     "tests/test_public_grammar_validator.py",
+    "tests/test_grammar_self_test_workflow.py",
     "tests/test_public_grammar_registry.py",
     "tests/test_public_grammar_cli.py",
     "tests/test_public_grammar_config.py",
