@@ -15,7 +15,7 @@ from typing import Any
 
 from packaging.requirements import Requirement
 from packaging.specifiers import SpecifierSet
-from packaging.tags import parse_tag
+from packaging.tags import Tag, parse_tag
 from packaging.utils import canonicalize_name, parse_wheel_filename
 from packaging.version import Version
 
@@ -667,7 +667,7 @@ Summary: Tree-sitter based code chunking library""",
                         report["errors"].append("Wheel distribution metadata mismatch")
                     if wheel_info.get("Wheel-Version") != "1.0":
                         report["errors"].append("Missing or unsupported Wheel-Version")
-                    metadata_tags = set()
+                    metadata_tags: set[Tag] = set()
                     for tag in wheel_info.get_all("Tag", []):
                         metadata_tags.update(parse_tag(tag))
                     universal = all(tag.platform == "any" for tag in filename_tags)
