@@ -164,19 +164,17 @@ class NodeExplorer:
 
     def _get_node_info(self, node: Node) -> NodeInfo:
         """Get detailed info about a node."""
-        # Find path to node
         path = []
-        parent = None
-
-        # This is a simplified path - in real implementation would traverse from root
-        depth = 0
+        parent = node.parent
         temp = node
-        while hasattr(temp, "parent"):
-            depth += 1
-            parent = temp.parent if hasattr(temp, "parent") else None
-            temp = parent
-            if not temp:
-                break
+        while temp.parent is not None:
+            ancestor = temp.parent
+            path.append(
+                next(i for i, child in enumerate(ancestor.children) if child == temp)
+            )
+            temp = ancestor
+        path.reverse()
+        depth = len(path)
 
         # Get siblings
         siblings = []
