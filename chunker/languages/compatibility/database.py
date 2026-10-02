@@ -225,13 +225,15 @@ class CompatibilityDatabase:
         for language_row in self.conn.execute(
             "SELECT DISTINCT language FROM language_versions"
         ):
-            for version in self.get_language_versions(language_row["language"]):
-                schema.add_language_version(version)
+            for language_version in self.get_language_versions(
+                language_row["language"]
+            ):
+                schema.add_language_version(language_version)
         for language_row in self.conn.execute(
             "SELECT DISTINCT language FROM grammar_versions"
         ):
-            for version in self.get_grammar_versions(language_row["language"]):
-                schema.add_grammar_version(version)
+            for grammar_version in self.get_grammar_versions(language_row["language"]):
+                schema.add_grammar_version(grammar_version)
         for row in self.conn.execute("SELECT * FROM compatibility_rules ORDER BY id"):
             schema.add_compatibility_rule(
                 CompatibilityRule(
