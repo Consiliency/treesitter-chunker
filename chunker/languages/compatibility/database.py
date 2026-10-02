@@ -229,11 +229,20 @@ class CompatibilityDatabase:
                 language_row["language"]
             ):
                 schema.add_language_version(language_version)
+        grammars_by_key = {}
         for language_row in self.conn.execute(
             "SELECT DISTINCT language FROM grammar_versions"
         ):
             for grammar_version in self.get_grammar_versions(language_row["language"]):
-                schema.add_grammar_version(grammar_version)
+                grammars_by_key[(grammar_version.language, grammar_version.version)] = (
+                    grammar_version
+                )
+        for row in self.conn.execute(
+            "SELECT language, version FROM grammar_versions ORDER BY id"
+        ):
+            schema.add_grammar_version(
+                grammars_by_key[(row["language"], row["version"])]
+            )
         for row in self.conn.execute("SELECT * FROM compatibility_rules ORDER BY id"):
             schema.add_compatibility_rule(
                 CompatibilityRule(
@@ -311,7 +320,7 @@ class CompatibilityDatabase:
             )
 
             self.conn.commit()
-            self.schema.add_language_version(lang_version)
+            self._load_schema()
             logger.debug(f"Added language version: {lang_version}")
             return True
 
@@ -356,7 +365,7 @@ class CompatibilityDatabase:
             )
 
             self.conn.commit()
-            self.schema.add_grammar_version(grammar_version)
+            self._load_schema()
             logger.debug(f"Added grammar version: {grammar_version}")
             return True
 
@@ -678,22 +687,22 @@ class CompatibilityDatabase:
             }
 
             # Export language versions
-            cursor.execute("SELECT * FROM language_versions")
+            cursor.execute("SELECT * FROM language_versions ORDER BY id")
             for row in cursor.fetchall():
                 export_data["language_versions"].append(dict(row))
 
             # Export grammar versions
-            cursor.execute("SELECT * FROM grammar_versions")
+            cursor.execute("SELECT * FROM grammar_versions ORDER BY id")
             for row in cursor.fetchall():
                 export_data["grammar_versions"].append(dict(row))
 
             # Export compatibility rules
-            cursor.execute("SELECT * FROM compatibility_rules")
+            cursor.execute("SELECT * FROM compatibility_rules ORDER BY id")
             for row in cursor.fetchall():
                 export_data["compatibility_rules"].append(dict(row))
 
             # Export breaking changes
-            cursor.execute("SELECT * FROM breaking_changes")
+            cursor.execute("SELECT * FROM breaking_changes ORDER BY id")
             for row in cursor.fetchall():
                 export_data["breaking_changes"].append(dict(row))
 
@@ -713,6 +722,7 @@ class CompatibilityDatabase:
         Args:
             input_path: Path to the import file
         """
+        previous_schema = self.schema
         try:
             input_path = Path(input_path)
 
@@ -807,13 +817,14 @@ class CompatibilityDatabase:
                     ),
                 )
 
-            self.conn.commit()
             self._load_schema()
+            self.conn.commit()
             logger.info(f"Imported database from {input_path}")
 
         except Exception as e:
             logger.error(f"Error importing database: {e}")
             self.conn.rollback()
+            self.schema = previous_schema
             raise
 
     def validate_database(self) -> list[str]:
