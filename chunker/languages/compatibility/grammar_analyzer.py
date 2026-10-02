@@ -9,8 +9,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from chunker.grammar_management.core import load_compiled_grammar
-
 from .schema import CompatibilityLevel, GrammarVersion, LanguageVersion
 
 logger = logging.getLogger(__name__)
@@ -27,6 +25,7 @@ class GrammarAnalyzer:
         """
         self.grammars_dir = Path(grammars_dir)
         self.grammar_cache: dict[str, GrammarVersion] = {}
+        self._cache_fingerprints: dict[str, tuple[int, int, int, int]] = {}
         self.supported_languages = self._discover_supported_languages()
         self.metadata_extractor = GrammarMetadataExtractor()
         self.feature_detector = FeatureDetector()
@@ -50,8 +49,11 @@ class GrammarAnalyzer:
             # Scan for .so files
             for grammar_file in self.grammars_dir.glob("*.so"):
                 language = grammar_file.stem
-                languages.append(language)
-                logger.debug(f"Discovered language: {language}")
+                if grammar_file.stat().st_size and self._has_language_symbol(
+                    grammar_file, language
+                ):
+                    languages.append(language)
+                    logger.debug(f"Discovered language: {language}")
 
             languages.sort()
             logger.info(f"Discovered {len(languages)} supported languages")
@@ -60,6 +62,11 @@ class GrammarAnalyzer:
             logger.error(f"Error discovering languages: {e}")
 
         return languages
+
+    def _has_language_symbol(self, grammar_path: Path, language: str) -> bool:
+        expected = f"tree_sitter_{language.replace('-', '_')}"
+        symbols = self.analyze_grammar_symbols(grammar_path)
+        return any(symbol.lstrip("_") == expected for symbol in symbols["functions"])
 
     def analyze_grammar_file(self, language: str) -> GrammarVersion | None:
         """Analyze a specific grammar file to extract version information.
@@ -71,16 +78,27 @@ class GrammarAnalyzer:
             GrammarVersion object or None if analysis fails
         """
         try:
-            # Check cache first
-            if language in self.grammar_cache:
-                return self.grammar_cache[language]
-
             grammar_path = self.grammars_dir / f"{language}.so"
             if not grammar_path.exists():
+                self.grammar_cache.pop(language, None)
+                self._cache_fingerprints.pop(language, None)
+                if language in self.supported_languages:
+                    self.supported_languages.remove(language)
                 logger.warning(f"Grammar file not found: {grammar_path}")
                 return None
 
-            load_compiled_grammar(grammar_path, language)
+            stat = grammar_path.stat()
+            fingerprint = (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns)
+            if self._cache_fingerprints.get(language) == fingerprint:
+                return self.grammar_cache[language]
+            self.grammar_cache.pop(language, None)
+            self._cache_fingerprints.pop(language, None)
+            if not stat.st_size or not self._has_language_symbol(
+                grammar_path, language
+            ):
+                if language in self.supported_languages:
+                    self.supported_languages.remove(language)
+                return None
 
             # Extract version
             version = self.extract_grammar_version(grammar_path)
@@ -114,8 +132,21 @@ class GrammarAnalyzer:
                 release_date=datetime.fromtimestamp(grammar_path.stat().st_mtime),
             )
 
+            current = grammar_path.stat()
+            if (
+                current.st_dev,
+                current.st_ino,
+                current.st_size,
+                current.st_mtime_ns,
+            ) != fingerprint:
+                return None
+
             # Cache the result
             self.grammar_cache[language] = grammar_version
+            self._cache_fingerprints[language] = fingerprint
+            if language not in self.supported_languages:
+                self.supported_languages.append(language)
+                self.supported_languages.sort()
             logger.info(f"Analyzed grammar for {language}: version {version}")
 
             return grammar_version
