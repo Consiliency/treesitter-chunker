@@ -33,6 +33,8 @@ def test_gradle_target_precedes_source_feature_hint(tmp_path: Path) -> None:
     )
     assert source_hints["file_type"] == "source"
     assert source_hints["min_version_from_features"] == "14"
+    source_only = detector.detect_version("sourceCompatibility = '17'", gradle_path)
+    assert source_only["gradle_version"] == "17"
     assert gradle_hints["file_type"] == "gradle"
     assert gradle_hints["gradle_version"] == "21"
 
