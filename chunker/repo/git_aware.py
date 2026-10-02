@@ -57,7 +57,10 @@ class GitAwareProcessorImpl(GitAwareProcessor):
     def _is_git_repository(cls, repo_path: str) -> bool:
         """Check if the given path is a git repository."""
         git_dir = Path(repo_path) / ".git"
-        return git_dir.exists() and git_dir.is_dir()
+        return git_dir.exists() and (
+            cls._run_git_command(["rev-parse", "--is-inside-work-tree"], repo_path)
+            == "true"
+        )
 
     def get_changed_files(
         self,

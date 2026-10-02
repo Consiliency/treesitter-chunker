@@ -44,8 +44,7 @@ class GraphMLyEdExporter(GraphMLExporter):
             "CONTAINS": {"color": "#00ff00", "style": "dotted", "width": "1.0"},
         }
 
-    @staticmethod
-    def _create_key_elements(root: ET.Element) -> None:
+    def _create_key_elements(self, root: ET.Element) -> None:
         """Create key elements including yEd-specific attributes."""
         super()._create_key_elements(root)
         key = ET.SubElement(root, "key")
@@ -64,9 +63,8 @@ class GraphMLyEdExporter(GraphMLExporter):
         node: Any,
     ) -> None:
         """Create a node element with yEd graphics."""
-        node_elem = ET.SubElement(graph, "node")
-        node_elem.set("id", node_id)
         super()._create_node_element(graph, node_id, node)
+        node_elem = graph[-1]
         data = ET.SubElement(node_elem, "data")
         data.set("key", "d6")
         shape_node = ET.SubElement(data, "y:ShapeNode")
@@ -104,11 +102,8 @@ class GraphMLyEdExporter(GraphMLExporter):
         edge_id: int,
     ) -> None:
         """Create an edge element with yEd graphics."""
-        edge_elem = ET.SubElement(graph, "edge")
-        edge_elem.set("id", f"e{edge_id}")
-        edge_elem.set("source", edge.source_id)
-        edge_elem.set("target", edge.target_id)
         super()._create_edge_element(graph, edge, edge_id)
+        edge_elem = graph[-1]
         data = ET.SubElement(edge_elem, "data")
         data.set("key", "d10")
         poly_edge = ET.SubElement(data, "y:PolyLineEdge")
@@ -168,4 +163,10 @@ class GraphMLyEdExporter(GraphMLExporter):
                 reparsed = minidom.parseString(rough_string)
                 return reparsed.toprettyxml(indent="  ")
             return ET.tostring(root, encoding="unicode")
-        return super().export_string(pretty_print=pretty_print, **options)
+        plain_exporter = GraphMLExporter()
+        plain_exporter.nodes = self.nodes
+        plain_exporter.edges = self.edges
+        plain_exporter.graph_attrs = self.graph_attrs
+        plain_exporter.node_attrs = self.node_attrs
+        plain_exporter.edge_attrs = self.edge_attrs
+        return plain_exporter.export_string(pretty_print=pretty_print, **options)
