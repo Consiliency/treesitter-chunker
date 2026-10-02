@@ -331,7 +331,7 @@ class IntegrationTester:
         corrupt_file.write_text("corrupt data")
 
         try:
-            validator = GrammarValidator()
+            validator = self.validator
             result = validator.validate_integrity(corrupt_file)
             return not result.get("valid", False)
         except (OSError, ValueError) as e:
@@ -991,9 +991,7 @@ class PerformanceBenchmark:
         return "\n".join(report)
 
 
-def run_complete_test_suite(
-    sample_path: Path | None = None, grammar_path: Path | None = None
-) -> dict[str, Any]:
+def run_complete_test_suite() -> dict[str, Any]:
     """Run complete test suite for grammar management system."""
     results = {
         "status": "pass",
@@ -1008,15 +1006,8 @@ def run_complete_test_suite(
     logger.info("Running integration tests...")
     integration_tester = IntegrationTester()
     try:
-        workflow = (
-            integration_tester.test_complete_workflow(
-                sample_path, "python", grammar_path
-            )
-            if sample_path is not None and grammar_path is not None
-            else {"status": "skipped", "reason": "Local sample and grammar required"}
-        )
         results["test_suites"]["integration"] = {
-            "workflow": workflow,
+            "workflow": integration_tester.test_complete_workflow(),
             "cross_component": integration_tester.test_cross_component_integration(),
             "error_scenarios": integration_tester.test_error_scenarios(),
             "performance_load": integration_tester.test_performance_under_load(),
@@ -1062,8 +1053,6 @@ def run_complete_test_suite(
 
     for suite_name, suite_results in results["test_suites"].items():
         for test_name, test_result in suite_results.items():
-            if isinstance(test_result, dict) and test_result.get("status") == "skipped":
-                continue
             total_tests += 1
             if isinstance(test_result, dict):
                 if test_result.get("status") in ["pass", "healthy", "stable", "valid"]:
