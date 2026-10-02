@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+- Remove the unsupported `chunker.build.cross_compile` placeholder. The main
+  package continues to publish one universal wheel through the Release workflow.
+
 ## [5.1.1] — Python 3.14 wheel-only installation
 
 - CPython 3.14 uses its Unicode 16.0.0 standard-library tables for canon v1,
