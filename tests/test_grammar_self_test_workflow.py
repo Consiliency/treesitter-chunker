@@ -43,7 +43,7 @@ def test_isolated_workflow_parses_fixture_and_rejects_missing_grammar(
     invalid_path.write_text("def broken(\n", encoding="utf-8")
     invalid = tester.test_complete_workflow(invalid_path, "python", grammar_path)
     assert invalid["status"] == "fail", invalid
-    assert "Sample contains parse errors" in invalid["errors"]
+    assert invalid["errors"] == ["Sample 1: Syntax error in parse tree"]
 
     missing = tester.test_complete_workflow(FIXTURE, "missing_grammar", grammar_path)
     assert missing["status"] == "fail", missing

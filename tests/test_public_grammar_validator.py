@@ -37,3 +37,17 @@ def test_parse_samples_reports_unavailable_language(tmp_path: Path) -> None:
     assert not success
     assert len(errors) == 1
     assert errors[0].startswith("Parser setup failed:")
+
+
+def test_parse_samples_reports_syntax_error_with_sample_index(tmp_path: Path) -> None:
+    valid = (FIXTURE_DIR / "alpha.py").read_text(encoding="utf-8")
+    malformed = "def broken(:\n    pass\n"
+    assert get_parser("python").parse(malformed.encode("utf-8")).root_node.has_error
+
+    validator = GrammarValidator(cache_dir=tmp_path / "grammar-cache")
+    success, errors = validator.test_parse_samples("python", [valid, malformed, valid])
+
+    assert not success
+    assert len(errors) == 1
+    assert errors[0].startswith("Sample 2:")
+    assert "syntax error" in errors[0].lower()

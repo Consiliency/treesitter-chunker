@@ -261,6 +261,8 @@ class GrammarValidator:
                     tree = parser.parse(sample.encode())
                     if not tree or not tree.root_node:
                         errors.append(f"Sample {i + 1}: Failed to parse (empty tree)")
+                    elif tree.root_node.has_error:
+                        errors.append(f"Sample {i + 1}: Syntax error in parse tree")
                 except Exception as e:
                     errors.append(f"Sample {i + 1}: Parse error - {e!s}")
 
