@@ -23,7 +23,6 @@ def test_go_mod_version_precedes_source_build_constraint(tmp_path: Path) -> None
 
     mod_path = tmp_path / "go.mod"
     mod_path.write_text("module example.com/fixture\ngo 1.22\n", encoding="utf-8")
-    assert "go 1.22" in mod_path.read_text(encoding="utf-8")
 
     detector = GoVersionDetector()
     source_hints = detector.detect_version(
