@@ -2,9 +2,11 @@
 
 import importlib.util
 import json
+import os
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -89,6 +91,43 @@ def test_click_exports_selected_local_grammar(tmp_path: Path, monkeypatch) -> No
     assert list(exported["grammars"]) == ["python"]
     assert exported["grammars"]["python"]["path"] == str(user_library)
     assert exported["grammars"]["python"]["priority"] == "USER"
+
+
+def test_click_cleanup_honors_requested_age_and_reports_removal(
+    tmp_path: Path, monkeypatch
+) -> None:
+    parser = get_parser("python")
+    source = FIXTURE.read_bytes()
+    assert not parser.parse(source).root_node.has_error
+
+    isolated_home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(isolated_home))
+    monkeypatch.setenv("USERPROFILE", str(isolated_home))
+
+    cache_dir = tmp_path / "grammar-cache"
+    downloads = cache_dir / "downloads"
+    builds = cache_dir / "builds"
+    downloads.mkdir(parents=True)
+    builds.mkdir(parents=True)
+    stale = downloads / "stale.py"
+    recent = builds / "recent.py"
+    stale.write_bytes(source)
+    recent.write_bytes(source)
+    old_time = time.time() - 25 * 24 * 60 * 60
+    recent_time = time.time() - 15 * 24 * 60 * 60
+    os.utime(stale, (old_time, old_time))
+    os.utime(recent, (recent_time, recent_time))
+
+    result = CliRunner().invoke(
+        grammar_cli, ["--cache-dir", str(cache_dir), "cleanup", "--days", "20"]
+    )
+    assert result.exit_code == 0, result.output
+    assert "Files removed: 1" in result.output
+    assert "Directories cleaned: downloads" in result.output
+    assert not stale.exists()
+    assert recent.exists()
+    assert not parser.parse(recent.read_bytes()).root_node.has_error
+    assert not isolated_home.exists()
 
 
 def test_click_parses_with_selected_local_grammar(tmp_path: Path, monkeypatch) -> None:
