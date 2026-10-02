@@ -108,7 +108,17 @@ def test_supported_wheel_and_invalid_variants(tmp_path: Path) -> None:
 
     installed = tmp_path / "installed"
     subprocess.run(
-        ["uv", "pip", "install", "--no-deps", "--target", str(installed), str(wheel)],
+        [
+            "uv",
+            "pip",
+            "install",
+            "--python",
+            sys.executable,
+            "--no-deps",
+            "--target",
+            str(installed),
+            str(wheel),
+        ],
         check=True,
         capture_output=True,
         text=True,
@@ -168,12 +178,17 @@ def test_supported_wheel_and_invalid_variants(tmp_path: Path) -> None:
     command_result = subprocess.run(
         command_args,
         cwd=tmp_path,
-        env={**clean_env, "PYTHONPATH": str(installed)},
-        check=True,
+        env={
+            **clean_env,
+            "PYTHONPATH": str(installed),
+            "PYTHONIOENCODING": "utf-8",
+        },
         capture_output=True,
         text=True,
+        encoding="utf-8",
         timeout=30,
     )
+    assert command_result.returncode == 0, command_result.stderr
     assert "Usage" in command_result.stdout
 
     no_entry_points_dir = tmp_path / "no-entry-points"
@@ -195,6 +210,8 @@ def test_supported_wheel_and_invalid_variants(tmp_path: Path) -> None:
             "uv",
             "pip",
             "install",
+            "--python",
+            sys.executable,
             "--no-deps",
             "--target",
             str(no_commands),
@@ -355,6 +372,8 @@ def test_supported_wheel_and_invalid_variants(tmp_path: Path) -> None:
             "uv",
             "pip",
             "install",
+            "--python",
+            sys.executable,
             "--no-deps",
             "--target",
             str(broken_install),
@@ -398,6 +417,8 @@ def test_supported_wheel_and_invalid_variants(tmp_path: Path) -> None:
             "uv",
             "pip",
             "install",
+            "--python",
+            sys.executable,
             "--no-deps",
             "--target",
             str(broken_cli_install),
@@ -579,6 +600,8 @@ def test_native_wheel_with_compressed_platform_tags(tmp_path: Path) -> None:
             "uv",
             "pip",
             "install",
+            "--python",
+            sys.executable,
             "--no-deps",
             "--target",
             str(relocated_install),
