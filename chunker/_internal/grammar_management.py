@@ -1,6 +1,7 @@
 """Smart grammar management with user guidance and error handling."""
 
 import logging
+import platform
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -45,8 +46,24 @@ class SmartGrammarManager:
         """
         self.build_dir = Path(build_dir)
         self.grammars_dir = Path(grammars_dir)
+        self.library_suffix = {"Darwin": ".dylib", "Windows": ".dll"}.get(
+            platform.system(), ".so"
+        )
         self.health_cache: dict[str, GrammarHealth] = {}
         self.compatibility_cache: dict[str, GrammarCompatibility] = {}
+
+    def _library_path(self, language: str) -> Path:
+        native = self.build_dir / f"{language}{self.library_suffix}"
+        legacy = self.build_dir / f"{language}.so"
+        return native if native.exists() or not legacy.exists() else legacy
+
+    def _library_files(self) -> list[Path]:
+        languages = {
+            path.stem
+            for suffix in {self.library_suffix, ".so"}
+            for path in self.build_dir.glob(f"*{suffix}")
+        }
+        return [self._library_path(language) for language in sorted(languages)]
 
     def diagnose_grammar_issues(self, language: str) -> GrammarHealth:
         """Diagnose issues with a specific grammar.
@@ -62,8 +79,7 @@ class SmartGrammarManager:
 
         health = GrammarHealth(language=language, status="unknown")
 
-        # Check if .so file exists
-        so_file = self.build_dir / f"{language}.so"
+        so_file = self._library_path(language)
         if not so_file.exists():
             health.status = "missing"
             health.issues.append(f"Grammar library {so_file} not found")
@@ -190,7 +206,7 @@ class SmartGrammarManager:
             pass
 
         # Check compilation date
-        so_file = self.build_dir / f"{language}.so"
+        so_file = self._library_path(language)
         if so_file.exists():
             try:
                 stat = so_file.stat()
@@ -242,18 +258,18 @@ class SmartGrammarManager:
                 f"Navigate to grammar directory: cd grammars/tree-sitter-{language}",
                 "Install dependencies: npm install (if package.json exists)",
                 "Generate grammar: tree-sitter generate",
-                "Copy .so file to build directory: cp *.so ../../chunker/data/grammars/build/",
+                f"Copy {self.library_suffix} file to build directory",
             ]
             plan["estimated_time"] = "5-15 minutes"
             plan["difficulty"] = "easy"
 
         elif health.status == "corrupted":
             plan["recovery_steps"] = [
-                f"Remove corrupted .so file: rm chunker/data/grammars/build/{language}.so",
+                f"Remove corrupted library: {self._library_path(language)}",
                 f"Clean grammar source: cd grammars/tree-sitter-{language} && git clean -fd",
                 "Pull latest changes: git pull origin main",
                 "Recompile grammar: tree-sitter generate",
-                "Copy new .so file to build directory",
+                f"Copy new {self.library_suffix} file to build directory",
             ]
             plan["estimated_time"] = "3-10 minutes"
             plan["difficulty"] = "easy"
@@ -279,8 +295,7 @@ class SmartGrammarManager:
         """
         all_health = {}
 
-        # Get all .so files in build directory
-        so_files = list(self.build_dir.glob("*.so"))
+        so_files = self._library_files()
 
         for so_file in so_files:
             language = so_file.stem

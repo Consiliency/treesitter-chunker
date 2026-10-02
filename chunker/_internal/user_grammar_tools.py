@@ -142,17 +142,20 @@ class UserGrammarTools:
                 result["status"] = "error"
                 return result
 
-            # Step 4: Copy .so file to build directory
-            so_files = list(target_dir.glob("*.so"))
+            # Step 4: Copy the platform's compiled library to the build directory
+            suffix = self.manager.library_suffix
+            so_files = list(target_dir.glob(f"*{suffix}")) or list(
+                target_dir.glob("*.so")
+            )
             if so_files:
                 for so_file in so_files:
-                    target_so = self.build_dir / f"{language}.so"
+                    target_so = self.build_dir / f"{language}{suffix}"
                     shutil.copy2(so_file, target_so)
                     result["steps_completed"].append(
                         f"Copied {so_file.name} to build directory",
                     )
             else:
-                result["errors"].append("No .so files found after generation")
+                result["errors"].append("No compiled grammar library found")
                 result["status"] = "error"
                 return result
 
@@ -191,10 +194,15 @@ class UserGrammarTools:
         }
 
         try:
-            # Remove .so file
-            so_file = self.build_dir / f"{language}.so"
-            if so_file.exists():
-                so_file.unlink()
+            # Remove native and legacy libraries for this grammar
+            libraries = {
+                self.build_dir / f"{language}{suffix}"
+                for suffix in {self.manager.library_suffix, ".so"}
+            }
+            existing = [library for library in libraries if library.exists()]
+            if existing:
+                for library in existing:
+                    library.unlink()
                 result["steps_completed"].append("Removed compiled grammar library")
             else:
                 result["warnings"].append("No compiled grammar library found")
@@ -326,15 +334,18 @@ class UserGrammarTools:
                 result["errors"].append(f"Failed to regenerate grammar: {e}")
                 return result
 
-            # Copy new .so file
-            so_files = list(source_dir.glob("*.so"))
+            # Copy the platform's compiled library
+            suffix = self.manager.library_suffix
+            so_files = list(source_dir.glob(f"*{suffix}")) or list(
+                source_dir.glob("*.so")
+            )
             if so_files:
                 for so_file in so_files:
-                    target_so = self.build_dir / f"{language}.so"
+                    target_so = self.build_dir / f"{language}{suffix}"
                     shutil.copy2(so_file, target_so)
                     result["steps_completed"].append("Updated compiled grammar library")
             else:
-                result["errors"].append("No .so files found after regeneration")
+                result["errors"].append("No compiled grammar library found")
                 return result
 
             result["status"] = "success"
@@ -358,8 +369,7 @@ class UserGrammarTools:
             "grammars": {},
         }
 
-        # Get all .so files
-        so_files = list(self.build_dir.glob("*.so"))
+        so_files = self.manager._library_files()
         result["total_grammars"] = len(so_files)
 
         for so_file in so_files:
