@@ -1,10 +1,12 @@
 """Grammar version analyzer for Phase 1.7."""
 
 import json
+import hashlib
 import logging
 import platform
 import re
 import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -25,6 +27,7 @@ class GrammarAnalyzer:
         """
         self.grammars_dir = Path(grammars_dir)
         self.grammar_cache: dict[str, GrammarVersion] = {}
+        self._cache_fingerprints: dict[str, tuple[int, int, int, int, bytes]] = {}
         self.supported_languages = self._discover_supported_languages()
         self.metadata_extractor = GrammarMetadataExtractor()
         self.feature_detector = FeatureDetector()
@@ -48,8 +51,11 @@ class GrammarAnalyzer:
             # Scan for .so files
             for grammar_file in self.grammars_dir.glob("*.so"):
                 language = grammar_file.stem
-                languages.append(language)
-                logger.debug(f"Discovered language: {language}")
+                if grammar_file.stat().st_size and self._can_load_grammar(
+                    grammar_file, language
+                ):
+                    languages.append(language)
+                    logger.debug(f"Discovered language: {language}")
 
             languages.sort()
             logger.info(f"Discovered {len(languages)} supported languages")
@@ -58,6 +64,30 @@ class GrammarAnalyzer:
             logger.error(f"Error discovering languages: {e}")
 
         return languages
+
+    def _can_load_grammar(self, grammar_path: Path, language: str) -> bool:
+        probe = (
+            "import sys; from pathlib import Path; "
+            "from chunker.grammar_management.core import load_compiled_grammar; "
+            "load_compiled_grammar(Path(sys.argv[1]), sys.argv[2]).parse(b'')"
+        )
+        try:
+            result = subprocess.run(
+                [sys.executable, "-c", probe, str(grammar_path.resolve()), language],
+                capture_output=True,
+                timeout=5,
+                check=False,
+            )
+            return result.returncode == 0
+        except (OSError, subprocess.TimeoutExpired):
+            return False
+
+    @staticmethod
+    def _artifact_fingerprint(grammar_path: Path) -> tuple[int, int, int, int, bytes]:
+        with grammar_path.open("rb") as artifact:
+            stat = grammar_path.stat()
+            digest = hashlib.file_digest(artifact, "sha256").digest()
+        return (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, digest)
 
     def analyze_grammar_file(self, language: str) -> GrammarVersion | None:
         """Analyze a specific grammar file to extract version information.
@@ -69,13 +99,23 @@ class GrammarAnalyzer:
             GrammarVersion object or None if analysis fails
         """
         try:
-            # Check cache first
-            if language in self.grammar_cache:
-                return self.grammar_cache[language]
-
             grammar_path = self.grammars_dir / f"{language}.so"
             if not grammar_path.exists():
+                self.grammar_cache.pop(language, None)
+                self._cache_fingerprints.pop(language, None)
+                if language in self.supported_languages:
+                    self.supported_languages.remove(language)
                 logger.warning(f"Grammar file not found: {grammar_path}")
+                return None
+
+            fingerprint = self._artifact_fingerprint(grammar_path)
+            if self._cache_fingerprints.get(language) == fingerprint:
+                return self.grammar_cache[language]
+            self.grammar_cache.pop(language, None)
+            self._cache_fingerprints.pop(language, None)
+            if not fingerprint[2] or not self._can_load_grammar(grammar_path, language):
+                if language in self.supported_languages:
+                    self.supported_languages.remove(language)
                 return None
 
             # Extract version
@@ -110,8 +150,15 @@ class GrammarAnalyzer:
                 release_date=datetime.fromtimestamp(grammar_path.stat().st_mtime),
             )
 
+            if self._artifact_fingerprint(grammar_path) != fingerprint:
+                return None
+
             # Cache the result
             self.grammar_cache[language] = grammar_version
+            self._cache_fingerprints[language] = fingerprint
+            if language not in self.supported_languages:
+                self.supported_languages.append(language)
+                self.supported_languages.sort()
             logger.info(f"Analyzed grammar for {language}: version {version}")
 
             return grammar_version
@@ -292,7 +339,7 @@ class GrammarAnalyzer:
         results = {}
 
         try:
-            for language in self.supported_languages:
+            for language in tuple(self.supported_languages):
                 grammar_version = self.analyze_grammar_file(language)
                 if grammar_version:
                     results[language] = grammar_version
