@@ -130,9 +130,9 @@ def test_performance_trends_filter_language_age_and_preserve_order(
     database = CompatibilityDatabase(tmp_path / "trends.db")
     now = time.time()
     for language, age_days, throughput, memory_delta in (
-        ("python", 2, 10.0, 8.0),
-        ("javascript", 1.5, 100.0, 99.0),
         ("python", 1, 20.0, 4.0),
+        ("javascript", 1.5, 100.0, 99.0),
+        ("python", 2, 10.0, 8.0),
         ("python", 45, 200.0, 80.0),
     ):
         database.store_test_result(
