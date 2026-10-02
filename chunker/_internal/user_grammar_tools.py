@@ -144,16 +144,13 @@ class UserGrammarTools:
 
             # Step 4: Copy the platform's compiled library to the build directory
             suffix = self.manager.library_suffix
-            so_files = list(target_dir.glob(f"*{suffix}")) or list(
-                target_dir.glob("*.so")
-            )
-            if so_files:
-                for so_file in so_files:
-                    target_so = self.build_dir / f"{language}{suffix}"
-                    shutil.copy2(so_file, target_so)
-                    result["steps_completed"].append(
-                        f"Copied {so_file.name} to build directory",
-                    )
+            grammar_file = target_dir / f"{language}{suffix}"
+            if grammar_file.is_file():
+                target_so = self.build_dir / grammar_file.name
+                shutil.copy2(grammar_file, target_so)
+                result["steps_completed"].append(
+                    f"Copied {grammar_file.name} to build directory",
+                )
             else:
                 result["errors"].append("No compiled grammar library found")
                 result["status"] = "error"
@@ -336,16 +333,14 @@ class UserGrammarTools:
 
             # Copy the platform's compiled library
             suffix = self.manager.library_suffix
-            so_files = list(source_dir.glob(f"*{suffix}")) or list(
-                source_dir.glob("*.so")
-            )
-            if so_files:
-                for so_file in so_files:
-                    target_so = self.build_dir / f"{language}{suffix}"
-                    shutil.copy2(so_file, target_so)
-                    result["steps_completed"].append("Updated compiled grammar library")
+            grammar_file = source_dir / f"{language}{suffix}"
+            if grammar_file.is_file():
+                target_so = self.build_dir / grammar_file.name
+                shutil.copy2(grammar_file, target_so)
+                result["steps_completed"].append("Updated compiled grammar library")
             else:
                 result["errors"].append("No compiled grammar library found")
+                result["status"] = "error"
                 return result
 
             result["status"] = "success"
