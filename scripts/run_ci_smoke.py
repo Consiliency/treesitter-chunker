@@ -11,6 +11,7 @@ CI_SMOKE_TESTS = [
     "tests/test_auto.py",
     "tests/test_chunking.py",
     "tests/test_cli.py",
+    "tests/test_node_explorer_contract.py",
     "tests/test_public_grammar_validator.py",
     "tests/test_grammar_self_test_workflow.py",
     "tests/test_grammar_installer_language_safety.py",
