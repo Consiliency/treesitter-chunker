@@ -1,11 +1,13 @@
 """Contract tests for exported grammar configuration and directories."""
 
 import json
+import os
 import shutil
+import time
 from pathlib import Path
 
 from chunker import get_parser
-from chunker.grammar_management.config import DirectoryManager, UserConfig
+from chunker.grammar_management.config import CacheManager, DirectoryManager, UserConfig
 
 
 FIXTURE = Path(__file__).parent / "fixtures/boundary_ir/repos/python/app/service.py"
@@ -49,4 +51,50 @@ def test_config_reloads_nested_cache_and_directory_settings(
     copied_tree = parser.parse(copied_fixture.read_bytes())
     assert copied_tree.root_node.type == "module"
     assert not copied_tree.root_node.has_error
+    assert not isolated_home.exists()
+
+
+def test_cache_cleanup_removes_stale_grammar_files_only(
+    tmp_path: Path, monkeypatch
+) -> None:
+    parser = get_parser("python")
+    source = FIXTURE.read_bytes()
+    tree = parser.parse(source)
+    assert tree.root_node.type == "module"
+    assert not tree.root_node.has_error
+
+    isolated_home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(isolated_home))
+    monkeypatch.setenv("USERPROFILE", str(isolated_home))
+
+    config = UserConfig(tmp_path / "settings" / "config.json")
+    config.set("directories.base_dir", str(tmp_path / "grammar-state"))
+    directory_manager = DirectoryManager(config)
+    directories = directory_manager.create_structure()
+    downloads = directories["cache_downloads"]
+    builds = directories["cache_builds"]
+
+    old_download = downloads / "old.py"
+    new_download = downloads / "new.py"
+    old_build = builds / "old.py"
+    new_build = builds / "new.py"
+    for path in (old_download, new_download, old_build, new_build):
+        path.write_bytes(source)
+
+    stale_time = time.time() - 45 * 24 * 60 * 60
+    for path in (old_download, old_build):
+        os.utime(path, (stale_time, stale_time))
+
+    stats = CacheManager(config, directory_manager).cleanup_old_files(max_age_days=30)
+    assert stats == {
+        "files_removed": 2,
+        "bytes_freed": 2 * len(source),
+        "downloads_cleaned": 1,
+        "builds_cleaned": 1,
+    }
+    assert not old_download.exists()
+    assert not old_build.exists()
+    for path in (new_download, new_build):
+        assert path.exists()
+        assert not parser.parse(path.read_bytes()).root_node.has_error
     assert not isolated_home.exists()
