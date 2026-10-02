@@ -1,39 +1,48 @@
 """Grammar self-test utilities use current APIs without network installation."""
 
+import sys
 from pathlib import Path
 
-from chunker import get_parser
+from chunker.grammar_management.core import load_compiled_grammar
 from chunker.grammar_management.testing import IntegrationTester, SystemValidator
+from tree_sitter_language_pack import cache_dir
 
 
-FIXTURE = (
-    Path(__file__).resolve().parents[1]
-    / "tests/fixtures/boundary_ir/repos/python/app/service.py"
-)
+ROOT = Path(__file__).resolve().parents[1]
+FIXTURE = ROOT / "tests/fixtures/boundary_ir/repos/python/app/service.py"
 
 
 def test_isolated_workflow_parses_fixture_and_rejects_missing_grammar(
     tmp_path: Path,
 ) -> None:
     source = FIXTURE.read_bytes()
-    assert not get_parser("python").parse(source).root_node.has_error
+    suffix = {"win32": ".dll", "darwin": ".dylib"}.get(sys.platform, ".so")
+    grammar_path = ROOT / "build" / f"python{suffix}"
+    if not grammar_path.exists():
+        grammar_path = Path(cache_dir()) / f"libtree_sitter_python{suffix}"
+    assert grammar_path.exists()
+    assert (
+        not load_compiled_grammar(grammar_path, "python")
+        .parse(source)
+        .root_node.has_error
+    )
     work_dir = tmp_path / "self-test"
     tester = IntegrationTester(work_dir)
     assert tester.dir_manager.base_dir == work_dir
     assert tester.cache_manager.cache_dir == work_dir / "cache"
 
-    valid = tester.test_complete_workflow(FIXTURE, "python")
+    valid = tester.test_complete_workflow(FIXTURE, "python", grammar_path)
     assert valid["status"] == "pass", valid
     assert valid["workflows_tested"] == ["discovery", "validation"]
     assert valid["errors"] == []
 
     invalid_path = tmp_path / "invalid.py"
     invalid_path.write_text("def broken(\n", encoding="utf-8")
-    invalid = tester.test_complete_workflow(invalid_path, "python")
+    invalid = tester.test_complete_workflow(invalid_path, "python", grammar_path)
     assert invalid["status"] == "fail", invalid
     assert "Sample contains parse errors" in invalid["errors"]
 
-    missing = tester.test_complete_workflow(FIXTURE, "missing_grammar")
+    missing = tester.test_complete_workflow(FIXTURE, "missing_grammar", grammar_path)
     assert missing["status"] == "fail", missing
     assert missing["errors"]
     assert tester.test_results["complete_workflow"] == missing

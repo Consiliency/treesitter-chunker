@@ -70,7 +70,10 @@ class IntegrationTester:
         )
 
     def test_complete_workflow(
-        self, sample_path: Path | None = None, language: str = "python"
+        self,
+        sample_path: Path | None = None,
+        language: str = "python",
+        grammar_path: Path | None = None,
     ) -> dict[str, Any]:
         """Run a bounded local grammar discovery and parse workflow."""
         results = {
@@ -89,20 +92,18 @@ class IntegrationTester:
 
             if sample_path is None:
                 raise ValueError("A local sample_path is required")
-            from tree_sitter_language_pack import downloaded_languages
-
-            if language not in downloaded_languages():
-                raise ValueError(f"Grammar for {language} is not cached locally")
+            if grammar_path is None:
+                raise ValueError("A local grammar_path is required")
             source = sample_path.read_text(encoding="utf-8")
             start = time.time()
             valid, errors = GrammarValidator(self.cache_dir).test_parse_samples(
-                language, [source]
+                language, [source], grammar_path
             )
             if valid:
-                from chunker.parser import get_parser
+                from .core import load_compiled_grammar
 
                 if (
-                    get_parser(language)
+                    load_compiled_grammar(grammar_path, language)
                     .parse(source.encode("utf-8"))
                     .root_node.has_error
                 ):
