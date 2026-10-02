@@ -2201,10 +2201,9 @@ class CompatibilityDatabase:
                 )
                 stats["test_results"] = cursor.rowcount
 
-                # Vacuum database
-                conn.execute("VACUUM")
-
-                logger.info(f"Cleaned up {stats} old database records")
+            # Vacuum after the deletions commit; SQLite rejects VACUUM in a transaction.
+            conn.execute("VACUUM")
+            logger.info(f"Cleaned up {stats} old database records")
 
             return stats
 
