@@ -593,10 +593,11 @@ Summary: Tree-sitter based code chunking library""",
         try:
             with zipfile.ZipFile(wheel_path, "r") as zf:
                 files = set(zf.namelist())
-                package_dir = Path(__file__).resolve().parents[1]
+                source_root = Path(__file__).resolve().parents[2]
                 expected_modules = {
-                    path.relative_to(package_dir.parent).as_posix()
-                    for path in package_dir.rglob("*.py")
+                    path.relative_to(source_root).as_posix()
+                    for package in ("chunker", "cli")
+                    for path in (source_root / package).rglob("*.py")
                 }
                 missing_modules = sorted(expected_modules - files)
                 has_package = bool(expected_modules) and not missing_modules
@@ -615,11 +616,26 @@ Summary: Tree-sitter based code chunking library""",
                 has_wheel_info = bool(dist_info_dir) and wheel_info_path in files
                 has_record = bool(dist_info_dir) and record_path in files
                 same_dist_info = has_metadata and has_wheel_info and has_record
-                grammar_files = [
+                native_files = [
                     f
                     for f in files
-                    if f.startswith("chunker/data/grammars/build/")
+                    if f.startswith(("chunker/", "cli/"))
                     and f.endswith((".so", ".dll", ".dylib"))
+                ]
+                grammar_dir = PurePosixPath("chunker/data/grammars/build")
+                native_suffix = {
+                    "linux": ".so",
+                    "macos": ".dylib",
+                    "darwin": ".dylib",
+                    "windows": ".dll",
+                    "win32": ".dll",
+                }.get(platform.lower())
+                grammar_files = [
+                    f
+                    for f in native_files
+                    if PurePosixPath(f).parent == grammar_dir
+                    and native_suffix is not None
+                    and f.endswith(native_suffix)
                 ]
                 components = report["components"]
                 components.update(
@@ -675,6 +691,8 @@ Summary: Tree-sitter based code chunking library""",
                     for tag in wheel_info.get_all("Tag", []):
                         metadata_tags.update(parse_tag(tag))
                     universal = all(tag.platform == "any" for tag in filename_tags)
+                    if universal and native_files:
+                        report["errors"].append("Universal wheel contains native files")
                     platform_tokens = {
                         "linux": ("linux", "manylinux", "musllinux"),
                         "macos": ("macosx",),

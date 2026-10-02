@@ -7,6 +7,7 @@ import io
 import os
 import subprocess
 import sys
+import sysconfig
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -100,13 +101,24 @@ def test_supported_wheel_and_invalid_variants(tmp_path: Path) -> None:
         timeout=120,
     )
     import_check = (
-        "from pathlib import Path; import chunker, sys; "
-        "assert Path(chunker.__file__).is_relative_to(Path(sys.argv[2])); "
-        "assert not chunker.get_parser('python').parse(Path(sys.argv[1]).read_bytes()).root_node.has_error"
+        "import sys; sys.path[:0] = [sys.argv[1], sys.argv[2]]; "
+        "from pathlib import Path; import chunker, cli.main; "
+        "assert Path(chunker.__file__).is_relative_to(Path(sys.argv[1])); "
+        "assert Path(cli.main.__file__).is_relative_to(Path(sys.argv[1])); "
+        "assert not chunker.get_parser('python').parse(Path(sys.argv[3]).read_bytes()).root_node.has_error"
     )
-    clean_env = {**os.environ, "PYTHONPATH": str(installed), "PYTHONNOUSERSITE": "1"}
+    clean_env = {**os.environ, "PYTHONPATH": "", "PYTHONNOUSERSITE": "1"}
+    site_packages = sysconfig.get_path("purelib")
     subprocess.run(
-        [sys.executable, "-c", import_check, str(FIXTURE), str(installed)],
+        [
+            sys.executable,
+            "-S",
+            "-c",
+            import_check,
+            str(installed),
+            site_packages,
+            str(FIXTURE),
+        ],
         cwd=tmp_path,
         env=clean_env,
         check=True,
@@ -270,9 +282,16 @@ def test_supported_wheel_and_invalid_variants(tmp_path: Path) -> None:
         timeout=120,
     )
     failed_import = subprocess.run(
-        [sys.executable, "-c", "import chunker"],
+        [
+            sys.executable,
+            "-S",
+            "-c",
+            "import sys; sys.path[:0] = [sys.argv[1], sys.argv[2]]; import chunker",
+            str(broken_install),
+            site_packages,
+        ],
         cwd=tmp_path,
-        env={**clean_env, "PYTHONPATH": str(broken_install)},
+        env=clean_env,
         capture_output=True,
         text=True,
         timeout=30,
@@ -280,6 +299,48 @@ def test_supported_wheel_and_invalid_variants(tmp_path: Path) -> None:
     assert failed_import.returncode != 0
     assert "ASTCache" in failed_import.stderr
     assert "broken-install" in failed_import.stderr
+
+    no_cli_dir = tmp_path / "no-cli"
+    no_cli_dir.mkdir()
+    no_cli = no_cli_dir / wheel.name
+    _drop_member_with_valid_record(wheel, no_cli, "cli/main.py")
+    valid, report = verifier.verify_build(no_cli, "linux")
+    assert valid is False, report
+    assert "package" in report["missing"]
+    assert "cli/main.py" in report["components"]["missing_modules"]
+    broken_cli_install = tmp_path / "broken-cli-install"
+    subprocess.run(
+        [
+            "uv",
+            "pip",
+            "install",
+            "--no-deps",
+            "--target",
+            str(broken_cli_install),
+            str(no_cli),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    failed_cli = subprocess.run(
+        [
+            sys.executable,
+            "-S",
+            "-c",
+            "import sys; sys.path[:0] = [sys.argv[1], sys.argv[2]]; import cli.main",
+            str(broken_cli_install),
+            site_packages,
+        ],
+        cwd=tmp_path,
+        env=clean_env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert failed_cli.returncode != 0
+    assert "cli.main" in failed_cli.stderr
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="Compiles an ELF grammar")
@@ -317,6 +378,18 @@ def test_native_wheel_with_compressed_platform_tags(tmp_path: Path) -> None:
         timeout=120,
     )
     pure_wheel = next(output.glob("*.whl"))
+    universal_native_dir = tmp_path / "universal-native"
+    universal_native_dir.mkdir()
+    universal_native = universal_native_dir / pure_wheel.name
+    with ZipFile(pure_wheel) as original, ZipFile(universal_native, "w") as changed:
+        for member in original.infolist():
+            changed.writestr(member, original.read(member.filename))
+        changed.writestr("chunker/data/grammars/build/baml.so", grammar.read_bytes())
+    for platform in ("linux", "macos", "windows"):
+        valid, report = BuildSystem().verify_build(universal_native, platform)
+        assert valid is False, report
+        assert "Universal wheel contains native files" in report["errors"]
+
     native_wheel = tmp_path / pure_wheel.name.replace(
         "py3-none-any", "cp311-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64"
     )
@@ -359,6 +432,19 @@ def test_native_wheel_with_compressed_platform_tags(tmp_path: Path) -> None:
                 path = "chunker/grammars/baml.so"
             changed.writestr(path, original.read(member.filename))
     valid, report = BuildSystem().verify_build(misplaced, "linux")
+    assert valid is False, report
+    assert "grammars" in report["missing"]
+
+    nested_dir = tmp_path / "nested-grammar"
+    nested_dir.mkdir()
+    nested = nested_dir / native_wheel.name
+    with ZipFile(native_wheel) as original, ZipFile(nested, "w") as changed:
+        for member in original.infolist():
+            path = member.filename
+            if path == "chunker/data/grammars/build/baml.so":
+                path = "chunker/data/grammars/build/linux/baml.so"
+            changed.writestr(path, original.read(member.filename))
+    valid, report = BuildSystem().verify_build(nested, "linux")
     assert valid is False, report
     assert "grammars" in report["missing"]
 
