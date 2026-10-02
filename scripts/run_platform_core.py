@@ -18,6 +18,7 @@ COMMON_TESTS = [
     "tests/test_public_grammar_cli.py",
     "tests/test_public_grammar_config.py",
     "tests/test_grammar_candidate_compatibility.py",
+    "tests/test_grammar_compatibility_contract.py",
     "tests/test_exceptions.py",
     "tests/test_fallback_chunking.py",
     "tests/test_registry_fallback.py",
