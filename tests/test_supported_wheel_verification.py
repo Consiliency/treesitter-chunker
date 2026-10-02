@@ -43,17 +43,24 @@ def _drop_wheel_member(source: Path, target: Path, member_to_drop: str) -> None:
                 changed.writestr(member, original.read(member.filename))
 
 
-def _drop_member_with_valid_record(
-    source: Path, target: Path, member_to_drop: str
+def _mutate_wheel_with_valid_record(
+    source: Path,
+    target: Path,
+    *,
+    drop: str | None = None,
+    add: tuple[str, bytes] | None = None,
 ) -> None:
     with ZipFile(source) as original, ZipFile(target, "w") as changed:
-        assert member_to_drop in original.namelist()
+        if drop is not None:
+            assert drop in original.namelist()
+        if add is not None:
+            assert add[0] not in original.namelist()
         record_path = next(
             name for name in original.namelist() if name.endswith(".dist-info/RECORD")
         )
         rows = []
         for member in original.infolist():
-            if member.filename in (member_to_drop, record_path):
+            if member.filename in (drop, record_path):
                 continue
             data = original.read(member.filename)
             changed.writestr(member, data)
@@ -63,6 +70,13 @@ def _drop_member_with_valid_record(
             rows.append(
                 (member.filename, f"sha256={digest.decode('ascii')}", len(data))
             )
+        if add is not None:
+            name, data = add
+            changed.writestr(name, data)
+            digest = base64.urlsafe_b64encode(hashlib.sha256(data).digest()).rstrip(
+                b"="
+            )
+            rows.append((name, f"sha256={digest.decode('ascii')}", len(data)))
         rows.append((record_path, "", ""))
         text = io.StringIO(newline="")
         writer = csv.writer(text, lineterminator="\n")
@@ -125,6 +139,76 @@ def test_supported_wheel_and_invalid_variants(tmp_path: Path) -> None:
         capture_output=True,
         text=True,
         timeout=30,
+    )
+    command = next(
+        (
+            path
+            for directory in ("bin", "Scripts")
+            for name in ("tsc", "tsc.exe")
+            if (path := installed / directory / name).is_file()
+        ),
+        None,
+    )
+    assert command is not None
+    command_args = (
+        [str(command), "--help"]
+        if command.suffix == ".exe"
+        else [
+            sys.executable,
+            "-S",
+            "-c",
+            "import runpy, sys; sys.path[:0] = [sys.argv[1], sys.argv[2]]; "
+            "script = sys.argv[3]; sys.argv = [script, '--help']; "
+            "runpy.run_path(script, run_name='__main__')",
+            str(installed),
+            site_packages,
+            str(command),
+        ]
+    )
+    command_result = subprocess.run(
+        command_args,
+        cwd=tmp_path,
+        env={**clean_env, "PYTHONPATH": str(installed)},
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert "Usage" in command_result.stdout
+
+    no_entry_points_dir = tmp_path / "no-entry-points"
+    no_entry_points_dir.mkdir()
+    no_entry_points = no_entry_points_dir / wheel.name
+    with ZipFile(wheel) as built:
+        entry_points_path = next(
+            name
+            for name in built.namelist()
+            if name.endswith(".dist-info/entry_points.txt")
+        )
+    _mutate_wheel_with_valid_record(wheel, no_entry_points, drop=entry_points_path)
+    valid, report = verifier.verify_build(no_entry_points, "linux")
+    assert valid is False, report
+    assert "entry_points" in report["missing"]
+    no_commands = tmp_path / "no-commands"
+    subprocess.run(
+        [
+            "uv",
+            "pip",
+            "install",
+            "--no-deps",
+            "--target",
+            str(no_commands),
+            str(no_entry_points),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert not any(
+        (no_commands / directory / name).exists()
+        for directory in ("bin", "Scripts")
+        for name in ("tsc", "tsc.exe", "treesitter-chunker", "treesitter-chunker.exe")
     )
 
     missing, report = verifier.verify_build(tmp_path / "missing.whl", "linux")
@@ -260,7 +344,7 @@ def test_supported_wheel_and_invalid_variants(tmp_path: Path) -> None:
     no_cache_dir = tmp_path / "no-cache"
     no_cache_dir.mkdir()
     no_cache = no_cache_dir / wheel.name
-    _drop_member_with_valid_record(wheel, no_cache, "chunker/_internal/cache.py")
+    _mutate_wheel_with_valid_record(wheel, no_cache, drop="chunker/_internal/cache.py")
     valid, report = verifier.verify_build(no_cache, "linux")
     assert valid is False, report
     assert "package" in report["missing"]
@@ -303,7 +387,7 @@ def test_supported_wheel_and_invalid_variants(tmp_path: Path) -> None:
     no_cli_dir = tmp_path / "no-cli"
     no_cli_dir.mkdir()
     no_cli = no_cli_dir / wheel.name
-    _drop_member_with_valid_record(wheel, no_cli, "cli/main.py")
+    _mutate_wheel_with_valid_record(wheel, no_cli, drop="cli/main.py")
     valid, report = verifier.verify_build(no_cli, "linux")
     assert valid is False, report
     assert "package" in report["missing"]
@@ -341,6 +425,26 @@ def test_supported_wheel_and_invalid_variants(tmp_path: Path) -> None:
     )
     assert failed_cli.returncode != 0
     assert "cli.main" in failed_cli.stderr
+    subprocess.run(
+        [
+            sys.executable,
+            "-S",
+            "-c",
+            "import sys; sys.path[:0] = [sys.argv[1], sys.argv[2]]; "
+            "from pathlib import Path; from chunker.build.builder import BuildSystem; "
+            "valid, report = BuildSystem().verify_build(Path(sys.argv[3]), 'linux'); "
+            "assert not valid and 'cli/main.py' in report['components']['missing_modules'], report",
+            str(broken_cli_install),
+            site_packages,
+            str(no_cli),
+        ],
+        cwd=tmp_path,
+        env=clean_env,
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="Compiles an ELF grammar")
@@ -378,17 +482,50 @@ def test_native_wheel_with_compressed_platform_tags(tmp_path: Path) -> None:
         timeout=120,
     )
     pure_wheel = next(output.glob("*.whl"))
-    universal_native_dir = tmp_path / "universal-native"
-    universal_native_dir.mkdir()
-    universal_native = universal_native_dir / pure_wheel.name
-    with ZipFile(pure_wheel) as original, ZipFile(universal_native, "w") as changed:
+    with ZipFile(pure_wheel) as built:
+        dist_info_dir = next(
+            name.split("/", 1)[0]
+            for name in built.namelist()
+            if name.endswith(".dist-info/RECORD")
+        )
+    data_dir = dist_info_dir.removesuffix(".dist-info") + ".data"
+    for case, member in (
+        ("package", "chunker/data/grammars/build/baml.so"),
+        ("relocated", f"{data_dir}/purelib/chunker/data/grammars/build/baml.so"),
+        ("libs", "treesitter_chunker.libs/baml.so"),
+    ):
+        universal_dir = tmp_path / f"universal-{case}"
+        universal_dir.mkdir()
+        universal_native = universal_dir / pure_wheel.name
+        _mutate_wheel_with_valid_record(
+            pure_wheel,
+            universal_native,
+            add=(member, grammar.read_bytes()),
+        )
+        for platform in ("linux", "macos", "windows"):
+            valid, report = BuildSystem().verify_build(universal_native, platform)
+            assert valid is False, report
+            assert "Universal wheel contains native files" in report["errors"]
+
+    mixed = tmp_path / pure_wheel.name.replace(
+        "py3-none-any", "py3-none-any.manylinux2014_x86_64"
+    )
+    with ZipFile(pure_wheel) as original, ZipFile(mixed, "w") as changed:
         for member in original.infolist():
-            changed.writestr(member, original.read(member.filename))
+            data = original.read(member.filename)
+            if member.filename.endswith(".dist-info/WHEEL"):
+                info = data.decode("utf-8").replace("\r\n", "\n")
+                info = info.replace("Root-Is-Purelib: true", "Root-Is-Purelib: false")
+                info = info.replace(
+                    "Tag: py3-none-any",
+                    "Tag: py3-none-any\nTag: py3-none-manylinux2014_x86_64",
+                )
+                data = info.encode("utf-8")
+            changed.writestr(member, data)
         changed.writestr("chunker/data/grammars/build/baml.so", grammar.read_bytes())
-    for platform in ("linux", "macos", "windows"):
-        valid, report = BuildSystem().verify_build(universal_native, platform)
-        assert valid is False, report
-        assert "Universal wheel contains native files" in report["errors"]
+    valid, report = BuildSystem().verify_build(mixed, "linux")
+    assert valid is False, report
+    assert "Universal wheel contains native files" in report["errors"]
 
     native_wheel = tmp_path / pure_wheel.name.replace(
         "py3-none-any", "cp311-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64"
@@ -418,6 +555,44 @@ def test_native_wheel_with_compressed_platform_tags(tmp_path: Path) -> None:
     packaged_grammar = packaged_root / "chunker/data/grammars/build/baml.so"
     assert (
         not load_compiled_grammar(packaged_grammar, "baml")
+        .parse(baml_source.read_bytes())
+        .root_node.has_error
+    )
+
+    relocated_dir = tmp_path / "relocated-native"
+    relocated_dir.mkdir()
+    relocated = relocated_dir / native_wheel.name
+    _mutate_wheel_with_valid_record(
+        native_wheel,
+        relocated,
+        drop="chunker/data/grammars/build/baml.so",
+        add=(
+            f"{data_dir}/platlib/chunker/data/grammars/build/baml.so",
+            grammar.read_bytes(),
+        ),
+    )
+    valid, report = BuildSystem().verify_build(relocated, "linux")
+    assert valid, report
+    relocated_install = tmp_path / "relocated-install"
+    subprocess.run(
+        [
+            "uv",
+            "pip",
+            "install",
+            "--no-deps",
+            "--target",
+            str(relocated_install),
+            str(relocated),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    installed_grammar = relocated_install / "chunker/data/grammars/build/baml.so"
+    assert installed_grammar.exists()
+    assert (
+        not load_compiled_grammar(installed_grammar, "baml")
         .parse(baml_source.read_bytes())
         .root_node.has_error
     )

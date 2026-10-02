@@ -9,6 +9,7 @@ import subprocess
 import tarfile
 import tempfile
 import zipfile
+from configparser import ConfigParser
 from email.parser import Parser
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -592,15 +593,10 @@ Summary: Tree-sitter based code chunking library""",
         """Verify wheel contents"""
         try:
             with zipfile.ZipFile(wheel_path, "r") as zf:
-                files = set(zf.namelist())
-                source_root = Path(__file__).resolve().parents[2]
-                expected_modules = {
-                    path.relative_to(source_root).as_posix()
-                    for package in ("chunker", "cli")
-                    for path in (source_root / package).rglob("*.py")
-                }
-                missing_modules = sorted(expected_modules - files)
-                has_package = bool(expected_modules) and not missing_modules
+                members = zf.namelist()
+                files = set(members)
+                if len(members) != len(files):
+                    report["errors"].append("Duplicate wheel members")
                 dist_info_dirs = {
                     name.split("/", 1)[0]
                     for name in files
@@ -609,18 +605,49 @@ Summary: Tree-sitter based code chunking library""",
                 dist_info_dir = (
                     next(iter(dist_info_dirs)) if len(dist_info_dirs) == 1 else ""
                 )
+                data_dir = f"{dist_info_dir.removesuffix('.dist-info')}.data"
+
+                def installed_path(name: str) -> str:
+                    parts = PurePosixPath(name).parts
+                    if (
+                        len(parts) >= 3
+                        and parts[0] == data_dir
+                        and parts[1] in ("purelib", "platlib")
+                    ):
+                        return PurePosixPath(*parts[2:]).as_posix()
+                    return name
+
+                installed_files = {installed_path(name) for name in files}
+                source_root = Path(__file__).resolve().parents[2]
+                expected_modules = {
+                    path.relative_to(source_root).as_posix()
+                    for package in ("chunker", "cli")
+                    for path in (source_root / package).rglob("*.py")
+                }
+                expected_modules.update({"cli/__init__.py", "cli/main.py"})
+                missing_modules = sorted(expected_modules - installed_files)
+                has_package = bool(expected_modules) and not missing_modules
                 metadata_path = f"{dist_info_dir}/METADATA"
                 wheel_info_path = f"{dist_info_dir}/WHEEL"
                 record_path = f"{dist_info_dir}/RECORD"
+                entry_points_path = f"{dist_info_dir}/entry_points.txt"
                 has_metadata = bool(dist_info_dir) and metadata_path in files
                 has_wheel_info = bool(dist_info_dir) and wheel_info_path in files
                 has_record = bool(dist_info_dir) and record_path in files
                 same_dist_info = has_metadata and has_wheel_info and has_record
+                has_entry_points = bool(dist_info_dir) and entry_points_path in files
+                if has_entry_points:
+                    entry_points = ConfigParser(interpolation=None)
+                    entry_points.read_string(zf.read(entry_points_path).decode("utf-8"))
+                    has_entry_points = entry_points.has_section("console_scripts") and (
+                        dict(entry_points.items("console_scripts"))
+                        == {
+                            "treesitter-chunker": "cli.main:app",
+                            "tsc": "cli.main:app",
+                        }
+                    )
                 native_files = [
-                    f
-                    for f in files
-                    if f.startswith(("chunker/", "cli/"))
-                    and f.endswith((".so", ".dll", ".dylib"))
+                    f for f in files if f.endswith((".so", ".dll", ".dylib", ".pyd"))
                 ]
                 grammar_dir = PurePosixPath("chunker/data/grammars/build")
                 native_suffix = {
@@ -633,7 +660,7 @@ Summary: Tree-sitter based code chunking library""",
                 grammar_files = [
                     f
                     for f in native_files
-                    if PurePosixPath(f).parent == grammar_dir
+                    if PurePosixPath(installed_path(f)).parent == grammar_dir
                     and native_suffix is not None
                     and f.endswith(native_suffix)
                 ]
@@ -644,6 +671,7 @@ Summary: Tree-sitter based code chunking library""",
                     metadata=has_metadata,
                     wheel_info=has_wheel_info,
                     record=has_record,
+                    entry_points=has_entry_points,
                     grammars=bool(grammar_files),
                     grammar_count=len(grammar_files),
                     platform_match=False,
@@ -658,6 +686,8 @@ Summary: Tree-sitter based code chunking library""",
                     report["missing"].append("wheel_info")
                 if not has_record:
                     report["missing"].append("record")
+                if not has_entry_points:
+                    report["missing"].append("entry_points")
                 if not same_dist_info:
                     report["errors"].append("Wheel metadata directories do not match")
 
@@ -691,7 +721,10 @@ Summary: Tree-sitter based code chunking library""",
                     for tag in wheel_info.get_all("Tag", []):
                         metadata_tags.update(parse_tag(tag))
                     universal = all(tag.platform == "any" for tag in filename_tags)
-                    if universal and native_files:
+                    if (
+                        any(tag.platform == "any" for tag in filename_tags)
+                        and native_files
+                    ):
                         report["errors"].append("Universal wheel contains native files")
                     platform_tokens = {
                         "linux": ("linux", "manylinux", "musllinux"),
