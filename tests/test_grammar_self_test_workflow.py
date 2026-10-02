@@ -13,7 +13,7 @@ FIXTURE = ROOT / "tests/fixtures/boundary_ir/repos/python/app/service.py"
 
 
 def test_isolated_workflow_parses_fixture_and_rejects_missing_grammar(
-    tmp_path: Path,
+    tmp_path: Path, monkeypatch
 ) -> None:
     source = FIXTURE.read_bytes()
     suffix = {"win32": ".dll", "darwin": ".dylib"}.get(sys.platform, ".so")
@@ -26,6 +26,9 @@ def test_isolated_workflow_parses_fixture_and_rejects_missing_grammar(
         .parse(source)
         .root_node.has_error
     )
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
     work_dir = tmp_path / "self-test"
     tester = IntegrationTester(work_dir)
     assert tester.dir_manager.base_dir == work_dir
@@ -54,3 +57,4 @@ def test_isolated_workflow_parses_fixture_and_rejects_missing_grammar(
     assert "config-cache" in integration["integration_points"]
     tester.cleanup()
     assert work_dir.exists()
+    assert list(home.iterdir()) == []
