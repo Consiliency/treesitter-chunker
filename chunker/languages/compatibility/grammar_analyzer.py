@@ -9,6 +9,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from chunker.grammar_management.core import load_compiled_grammar
+
 from .schema import CompatibilityLevel, GrammarVersion, LanguageVersion
 
 logger = logging.getLogger(__name__)
@@ -77,6 +79,8 @@ class GrammarAnalyzer:
             if not grammar_path.exists():
                 logger.warning(f"Grammar file not found: {grammar_path}")
                 return None
+
+            load_compiled_grammar(grammar_path, language)
 
             # Extract version
             version = self.extract_grammar_version(grammar_path)
