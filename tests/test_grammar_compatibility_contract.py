@@ -13,6 +13,7 @@ from chunker.grammar_management.compatibility import (
     CompatibilityChecker,
     CompatibilityDatabase,
     CompatibilityLevel,
+    CompatibilityResult,
     SelectionCriterion,
     SmartSelector,
     TestResult as GrammarTestResult,
@@ -158,3 +159,55 @@ def test_performance_trends_filter_language_age_and_preserve_order(
         "throughput": {"average": 15.0, "median": 15.0, "trend": "improving"},
         "memory": {"average_delta": 6.0, "median_delta": 6.0, "trend": "improving"},
     }
+
+
+def test_database_stats_count_persisted_parse_records_and_date_span(
+    tmp_path: Path,
+) -> None:
+    parsed = {}
+    for language, fixture in (
+        ("python", "tests/fixtures/boundary_ir/repos/python/app/service.py"),
+        ("javascript", "tests/fixtures/boundary_ir/repos/javascript/service.js"),
+    ):
+        source = (ROOT / fixture).read_bytes()
+        tree = get_parser(language).parse(source)
+        assert not tree.root_node.has_error
+        parsed[language] = {"root_type": tree.root_node.type, "bytes": len(source)}
+
+    database_path = tmp_path / "stats.db"
+    database = CompatibilityDatabase(database_path)
+    now = time.time()
+    oldest = now - 3 * 24 * 60 * 60
+    newest = now - 24 * 60 * 60
+    for language, timestamp in (("python", oldest), ("javascript", newest)):
+        database.store_compatibility_result(
+            CompatibilityResult(
+                language=language,
+                grammar_version="pinned",
+                language_version=None,
+                level=CompatibilityLevel.COMPATIBLE,
+                score=1.0,
+                test_results={"parsed": parsed[language]},
+                timestamp=timestamp,
+            )
+        )
+    database.store_test_result(
+        GrammarTestResult(
+            language="python",
+            grammar_version="pinned",
+            test_type="parse",
+            success=True,
+            duration=0.1,
+            sample_results=[parsed["python"]],
+            timestamp=now,
+        )
+    )
+
+    stats = CompatibilityDatabase(database_path).get_database_stats()
+    assert stats["compatibility_results"] == 2
+    assert stats["test_results"] == 1
+    assert stats["grammar_metadata"] == 0
+    assert stats["database_size_mb"] > 0
+    assert stats["oldest_record"] == oldest
+    assert stats["newest_record"] == newest
+    assert stats["data_span_days"] == pytest.approx(2)

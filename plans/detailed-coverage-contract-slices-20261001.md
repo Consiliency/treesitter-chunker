@@ -49,6 +49,16 @@ executed (71.1525%), 11,537 missed. The report is
 the second-largest module gap (536/820 missed), so slice 24 covers a separate
 language-filtered performance trend contract there.
 
+Remeasurement on merged `main` at `0a559079aaaab27f5518ad194d485d84fcbfb201`
+used the same representative command with private workspace temporary and
+coverage data: 3,511 passed, 4 skipped, and one known load-sensitive timing
+failure in treesitter-chunker#130; 28,473 of 39,993 statements executed
+(71.1950%), 11,520 missed. The report is
+`/tmp/treesitter-69-current-main-0a559079.json`. Grammar compatibility
+remains the second-largest module gap (516/820 missed), so slice 25 covers
+the independent database statistics contract. Its cleanup defect is filed
+separately as treesitter-chunker#205.
+
 The table ranks **every zero-covered module first**, then the largest remaining
 individual gaps. Risk is the possible consequence of an untested contract, not
 an assertion that the module is in active production use. H means a parser,
@@ -129,6 +139,7 @@ with the original source restored before committing.
 | 22 — grammar cache size cleanup | `grammar_management/config.py` `CacheManager.cleanup_by_size`: when a temporary grammar cache exceeds a requested size, its oldest file is evicted first with accurate counts and bytes, a newer parseable file remains, and a second call below the limit removes nothing. | Pad checked-in Python fixture copies with whitespace to 512 KiB and 768 KiB; put the oldest in builds, which is enumerated after downloads, and parse both with the pinned parser. Mutations **reverse oldest-first eviction order** (`mtime` descending) and **omit eviction sort** must fail. Extend the existing grammar config contract test file. |
 | 23 — public grammar cache cleanup | `grammar_management/cli.py` `cleanup`: the public Click command honors `--days 20`, reports one removed 25-day-old download, preserves a 15-day-old build file, and leaves the caller's home untouched. | Parse checked-in Python fixture copies with the pinned parser before and after calling the command against a temporary cache. Mutations **omit age at manager call** (use the 30-day manager default) and **omit age at Click call** (use the seven-day CLI default) must fail. Extend the existing grammar CLI contract test file. |
 | 24 — compatibility performance trends | `grammar_management/compatibility.py` `CompatibilityDatabase.get_performance_trends`: recent Python records from real parsed fixtures aggregate throughput and memory in chronological order, excluding an older Python record and a recent JavaScript record. | Parse checked-in Python and JavaScript fixtures with pinned parsers, then store their language labels and deterministic metrics in a temporary SQLite database. Insert the newer Python record first. Mutations **invert language filter**, **reverse trend chronology**, and **omit trend ordering** must fail. Extend the existing grammar compatibility contract test file. |
+| 25 — compatibility database statistics | `grammar_management/compatibility.py` `CompatibilityDatabase.get_database_stats`: after reopening a temporary SQLite database, statistics count two persisted compatibility records and one test result from parsed Python and JavaScript fixtures, report a nonempty file, and retain the oldest/newest timestamps and two-day span. | Parse checked-in Python and JavaScript fixtures with pinned parsers before storing records. Mutations **count test results from the compatibility table** and **use oldest as newest timestamp** must fail. Extend the existing grammar compatibility contract test file. Keep the cleanup defect in treesitter-chunker#205 separate. |
 
 `interfaces/stubs.py` remains in the ranked inventory but is not promoted into
 a coverage slice until its consumer contract is confirmed. The node explorer
