@@ -640,7 +640,8 @@ class DirectoryManager:
         if dir_type not in dir_mapping:
             raise ValueError(f"Unknown directory type: {dir_type}")
 
-        return self.base_dir / dir_mapping[dir_type]
+        directory = self.base_dir / dir_mapping[dir_type]
+        return directory.resolve() if dir_type == "cache" else directory
 
     def create_structure(self) -> dict[str, Path]:
         """Create complete directory structure.
@@ -768,7 +769,10 @@ class DirectoryManager:
                 return 0
 
             cache_dir = self.get_directory("cache")
-            managed_cache_dirs = {cache_dir / "downloads", cache_dir / "builds"}
+            managed_cache_dirs = {
+                (cache_dir / cache_subdir).resolve()
+                for cache_subdir in ("downloads", "builds")
+            }
 
             # Find empty directories (excluding base directories we want to keep)
             for dir_path in self.base_dir.rglob("*"):
@@ -786,7 +790,7 @@ class DirectoryManager:
                                     "backups",
                                     "tmp",
                                 ]
-                                and dir_path not in managed_cache_dirs
+                                and dir_path.resolve() not in managed_cache_dirs
                             ):
                                 dir_path.rmdir()
                                 removed_count += 1

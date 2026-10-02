@@ -6,6 +6,7 @@ import shutil
 import time
 from pathlib import Path
 
+import pytest
 from chunker import get_parser
 from chunker.grammar_management.config import CacheManager, DirectoryManager, UserConfig
 
@@ -100,8 +101,16 @@ def test_cache_cleanup_removes_stale_grammar_files_only(
     assert not isolated_home.exists()
 
 
+@pytest.mark.parametrize(
+    ("base_subpath", "cache_subpath"),
+    [
+        ("grammar-state", "cache"),
+        ("grammar-state", "nested/../cache"),
+        ("alias/../grammar-state", "cache"),
+    ],
+)
 def test_cache_cleanup_keeps_empty_managed_directories(
-    tmp_path: Path, monkeypatch
+    tmp_path: Path, monkeypatch, base_subpath: str, cache_subpath: str
 ) -> None:
     parser = get_parser("python")
     source = FIXTURE.read_bytes()
@@ -112,7 +121,8 @@ def test_cache_cleanup_keeps_empty_managed_directories(
     monkeypatch.setenv("USERPROFILE", str(isolated_home))
 
     config = UserConfig(tmp_path / "settings" / "config.json")
-    config.set("directories.base_dir", str(tmp_path / "grammar-state"))
+    config.set("directories.base_dir", str(tmp_path / base_subpath))
+    config.set("directories.cache_dir", cache_subpath)
     directory_manager = DirectoryManager(config)
     directories = directory_manager.create_structure()
     managed = (directories["cache_downloads"], directories["cache_builds"])
