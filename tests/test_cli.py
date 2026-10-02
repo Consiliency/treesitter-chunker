@@ -5,6 +5,9 @@ Tests for enhanced CLI features.
 from __future__ import annotations
 
 import json
+import os
+import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -19,6 +22,27 @@ from cli.main import (
 )
 
 runner = CliRunner()
+
+
+def test_installed_help_with_cp1252_output():
+    """Both installed launchers must render help with a Windows-compatible stream."""
+    suffix = ".exe" if sys.platform == "win32" else ""
+    for name in ("tsc", "treesitter-chunker"):
+        command = Path(sys.executable).with_name(f"{name}{suffix}")
+        assert command.is_file(), f"Installed command missing: {command}"
+        env = os.environ.copy()
+        env["PYTHONIOENCODING"] = "cp1252"
+        env["PYTHONUTF8"] = "0"
+        result = subprocess.run(
+            [str(command), "--help"],
+            capture_output=True,
+            text=True,
+            encoding="cp1252",
+            env=env,
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr
+        assert "Tree-sitter-based code-chunker CLI" in result.stdout
 
 
 class TestConfigLoading:

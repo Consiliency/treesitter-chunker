@@ -41,7 +41,7 @@ from .repo_command import app as repo_app
 # Import setup commands
 from .setup_command import app as setup_app
 
-app = typer.Typer(help="Tree‑sitter‑based code‑chunker CLI")
+app = typer.Typer(help="Tree-sitter-based code-chunker CLI")
 console = Console()
 stderr_console = Console(stderr=True)
 
