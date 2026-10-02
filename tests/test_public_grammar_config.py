@@ -182,3 +182,45 @@ def test_cache_size_cleanup_evicts_oldest_parseable_file_first(
         "builds_cleaned": 0,
     }
     assert not isolated_home.exists()
+
+
+def test_cache_clear_downloads_recursively_preserves_builds(
+    tmp_path: Path, monkeypatch
+) -> None:
+    parser = get_parser("python")
+    source = FIXTURE.read_bytes()
+    assert not parser.parse(source).root_node.has_error
+
+    isolated_home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(isolated_home))
+    monkeypatch.setenv("USERPROFILE", str(isolated_home))
+
+    config = UserConfig(tmp_path / "settings" / "config.json")
+    config.set("directories.base_dir", str(tmp_path / "grammar-state"))
+    directory_manager = DirectoryManager(config)
+    directories = directory_manager.create_structure()
+    nested_download = directories["cache_downloads"] / "nested" / "service.py"
+    nested_download.parent.mkdir()
+    nested_download.write_bytes(source)
+    retained_build = directories["cache_builds"] / "service.py"
+    retained_build.write_bytes(source)
+
+    cache_manager = CacheManager(config, directory_manager)
+    assert cache_manager.clear_cache("downloads") == {
+        "files_removed": 1,
+        "bytes_freed": len(source),
+        "downloads_cleaned": 1,
+        "builds_cleaned": 0,
+    }
+    assert not nested_download.exists()
+    assert directories["cache_downloads"].is_dir()
+    assert retained_build.exists()
+    assert not parser.parse(retained_build.read_bytes()).root_node.has_error
+    assert cache_manager.clear_cache("downloads") == {
+        "files_removed": 0,
+        "bytes_freed": 0,
+        "downloads_cleaned": 0,
+        "builds_cleaned": 0,
+    }
+    assert retained_build.exists()
+    assert not isolated_home.exists()
