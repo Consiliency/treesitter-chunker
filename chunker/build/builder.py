@@ -193,7 +193,6 @@ class BuildSystem(BuildSystemContract):
 
             # Build wheel manually using wheel package
             try:
-                from wheel.metadata import pkginfo_to_metadata
                 from wheel.wheelfile import WheelFile
 
                 # Create wheel filename
@@ -594,34 +593,41 @@ Summary: Tree-sitter based code chunking library""",
         try:
             with zipfile.ZipFile(wheel_path, "r") as zf:
                 files = set(zf.namelist())
-                has_package = any(
-                    {f"{package}/{name}.py" for name in ("__init__", "core", "parser")}
-                    <= files
-                    for package in ("chunker", "treesitter_chunker")
+                package_dir = Path(__file__).resolve().parents[1]
+                expected_modules = {
+                    path.relative_to(package_dir.parent).as_posix()
+                    for path in package_dir.rglob("*.py")
+                }
+                missing_modules = sorted(expected_modules - files)
+                has_package = bool(expected_modules) and not missing_modules
+                dist_info_dirs = {
+                    name.split("/", 1)[0]
+                    for name in files
+                    if name.split("/", 1)[0].endswith(".dist-info")
+                }
+                dist_info_dir = (
+                    next(iter(dist_info_dirs)) if len(dist_info_dirs) == 1 else ""
                 )
-                metadata_files = [f for f in files if f.endswith(".dist-info/METADATA")]
-                wheel_info_files = [f for f in files if f.endswith(".dist-info/WHEEL")]
-                has_metadata = len(metadata_files) == 1
-                has_wheel_info = len(wheel_info_files) == 1
-                same_dist_info = (
-                    has_metadata
-                    and has_wheel_info
-                    and metadata_files[0].rsplit("/", 1)[0]
-                    == wheel_info_files[0].rsplit("/", 1)[0]
-                )
+                metadata_path = f"{dist_info_dir}/METADATA"
+                wheel_info_path = f"{dist_info_dir}/WHEEL"
+                record_path = f"{dist_info_dir}/RECORD"
+                has_metadata = bool(dist_info_dir) and metadata_path in files
+                has_wheel_info = bool(dist_info_dir) and wheel_info_path in files
+                has_record = bool(dist_info_dir) and record_path in files
+                same_dist_info = has_metadata and has_wheel_info and has_record
                 grammar_files = [
                     f
                     for f in files
-                    if f.startswith(
-                        ("chunker/grammars/", "treesitter_chunker/grammars/")
-                    )
+                    if f.startswith("chunker/data/grammars/build/")
                     and f.endswith((".so", ".dll", ".dylib"))
                 ]
                 components = report["components"]
                 components.update(
                     package=has_package,
+                    missing_modules=missing_modules,
                     metadata=has_metadata,
                     wheel_info=has_wheel_info,
+                    record=has_record,
                     grammars=bool(grammar_files),
                     grammar_count=len(grammar_files),
                     platform_match=False,
@@ -634,24 +640,22 @@ Summary: Tree-sitter based code chunking library""",
                     report["missing"].append("metadata")
                 if not has_wheel_info:
                     report["missing"].append("wheel_info")
+                if not has_record:
+                    report["missing"].append("record")
                 if not same_dist_info:
                     report["errors"].append("Wheel metadata directories do not match")
 
                 if same_dist_info:
-                    metadata = Parser().parsestr(
-                        zf.read(metadata_files[0]).decode("utf-8")
-                    )
+                    metadata = Parser().parsestr(zf.read(metadata_path).decode("utf-8"))
                     wheel_info = Parser().parsestr(
-                        zf.read(wheel_info_files[0]).decode("utf-8")
+                        zf.read(wheel_info_path).decode("utf-8")
                     )
                     wheel_name, wheel_version, _, filename_tags = parse_wheel_filename(
                         wheel_path.name
                     )
                     metadata_name = metadata.get("Name")
                     metadata_version = metadata.get("Version")
-                    dist_info_name = (
-                        metadata_files[0].split("/", 1)[0].removesuffix(".dist-info")
-                    )
+                    dist_info_name = dist_info_dir.removesuffix(".dist-info")
                     dist_name, _, dist_version = dist_info_name.rpartition("-")
                     if (
                         not metadata.get("Metadata-Version")

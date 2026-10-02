@@ -1,5 +1,10 @@
 """Verify the wheel produced by the supported build path."""
 
+import base64
+import csv
+import hashlib
+import io
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -9,6 +14,7 @@ import pytest
 
 from chunker import get_parser
 from chunker.build.builder import BuildSystem
+from chunker.grammar_management.core import load_compiled_grammar
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -36,6 +42,33 @@ def _drop_wheel_member(source: Path, target: Path, member_to_drop: str) -> None:
                 changed.writestr(member, original.read(member.filename))
 
 
+def _drop_member_with_valid_record(
+    source: Path, target: Path, member_to_drop: str
+) -> None:
+    with ZipFile(source) as original, ZipFile(target, "w") as changed:
+        assert member_to_drop in original.namelist()
+        record_path = next(
+            name for name in original.namelist() if name.endswith(".dist-info/RECORD")
+        )
+        rows = []
+        for member in original.infolist():
+            if member.filename in (member_to_drop, record_path):
+                continue
+            data = original.read(member.filename)
+            changed.writestr(member, data)
+            digest = base64.urlsafe_b64encode(hashlib.sha256(data).digest()).rstrip(
+                b"="
+            )
+            rows.append(
+                (member.filename, f"sha256={digest.decode('ascii')}", len(data))
+            )
+        rows.append((record_path, "", ""))
+        text = io.StringIO(newline="")
+        writer = csv.writer(text, lineterminator="\n")
+        writer.writerows(rows)
+        changed.writestr(record_path, text.getvalue())
+
+
 def test_supported_wheel_and_invalid_variants(tmp_path: Path) -> None:
     source = FIXTURE.read_bytes()
     assert not get_parser("python").parse(source).root_node.has_error
@@ -55,7 +88,32 @@ def test_supported_wheel_and_invalid_variants(tmp_path: Path) -> None:
         valid, report = verifier.verify_build(wheel, platform)
         assert valid, report
         assert report["components"]["platform_match"] is True
+        assert report["components"]["missing_modules"] == []
         assert not report["errors"]
+
+    installed = tmp_path / "installed"
+    subprocess.run(
+        ["uv", "pip", "install", "--no-deps", "--target", str(installed), str(wheel)],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    import_check = (
+        "from pathlib import Path; import chunker, sys; "
+        "assert Path(chunker.__file__).is_relative_to(Path(sys.argv[2])); "
+        "assert not chunker.get_parser('python').parse(Path(sys.argv[1]).read_bytes()).root_node.has_error"
+    )
+    clean_env = {**os.environ, "PYTHONPATH": str(installed), "PYTHONNOUSERSITE": "1"}
+    subprocess.run(
+        [sys.executable, "-c", import_check, str(FIXTURE), str(installed)],
+        cwd=tmp_path,
+        env=clean_env,
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
 
     missing, report = verifier.verify_build(tmp_path / "missing.whl", "linux")
     assert missing is False
@@ -152,6 +210,76 @@ def test_supported_wheel_and_invalid_variants(tmp_path: Path) -> None:
     valid, report = verifier.verify_build(no_parser, "linux")
     assert valid is False, report
     assert "package" in report["missing"]
+    assert "chunker/parser.py" in report["components"]["missing_modules"]
+
+    no_record_dir = tmp_path / "no-record"
+    no_record_dir.mkdir()
+    no_record = no_record_dir / wheel.name
+    with ZipFile(wheel) as source_wheel:
+        record_path = next(
+            name
+            for name in source_wheel.namelist()
+            if name.endswith(".dist-info/RECORD")
+        )
+    _drop_wheel_member(wheel, no_record, record_path)
+    valid, report = verifier.verify_build(no_record, "linux")
+    assert valid is False, report
+    assert "record" in report["missing"]
+
+    for name in ("METADATA", "WHEEL"):
+        nested_dir = tmp_path / f"nested-{name.lower()}"
+        nested_dir.mkdir()
+        nested = nested_dir / wheel.name
+        with ZipFile(wheel) as original, ZipFile(nested, "w") as changed:
+            metadata_path = next(
+                path
+                for path in original.namelist()
+                if path.endswith(f".dist-info/{name}")
+            )
+            for member in original.infolist():
+                path = member.filename
+                if path == metadata_path:
+                    path = f"nested/{path}"
+                changed.writestr(path, original.read(member.filename))
+        valid, report = verifier.verify_build(nested, "linux")
+        assert valid is False, report
+        assert ("metadata" if name == "METADATA" else "wheel_info") in report["missing"]
+
+    no_cache_dir = tmp_path / "no-cache"
+    no_cache_dir.mkdir()
+    no_cache = no_cache_dir / wheel.name
+    _drop_member_with_valid_record(wheel, no_cache, "chunker/_internal/cache.py")
+    valid, report = verifier.verify_build(no_cache, "linux")
+    assert valid is False, report
+    assert "package" in report["missing"]
+    assert "chunker/_internal/cache.py" in report["components"]["missing_modules"]
+    broken_install = tmp_path / "broken-install"
+    subprocess.run(
+        [
+            "uv",
+            "pip",
+            "install",
+            "--no-deps",
+            "--target",
+            str(broken_install),
+            str(no_cache),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    failed_import = subprocess.run(
+        [sys.executable, "-c", "import chunker"],
+        cwd=tmp_path,
+        env={**clean_env, "PYTHONPATH": str(broken_install)},
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert failed_import.returncode != 0
+    assert "ASTCache" in failed_import.stderr
+    assert "broken-install" in failed_import.stderr
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="Compiles an ELF grammar")
@@ -172,6 +300,12 @@ def test_native_wheel_with_compressed_platform_tags(tmp_path: Path) -> None:
         ],
         check=True,
         capture_output=True,
+    )
+    baml_source = ROOT / "packages/baml-grammar/tests/fixtures/release-0201.baml"
+    assert (
+        not load_compiled_grammar(grammar, "baml")
+        .parse(baml_source.read_bytes())
+        .root_node.has_error
     )
     output = tmp_path / "dist"
     subprocess.run(
@@ -200,11 +334,33 @@ def test_native_wheel_with_compressed_platform_tags(tmp_path: Path) -> None:
                 )
                 data = wheel_info.encode("utf-8")
             changed.writestr(member, data)
-        changed.writestr("chunker/grammars/baml.so", grammar.read_bytes())
+        changed.writestr("chunker/data/grammars/build/baml.so", grammar.read_bytes())
     valid, report = BuildSystem().verify_build(native_wheel, "linux")
     assert valid, report
     assert report["components"]["platform_match"] is True
     assert report["components"]["grammars"] is True
+    packaged_root = tmp_path / "packaged-grammar"
+    with ZipFile(native_wheel) as packaged:
+        packaged.extract("chunker/data/grammars/build/baml.so", packaged_root)
+    packaged_grammar = packaged_root / "chunker/data/grammars/build/baml.so"
+    assert (
+        not load_compiled_grammar(packaged_grammar, "baml")
+        .parse(baml_source.read_bytes())
+        .root_node.has_error
+    )
+
+    misplaced_dir = tmp_path / "misplaced-grammar"
+    misplaced_dir.mkdir()
+    misplaced = misplaced_dir / native_wheel.name
+    with ZipFile(native_wheel) as original, ZipFile(misplaced, "w") as changed:
+        for member in original.infolist():
+            path = member.filename
+            if path == "chunker/data/grammars/build/baml.so":
+                path = "chunker/grammars/baml.so"
+            changed.writestr(path, original.read(member.filename))
+    valid, report = BuildSystem().verify_build(misplaced, "linux")
+    assert valid is False, report
+    assert "grammars" in report["missing"]
 
     no_runtime = tmp_path / "no-runtime"
     no_runtime.mkdir()
