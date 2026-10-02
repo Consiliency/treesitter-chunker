@@ -1,6 +1,7 @@
 """User-friendly tools for managing tree-sitter grammars."""
 
 import logging
+import ctypes
 import os
 import shutil
 import subprocess
@@ -25,6 +26,20 @@ class UserGrammarTools:
         self.build_dir = Path(build_dir)
         self.grammars_dir = Path(grammars_dir)
         self.manager = SmartGrammarManager(build_dir, grammars_dir)
+
+    def _compiled_library(self, source_dir: Path, language: str) -> Path | None:
+        native = source_dir / f"{language}{self.manager.library_suffix}"
+        if native.is_file():
+            return native
+        legacy = source_dir / f"{language}.so"
+        if legacy == native or not legacy.is_file():
+            return None
+        try:
+            if hasattr(ctypes.CDLL(str(legacy)), f"tree_sitter_{language}"):
+                return legacy
+        except OSError:
+            pass
+        return None
 
     def install_grammar(
         self,
@@ -143,9 +158,8 @@ class UserGrammarTools:
                 return result
 
             # Step 4: Copy the platform's compiled library to the build directory
-            suffix = self.manager.library_suffix
-            grammar_file = target_dir / f"{language}{suffix}"
-            if grammar_file.is_file():
+            grammar_file = self._compiled_library(target_dir, language)
+            if grammar_file is not None:
                 target_so = self.build_dir / grammar_file.name
                 shutil.copy2(grammar_file, target_so)
                 result["steps_completed"].append(
@@ -332,9 +346,8 @@ class UserGrammarTools:
                 return result
 
             # Copy the platform's compiled library
-            suffix = self.manager.library_suffix
-            grammar_file = source_dir / f"{language}{suffix}"
-            if grammar_file.is_file():
+            grammar_file = self._compiled_library(source_dir, language)
+            if grammar_file is not None:
                 target_so = self.build_dir / grammar_file.name
                 shutil.copy2(grammar_file, target_so)
                 result["steps_completed"].append("Updated compiled grammar library")

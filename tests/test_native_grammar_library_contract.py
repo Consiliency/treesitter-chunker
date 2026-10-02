@@ -132,3 +132,21 @@ def test_install_update_select_requested_grammar_not_unrelated_native_file(
     rejected = update_tools.update_grammar("baml")
     assert rejected["status"] == "error"
     assert (update_build / "baml.dll").read_bytes() == original
+
+    legacy = source_dir / "baml.so"
+    legacy.write_bytes(original)
+    legacy_install_build = tmp_path / "legacy-install-build"
+    legacy_install_build.mkdir()
+    legacy_tools = UserGrammarTools(legacy_install_build, tmp_path / "sources")
+    installed_legacy = legacy_tools.install_grammar(
+        "baml", "https://github.com/example/tree-sitter-baml"
+    )
+    assert installed_legacy["status"] == "success"
+    assert (legacy_install_build / "baml.so").read_bytes() == original
+
+    legacy_update_build = tmp_path / "legacy-update-build"
+    legacy_update_build.mkdir()
+    legacy_update_tools = UserGrammarTools(legacy_update_build, tmp_path / "sources")
+    updated_legacy = legacy_update_tools.update_grammar("baml")
+    assert updated_legacy["status"] == "success"
+    assert (legacy_update_build / "baml.so").read_bytes() == original
