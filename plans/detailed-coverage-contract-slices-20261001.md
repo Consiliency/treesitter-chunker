@@ -95,13 +95,14 @@ with the original source restored before committing.
 | 16 — cross-compile verification | `build/cross_compile.py`: in a dedicated Docker-capable lane, a supported target produces a repairable wheel; unavailable Docker produces a clear failure. This work never runs in the default smoke lane. | Install the resulting wheel outside the checkout and parse the Python fixture. Mutation **ignore wheel-repair failure** must fail. If cross compilation is unsupported, file a retirement/support issue and defer this PR. |
 | 17 — grammar commands | `cli/grammar_commands.py`: a local installed grammar is listed/validated and a missing grammar produces a nonzero command result without network fetch. | Parse the Python fixture with the selected grammar. Mutation **return success for failed grammar validation** must fail. Add one command contract test file. |
 | 18 — interactive node navigation | `debug/interactive/node_explorer.py`: the routed debug explorer parses a local source fixture, navigates to a selected child, bookmarks it, returns to the root, and restores that bookmark without network access. | Parse the checked-in Python fixture through `explore_file` with scripted terminal input. Mutation **ignore requested child index and always choose child zero** must fail. Add one explorer contract test file. The separate breadcrumb defect is treesitter-chunker#188. |
+| 19 — debug REPL local session | `debug/interactive/repl.py`: the routed REPL loads a local source fixture, detects its language, and saves the same source and command history to a requested temporary file. | Parse the loaded checked-in Python fixture with the REPL's real parser. Mutation **discard the loaded source before saving** must fail. Script only terminal input; do not mock the REPL or parser. |
 
-`interfaces/stubs.py` and the debug REPL are listed in the ranked inventory
-but are not promoted into a coverage slice until their consumer contract is
-confirmed. The node explorer is routed by `cli/debug/commands.py`, so slice 18
-covers its navigation contract. Zero or low coverage must not be hidden with a
-coverage omit rule. No PR should change more than one observable behavior
-cluster.
+`interfaces/stubs.py` remains in the ranked inventory but is not promoted into
+a coverage slice until its consumer contract is confirmed. The node explorer
+and debug REPL are routed by `cli/debug/commands.py`, so slices 18 and 19 cover
+their local interactive contracts. Zero or low coverage must not be hidden
+with a coverage omit rule. No PR should change more than one observable
+behavior cluster.
 
 ## Documentation and defects
 
