@@ -164,6 +164,54 @@ def test_config_backup_restores_saved_settings_and_keeps_pre_restore_copy(
     assert not isolated_home.exists()
 
 
+def test_config_backup_cleanup_keeps_newest_json_backups_and_grammar(
+    tmp_path: Path, monkeypatch
+) -> None:
+    parser = get_parser("python")
+    source = FIXTURE.read_bytes()
+    assert not parser.parse(source).root_node.has_error
+
+    isolated_home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(isolated_home))
+    monkeypatch.setenv("USERPROFILE", str(isolated_home))
+    config_path = tmp_path / "settings" / "config.json"
+    grammar_root = tmp_path / "grammar-state"
+    config = UserConfig(config_path)
+    config.set("directories.base_dir", str(grammar_root))
+    grammar_dir = DirectoryManager(config).create_structure()["grammars"]
+    retained = grammar_dir / "service.py"
+    retained.write_bytes(source)
+
+    backups = []
+    for index, size in enumerate((64, 128, 256)):
+        config.set("cache.max_size_mb", size)
+        backup = config.backup(f"version-{index}")
+        os.utime(backup, (1_700_000_000 + index * 100, 1_700_000_000 + index * 100))
+        backups.append(backup)
+    neighbor = backups[0].parent / "notes.txt"
+    neighbor.write_text("keep", encoding="utf-8")
+    os.utime(neighbor, (1_700_000_400, 1_700_000_400))
+
+    config.cleanup_old_backups(max_backups=2)
+    assert not backups[0].exists()
+    assert [
+        json.loads(backup.read_text(encoding="utf-8"))["cache"]["max_size_mb"]
+        for backup in backups[1:]
+    ] == [128, 256]
+    assert neighbor.read_text(encoding="utf-8") == "keep"
+    assert config.get("cache.max_size_mb") == 256
+    assert UserConfig(config_path).get("cache.max_size_mb") == 256
+    assert retained.read_bytes() == source
+    assert not parser.parse(retained.read_bytes()).root_node.has_error
+
+    config.cleanup_old_backups(max_backups=2)
+    assert [backup.name for backup in backups[1:] if backup.exists()] == [
+        "version-1.json",
+        "version-2.json",
+    ]
+    assert not isolated_home.exists()
+
+
 def test_directory_usage_counts_parseable_nested_files_without_creating_missing_dirs(
     tmp_path: Path, monkeypatch
 ) -> None:
