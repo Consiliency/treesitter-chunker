@@ -420,25 +420,49 @@ class JavaScriptScopeAnalyzer(BaseScopeAnalyzer):
             "program": "module",
             "function_declaration": "function",
             "function_expression": "function",
+            "generator_function_declaration": "function",
+            "generator_function": "function",
             "arrow_function": "arrow",
             "class_declaration": "class",
+            "class": "class",
+            "class_static_block": "block",
             "method_definition": "method",
             "for_statement": "block",
             "for_in_statement": "block",
             "for_of_statement": "block",
             "block_statement": "block",
+            "statement_block": "block",
+            "switch_body": "block",
             "catch_clause": "catch",
         }
 
     def _is_scope_node(self, node: Node) -> bool:
         """Check if a node creates a scope."""
+        if (
+            node.type == "statement_block"
+            and node.parent is not None
+            and node.parent.type
+            in {
+                "function_declaration",
+                "function_expression",
+                "generator_function_declaration",
+                "generator_function",
+                "arrow_function",
+                "method_definition",
+                "class_static_block",
+            }
+        ):
+            return False
         return node.type in self._get_scope_type_map()
 
     @classmethod
     def _is_definition_node(cls, node: Node) -> bool:
         """Check if a node defines a symbol."""
         resolver = JavaScriptSymbolResolver()
-        return resolver._is_definition_node(node)
+        return (
+            node.type == "generator_function_declaration"
+            or resolver._is_definition_node(node)
+        )
 
     @staticmethod
     def _is_import_node(node: Node) -> bool:
@@ -448,8 +472,56 @@ class JavaScriptScopeAnalyzer(BaseScopeAnalyzer):
     @classmethod
     def _get_defined_name(cls, node: Node) -> str | None:
         """Get the name being defined by a definition node."""
-        resolver = JavaScriptSymbolResolver()
-        return resolver._get_defined_name(node)
+        if node.type in {
+            "function_declaration",
+            "generator_function_declaration",
+            "class_declaration",
+            "variable_declarator",
+            "method_definition",
+        }:
+            if node.type == "method_definition" and (
+                node.parent is None or node.parent.type != "class_body"
+            ):
+                return None
+            name = node.child_by_field_name("name")
+            if (
+                name
+                and name.type in {"identifier", "property_identifier"}
+                and name.text
+            ):
+                return name.text.decode("utf-8")
+        return None
+
+    def _get_local_symbols(self, scope_node: Node) -> set[str]:
+        """Include function-scoped var declarations inside lexical blocks."""
+        names = super()._get_local_symbols(scope_node)
+
+        def collect_var(node: Node, depth: int = 0) -> None:
+            if depth > 0 and node.type in {
+                "function_declaration",
+                "function_expression",
+                "generator_function_declaration",
+                "generator_function",
+                "arrow_function",
+                "method_definition",
+                "class_declaration",
+                "class",
+                "class_static_block",
+            }:
+                return
+            if (
+                node.type == "variable_declarator"
+                and node.parent is not None
+                and node.parent.type == "variable_declaration"
+            ):
+                name = self._get_defined_name(node)
+                if name:
+                    names.add(name)
+            for child in node.children:
+                collect_var(child, depth + 1)
+
+        collect_var(scope_node)
+        return names
 
     @staticmethod
     def _extract_imported_names(import_node: Node) -> set[str]:
