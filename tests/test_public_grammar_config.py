@@ -7,8 +7,14 @@ import time
 from pathlib import Path
 
 import pytest
+from click.testing import CliRunner
 from chunker import get_parser
-from chunker.grammar_management.config import CacheManager, DirectoryManager, UserConfig
+from chunker.grammar_management.config import (
+    CacheManager,
+    DirectoryManager,
+    UserConfig,
+    config_cli,
+)
 
 
 FIXTURE = Path(__file__).parent / "fixtures/boundary_ir/repos/python/app/service.py"
@@ -207,6 +213,41 @@ def test_config_import_merge_preserves_omitted_settings_and_replace_drops_them(
     assert retained.read_bytes() == source
     assert not parser.parse(retained.read_bytes()).root_node.has_error
     assert not isolated_home.exists()
+
+
+def test_public_config_export_writes_live_settings_to_requested_nested_path(
+    tmp_path: Path, monkeypatch
+) -> None:
+    parser = get_parser("python")
+    source = FIXTURE.read_bytes()
+    assert not parser.parse(source).root_node.has_error
+    isolated_home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(isolated_home))
+    monkeypatch.setenv("USERPROFILE", str(isolated_home))
+
+    config = UserConfig()
+    grammar_root = tmp_path / "grammar-state"
+    config.set("directories.base_dir", str(grammar_root))
+    config.set("cache.max_size_mb", 64)
+    config.set("cache.auto_cleanup", False)
+    retained = DirectoryManager(config).create_structure()["grammars"] / "service.py"
+    retained.write_bytes(source)
+    active_bytes = config.config_path.read_bytes()
+
+    export_path = tmp_path / "reports" / "portable" / "config.json"
+    result = CliRunner().invoke(config_cli, ["export", str(export_path)])
+    assert result.exit_code == 0, result.output
+    assert str(export_path) in result.output
+    exported = json.loads(export_path.read_text(encoding="utf-8"))
+    assert exported["directories"]["base_dir"] == str(grammar_root)
+    assert exported["cache"]["max_size_mb"] == 64
+    assert exported["cache"]["auto_cleanup"] is False
+    exported_config = UserConfig(export_path)
+    assert exported_config.get("directories.base_dir") == str(grammar_root)
+    assert exported_config.get("cache.max_size_mb") == 64
+    assert config.config_path.read_bytes() == active_bytes
+    assert retained.read_bytes() == source
+    assert not parser.parse(retained.read_bytes()).root_node.has_error
 
 
 def test_config_backup_restores_saved_settings_and_keeps_pre_restore_copy(
