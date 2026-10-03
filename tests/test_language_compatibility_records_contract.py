@@ -6,10 +6,12 @@ import time
 from contextlib import closing
 from pathlib import Path
 from threading import Timer
+from types import SimpleNamespace
 
 import pytest
 
 from chunker import get_parser
+from chunker.languages.compatibility import database as database_module
 from chunker.languages.compatibility.database import CompatibilityDatabase
 from chunker.languages.compatibility.schema import (
     BreakingChange,
@@ -472,3 +474,48 @@ def test_restore_keeps_schema_current_if_wal_reenable_is_blocked(
 
     with CompatibilityDatabase(db_path) as reopened:
         assert reopened.get_language_versions("python") == [language]
+
+
+def test_restore_reports_wal_mode_change_when_backup_is_blocked(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    backup_path = tmp_path / "backup.db"
+    with closing(sqlite3.connect(backup_path)) as conn:
+        conn.execute("PRAGMA page_size=8192")
+        conn.execute("VACUUM")
+    with CompatibilityDatabase(backup_path) as backup:
+        assert backup.add_language_version(LanguageVersion("python", "3.11"))
+
+    db_path = tmp_path / "live.db"
+    live_language = LanguageVersion("rust", "2021")
+    readers: list[sqlite3.Connection] = []
+    real_monotonic = time.monotonic
+
+    def start_reader_after_mode_switch() -> float:
+        if not readers:
+            reader = sqlite3.connect(db_path)
+            reader.execute("BEGIN")
+            reader.execute("SELECT COUNT(*) FROM language_versions").fetchone()
+            readers.append(reader)
+        return real_monotonic()
+
+    with CompatibilityDatabase(db_path) as live:
+        assert live.conn.execute("PRAGMA journal_mode=WAL").fetchone()[0] == "wal"
+        assert live.add_language_version(live_language)
+        monkeypatch.setattr(
+            database_module,
+            "time",
+            SimpleNamespace(monotonic=start_reader_after_mode_switch),
+        )
+        try:
+            with pytest.raises(
+                sqlite3.OperationalError,
+                match="Restore failed and WAL journal mode could not be restored",
+            ):
+                live.restore_database(backup_path)
+            assert live.get_language_versions("rust") == [live_language]
+            assert live.get_language_versions("python") == []
+            assert live.conn.execute("PRAGMA journal_mode").fetchone()[0] == "delete"
+        finally:
+            for reader in readers:
+                reader.close()

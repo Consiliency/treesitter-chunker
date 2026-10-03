@@ -1052,10 +1052,9 @@ class CompatibilityDatabase:
                                     raise sqlite3.OperationalError(
                                         "Database restored, but WAL journal mode could not be restored"
                                     ) from exc
-                                logger.warning(
-                                    "Could not restore WAL mode after failed database restore: %s",
-                                    exc,
-                                )
+                                raise sqlite3.OperationalError(
+                                    "Restore failed and WAL journal mode could not be restored"
+                                ) from exc
 
             logger.info(f"Database restored from {backup_path}")
 
