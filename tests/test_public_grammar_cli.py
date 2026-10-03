@@ -66,6 +66,38 @@ def test_click_lists_local_grammar_and_reports_missing_language(
     assert "Grammar for 'missing' not found" in missing.output
 
 
+def test_exported_grammar_list_json_filters_local_grammars(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    python_source = FIXTURE.read_bytes()
+    javascript_source = (
+        Path(__file__).parent / "fixtures/boundary_ir/repos/javascript/service.js"
+    ).read_bytes()
+    assert not get_parser("python").parse(python_source).root_node.has_error
+    assert not get_parser("javascript").parse(javascript_source).root_node.has_error
+
+    native_spec = importlib.util.find_spec("tree_sitter_language_pack._native")
+    assert native_spec is not None and native_spec.origin is not None
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    cache_dir = tmp_path / "grammar-cache"
+    user_dir = cache_dir / "grammars" / "user"
+    user_dir.mkdir(parents=True)
+    for language in ("python", "javascript"):
+        shutil.copyfile(native_spec.origin, user_dir / f"lib{language}.so")
+
+    cli = ComprehensiveGrammarCLI(cache_dir=cache_dir)
+    assert cli.list_grammars(language_filter="PY", output_format="json") == 0
+    listed = json.loads(capsys.readouterr().out)
+    assert list(listed) == ["python"]
+    assert listed["python"]["path"] == str(user_dir / "libpython.so")
+
+    assert cli.list_grammars(language_filter="missing", output_format="json") == 1
+    assert "No grammars found matching 'missing'" in capsys.readouterr().out
+    assert not home.exists()
+
+
 def test_exported_grammar_info_json_selects_user_library(
     tmp_path: Path, monkeypatch, capsys
 ) -> None:
