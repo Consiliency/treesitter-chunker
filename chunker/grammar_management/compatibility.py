@@ -824,6 +824,18 @@ class GrammarTester:
             )
 
             test_types = test_types or ["syntax", "performance", "memory", "stress"]
+            unknown_types = [
+                test_type
+                for test_type in test_types
+                if test_type not in {"syntax", "performance", "memory", "stress"}
+            ]
+            if unknown_types:
+                result.success = False
+                result.error_message = (
+                    f"Unknown test type(s): {', '.join(unknown_types)}"
+                )
+                result.duration = time.time() - start_time
+                return result
 
             # Run each test type
             for test_type in test_types:
