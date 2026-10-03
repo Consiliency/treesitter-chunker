@@ -82,6 +82,8 @@ def test_config_backup_restores_saved_settings_and_keeps_pre_restore_copy(
     config.set("directories.base_dir", str(changed_root))
     config.set("cache.max_size_mb", 128)
     config.restore(saved)
+    assert config.get("directories.base_dir") == str(grammar_root)
+    assert config.get("cache.max_size_mb") == 64
     reloaded = UserConfig(config_path)
     assert reloaded.get("directories.base_dir") == str(grammar_root)
     assert reloaded.get("cache.max_size_mb") == 64
