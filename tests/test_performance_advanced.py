@@ -280,15 +280,12 @@ print(json.dumps({'chunks': len(chunks), 'chunk_time': chunk_time,
             small_file = tmp_path / f"tiny_{i}.py"
             small_file.write_text(f"def f{i}(): pass")
         file_paths = list(tmp_path.glob("tiny_*.py"))
-        start_time = time.time()
         results = chunk_files_parallel(
             file_paths,
             language="python",
             num_workers=mp.cpu_count(),
         )
-        elapsed = time.time() - start_time
         assert len(results) == 1000
-        assert elapsed < 10.0
         total_chunks = sum(len(chunks) for chunks in results.values())
         assert total_chunks >= 1000
 

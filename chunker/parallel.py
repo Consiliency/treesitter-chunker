@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import logging
 import multiprocessing as mp
+import sqlite3
 import sys
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -14,6 +16,8 @@ from .streaming import chunk_file_streaming
 
 if TYPE_CHECKING:
     from .types import CodeChunk
+
+logger = logging.getLogger(__name__)
 
 
 class ParallelChunker:
@@ -46,7 +50,16 @@ class ParallelChunker:
         """Process a single file, using cache if available."""
         # Check cache first
         if self.cache:
-            cached_chunks = self.cache.get_cached_chunks(file_path, self.language)
+            try:
+                cached_chunks = self.cache.get_cached_chunks(file_path, self.language)
+            except sqlite3.OperationalError as exc:
+                if exc.sqlite_errorcode not in (
+                    sqlite3.SQLITE_BUSY,
+                    sqlite3.SQLITE_LOCKED,
+                ):
+                    raise
+                logger.warning("Cache busy reading %s; parsing file", file_path)
+                cached_chunks = None
             if cached_chunks is not None:
                 return file_path, cached_chunks
 
@@ -58,7 +71,17 @@ class ParallelChunker:
 
         # Cache results
         if self.cache and chunks:
-            self.cache.cache_chunks(file_path, self.language, chunks)
+            try:
+                self.cache.cache_chunks(file_path, self.language, chunks)
+            except sqlite3.OperationalError as exc:
+                if exc.sqlite_errorcode not in (
+                    sqlite3.SQLITE_BUSY,
+                    sqlite3.SQLITE_LOCKED,
+                ):
+                    raise
+                logger.warning(
+                    "Cache busy writing %s; returning parsed chunks", file_path
+                )
 
         return file_path, chunks
 
