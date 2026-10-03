@@ -312,8 +312,42 @@ class PythonScopeAnalyzer(BaseScopeAnalyzer):
     @classmethod
     def _get_defined_name(cls, node: Node) -> str | None:
         """Get the name being defined by a definition node."""
-        resolver = PythonSymbolResolver()
-        return resolver._get_defined_name(node)
+        if node.type in {"function_definition", "class_definition"}:
+            name = node.child_by_field_name("name")
+        elif node.type == "assignment":
+            name = node.child_by_field_name("left")
+        elif node.type in {
+            "typed_parameter",
+            "default_parameter",
+            "typed_default_parameter",
+        }:
+            name = next(
+                (child for child in node.children if child.type == "identifier"), None
+            )
+        else:
+            return None
+        if name and name.type == "identifier" and name.text:
+            return name.text.decode("utf-8")
+        return None
+
+    def _get_local_symbols(self, scope_node: Node) -> set[str]:
+        """Include imports defined directly in this scope."""
+        names = super()._get_local_symbols(scope_node)
+
+        def collect_imports(node: Node, depth: int = 0) -> None:
+            if depth > 0 and self._is_scope_node(node):
+                return
+            if self._is_import_node(node):
+                names.update(self._extract_imported_names(node))
+            for child in node.children:
+                collect_imports(child, depth + 1)
+
+        collect_imports(scope_node)
+        return names
+
+    def _get_imported_symbols(self, ast: Node) -> set[str]:
+        """Imports are included through their declaring scopes."""
+        return set()
 
     @staticmethod
     def _extract_imported_names(import_node: Node) -> set[str]:
@@ -322,31 +356,24 @@ class PythonScopeAnalyzer(BaseScopeAnalyzer):
         if import_node.type == "import_statement":
             for child in import_node.children:
                 if child.type == "dotted_name":
-                    pass
+                    first = child.named_children[0] if child.named_children else None
+                    if first and first.text:
+                        names.add(first.text.decode("utf-8"))
                 elif child.type == "aliased_import":
-                    for subchild in child.children:
-                        if (
-                            subchild.type == "identifier"
-                            and subchild.prev_sibling
-                            and subchild.prev_sibling.type == "as"
-                        ):
-                            pass
+                    alias = child.child_by_field_name("alias")
+                    if alias and alias.text:
+                        names.add(alias.text.decode("utf-8"))
         elif import_node.type == "import_from_statement":
+            in_import_list = False
             for child in import_node.children:
-                if (
-                    child.type == "identifier"
-                    and child.prev_sibling
-                    and child.prev_sibling.type == "import"
-                ):
-                    pass
-                elif child.type == "aliased_import":
-                    for subchild in child.children:
-                        if (
-                            subchild.type == "identifier"
-                            and subchild.prev_sibling
-                            and subchild.prev_sibling.type == "as"
-                        ):
-                            pass
+                if child.type == "import":
+                    in_import_list = True
+                elif in_import_list and child.type == "dotted_name" and child.text:
+                    names.add(child.text.decode("utf-8"))
+                elif in_import_list and child.type == "aliased_import":
+                    alias = child.child_by_field_name("alias")
+                    if alias and alias.text:
+                        names.add(alias.text.decode("utf-8"))
         return names
 
 
