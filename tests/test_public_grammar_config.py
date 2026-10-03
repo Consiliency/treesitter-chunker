@@ -982,3 +982,44 @@ def test_public_config_cleanup_reports_failed_file_deletion(
 
     assert cache_file.read_bytes() == content
     assert not parser.parse(cache_file.read_bytes()).root_node.has_error
+
+
+def test_public_config_reports_unreadable_cache_directory(
+    tmp_path: Path, monkeypatch
+) -> None:
+    parser = get_parser("python")
+    source = FIXTURE.read_bytes()
+    assert not parser.parse(source).root_node.has_error
+    isolated_home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(isolated_home))
+    monkeypatch.setenv("USERPROFILE", str(isolated_home))
+
+    config = UserConfig()
+    config.set("directories.base_dir", str(tmp_path / "grammar-state"))
+    nested = DirectoryManager(config).create_structure()["cache_downloads"] / "nested"
+    nested.mkdir()
+    cache_file = nested / "service.py"
+    cache_file.write_bytes(source)
+    original_scandir = os.scandir
+
+    def deny_nested_scan(path):
+        if Path(path) == nested:
+            raise PermissionError("simulated unreadable cache directory")
+        return original_scandir(path)
+
+    runner = CliRunner()
+    with monkeypatch.context() as patch:
+        patch.setattr(os, "scandir", deny_nested_scan)
+        for command, answer, message in (
+            (["cleanup", "downloads"], "y\n", "unreadable cache directory"),
+            (["cleanup", "auto"], None, "unreadable cache directory"),
+            (["cache-info"], None, "Failed to retrieve cache information"),
+            (["dirs"], None, "Failed to inspect directory usage"),
+        ):
+            result = runner.invoke(config_cli, command, input=answer)
+            assert result.exit_code == 1, (command, result.output)
+            assert message in result.output
+            assert "cache cleared" not in result.output
+
+    assert cache_file.read_bytes() == source
+    assert not parser.parse(cache_file.read_bytes()).root_node.has_error

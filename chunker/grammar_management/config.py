@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import shutil
 import time
 from copy import deepcopy
@@ -47,6 +48,18 @@ from typing import Any
 import click
 
 logger = logging.getLogger(__name__)
+
+
+def _walk_files(root: Path):
+    """Yield files while surfacing directory scan failures."""
+
+    def onerror(error: OSError) -> None:
+        if not isinstance(error, FileNotFoundError):
+            raise error
+
+    for directory, _, names in os.walk(root, onerror=onerror):
+        for name in names:
+            yield Path(directory) / name
 
 
 @dataclass
@@ -732,12 +745,12 @@ class DirectoryManager:
                     total_size = 0
                     file_count = 0
 
-                    for item in dir_path.rglob("*"):
+                    for item in _walk_files(dir_path):
                         if item.is_file():
                             try:
                                 total_size += item.stat().st_size
                                 file_count += 1
-                            except (OSError, FileNotFoundError):
+                            except FileNotFoundError:
                                 # File might have been deleted during scan
                                 pass
 
@@ -851,24 +864,24 @@ class CacheManager:
 
             # Calculate downloads size
             if self.downloads_dir.exists():
-                for item in self.downloads_dir.rglob("*"):
+                for item in _walk_files(self.downloads_dir):
                     if item.is_file():
                         try:
                             size = item.stat().st_size
                             downloads_size += size
                             total_size += size
-                        except (OSError, FileNotFoundError):
+                        except FileNotFoundError:
                             pass
 
             # Calculate builds size
             if self.builds_dir.exists():
-                for item in self.builds_dir.rglob("*"):
+                for item in _walk_files(self.builds_dir):
                     if item.is_file():
                         try:
                             size = item.stat().st_size
                             builds_size += size
                             total_size += size
-                        except (OSError, FileNotFoundError):
+                        except FileNotFoundError:
                             pass
 
             return {
@@ -882,14 +895,7 @@ class CacheManager:
 
         except Exception as e:
             logger.error(f"Failed to calculate cache size: {e}")
-            return {
-                "total_bytes": 0,
-                "total_mb": 0,
-                "downloads_bytes": 0,
-                "downloads_mb": 0,
-                "builds_bytes": 0,
-                "builds_mb": 0,
-            }
+            raise
 
     def is_cleanup_needed(self) -> bool:
         """Check if cache cleanup is needed based on configuration.
@@ -929,7 +935,7 @@ class CacheManager:
         try:
             # Clean downloads directory
             if self.downloads_dir.exists():
-                for item in self.downloads_dir.rglob("*"):
+                for item in _walk_files(self.downloads_dir):
                     if item.is_file():
                         try:
                             if item.stat().st_mtime < cutoff_time:
@@ -944,7 +950,7 @@ class CacheManager:
 
             # Clean builds directory
             if self.builds_dir.exists():
-                for item in self.builds_dir.rglob("*"):
+                for item in _walk_files(self.builds_dir):
                     if item.is_file():
                         try:
                             if item.stat().st_mtime < cutoff_time:
@@ -1014,7 +1020,7 @@ class CacheManager:
                 (self.builds_dir, "builds"),
             ]:
                 if cache_dir.exists():
-                    for item in cache_dir.rglob("*"):
+                    for item in _walk_files(cache_dir):
                         if item.is_file():
                             try:
                                 stat_info = item.stat()
@@ -1097,7 +1103,7 @@ class CacheManager:
                 dirs_to_clear.append((self.builds_dir, "builds"))
 
             for cache_dir, dir_type in dirs_to_clear:
-                for item in cache_dir.rglob("*"):
+                for item in _walk_files(cache_dir):
                     if item.is_file():
                         try:
                             size = item.stat().st_size
