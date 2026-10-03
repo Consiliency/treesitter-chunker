@@ -305,6 +305,49 @@ def test_public_config_import_merges_by_default_and_replaces_on_request(
     assert not parser.parse(retained.read_bytes()).root_node.has_error
 
 
+def test_public_config_set_get_preserves_typed_values_and_grammar_directory(
+    tmp_path: Path, monkeypatch
+) -> None:
+    parser = get_parser("python")
+    source = FIXTURE.read_bytes()
+    assert not parser.parse(source).root_node.has_error
+    isolated_home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(isolated_home))
+    monkeypatch.setenv("USERPROFILE", str(isolated_home))
+
+    grammar_root = tmp_path / "grammar-state"
+    runner = CliRunner()
+    for key, value in (
+        ("directories.base_dir", str(grammar_root)),
+        ("cache.max_size_mb", "64"),
+        ("cache.auto_cleanup", "false"),
+        ("logging.level", "WARNING"),
+    ):
+        result = runner.invoke(config_cli, ["set", key, value])
+        assert result.exit_code == 0, result.output
+        assert f"Configuration updated: {key}" in result.output
+
+    config = UserConfig()
+    saved = json.loads(config.config_path.read_text(encoding="utf-8"))
+    assert saved["directories"]["base_dir"] == str(grammar_root)
+    assert saved["cache"]["max_size_mb"] == 64
+    assert saved["cache"]["auto_cleanup"] is False
+    assert saved["logging"]["level"] == "WARNING"
+    retained = DirectoryManager(config).create_structure()["grammars"] / "service.py"
+    retained.write_bytes(source)
+
+    for key, displayed in (
+        ("cache.max_size_mb", "64"),
+        ("cache.auto_cleanup", "False"),
+        ("logging.level", "WARNING"),
+    ):
+        result = runner.invoke(config_cli, ["get", key])
+        assert result.exit_code == 0, result.output
+        assert f"{key}: {displayed}" in result.output
+    assert retained.read_bytes() == source
+    assert not parser.parse(retained.read_bytes()).root_node.has_error
+
+
 def test_config_backup_restores_saved_settings_and_keeps_pre_restore_copy(
     tmp_path: Path, monkeypatch
 ) -> None:
