@@ -238,6 +238,16 @@ The active Svelte plugin has 122 of 219 statements uncovered, including
 semantic extraction paths that existing tests mostly exercise with simulated
 nodes.
 
+Remeasurement on clean `main` at `991f27b7` before slice 45 used the same
+representative command: 3,566 passed, 4 skipped; 29,261 of 40,062 statements
+executed (73.0393%), 10,801 missed. The private report is
+`/home/viperjuice/workspace/tmp/treesitter-69-slice45/coverage.json`, SHA-256
+`9a88df2ffdda9bcd721c1eb7a723fc7aa1189564cd99ccfa36abf6451e2d3b76`.
+`interfaces/stubs.py` remains the sole wholly uncovered module (137/137),
+while the active JavaScript context module has 146 of 272 statements uncovered.
+The import-binding and local-definition defects are tracked separately as
+treesitter-chunker#264 and treesitter-chunker#267.
+
 The table ranks **every zero-covered module first**, then the largest remaining
 individual gaps. Risk is the possible consequence of an untested contract, not
 an assertion that the module is in active production use. H means a parser,
@@ -338,6 +348,7 @@ with the original source restored before committing.
 | 42 — comprehensive syntax result | `grammar_management/compatibility.py` `GrammarTester.run_comprehensive_test`: a requested syntax run reports success for a real parseable Python fixture and failure with a syntax error for that fixture plus malformed source, without writing to the caller's home. Unsupported test types are a separate defect in treesitter-chunker#255. | Parse the checked-in Python fixture and malformed variant with the pinned parser, then run the exported tester against an isolated discoverable grammar candidate. Mutation **report success after a failed syntax parse** must fail. Extend the existing grammar compatibility contract test file. |
 | 43 — parse benchmark result accounting | `grammar_management/compatibility.py` `GrammarTester.benchmark_parsing_performance`: a benchmark over a valid checked-in Python fixture and its malformed variant reports one success and one syntax failure, counts only the success in its summary, and leaves the isolated home untouched. | Feed the real fixture variants to the exported tester without mocking its generator, parser, or validator; parse the generated inputs with the pinned parser before running the benchmark. Mutation **count failed parse as successful benchmark** must fail. Extend the existing grammar compatibility contract test file. |
 | 44 — Svelte semantic extraction | `languages/svelte.py` `SveltePlugin.get_semantic_chunks`: a real parsed component distinguishes module TypeScript and instance JavaScript scripts, reports the reactive statement and SCSS style, and preserves the source line of the each-block marker. | Parse a checked-in Svelte component fixture with the pinned parser and inspect the plugin's observable semantic records. Mutation **force module scripts to instance context** must fail. Add a focused Svelte semantic contract test; keep product defects separate. |
+| 45 — JavaScript arrow parent context | `context/languages/javascript.py` `JavaScriptContextExtractor.extract_parent_context`: a call inside a parsed arrow function reports its enclosing lexical declaration with the `const` binding name, arrow signature, and source line, without exposing the body. | Parse a checked-in JavaScript fixture with the pinned parser, find the real call node, and inspect the exported extractor's parent-context item. Mutation **omit the arrow's lexical binding name** must fail. Add a focused context contract test; keep treesitter-chunker#264 and treesitter-chunker#267 separate. |
 
 `interfaces/stubs.py` remains in the ranked inventory but is not promoted into
 a coverage slice until its consumer contract is confirmed. The node explorer
