@@ -248,6 +248,29 @@ while the active JavaScript context module has 146 of 272 statements uncovered.
 The import-binding and local-definition defects are tracked separately as
 treesitter-chunker#264 and treesitter-chunker#267.
 
+Remeasurement on then-current clean `main` at `90bf75d1` before slice 46 used
+the representative full-suite command: 3,570 passed, 4 skipped, and two
+load-sensitive performance-threshold failures under concurrent review work.
+Coverage was 29,416 of 40,182 statements executed (73.2069%), 10,766 missed.
+The private report is
+`/home/viperjuice/workspace/tmp/treesitter-69-slice46/coverage.json`, SHA-256
+`8356302899e3c76fc918ac3c46a0228227bdde792ff3595ab06bdd5ffecaf477`.
+The two failures were timing assertions in
+`tests/test_performance_advanced.py`; neither affected the coverage inventory.
+The subsequent treesitter-chunker#276 merge only changed scope-analyzer caches,
+so the grammar-list slice still uses this measurement.
+
+| Current rank | Module (`chunker/` prefix omitted) | Missed / statements | Risk |
+| ---: | --- | ---: | :---: |
+| 1 | `interfaces/stubs.py` | 137 / 137 (zero covered) | M |
+| 2 | `grammar_management/cli.py` | 598 / 1,216 | H |
+| 3 | `grammar_management/testing.py` | 421 / 563 | L |
+| 4 | `grammar_management/core.py` | 405 / 731 | H |
+| 5 | `grammar_management/compatibility.py` | 380 / 834 | M |
+| 6 | `build/builder.py` | 298 / 332 | H |
+| 7 | `languages/compatibility/database.py` | 185 / 386 | H |
+| 8 | `languages/compatibility/schema.py` | 181 / 407 | H |
+
 The table ranks **every zero-covered module first**, then the largest remaining
 individual gaps. Risk is the possible consequence of an untested contract, not
 an assertion that the module is in active production use. H means a parser,
@@ -349,6 +372,7 @@ with the original source restored before committing.
 | 43 — parse benchmark result accounting | `grammar_management/compatibility.py` `GrammarTester.benchmark_parsing_performance`: a benchmark over a valid checked-in Python fixture and its malformed variant reports one success and one syntax failure, counts only the success in its summary, and leaves the isolated home untouched. | Feed the real fixture variants to the exported tester without mocking its generator, parser, or validator; parse the generated inputs with the pinned parser before running the benchmark. Mutation **count failed parse as successful benchmark** must fail. Extend the existing grammar compatibility contract test file. |
 | 44 — Svelte semantic extraction | `languages/svelte.py` `SveltePlugin.get_semantic_chunks`: a real parsed component distinguishes module TypeScript and instance JavaScript scripts, reports the reactive statement and SCSS style, and preserves the source line of the each-block marker. | Parse a checked-in Svelte component fixture with the pinned parser and inspect the plugin's observable semantic records. Mutation **force module scripts to instance context** must fail. Add a focused Svelte semantic contract test; keep product defects separate. |
 | 45 — JavaScript arrow parent context | `context/languages/javascript.py` `JavaScriptContextExtractor.extract_parent_context`: a call inside a parsed arrow function reports its enclosing lexical declaration with the `const` binding name, arrow signature, and source line, without exposing the body. | Parse a checked-in JavaScript fixture with the pinned parser, find the real call node, and inspect the exported extractor's parent-context item. Mutation **omit the arrow's lexical binding name** must fail. Add a focused context contract test; keep treesitter-chunker#264 and treesitter-chunker#267 separate. |
+| 46 — grammar list JSON filter | `grammar_management/cli.py` `ComprehensiveGrammarCLI.list_grammars`: the exported list API filters discovered local grammar names case-insensitively and emits only the matching entry as parseable JSON; a miss returns an error without changing isolated home state. | Parse the checked-in Python and JavaScript service fixtures with pinned parsers, install two local library candidates under a temporary cache, and call the exported API without mocking its discovery. Mutation **ignore the language filter** must fail because the JSON contains both entries. Extend the public grammar CLI contract test; file unrelated defects separately. |
 
 `interfaces/stubs.py` remains in the ranked inventory but is not promoted into
 a coverage slice until its consumer contract is confirmed. The node explorer
@@ -365,6 +389,8 @@ The plan and each slice's PR description record contracts, mutation evidence,
 and any issue filed for a defect. Update user docs only when a verified public
 contract is clarified. Do not silently correct documentation or implementation
 while adding coverage. Keep README Codecov reporting as currently configured.
+Slice 46 exposed the unrelated ignored `grammar list --all` flag, filed as
+treesitter-chunker#284; the JSON-filter slice does not repair it.
 Slice 1 exposed a separate syntax-error acceptance defect, filed as
 treesitter-chunker#116. The slice 1 PR does not change that production behavior.
 
