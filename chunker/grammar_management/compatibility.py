@@ -1129,6 +1129,8 @@ class GrammarTester:
                 result.language,
                 [large_code],
             )
+            if not success:
+                result.success = False
 
             # Measure memory after parsing
             post_parse_memory = process.memory_info().rss / 1024 / 1024  # MB
@@ -1156,6 +1158,7 @@ class GrammarTester:
                 },
             )
         except Exception as e:
+            result.success = False
             result.sample_results.append({"test_type": "memory", "error": str(e)})
 
     def _run_stress_tests(self, result: TestResult):
