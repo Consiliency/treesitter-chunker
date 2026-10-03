@@ -61,7 +61,12 @@ def test_validation_cache_rechecks_replaced_local_grammar(tmp_path: Path) -> Non
     suffix = {"win32": ".dll", "darwin": ".dylib"}.get(sys.platform, ".so")
     source = (FIXTURE_DIR / "service.py").read_bytes()
     assert not get_pack_parser("python").parse(source).root_node.has_error
-    native = Path(cache_dir()) / f"libtree_sitter_python{suffix}"
+    native_name = (
+        f"tree_sitter_python{suffix}"
+        if sys.platform == "win32"
+        else f"libtree_sitter_python{suffix}"
+    )
+    native = Path(cache_dir()) / native_name
     assert native.exists()
     assert not load_compiled_grammar(native, "python").parse(source).root_node.has_error
 
