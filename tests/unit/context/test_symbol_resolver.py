@@ -49,6 +49,35 @@ class TestPythonSymbolResolver:
     """Test Python-specific symbol resolution."""
 
     @staticmethod
+    def test_real_parsed_references_exclude_properties_and_keyword_names():
+        fixture = Path(__file__).parents[2] / "fixtures/context/symbol_references.py"
+        root = get_parser("python").parse(fixture.read_bytes()).root_node
+        assert not root.has_error
+        references = ContextFactory.create_symbol_resolver(
+            "python"
+        ).find_symbol_references("render", root)
+        assert [(node.parent.type, node.start_point.row) for node in references] == [
+            ("call", 4),
+            ("call", 7),
+        ]
+
+    @staticmethod
+    def test_real_parsed_import_references_exclude_import_binding():
+        fixture = (
+            Path(__file__).parents[2]
+            / "fixtures/boundary_ir/repos/python/app/service.py"
+        )
+        root = get_parser("python").parse(fixture.read_bytes()).root_node
+        assert not root.has_error
+        references = ContextFactory.create_symbol_resolver(
+            "python"
+        ).find_symbol_references("format_name", root)
+        assert [(node.parent.type, node.start_point.row) for node in references] == [
+            ("call", 5),
+            ("call", 11),
+        ]
+
+    @staticmethod
     @pytest.fixture
     def python_code():
         """Sample Python code for testing."""
@@ -129,6 +158,27 @@ result = calculate(5, PI)
 
 class TestJavaScriptSymbolResolver:
     """Test JavaScript-specific symbol resolution."""
+
+    @staticmethod
+    def test_real_parsed_symbol_references_exclude_definitions_and_properties():
+        fixture = Path(__file__).parents[2] / "fixtures/context/symbol_references.js"
+        root = get_parser("javascript").parse(fixture.read_bytes()).root_node
+        assert not root.has_error
+        resolver = ContextFactory.create_symbol_resolver("javascript")
+
+        references = resolver.find_symbol_references("formatName", root)
+        assert [(node.parent.type, node.start_point.row) for node in references] == [
+            ("call_expression", 5),
+            ("call_expression", 9),
+        ]
+        assert [
+            node.parent.type
+            for node in resolver.find_symbol_references("generate", root)
+        ] == ["call_expression"]
+        assert [
+            node.parent.type
+            for node in resolver.find_symbol_references("asyncRun", root)
+        ] == ["call_expression"]
 
     @staticmethod
     def test_definition_cache_tracks_parsed_tree():

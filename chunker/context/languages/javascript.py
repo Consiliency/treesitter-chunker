@@ -253,7 +253,9 @@ class JavaScriptContextExtractor(BaseContextExtractor):
         parent = identifier_node.parent
         if not parent:
             return False
-        if parent.type in {"function_declaration", "class_declaration"}:
+        if parent.type in {"function_declaration", "generator_function_declaration"}:
+            return parent.child_by_field_name("name") == identifier_node
+        if parent.type == "class_declaration":
             for i, child in enumerate(parent.children):
                 if child == identifier_node and i < 2:
                     return True

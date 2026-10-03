@@ -101,6 +101,10 @@ class PythonContextExtractor(BaseContextExtractor):
         parent = identifier_node.parent
         if not parent:
             return False
+        if parent.type == "attribute":
+            return parent.child_by_field_name("attribute") == identifier_node
+        if parent.type == "keyword_argument":
+            return parent.child_by_field_name("name") == identifier_node
         if parent.type in {"function_definition", "class_definition"}:
             for child in parent.children:
                 if child == identifier_node:
