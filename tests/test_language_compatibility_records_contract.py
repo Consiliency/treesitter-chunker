@@ -174,6 +174,8 @@ def test_import_refreshes_live_selection_and_rolls_back_invalid_schema(
     invalid["compatibility_rules"][0]["compatibility_level"] = "invalid"
     invalid_path = tmp_path / "invalid.json"
     invalid_path.write_text(json.dumps(invalid), encoding="utf-8")
+    incomplete_path = tmp_path / "incomplete.json"
+    incomplete_path.write_text(json.dumps({"metadata": {}}), encoding="utf-8")
 
     destination_path = tmp_path / "destination.db"
     with CompatibilityDatabase(destination_path) as destination:
@@ -185,13 +187,14 @@ def test_import_refreshes_live_selection_and_rolls_back_invalid_schema(
             CompatibilityLevel.PARTIALLY_COMPATIBLE
         )
 
-        with pytest.raises(ValueError, match="invalid"):
-            destination.import_database(invalid_path)
-        assert destination.get_language_versions("python") == [language]
-        assert destination.find_compatible_grammar(language) == grammar
-        assert destination.get_compatibility_level(language, grammar) == (
-            CompatibilityLevel.PARTIALLY_COMPATIBLE
-        )
+        for malformed_path in (invalid_path, incomplete_path):
+            with pytest.raises(ValueError):
+                destination.import_database(malformed_path)
+            assert destination.get_language_versions("python") == [language]
+            assert destination.find_compatible_grammar(language) == grammar
+            assert destination.get_compatibility_level(language, grammar) == (
+                CompatibilityLevel.PARTIALLY_COMPATIBLE
+            )
 
     with CompatibilityDatabase(destination_path) as reopened:
         assert reopened.get_language_versions("python") == [language]
