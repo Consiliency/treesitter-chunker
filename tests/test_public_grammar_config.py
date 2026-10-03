@@ -488,8 +488,30 @@ def test_config_backup_rejects_symlink_to_outside_file(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="Backup name resolves outside"):
         config.backup("linked")
+
+    directory_destination = linked_backup.parent / "directory.json"
+    directory_destination.mkdir()
+    (directory_destination / config.config_path.name).symlink_to(outside)
+    with pytest.raises(ValueError, match="Backup name must not name a directory"):
+        config.backup("directory")
     assert outside.read_bytes() == source
     assert not parser.parse(outside.read_bytes()).root_node.has_error
+
+
+def test_config_backup_rejects_directory_destination(tmp_path: Path) -> None:
+    source = FIXTURE.read_bytes()
+    parser = get_parser("python")
+    assert not parser.parse(source).root_node.has_error
+    config = UserConfig(tmp_path / "settings" / "config.json")
+    destination = config.config_dir / "backups" / "directory.json"
+    destination.mkdir(parents=True)
+    nested_config = destination / config.config_path.name
+    nested_config.write_bytes(source)
+
+    with pytest.raises(ValueError, match="Backup name must not name a directory"):
+        config.backup("directory")
+    assert nested_config.read_bytes() == source
+    assert not parser.parse(nested_config.read_bytes()).root_node.has_error
 
 
 def test_config_backup_rejects_symlinked_backup_directory(tmp_path: Path) -> None:

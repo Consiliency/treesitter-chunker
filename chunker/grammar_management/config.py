@@ -463,6 +463,8 @@ class UserConfig:
             backup_path = backups_dir / backup_name
             if backup_path.resolve().parent != backups_dir.resolve():
                 raise ValueError("Backup name resolves outside backup directory")
+            if backup_path.is_dir():
+                raise ValueError("Backup name must not name a directory")
 
             # Copy current config to backup location
             shutil.copy2(self.config_path, backup_path)
