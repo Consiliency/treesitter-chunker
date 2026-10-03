@@ -7,6 +7,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -244,7 +245,7 @@ def test_comprehensive_performance_result_follows_real_parse_outcome(
 def test_comprehensive_memory_result_follows_real_parse_outcome(
     tmp_path: Path, monkeypatch
 ) -> None:
-    pytest.importorskip("psutil")
+    psutil = pytest.importorskip("psutil")
     source = (
         ROOT / "tests/fixtures/boundary_ir/repos/python/app/service.py"
     ).read_text(encoding="utf-8")
@@ -277,6 +278,25 @@ def test_comprehensive_memory_result_follows_real_parse_outcome(
     rejected = tester.run_comprehensive_test("python", ["memory"])
     assert rejected.success is False
     assert rejected.sample_results[0]["success"] is False
+
+    memory_probes = 0
+
+    class FailingProcess:
+        def memory_info(self):
+            nonlocal memory_probes
+            memory_probes += 1
+            if memory_probes == 2:
+                raise ImportError("memory probe failed")
+            return SimpleNamespace(rss=1024 * 1024)
+
+    monkeypatch.setattr(psutil, "Process", lambda _pid: FailingProcess())
+    tester.test_suites["python"] = [source]
+    probe_error = tester.run_comprehensive_test("python", ["memory"])
+    assert memory_probes == 2
+    assert probe_error.success is False
+    assert probe_error.sample_results == [
+        {"test_type": "memory", "error": "memory probe failed"}
+    ]
     assert not home.exists()
 
 
