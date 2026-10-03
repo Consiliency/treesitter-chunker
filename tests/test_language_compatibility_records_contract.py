@@ -1,6 +1,8 @@
 """Language constraints and persisted rules keep grammar selection stable."""
 
 import json
+import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 import pytest
@@ -239,3 +241,75 @@ def test_import_refreshes_live_selection_and_rolls_back_invalid_schema(
     with CompatibilityDatabase(destination_path) as reopened:
         assert reopened.get_language_versions("python") == [language]
         assert reopened.find_compatible_grammar(language) == grammar
+
+
+@pytest.mark.parametrize(
+    ("table", "column", "value"),
+    [
+        ("language_versions", "features", "null"),
+        ("grammar_versions", "supported_features", "42"),
+        ("grammar_versions", "breaking_changes", "[{}]"),
+        ("breaking_changes", "affected_features", "null"),
+    ],
+)
+def test_import_rejects_invalid_feature_lists_without_replacing_live_records(
+    tmp_path: Path, table: str, column: str, value: str
+) -> None:
+    assert not get_parser("python").parse(FIXTURE.read_bytes()).root_node.has_error
+    export_path = tmp_path / "valid.json"
+    language = LanguageVersion("python", "3.11")
+    grammar = GrammarVersion("python", "1.0", "python.so")
+    with CompatibilityDatabase(tmp_path / "source.db") as source:
+        assert source.add_language_version(language)
+        assert source.add_grammar_version(grammar)
+        assert source.add_breaking_change(
+            BreakingChange("python", "0.9", "1.0", "syntax", "change", "medium")
+        )
+        source.export_database(export_path)
+
+    invalid = json.loads(export_path.read_text(encoding="utf-8"))
+    invalid[table][0][column] = value
+    invalid_path = tmp_path / "invalid.json"
+    invalid_path.write_text(json.dumps(invalid), encoding="utf-8")
+
+    db_path = tmp_path / "live.db"
+    live_language = LanguageVersion("rust", "2021")
+    live_grammar = GrammarVersion("rust", "1.0", "rust.so")
+    with CompatibilityDatabase(db_path) as live:
+        assert live.add_language_version(live_language)
+        assert live.add_grammar_version(live_grammar)
+        with pytest.raises(ValueError, match="list of strings"):
+            live.import_database(invalid_path)
+        assert live.find_compatible_grammar(live_language) == live_grammar
+
+    with CompatibilityDatabase(db_path) as reopened:
+        assert reopened.find_compatible_grammar(live_language) == live_grammar
+        assert reopened.get_language_versions("python") == []
+
+
+def test_restore_rejects_invalid_backup_without_replacing_live_database(
+    tmp_path: Path,
+) -> None:
+    assert not get_parser("python").parse(FIXTURE.read_bytes()).root_node.has_error
+    backup_path = tmp_path / "backup.db"
+    with CompatibilityDatabase(backup_path) as backup:
+        assert backup.add_language_version(LanguageVersion("python", "3.11"))
+        assert backup.add_grammar_version(GrammarVersion("python", "1.0", "python.so"))
+    with closing(sqlite3.connect(backup_path)) as conn:
+        conn.execute("UPDATE grammar_versions SET supported_features = 'null'")
+        conn.commit()
+
+    db_path = tmp_path / "live.db"
+    live_language = LanguageVersion("rust", "2021")
+    live_grammar = GrammarVersion("rust", "1.0", "rust.so")
+    with CompatibilityDatabase(db_path) as live:
+        assert live.add_language_version(live_language)
+        assert live.add_grammar_version(live_grammar)
+        original_bytes = db_path.read_bytes()
+        with pytest.raises(ValueError, match="list of strings"):
+            live.restore_database(backup_path)
+        assert db_path.read_bytes() == original_bytes
+        assert live.find_compatible_grammar(live_language) == live_grammar
+
+    with CompatibilityDatabase(db_path) as reopened:
+        assert reopened.find_compatible_grammar(live_language) == live_grammar
