@@ -161,6 +161,19 @@ needs a confirmed consumer contract. The largest remaining gaps are
 contract. Its tags URL defect was filed as treesitter-chunker#242 and fixed
 separately by treesitter-chunker#243 before this slice.
 
+Remeasurement on merged `main` at `e5eb830f` used the same representative
+command in a clean worktree: 3,552 passed, 4 skipped; 29,040 of 40,024
+statements executed (72.5565%), 10,984 missed. The report is
+`/home/viperjuice/workspace/tmp/treesitter-69-slice37/coverage.json`, SHA-256
+`66afc6fdc1feb1d031ebd703acb84aea2a696fd0d48b6b9470761b4013923957`.
+`interfaces/stubs.py` remains the only wholly uncovered module (137/137).
+The largest remaining gaps are `grammar_management/cli.py` (617/1,216),
+`compatibility.py` (488/820), `testing.py` (421/563), `core.py` (405/731),
+and `build/builder.py` (298/332). Slice 37 tested real parse-failure
+classification; slice 38 covers a distinct compatibility database export and
+import contract. Live in-memory selection remaining stale after import is a
+separate defect filed as treesitter-chunker#246.
+
 The table ranks **every zero-covered module first**, then the largest remaining
 individual gaps. Risk is the possible consequence of an untested contract, not
 an assertion that the module is in active production use. H means a parser,
@@ -254,6 +267,7 @@ with the original source restored before committing.
 | 35 — public grammar cache information | `grammar_management/config.py` `config_cli cache-info`: the public report distinguishes download and build cache sizes, reports their total and configured limits, and changes cleanup-needed from Yes to No when auto-cleanup is disabled without changing the cached files. | Invoke the public Click command against an isolated home with checked-in Python fixture copies padded to 512 KiB and 768 KiB under the configured grammar cache; parse both before and after. Mutation **display build size as download size** must fail. Extend the existing grammar config contract test file. |
 | 36 — grammar versions fallback | `grammar_management/cli.py` `versions`: an empty tags response reports no tagged versions and suggests the development branch; an API refusal reports the failure and common branch hints while preserving the public command's successful fallback and leaving home untouched. | Parse the checked-in Python fixture with the pinned parser; stub only the external HTTP response while invoking the public Click command. Mutation **drop HTTP failure fallback** (catch only `ValueError` instead of the HTTP error) must fail. Extend the existing grammar CLI contract test file. |
 | 37 — grammar error pattern analysis | `grammar_management/compatibility.py` `GrammarTester.analyze_error_patterns`: one valid Python fixture and two malformed variants report one successful parse, two syntax failures, a two-thirds failure rate, and the ranked error category without writing to home. | Parse the checked-in Python fixture and malformed variants with the pinned parser; pass those same sources through the real validator and tester in isolated temporary directories. Mutation **count failed parses as successes** must fail. Extend the existing grammar compatibility contract test file. |
+| 38 — compatibility database JSON transfer | `languages/compatibility/database.py` `export_database` and `import_database`: a JSON export contains Python and JavaScript language and grammar versions, a Python compatibility rule, and a breaking change; importing it replaces prior records and preserves those relationships after reopening. The live-schema defect is treesitter-chunker#246 and remains outside this slice. | Parse checked-in Python and JavaScript fixtures with pinned parsers before writing representative records to temporary SQLite databases. Mutation **omit compatibility rules from export** must fail. Extend the existing language compatibility records contract test file. |
 
 `interfaces/stubs.py` remains in the ranked inventory but is not promoted into
 a coverage slice until its consumer contract is confirmed. The node explorer
