@@ -374,6 +374,33 @@ class TestCacheCorruptionRecovery:
     """Test cache recovery from corruption scenarios."""
 
     @staticmethod
+    def test_locked_migration_does_not_report_success(temp_cache_dir, temp_python_file):
+        temp_cache_dir.mkdir()
+        db_path = temp_cache_dir / "ast_cache.db"
+        with closing(sqlite3.connect(db_path)) as lock:
+            lock.execute(
+                """CREATE TABLE file_cache (
+                    file_path TEXT NOT NULL, file_hash TEXT NOT NULL,
+                    file_size INTEGER NOT NULL, mtime REAL NOT NULL,
+                    language TEXT NOT NULL, chunks_data BLOB NOT NULL,
+                    cache_version TEXT DEFAULT '1.0',
+                    PRIMARY KEY (file_path, language)
+                )"""
+            )
+            lock.execute("CREATE INDEX idx_file_hash ON file_cache(file_hash)")
+            lock.commit()
+            lock.execute("BEGIN IMMEDIATE")
+            with pytest.raises(sqlite3.OperationalError, match="locked"):
+                ASTCache(cache_dir=temp_cache_dir)
+            columns = {row[1] for row in lock.execute("PRAGMA table_info(file_cache)")}
+            assert "data_checksum" not in columns
+
+        cache = ASTCache(cache_dir=temp_cache_dir)
+        chunks = chunk_file(temp_python_file, "python")
+        cache.cache_chunks(temp_python_file, "python", chunks)
+        assert cache.get_cached_chunks(temp_python_file, "python") is not None
+
+    @staticmethod
     def test_locked_database_is_not_replaced(cache, temp_python_file):
         chunks = chunk_file(temp_python_file, "python")
         cache.cache_chunks(temp_python_file, "python", chunks)

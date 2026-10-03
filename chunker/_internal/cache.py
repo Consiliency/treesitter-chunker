@@ -100,14 +100,16 @@ class ASTCache:
                     conn.execute(
                         "ALTER TABLE file_cache ADD COLUMN data_checksum TEXT",
                     )
-                except sqlite3.OperationalError:
-                    pass  # Column already exists
+                except sqlite3.OperationalError as exc:
+                    if str(exc) != "duplicate column name: data_checksum":
+                        raise
                 try:
                     conn.execute(
                         "ALTER TABLE file_cache ADD COLUMN cache_version TEXT DEFAULT '1.0'",
                     )
-                except sqlite3.OperationalError:
-                    pass  # Column already exists
+                except sqlite3.OperationalError as exc:
+                    if str(exc) != "duplicate column name: cache_version":
+                        raise
         except sqlite3.DatabaseError as exc:
             if getattr(exc, "sqlite_errorcode", 0) & 0xFF not in (
                 sqlite3.SQLITE_CORRUPT,
