@@ -6,7 +6,6 @@ import sysconfig
 from pathlib import Path
 
 import pytest
-from packaging import tags
 
 from chunker import get_parser
 from chunker.build.system import PlatformSupportImpl
@@ -53,4 +52,4 @@ def test_linux_aarch64_wheel_tag_matches_installer_tags(monkeypatch):
 
     assert info["arch"] == "arm64"
     assert info["platform_tag"] == "linux_aarch64"
-    assert info["platform_tag"] in set(tags.platform_tags())
+    assert info["platform_tag"] == sysconfig.get_platform().replace("-", "_")
