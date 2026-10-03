@@ -378,6 +378,7 @@ class PythonScopeAnalyzer(BaseScopeAnalyzer):
                 "list_splat_pattern",
                 "dictionary_splat_pattern",
                 "parameters",
+                "lambda_parameters",
                 "as_pattern_target",
             }:
                 for child in node.named_children:
@@ -412,7 +413,7 @@ class PythonScopeAnalyzer(BaseScopeAnalyzer):
                 target = node.child_by_field_name("left")
                 if target:
                     collect_targets(target)
-            elif node.type == "parameters":
+            elif node.type in {"parameters", "lambda_parameters"}:
                 collect_targets(node)
                 return
             elif node.type == "as_pattern":

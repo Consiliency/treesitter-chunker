@@ -38,6 +38,10 @@ def build():
     return local_sqrt(left + right), value
 
 
+def make_lambda():
+    return lambda x, y=first, *args, **kwargs: (x, y, args, kwargs)
+
+
 def bindings(item, count: int, default=1, *args: int, **kwargs: str):
     for loop_left, loop_right in [(item, count)]:
         with Path("item").open() as handle:

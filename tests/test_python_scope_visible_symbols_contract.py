@@ -123,6 +123,20 @@ def test_python_scope_reports_imports_and_local_definitions() -> None:
         "local_sqrt",
     } <= function_names
 
+    lambda_body = definitions["make_lambda"].child_by_field_name("body")
+    assert lambda_body is not None
+    lambda_node = next(
+        child
+        for statement in lambda_body.named_children
+        for child in statement.named_children
+        if child.type == "lambda"
+    )
+    lambda_names = ContextFactory.create_scope_analyzer("python").get_visible_symbols(
+        lambda_node, root
+    )
+    assert {"x", "y", "args", "kwargs", "first", "make_lambda"} <= lambda_names
+    assert {"class_sqrt", "class_value", "nested_sqrt"}.isdisjoint(lambda_names)
+
     bindings = definitions["bindings"]
     bindings_body = bindings.child_by_field_name("body")
     assert bindings_body is not None
