@@ -7,7 +7,7 @@ from pathlib import Path
 from chunker import get_parser
 from chunker.grammar_management import GrammarValidator, ValidationLevel
 from chunker.grammar_management.core import load_compiled_grammar
-from tree_sitter_language_pack import cache_dir
+from tree_sitter_language_pack import cache_dir, get_parser as get_pack_parser
 
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures/boundary_ir/repos/python/app"
@@ -59,8 +59,9 @@ def test_parse_samples_reports_syntax_error_with_sample_index(tmp_path: Path) ->
 
 def test_validation_cache_rechecks_replaced_local_grammar(tmp_path: Path) -> None:
     suffix = {"win32": ".dll", "darwin": ".dylib"}.get(sys.platform, ".so")
-    native = Path(cache_dir()) / f"libtree_sitter_python{suffix}"
     source = (FIXTURE_DIR / "service.py").read_bytes()
+    assert not get_pack_parser("python").parse(source).root_node.has_error
+    native = Path(cache_dir()) / f"libtree_sitter_python{suffix}"
     assert native.exists()
     assert not load_compiled_grammar(native, "python").parse(source).root_node.has_error
 
