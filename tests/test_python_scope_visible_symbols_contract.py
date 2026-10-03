@@ -43,6 +43,9 @@ def test_python_scope_reports_imports_and_local_definitions() -> None:
         "local_sqrt",
         "class_sqrt",
         "class_value",
+        "nested_sqrt",
+        "nested_value",
+        "inner",
         "left",
         "right",
     }.isdisjoint(module_names)
@@ -63,6 +66,26 @@ def test_python_scope_reports_imports_and_local_definitions() -> None:
     assert "Container" in nested_names
     assert {"Nested", "class_sqrt", "class_value"}.isdisjoint(nested_names)
 
+    inner = next(
+        node
+        for node in nested_class.child_by_field_name("body").children
+        if node.type == "function_definition"
+    )
+    inner_body = inner.child_by_field_name("body")
+    assert inner_body is not None
+    inner_names = ContextFactory.create_scope_analyzer("python").get_visible_symbols(
+        inner_body, root
+    )
+    assert {"Container", "Path", "local"} <= inner_names
+    assert {
+        "Nested",
+        "inner",
+        "nested_sqrt",
+        "nested_value",
+        "class_sqrt",
+        "class_value",
+    }.isdisjoint(inner_names)
+
     method = next(
         node
         for node in definitions["Container"].child_by_field_name("body").children
@@ -73,8 +96,14 @@ def test_python_scope_reports_imports_and_local_definitions() -> None:
     method_names = ContextFactory.create_scope_analyzer("python").get_visible_symbols(
         method_body, root
     )
-    assert {"Container", "Path", "local"} <= method_names
-    assert {"class_sqrt", "class_value", "read"}.isdisjoint(method_names)
+    assert {"Container", "Path", "read"} <= method_names
+    assert {"class_sqrt", "class_value", "Nested"}.isdisjoint(method_names)
+
+    method_scope_names = ContextFactory.create_scope_analyzer(
+        "python"
+    ).get_visible_symbols(method, root)
+    assert "read" in method_scope_names
+    assert {"class_sqrt", "class_value", "Nested"}.isdisjoint(method_scope_names)
 
     build_body = definitions["build"].child_by_field_name("body")
     assert build_body is not None
@@ -89,3 +118,30 @@ def test_python_scope_reports_imports_and_local_definitions() -> None:
         "right",
         "local_sqrt",
     } <= function_names
+
+    bindings = definitions["bindings"]
+    bindings_body = bindings.child_by_field_name("body")
+    assert bindings_body is not None
+    binding_names = ContextFactory.create_scope_analyzer("python").get_visible_symbols(
+        bindings_body, root
+    )
+    assert {
+        "item",
+        "count",
+        "default",
+        "args",
+        "kwargs",
+        "loop_left",
+        "loop_right",
+        "handle",
+        "captured",
+        "error",
+        "named",
+    } <= binding_names
+    assert {
+        "item",
+        "loop_left",
+        "handle",
+        "captured",
+        "error",
+    }.isdisjoint(module_names)

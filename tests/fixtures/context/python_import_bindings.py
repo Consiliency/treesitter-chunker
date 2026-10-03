@@ -12,11 +12,17 @@ class Container:
     class_value = 1
 
     class Nested:
-        inherited = class_value  # noqa: F821
+        from math import sqrt as nested_sqrt  # noqa: F401
+
+        nested_value = 2
+
+        def inner(self):
+            local = Path("nested")
+            return local
 
     def read(self):
-        local = Path("item")
-        return local
+        read = Path("item")
+        return read
 
 
 def build():
@@ -25,3 +31,13 @@ def build():
     left, right = (1, 2)
     value = Container()
     return local_sqrt(left + right), value
+
+
+def bindings(item, count: int, default=1, *args, **kwargs):
+    for loop_left, loop_right in [(item, count)]:
+        with Path("item").open() as handle:
+            named = (captured := default)
+            try:
+                raise ValueError(named)
+            except ValueError as error:
+                return loop_left, loop_right, handle, captured, error, args, kwargs

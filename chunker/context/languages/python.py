@@ -287,18 +287,26 @@ class PythonScopeAnalyzer(BaseScopeAnalyzer):
         current = scope_node
         while current:
             parent = self.get_enclosing_scope(current)
-            if (
-                parent
+            nested_in_class = (
+                parent is not None
                 and parent.type == "class_definition"
                 and self._is_scope_node(current)
-            ):
+            )
+            if nested_in_class:
                 excluded_classes.add(parent)
+            if current in excluded_classes:
+                names = set()
+            elif nested_in_class:
                 names = self._get_local_symbols(current)
                 own_name = self._get_defined_name(current)
                 if own_name:
                     names.discard(own_name)
-            elif current in excluded_classes:
-                names = set()
+                    body = current.child_by_field_name("body")
+                    if body:
+                        names.update(self._get_local_symbols(body))
+                    parameters = current.child_by_field_name("parameters")
+                    if parameters:
+                        names.update(self._get_local_symbols(parameters))
             else:
                 names = self._get_local_symbols(current)
             visible.update(names)
@@ -368,6 +376,12 @@ class PythonScopeAnalyzer(BaseScopeAnalyzer):
                 "list_pattern",
                 "tuple_pattern",
                 "list_splat_pattern",
+                "dictionary_splat_pattern",
+                "parameters",
+                "typed_parameter",
+                "default_parameter",
+                "typed_default_parameter",
+                "as_pattern_target",
             }:
                 for child in node.named_children:
                     collect_targets(child)
@@ -377,8 +391,18 @@ class PythonScopeAnalyzer(BaseScopeAnalyzer):
                 return
             if self._is_import_node(node):
                 names.update(self._extract_imported_names(node))
-            if node.type == "assignment":
+            if node.type in {"assignment", "for_statement", "for_in_clause"}:
                 target = node.child_by_field_name("left")
+                if target:
+                    collect_targets(target)
+            elif node.type == "parameters":
+                collect_targets(node)
+            elif node.type == "as_pattern":
+                alias = node.child_by_field_name("alias")
+                if alias:
+                    collect_targets(alias)
+            elif node.type == "named_expression":
+                target = node.child_by_field_name("name")
                 if target:
                     collect_targets(target)
             for child in node.children:
