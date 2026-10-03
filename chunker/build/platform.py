@@ -148,6 +148,8 @@ class PlatformSupport(PlatformSupportContract):
             return "linux_x86_64"
         elif arch == "i386":
             return "linux_i686"
+        elif arch == "arm64":
+            return "linux_aarch64"
         else:
             return f"linux_{arch}"
 

@@ -2,9 +2,11 @@
 
 import platform
 import sys
+import sysconfig
 from pathlib import Path
 
 import pytest
+from packaging import tags
 
 from chunker import get_parser
 from chunker.build.system import PlatformSupportImpl
@@ -40,3 +42,15 @@ def test_build_platform_metadata_uses_normalized_host_tags(
     assert info["python_impl"] == platform.python_implementation().lower()
     assert isinstance(info["compiler"], str) and info["compiler"]
     assert (info["libc"] is None) == (expected_os != "linux")
+
+
+def test_linux_aarch64_wheel_tag_matches_installer_tags(monkeypatch):
+    monkeypatch.setattr(platform, "system", lambda: "Linux")
+    monkeypatch.setattr(platform, "machine", lambda: "aarch64")
+    monkeypatch.setattr(sysconfig, "get_platform", lambda: "linux-aarch64")
+
+    info = PlatformSupportImpl().detect_platform()
+
+    assert info["arch"] == "arm64"
+    assert info["platform_tag"] == "linux_aarch64"
+    assert info["platform_tag"] in set(tags.platform_tags())
