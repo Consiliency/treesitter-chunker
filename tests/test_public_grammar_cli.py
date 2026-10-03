@@ -16,6 +16,7 @@ import pytest
 from click.testing import CliRunner
 from chunker import get_parser
 from chunker.grammar_management import ComprehensiveGrammarCLI, grammar_cli
+from chunker.grammar_management.core import load_compiled_grammar
 
 
 FIXTURE = Path(__file__).parent / "fixtures/boundary_ir/repos/python/app/service.py"
@@ -636,6 +637,16 @@ def test_click_parses_with_selected_local_grammar(tmp_path: Path, monkeypatch) -
     parsed = runner.invoke(grammar_cli, [*command, "test", "baml", str(BAML_FIXTURE)])
     assert parsed.exit_code == 0
     assert "Grammar test successful" in parsed.output
+    assert "Abstract Syntax Tree:" not in parsed.output
+
+    with_ast = runner.invoke(
+        grammar_cli, [*command, "test", "baml", str(BAML_FIXTURE), "--ast"]
+    )
+    assert with_ast.exit_code == 0
+    assert "Abstract Syntax Tree:" in with_ast.output
+    tree = load_compiled_grammar(user_library, "baml").parse(BAML_FIXTURE.read_bytes())
+    assert not tree.root_node.has_error
+    assert str(tree.root_node) in with_ast.output
 
     malformed = tmp_path / "malformed.baml"
     malformed.write_text("class Broken {\n", encoding="utf-8")
