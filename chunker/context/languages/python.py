@@ -406,6 +406,37 @@ class PythonScopeAnalyzer(BaseScopeAnalyzer):
             elif node.type in {"type", "generic_type"} and node.named_children:
                 collect_targets(node.named_children[0])
 
+        def collect_case_bindings(node: Node) -> None:
+            if node.type == "identifier" and node.text:
+                names.add(node.text.decode("utf-8"))
+            elif node.type == "dotted_name":
+                if (
+                    len(node.named_children) == 1
+                    and node.text == node.named_children[0].text
+                ):
+                    collect_case_bindings(node.named_children[0])
+            elif node.type == "class_pattern":
+                for child in node.named_children:
+                    if child.type == "case_pattern":
+                        collect_case_bindings(child)
+            elif node.type == "dict_pattern":
+                for child in node.named_children:
+                    if child.type in {"case_pattern", "splat_pattern"}:
+                        collect_case_bindings(child)
+            elif node.type == "keyword_pattern":
+                if node.named_children:
+                    collect_case_bindings(node.named_children[-1])
+            elif node.type in {
+                "case_pattern",
+                "list_pattern",
+                "tuple_pattern",
+                "union_pattern",
+                "splat_pattern",
+                "as_pattern",
+            }:
+                for child in node.named_children:
+                    collect_case_bindings(child)
+
         def collect_imports(node: Node, depth: int = 0) -> None:
             if depth > 0 and self._is_scope_node(node):
                 return
@@ -427,6 +458,17 @@ class PythonScopeAnalyzer(BaseScopeAnalyzer):
                 alias = node.child_by_field_name("alias")
                 if alias:
                     collect_targets(alias)
+            elif node.type == "case_clause":
+                pattern = next(
+                    (
+                        child
+                        for child in node.named_children
+                        if child.type == "case_pattern"
+                    ),
+                    None,
+                )
+                if pattern:
+                    collect_case_bindings(pattern)
             for child in node.children:
                 collect_imports(child, depth + 1)
 

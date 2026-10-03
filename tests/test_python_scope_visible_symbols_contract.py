@@ -141,6 +141,30 @@ def test_python_scope_reports_imports_and_local_definitions() -> None:
     assert {"x", "y", "args", "kwargs", "first", "make_lambda"} <= lambda_names
     assert {"class_sqrt", "class_value", "nested_sqrt"}.isdisjoint(lambda_names)
 
+    match_body = definitions["match_bindings"].child_by_field_name("body")
+    assert match_body is not None
+    match_names = ContextFactory.create_scope_analyzer("python").get_visible_symbols(
+        match_body, root
+    )
+    assert {
+        "value",
+        "head",
+        "tail",
+        "mapped",
+        "remaining",
+        "method_value",
+        "whole",
+    } <= match_names
+    assert "read" not in match_names
+    assert {
+        "head",
+        "tail",
+        "mapped",
+        "remaining",
+        "method_value",
+        "whole",
+    }.isdisjoint(module_names)
+
     bindings = definitions["bindings"]
     bindings_body = bindings.child_by_field_name("body")
     assert bindings_body is not None

@@ -46,6 +46,18 @@ def make_lambda():
     return lambda x, y=first, *args, **kwargs: (x, y, args, kwargs)
 
 
+def match_bindings(value):
+    match value:
+        case [head, tail]:
+            return head, tail
+        case {"key": mapped, **remaining}:
+            return mapped, remaining
+        case Container(read=method_value) as whole:
+            return method_value, whole
+        case _:
+            return None
+
+
 def bindings(item, count: int, default=1, *args: int, **kwargs: str):
     for loop_left, loop_right in [(item, count)]:
         with Path("item").open() as handle:
