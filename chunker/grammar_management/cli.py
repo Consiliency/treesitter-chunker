@@ -2625,24 +2625,11 @@ def test(ctx: Any, language: Any, file_path: Any, ast: Any) -> None:
 @grammar_cli.command()
 @click.argument("language", required=False)
 @click.option("--fix", is_flag=True, help="Attempt to fix issues")
-@click.option(
-    "--level",
-    default="standard",
-    type=click.Choice(["basic", "standard", "extensive"]),
-    help="Validation level",
-)
-@click.option(
-    "--format",
-    "output_format",
-    default="table",
-    type=click.Choice(["table", "json", "yaml"]),
-    help="Output format",
-)
 @click.pass_context
-def validate(ctx: Any, language: Any, fix: Any, level: Any, output_format: Any) -> None:
+def validate(ctx: Any, language: Any, fix: Any) -> None:
     """Validate grammar installation with comprehensive testing."""
     cli = ctx.obj["cli"]
-    sys.exit(cli.validate_grammar(language, fix, level, output_format))
+    sys.exit(cli.validate_grammar(language, fix))
 
 
 @grammar_cli.command()

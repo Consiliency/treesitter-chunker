@@ -122,6 +122,43 @@ def test_click_remove_rejects_path_as_language(tmp_path: Path) -> None:
     assert marker.read_text(encoding="utf-8") == "keep"
 
 
+def test_click_validate_local_missing_and_invalid_grammars(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source = BAML_FIXTURE.read_bytes()
+    assert not get_parser("baml").parse(source).root_node.has_error
+
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "home"))
+    cache_dir = tmp_path / "grammar-cache"
+    user_dir = cache_dir / "grammars" / "user"
+    user_dir.mkdir(parents=True)
+    grammar_src = Path(__file__).parent.parent / "packages/baml-grammar"
+    baml_dir = user_dir / "baml"
+    (baml_dir / "src").mkdir(parents=True)
+    shutil.copyfile(grammar_src / "src/grammar.js", baml_dir / "grammar.js")
+    shutil.copyfile(grammar_src / "src/parser.c", baml_dir / "src/parser.c")
+    (user_dir / "libjava.so").touch()
+
+    runner = CliRunner()
+    command = ["--cache-dir", str(cache_dir), "validate"]
+    valid = runner.invoke(grammar_cli, [*command, "baml", "--fix"])
+    assert valid.exit_code == 0, valid.output
+    assert "baml: healthy" in valid.output
+    assert "Valid: 1" in valid.output
+
+    missing = runner.invoke(grammar_cli, [*command, "missing"])
+    assert missing.exit_code == 1
+    assert "Grammar for 'missing' not found" in missing.output
+    assert not isinstance(missing.exception, TypeError)
+
+    invalid = runner.invoke(grammar_cli, [*command, "java"])
+    assert invalid.exit_code == 1
+    assert "java: corrupted" in invalid.output
+    assert "Grammar file is empty" in invalid.output
+    assert not isinstance(invalid.exception, TypeError)
+
+
 def test_click_exports_selected_local_grammar(tmp_path: Path, monkeypatch) -> None:
     tree = get_parser("python").parse(FIXTURE.read_bytes())
     assert tree.root_node.type == "module"
