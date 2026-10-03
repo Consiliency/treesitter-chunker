@@ -2,8 +2,10 @@
 
 import json
 import sqlite3
+import time
 from contextlib import closing
 from pathlib import Path
+from threading import Timer
 
 import pytest
 
@@ -371,3 +373,61 @@ def test_restore_with_live_wal_keeps_disk_and_schema_consistent(
     with CompatibilityDatabase(db_path) as reopened:
         assert reopened.find_compatible_grammar(language) == grammar
         assert reopened.get_language_versions("rust") == []
+
+
+def test_restore_with_live_wal_accepts_different_backup_page_size(
+    tmp_path: Path,
+) -> None:
+    backup_path = tmp_path / "backup.db"
+    with closing(sqlite3.connect(backup_path)) as conn:
+        conn.execute("PRAGMA page_size=8192")
+        conn.execute("VACUUM")
+    language = LanguageVersion("python", "3.11")
+    grammar = GrammarVersion("python", "1.0", "python.so")
+    with CompatibilityDatabase(backup_path) as backup:
+        assert backup.conn.execute("PRAGMA page_size").fetchone()[0] == 8192
+        assert backup.add_language_version(language)
+        assert backup.add_grammar_version(grammar)
+
+    db_path = tmp_path / "live.db"
+    with CompatibilityDatabase(db_path) as live:
+        assert live.conn.execute("PRAGMA page_size").fetchone()[0] == 4096
+        assert live.conn.execute("PRAGMA journal_mode=WAL").fetchone()[0] == "wal"
+        assert live.add_language_version(LanguageVersion("rust", "2021"))
+        live.restore_database(backup_path)
+        assert live.find_compatible_grammar(language) == grammar
+        assert live.conn.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
+
+    with CompatibilityDatabase(db_path) as reopened:
+        assert reopened.conn.execute("PRAGMA page_size").fetchone()[0] == 8192
+        assert reopened.find_compatible_grammar(language) == grammar
+        assert reopened.get_language_versions("rust") == []
+
+
+def test_restore_fails_in_bounded_time_when_reader_blocks_default_journal(
+    tmp_path: Path,
+) -> None:
+    backup_path = tmp_path / "backup.db"
+    with CompatibilityDatabase(backup_path) as backup:
+        assert backup.add_language_version(LanguageVersion("python", "3.11"))
+
+    db_path = tmp_path / "live.db"
+    live_language = LanguageVersion("rust", "2021")
+    with CompatibilityDatabase(db_path) as live:
+        assert live.add_language_version(live_language)
+        reader = sqlite3.connect(db_path, check_same_thread=False)
+        reader.execute("BEGIN")
+        reader.execute("SELECT COUNT(*) FROM language_versions").fetchone()
+        release_reader = Timer(6, reader.close)
+        release_reader.daemon = True
+        release_reader.start()
+        try:
+            started = time.monotonic()
+            with pytest.raises(sqlite3.OperationalError, match="blocked"):
+                live.restore_database(backup_path)
+            assert time.monotonic() - started < 5
+            assert live.get_language_versions("rust") == [live_language]
+            assert live.get_language_versions("python") == []
+        finally:
+            release_reader.cancel()
+            reader.close()

@@ -5,6 +5,7 @@ import logging
 import shutil
 import sqlite3
 import tempfile
+import time
 from collections.abc import Iterator
 from contextlib import closing, contextmanager
 from datetime import datetime
@@ -995,7 +996,55 @@ class CompatibilityDatabase:
                         raise sqlite3.OperationalError(
                             "Cannot restore while a database transaction is active"
                         )
-                    staged_conn.backup(self._conn)
+                    busy_timeout = self._conn.execute("PRAGMA busy_timeout").fetchone()[
+                        0
+                    ]
+                    journal_mode = self._conn.execute("PRAGMA journal_mode").fetchone()[
+                        0
+                    ]
+                    page_size = self._conn.execute("PRAGMA page_size").fetchone()[0]
+                    backup_page_size = staged_conn.execute(
+                        "PRAGMA page_size"
+                    ).fetchone()[0]
+                    switched_mode = False
+                    self._conn.execute("PRAGMA busy_timeout=100")
+                    try:
+                        if journal_mode == "wal" and page_size != backup_page_size:
+                            mode = self._conn.execute(
+                                "PRAGMA journal_mode=DELETE"
+                            ).fetchone()[0]
+                            if mode != "delete":
+                                raise sqlite3.OperationalError(
+                                    "Cannot change WAL mode for backup page size"
+                                )
+                            switched_mode = True
+
+                        deadline = time.monotonic() + 2
+
+                        def stop_if_blocked(
+                            status: int, _remaining: int, _total: int
+                        ) -> None:
+                            if status in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED):
+                                if time.monotonic() >= deadline:
+                                    raise sqlite3.OperationalError(
+                                        "Restore blocked by another database reader"
+                                    )
+
+                        staged_conn.backup(
+                            self._conn, pages=16, progress=stop_if_blocked, sleep=0.05
+                        )
+                    finally:
+                        try:
+                            if switched_mode:
+                                mode = self._conn.execute(
+                                    "PRAGMA journal_mode=WAL"
+                                ).fetchone()[0]
+                                if mode != "wal":
+                                    raise sqlite3.OperationalError(
+                                        "Could not restore WAL journal mode"
+                                    )
+                        finally:
+                            self._conn.execute(f"PRAGMA busy_timeout={busy_timeout}")
                     self.schema = restored_schema
 
             logger.info(f"Database restored from {backup_path}")
