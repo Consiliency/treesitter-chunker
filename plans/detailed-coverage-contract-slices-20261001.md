@@ -149,6 +149,18 @@ The report is
 Grammar configuration still has 265 of 775 statements uncovered, so slice 35
 covers the public cache information display as an independent contract.
 
+Remeasurement on merged `main` at `33584ca3` used the same representative
+command: 3,550 passed, 4 skipped; 28,989 of 40,024 statements executed
+(72.4290%), 11,035 missed. The report is
+`/home/viperjuice/workspace/tmp/treesitter-69-slice36/coverage.json`.
+`interfaces/stubs.py` is the only wholly uncovered module (137/137) and still
+needs a confirmed consumer contract. The largest remaining gaps are
+`grammar_management/cli.py` (666/1,216), `compatibility.py` (488/820),
+`testing.py` (421/563), `core.py` (405/731), and `build/builder.py`
+(298/332). Slice 36 covers a separate public grammar-versions fallback
+contract. Its tags URL defect was filed as treesitter-chunker#242 and fixed
+separately by treesitter-chunker#243 before this slice.
+
 The table ranks **every zero-covered module first**, then the largest remaining
 individual gaps. Risk is the possible consequence of an untested contract, not
 an assertion that the module is in active production use. H means a parser,
@@ -240,6 +252,7 @@ with the original source restored before committing.
 | 33 — public grammar configuration import | `grammar_management/config.py` `config_cli import-config`: confirmed default import merges an external partial config while preserving omitted active cache and directory settings; `--replace` discards those omitted settings. Both report success and leave the parseable grammar fixture intact. Keep failure exit status in treesitter-chunker#233. | Invoke the public Click command with confirmation against an isolated home and a checked-in Python fixture under the managed grammar directory; parse it before and after import. Mutation **invert the public merge/replace switch** (`not replace` to `replace`) must fail. Extend the existing grammar config contract test file. |
 | 34 — public grammar configuration set/get | `grammar_management/config.py` `config_cli set` and `get`: public commands persist and display a user-selected grammar path, numeric cache limit, Boolean cleanup switch, and logging level with their intended types; the managed Python grammar fixture remains parseable. Keep failure exit status in treesitter-chunker#233. | Invoke public Click commands against an isolated home, parse the checked-in Python fixture before and after placing it under the managed grammar directory, and inspect saved JSON types and displayed values. Mutation **skip JSON value decoding in set** must fail when a numeric limit is rejected as a string. Extend the existing grammar config contract test file. |
 | 35 — public grammar cache information | `grammar_management/config.py` `config_cli cache-info`: the public report distinguishes download and build cache sizes, reports their total and configured limits, and changes cleanup-needed from Yes to No when auto-cleanup is disabled without changing the cached files. | Invoke the public Click command against an isolated home with checked-in Python fixture copies padded to 512 KiB and 768 KiB under the configured grammar cache; parse both before and after. Mutation **display build size as download size** must fail. Extend the existing grammar config contract test file. |
+| 36 — grammar versions fallback | `grammar_management/cli.py` `versions`: an empty tags response reports no tagged versions and suggests the development branch; an API refusal reports the failure and common branch hints while preserving the public command's successful fallback and leaving home untouched. | Parse the checked-in Python fixture with the pinned parser; stub only the external HTTP response while invoking the public Click command. Mutation **drop HTTP failure fallback** (catch only `ValueError` instead of the HTTP error) must fail. Extend the existing grammar CLI contract test file. |
 
 `interfaces/stubs.py` remains in the ranked inventory but is not promoted into
 a coverage slice until its consumer contract is confirmed. The node explorer

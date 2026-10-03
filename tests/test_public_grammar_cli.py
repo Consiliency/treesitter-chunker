@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import sys
 import time
+import urllib.error
 import urllib.request
 from io import BytesIO
 from pathlib import Path
@@ -109,6 +110,49 @@ def test_click_versions_reads_tags_from_configured_github_source(
     assert "• v1" not in shown
     assert "... and 2 more" in result.output
     assert "• main (default)" in result.output
+    assert not parser.parse(source).root_node.has_error
+    assert not isolated_home.exists()
+
+
+def test_click_versions_reports_empty_tags_and_api_failure(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source = FIXTURE.read_bytes()
+    parser = get_parser("python")
+    assert not parser.parse(source).root_node.has_error
+    isolated_home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(isolated_home))
+    monkeypatch.setenv("USERPROFILE", str(isolated_home))
+    requested = []
+
+    def empty_tags(url, timeout):
+        requested.append((url, timeout))
+        return BytesIO(b"[]")
+
+    monkeypatch.setattr(urllib.request, "urlopen", empty_tags)
+    command = ["--cache-dir", str(tmp_path / "grammar-cache"), "versions", "python"]
+    empty = CliRunner().invoke(grammar_cli, command)
+    assert empty.exit_code == 0, empty.output
+    assert "No tagged versions found" in empty.output
+    assert "Try fetching the latest development version" in empty.output
+    assert "• main (default)" in empty.output
+    assert "Available Versions (Tags):" not in empty.output
+
+    def unavailable(url, timeout):
+        requested.append((url, timeout))
+        raise urllib.error.HTTPError(url, 403, "rate limited", {}, None)
+
+    monkeypatch.setattr(urllib.request, "urlopen", unavailable)
+    failed = CliRunner().invoke(grammar_cli, command)
+    assert failed.exit_code == 0, failed.output
+    assert "Could not fetch version info from API: HTTP Error 403" in failed.output
+    assert "Repository likely has these common branches" in failed.output
+    assert "• main (default)" in failed.output
+    assert "Available Versions (Tags):" not in failed.output
+    assert requested == [
+        ("https://api.github.com/repos/tree-sitter/tree-sitter-python/tags", 10),
+        ("https://api.github.com/repos/tree-sitter/tree-sitter-python/tags", 10),
+    ]
     assert not parser.parse(source).root_node.has_error
     assert not isolated_home.exists()
 
