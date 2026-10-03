@@ -280,6 +280,32 @@ class PythonScopeAnalyzer(BaseScopeAnalyzer):
         """Initialize Python scope analyzer."""
         super().__init__("python")
 
+    def get_visible_symbols(self, scope_node: Node, ast: Node) -> set[str]:
+        """Collect lexical names without inheriting a method's class namespace."""
+        visible = set()
+        excluded_classes = set()
+        current = scope_node
+        while current:
+            parent = self.get_enclosing_scope(current)
+            if (
+                parent
+                and parent.type == "class_definition"
+                and self._is_scope_node(current)
+            ):
+                excluded_classes.add(parent)
+                names = self._get_local_symbols(current)
+                own_name = self._get_defined_name(current)
+                if own_name:
+                    names.discard(own_name)
+            elif current in excluded_classes:
+                names = set()
+            else:
+                names = self._get_local_symbols(current)
+            visible.update(names)
+            current = parent
+        visible.update(self._get_local_symbols(ast))
+        return visible
+
     @staticmethod
     def _get_scope_type_map() -> dict[str, str]:
         """Get mapping from AST node types to scope types."""
@@ -334,11 +360,27 @@ class PythonScopeAnalyzer(BaseScopeAnalyzer):
         """Include imports defined directly in this scope."""
         names = super()._get_local_symbols(scope_node)
 
+        def collect_targets(node: Node) -> None:
+            if node.type == "identifier" and node.text:
+                names.add(node.text.decode("utf-8"))
+            elif node.type in {
+                "pattern_list",
+                "list_pattern",
+                "tuple_pattern",
+                "list_splat_pattern",
+            }:
+                for child in node.named_children:
+                    collect_targets(child)
+
         def collect_imports(node: Node, depth: int = 0) -> None:
             if depth > 0 and self._is_scope_node(node):
                 return
             if self._is_import_node(node):
                 names.update(self._extract_imported_names(node))
+            if node.type == "assignment":
+                target = node.child_by_field_name("left")
+                if target:
+                    collect_targets(target)
             for child in node.children:
                 collect_imports(child, depth + 1)
 
