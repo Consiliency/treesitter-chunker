@@ -188,7 +188,7 @@ class BaseSymbolResolver(SymbolResolver):
         return None
 
     @staticmethod
-    def _get_node_text(_node: Node) -> str:
+    def _get_node_text(node: Node) -> str:
         """Get the text content of a node.
 
         Args:
@@ -197,7 +197,8 @@ class BaseSymbolResolver(SymbolResolver):
         Returns:
             Text content
         """
-        return ""
+        text = node.text
+        return text.decode("utf-8") if text else ""
 
     @staticmethod
     def _get_node_type_map() -> dict[str, str]:
