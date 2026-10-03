@@ -746,6 +746,7 @@ class CompatibilityDatabase:
         Args:
             input_path: Path to the import file
         """
+        previous_schema = self.schema
         try:
             input_path = Path(input_path)
 
@@ -840,12 +841,14 @@ class CompatibilityDatabase:
                     ),
                 )
 
+            self._load_schema()
             self.conn.commit()
             logger.info(f"Imported database from {input_path}")
 
         except Exception as e:
             logger.error(f"Error importing database: {e}")
             self.conn.rollback()
+            self.schema = previous_schema
             raise
 
     def validate_database(self) -> list[str]:

@@ -3,6 +3,8 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from chunker import get_parser
 from chunker.languages.compatibility.database import CompatibilityDatabase
 from chunker.languages.compatibility.schema import (
@@ -150,3 +152,47 @@ def test_export_import_preserves_language_grammar_rules_and_breaking_changes(
             CompatibilityLevel.PARTIALLY_COMPATIBLE
         )
         assert reopened.get_breaking_changes("python", "0.9", "1.0") == [breaking]
+
+
+def test_import_refreshes_live_selection_and_rolls_back_invalid_schema(
+    tmp_path: Path,
+) -> None:
+    assert not get_parser("python").parse(FIXTURE.read_bytes()).root_node.has_error
+    language = LanguageVersion("python", "3.11", features=["match"])
+    grammar = GrammarVersion("python", "1.0", "python.so", supported_features=["match"])
+    rule = CompatibilityRule(
+        "python", ">=3.10", "1.0", CompatibilityLevel.PARTIALLY_COMPATIBLE
+    )
+    export_path = tmp_path / "valid.json"
+    with CompatibilityDatabase(tmp_path / "source.db") as source:
+        assert source.add_language_version(language)
+        assert source.add_grammar_version(grammar)
+        assert source.add_compatibility_rule(rule)
+        source.export_database(export_path)
+
+    invalid = json.loads(export_path.read_text(encoding="utf-8"))
+    invalid["compatibility_rules"][0]["compatibility_level"] = "invalid"
+    invalid_path = tmp_path / "invalid.json"
+    invalid_path.write_text(json.dumps(invalid), encoding="utf-8")
+
+    destination_path = tmp_path / "destination.db"
+    with CompatibilityDatabase(destination_path) as destination:
+        assert destination.add_language_version(LanguageVersion("rust", "2021"))
+        destination.import_database(export_path)
+        assert destination.get_language_versions("rust") == []
+        assert destination.find_compatible_grammar(language) == grammar
+        assert destination.get_compatibility_level(language, grammar) == (
+            CompatibilityLevel.PARTIALLY_COMPATIBLE
+        )
+
+        with pytest.raises(ValueError, match="invalid"):
+            destination.import_database(invalid_path)
+        assert destination.get_language_versions("python") == [language]
+        assert destination.find_compatible_grammar(language) == grammar
+        assert destination.get_compatibility_level(language, grammar) == (
+            CompatibilityLevel.PARTIALLY_COMPATIBLE
+        )
+
+    with CompatibilityDatabase(destination_path) as reopened:
+        assert reopened.get_language_versions("python") == [language]
+        assert reopened.find_compatible_grammar(language) == grammar
