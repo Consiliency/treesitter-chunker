@@ -271,6 +271,28 @@ so the grammar-list slice still uses this measurement.
 | 7 | `languages/compatibility/database.py` | 185 / 386 | H |
 | 8 | `languages/compatibility/schema.py` | 181 / 407 | H |
 
+Remeasurement on clean `main` at `57610dbc` before slice 47 used the full
+suite with coverage and a dedicated workspace temporary directory: 3,578
+passed, 4 skipped, and one timing-sensitive failure in
+`tests/test_streaming.py::TestBufferOptimization::test_streaming_performance_consistency`
+(observed variance 1.393 versus its 0.05 threshold). Coverage was 29,472 of
+40,187 statements executed (73.3371%), 10,715 missed. The private JSON report
+is `/home/viperjuice/workspace/tmp/treesitter-69-slice47-coverage.json`,
+SHA-256 `fc2975f7604c39f0b750086a6f6bc2c0083033364898662b5056d09f49a4511c`.
+The first attempt used pytest's default temporary area and hit its disk quota;
+that run was discarded and its generated coverage fragments were removed.
+
+| Current rank | Module (`chunker/` prefix omitted) | Missed / statements | Risk |
+| ---: | --- | ---: | :---: |
+| 1 | `interfaces/stubs.py` | 137 / 137 (zero covered) | M |
+| 2 | `grammar_management/cli.py` | 592 / 1,216 | H |
+| 3 | `grammar_management/testing.py` | 421 / 563 | L |
+| 4 | `grammar_management/core.py` | 405 / 731 | H |
+| 5 | `grammar_management/compatibility.py` | 380 / 834 | M |
+| 6 | `build/builder.py` | 298 / 332 | H |
+| 7 | `languages/compatibility/database.py` | 185 / 386 | H |
+| 8 | `languages/compatibility/schema.py` | 181 / 407 | H |
+
 The table ranks **every zero-covered module first**, then the largest remaining
 individual gaps. Risk is the possible consequence of an untested contract, not
 an assertion that the module is in active production use. H means a parser,
@@ -373,6 +395,7 @@ with the original source restored before committing.
 | 44 — Svelte semantic extraction | `languages/svelte.py` `SveltePlugin.get_semantic_chunks`: a real parsed component distinguishes module TypeScript and instance JavaScript scripts, reports the reactive statement and SCSS style, and preserves the source line of the each-block marker. | Parse a checked-in Svelte component fixture with the pinned parser and inspect the plugin's observable semantic records. Mutation **force module scripts to instance context** must fail. Add a focused Svelte semantic contract test; keep product defects separate. |
 | 45 — JavaScript arrow parent context | `context/languages/javascript.py` `JavaScriptContextExtractor.extract_parent_context`: a call inside a parsed arrow function reports its enclosing lexical declaration with the `const` binding name, arrow signature, and source line, without exposing the body. | Parse a checked-in JavaScript fixture with the pinned parser, find the real call node, and inspect the exported extractor's parent-context item. Mutation **omit the arrow's lexical binding name** must fail. Add a focused context contract test; keep treesitter-chunker#264 and treesitter-chunker#267 separate. |
 | 46 — grammar list JSON filter | `grammar_management/cli.py` `ComprehensiveGrammarCLI.list_grammars`: the exported list API filters discovered local grammar names case-insensitively and emits only the matching entry as parseable JSON; a miss returns an error without changing isolated home state. | Parse the checked-in Python and JavaScript service fixtures with pinned parsers, install two local library candidates under a temporary cache, and call the exported API without mocking its discovery. Mutation **ignore the language filter** must fail because the JSON contains both entries. Extend the public grammar CLI contract test; file unrelated defects separately. |
+| 47 — validator cache replacement | `grammar_management/core.py` `GrammarValidator.validate_grammar`: an empty local grammar reports invalid, and replacing that path with the pinned working Python grammar produces a valid standard result in the same validator and after cache reload. | Parse the checked-in Python service fixture with the real compiled grammar, replace an invalid temporary candidate with that grammar, and inspect exported validation results. Mutation **omit file metadata from the validation cache key** must fail because the old invalid result is reused. Extend the public validator contract test; keep production defects separate. |
 
 `interfaces/stubs.py` remains in the ranked inventory but is not promoted into
 a coverage slice until its consumer contract is confirmed. The node explorer

@@ -1,9 +1,13 @@
 """Contract tests for the exported grammar validator using real parsers."""
 
+import shutil
+import sys
 from pathlib import Path
 
 from chunker import get_parser
-from chunker.grammar_management import GrammarValidator
+from chunker.grammar_management import GrammarValidator, ValidationLevel
+from chunker.grammar_management.core import load_compiled_grammar
+from tree_sitter_language_pack import cache_dir, get_parser as get_pack_parser
 
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures/boundary_ir/repos/python/app"
@@ -51,3 +55,42 @@ def test_parse_samples_reports_syntax_error_with_sample_index(tmp_path: Path) ->
     assert len(errors) == 1
     assert errors[0].startswith("Sample 2:")
     assert "syntax error" in errors[0].lower()
+
+
+def test_validation_cache_rechecks_replaced_local_grammar(tmp_path: Path) -> None:
+    suffix = {"win32": ".dll", "darwin": ".dylib"}.get(sys.platform, ".so")
+    source = (FIXTURE_DIR / "service.py").read_bytes()
+    assert not get_pack_parser("python").parse(source).root_node.has_error
+    native_name = (
+        f"tree_sitter_python{suffix}"
+        if sys.platform == "win32"
+        else f"libtree_sitter_python{suffix}"
+    )
+    native = Path(cache_dir()) / native_name
+    assert native.exists()
+    assert not load_compiled_grammar(native, "python").parse(source).root_node.has_error
+
+    candidate = tmp_path / f"libpython{suffix}"
+    candidate.write_bytes(b"")
+    cache = tmp_path / "validator-cache"
+    validator = GrammarValidator(cache_dir=cache)
+    broken = validator.validate_grammar(candidate, "python", ValidationLevel.STANDARD)
+    assert not broken.is_valid
+    assert any("empty" in error.lower() for error in broken.errors)
+
+    candidate.unlink()
+    shutil.copyfile(native, candidate)
+    assert (
+        not load_compiled_grammar(candidate, "python").parse(source).root_node.has_error
+    )
+
+    repaired = validator.validate_grammar(candidate, "python", ValidationLevel.STANDARD)
+    assert repaired.is_valid
+    assert repaired.errors == []
+    assert repaired.performance_metrics["samples_tested"] > 0
+    assert (
+        GrammarValidator(cache_dir=cache)
+        .validate_grammar(candidate, "python", ValidationLevel.STANDARD)
+        .is_valid
+    )
+    assert (cache / "validation_cache.json").exists()
