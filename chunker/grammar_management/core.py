@@ -1373,16 +1373,31 @@ class GrammarManager:
         # Create required directories
         self._cache_dir.mkdir(parents=True, exist_ok=True)
 
-    def discover_available_grammars(self) -> dict[str, dict[str, Any]]:
+    def discover_available_grammars(
+        self, show_all: bool = False
+    ) -> dict[str, dict[str, Any]]:
         """Discover all available grammars with detailed information.
 
         Returns:
-            Dictionary mapping language names to grammar information
+            Dictionary keyed by language, or by candidate path when show_all
         """
         discovered = {}
 
         # Get grammars from registry
         registry_grammars = self._registry.discover_grammars()
+
+        if show_all:
+            for language, candidates in registry_grammars.items():
+                for path, priority in candidates:
+                    discovered[str(path)] = {
+                        "language": language,
+                        "path": str(path),
+                        "priority": priority.name,
+                        "exists": path.exists(),
+                        "size": path.stat().st_size if path.exists() else 0,
+                        "modified": path.stat().st_mtime if path.exists() else 0,
+                    }
+            return discovered
 
         for language in registry_grammars:
             info = self._registry.get_language_info(language)
