@@ -13,9 +13,17 @@ from chunker.grammar_management import GrammarPriority, GrammarRegistry
 FIXTURE = Path(__file__).parent / "fixtures/boundary_ir/repos/python/app/service.py"
 
 
-@pytest.mark.parametrize("library_name", ["libpython.so", "tree_sitter_python.so"])
+@pytest.mark.parametrize(
+    "library_names",
+    [
+        ("libpython.so", "libpython.so", "libpython.so"),
+        ("tree_sitter_python.so",) * 3,
+        ("libpython.so", "tree_sitter_python.so", "libpython.so"),
+        ("tree_sitter_python.so", "libpython.so", "tree_sitter_python.so"),
+    ],
+)
 def test_registry_selects_user_package_then_fallback(
-    tmp_path: Path, monkeypatch, library_name: str
+    tmp_path: Path, monkeypatch, library_names: tuple[str, str, str]
 ) -> None:
     source = FIXTURE.read_text(encoding="utf-8")
     tree = get_parser("python").parse(source.encode("utf-8"))
@@ -36,9 +44,9 @@ def test_registry_selects_user_package_then_fallback(
         directory.mkdir()
 
     candidates = [
-        (user_dir / library_name, GrammarPriority.USER),
-        (package_dir / library_name, GrammarPriority.PACKAGE),
-        (fallback_dir / library_name, GrammarPriority.FALLBACK),
+        (user_dir / library_names[0], GrammarPriority.USER),
+        (package_dir / library_names[1], GrammarPriority.PACKAGE),
+        (fallback_dir / library_names[2], GrammarPriority.FALLBACK),
     ]
     for path, _ in candidates:
         shutil.copyfile(native_library, path)
