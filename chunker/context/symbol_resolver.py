@@ -18,8 +18,8 @@ class BaseSymbolResolver(SymbolResolver):
             language: Language identifier
         """
         self.language = language
-        self._definition_cache: dict[str, Node | None] = {}
-        self._reference_cache: dict[str, list[Node]] = {}
+        self._definition_cache: dict[tuple[str, Node, Node], Node | None] = {}
+        self._reference_cache: dict[tuple[str, Node], list[Node]] = {}
 
     def find_symbol_definition(
         self,
@@ -37,17 +37,19 @@ class BaseSymbolResolver(SymbolResolver):
         Returns:
             Node where symbol is defined, or None
         """
-        cache_key = f"{symbol_name}:{id(scope_node)}"
+        cache_key = (symbol_name, scope_node, ast)
         if cache_key in self._definition_cache:
             return self._definition_cache[cache_key]
         current_scope = scope_node
         while current_scope:
             definition = self._search_scope_for_definition(symbol_name, current_scope)
             if definition:
-                self._definition_cache[cache_key] = definition
-                return definition
+                break
             current_scope = self._get_parent_scope(current_scope)
-        definition = self._search_scope_for_definition(symbol_name, ast)
+        else:
+            definition = self._search_scope_for_definition(symbol_name, ast)
+        if len(self._definition_cache) >= 256:
+            self._definition_cache.pop(next(iter(self._definition_cache)))
         self._definition_cache[cache_key] = definition
         return definition
 
@@ -112,8 +114,9 @@ class BaseSymbolResolver(SymbolResolver):
         Returns:
             List of nodes that reference the symbol
         """
-        if symbol_name in self._reference_cache:
-            return self._reference_cache[symbol_name]
+        cache_key = (symbol_name, ast)
+        if cache_key in self._reference_cache:
+            return self._reference_cache[cache_key]
         references = []
 
         def find_references(node: Node):
@@ -128,7 +131,9 @@ class BaseSymbolResolver(SymbolResolver):
                 find_references(child)
 
         find_references(ast)
-        self._reference_cache[symbol_name] = references
+        if len(self._reference_cache) >= 256:
+            self._reference_cache.pop(next(iter(self._reference_cache)))
+        self._reference_cache[cache_key] = references
         return references
 
     def _search_scope_for_definition(
