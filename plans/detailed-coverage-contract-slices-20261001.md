@@ -293,6 +293,24 @@ that run was discarded and its generated coverage fragments were removed.
 | 7 | `languages/compatibility/database.py` | 185 / 386 | H |
 | 8 | `languages/compatibility/schema.py` | 181 / 407 | H |
 
+Remeasurement on clean `main` at `dcad0fee` before slice 48 used the same
+representative full-suite command with private workspace temporary and coverage
+data: 3,589 passed, 4 skipped; 29,514 of 40,201 statements executed
+(73.4161%), 10,687 missed. The private JSON report is
+`/home/viperjuice/workspace/tmp/treesitter-69-slice48/coverage.json`, SHA-256
+`318bc0784b00c2ac087c975f3cb84ce61d7b1a9545e14853e8ba4b91ff30fda7`.
+
+| Current rank | Module (`chunker/` prefix omitted) | Missed / statements | Risk |
+| ---: | --- | ---: | :---: |
+| 1 | `interfaces/stubs.py` | 137 / 137 (zero covered) | M |
+| 2 | `grammar_management/cli.py` | 585 / 1,218 | H |
+| 3 | `grammar_management/testing.py` | 421 / 563 | L |
+| 4 | `grammar_management/core.py` | 398 / 736 | H |
+| 5 | `grammar_management/compatibility.py` | 380 / 834 | M |
+| 6 | `build/builder.py` | 298 / 332 | H |
+| 7 | `languages/compatibility/database.py` | 185 / 386 | H |
+| 8 | `languages/compatibility/schema.py` | 181 / 407 | H |
+
 The table ranks **every zero-covered module first**, then the largest remaining
 individual gaps. Risk is the possible consequence of an untested contract, not
 an assertion that the module is in active production use. H means a parser,
@@ -396,6 +414,7 @@ with the original source restored before committing.
 | 45 — JavaScript arrow parent context | `context/languages/javascript.py` `JavaScriptContextExtractor.extract_parent_context`: a call inside a parsed arrow function reports its enclosing lexical declaration with the `const` binding name, arrow signature, and source line, without exposing the body. | Parse a checked-in JavaScript fixture with the pinned parser, find the real call node, and inspect the exported extractor's parent-context item. Mutation **omit the arrow's lexical binding name** must fail. Add a focused context contract test; keep treesitter-chunker#264 and treesitter-chunker#267 separate. |
 | 46 — grammar list JSON filter | `grammar_management/cli.py` `ComprehensiveGrammarCLI.list_grammars`: the exported list API filters discovered local grammar names case-insensitively and emits only the matching entry as parseable JSON; a miss returns an error without changing isolated home state. | Parse the checked-in Python and JavaScript service fixtures with pinned parsers, install two local library candidates under a temporary cache, and call the exported API without mocking its discovery. Mutation **ignore the language filter** must fail because the JSON contains both entries. Extend the public grammar CLI contract test; file unrelated defects separately. |
 | 47 — validator cache replacement | `grammar_management/core.py` `GrammarValidator.validate_grammar`: an empty local grammar reports invalid, and replacing that path with the pinned working Python grammar produces a valid standard result in the same validator and after cache reload. | Parse the checked-in Python service fixture with the real compiled grammar, replace an invalid temporary candidate with that grammar, and inspect exported validation results. Mutation **omit file metadata from the validation cache key** must fail because the old invalid result is reused. Extend the public validator contract test; keep production defects separate. |
+| 48 — grammar cleanup fallback | `grammar_management/cli.py` `grammar cleanup`: when optional core grammar management is unavailable, a requested 20-day cutoff removes a 25-day-old local download, preserves a 15-day-old one, reports one removal, and leaves the isolated home untouched. The inaccurate report for a later untouched directory is a separate defect in treesitter-chunker#295. | Parse the checked-in Python service fixture before and after invoking the public Click command against a temporary cache with core component availability disabled. Mutation **reverse the fallback age comparison** must fail because the stale fixture remains. Extend the public grammar CLI contract test. |
 
 `interfaces/stubs.py` remains in the ranked inventory but is not promoted into
 a coverage slice until its consumer contract is confirmed. The node explorer
