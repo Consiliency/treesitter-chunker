@@ -353,6 +353,24 @@ alone without coverage. Coverage was 29,533 of 40,202 statements executed
 | 7 | `languages/compatibility/database.py` | 185 / 386 | H |
 | 8 | `languages/compatibility/schema.py` | 181 / 407 | H |
 
+Remeasurement on clean `main` at `8950b91f` before slice 51 used the full
+suite with coverage and a private workspace temporary directory: 3,594 passed,
+4 skipped; 29,537 of 40,202 statements executed (73.4715%), 10,665 missed.
+The private JSON report is
+`/home/viperjuice/workspace/tmp/treesitter-69-slice51/coverage.json`, SHA-256
+`e5a0d0de97f58108f2c73fe6e7f2949978083362e59552d586279e6d511d5da0`.
+
+| Current rank | Module (`chunker/` prefix omitted) | Missed / statements | Risk |
+| ---: | --- | ---: | :---: |
+| 1 | `interfaces/stubs.py` | 137 / 137 (zero covered) | M |
+| 2 | `grammar_management/cli.py` | 563 / 1,219 | H |
+| 3 | `grammar_management/testing.py` | 421 / 563 | L |
+| 4 | `grammar_management/core.py` | 398 / 736 | H |
+| 5 | `grammar_management/compatibility.py` | 380 / 834 | M |
+| 6 | `build/builder.py` | 294 / 332 | H |
+| 7 | `languages/compatibility/database.py` | 185 / 386 | H |
+| 8 | `languages/compatibility/schema.py` | 181 / 407 | H |
+
 The table ranks **every zero-covered module first**, then the largest remaining
 individual gaps. Risk is the possible consequence of an untested contract, not
 an assertion that the module is in active production use. H means a parser,
@@ -459,6 +477,7 @@ with the original source restored before committing.
 | 48 — grammar cleanup fallback | `grammar_management/cli.py` `grammar cleanup`: when optional core grammar management is unavailable, a requested 20-day cutoff removes a 25-day-old local download, preserves a 15-day-old one, reports one removal, and leaves the isolated home untouched. The inaccurate report for a later untouched directory is a separate defect in treesitter-chunker#295. | Parse the checked-in Python service fixture before and after invoking the public Click command against a temporary cache with core component availability disabled. Mutation **reverse the fallback age comparison** must fail because the stale fixture remains. Extend the public grammar CLI contract test. |
 | 49 — recursive grammar cleanup fallback | `grammar_management/cli.py` `grammar cleanup`: when optional core management is unavailable, a 25-day-old download directory containing source is removed recursively, a recent build fixture remains parseable, and the public command reports one removal and only the changed directory without writing to the isolated home. | Parse the checked-in Python service fixture from the stale directory, then invoke the public Click command with a 20-day cutoff and parse the preserved recent fixtures. Mutation **skip recursive directory removal** must fail because the stale directory remains. Extend the existing fallback CLI contract test as an independent parameter case. |
 | 50 — safe tar extraction | `build/builder.py` `_safe_extract_tar`: a nested ordinary Python source file is extracted byte-for-byte and remains parseable, while POSIX absolute and Windows drive-qualified members are rejected before any archive member is written. | Create tar archives from the checked-in Python service fixture and parse it with the pinned parser before and after valid extraction. Mutation **accept Windows drive-qualified members** must fail because the unsafe archive is no longer rejected. Extend the existing tar extraction contract tests; file any production defect separately. |
+| 51 — Conda package presence | `build/builder.py` `BuildSystem.verify_build`: a Conda-style tar archive with index, file manifest, and parseable Python source under the recipe's noarch `site-packages/` path reports valid with all required components; the same archive without a package payload reports invalid with `package` missing. Platform-mismatch validity and versioned platform-specific package paths are separate defects in treesitter-chunker#300 and treesitter-chunker#302. | Build temporary tar.bz2 archives from the checked-in Python service fixture and parse that payload with the pinned parser. Mutation **omit package presence from artifact validity** must fail because the metadata-only archive is accepted. Extend the tar/build contract tests; keep the product fixes separate. |
 
 `interfaces/stubs.py` remains in the ranked inventory but is not promoted into
 a coverage slice until its consumer contract is confirmed. The node explorer
