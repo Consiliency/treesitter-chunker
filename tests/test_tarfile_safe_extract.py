@@ -81,9 +81,9 @@ def test_build_verifier_requires_conda_package_payload(tmp_path, include_package
     parser = get_parser("python")
     assert not parser.parse(source).root_node.has_error
 
-    payload = "lib/python/site-packages/chunker/service.py"
+    payload = "site-packages/chunker/service.py"
     entries = [
-        ("info/index.json", json.dumps({"platform": "linux-64"}).encode("utf-8")),
+        ("info/index.json", json.dumps({"platform": "linux"}).encode("utf-8")),
         ("info/files", (payload + "\n").encode("utf-8") if include_package else b""),
     ]
     if include_package:
@@ -102,7 +102,7 @@ def test_build_verifier_requires_conda_package_payload(tmp_path, include_package
             assert extracted is not None
             assert not parser.parse(extracted.read()).root_node.has_error
 
-    valid, report = BuildSystem().verify_build(archive, "linux-64")
+    valid, report = BuildSystem().verify_build(archive, "linux")
     assert valid is include_package
     assert report["valid"] is include_package
     assert report["components"]["index"] is True
