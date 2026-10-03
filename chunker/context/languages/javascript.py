@@ -355,7 +355,6 @@ class JavaScriptSymbolResolver(BaseSymbolResolver):
         """Check if a node defines a symbol."""
         return node.type in {
             "function_declaration",
-            "generator_function_declaration",
             "class_declaration",
             "variable_declarator",
             "const_declaration",
@@ -374,60 +373,35 @@ class JavaScriptSymbolResolver(BaseSymbolResolver):
     @staticmethod
     def _get_defined_name(node: Node) -> str | None:
         """Get the name being defined by a definition node."""
-        if node.type in {
-            "function_declaration",
-            "generator_function_declaration",
-            "class_declaration",
-            "variable_declarator",
-            "method_definition",
-        }:
-            if node.type == "method_definition" and (
-                node.parent is None or node.parent.type != "class_body"
-            ):
-                return None
-            name = node.child_by_field_name("name")
-            if (
-                name
-                and name.type in {"identifier", "property_identifier"}
-                and name.text
-            ):
-                return name.text.decode("utf-8")
+        if node.type in {"function_declaration", "class_declaration"}:
+            for child in node.children:
+                if child.type == "identifier":
+                    return None
+        elif node.type == "variable_declarator":
+            for child in node.children:
+                if child.type == "identifier":
+                    return None
+                if child.type == "=":
+                    break
+        elif node.type == "method_definition":
+            for child in node.children:
+                if child.type == "property_identifier":
+                    return None
         return None
 
     @staticmethod
     def _creates_new_scope(node: Node) -> bool:
         """Check if a node creates a new scope."""
-        if (
-            node.type == "statement_block"
-            and node.parent is not None
-            and node.parent.type
-            in {
-                "function_declaration",
-                "function_expression",
-                "generator_function_declaration",
-                "generator_function",
-                "arrow_function",
-                "method_definition",
-                "class_static_block",
-            }
-        ):
-            return False
         return node.type in {
             "function_declaration",
             "function_expression",
-            "generator_function_declaration",
-            "generator_function",
             "arrow_function",
             "class_declaration",
-            "class",
-            "class_static_block",
             "method_definition",
             "for_statement",
             "for_in_statement",
             "for_of_statement",
             "block_statement",
-            "statement_block",
-            "switch_body",
             "catch_clause",
         }
 
@@ -485,7 +459,10 @@ class JavaScriptScopeAnalyzer(BaseScopeAnalyzer):
     def _is_definition_node(cls, node: Node) -> bool:
         """Check if a node defines a symbol."""
         resolver = JavaScriptSymbolResolver()
-        return resolver._is_definition_node(node)
+        return (
+            node.type == "generator_function_declaration"
+            or resolver._is_definition_node(node)
+        )
 
     @staticmethod
     def _is_import_node(node: Node) -> bool:
@@ -495,8 +472,25 @@ class JavaScriptScopeAnalyzer(BaseScopeAnalyzer):
     @classmethod
     def _get_defined_name(cls, node: Node) -> str | None:
         """Get the name being defined by a definition node."""
-        resolver = JavaScriptSymbolResolver()
-        return resolver._get_defined_name(node)
+        if node.type in {
+            "function_declaration",
+            "generator_function_declaration",
+            "class_declaration",
+            "variable_declarator",
+            "method_definition",
+        }:
+            if node.type == "method_definition" and (
+                node.parent is None or node.parent.type != "class_body"
+            ):
+                return None
+            name = node.child_by_field_name("name")
+            if (
+                name
+                and name.type in {"identifier", "property_identifier"}
+                and name.text
+            ):
+                return name.text.decode("utf-8")
+        return None
 
     def _get_local_symbols(self, scope_node: Node) -> set[str]:
         """Include function-scoped var declarations inside lexical blocks."""
