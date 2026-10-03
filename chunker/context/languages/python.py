@@ -424,8 +424,9 @@ class PythonScopeAnalyzer(BaseScopeAnalyzer):
                     if child.type in {"case_pattern", "splat_pattern"}:
                         collect_case_bindings(child)
             elif node.type == "keyword_pattern":
-                if node.named_children:
-                    collect_case_bindings(node.named_children[-1])
+                value = node.children[-1]
+                if value.is_named:
+                    collect_case_bindings(value)
             elif node.type in {
                 "case_pattern",
                 "list_pattern",
@@ -459,16 +460,9 @@ class PythonScopeAnalyzer(BaseScopeAnalyzer):
                 if alias:
                     collect_targets(alias)
             elif node.type == "case_clause":
-                pattern = next(
-                    (
-                        child
-                        for child in node.named_children
-                        if child.type == "case_pattern"
-                    ),
-                    None,
-                )
-                if pattern:
-                    collect_case_bindings(pattern)
+                for pattern in node.named_children:
+                    if pattern.type == "case_pattern":
+                        collect_case_bindings(pattern)
             for child in node.children:
                 collect_imports(child, depth + 1)
 

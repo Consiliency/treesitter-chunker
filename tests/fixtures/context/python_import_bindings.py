@@ -58,6 +58,22 @@ def match_bindings(value):
             return None
 
 
+def wildcard_pattern(value):
+    match value:
+        case Container(read=_):
+            return 1
+        case _:
+            return 0
+
+
+def tuple_match(value):
+    match value:
+        case first_item, second_item:
+            return first_item, second_item
+        case _:
+            return None
+
+
 def bindings(item, count: int, default=1, *args: int, **kwargs: str):
     for loop_left, loop_right in [(item, count)]:
         with Path("item").open() as handle:

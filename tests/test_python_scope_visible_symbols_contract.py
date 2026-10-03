@@ -156,6 +156,7 @@ def test_python_scope_reports_imports_and_local_definitions() -> None:
         "whole",
     } <= match_names
     assert "read" not in match_names
+    assert "_" not in match_names
     assert {
         "head",
         "tail",
@@ -164,6 +165,23 @@ def test_python_scope_reports_imports_and_local_definitions() -> None:
         "method_value",
         "whole",
     }.isdisjoint(module_names)
+
+    wildcard_body = definitions["wildcard_pattern"].child_by_field_name("body")
+    assert wildcard_body is not None
+    wildcard_names = ContextFactory.create_scope_analyzer("python").get_visible_symbols(
+        wildcard_body, root
+    )
+    assert {"wildcard_pattern", "value", "Container"} <= wildcard_names
+    assert "read" not in wildcard_names
+    assert "_" not in wildcard_names
+
+    tuple_body = definitions["tuple_match"].child_by_field_name("body")
+    assert tuple_body is not None
+    tuple_names = ContextFactory.create_scope_analyzer("python").get_visible_symbols(
+        tuple_body, root
+    )
+    assert {"tuple_match", "value", "first_item", "second_item"} <= tuple_names
+    assert {"first_item", "second_item"}.isdisjoint(module_names)
 
     bindings = definitions["bindings"]
     bindings_body = bindings.child_by_field_name("body")
