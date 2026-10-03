@@ -66,6 +66,54 @@ def test_click_lists_local_grammar_and_reports_missing_language(
     assert "Grammar for 'missing' not found" in missing.output
 
 
+def test_click_list_all_reveals_shadowed_priority_candidate(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    source = FIXTURE.read_bytes()
+    assert not get_parser("python").parse(source).root_node.has_error
+
+    native_spec = importlib.util.find_spec("tree_sitter_language_pack._native")
+    assert native_spec is not None and native_spec.origin is not None
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    cache_dir = tmp_path / "grammar-cache"
+    user_library = cache_dir / "grammars" / "user" / "libpython.so"
+    package_library = cache_dir / "grammars" / "package" / "libpython.so"
+    user_library.parent.mkdir(parents=True)
+    package_library.parent.mkdir(parents=True)
+    shutil.copyfile(native_spec.origin, user_library)
+    shutil.copyfile(native_spec.origin, package_library)
+
+    command = ["--cache-dir", str(cache_dir), "--verbose", "list"]
+    runner = CliRunner()
+    selected = runner.invoke(grammar_cli, command)
+    assert selected.exit_code == 0, selected.output
+    assert "Total grammars: 1" in selected.output
+    assert str(user_library) in selected.output
+    assert str(package_library) not in selected.output
+
+    all_candidates = runner.invoke(grammar_cli, [*command, "--all"])
+    assert all_candidates.exit_code == 0, all_candidates.output
+    assert "Total grammars: 2" in all_candidates.output
+    assert "User-installed grammars" in all_candidates.output
+    assert "Package-bundled grammars" in all_candidates.output
+    assert str(user_library) in all_candidates.output
+    assert str(package_library) in all_candidates.output
+
+    fallback = ComprehensiveGrammarCLI(cache_dir=cache_dir)
+    fallback.grammar_manager = None
+    assert fallback.list_grammars(show_all=True, output_format="json") == 0
+    fallback_candidates = json.loads(capsys.readouterr().out)
+    assert set(fallback_candidates) == {str(user_library), str(package_library)}
+    assert fallback.list_grammars(show_all=True) == 0
+    fallback_table = capsys.readouterr().out
+    assert "Total grammars: 2" in fallback_table
+    assert "User-installed grammars" in fallback_table
+    assert "Package-bundled grammars" in fallback_table
+    assert not home.exists()
+
+
 def test_exported_grammar_list_json_filters_local_grammars(
     tmp_path: Path, monkeypatch, capsys
 ) -> None:

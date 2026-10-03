@@ -59,7 +59,7 @@ except ImportError as e:
         def __init__(self, **kwargs: Any) -> None:
             pass
 
-        def discover_available_grammars(self) -> dict[str, Any]:
+        def discover_available_grammars(self, show_all: bool = False) -> dict[str, Any]:
             return {}
 
         def install_grammar(self, *args: Any, **kwargs: Any) -> tuple[bool, str]:
@@ -335,11 +335,11 @@ class ComprehensiveGrammarCLI:
 
         return None
 
-    def _get_all_grammars(self) -> dict[str, dict[str, Any]]:
+    def _get_all_grammars(self, show_all: bool = False) -> dict[str, dict[str, Any]]:
         """Get information about all available grammars.
 
         Returns:
-            Dictionary mapping language names to grammar information
+            Dictionary keyed by language, or by candidate path when show_all
         """
         grammars = {}
 
@@ -352,12 +352,13 @@ class ComprehensiveGrammarCLI:
             for prefix in ("lib", "tree_sitter_"):
                 for so_file in search_path.glob(f"{prefix}*.so"):
                     language = so_file.stem[len(prefix) :]
-                    if language not in grammars:
-                        grammars[language] = {
+                    key = str(so_file) if show_all else language
+                    if key not in grammars:
+                        grammars[key] = {
                             "language": language,
                             "path": str(so_file),
                             "source": source,
-                            "priority": priority,
+                            "priority": getattr(priority, "name", priority),
                             "status": self._check_grammar_status(so_file),
                             "type": "compiled",
                         }
@@ -367,12 +368,13 @@ class ComprehensiveGrammarCLI:
                 for source_dir in search_path.iterdir():
                     if source_dir.is_dir() and source_dir.name not in [".", ".."]:
                         language = source_dir.name
-                        if language not in grammars:
-                            grammars[language] = {
+                        key = str(source_dir) if show_all else language
+                        if key not in grammars:
+                            grammars[key] = {
                                 "language": language,
                                 "path": str(source_dir),
                                 "source": source,
-                                "priority": priority,
+                                "priority": getattr(priority, "name", priority),
                                 "status": self._check_source_status(source_dir),
                                 "type": "source",
                             }
@@ -480,15 +482,17 @@ class ComprehensiveGrammarCLI:
 
             # Use core grammar manager if available
             if self.grammar_manager:
-                grammars = self.grammar_manager.discover_available_grammars()
+                grammars = self.grammar_manager.discover_available_grammars(
+                    show_all=show_all
+                )
             else:
-                grammars = self._get_all_grammars_fallback()
+                grammars = self._get_all_grammars_fallback(show_all=show_all)
 
             if language_filter:
                 grammars = {
                     k: v
                     for k, v in grammars.items()
-                    if language_filter.lower() in k.lower()
+                    if language_filter.lower() in v.get("language", k).lower()
                 }
 
             if not grammars:
@@ -564,7 +568,7 @@ class ComprehensiveGrammarCLI:
             priority = grammar.get("priority", "unknown")
             if priority not in priority_groups:
                 priority_groups[priority] = []
-            grammar["language"] = lang  # Ensure language field is set
+            grammar.setdefault("language", lang)
             priority_groups[priority].append(grammar)
 
         # Display by priority
@@ -631,13 +635,15 @@ class ComprehensiveGrammarCLI:
                         click.echo(f"    Installed: {date_str}")
             click.echo()
 
-    def _get_all_grammars_fallback(self) -> dict[str, dict[str, Any]]:
+    def _get_all_grammars_fallback(
+        self, show_all: bool = False
+    ) -> dict[str, dict[str, Any]]:
         """Fallback method to get all grammars when core manager unavailable.
 
         Returns:
             Dictionary mapping language names to grammar information
         """
-        return self._get_all_grammars()
+        return self._get_all_grammars(show_all=show_all)
 
     def info_grammar(self, language: str, output_format: str = "table") -> int:
         """Show comprehensive grammar details and compatibility information.
