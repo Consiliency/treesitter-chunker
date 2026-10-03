@@ -55,6 +55,30 @@ def test_config_reloads_nested_cache_and_directory_settings(
     assert not isolated_home.exists()
 
 
+def test_config_has_distinguishes_present_null_and_missing_keys(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source = FIXTURE.read_bytes()
+    assert not get_parser("python").parse(source).root_node.has_error
+    isolated_home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(isolated_home))
+    monkeypatch.setenv("USERPROFILE", str(isolated_home))
+
+    config_path = tmp_path / "settings" / "config.json"
+    config = UserConfig(config_path)
+    assert config.has("cache.max_size_mb")
+    assert not config.has("cache.not_here")
+    assert not config.has("missing.section")
+
+    config.set("cache.note", None)
+    assert config.has("cache.note")
+    assert UserConfig(config_path).has("cache.note")
+    config.delete("cache.note")
+    assert not config.has("cache.note")
+    assert not UserConfig(config_path).has("cache.note")
+    assert not isolated_home.exists()
+
+
 def test_config_backup_restores_saved_settings_and_keeps_pre_restore_copy(
     tmp_path: Path, monkeypatch
 ) -> None:
