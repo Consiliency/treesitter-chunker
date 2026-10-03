@@ -280,6 +280,40 @@ class PythonScopeAnalyzer(BaseScopeAnalyzer):
         """Initialize Python scope analyzer."""
         super().__init__("python")
 
+    def get_visible_symbols(self, scope_node: Node, ast: Node) -> set[str]:
+        """Collect lexical names without inheriting a method's class namespace."""
+        visible = set()
+        excluded_classes = set()
+        current = scope_node
+        while current:
+            parent = self.get_enclosing_scope(current)
+            nested_in_class = (
+                parent is not None
+                and parent.type == "class_definition"
+                and self._is_scope_node(current)
+            )
+            if nested_in_class:
+                excluded_classes.add(parent)
+            if current in excluded_classes:
+                names = set()
+            elif nested_in_class:
+                names = self._get_local_symbols(current)
+                own_name = self._get_defined_name(current)
+                if own_name:
+                    names.discard(own_name)
+                    body = current.child_by_field_name("body")
+                    if body:
+                        names.update(self._get_local_symbols(body))
+                    parameters = current.child_by_field_name("parameters")
+                    if parameters:
+                        names.update(self._get_local_symbols(parameters))
+            else:
+                names = self._get_local_symbols(current)
+            visible.update(names)
+            current = parent
+        visible.update(self._get_local_symbols(ast))
+        return visible
+
     @staticmethod
     def _get_scope_type_map() -> dict[str, str]:
         """Get mapping from AST node types to scope types."""
@@ -312,8 +346,132 @@ class PythonScopeAnalyzer(BaseScopeAnalyzer):
     @classmethod
     def _get_defined_name(cls, node: Node) -> str | None:
         """Get the name being defined by a definition node."""
-        resolver = PythonSymbolResolver()
-        return resolver._get_defined_name(node)
+        if node.type in {"function_definition", "class_definition"}:
+            name = node.child_by_field_name("name")
+        elif node.type == "assignment":
+            name = node.child_by_field_name("left")
+        elif node.type in {
+            "typed_parameter",
+            "default_parameter",
+            "typed_default_parameter",
+        }:
+            name = next(
+                (child for child in node.children if child.type == "identifier"), None
+            )
+        else:
+            return None
+        if name and name.type == "identifier" and name.text:
+            return name.text.decode("utf-8")
+        return None
+
+    def _get_local_symbols(self, scope_node: Node) -> set[str]:
+        """Include imports defined directly in this scope."""
+        names = super()._get_local_symbols(scope_node)
+
+        def collect_targets(node: Node) -> None:
+            if node.type == "identifier" and node.text:
+                names.add(node.text.decode("utf-8"))
+            elif node.type in {
+                "pattern_list",
+                "list_pattern",
+                "tuple_pattern",
+                "list_splat_pattern",
+                "dictionary_splat_pattern",
+                "parameters",
+                "lambda_parameters",
+                "as_pattern_target",
+            }:
+                for child in node.named_children:
+                    collect_targets(child)
+            elif node.type in {
+                "typed_parameter",
+                "default_parameter",
+                "typed_default_parameter",
+            }:
+                target = node.child_by_field_name("name") or next(
+                    (
+                        child
+                        for child in node.named_children
+                        if child.type
+                        in {
+                            "identifier",
+                            "list_splat_pattern",
+                            "dictionary_splat_pattern",
+                        }
+                    ),
+                    None,
+                )
+                if target:
+                    collect_targets(target)
+            elif node.type in {"type", "generic_type"} and node.named_children:
+                collect_targets(node.named_children[0])
+
+        def collect_case_bindings(node: Node) -> None:
+            if node.type == "identifier" and node.text:
+                names.add(node.text.decode("utf-8"))
+            elif node.type == "dotted_name":
+                if (
+                    len(node.named_children) == 1
+                    and node.text == node.named_children[0].text
+                ):
+                    collect_case_bindings(node.named_children[0])
+            elif node.type == "class_pattern":
+                for child in node.named_children:
+                    if child.type == "case_pattern":
+                        collect_case_bindings(child)
+            elif node.type == "dict_pattern":
+                for child in node.named_children:
+                    if child.type in {"case_pattern", "splat_pattern"}:
+                        collect_case_bindings(child)
+            elif node.type == "keyword_pattern":
+                value = node.children[-1]
+                if value.is_named:
+                    collect_case_bindings(value)
+            elif node.type in {
+                "case_pattern",
+                "list_pattern",
+                "tuple_pattern",
+                "union_pattern",
+                "splat_pattern",
+                "as_pattern",
+            }:
+                for child in node.named_children:
+                    collect_case_bindings(child)
+
+        def collect_imports(node: Node, depth: int = 0) -> None:
+            if depth > 0 and self._is_scope_node(node):
+                return
+            if self._is_import_node(node):
+                names.update(self._extract_imported_names(node))
+            if node.type in {
+                "assignment",
+                "for_statement",
+                "for_in_clause",
+                "type_alias_statement",
+            }:
+                target = node.child_by_field_name("left")
+                if target:
+                    collect_targets(target)
+            elif node.type in {"parameters", "lambda_parameters"}:
+                collect_targets(node)
+                return
+            elif node.type == "as_pattern":
+                alias = node.child_by_field_name("alias")
+                if alias:
+                    collect_targets(alias)
+            elif node.type == "case_clause":
+                for pattern in node.named_children:
+                    if pattern.type == "case_pattern":
+                        collect_case_bindings(pattern)
+            for child in node.children:
+                collect_imports(child, depth + 1)
+
+        collect_imports(scope_node)
+        return names
+
+    def _get_imported_symbols(self, ast: Node) -> set[str]:
+        """Imports are included through their declaring scopes."""
+        return set()
 
     @staticmethod
     def _extract_imported_names(import_node: Node) -> set[str]:
@@ -322,31 +480,24 @@ class PythonScopeAnalyzer(BaseScopeAnalyzer):
         if import_node.type == "import_statement":
             for child in import_node.children:
                 if child.type == "dotted_name":
-                    pass
+                    first = child.named_children[0] if child.named_children else None
+                    if first and first.text:
+                        names.add(first.text.decode("utf-8"))
                 elif child.type == "aliased_import":
-                    for subchild in child.children:
-                        if (
-                            subchild.type == "identifier"
-                            and subchild.prev_sibling
-                            and subchild.prev_sibling.type == "as"
-                        ):
-                            pass
+                    alias = child.child_by_field_name("alias")
+                    if alias and alias.text:
+                        names.add(alias.text.decode("utf-8"))
         elif import_node.type == "import_from_statement":
+            in_import_list = False
             for child in import_node.children:
-                if (
-                    child.type == "identifier"
-                    and child.prev_sibling
-                    and child.prev_sibling.type == "import"
-                ):
-                    pass
-                elif child.type == "aliased_import":
-                    for subchild in child.children:
-                        if (
-                            subchild.type == "identifier"
-                            and subchild.prev_sibling
-                            and subchild.prev_sibling.type == "as"
-                        ):
-                            pass
+                if child.type == "import":
+                    in_import_list = True
+                elif in_import_list and child.type == "dotted_name" and child.text:
+                    names.add(child.text.decode("utf-8"))
+                elif in_import_list and child.type == "aliased_import":
+                    alias = child.child_by_field_name("alias")
+                    if alias and alias.text:
+                        names.add(alias.text.decode("utf-8"))
         return names
 
 
