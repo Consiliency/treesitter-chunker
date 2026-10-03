@@ -124,6 +124,37 @@ def test_comprehensive_syntax_result_follows_real_parse_outcome(
     assert not home.exists()
 
 
+def test_comprehensive_test_rejects_unknown_type_before_running_checks(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source = (
+        ROOT / "tests/fixtures/boundary_ir/repos/python/app/service.py"
+    ).read_bytes()
+    assert not get_parser("python").parse(source).root_node.has_error
+    native_spec = importlib.util.find_spec("tree_sitter_language_pack._native")
+    assert native_spec is not None and native_spec.origin is not None
+
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    user_dir = tmp_path / "user"
+    user_dir.mkdir()
+    shutil.copyfile(native_spec.origin, user_dir / "libpython.so")
+    manager = GrammarManager(
+        user_dir=user_dir,
+        package_dir=tmp_path / "package",
+        cache_dir=tmp_path / "cache",
+    )
+    tester = GrammarTester(manager, GrammarValidator(tmp_path / "validation"))
+    tester.test_suites["python"] = [source.decode("utf-8")]
+
+    result = tester.run_comprehensive_test("python", ["syntax", "not-a-test"])
+    assert result.success is False
+    assert result.error_message == "Unknown test type(s): not-a-test"
+    assert result.sample_results == []
+    assert not home.exists()
+
+
 def test_compatibility_reason_score_selection_and_history(
     tmp_path: Path, monkeypatch
 ) -> None:
