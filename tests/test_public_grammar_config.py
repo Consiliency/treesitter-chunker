@@ -256,6 +256,55 @@ def test_public_config_export_writes_live_settings_to_requested_nested_path(
     assert not parser.parse(retained.read_bytes()).root_node.has_error
 
 
+def test_public_config_import_merges_by_default_and_replaces_on_request(
+    tmp_path: Path, monkeypatch
+) -> None:
+    parser = get_parser("python")
+    source = FIXTURE.read_bytes()
+    assert not parser.parse(source).root_node.has_error
+    isolated_home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(isolated_home))
+    monkeypatch.setenv("USERPROFILE", str(isolated_home))
+
+    config = UserConfig()
+    grammar_root = tmp_path / "grammar-state"
+    config.set("directories.base_dir", str(grammar_root))
+    config.set("cache.max_size_mb", 64)
+    retained = DirectoryManager(config).create_structure()["grammars"] / "service.py"
+    retained.write_bytes(source)
+
+    imported = {
+        "cache": {"max_age_days": 45},
+        "directories": {},
+        "grammar": {},
+        "logging": {"level": "WARNING"},
+    }
+    import_path = tmp_path / "partial.json"
+    import_path.write_text(json.dumps(imported), encoding="utf-8")
+    runner = CliRunner()
+
+    merged = runner.invoke(config_cli, ["import-config", str(import_path)], input="y\n")
+    assert merged.exit_code == 0, merged.output
+    assert "Configuration imported successfully" in merged.output
+    active = UserConfig(config.config_path)
+    assert active.get("cache.max_size_mb") == 64
+    assert active.get("cache.max_age_days") == 45
+    assert active.get("directories.base_dir") == str(grammar_root)
+    assert active.get("logging.level") == "WARNING"
+
+    replaced = runner.invoke(
+        config_cli, ["import-config", "--replace", str(import_path)], input="y\n"
+    )
+    assert replaced.exit_code == 0, replaced.output
+    assert "Configuration imported successfully" in replaced.output
+    saved = json.loads(config.config_path.read_text(encoding="utf-8"))
+    assert saved["cache"] == {"max_age_days": 45}
+    assert saved["directories"] == {}
+    assert saved["logging"]["level"] == "WARNING"
+    assert retained.read_bytes() == source
+    assert not parser.parse(retained.read_bytes()).root_node.has_error
+
+
 def test_config_backup_restores_saved_settings_and_keeps_pre_restore_copy(
     tmp_path: Path, monkeypatch
 ) -> None:
