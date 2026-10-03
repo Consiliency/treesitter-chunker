@@ -1,6 +1,8 @@
 """Observable compatibility results and local grammar selection."""
 
 from dataclasses import asdict
+import importlib.util
+import shutil
 import subprocess
 import sys
 import time
@@ -75,6 +77,50 @@ def test_error_pattern_analysis_counts_real_python_parse_failures(
     assert analysis["failure_rate"] == pytest.approx(2 / 3)
     assert analysis["error_patterns"] == {"syntax_error": 2}
     assert analysis["common_errors"] == [("syntax_error", 2)]
+    assert not home.exists()
+
+
+def test_comprehensive_syntax_result_follows_real_parse_outcome(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source = (
+        ROOT / "tests/fixtures/boundary_ir/repos/python/app/service.py"
+    ).read_text(encoding="utf-8")
+    malformed = source + "\ndef broken(\n"
+    parser = get_parser("python")
+    assert not parser.parse(source.encode()).root_node.has_error
+    assert parser.parse(malformed.encode()).root_node.has_error
+
+    native_spec = importlib.util.find_spec("tree_sitter_language_pack._native")
+    assert native_spec is not None and native_spec.origin is not None
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    user_dir = tmp_path / "user"
+    user_dir.mkdir()
+    shutil.copyfile(native_spec.origin, user_dir / "libpython.so")
+    manager = GrammarManager(
+        user_dir=user_dir,
+        package_dir=tmp_path / "package",
+        cache_dir=tmp_path / "cache",
+    )
+    tester = GrammarTester(manager, GrammarValidator(tmp_path / "validation"))
+
+    tester.test_suites["python"] = [source]
+    accepted = tester.run_comprehensive_test("python", ["syntax"])
+    assert accepted.success is True
+    assert accepted.sample_results[0]["success"] is True
+    assert accepted.sample_results[0]["samples_tested"] == 1
+    assert accepted.sample_results[0]["errors"] == []
+
+    tester.test_suites["python"] = [source, malformed]
+    rejected = tester.run_comprehensive_test("python", ["syntax"])
+    assert rejected.success is False
+    assert rejected.sample_results[0]["success"] is False
+    assert rejected.sample_results[0]["samples_tested"] == 2
+    assert rejected.sample_results[0]["errors"] == [
+        "Sample 2: Syntax error in parse tree"
+    ]
     assert not home.exists()
 
 

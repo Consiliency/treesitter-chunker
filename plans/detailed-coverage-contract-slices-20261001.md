@@ -210,6 +210,14 @@ The private report is
 `interfaces/stubs.py` remains the sole wholly uncovered module (137/137),
 and `grammar_management/cli.py` has 600 of 1,216 statements uncovered.
 
+Remeasurement on clean `main` at `b63d9259` before slice 42 used the same
+representative command: 3,561 passed, 4 skipped; 29,164 of 40,048 statements
+executed (72.8226%), 10,884 missed. The private report is
+`/home/viperjuice/workspace/tmp/treesitter-69-slice42/coverage.json`, SHA-256
+`59491e9c61595fc1c1dcc1eaf320b80c07c1215665e6bd04e8f989963d963878`.
+`interfaces/stubs.py` remains the sole wholly uncovered module (137/137),
+and `grammar_management/compatibility.py` has 468 of 820 statements uncovered.
+
 The table ranks **every zero-covered module first**, then the largest remaining
 individual gaps. Risk is the possible consequence of an untested contract, not
 an assertion that the module is in active production use. H means a parser,
@@ -307,6 +315,7 @@ with the original source restored before committing.
 | 39 — unknown grammar fetch | `grammar_management/cli.py` `fetch`: a misspelled, unsupported language fails without running Git, suggests the configured Python source, and does not install files or write to the isolated home. | Parse the checked-in Python fixture with the pinned parser, then invoke the public Click command against a temporary grammar cache while forbidding external subprocess calls. Mutation **suppress the similar-language suggestion** must fail. Extend the existing public grammar CLI contract test file. |
 | 40 — grammar removal confirmation | `grammar_management/cli.py` `remove`: declining the public confirmation preserves a user-installed source directory and its parseable Python fixture; accepting it removes that user directory while preserving a package copy and leaving the isolated home untouched. | Copy the checked-in Python fixture to user and package grammar directories, parse both with the pinned parser, and invoke the public Click command with explicit no/yes answers. Mutation **bypass declined confirmation** must fail. Extend the existing public grammar CLI contract test file. |
 | 41 — grammar info JSON API | `grammar_management/cli.py` `ComprehensiveGrammarCLI.info_grammar`: the exported Python API returns parseable JSON identifying the selected user library path, priority, existence, size, and validation fields when a package candidate also exists, without writing to the caller's home. The public Click `info` command currently exposes table output only. | Parse the checked-in Python fixture with the pinned parser before and after inspecting JSON from two temporary local library candidates. Mutation **omit selected path from JSON metadata** must fail. Extend the existing public grammar CLI contract test file. |
+| 42 — comprehensive syntax result | `grammar_management/compatibility.py` `GrammarTester.run_comprehensive_test`: a requested syntax run reports success for a real parseable Python fixture and failure with a syntax error for that fixture plus malformed source, without writing to the caller's home. Unsupported test types are a separate defect in treesitter-chunker#255. | Parse the checked-in Python fixture and malformed variant with the pinned parser, then run the exported tester against an isolated discoverable grammar candidate. Mutation **report success after a failed syntax parse** must fail. Extend the existing grammar compatibility contract test file. |
 
 `interfaces/stubs.py` remains in the ranked inventory but is not promoted into
 a coverage slice until its consumer contract is confirmed. The node explorer
