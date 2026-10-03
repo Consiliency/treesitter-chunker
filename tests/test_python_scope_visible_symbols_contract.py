@@ -32,6 +32,7 @@ def test_python_scope_reports_imports_and_local_definitions() -> None:
         "build",
         "first",
         "second",
+        "RootAlias",
     } <= module_names
     assert {
         "path",
@@ -121,7 +122,10 @@ def test_python_scope_reports_imports_and_local_definitions() -> None:
         "left",
         "right",
         "local_sqrt",
+        "LocalAlias",
+        "GenericAlias",
     } <= function_names
+    assert "T" not in function_names
 
     lambda_body = definitions["make_lambda"].child_by_field_name("body")
     assert lambda_body is not None

@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Iterable as Sequence, Mapping  # noqa: F401
 
 first, second = (1, 2)
+type RootAlias = int
 
 
 class Container:
@@ -33,9 +34,12 @@ class Container:
 def build():
     from math import sqrt as local_sqrt
 
+    type LocalAlias = int
+    type GenericAlias[T] = list[T]
+
     left, right = (1, 2)
     value = Container()
-    return local_sqrt(left + right), value
+    return local_sqrt(left + right), value, LocalAlias, GenericAlias
 
 
 def make_lambda():

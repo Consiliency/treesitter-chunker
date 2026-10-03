@@ -403,13 +403,20 @@ class PythonScopeAnalyzer(BaseScopeAnalyzer):
                 )
                 if target:
                     collect_targets(target)
+            elif node.type in {"type", "generic_type"} and node.named_children:
+                collect_targets(node.named_children[0])
 
         def collect_imports(node: Node, depth: int = 0) -> None:
             if depth > 0 and self._is_scope_node(node):
                 return
             if self._is_import_node(node):
                 names.update(self._extract_imported_names(node))
-            if node.type in {"assignment", "for_statement", "for_in_clause"}:
+            if node.type in {
+                "assignment",
+                "for_statement",
+                "for_in_clause",
+                "type_alias_statement",
+            }:
                 target = node.child_by_field_name("left")
                 if target:
                     collect_targets(target)
