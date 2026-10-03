@@ -313,3 +313,61 @@ def test_restore_rejects_invalid_backup_without_replacing_live_database(
 
     with CompatibilityDatabase(db_path) as reopened:
         assert reopened.find_compatible_grammar(live_language) == live_grammar
+
+
+def test_restore_through_symlink_updates_target_without_replacing_link(
+    tmp_path: Path,
+) -> None:
+    backup_path = tmp_path / "backup.db"
+    language = LanguageVersion("python", "3.11")
+    grammar = GrammarVersion("python", "1.0", "python.so")
+    with CompatibilityDatabase(backup_path) as backup:
+        assert backup.add_language_version(language)
+        assert backup.add_grammar_version(grammar)
+
+    target_path = tmp_path / "target.db"
+    with CompatibilityDatabase(target_path) as target:
+        assert target.add_language_version(LanguageVersion("rust", "2021"))
+    alias_path = tmp_path / "alias.db"
+    try:
+        alias_path.symlink_to(target_path)
+    except OSError:
+        pytest.skip("File symlinks are unavailable on this host")
+
+    with CompatibilityDatabase(alias_path) as live:
+        live.restore_database(backup_path)
+        assert alias_path.is_symlink()
+        assert live.find_compatible_grammar(language) == grammar
+
+    with CompatibilityDatabase(target_path) as reopened:
+        assert reopened.find_compatible_grammar(language) == grammar
+        assert reopened.get_language_versions("rust") == []
+
+
+def test_restore_with_live_wal_keeps_disk_and_schema_consistent(
+    tmp_path: Path,
+) -> None:
+    backup_path = tmp_path / "backup.db"
+    language = LanguageVersion("python", "3.11")
+    grammar = GrammarVersion("python", "1.0", "python.so")
+    with CompatibilityDatabase(backup_path) as backup:
+        assert backup.add_language_version(language)
+        assert backup.add_grammar_version(grammar)
+
+    db_path = tmp_path / "live.db"
+    with CompatibilityDatabase(db_path) as live:
+        assert live.conn.execute("PRAGMA journal_mode=WAL").fetchone()[0] == "wal"
+        assert live.add_language_version(LanguageVersion("rust", "2021"))
+        with closing(sqlite3.connect(db_path)) as observer:
+            observer.execute("BEGIN")
+            assert (
+                observer.execute("SELECT COUNT(*) FROM language_versions").fetchone()[0]
+                == 1
+            )
+            live.restore_database(backup_path)
+            assert live.find_compatible_grammar(language) == grammar
+            assert live.get_language_versions("python") == [language]
+
+    with CompatibilityDatabase(db_path) as reopened:
+        assert reopened.find_compatible_grammar(language) == grammar
+        assert reopened.get_language_versions("rust") == []

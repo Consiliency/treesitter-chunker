@@ -988,12 +988,15 @@ class CompatibilityDatabase:
                     staged_conn.row_factory = sqlite3.Row
                     restored_schema = self._read_schema(staged_conn)
 
-                if self._conn:
-                    self._conn.close()
-                staged_path.replace(self.db_path)
-                self._conn = sqlite3.connect(str(self.db_path))
-                self._conn.row_factory = sqlite3.Row
-                self.schema = restored_schema
+                    if self._conn is None:
+                        self._conn = sqlite3.connect(str(self.db_path))
+                        self._conn.row_factory = sqlite3.Row
+                    if self._conn.in_transaction:
+                        raise sqlite3.OperationalError(
+                            "Cannot restore while a database transaction is active"
+                        )
+                    staged_conn.backup(self._conn)
+                    self.schema = restored_schema
 
             logger.info(f"Database restored from {backup_path}")
 
