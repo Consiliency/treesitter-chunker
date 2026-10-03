@@ -939,7 +939,7 @@ class CacheManager:
                                 stats["bytes_freed"] += size
                                 stats["downloads_cleaned"] += 1
                                 logger.debug(f"Removed old download: {item}")
-                        except (OSError, FileNotFoundError):
+                        except FileNotFoundError:
                             pass
 
             # Clean builds directory
@@ -954,7 +954,7 @@ class CacheManager:
                                 stats["bytes_freed"] += size
                                 stats["builds_cleaned"] += 1
                                 logger.debug(f"Removed old build: {item}")
-                        except (OSError, FileNotFoundError):
+                        except FileNotFoundError:
                             pass
 
             # Clean up empty directories
@@ -970,7 +970,7 @@ class CacheManager:
 
         except Exception as e:
             logger.error(f"Failed to cleanup old cache files: {e}")
-            return stats
+            raise
 
     def cleanup_by_size(self, target_size_mb: int | None = None) -> dict[str, int]:
         """Clean up cache files to reach target size by removing oldest files first.
@@ -1026,7 +1026,7 @@ class CacheManager:
                                         "type": cache_type,
                                     },
                                 )
-                            except (OSError, FileNotFoundError):
+                            except FileNotFoundError:
                                 pass
 
             # Sort by modification time (oldest first)
@@ -1053,7 +1053,7 @@ class CacheManager:
                         f"Removed cache file for size limit: {file_info['path']}",
                     )
 
-                except (OSError, FileNotFoundError):
+                except FileNotFoundError:
                     pass
 
             # Clean up empty directories
@@ -1069,7 +1069,7 @@ class CacheManager:
 
         except Exception as e:
             logger.error(f"Failed to cleanup cache by size: {e}")
-            return stats
+            raise
 
     def clear_cache(self, cache_type: str = "all") -> dict[str, int]:
         """Clear cache completely or specific type.
@@ -1110,7 +1110,7 @@ class CacheManager:
                             else:
                                 stats["builds_cleaned"] += 1
 
-                        except (OSError, FileNotFoundError):
+                        except FileNotFoundError:
                             pass
 
             # Clean up empty directories
@@ -1126,7 +1126,7 @@ class CacheManager:
 
         except Exception as e:
             logger.error(f"Failed to clear cache: {e}")
-            return stats
+            raise
 
     def auto_cleanup(self) -> dict[str, int]:
         """Perform automatic cache cleanup based on configuration.
@@ -1275,11 +1275,12 @@ class ConfigurationCLI:
     def get_config(self, key: str) -> None:
         """Get configuration value."""
         try:
-            value = self.config.get(key)
+            missing = object()
+            value = self.config.get(key, missing)
         except Exception as e:
             raise click.ClickException(f"Failed to get configuration: {e}") from e
 
-        if value is None:
+        if value is missing:
             raise click.ClickException(f"Configuration key not found: {key}")
         click.echo(f"{key}: {value}")
 
@@ -1360,6 +1361,8 @@ class ConfigurationCLI:
         if not status:
             raise click.ClickException("Failed to inspect directory structure")
         usage = self.dir_manager.get_disk_usage()
+        if not usage:
+            raise click.ClickException("Failed to inspect directory usage")
 
         for dir_type, exists in status.items():
             status_icon = "✅" if exists else "❌"

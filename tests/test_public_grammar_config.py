@@ -816,12 +816,16 @@ def test_public_config_failures_return_nonzero_and_cancellations_succeed(
 
     config = UserConfig()
     config.set("directories.base_dir", str(tmp_path / "grammar-state"))
+    config.set("cache.note", None)
     retained = DirectoryManager(config).create_structure()["grammars"] / "service.py"
     retained.write_bytes(source)
     original_config = config.config_path.read_bytes()
     import_path = tmp_path / "import.json"
     import_path.write_bytes(original_config)
     runner = CliRunner()
+    present_null = runner.invoke(config_cli, ["get", "cache.note"])
+    assert present_null.exit_code == 0, present_null.output
+    assert "cache.note: None" in present_null.output
 
     failures = (
         (["set", "cache.max_size_mb", "0"], None, "Failed to set configuration"),
@@ -903,6 +907,12 @@ def test_public_config_wrapped_operational_failures_return_nonzero(
     assert invalid_structure.exit_code == 1, invalid_structure.output
     assert "Failed to inspect directory structure" in invalid_structure.output
 
+    with monkeypatch.context() as patch:
+        patch.setattr(DirectoryManager, "get_disk_usage", lambda self: {})
+        missing_usage = runner.invoke(config_cli, ["dirs"])
+    assert missing_usage.exit_code == 1, missing_usage.output
+    assert "Failed to inspect directory usage" in missing_usage.output
+
     original_create = DirectoryManager.create_structure
     calls = 0
 
@@ -921,3 +931,54 @@ def test_public_config_wrapped_operational_failures_return_nonzero(
     assert "Failed to create directory structure" in failed_create.output
     assert retained.read_bytes() == source
     assert not parser.parse(retained.read_bytes()).root_node.has_error
+
+
+def test_public_config_cleanup_reports_failed_file_deletion(
+    tmp_path: Path, monkeypatch
+) -> None:
+    parser = get_parser("python")
+    source = FIXTURE.read_bytes()
+    assert not parser.parse(source).root_node.has_error
+    isolated_home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(isolated_home))
+    monkeypatch.setenv("USERPROFILE", str(isolated_home))
+
+    config = UserConfig()
+    config.set("directories.base_dir", str(tmp_path / "grammar-state"))
+    config.set("cache.max_size_mb", 1)
+    cache_file = (
+        DirectoryManager(config).create_structure()["cache_downloads"] / "service.py"
+    )
+    content = source + b"\n" + b" " * (512 * 1024 - len(source) - 1)
+    cache_file.write_bytes(content)
+    assert not parser.parse(cache_file.read_bytes()).root_node.has_error
+
+    original_unlink = Path.unlink
+
+    def deny_cache_unlink(path, *args, **kwargs):
+        if path == cache_file:
+            raise PermissionError("simulated cache deletion failure")
+        return original_unlink(path, *args, **kwargs)
+
+    runner = CliRunner()
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "unlink", deny_cache_unlink)
+        explicit = runner.invoke(config_cli, ["cleanup", "downloads"], input="y\n")
+        assert explicit.exit_code == 1, explicit.output
+        assert "Failed to cleanup cache" in explicit.output
+        assert "cache cleared" not in explicit.output
+
+        stale_time = time.time() - 45 * 24 * 60 * 60
+        os.utime(cache_file, (stale_time, stale_time))
+        by_age = runner.invoke(config_cli, ["cleanup", "auto"])
+        assert by_age.exit_code == 1, by_age.output
+        assert "Failed to cleanup cache" in by_age.output
+
+        os.utime(cache_file, None)
+        config.set("cache.cleanup_threshold_mb", 0)
+        by_size = runner.invoke(config_cli, ["cleanup", "auto"])
+        assert by_size.exit_code == 1, by_size.output
+        assert "Failed to cleanup cache" in by_size.output
+
+    assert cache_file.read_bytes() == content
+    assert not parser.parse(cache_file.read_bytes()).root_node.has_error
