@@ -107,6 +107,42 @@ def test_directory_usage_counts_parseable_nested_files_without_creating_missing_
     assert not isolated_home.exists()
 
 
+def test_empty_directory_cleanup_keeps_managed_roots_and_parseable_build(
+    tmp_path: Path, monkeypatch
+) -> None:
+    parser = get_parser("python")
+    source = FIXTURE.read_bytes()
+    assert not parser.parse(source).root_node.has_error
+
+    isolated_home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(isolated_home))
+    monkeypatch.setenv("USERPROFILE", str(isolated_home))
+    config = UserConfig(tmp_path / "settings" / "config.json")
+    config.set("directories.base_dir", str(tmp_path / "grammar-state"))
+    manager = DirectoryManager(config)
+    assert manager.cleanup_empty_directories() == 0
+    directories = manager.create_structure()
+
+    empty_grammar = directories["grammars"] / "unused"
+    empty_download = directories["cache_downloads"] / "unused"
+    retained_build = directories["cache_builds"] / "keep" / "service.py"
+    for empty in (empty_grammar, empty_download):
+        empty.mkdir()
+    retained_build.parent.mkdir()
+    retained_build.write_bytes(source)
+
+    assert manager.cleanup_empty_directories() == 2
+    assert not empty_grammar.exists()
+    assert not empty_download.exists()
+    assert directories["cache_downloads"].is_dir()
+    assert directories["cache_builds"].is_dir()
+    assert manager.cleanup_empty_directories() == 0
+    assert directories["cache_downloads"].is_dir()
+    assert retained_build.exists()
+    assert not parser.parse(retained_build.read_bytes()).root_node.has_error
+    assert not isolated_home.exists()
+
+
 def test_cache_cleanup_removes_stale_grammar_files_only(
     tmp_path: Path, monkeypatch
 ) -> None:

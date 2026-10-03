@@ -79,11 +79,20 @@ limit, and automatic-cleanup information as one observable contract.
 Remeasurement on merged `main` at `a1071ca7` used the same representative
 command with private workspace temporary and coverage data: 3,522 passed,
 4 skipped, and one known load-sensitive timing failure in
-treesitter-chunker#130 (10.41 seconds against a 10-second limit); 28,567 of
+treesitter-chunker#130 (10.41 ms per operation against a 10 ms limit); 28,567 of
 39,999 statements executed (71.4193%), 11,432 missed. The report is
 `/home/viperjuice/workspace/tmp/treesitter-69-slice28/coverage.json`.
 Grammar configuration still has 402 of 773 statements uncovered, so slice 28
 covers directory usage reporting as an independent observable contract.
+
+Remeasurement on merged `main` at `73b3d2ea` used the same representative
+command with private workspace temporary and coverage data: 3,523 passed,
+4 skipped, and one known load-sensitive timing failure in
+treesitter-chunker#130 (21.51 ms per operation against a 10 ms limit);
+28,588 of 39,999 statements executed (71.4718%), 11,411 missed. The report is
+`/home/viperjuice/workspace/tmp/treesitter-69-slice29/coverage.json`.
+Grammar configuration still has 385 of 773 statements uncovered, so slice 29
+covers cleanup of empty child directories as an independent observable contract.
 
 The table ranks **every zero-covered module first**, then the largest remaining
 individual gaps. Risk is the possible consequence of an untested contract, not
@@ -169,6 +178,7 @@ with the original source restored before committing.
 | 26 — selective grammar cache clear | `grammar_management/config.py` `CacheManager.clear_cache`: clearing downloads removes a nested parseable fixture file with accurate counts and bytes, leaves a parseable build file intact, preserves the managed download directory, and a repeated clear removes nothing. | Parse the checked-in Python fixture with the pinned parser, then copy it into temporary nested downloads and builds. Mutations **clear builds during downloads selection** and **omit recursive cache walk** must fail. Extend the existing grammar config contract test file. |
 | 27 — grammar cache information | `grammar_management/config.py` `CacheManager.get_cache_info` and `is_cleanup_needed`: parseable nested download/build fixtures produce exact separate and total byte/MB sizes, percentage against the configured limit, and a cleanup-needed signal that follows the threshold and auto-cleanup switch. | Parse checked-in Python fixture copies padded to 512 KiB and 768 KiB with the pinned parser. Mutations **omit download bytes from total** and **ignore auto-cleanup setting** must fail. Extend the existing grammar config contract test file. |
 | 28 — grammar directory usage | `grammar_management/config.py` `DirectoryManager.get_disk_usage`: a user-selected directory structure reports the exact file counts and sizes for parseable grammar and nested cache fixtures, includes both in the base total, and reports absent directories without creating them. | Parse checked-in Python fixture copies padded with whitespace to 128 KiB and 256 KiB using the pinned parser. Mutation **replace recursive file scan with shallow glob** must fail the per-directory and base totals. Extend the existing grammar config contract test file. |
+| 29 — empty grammar directory cleanup | `grammar_management/config.py` `DirectoryManager.cleanup_empty_directories`: one cleanup removes empty user and cache child directories, preserves the managed cache roots and a nonempty build directory holding a parseable fixture, and a second cleanup removes nothing. | Parse the checked-in Python fixture with the pinned parser, then retain a copy under the build directory. Mutation **remove the managed-cache exemption** must fail because the emptied downloads root disappears. Extend the existing grammar config contract test file. |
 
 `interfaces/stubs.py` remains in the ranked inventory but is not promoted into
 a coverage slice until its consumer contract is confirmed. The node explorer
