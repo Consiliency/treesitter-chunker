@@ -948,17 +948,20 @@ class CompatibilityDatabase:
         """
         try:
             backup_path = Path(backup_path)
+            if backup_path.resolve() == self.db_path.resolve():
+                raise shutil.SameFileError(
+                    f"Backup path is the database: {backup_path}"
+                )
 
-            # Close current connection
-            if self._conn:
-                self._conn.close()
-
-            # Copy database file
-            shutil.copy2(self.db_path, backup_path)
-
-            # Reopen connection
-            self._conn = sqlite3.connect(str(self.db_path))
-            self._conn.row_factory = sqlite3.Row
+            if self._conn is None:
+                self._conn = sqlite3.connect(str(self.db_path))
+                self._conn.row_factory = sqlite3.Row
+            if self._conn.in_transaction:
+                raise sqlite3.OperationalError(
+                    "Cannot backup while a database transaction is active"
+                )
+            with closing(sqlite3.connect(str(backup_path))) as backup_conn:
+                self._conn.backup(backup_conn)
 
             logger.info(f"Database backed up to {backup_path}")
 

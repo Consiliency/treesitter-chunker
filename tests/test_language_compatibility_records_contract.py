@@ -1,6 +1,7 @@
 """Language constraints and persisted rules keep grammar selection stable."""
 
 import json
+import shutil
 import sqlite3
 import time
 from contextlib import closing
@@ -117,6 +118,41 @@ def test_backup_keeps_persisted_selection_and_live_database_usable(
         assert current.find_compatible_grammar(language) == grammar
         assert current.add_language_version(LanguageVersion("go", "1.22"))
         assert current.get_language_versions("go") == [LanguageVersion("go", "1.22")]
+
+
+def test_backup_includes_committed_wal_records_with_live_reader(tmp_path: Path) -> None:
+    db_path = tmp_path / "live.db"
+    backup_path = tmp_path / "backup.db"
+    language = LanguageVersion("python", "3.11")
+    with CompatibilityDatabase(db_path) as live:
+        assert live.conn.execute("PRAGMA journal_mode=WAL").fetchone()[0] == "wal"
+        assert live.add_language_version(language)
+        with closing(sqlite3.connect(db_path)) as reader:
+            reader.execute("BEGIN")
+            assert (
+                reader.execute("SELECT COUNT(*) FROM language_versions").fetchone()[0]
+                == 1
+            )
+            live.backup_database(backup_path)
+            assert live.get_language_versions("python") == [language]
+
+    with CompatibilityDatabase(backup_path) as backup:
+        assert backup.get_language_versions("python") == [language]
+
+
+def test_backup_rejects_active_transaction_and_source_path(tmp_path: Path) -> None:
+    db_path = tmp_path / "live.db"
+    backup_path = tmp_path / "backup.db"
+    with CompatibilityDatabase(db_path) as live:
+        with pytest.raises(shutil.SameFileError):
+            live.backup_database(db_path)
+        live.conn.execute("BEGIN")
+        try:
+            with pytest.raises(sqlite3.OperationalError, match="transaction is active"):
+                live.backup_database(backup_path)
+            assert not backup_path.exists()
+        finally:
+            live.conn.rollback()
 
 
 def test_export_import_preserves_language_grammar_rules_and_breaking_changes(
