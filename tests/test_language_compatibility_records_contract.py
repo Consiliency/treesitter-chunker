@@ -431,3 +431,44 @@ def test_restore_fails_in_bounded_time_when_reader_blocks_default_journal(
         finally:
             release_reader.cancel()
             reader.close()
+
+
+def test_restore_keeps_schema_current_if_wal_reenable_is_blocked(
+    tmp_path: Path,
+) -> None:
+    backup_path = tmp_path / "backup.db"
+    with closing(sqlite3.connect(backup_path)) as conn:
+        conn.execute("PRAGMA page_size=8192")
+        conn.execute("VACUUM")
+    language = LanguageVersion("python", "3.11")
+    with CompatibilityDatabase(backup_path) as backup:
+        assert backup.add_language_version(language)
+
+    db_path = tmp_path / "live.db"
+    readers: list[sqlite3.Connection] = []
+    with CompatibilityDatabase(db_path) as live:
+        assert live.conn.execute("PRAGMA journal_mode=WAL").fetchone()[0] == "wal"
+        assert live.add_language_version(LanguageVersion("rust", "2021"))
+        live.conn.execute("PRAGMA busy_timeout=200")
+
+        def hold_read_lock(statement: str) -> None:
+            if statement == "PRAGMA journal_mode=WAL":
+                reader = sqlite3.connect(db_path)
+                reader.execute("BEGIN")
+                reader.execute("SELECT COUNT(*) FROM language_versions").fetchone()
+                readers.append(reader)
+
+        live.conn.set_trace_callback(hold_read_lock)
+        try:
+            with pytest.raises(sqlite3.OperationalError, match="Database restored"):
+                live.restore_database(backup_path)
+            assert live.get_language_versions("python") == [language]
+            assert live.get_language_versions("rust") == []
+            assert live.conn.execute("PRAGMA busy_timeout").fetchone()[0] == 200
+        finally:
+            live.conn.set_trace_callback(None)
+            for reader in readers:
+                reader.close()
+
+    with CompatibilityDatabase(db_path) as reopened:
+        assert reopened.get_language_versions("python") == [language]

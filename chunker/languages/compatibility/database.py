@@ -1007,6 +1007,7 @@ class CompatibilityDatabase:
                         "PRAGMA page_size"
                     ).fetchone()[0]
                     switched_mode = False
+                    backup_completed = False
                     self._conn.execute("PRAGMA busy_timeout=100")
                     try:
                         if journal_mode == "wal" and page_size != backup_page_size:
@@ -1033,9 +1034,12 @@ class CompatibilityDatabase:
                         staged_conn.backup(
                             self._conn, pages=16, progress=stop_if_blocked, sleep=0.05
                         )
+                        backup_completed = True
+                        self.schema = restored_schema
                     finally:
-                        try:
-                            if switched_mode:
+                        self._conn.execute(f"PRAGMA busy_timeout={busy_timeout}")
+                        if switched_mode:
+                            try:
                                 mode = self._conn.execute(
                                     "PRAGMA journal_mode=WAL"
                                 ).fetchone()[0]
@@ -1043,9 +1047,15 @@ class CompatibilityDatabase:
                                     raise sqlite3.OperationalError(
                                         "Could not restore WAL journal mode"
                                     )
-                        finally:
-                            self._conn.execute(f"PRAGMA busy_timeout={busy_timeout}")
-                    self.schema = restored_schema
+                            except sqlite3.Error as exc:
+                                if backup_completed:
+                                    raise sqlite3.OperationalError(
+                                        "Database restored, but WAL journal mode could not be restored"
+                                    ) from exc
+                                logger.warning(
+                                    "Could not restore WAL mode after failed database restore: %s",
+                                    exc,
+                                )
 
             logger.info(f"Database restored from {backup_path}")
 
