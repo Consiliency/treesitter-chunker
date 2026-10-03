@@ -22,6 +22,7 @@ def test_safe_extract_keeps_parseable_source_in_nested_directory(tmp_path):
     with tarfile.open(archive, "w:bz2") as tar:
         directory = tarfile.TarInfo("package")
         directory.type = tarfile.DIRTYPE
+        directory.mode = 0o755
         tar.addfile(directory)
         member = tarfile.TarInfo("package/service.py")
         member.size = len(source)
