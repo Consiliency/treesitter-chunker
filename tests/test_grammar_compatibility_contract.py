@@ -201,6 +201,46 @@ def test_parse_benchmark_counts_only_successful_fixture_samples(
     assert not home.exists()
 
 
+def test_comprehensive_performance_result_follows_real_parse_outcome(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source = (
+        ROOT / "tests/fixtures/boundary_ir/repos/python/app/service.py"
+    ).read_text(encoding="utf-8")
+    malformed = source + "\ndef broken(\n"
+    parser = get_parser("python")
+    assert not parser.parse(source.encode()).root_node.has_error
+    assert parser.parse(malformed.encode()).root_node.has_error
+
+    native_spec = importlib.util.find_spec("tree_sitter_language_pack._native")
+    assert native_spec is not None and native_spec.origin is not None
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    user_dir = tmp_path / "user"
+    user_dir.mkdir()
+    shutil.copyfile(native_spec.origin, user_dir / "libpython.so")
+    manager = GrammarManager(
+        user_dir=user_dir,
+        package_dir=tmp_path / "package",
+        cache_dir=tmp_path / "cache",
+    )
+    tester = GrammarTester(manager, GrammarValidator(tmp_path / "validation"))
+
+    tester.test_suites["python"] = [source]
+    accepted = tester.run_comprehensive_test("python", ["performance"])
+    assert accepted.success is True
+    assert all(entry["success"] for entry in accepted.sample_results[0]["results"])
+    assert accepted.performance_metrics["avg_throughput_lines_per_sec"] > 0
+
+    tester.test_suites["python"] = [malformed]
+    rejected = tester.run_comprehensive_test("python", ["performance"])
+    assert rejected.success is False
+    assert all(not entry["success"] for entry in rejected.sample_results[0]["results"])
+    assert "avg_throughput_lines_per_sec" not in rejected.performance_metrics
+    assert not home.exists()
+
+
 def test_compatibility_reason_score_selection_and_history(
     tmp_path: Path, monkeypatch
 ) -> None:
