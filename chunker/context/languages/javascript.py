@@ -373,6 +373,10 @@ class JavaScriptSymbolResolver(BaseSymbolResolver):
     @staticmethod
     def _get_defined_name(node: Node) -> str | None:
         """Get the name being defined by a definition node."""
+        if node.type == "method_definition" and (
+            node.parent is None or node.parent.type != "class_body"
+        ):
+            return None
         if node.type in {
             "function_declaration",
             "class_declaration",
@@ -387,17 +391,31 @@ class JavaScriptSymbolResolver(BaseSymbolResolver):
     @staticmethod
     def _creates_new_scope(node: Node) -> bool:
         """Check if a node creates a new scope."""
+        if node.type == "statement_block" and node.parent is not None:
+            return node.parent.type not in {
+                "function_declaration",
+                "function_expression",
+                "generator_function_declaration",
+                "generator_function",
+                "arrow_function",
+                "method_definition",
+            }
         return node.type in {
             "function_declaration",
             "function_expression",
+            "generator_function_declaration",
+            "generator_function",
             "arrow_function",
             "class_declaration",
+            "class",
+            "class_static_block",
             "method_definition",
             "for_statement",
             "for_in_statement",
             "for_of_statement",
             "block_statement",
             "catch_clause",
+            "switch_body",
         }
 
 
