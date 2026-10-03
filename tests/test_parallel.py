@@ -13,17 +13,20 @@ and stress test the parallel processing system.
 """
 
 import multiprocessing as mp
+import sqlite3
 import shutil
 import sys
 import tempfile
 import time
 from concurrent.futures import Future, ProcessPoolExecutor
+from contextlib import closing
 from multiprocessing.util import Finalize
 from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
 
+from chunker._internal.cache import ASTCache
 from chunker.parallel import ParallelChunker, chunk_directory_parallel
 
 
@@ -189,6 +192,21 @@ class PermissionDeniedChunker(ParallelChunker):
 
 class TestFailureHandling:
     """Test failure handling in parallel workers."""
+
+    @staticmethod
+    def test_locked_cache_does_not_discard_parsed_chunks(tmp_path):
+        file_path = tmp_path / "locked.py"
+        file_path.write_text("def available():\n    return 1\n", encoding="utf-8")
+        chunker = ParallelChunker("python", num_workers=1)
+        chunker.cache = ASTCache(cache_dir=tmp_path / "cache")
+
+        with closing(sqlite3.connect(chunker.cache.db_path)) as lock:
+            lock.execute("BEGIN EXCLUSIVE")
+            result_path, chunks = chunker._process_single_file(file_path)
+
+        assert result_path == file_path
+        assert len(chunks) >= 1
+        assert any("available" in chunk.content for chunk in chunks)
 
     @classmethod
     def test_single_file_parse_error(cls):
