@@ -228,6 +228,43 @@ def test_click_removes_listed_user_library_and_keeps_package_fallback(
     assert f"Path: {package_library}" in info.output
 
 
+def test_click_remove_respects_declined_confirmation(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source = FIXTURE.read_bytes()
+    parser = get_parser("python")
+    assert not parser.parse(source).root_node.has_error
+
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    cache_dir = tmp_path / "grammar-cache"
+    user_source = cache_dir / "grammars" / "user" / "python"
+    package_source = cache_dir / "grammars" / "package" / "python"
+    user_source.mkdir(parents=True)
+    package_source.mkdir(parents=True)
+    user_fixture = user_source / "service.py"
+    package_fixture = package_source / "service.py"
+    user_fixture.write_bytes(source)
+    package_fixture.write_bytes(source)
+
+    command = ["--cache-dir", str(cache_dir), "remove", "python"]
+    declined = CliRunner().invoke(grammar_cli, command, input="n\n")
+    assert declined.exit_code == 0, declined.output
+    assert "Removal cancelled" in declined.output
+    assert user_fixture.read_bytes() == source
+    assert package_fixture.read_bytes() == source
+    assert not parser.parse(user_fixture.read_bytes()).root_node.has_error
+    assert not home.exists()
+
+    confirmed = CliRunner().invoke(grammar_cli, command, input="y\n")
+    assert confirmed.exit_code == 0, confirmed.output
+    assert not user_source.exists()
+    assert package_fixture.read_bytes() == source
+    assert not parser.parse(package_fixture.read_bytes()).root_node.has_error
+    assert not home.exists()
+
+
 def test_click_remove_rejects_path_as_language(tmp_path: Path) -> None:
     outside_dir = tmp_path / "outside"
     outside_dir.mkdir()
