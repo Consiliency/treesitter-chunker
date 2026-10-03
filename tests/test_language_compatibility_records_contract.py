@@ -1,11 +1,17 @@
 """Language constraints and persisted rules keep grammar selection stable."""
 
 import json
+import sqlite3
+import time
+from contextlib import closing
 from pathlib import Path
+from threading import Timer
+from types import SimpleNamespace
 
 import pytest
 
 from chunker import get_parser
+from chunker.languages.compatibility import database as database_module
 from chunker.languages.compatibility.database import CompatibilityDatabase
 from chunker.languages.compatibility.schema import (
     BreakingChange,
@@ -239,3 +245,277 @@ def test_import_refreshes_live_selection_and_rolls_back_invalid_schema(
     with CompatibilityDatabase(destination_path) as reopened:
         assert reopened.get_language_versions("python") == [language]
         assert reopened.find_compatible_grammar(language) == grammar
+
+
+@pytest.mark.parametrize(
+    ("table", "column", "value"),
+    [
+        ("language_versions", "features", "null"),
+        ("grammar_versions", "supported_features", "42"),
+        ("grammar_versions", "breaking_changes", "[{}]"),
+        ("breaking_changes", "affected_features", "null"),
+    ],
+)
+def test_import_rejects_invalid_feature_lists_without_replacing_live_records(
+    tmp_path: Path, table: str, column: str, value: str
+) -> None:
+    assert not get_parser("python").parse(FIXTURE.read_bytes()).root_node.has_error
+    export_path = tmp_path / "valid.json"
+    language = LanguageVersion("python", "3.11")
+    grammar = GrammarVersion("python", "1.0", "python.so")
+    with CompatibilityDatabase(tmp_path / "source.db") as source:
+        assert source.add_language_version(language)
+        assert source.add_grammar_version(grammar)
+        assert source.add_breaking_change(
+            BreakingChange("python", "0.9", "1.0", "syntax", "change", "medium")
+        )
+        source.export_database(export_path)
+
+    invalid = json.loads(export_path.read_text(encoding="utf-8"))
+    invalid[table][0][column] = value
+    invalid_path = tmp_path / "invalid.json"
+    invalid_path.write_text(json.dumps(invalid), encoding="utf-8")
+
+    db_path = tmp_path / "live.db"
+    live_language = LanguageVersion("rust", "2021")
+    live_grammar = GrammarVersion("rust", "1.0", "rust.so")
+    with CompatibilityDatabase(db_path) as live:
+        assert live.add_language_version(live_language)
+        assert live.add_grammar_version(live_grammar)
+        with pytest.raises(ValueError, match="list of strings"):
+            live.import_database(invalid_path)
+        assert live.find_compatible_grammar(live_language) == live_grammar
+
+    with CompatibilityDatabase(db_path) as reopened:
+        assert reopened.find_compatible_grammar(live_language) == live_grammar
+        assert reopened.get_language_versions("python") == []
+
+
+def test_restore_rejects_invalid_backup_without_replacing_live_database(
+    tmp_path: Path,
+) -> None:
+    assert not get_parser("python").parse(FIXTURE.read_bytes()).root_node.has_error
+    backup_path = tmp_path / "backup.db"
+    with CompatibilityDatabase(backup_path) as backup:
+        assert backup.add_language_version(LanguageVersion("python", "3.11"))
+        assert backup.add_grammar_version(GrammarVersion("python", "1.0", "python.so"))
+    with closing(sqlite3.connect(backup_path)) as conn:
+        conn.execute("UPDATE grammar_versions SET supported_features = 'null'")
+        conn.commit()
+
+    db_path = tmp_path / "live.db"
+    live_language = LanguageVersion("rust", "2021")
+    live_grammar = GrammarVersion("rust", "1.0", "rust.so")
+    with CompatibilityDatabase(db_path) as live:
+        assert live.add_language_version(live_language)
+        assert live.add_grammar_version(live_grammar)
+        original_bytes = db_path.read_bytes()
+        with pytest.raises(ValueError, match="list of strings"):
+            live.restore_database(backup_path)
+        assert db_path.read_bytes() == original_bytes
+        assert live.find_compatible_grammar(live_language) == live_grammar
+
+    with CompatibilityDatabase(db_path) as reopened:
+        assert reopened.find_compatible_grammar(live_language) == live_grammar
+
+
+def test_restore_through_symlink_updates_target_without_replacing_link(
+    tmp_path: Path,
+) -> None:
+    backup_path = tmp_path / "backup.db"
+    language = LanguageVersion("python", "3.11")
+    grammar = GrammarVersion("python", "1.0", "python.so")
+    with CompatibilityDatabase(backup_path) as backup:
+        assert backup.add_language_version(language)
+        assert backup.add_grammar_version(grammar)
+
+    target_path = tmp_path / "target.db"
+    with CompatibilityDatabase(target_path) as target:
+        assert target.add_language_version(LanguageVersion("rust", "2021"))
+    alias_path = tmp_path / "alias.db"
+    try:
+        alias_path.symlink_to(target_path)
+    except OSError:
+        pytest.skip("File symlinks are unavailable on this host")
+
+    with CompatibilityDatabase(alias_path) as live:
+        live.restore_database(backup_path)
+        assert alias_path.is_symlink()
+        assert live.find_compatible_grammar(language) == grammar
+
+    with CompatibilityDatabase(target_path) as reopened:
+        assert reopened.find_compatible_grammar(language) == grammar
+        assert reopened.get_language_versions("rust") == []
+
+
+def test_restore_with_live_wal_keeps_disk_and_schema_consistent(
+    tmp_path: Path,
+) -> None:
+    backup_path = tmp_path / "backup.db"
+    language = LanguageVersion("python", "3.11")
+    grammar = GrammarVersion("python", "1.0", "python.so")
+    with CompatibilityDatabase(backup_path) as backup:
+        assert backup.add_language_version(language)
+        assert backup.add_grammar_version(grammar)
+
+    db_path = tmp_path / "live.db"
+    with CompatibilityDatabase(db_path) as live:
+        assert live.conn.execute("PRAGMA journal_mode=WAL").fetchone()[0] == "wal"
+        assert live.add_language_version(LanguageVersion("rust", "2021"))
+        with closing(sqlite3.connect(db_path)) as observer:
+            observer.execute("BEGIN")
+            assert (
+                observer.execute("SELECT COUNT(*) FROM language_versions").fetchone()[0]
+                == 1
+            )
+            live.restore_database(backup_path)
+            assert live.find_compatible_grammar(language) == grammar
+            assert live.get_language_versions("python") == [language]
+
+    with CompatibilityDatabase(db_path) as reopened:
+        assert reopened.find_compatible_grammar(language) == grammar
+        assert reopened.get_language_versions("rust") == []
+
+
+def test_restore_with_live_wal_accepts_different_backup_page_size(
+    tmp_path: Path,
+) -> None:
+    backup_path = tmp_path / "backup.db"
+    with closing(sqlite3.connect(backup_path)) as conn:
+        conn.execute("PRAGMA page_size=8192")
+        conn.execute("VACUUM")
+    language = LanguageVersion("python", "3.11")
+    grammar = GrammarVersion("python", "1.0", "python.so")
+    with CompatibilityDatabase(backup_path) as backup:
+        assert backup.conn.execute("PRAGMA page_size").fetchone()[0] == 8192
+        assert backup.add_language_version(language)
+        assert backup.add_grammar_version(grammar)
+
+    db_path = tmp_path / "live.db"
+    with CompatibilityDatabase(db_path) as live:
+        assert live.conn.execute("PRAGMA page_size").fetchone()[0] == 4096
+        assert live.conn.execute("PRAGMA journal_mode=WAL").fetchone()[0] == "wal"
+        assert live.add_language_version(LanguageVersion("rust", "2021"))
+        live.restore_database(backup_path)
+        assert live.find_compatible_grammar(language) == grammar
+        assert live.conn.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
+
+    with CompatibilityDatabase(db_path) as reopened:
+        assert reopened.conn.execute("PRAGMA page_size").fetchone()[0] == 8192
+        assert reopened.find_compatible_grammar(language) == grammar
+        assert reopened.get_language_versions("rust") == []
+
+
+def test_restore_fails_in_bounded_time_when_reader_blocks_default_journal(
+    tmp_path: Path,
+) -> None:
+    backup_path = tmp_path / "backup.db"
+    with CompatibilityDatabase(backup_path) as backup:
+        assert backup.add_language_version(LanguageVersion("python", "3.11"))
+
+    db_path = tmp_path / "live.db"
+    live_language = LanguageVersion("rust", "2021")
+    with CompatibilityDatabase(db_path) as live:
+        assert live.add_language_version(live_language)
+        reader = sqlite3.connect(db_path, check_same_thread=False)
+        reader.execute("BEGIN")
+        reader.execute("SELECT COUNT(*) FROM language_versions").fetchone()
+        release_reader = Timer(6, reader.close)
+        release_reader.daemon = True
+        release_reader.start()
+        try:
+            started = time.monotonic()
+            with pytest.raises(sqlite3.OperationalError, match="blocked"):
+                live.restore_database(backup_path)
+            assert time.monotonic() - started < 5
+            assert live.get_language_versions("rust") == [live_language]
+            assert live.get_language_versions("python") == []
+        finally:
+            release_reader.cancel()
+            reader.close()
+
+
+def test_restore_keeps_schema_current_if_wal_reenable_is_blocked(
+    tmp_path: Path,
+) -> None:
+    backup_path = tmp_path / "backup.db"
+    with closing(sqlite3.connect(backup_path)) as conn:
+        conn.execute("PRAGMA page_size=8192")
+        conn.execute("VACUUM")
+    language = LanguageVersion("python", "3.11")
+    with CompatibilityDatabase(backup_path) as backup:
+        assert backup.add_language_version(language)
+
+    db_path = tmp_path / "live.db"
+    readers: list[sqlite3.Connection] = []
+    with CompatibilityDatabase(db_path) as live:
+        assert live.conn.execute("PRAGMA journal_mode=WAL").fetchone()[0] == "wal"
+        assert live.add_language_version(LanguageVersion("rust", "2021"))
+        live.conn.execute("PRAGMA busy_timeout=200")
+
+        def hold_read_lock(statement: str) -> None:
+            if statement == "PRAGMA journal_mode=WAL":
+                reader = sqlite3.connect(db_path)
+                reader.execute("BEGIN")
+                reader.execute("SELECT COUNT(*) FROM language_versions").fetchone()
+                readers.append(reader)
+
+        live.conn.set_trace_callback(hold_read_lock)
+        try:
+            with pytest.raises(sqlite3.OperationalError, match="Database restored"):
+                live.restore_database(backup_path)
+            assert live.get_language_versions("python") == [language]
+            assert live.get_language_versions("rust") == []
+            assert live.conn.execute("PRAGMA busy_timeout").fetchone()[0] == 200
+        finally:
+            live.conn.set_trace_callback(None)
+            for reader in readers:
+                reader.close()
+
+    with CompatibilityDatabase(db_path) as reopened:
+        assert reopened.get_language_versions("python") == [language]
+
+
+def test_restore_reports_wal_mode_change_when_backup_is_blocked(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    backup_path = tmp_path / "backup.db"
+    with closing(sqlite3.connect(backup_path)) as conn:
+        conn.execute("PRAGMA page_size=8192")
+        conn.execute("VACUUM")
+    with CompatibilityDatabase(backup_path) as backup:
+        assert backup.add_language_version(LanguageVersion("python", "3.11"))
+
+    db_path = tmp_path / "live.db"
+    live_language = LanguageVersion("rust", "2021")
+    readers: list[sqlite3.Connection] = []
+    real_monotonic = time.monotonic
+
+    def start_reader_after_mode_switch() -> float:
+        if not readers:
+            reader = sqlite3.connect(db_path)
+            reader.execute("BEGIN")
+            reader.execute("SELECT COUNT(*) FROM language_versions").fetchone()
+            readers.append(reader)
+        return real_monotonic()
+
+    with CompatibilityDatabase(db_path) as live:
+        assert live.conn.execute("PRAGMA journal_mode=WAL").fetchone()[0] == "wal"
+        assert live.add_language_version(live_language)
+        monkeypatch.setattr(
+            database_module,
+            "time",
+            SimpleNamespace(monotonic=start_reader_after_mode_switch),
+        )
+        try:
+            with pytest.raises(
+                sqlite3.OperationalError,
+                match="Restore failed and WAL journal mode could not be restored",
+            ):
+                live.restore_database(backup_path)
+            assert live.get_language_versions("rust") == [live_language]
+            assert live.get_language_versions("python") == []
+            assert live.conn.execute("PRAGMA journal_mode").fetchone()[0] == "delete"
+        finally:
+            for reader in readers:
+                reader.close()

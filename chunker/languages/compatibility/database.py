@@ -4,8 +4,10 @@ import json
 import logging
 import shutil
 import sqlite3
+import tempfile
+import time
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -221,15 +223,27 @@ class CompatibilityDatabase:
 
     def _load_schema(self) -> None:
         """Restore the in-memory selection schema from persisted records."""
+        self.schema = self._read_schema(self.conn)
+
+    @staticmethod
+    def _read_feature_list(value: str | None, column: str) -> list[str]:
+        features = json.loads(value) if value else []
+        if not isinstance(features, list) or any(
+            not isinstance(feature, str) for feature in features
+        ):
+            raise ValueError(f"{column} must be a list of strings")
+        return features
+
+    def _read_schema(self, connection: sqlite3.Connection) -> CompatibilitySchema:
         schema = CompatibilitySchema()
-        for row in self.conn.execute("SELECT * FROM language_versions ORDER BY id"):
+        for row in connection.execute("SELECT * FROM language_versions ORDER BY id"):
             schema.add_language_version(
                 LanguageVersion(
                     language=row["language"],
                     version=row["version"],
                     edition=row["edition"],
                     build=row["build"],
-                    features=json.loads(row["features"]) if row["features"] else [],
+                    features=self._read_feature_list(row["features"], "features"),
                     release_date=(
                         datetime.fromisoformat(row["release_date"])
                         if row["release_date"]
@@ -242,23 +256,19 @@ class CompatibilityDatabase:
                     ),
                 )
             )
-        for row in self.conn.execute("SELECT * FROM grammar_versions ORDER BY id"):
+        for row in connection.execute("SELECT * FROM grammar_versions ORDER BY id"):
             schema.add_grammar_version(
                 GrammarVersion(
                     language=row["language"],
                     version=row["version"],
                     grammar_file=row["grammar_file"],
-                    supported_features=(
-                        json.loads(row["supported_features"])
-                        if row["supported_features"]
-                        else []
+                    supported_features=self._read_feature_list(
+                        row["supported_features"], "supported_features"
                     ),
                     min_language_version=row["min_language_version"],
                     max_language_version=row["max_language_version"],
-                    breaking_changes=(
-                        json.loads(row["breaking_changes"])
-                        if row["breaking_changes"]
-                        else []
+                    breaking_changes=self._read_feature_list(
+                        row["breaking_changes"], "breaking_changes"
                     ),
                     release_date=(
                         datetime.fromisoformat(row["release_date"])
@@ -267,7 +277,7 @@ class CompatibilityDatabase:
                     ),
                 )
             )
-        for row in self.conn.execute("SELECT * FROM compatibility_rules ORDER BY id"):
+        for row in connection.execute("SELECT * FROM compatibility_rules ORDER BY id"):
             schema.add_compatibility_rule(
                 CompatibilityRule(
                     language=row["language"],
@@ -282,7 +292,7 @@ class CompatibilityDatabase:
                     ),
                 )
             )
-        for row in self.conn.execute("SELECT * FROM breaking_changes ORDER BY id"):
+        for row in connection.execute("SELECT * FROM breaking_changes ORDER BY id"):
             schema.add_breaking_change(
                 BreakingChange(
                     language=row["language"],
@@ -292,10 +302,8 @@ class CompatibilityDatabase:
                     description=row["description"],
                     impact_level=row["impact_level"],
                     migration_guide=row["migration_guide"],
-                    affected_features=(
-                        json.loads(row["affected_features"])
-                        if row["affected_features"]
-                        else []
+                    affected_features=self._read_feature_list(
+                        row["affected_features"], "affected_features"
                     ),
                     detected_at=(
                         datetime.fromisoformat(row["detected_at"])
@@ -304,7 +312,7 @@ class CompatibilityDatabase:
                     ),
                 )
             )
-        self.schema = schema
+        return schema
 
     def add_language_version(self, lang_version: LanguageVersion) -> bool:
         """Add a language version to the database.
@@ -970,19 +978,83 @@ class CompatibilityDatabase:
             if not backup_path.exists():
                 raise FileNotFoundError(f"Backup file not found: {backup_path}")
 
-            # Close current connection
-            if self._conn:
-                self._conn.close()
+            with tempfile.TemporaryDirectory(dir=self.db_path.parent) as staging_dir:
+                staged_path = Path(staging_dir) / self.db_path.name
+                shutil.copy2(backup_path, staged_path)
+                with closing(
+                    sqlite3.connect(
+                        f"{staged_path.resolve().as_uri()}?mode=ro", uri=True
+                    )
+                ) as staged_conn:
+                    staged_conn.row_factory = sqlite3.Row
+                    restored_schema = self._read_schema(staged_conn)
 
-            # Copy backup to database location
-            shutil.copy2(backup_path, self.db_path)
+                    if self._conn is None:
+                        self._conn = sqlite3.connect(str(self.db_path))
+                        self._conn.row_factory = sqlite3.Row
+                    if self._conn.in_transaction:
+                        raise sqlite3.OperationalError(
+                            "Cannot restore while a database transaction is active"
+                        )
+                    busy_timeout = self._conn.execute("PRAGMA busy_timeout").fetchone()[
+                        0
+                    ]
+                    journal_mode = self._conn.execute("PRAGMA journal_mode").fetchone()[
+                        0
+                    ]
+                    page_size = self._conn.execute("PRAGMA page_size").fetchone()[0]
+                    backup_page_size = staged_conn.execute(
+                        "PRAGMA page_size"
+                    ).fetchone()[0]
+                    switched_mode = False
+                    backup_completed = False
+                    self._conn.execute("PRAGMA busy_timeout=100")
+                    try:
+                        if journal_mode == "wal" and page_size != backup_page_size:
+                            mode = self._conn.execute(
+                                "PRAGMA journal_mode=DELETE"
+                            ).fetchone()[0]
+                            if mode != "delete":
+                                raise sqlite3.OperationalError(
+                                    "Cannot change WAL mode for backup page size"
+                                )
+                            switched_mode = True
 
-            # Reopen connection
-            self._conn = sqlite3.connect(str(self.db_path))
-            self._conn.row_factory = sqlite3.Row
+                        deadline = time.monotonic() + 2
 
-            # Reload the restored records for live selection.
-            self._load_schema()
+                        def stop_if_blocked(
+                            status: int, _remaining: int, _total: int
+                        ) -> None:
+                            if status in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED):
+                                if time.monotonic() >= deadline:
+                                    raise sqlite3.OperationalError(
+                                        "Restore blocked by another database reader"
+                                    )
+
+                        staged_conn.backup(
+                            self._conn, pages=16, progress=stop_if_blocked, sleep=0.05
+                        )
+                        backup_completed = True
+                        self.schema = restored_schema
+                    finally:
+                        self._conn.execute(f"PRAGMA busy_timeout={busy_timeout}")
+                        if switched_mode:
+                            try:
+                                mode = self._conn.execute(
+                                    "PRAGMA journal_mode=WAL"
+                                ).fetchone()[0]
+                                if mode != "wal":
+                                    raise sqlite3.OperationalError(
+                                        "Could not restore WAL journal mode"
+                                    )
+                            except sqlite3.Error as exc:
+                                if backup_completed:
+                                    raise sqlite3.OperationalError(
+                                        "Database restored, but WAL journal mode could not be restored"
+                                    ) from exc
+                                raise sqlite3.OperationalError(
+                                    "Restore failed and WAL journal mode could not be restored"
+                                ) from exc
 
             logger.info(f"Database restored from {backup_path}")
 
@@ -996,7 +1068,7 @@ class CompatibilityDatabase:
             self._conn.close()
             self._conn = None
 
-    def __del__(self):
+    def __del__(self) -> None:
         """Clean up database connection."""
         self.close()
 
