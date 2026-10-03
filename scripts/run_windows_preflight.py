@@ -16,6 +16,7 @@ WINDOWS_PREFLIGHT_TESTS = [
     "tests/test_registry_fallback.py",
     "tests/test_config.py",
     "tests/test_cli.py",
+    "tests/test_platform_support_contract.py",
 ]
 
 

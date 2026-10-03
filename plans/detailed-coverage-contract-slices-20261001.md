@@ -389,6 +389,34 @@ The private JSON report is
 | 7 | `languages/compatibility/database.py` | 185 / 386 | H |
 | 8 | `languages/compatibility/schema.py` | 181 / 407 | H |
 
+Remeasurement on clean `main` at `87e31555` before slice 53 used the full
+suite with coverage: 3,596 passed, 4 skipped, and one load-sensitive failure
+in `test_thread_safety_performance` (11.63 ms against a 10 ms limit). That
+test passed alone without coverage. The run executed 29,587 of 40,202
+statements (73.5958%), with 10,615 missed. Its private JSON report is
+`/home/viperjuice/workspace/tmp/treesitter-69-slice53-coverage.json`, SHA-256
+`f2fc7538cfd4dd18e730204b0e0a4ec360508e3e2f4285672e93e27010bf6095`.
+
+| Current rank | Module (`chunker/` prefix omitted) | Missed / statements | Risk |
+| ---: | --- | ---: | :---: |
+| 1 | `interfaces/stubs.py` | 137 / 137 (zero covered) | M |
+| 2 | `grammar_management/cli.py` | 563 / 1,219 | H |
+| 3 | `grammar_management/testing.py` | 421 / 563 | L |
+| 4 | `grammar_management/core.py` | 398 / 736 | H |
+| 5 | `grammar_management/compatibility.py` | 380 / 834 | M |
+| 6 | `build/builder.py` | 254 / 332 | H |
+| 7 | `languages/compatibility/schema.py` | 181 / 407 | H |
+| 8 | `languages/compatibility/database.py` | 177 / 386 | H |
+| 9 | `cli/grammar_commands.py` | 170 / 270 | H |
+| 10 | `debug/interactive/node_explorer.py` | 156 / 289 | M |
+| 11 | `languages/compatibility/grammar_analyzer.py` | 140 / 288 | M |
+| 12 | `build/platform.py` | 95 / 109 | H |
+
+Slice 53 selects the active build platform wrapper because its host metadata
+is a separate distribution contract with little existing coverage. Larger
+modules above it need their own behavior clusters; this slice does not use a
+coverage percentage as acceptance.
+
 The table ranks **every zero-covered module first**, then the largest remaining
 individual gaps. Risk is the possible consequence of an untested contract, not
 an assertion that the module is in active production use. H means a parser,
@@ -497,6 +525,7 @@ with the original source restored before committing.
 | 50 — safe tar extraction | `build/builder.py` `_safe_extract_tar`: a nested ordinary Python source file is extracted byte-for-byte and remains parseable, while POSIX absolute and Windows drive-qualified members are rejected before any archive member is written. | Create tar archives from the checked-in Python service fixture and parse it with the pinned parser before and after valid extraction. Mutation **accept Windows drive-qualified members** must fail because the unsafe archive is no longer rejected. Extend the existing tar extraction contract tests; file any production defect separately. |
 | 51 — Conda package presence | `build/builder.py` `BuildSystem.verify_build`: a Conda-style tar archive with index, file manifest, and parseable Python source under the recipe's noarch `site-packages/` path reports valid with all required components; the same archive without a package payload reports invalid with `package` missing. Platform-mismatch validity and versioned platform-specific package paths are separate defects in treesitter-chunker#300 and treesitter-chunker#302. | Build temporary tar.bz2 archives from the checked-in Python service fixture and parse that payload with the pinned parser. Mutation **omit package presence from artifact validity** must fail because the metadata-only archive is accepted. Extend the tar/build contract tests; keep the product fixes separate. |
 | 52 — compatibility database backup | `languages/compatibility/database.py` `CompatibilityDatabase.backup_database`: a backup captures committed Python language and grammar records, remains selectable after reopening as its own database, excludes records added afterward, and leaves the live database usable. Restoring a valid backup without refreshing the live selection schema is a separate defect in treesitter-chunker#303. | Parse the checked-in Python service fixture with the pinned parser, then use temporary SQLite files and the exported database API. Mutation **skip the backup file copy** must fail because no saved snapshot exists. Extend the existing language compatibility records contract tests; keep restore repair separate. |
+| 53 — build platform metadata | `build/system.py` `PlatformSupportImpl.detect_platform` and `build/platform.py`: Windows AMD64, macOS arm64, and Linux x86_64 hosts report normalized OS, architecture, wheel platform tag, current Python tag/version/implementation, and Linux-only libc metadata. Do not invoke dependency installation. | Parse the checked-in Python service fixture with the pinned parser before each public wrapper call; substitute only host-identification inputs. Mutation **replace the Windows AMD64 wheel tag** must fail. Add one focused platform contract test. Keep the Linux ARM tag defect in treesitter-chunker#305 outside this coverage slice. |
 
 `interfaces/stubs.py` remains in the ranked inventory but is not promoted into
 a coverage slice until its consumer contract is confirmed. The node explorer
