@@ -117,6 +117,50 @@ def test_config_reset_restores_nested_defaults_after_edits(
     assert not isolated_home.exists()
 
 
+@pytest.mark.parametrize("partial_source", ["load", "import"])
+def test_config_partial_merge_does_not_alias_mutable_defaults(
+    tmp_path: Path, monkeypatch, partial_source: str
+) -> None:
+    parser = get_parser("python")
+    source = FIXTURE.read_bytes()
+    assert not parser.parse(source).root_node.has_error
+    isolated_home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(isolated_home))
+    monkeypatch.setenv("USERPROFILE", str(isolated_home))
+
+    config_path = tmp_path / "settings" / "config.json"
+    partial = {
+        section: {} for section in ("cache", "directories", "grammar", "logging")
+    }
+    partial_path = tmp_path / "partial.json"
+    partial_path.write_text(json.dumps(partial), encoding="utf-8")
+    if partial_source == "load":
+        config_path.parent.mkdir()
+        config_path.write_text(json.dumps(partial), encoding="utf-8")
+    config = UserConfig(config_path)
+    if partial_source == "import":
+        config.import_config(partial_path, merge=True)
+
+    grammar_root = tmp_path / "grammar-state"
+    config.set("directories.base_dir", str(grammar_root))
+    retained = DirectoryManager(config).create_structure()["grammars"] / "service.py"
+    retained.write_bytes(source)
+    default_sources = list(config.get("grammar.preferred_sources"))
+    config.get("grammar.preferred_sources").append("https://example.invalid/custom")
+
+    config.reset_to_defaults()
+    assert config.get("grammar.preferred_sources") == default_sources
+    assert UserConfig(config_path).get("grammar.preferred_sources") == default_sources
+    assert (
+        json.loads(config_path.read_text(encoding="utf-8"))["grammar"][
+            "preferred_sources"
+        ]
+        == default_sources
+    )
+    assert not parser.parse(retained.read_bytes()).root_node.has_error
+    assert not isolated_home.exists()
+
+
 def test_config_backup_restores_saved_settings_and_keeps_pre_restore_copy(
     tmp_path: Path, monkeypatch
 ) -> None:
