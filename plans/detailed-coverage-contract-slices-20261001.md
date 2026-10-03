@@ -103,6 +103,17 @@ treesitter-chunker#130 (11.61 ms per operation against a 10 ms limit);
 Grammar configuration still has 384 of 773 statements uncovered, so slice 30
 covers backup and restore as an independent observable contract.
 
+Remeasurement on merged `main` at `cb032864` used the same representative
+command with private workspace temporary and coverage data: 3,529 passed,
+4 skipped, and two failures. The streaming timing assertion is the known
+load-sensitive treesitter-chunker#131; the grammar integration test reached
+GitHub but its Git clone ended with a connection reset. 28,691 of 40,000
+statements executed (71.7275%), 11,309 missed. The targeted grammar integration
+rerun passed. The report is
+`/home/viperjuice/workspace/tmp/treesitter-69-slice31/coverage.json`.
+Grammar configuration still has 337 of 775 statements uncovered, so slice 31
+covers backup retention as a separate observable contract.
+
 The table ranks **every zero-covered module first**, then the largest remaining
 individual gaps. Risk is the possible consequence of an untested contract, not
 an assertion that the module is in active production use. H means a parser,
@@ -189,6 +200,7 @@ with the original source restored before committing.
 | 28 — grammar directory usage | `grammar_management/config.py` `DirectoryManager.get_disk_usage`: a user-selected directory structure reports the exact file counts and sizes for parseable grammar and nested cache fixtures, includes both in the base total, and reports absent directories without creating them. | Parse checked-in Python fixture copies padded with whitespace to 128 KiB and 256 KiB using the pinned parser. Mutation **replace recursive file scan with shallow glob** must fail the per-directory and base totals. Extend the existing grammar config contract test file. |
 | 29 — empty grammar directory cleanup | `grammar_management/config.py` `DirectoryManager.cleanup_empty_directories`: one cleanup removes empty user and cache child directories, preserves the managed cache roots and a nonempty build directory holding a parseable fixture, and a second cleanup removes nothing. | Parse the checked-in Python fixture with the pinned parser, then retain a copy under the build directory. Mutation **remove the managed-cache exemption** must fail because the emptied downloads root disappears. Extend the existing grammar config contract test file. |
 | 30 — grammar configuration backup/restore | `grammar_management/config.py` `UserConfig.backup` and `restore`: a named backup captures directory and cache settings, restoring it after an intervening change restores the saved values in memory and on disk and preserves a pre-restore copy of the later values. A missing backup raises without changing the config. | Parse the checked-in Python fixture and retain a copy under the configured grammar directory. Mutations **restore the pre-restore copy instead of the selected backup** and **omit in-memory reload after restore** must fail. Extend the existing grammar config contract test file. Keep the separate missing-key defect in treesitter-chunker#220 outside this PR. |
+| 31 — grammar configuration backup retention | `grammar_management/config.py` `UserConfig.cleanup_old_backups`: with three named JSON backups at distinct ages, retaining two removes only the oldest, preserves their parseable contents and a non-JSON neighbor, leaves the active config and grammar fixture intact, and a repeated cleanup changes nothing. | Parse the checked-in Python fixture and retain a copy under the configured grammar directory. Set deterministic backup modification times and inspect the retained JSON. Mutation **reverse newest-first backup ordering** must fail. Extend the existing grammar config contract test file. Keep the partial-config default aliasing defect in treesitter-chunker#225 separate. |
 
 `interfaces/stubs.py` remains in the ranked inventory but is not promoted into
 a coverage slice until its consumer contract is confirmed. The node explorer
