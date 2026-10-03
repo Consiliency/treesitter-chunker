@@ -379,6 +379,8 @@ class JavaScriptSymbolResolver(BaseSymbolResolver):
             "variable_declarator",
             "method_definition",
         }:
+            if node.type == "method_definition" and node.parent.type != "class_body":
+                return None
             name = node.child_by_field_name("name")
             if (
                 name
@@ -391,6 +393,13 @@ class JavaScriptSymbolResolver(BaseSymbolResolver):
     @staticmethod
     def _creates_new_scope(node: Node) -> bool:
         """Check if a node creates a new scope."""
+        if node.type == "statement_block" and node.parent.type in {
+            "function_declaration",
+            "function_expression",
+            "arrow_function",
+            "method_definition",
+        }:
+            return False
         return node.type in {
             "function_declaration",
             "function_expression",
@@ -401,6 +410,7 @@ class JavaScriptSymbolResolver(BaseSymbolResolver):
             "for_in_statement",
             "for_of_statement",
             "block_statement",
+            "statement_block",
             "catch_clause",
         }
 
@@ -426,11 +436,19 @@ class JavaScriptScopeAnalyzer(BaseScopeAnalyzer):
             "for_in_statement": "block",
             "for_of_statement": "block",
             "block_statement": "block",
+            "statement_block": "block",
             "catch_clause": "catch",
         }
 
     def _is_scope_node(self, node: Node) -> bool:
         """Check if a node creates a scope."""
+        if node.type == "statement_block" and node.parent.type in {
+            "function_declaration",
+            "function_expression",
+            "arrow_function",
+            "method_definition",
+        }:
+            return False
         return node.type in self._get_scope_type_map()
 
     @classmethod
