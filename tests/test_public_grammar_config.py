@@ -755,3 +755,50 @@ def test_cache_info_reports_parseable_sizes_and_cleanup_settings(
     }
     assert not parser.parse(build.read_bytes()).root_node.has_error
     assert not isolated_home.exists()
+
+
+def test_public_config_cache_info_reports_sizes_limits_and_cleanup_need(
+    tmp_path: Path, monkeypatch
+) -> None:
+    parser = get_parser("python")
+    source = FIXTURE.read_bytes()
+    assert not parser.parse(source).root_node.has_error
+    isolated_home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(isolated_home))
+    monkeypatch.setenv("USERPROFILE", str(isolated_home))
+
+    config = UserConfig()
+    config.set("directories.base_dir", str(tmp_path / "grammar-state"))
+    config.set("cache.max_size_mb", 2)
+    config.set("cache.max_age_days", 45)
+    config.set("cache.cleanup_threshold_mb", 1)
+    directories = DirectoryManager(config).create_structure()
+    download = directories["cache_downloads"] / "nested" / "service.py"
+    download.parent.mkdir()
+    build = directories["cache_builds"] / "service.py"
+    for path, size in ((download, 512 * 1024), (build, 768 * 1024)):
+        path.write_bytes(source + b"\n" + b" " * (size - len(source) - 1))
+        assert not parser.parse(path.read_bytes()).root_node.has_error
+
+    runner = CliRunner()
+    report = runner.invoke(config_cli, ["cache-info"])
+    assert report.exit_code == 0, report.output
+    for line in (
+        "Total cache size: 1.25 MB",
+        "Downloads cache: 0.5 MB",
+        "Builds cache: 0.75 MB",
+        "Max size: 2 MB",
+        "Max age: 45 days",
+        "Cleanup threshold: 1 MB",
+        "Usage: 62.5%",
+        "Cleanup needed: Yes",
+    ):
+        assert line in report.output
+
+    config.set("cache.auto_cleanup", False)
+    disabled = runner.invoke(config_cli, ["cache-info"])
+    assert disabled.exit_code == 0, disabled.output
+    assert "Cleanup needed: No" in disabled.output
+    assert "Total cache size: 1.25 MB" in disabled.output
+    assert not parser.parse(download.read_bytes()).root_node.has_error
+    assert not parser.parse(build.read_bytes()).root_node.has_error
