@@ -548,6 +548,44 @@ def test_click_cleanup_honors_requested_age_and_reports_removal(
     assert not isolated_home.exists()
 
 
+def test_click_cleanup_fallback_preserves_recent_local_fixture(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source = FIXTURE.read_bytes()
+    parser = get_parser("python")
+    assert not parser.parse(source).root_node.has_error
+
+    isolated_home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(isolated_home))
+    monkeypatch.setenv("USERPROFILE", str(isolated_home))
+    monkeypatch.setattr(
+        "chunker.grammar_management.cli.GRAMMAR_COMPONENTS_AVAILABLE", False
+    )
+
+    cache_dir = tmp_path / "grammar-cache"
+    downloads = cache_dir / "downloads"
+    downloads.mkdir(parents=True)
+    stale = downloads / "stale.py"
+    recent = downloads / "recent.py"
+    stale.write_bytes(source)
+    recent.write_bytes(source)
+    old_time = time.time() - 25 * 24 * 60 * 60
+    recent_time = time.time() - 15 * 24 * 60 * 60
+    os.utime(stale, (old_time, old_time))
+    os.utime(recent, (recent_time, recent_time))
+
+    result = CliRunner().invoke(
+        grammar_cli, ["--cache-dir", str(cache_dir), "cleanup", "--days", "20"]
+    )
+    assert result.exit_code == 0, result.output
+    assert "Files removed: 1" in result.output
+    assert "Directories cleaned: downloads" in result.output
+    assert not stale.exists()
+    assert recent.read_bytes() == source
+    assert not parser.parse(recent.read_bytes()).root_node.has_error
+    assert not isolated_home.exists()
+
+
 def test_click_parses_with_selected_local_grammar(tmp_path: Path, monkeypatch) -> None:
     if sys.platform != "linux":
         pytest.skip("Local shared-library build is Linux-only")
