@@ -7,7 +7,7 @@ import threading
 import time
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import contextmanager, suppress
+from contextlib import closing, contextmanager, suppress
 from pathlib import Path
 
 import pytest
@@ -372,6 +372,23 @@ class TestCacheConcurrency:
 
 class TestCacheCorruptionRecovery:
     """Test cache recovery from corruption scenarios."""
+
+    @staticmethod
+    def test_locked_database_is_not_replaced(cache, temp_python_file):
+        chunks = chunk_file(temp_python_file, "python")
+        cache.cache_chunks(temp_python_file, "python", chunks)
+
+        with closing(sqlite3.connect(cache.db_path)) as lock:
+            lock.execute("BEGIN EXCLUSIVE")
+            with pytest.raises(sqlite3.OperationalError, match="locked"):
+                ASTCache(cache_dir=cache.db_path.parent)
+
+        reopened = ASTCache(cache_dir=cache.db_path.parent)
+        cached = reopened.get_cached_chunks(temp_python_file, "python")
+        assert cached is not None
+        assert [chunk.content for chunk in cached] == [
+            chunk.content for chunk in chunks
+        ]
 
     @classmethod
     def test_recover_from_corrupted_database(cls, cache, temp_python_file):

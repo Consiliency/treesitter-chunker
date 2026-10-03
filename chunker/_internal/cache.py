@@ -108,7 +108,12 @@ class ASTCache:
                     )
                 except sqlite3.OperationalError:
                     pass  # Column already exists
-        except sqlite3.DatabaseError:
+        except sqlite3.DatabaseError as exc:
+            if getattr(exc, "sqlite_errorcode", 0) & 0xFF not in (
+                sqlite3.SQLITE_CORRUPT,
+                sqlite3.SQLITE_NOTADB,
+            ):
+                raise
             # Database is corrupted, remove and recreate
             if self.db_path.exists():
                 self.db_path.unlink()
