@@ -155,6 +155,52 @@ def test_comprehensive_test_rejects_unknown_type_before_running_checks(
     assert not home.exists()
 
 
+def test_parse_benchmark_counts_only_successful_fixture_samples(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source = (
+        ROOT / "tests/fixtures/boundary_ir/repos/python/app/service.py"
+    ).read_text(encoding="utf-8")
+    malformed = source + "\ndef broken(\n"
+    parser = get_parser("python")
+    assert not parser.parse(source.encode()).root_node.has_error
+    assert parser.parse(malformed.encode()).root_node.has_error
+
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    manager = GrammarManager(
+        user_dir=tmp_path / "user",
+        package_dir=tmp_path / "package",
+        cache_dir=tmp_path / "cache",
+    )
+    tester = GrammarTester(manager, GrammarValidator(tmp_path / "validation"))
+    tester.test_suites["python"] = [source, malformed]
+    assert not parser.parse(
+        tester._generate_test_code("python", 3).encode()
+    ).root_node.has_error
+    assert parser.parse(
+        tester._generate_test_code("python", 6).encode()
+    ).root_node.has_error
+
+    benchmark = tester.benchmark_parsing_performance("python", [3, 6])
+    assert benchmark["language"] == "python"
+    assert benchmark["sample_sizes"] == [3, 6]
+    accepted, rejected = benchmark["results"]
+    assert accepted["sample_size"] == 3
+    assert accepted["success"] is True
+    assert accepted["errors"] == []
+    assert rejected["sample_size"] == 6
+    assert rejected["success"] is False
+    assert rejected["errors"] == ["Sample 1: Syntax error in parse tree"]
+    assert benchmark["summary"]["successful_tests"] == 1
+    assert benchmark["summary"]["total_tests"] == 2
+    assert benchmark["summary"]["avg_parse_time"] == pytest.approx(
+        accepted["parse_time"]
+    )
+    assert not home.exists()
+
+
 def test_compatibility_reason_score_selection_and_history(
     tmp_path: Path, monkeypatch
 ) -> None:
