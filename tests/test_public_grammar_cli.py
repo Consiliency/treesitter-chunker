@@ -125,8 +125,8 @@ def test_click_remove_rejects_path_as_language(tmp_path: Path) -> None:
 def test_click_validate_local_missing_and_invalid_grammars(
     tmp_path: Path, monkeypatch
 ) -> None:
-    source = BAML_FIXTURE.read_bytes()
-    assert not get_parser("baml").parse(source).root_node.has_error
+    source = FIXTURE.read_bytes()
+    assert not get_parser("python").parse(source).root_node.has_error
 
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
     monkeypatch.setenv("USERPROFILE", str(tmp_path / "home"))
