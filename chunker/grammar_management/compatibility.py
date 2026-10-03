@@ -1113,9 +1113,18 @@ class GrammarTester:
     def _run_memory_tests(self, result: TestResult):
         """Run memory usage tests."""
         try:
-            import os
-
             import psutil
+        except ImportError:
+            result.sample_results.append(
+                {
+                    "test_type": "memory",
+                    "warning": "psutil not available for memory testing",
+                },
+            )
+            return
+
+        try:
+            import os
 
             process = psutil.Process(os.getpid())
 
@@ -1129,6 +1138,8 @@ class GrammarTester:
                 result.language,
                 [large_code],
             )
+            if not success:
+                result.success = False
 
             # Measure memory after parsing
             post_parse_memory = process.memory_info().rss / 1024 / 1024  # MB
@@ -1148,14 +1159,8 @@ class GrammarTester:
                 },
             )
 
-        except ImportError:
-            result.sample_results.append(
-                {
-                    "test_type": "memory",
-                    "warning": "psutil not available for memory testing",
-                },
-            )
         except Exception as e:
+            result.success = False
             result.sample_results.append({"test_type": "memory", "error": str(e)})
 
     def _run_stress_tests(self, result: TestResult):

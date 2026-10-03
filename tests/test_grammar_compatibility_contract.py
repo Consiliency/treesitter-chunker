@@ -7,6 +7,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -238,6 +239,64 @@ def test_comprehensive_performance_result_follows_real_parse_outcome(
     assert rejected.success is False
     assert all(not entry["success"] for entry in rejected.sample_results[0]["results"])
     assert "avg_throughput_lines_per_sec" not in rejected.performance_metrics
+    assert not home.exists()
+
+
+def test_comprehensive_memory_result_follows_real_parse_outcome(
+    tmp_path: Path, monkeypatch
+) -> None:
+    psutil = pytest.importorskip("psutil")
+    source = (
+        ROOT / "tests/fixtures/boundary_ir/repos/python/app/service.py"
+    ).read_text(encoding="utf-8")
+    malformed = source + "\ndef broken(\n"
+    parser = get_parser("python")
+    assert not parser.parse(source.encode()).root_node.has_error
+    assert parser.parse(malformed.encode()).root_node.has_error
+
+    native_spec = importlib.util.find_spec("tree_sitter_language_pack._native")
+    assert native_spec is not None and native_spec.origin is not None
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    user_dir = tmp_path / "user"
+    user_dir.mkdir()
+    shutil.copyfile(native_spec.origin, user_dir / "libpython.so")
+    manager = GrammarManager(
+        user_dir=user_dir,
+        package_dir=tmp_path / "package",
+        cache_dir=tmp_path / "cache",
+    )
+    tester = GrammarTester(manager, GrammarValidator(tmp_path / "validation"))
+
+    tester.test_suites["python"] = [source]
+    accepted = tester.run_comprehensive_test("python", ["memory"])
+    assert accepted.success is True
+    assert accepted.sample_results[0]["success"] is True
+
+    tester.test_suites["python"] = [malformed]
+    rejected = tester.run_comprehensive_test("python", ["memory"])
+    assert rejected.success is False
+    assert rejected.sample_results[0]["success"] is False
+
+    memory_probes = 0
+
+    class FailingProcess:
+        def memory_info(self):
+            nonlocal memory_probes
+            memory_probes += 1
+            if memory_probes == 2:
+                raise ImportError("memory probe failed")
+            return SimpleNamespace(rss=1024 * 1024)
+
+    monkeypatch.setattr(psutil, "Process", lambda _pid: FailingProcess())
+    tester.test_suites["python"] = [source]
+    probe_error = tester.run_comprehensive_test("python", ["memory"])
+    assert memory_probes == 2
+    assert probe_error.success is False
+    assert probe_error.sample_results == [
+        {"test_type": "memory", "error": "memory probe failed"}
+    ]
     assert not home.exists()
 
 
