@@ -373,20 +373,19 @@ class JavaScriptSymbolResolver(BaseSymbolResolver):
     @staticmethod
     def _get_defined_name(node: Node) -> str | None:
         """Get the name being defined by a definition node."""
-        if node.type in {"function_declaration", "class_declaration"}:
-            for child in node.children:
-                if child.type == "identifier":
-                    return None
-        elif node.type == "variable_declarator":
-            for child in node.children:
-                if child.type == "identifier":
-                    return None
-                if child.type == "=":
-                    break
-        elif node.type == "method_definition":
-            for child in node.children:
-                if child.type == "property_identifier":
-                    return None
+        if node.type in {
+            "function_declaration",
+            "class_declaration",
+            "variable_declarator",
+            "method_definition",
+        }:
+            name = node.child_by_field_name("name")
+            if (
+                name
+                and name.type in {"identifier", "property_identifier"}
+                and name.text
+            ):
+                return name.text.decode("utf-8")
         return None
 
     @staticmethod
