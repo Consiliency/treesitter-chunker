@@ -689,13 +689,18 @@ Summary: Tree-sitter based code chunking library""",
                     with open(info_dir / "index.json") as f:
                         index_data = json.load(f)
 
-                    if "platform" in index_data:
-                        platform_mismatch = index_data["platform"] != platform
+                    declared_platform = index_data.get("platform")
+                    if declared_platform is not None:
+                        expected_platform = {
+                            "windows": "win",
+                            "macos": "osx",
+                        }.get(platform, platform)
+                        platform_mismatch = declared_platform != expected_platform
                         report["components"]["platform_match"] = not platform_mismatch
                         if platform_mismatch:
                             report["errors"].append(
                                 f"Conda platform mismatch: expected {platform}, "
-                                f"found {index_data['platform']}"
+                                f"found {declared_platform}"
                             )
                     else:
                         report["components"]["platform_match"] = None

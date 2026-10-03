@@ -114,17 +114,23 @@ def test_build_verifier_requires_conda_package_payload(tmp_path, include_package
 
 
 @pytest.mark.parametrize(
-    ("declared_platform", "expected_valid", "expected_match"),
-    [("linux", False, False), ("win", True, True), (None, True, None)],
+    ("requested_platform", "index", "expected_valid", "expected_match"),
+    [
+        ("win", {"platform": "linux"}, False, False),
+        ("windows", {"platform": "win"}, True, True),
+        ("macos", {"platform": "osx"}, True, True),
+        ("linux", {"platform": "linux"}, True, True),
+        ("linux", {}, True, None),
+        ("linux", {"platform": None, "subdir": "noarch"}, True, None),
+    ],
 )
 def test_build_verifier_rejects_declared_conda_platform_mismatch(
-    tmp_path, declared_platform, expected_valid, expected_match
+    tmp_path, requested_platform, index, expected_valid, expected_match
 ):
     source = FIXTURE.read_bytes()
     assert not get_parser("python").parse(source).root_node.has_error
 
     payload = "site-packages/chunker/service.py"
-    index = {"platform": declared_platform} if declared_platform is not None else {}
     entries = [
         ("info/index.json", json.dumps(index).encode("utf-8")),
         ("info/files", (payload + "\n").encode("utf-8")),
@@ -137,14 +143,14 @@ def test_build_verifier_rejects_declared_conda_platform_mismatch(
             member.size = len(data)
             tar.addfile(member, io.BytesIO(data))
 
-    valid, report = BuildSystem().verify_build(archive, "win")
+    valid, report = BuildSystem().verify_build(archive, requested_platform)
     assert valid is expected_valid
     assert report["valid"] is expected_valid
     assert report["components"]["package"] is True
     assert report["components"]["platform_match"] is expected_match
     assert report["errors"] == (
         ["Conda platform mismatch: expected win, found linux"]
-        if declared_platform == "linux"
+        if not expected_valid
         else []
     )
 
