@@ -4,6 +4,8 @@ import importlib.util
 import shutil
 from pathlib import Path
 
+import pytest
+
 from chunker import get_parser
 from chunker.grammar_management import GrammarPriority, GrammarRegistry
 
@@ -11,8 +13,9 @@ from chunker.grammar_management import GrammarPriority, GrammarRegistry
 FIXTURE = Path(__file__).parent / "fixtures/boundary_ir/repos/python/app/service.py"
 
 
+@pytest.mark.parametrize("library_name", ["libpython.so", "tree_sitter_python.so"])
 def test_registry_selects_user_package_then_fallback(
-    tmp_path: Path, monkeypatch
+    tmp_path: Path, monkeypatch, library_name: str
 ) -> None:
     source = FIXTURE.read_text(encoding="utf-8")
     tree = get_parser("python").parse(source.encode("utf-8"))
@@ -33,9 +36,9 @@ def test_registry_selects_user_package_then_fallback(
         directory.mkdir()
 
     candidates = [
-        (user_dir / "libpython.so", GrammarPriority.USER),
-        (package_dir / "libpython.so", GrammarPriority.PACKAGE),
-        (fallback_dir / "libpython.so", GrammarPriority.FALLBACK),
+        (user_dir / library_name, GrammarPriority.USER),
+        (package_dir / library_name, GrammarPriority.PACKAGE),
+        (fallback_dir / library_name, GrammarPriority.FALLBACK),
     ]
     for path, _ in candidates:
         shutil.copyfile(native_library, path)

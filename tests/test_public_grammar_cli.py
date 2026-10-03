@@ -22,8 +22,9 @@ BAML_FIXTURE = (
 )
 
 
+@pytest.mark.parametrize("library_name", ["libpython.so", "tree_sitter_python.so"])
 def test_click_lists_local_grammar_and_reports_missing_language(
-    tmp_path: Path, monkeypatch
+    tmp_path: Path, monkeypatch, library_name: str
 ) -> None:
     tree = get_parser("python").parse(FIXTURE.read_bytes())
     assert tree.root_node.type == "module"
@@ -40,9 +41,9 @@ def test_click_lists_local_grammar_and_reports_missing_language(
     package_dir = cache_dir / "grammars" / "package"
     user_dir.mkdir(parents=True)
     package_dir.mkdir(parents=True)
-    user_library = user_dir / "libpython.so"
+    user_library = user_dir / library_name
     shutil.copyfile(native_spec.origin, user_library)
-    shutil.copyfile(native_spec.origin, package_dir / "libpython.so")
+    shutil.copyfile(native_spec.origin, package_dir / library_name)
 
     runner = CliRunner()
     command = ["--cache-dir", str(cache_dir)]
