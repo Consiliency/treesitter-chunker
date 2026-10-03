@@ -96,14 +96,18 @@ def test_python_scope_reports_imports_and_local_definitions() -> None:
     method_names = ContextFactory.create_scope_analyzer("python").get_visible_symbols(
         method_body, root
     )
-    assert {"Container", "Path", "read", "default", "typed"} <= method_names
-    assert {"class_sqrt", "class_value", "Nested"}.isdisjoint(method_names)
+    assert {"Container", "Path", "read", "default", "typed", "hidden"} <= method_names
+    assert {"class_sqrt", "class_value", "class_capture", "Nested"}.isdisjoint(
+        method_names
+    )
 
     method_scope_names = ContextFactory.create_scope_analyzer(
         "python"
     ).get_visible_symbols(method, root)
-    assert {"read", "default", "typed"} <= method_scope_names
-    assert {"class_sqrt", "class_value", "Nested"}.isdisjoint(method_scope_names)
+    assert {"read", "default", "typed", "hidden"} <= method_scope_names
+    assert {"class_sqrt", "class_value", "class_capture", "Nested"}.isdisjoint(
+        method_scope_names
+    )
 
     build_body = definitions["build"].child_by_field_name("body")
     assert build_body is not None
@@ -134,7 +138,6 @@ def test_python_scope_reports_imports_and_local_definitions() -> None:
         "loop_left",
         "loop_right",
         "handle",
-        "captured",
         "error",
         "named",
     } <= binding_names
@@ -142,6 +145,5 @@ def test_python_scope_reports_imports_and_local_definitions() -> None:
         "item",
         "loop_left",
         "handle",
-        "captured",
         "error",
     }.isdisjoint(module_names)

@@ -391,7 +391,12 @@ class PythonScopeAnalyzer(BaseScopeAnalyzer):
                     (
                         child
                         for child in node.named_children
-                        if child.type == "identifier"
+                        if child.type
+                        in {
+                            "identifier",
+                            "list_splat_pattern",
+                            "dictionary_splat_pattern",
+                        }
                     ),
                     None,
                 )
@@ -409,14 +414,11 @@ class PythonScopeAnalyzer(BaseScopeAnalyzer):
                     collect_targets(target)
             elif node.type == "parameters":
                 collect_targets(node)
+                return
             elif node.type == "as_pattern":
                 alias = node.child_by_field_name("alias")
                 if alias:
                     collect_targets(alias)
-            elif node.type == "named_expression":
-                target = node.child_by_field_name("name")
-                if target:
-                    collect_targets(target)
             for child in node.children:
                 collect_imports(child, depth + 1)
 

@@ -20,7 +20,12 @@ class Container:
             local = Path("nested")
             return local
 
-    def read(self, default=class_value, typed: int = class_value):
+    def read(
+        self,
+        default=class_value,
+        typed: int = class_value,
+        hidden=(class_capture := 1),
+    ):
         read = Path("item")
         return read
 
@@ -33,11 +38,11 @@ def build():
     return local_sqrt(left + right), value
 
 
-def bindings(item, count: int, default=1, *args, **kwargs):
+def bindings(item, count: int, default=1, *args: int, **kwargs: str):
     for loop_left, loop_right in [(item, count)]:
         with Path("item").open() as handle:
-            named = (captured := default)
+            named = default
             try:
                 raise ValueError(named)
             except ValueError as error:
-                return loop_left, loop_right, handle, captured, error, args, kwargs
+                return loop_left, loop_right, handle, error, args, kwargs
