@@ -228,6 +228,16 @@ Diagnostic coverage was 29,189 of 40,054 statements executed (72.8741%),
 `interfaces/stubs.py` remains the sole wholly uncovered module (137/137),
 and `grammar_management/compatibility.py` has 445 of 826 statements uncovered.
 
+Remeasurement on clean `main` at `d58c0775` before slice 44 used the same
+representative command: 3,565 passed, 4 skipped; 29,238 of 40,057 statements
+executed (72.9910%), 10,819 missed. The private report is
+`/home/viperjuice/workspace/tmp/treesitter-69-slice44/coverage.json`, SHA-256
+`84fbf4b359a87143e051a29a3a4b58d574572abdfb8ab21fd4dfe6074acd4c3d`.
+`interfaces/stubs.py` remains the sole wholly uncovered module (137/137).
+The active Svelte plugin has 122 of 219 statements uncovered, including
+semantic extraction paths that existing tests mostly exercise with simulated
+nodes.
+
 The table ranks **every zero-covered module first**, then the largest remaining
 individual gaps. Risk is the possible consequence of an untested contract, not
 an assertion that the module is in active production use. H means a parser,
@@ -327,6 +337,7 @@ with the original source restored before committing.
 | 41 — grammar info JSON API | `grammar_management/cli.py` `ComprehensiveGrammarCLI.info_grammar`: the exported Python API returns parseable JSON identifying the selected user library path, priority, existence, size, and validation fields when a package candidate also exists, without writing to the caller's home. The public Click `info` command currently exposes table output only. | Parse the checked-in Python fixture with the pinned parser before and after inspecting JSON from two temporary local library candidates. Mutation **omit selected path from JSON metadata** must fail. Extend the existing public grammar CLI contract test file. |
 | 42 — comprehensive syntax result | `grammar_management/compatibility.py` `GrammarTester.run_comprehensive_test`: a requested syntax run reports success for a real parseable Python fixture and failure with a syntax error for that fixture plus malformed source, without writing to the caller's home. Unsupported test types are a separate defect in treesitter-chunker#255. | Parse the checked-in Python fixture and malformed variant with the pinned parser, then run the exported tester against an isolated discoverable grammar candidate. Mutation **report success after a failed syntax parse** must fail. Extend the existing grammar compatibility contract test file. |
 | 43 — parse benchmark result accounting | `grammar_management/compatibility.py` `GrammarTester.benchmark_parsing_performance`: a benchmark over a valid checked-in Python fixture and its malformed variant reports one success and one syntax failure, counts only the success in its summary, and leaves the isolated home untouched. | Feed the real fixture variants to the exported tester without mocking its generator, parser, or validator; parse the generated inputs with the pinned parser before running the benchmark. Mutation **count failed parse as successful benchmark** must fail. Extend the existing grammar compatibility contract test file. |
+| 44 — Svelte semantic extraction | `languages/svelte.py` `SveltePlugin.get_semantic_chunks`: a real parsed component distinguishes module TypeScript and instance JavaScript scripts, reports the reactive statement and SCSS style, and preserves the source line of the each-block marker. | Parse a checked-in Svelte component fixture with the pinned parser and inspect the plugin's observable semantic records. Mutation **force module scripts to instance context** must fail. Add a focused Svelte semantic contract test; keep product defects separate. |
 
 `interfaces/stubs.py` remains in the ranked inventory but is not promoted into
 a coverage slice until its consumer contract is confirmed. The node explorer
