@@ -241,14 +241,17 @@ class UserConfig:
 
         logger.debug("Configuration validation successful")
 
-    def _merge_with_defaults(self, config: dict[str, Any]) -> dict[str, Any]:
-        """Merge loaded configuration with defaults to handle missing keys.
+    def _merge_with_defaults(
+        self, config: dict[str, Any], base: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        """Merge loaded configuration with defaults or an existing configuration.
 
         Args:
             config: Loaded configuration
+            base: Existing configuration to preserve for omitted keys
 
         Returns:
-            Merged configuration with defaults
+            Merged configuration
         """
 
         def merge_dicts(
@@ -270,7 +273,7 @@ class UserConfig:
 
             return result
 
-        return merge_dicts(self._defaults, config)
+        return merge_dicts(self._defaults if base is None else base, config)
 
     def _save_config(self) -> None:
         """Save configuration to file atomically."""
@@ -539,7 +542,9 @@ class UserConfig:
 
             try:
                 if merge:
-                    self._config = self._merge_with_defaults(import_config)
+                    self._config = self._merge_with_defaults(
+                        import_config, base=self._config
+                    )
                 else:
                     self._config = import_config.copy()
 
