@@ -131,6 +131,16 @@ executed (71.9625%), 11,215 missed. The report is
 Grammar configuration still has 288 of 775 statements uncovered, so slice 33
 covers the public configuration import command as an independent contract.
 
+Remeasurement on merged `main` at `e43525ee` used the same representative
+command with private workspace temporary and coverage data: 3,535 passed,
+4 skipped, and two known load-sensitive failures in treesitter-chunker#130
+(10.54 ms per operation against a 10 ms limit) and treesitter-chunker#131
+(0.109 variance against a 0.05 limit); 28,795 of 40,000 statements executed
+(71.9875%), 11,205 missed. The report is
+`/home/viperjuice/workspace/tmp/treesitter-69-slice34/coverage.json`.
+Grammar configuration still has 281 of 775 statements uncovered, so slice 34
+covers the public set/get commands as an independent contract.
+
 The table ranks **every zero-covered module first**, then the largest remaining
 individual gaps. Risk is the possible consequence of an untested contract, not
 an assertion that the module is in active production use. H means a parser,
@@ -220,6 +230,7 @@ with the original source restored before committing.
 | 31 — grammar configuration backup retention | `grammar_management/config.py` `UserConfig.cleanup_old_backups`: with three named JSON backups at distinct ages, retaining two removes only the oldest, preserves their parseable contents and a non-JSON neighbor, leaves the active config and grammar fixture intact, and a repeated cleanup changes nothing. | Parse the checked-in Python fixture and retain a copy under the configured grammar directory. Set deterministic backup modification times and inspect the retained JSON. Mutation **reverse newest-first backup ordering** must fail. Extend the existing grammar config contract test file. Keep the partial-config default aliasing defect in treesitter-chunker#225 separate. |
 | 32 — public grammar configuration export | `grammar_management/config.py` `config_cli export` and `UserConfig.export_config`: exporting to a nested requested path writes the live cache and directory settings, leaves the active configuration and a parseable grammar fixture intact, and can be loaded from the exported file. | Invoke the public Click command against an isolated home with a checked-in Python fixture under the managed grammar directory; parse the fixture before and after export. Mutation **export factory defaults instead of live settings** must fail. Extend the existing grammar config contract test file. |
 | 33 — public grammar configuration import | `grammar_management/config.py` `config_cli import-config`: confirmed default import merges an external partial config while preserving omitted active cache and directory settings; `--replace` discards those omitted settings. Both report success and leave the parseable grammar fixture intact. Keep failure exit status in treesitter-chunker#233. | Invoke the public Click command with confirmation against an isolated home and a checked-in Python fixture under the managed grammar directory; parse it before and after import. Mutation **invert the public merge/replace switch** (`not replace` to `replace`) must fail. Extend the existing grammar config contract test file. |
+| 34 — public grammar configuration set/get | `grammar_management/config.py` `config_cli set` and `get`: public commands persist and display a user-selected grammar path, numeric cache limit, Boolean cleanup switch, and logging level with their intended types; the managed Python grammar fixture remains parseable. Keep failure exit status in treesitter-chunker#233. | Invoke public Click commands against an isolated home, parse the checked-in Python fixture before and after placing it under the managed grammar directory, and inspect saved JSON types and displayed values. Mutation **skip JSON value decoding in set** must fail when a numeric limit is rejected as a string. Extend the existing grammar config contract test file. |
 
 `interfaces/stubs.py` remains in the ranked inventory but is not promoted into
 a coverage slice until its consumer contract is confirmed. The node explorer
