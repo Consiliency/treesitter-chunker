@@ -379,7 +379,9 @@ class JavaScriptSymbolResolver(BaseSymbolResolver):
             "variable_declarator",
             "method_definition",
         }:
-            if node.type == "method_definition" and node.parent.type != "class_body":
+            if node.type == "method_definition" and (
+                node.parent is None or node.parent.type != "class_body"
+            ):
                 return None
             name = node.child_by_field_name("name")
             if (
@@ -393,24 +395,31 @@ class JavaScriptSymbolResolver(BaseSymbolResolver):
     @staticmethod
     def _creates_new_scope(node: Node) -> bool:
         """Check if a node creates a new scope."""
-        if node.type == "statement_block" and node.parent.type in {
-            "function_declaration",
-            "function_expression",
-            "arrow_function",
-            "method_definition",
-        }:
+        if (
+            node.type == "statement_block"
+            and node.parent is not None
+            and node.parent.type
+            in {
+                "function_declaration",
+                "function_expression",
+                "arrow_function",
+                "method_definition",
+            }
+        ):
             return False
         return node.type in {
             "function_declaration",
             "function_expression",
             "arrow_function",
             "class_declaration",
+            "class",
             "method_definition",
             "for_statement",
             "for_in_statement",
             "for_of_statement",
             "block_statement",
             "statement_block",
+            "switch_body",
             "catch_clause",
         }
 
@@ -431,23 +440,30 @@ class JavaScriptScopeAnalyzer(BaseScopeAnalyzer):
             "function_expression": "function",
             "arrow_function": "arrow",
             "class_declaration": "class",
+            "class": "class",
             "method_definition": "method",
             "for_statement": "block",
             "for_in_statement": "block",
             "for_of_statement": "block",
             "block_statement": "block",
             "statement_block": "block",
+            "switch_body": "block",
             "catch_clause": "catch",
         }
 
     def _is_scope_node(self, node: Node) -> bool:
         """Check if a node creates a scope."""
-        if node.type == "statement_block" and node.parent.type in {
-            "function_declaration",
-            "function_expression",
-            "arrow_function",
-            "method_definition",
-        }:
+        if (
+            node.type == "statement_block"
+            and node.parent is not None
+            and node.parent.type
+            in {
+                "function_declaration",
+                "function_expression",
+                "arrow_function",
+                "method_definition",
+            }
+        ):
             return False
         return node.type in self._get_scope_type_map()
 
@@ -467,6 +483,34 @@ class JavaScriptScopeAnalyzer(BaseScopeAnalyzer):
         """Get the name being defined by a definition node."""
         resolver = JavaScriptSymbolResolver()
         return resolver._get_defined_name(node)
+
+    def _get_local_symbols(self, scope_node: Node) -> set[str]:
+        """Include function-scoped var declarations inside lexical blocks."""
+        names = super()._get_local_symbols(scope_node)
+
+        def collect_var(node: Node, depth: int = 0) -> None:
+            if depth > 0 and node.type in {
+                "function_declaration",
+                "function_expression",
+                "arrow_function",
+                "method_definition",
+                "class_declaration",
+                "class",
+            }:
+                return
+            if (
+                node.type == "variable_declarator"
+                and node.parent is not None
+                and node.parent.type == "variable_declaration"
+            ):
+                name = self._get_defined_name(node)
+                if name:
+                    names.add(name)
+            for child in node.children:
+                collect_var(child, depth + 1)
+
+        collect_var(scope_node)
+        return names
 
     @staticmethod
     def _extract_imported_names(import_node: Node) -> set[str]:

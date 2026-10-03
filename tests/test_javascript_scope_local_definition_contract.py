@@ -32,12 +32,16 @@ def test_javascript_scope_reports_local_definitions_without_leaking_children() -
     assert {"formatName", "Renderer", "run"} <= module_names
     assert {"render", "cleaned", "duplicate"}.isdisjoint(module_names)
 
-    class_names = analyzer.get_visible_symbols(declarations["Renderer"], tree.root_node)
+    class_names = ContextFactory.create_scope_analyzer(
+        "javascript"
+    ).get_visible_symbols(declarations["Renderer"], tree.root_node)
     assert {"formatName", "Renderer", "run", "render"} <= class_names
 
     run_body = declarations["run"].child_by_field_name("body")
     assert run_body is not None
-    function_names = analyzer.get_visible_symbols(run_body, tree.root_node)
+    function_names = ContextFactory.create_scope_analyzer(
+        "javascript"
+    ).get_visible_symbols(run_body, tree.root_node)
     assert {"formatName", "Renderer", "run", "cleaned", "duplicate"} <= function_names
 
 
@@ -49,8 +53,17 @@ def test_javascript_scope_keeps_block_and_object_method_names_contained() -> Non
 
     analyzer = ContextFactory.create_scope_analyzer("javascript")
     module_names = analyzer.get_visible_symbols(root, root)
-    assert {"obj", "run"} <= module_names
-    assert {"method", "hidden", "local"}.isdisjoint(module_names)
+    assert {"obj", "Foo", "run", "hoisted", "switchVar"} <= module_names
+    assert {
+        "method",
+        "helper",
+        "other",
+        "hidden",
+        "caseLocal",
+        "local",
+        "innerVar",
+        "innerLet",
+    }.isdisjoint(module_names)
 
     block = next(
         node
@@ -60,3 +73,18 @@ def test_javascript_scope_keeps_block_and_object_method_names_contained() -> Non
         if node.type == "statement_block"
     )
     assert "hidden" in analyzer.get_visible_symbols(block, root)
+
+    switch = next(node for node in root.children if node.type == "switch_statement")
+    switch_body = next(node for node in switch.children if node.type == "switch_body")
+    assert "caseLocal" in ContextFactory.create_scope_analyzer(
+        "javascript"
+    ).get_visible_symbols(switch_body, root)
+
+    run = next(node for node in root.children if node.type == "function_declaration")
+    body = run.child_by_field_name("body")
+    assert body is not None
+    function_names = ContextFactory.create_scope_analyzer(
+        "javascript"
+    ).get_visible_symbols(body, root)
+    assert "innerVar" in function_names
+    assert "innerLet" not in function_names
