@@ -334,9 +334,11 @@ def test_public_config_set_get_preserves_typed_values_and_grammar_directory(
     assert saved["cache"]["auto_cleanup"] is False
     assert saved["logging"]["level"] == "WARNING"
     retained = DirectoryManager(config).create_structure()["grammars"] / "service.py"
+    assert retained.parent == grammar_root / "grammars"
     retained.write_bytes(source)
 
     for key, displayed in (
+        ("directories.base_dir", str(grammar_root)),
         ("cache.max_size_mb", "64"),
         ("cache.auto_cleanup", "False"),
         ("logging.level", "WARNING"),
