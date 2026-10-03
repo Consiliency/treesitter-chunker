@@ -18,8 +18,8 @@ class BaseScopeAnalyzer(ScopeAnalyzer):
             language: Language identifier
         """
         self.language = language
-        self._scope_cache: dict[int, Node | None] = {}
-        self._visible_symbols_cache: dict[int, set[str]] = {}
+        self._scope_cache: dict[Node, Node | None] = {}
+        self._visible_symbols_cache: dict[Node, set[str]] = {}
 
     def get_enclosing_scope(self, node: Node) -> Node | None:
         """Get the enclosing scope for a node.
@@ -30,16 +30,19 @@ class BaseScopeAnalyzer(ScopeAnalyzer):
         Returns:
             Enclosing scope node (function, class, etc) or None
         """
-        node_id = id(node)
-        if node_id in self._scope_cache:
-            return self._scope_cache[node_id]
+        if node in self._scope_cache:
+            return self._scope_cache[node]
         current = node.parent
         while current:
             if self._is_scope_node(current):
-                self._scope_cache[node_id] = current
+                if len(self._scope_cache) >= 256:
+                    self._scope_cache.pop(next(iter(self._scope_cache)))
+                self._scope_cache[node] = current
                 return current
             current = current.parent
-        self._scope_cache[node_id] = None
+        if len(self._scope_cache) >= 256:
+            self._scope_cache.pop(next(iter(self._scope_cache)))
+        self._scope_cache[node] = None
         return None
 
     def get_scope_type(self, scope_node: Node) -> str:
@@ -75,9 +78,8 @@ class BaseScopeAnalyzer(ScopeAnalyzer):
         Returns:
             Set of visible symbol names
         """
-        scope_id = id(scope_node)
-        if scope_id in self._visible_symbols_cache:
-            return self._visible_symbols_cache[scope_id]
+        if scope_node in self._visible_symbols_cache:
+            return self._visible_symbols_cache[scope_node]
         visible = set()
         local_symbols = self._get_local_symbols(scope_node)
         visible.update(local_symbols)
@@ -91,7 +93,9 @@ class BaseScopeAnalyzer(ScopeAnalyzer):
             visible.update(module_symbols)
         imported_symbols = self._get_imported_symbols(ast)
         visible.update(imported_symbols)
-        self._visible_symbols_cache[scope_id] = visible
+        if len(self._visible_symbols_cache) >= 256:
+            self._visible_symbols_cache.pop(next(iter(self._visible_symbols_cache)))
+        self._visible_symbols_cache[scope_node] = visible
         return visible
 
     def get_scope_chain(self, node: Node) -> list[Node]:
