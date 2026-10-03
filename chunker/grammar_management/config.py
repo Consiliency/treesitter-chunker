@@ -1270,19 +1270,19 @@ class ConfigurationCLI:
             click.echo(f"✅ Configuration updated: {key} = {parsed_value}")
 
         except Exception as e:
-            click.echo(f"❌ Failed to set configuration: {e}", err=True)
+            raise click.ClickException(f"Failed to set configuration: {e}") from e
 
     def get_config(self, key: str) -> None:
         """Get configuration value."""
         try:
-            value = self.config.get(key)
-            if value is not None:
-                click.echo(f"{key}: {value}")
-            else:
-                click.echo(f"❌ Configuration key not found: {key}", err=True)
-
+            missing = object()
+            value = self.config.get(key, missing)
         except Exception as e:
-            click.echo(f"❌ Failed to get configuration: {e}", err=True)
+            raise click.ClickException(f"Failed to get configuration: {e}") from e
+
+        if value is missing:
+            raise click.ClickException(f"Configuration key not found: {key}")
+        click.echo(f"{key}: {value}")
 
     def reset_config(self) -> None:
         """Reset configuration to defaults."""
@@ -1296,7 +1296,7 @@ class ConfigurationCLI:
                 click.echo("✅ Configuration reset to defaults")
 
             except Exception as e:
-                click.echo(f"❌ Failed to reset configuration: {e}", err=True)
+                raise click.ClickException(f"Failed to reset configuration: {e}") from e
         else:
             click.echo("Reset cancelled")
 
@@ -1307,7 +1307,7 @@ class ConfigurationCLI:
             click.echo(f"✅ Configuration backed up to: {backup_path}")
 
         except Exception as e:
-            click.echo(f"❌ Failed to backup configuration: {e}", err=True)
+            raise click.ClickException(f"Failed to backup configuration: {e}") from e
 
     def restore_config(self, backup_path: str) -> None:
         """Restore configuration from backup."""
@@ -1319,7 +1319,9 @@ class ConfigurationCLI:
                 click.echo("✅ Configuration restored successfully")
 
             except Exception as e:
-                click.echo(f"❌ Failed to restore configuration: {e}", err=True)
+                raise click.ClickException(
+                    f"Failed to restore configuration: {e}"
+                ) from e
         else:
             click.echo("Restore cancelled")
 
@@ -1344,7 +1346,9 @@ class ConfigurationCLI:
                 click.echo("✅ Configuration imported successfully")
 
             except Exception as e:
-                click.echo(f"❌ Failed to import configuration: {e}", err=True)
+                raise click.ClickException(
+                    f"Failed to import configuration: {e}"
+                ) from e
         else:
             click.echo("Import cancelled")
 
@@ -1354,7 +1358,11 @@ class ConfigurationCLI:
         click.echo("=" * 50)
 
         status = self.dir_manager.verify_structure()
+        if not status:
+            raise click.ClickException("Failed to inspect directory structure")
         usage = self.dir_manager.get_disk_usage()
+        if not usage:
+            raise click.ClickException("Failed to inspect directory usage")
 
         for dir_type, exists in status.items():
             status_icon = "✅" if exists else "❌"
@@ -1376,7 +1384,9 @@ class ConfigurationCLI:
                 click.echo(f"   {dir_type}: {path}")
 
         except Exception as e:
-            click.echo(f"❌ Failed to create directory structure: {e}", err=True)
+            raise click.ClickException(
+                f"Failed to create directory structure: {e}"
+            ) from e
 
     def show_cache_info(self) -> None:
         """Display cache information."""
@@ -1386,8 +1396,7 @@ class ConfigurationCLI:
         cache_info = self.cache_manager.get_cache_info()
 
         if not cache_info:
-            click.echo("❌ Failed to retrieve cache information")
-            return
+            raise click.ClickException("Failed to retrieve cache information")
 
         # Size information
         size = cache_info.get("size", {})
@@ -1416,6 +1425,9 @@ class ConfigurationCLI:
 
     def cleanup_cache(self, cache_type: str = "auto") -> None:
         """Clean up cache."""
+        if cache_type not in {"auto", "all", "downloads", "builds"}:
+            raise click.ClickException(f"Invalid cache type: {cache_type}")
+
         try:
             if cache_type == "auto":
                 stats = self.cache_manager.auto_cleanup()
@@ -1429,10 +1441,6 @@ class ConfigurationCLI:
                 else:
                     click.echo("Cache clear cancelled")
                     return
-            else:
-                click.echo(f"❌ Invalid cache type: {cache_type}", err=True)
-                return
-
             if stats["files_removed"] > 0:
                 click.echo(f"   Files removed: {stats['files_removed']}")
                 click.echo(
@@ -1442,7 +1450,7 @@ class ConfigurationCLI:
                 click.echo("   No files needed to be removed")
 
         except Exception as e:
-            click.echo(f"❌ Failed to cleanup cache: {e}", err=True)
+            raise click.ClickException(f"Failed to cleanup cache: {e}") from e
 
     def validate_config(self) -> None:
         """Validate current configuration."""
@@ -1453,6 +1461,8 @@ class ConfigurationCLI:
 
             # Verify directory structure
             dir_status = self.dir_manager.verify_structure()
+            if not dir_status:
+                raise ValueError("Failed to inspect directory structure")
             all_dirs_exist = all(dir_status.values())
 
             click.echo("🔍 Configuration Validation")
@@ -1475,17 +1485,17 @@ class ConfigurationCLI:
 
             # Check cache status
             cache_info = self.cache_manager.get_cache_info()
-            if cache_info:
-                usage_pct = cache_info.get("status", {}).get("usage_percentage", 0)
-                if usage_pct > 90:
-                    click.echo("⚠️  Cache usage is high (>90%)")
-                    click.echo("💡 Consider running cache cleanup")
+            if not cache_info:
+                raise ValueError("Failed to retrieve cache information")
+            usage_pct = cache_info.get("status", {}).get("usage_percentage", 0)
+            if usage_pct > 90:
+                click.echo("⚠️  Cache usage is high (>90%)")
+                click.echo("💡 Consider running cache cleanup")
 
             click.echo("\n✅ Overall configuration status: Healthy")
 
         except Exception as e:
-            click.echo("❌ Configuration Validation Failed")
-            click.echo(f"Error: {e}")
+            raise click.ClickException(f"Configuration validation failed: {e}") from e
 
 
 # CLI command group setup for integration with main CLI

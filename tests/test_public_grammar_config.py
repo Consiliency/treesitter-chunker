@@ -802,3 +802,132 @@ def test_public_config_cache_info_reports_sizes_limits_and_cleanup_need(
     assert "Total cache size: 1.25 MB" in disabled.output
     assert not parser.parse(download.read_bytes()).root_node.has_error
     assert not parser.parse(build.read_bytes()).root_node.has_error
+
+
+def test_public_config_failures_return_nonzero_and_cancellations_succeed(
+    tmp_path: Path, monkeypatch
+) -> None:
+    parser = get_parser("python")
+    source = FIXTURE.read_bytes()
+    assert not parser.parse(source).root_node.has_error
+    isolated_home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(isolated_home))
+    monkeypatch.setenv("USERPROFILE", str(isolated_home))
+
+    config = UserConfig()
+    config.set("directories.base_dir", str(tmp_path / "grammar-state"))
+    config.set("cache.note", None)
+    retained = DirectoryManager(config).create_structure()["grammars"] / "service.py"
+    retained.write_bytes(source)
+    original_config = config.config_path.read_bytes()
+    import_path = tmp_path / "import.json"
+    import_path.write_bytes(original_config)
+    runner = CliRunner()
+    present_null = runner.invoke(config_cli, ["get", "cache.note"])
+    assert present_null.exit_code == 0, present_null.output
+    assert "cache.note: None" in present_null.output
+
+    failures = (
+        (["set", "cache.max_size_mb", "0"], None, "Failed to set configuration"),
+        (["get", "missing.key"], None, "Configuration key not found"),
+        (["backup", "--name", "nested/missing"], None, "Failed to backup"),
+        (
+            ["restore", str(tmp_path / "missing-backup.json")],
+            "y\n",
+            "Failed to restore",
+        ),
+        (["import-config", str(tmp_path / "missing.json")], "y\n", "Failed to import"),
+        (["cleanup", "invalid"], None, "Invalid cache type"),
+    )
+    for command, answer, message in failures:
+        result = runner.invoke(config_cli, command, input=answer)
+        assert result.exit_code == 1, (command, result.output)
+        assert message in result.output
+        assert config.config_path.read_bytes() == original_config
+
+    cancellations = (
+        (["reset"], "Reset cancelled"),
+        (["restore", str(tmp_path / "missing-backup.json")], "Restore cancelled"),
+        (["import-config", str(import_path)], "Import cancelled"),
+        (["cleanup", "downloads"], "Cache clear cancelled"),
+    )
+    for command, message in cancellations:
+        result = runner.invoke(config_cli, command, input="n\n")
+        assert result.exit_code == 0, (command, result.output)
+        assert message in result.output
+        assert config.config_path.read_bytes() == original_config
+    assert retained.read_bytes() == source
+    assert not parser.parse(retained.read_bytes()).root_node.has_error
+
+
+def test_public_config_wrapped_operational_failures_return_nonzero(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source = FIXTURE.read_bytes()
+    parser = get_parser("python")
+    assert not parser.parse(source).root_node.has_error
+    isolated_home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(isolated_home))
+    monkeypatch.setenv("USERPROFILE", str(isolated_home))
+    config = UserConfig()
+    config.set("directories.base_dir", str(tmp_path / "grammar-state"))
+    retained = DirectoryManager(config).create_structure()["grammars"] / "service.py"
+    retained.write_bytes(source)
+
+    def fail(*args, **kwargs):
+        raise OSError("simulated storage failure")
+
+    runner = CliRunner()
+    for target, name, command, answer, message in (
+        (UserConfig, "backup", ["reset"], "y\n", "Failed to reset"),
+        (UserConfig, "get_all", ["validate"], None, "Configuration validation failed"),
+        (CacheManager, "auto_cleanup", ["cleanup", "auto"], None, "Failed to cleanup"),
+    ):
+        with monkeypatch.context() as patch:
+            patch.setattr(target, name, fail)
+            result = runner.invoke(config_cli, command, input=answer)
+        assert result.exit_code == 1, (command, result.output)
+        assert message in result.output
+
+    with monkeypatch.context() as patch:
+        patch.setattr(CacheManager, "get_cache_info", lambda self: {})
+        missing_info = runner.invoke(config_cli, ["cache-info"])
+        invalid_status = runner.invoke(config_cli, ["validate"])
+    assert missing_info.exit_code == 1, missing_info.output
+    assert "Failed to retrieve cache information" in missing_info.output
+    assert invalid_status.exit_code == 1, invalid_status.output
+    assert "Failed to retrieve cache information" in invalid_status.output
+
+    with monkeypatch.context() as patch:
+        patch.setattr(DirectoryManager, "verify_structure", lambda self: {})
+        missing_dirs = runner.invoke(config_cli, ["dirs"])
+        invalid_structure = runner.invoke(config_cli, ["validate"])
+    assert missing_dirs.exit_code == 1, missing_dirs.output
+    assert "Failed to inspect directory structure" in missing_dirs.output
+    assert invalid_structure.exit_code == 1, invalid_structure.output
+    assert "Failed to inspect directory structure" in invalid_structure.output
+
+    with monkeypatch.context() as patch:
+        patch.setattr(DirectoryManager, "get_disk_usage", lambda self: {})
+        missing_usage = runner.invoke(config_cli, ["dirs"])
+    assert missing_usage.exit_code == 1, missing_usage.output
+    assert "Failed to inspect directory usage" in missing_usage.output
+
+    original_create = DirectoryManager.create_structure
+    calls = 0
+
+    def fail_second_create(self):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return original_create(self)
+        raise OSError("simulated storage failure")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(DirectoryManager, "create_structure", fail_second_create)
+        failed_create = runner.invoke(config_cli, ["create-dirs"])
+    assert calls == 2
+    assert failed_create.exit_code == 1, failed_create.output
+    assert "Failed to create directory structure" in failed_create.output
+    assert retained.read_bytes() == source
+    assert not parser.parse(retained.read_bytes()).root_node.has_error
