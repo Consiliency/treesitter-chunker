@@ -443,14 +443,26 @@ class UserConfig:
         try:
             backups_dir = self.config_dir / "backups"
             backups_dir.mkdir(exist_ok=True)
+            if backups_dir.is_symlink():
+                raise ValueError("Backup directory must not be a symlink")
 
             if backup_name is None:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 backup_name = f"config_backup_{timestamp}.json"
-            elif not backup_name.endswith(".json"):
-                backup_name += ".json"
+            else:
+                if (
+                    not backup_name
+                    or backup_name in {".", ".."}
+                    or "/" in backup_name
+                    or "\\" in backup_name
+                ):
+                    raise ValueError("Backup name must be a filename")
+                if not backup_name.endswith(".json"):
+                    backup_name += ".json"
 
             backup_path = backups_dir / backup_name
+            if backup_path.resolve().parent != backups_dir.resolve():
+                raise ValueError("Backup name resolves outside backup directory")
 
             # Copy current config to backup location
             shutil.copy2(self.config_path, backup_path)

@@ -445,6 +445,75 @@ def test_config_backup_cleanup_keeps_newest_json_backups_and_grammar(
     assert not isolated_home.exists()
 
 
+def test_config_backup_rejects_path_escape_and_preserves_outside_file(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source = FIXTURE.read_bytes()
+    parser = get_parser("python")
+    assert not parser.parse(source).root_node.has_error
+    isolated_home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(isolated_home))
+    monkeypatch.setenv("USERPROFILE", str(isolated_home))
+
+    config = UserConfig(tmp_path / "settings" / "config.json")
+    outside = tmp_path / "outside.json"
+    outside.write_bytes(source)
+    original_config = config.config_path.read_bytes()
+    for name in ("../../outside", "../outside", str(outside), r"..\..\outside", ""):
+        with pytest.raises(ValueError, match="Backup name"):
+            config.backup(name)
+        assert outside.read_bytes() == source
+        assert config.config_path.read_bytes() == original_config
+
+    backup = config.backup("safe")
+    assert backup == config.config_dir / "backups" / "safe.json"
+    assert backup.read_bytes() == original_config
+    assert not parser.parse(outside.read_bytes()).root_node.has_error
+    assert not isolated_home.exists()
+
+
+def test_config_backup_rejects_symlink_to_outside_file(tmp_path: Path) -> None:
+    source = FIXTURE.read_bytes()
+    parser = get_parser("python")
+    assert not parser.parse(source).root_node.has_error
+    config = UserConfig(tmp_path / "settings" / "config.json")
+    outside = tmp_path / "outside.json"
+    outside.write_bytes(source)
+    linked_backup = config.config_dir / "backups" / "linked.json"
+    linked_backup.parent.mkdir()
+    try:
+        linked_backup.symlink_to(outside)
+    except OSError:
+        pytest.skip("File symlinks are unavailable on this platform")
+
+    with pytest.raises(ValueError, match="Backup name resolves outside"):
+        config.backup("linked")
+    assert outside.read_bytes() == source
+    assert not parser.parse(outside.read_bytes()).root_node.has_error
+
+
+def test_config_backup_rejects_symlinked_backup_directory(tmp_path: Path) -> None:
+    source = FIXTURE.read_bytes()
+    parser = get_parser("python")
+    assert not parser.parse(source).root_node.has_error
+    config = UserConfig(tmp_path / "settings" / "config.json")
+    outside_dir = tmp_path / "outside"
+    outside_dir.mkdir()
+    outside = outside_dir / "safe.json"
+    outside.write_bytes(source)
+    try:
+        (config.config_dir / "backups").symlink_to(
+            outside_dir, target_is_directory=True
+        )
+    except OSError:
+        pytest.skip("Directory symlinks are unavailable on this platform")
+
+    with pytest.raises(ValueError, match="Backup directory"):
+        config.backup("safe")
+    assert outside.read_bytes() == source
+    assert not parser.parse(outside.read_bytes()).root_node.has_error
+
+
 def test_directory_usage_counts_parseable_nested_files_without_creating_missing_dirs(
     tmp_path: Path, monkeypatch
 ) -> None:
