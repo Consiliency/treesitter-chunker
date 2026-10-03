@@ -167,7 +167,10 @@ def test_click_fetch_unknown_language_suggests_source_without_running_git(
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setenv("USERPROFILE", str(home))
 
+    attempted_commands = []
+
     def forbid_command(*args, **kwargs):
+        attempted_commands.append((args, kwargs))
         raise AssertionError("unknown grammar must not run a command")
 
     monkeypatch.setattr(subprocess, "run", forbid_command)
@@ -181,6 +184,7 @@ def test_click_fetch_unknown_language_suggests_source_without_running_git(
     assert "No known source for 'pyth' grammar" in result.output
     assert "Did you mean one of these?" in result.output
     assert "• python" in result.output
+    assert attempted_commands == []
     assert list((cache_dir / "grammars" / "user").iterdir()) == []
     assert not parser.parse(source).root_node.has_error
     assert not home.exists()

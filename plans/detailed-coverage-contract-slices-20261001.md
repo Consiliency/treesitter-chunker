@@ -174,6 +174,22 @@ classification; slice 38 covers a distinct compatibility database export and
 import contract. Live in-memory selection remaining stale after import is a
 separate defect filed as treesitter-chunker#246.
 
+Remeasurement on clean `main` at `afed17fc` before slice 38 used the same
+representative command: 3,553 passed, 4 skipped; 29,059 of 40,024 statements
+executed (72.6039%), 10,965 missed. The private report is
+`/home/viperjuice/workspace/tmp/treesitter-69-slice38/coverage.json`, SHA-256
+`891104fb9c109d7a999e9e7937c8b71f32ade03892501e3b9e33f072ccf2b573`.
+
+Remeasurement on clean `main` at `28774c09` before slice 39 had 3,554 passed,
+4 skipped, and one existing load-sensitive failure in treesitter-chunker#123:
+five SQLite lock errors caused the small-files test to count 995 of 1,000
+chunks. Its isolated rerun passed. Diagnostic coverage was 29,115 of 40,030
+statements executed (72.7330%), 10,915 missed. The private report is
+`/home/viperjuice/workspace/tmp/treesitter-69-slice39/coverage.json`, SHA-256
+`1d9eee8af5228d7d12e4d1fbc74b99d9ae40e5ecd1a839e5015f75f05e217478`.
+`interfaces/stubs.py` remains the sole wholly uncovered module (137/137);
+the largest remaining gap is `grammar_management/cli.py` (617/1,216).
+
 The table ranks **every zero-covered module first**, then the largest remaining
 individual gaps. Risk is the possible consequence of an untested contract, not
 an assertion that the module is in active production use. H means a parser,
