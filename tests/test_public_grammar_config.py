@@ -79,6 +79,44 @@ def test_config_has_distinguishes_present_null_and_missing_keys(
     assert not isolated_home.exists()
 
 
+@pytest.mark.parametrize("invalid_file", [False, True])
+def test_config_reset_restores_nested_defaults_after_edits(
+    tmp_path: Path, monkeypatch, invalid_file: bool
+) -> None:
+    parser = get_parser("python")
+    source = FIXTURE.read_bytes()
+    assert not parser.parse(source).root_node.has_error
+    isolated_home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(isolated_home))
+    monkeypatch.setenv("USERPROFILE", str(isolated_home))
+
+    config_path = tmp_path / "settings" / "config.json"
+    if invalid_file:
+        config_path.parent.mkdir()
+        config_path.write_text("{", encoding="utf-8")
+    config = UserConfig(config_path)
+    default_size = config.get("cache.max_size_mb")
+    default_root = config.get("directories.base_dir")
+    grammar_root = tmp_path / "grammar-state"
+    config.set("cache.max_size_mb", default_size + 1)
+    config.set("cache.note", None)
+    config.set("directories.base_dir", str(grammar_root))
+    grammar_dir = DirectoryManager(config).create_structure()["grammars"]
+    retained = grammar_dir / "service.py"
+    retained.write_bytes(source)
+
+    config.reset_to_defaults()
+    assert config.get("cache.max_size_mb") == default_size
+    assert config.get("directories.base_dir") == default_root
+    assert not config.has("cache.note")
+    reloaded = UserConfig(config_path)
+    assert reloaded.get("cache.max_size_mb") == default_size
+    assert reloaded.get("directories.base_dir") == default_root
+    assert not reloaded.has("cache.note")
+    assert not parser.parse(retained.read_bytes()).root_node.has_error
+    assert not isolated_home.exists()
+
+
 def test_config_backup_restores_saved_settings_and_keeps_pre_restore_copy(
     tmp_path: Path, monkeypatch
 ) -> None:
