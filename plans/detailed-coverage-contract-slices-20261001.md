@@ -79,7 +79,7 @@ limit, and automatic-cleanup information as one observable contract.
 Remeasurement on merged `main` at `a1071ca7` used the same representative
 command with private workspace temporary and coverage data: 3,522 passed,
 4 skipped, and one known load-sensitive timing failure in
-treesitter-chunker#130 (10.41 seconds against a 10-second limit); 28,567 of
+treesitter-chunker#130 (10.41 ms per operation against a 10 ms limit); 28,567 of
 39,999 statements executed (71.4193%), 11,432 missed. The report is
 `/home/viperjuice/workspace/tmp/treesitter-69-slice28/coverage.json`.
 Grammar configuration still has 402 of 773 statements uncovered, so slice 28
