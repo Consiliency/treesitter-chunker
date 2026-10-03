@@ -113,6 +113,34 @@ def test_build_verifier_requires_conda_package_payload(tmp_path, include_package
     assert report["errors"] == []
 
 
+@pytest.mark.parametrize("include_package", [False, True])
+def test_build_verifier_recognizes_versioned_python_site_packages(
+    tmp_path, include_package
+):
+    source = FIXTURE.read_bytes()
+    assert not get_parser("python").parse(source).root_node.has_error
+
+    payload = "lib/python3.13/site-packages/chunker/service.py"
+    entries = [
+        ("info/index.json", json.dumps({"platform": "linux"}).encode("utf-8")),
+        ("info/files", (payload + "\n").encode("utf-8")),
+    ]
+    if include_package:
+        entries.append((payload, source))
+
+    archive = tmp_path / "versioned.tar.bz2"
+    with tarfile.open(archive, "w:bz2") as tar:
+        for name, data in entries:
+            member = tarfile.TarInfo(name)
+            member.size = len(data)
+            tar.addfile(member, io.BytesIO(data))
+
+    valid, report = BuildSystem().verify_build(archive, "linux")
+    assert valid is include_package
+    assert report["components"]["package"] is include_package
+    assert report["missing"] == ([] if include_package else ["package"])
+
+
 @pytest.mark.parametrize(
     ("requested_platform", "index", "expected_valid", "expected_match"),
     [

@@ -4,6 +4,7 @@ Build System implementation for cross-platform grammar compilation
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import tarfile
@@ -671,14 +672,20 @@ Summary: Tree-sitter based code chunking library""",
                 report["components"]["recipe"] = has_recipe
 
                 # Check for package files
-                lib_dir = extract_dir / "lib" / "python" / "site-packages"
-                site_packages = extract_dir / "site-packages"
+                site_packages_dirs = [
+                    extract_dir / "site-packages",
+                    extract_dir / "lib" / "python" / "site-packages",
+                ]
+                site_packages_dirs.extend(
+                    python_dir / "site-packages"
+                    for python_dir in (extract_dir / "lib").glob("python*")
+                    if re.fullmatch(r"python\d+\.\d+", python_dir.name)
+                )
 
-                has_package = (
-                    (lib_dir / "chunker").exists()
-                    or (lib_dir / "treesitter_chunker").exists()
-                    or (site_packages / "chunker").exists()
-                    or (site_packages / "treesitter_chunker").exists()
+                has_package = any(
+                    (site_packages / package).exists()
+                    for site_packages in site_packages_dirs
+                    for package in ("chunker", "treesitter_chunker")
                 )
 
                 report["components"]["package"] = has_package
