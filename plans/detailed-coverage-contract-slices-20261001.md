@@ -371,6 +371,24 @@ The private JSON report is
 | 7 | `languages/compatibility/database.py` | 185 / 386 | H |
 | 8 | `languages/compatibility/schema.py` | 181 / 407 | H |
 
+Remeasurement on clean `main` at `f36c0e67` before slice 52 used the full
+suite with coverage and a private workspace temporary directory: 3,596 passed,
+4 skipped; 29,577 of 40,202 statements executed (73.5710%), 10,625 missed.
+The private JSON report is
+`/home/viperjuice/workspace/tmp/treesitter-69-slice52/coverage.json`, SHA-256
+`6ca38d8bdb559bd5f4d06d07628600242b152827ec849f7e68ece643167b9676`.
+
+| Current rank | Module (`chunker/` prefix omitted) | Missed / statements | Risk |
+| ---: | --- | ---: | :---: |
+| 1 | `interfaces/stubs.py` | 137 / 137 (zero covered) | M |
+| 2 | `grammar_management/cli.py` | 563 / 1,219 | H |
+| 3 | `grammar_management/testing.py` | 421 / 563 | L |
+| 4 | `grammar_management/core.py` | 398 / 736 | H |
+| 5 | `grammar_management/compatibility.py` | 380 / 834 | M |
+| 6 | `build/builder.py` | 254 / 332 | H |
+| 7 | `languages/compatibility/database.py` | 185 / 386 | H |
+| 8 | `languages/compatibility/schema.py` | 181 / 407 | H |
+
 The table ranks **every zero-covered module first**, then the largest remaining
 individual gaps. Risk is the possible consequence of an untested contract, not
 an assertion that the module is in active production use. H means a parser,
@@ -478,6 +496,7 @@ with the original source restored before committing.
 | 49 — recursive grammar cleanup fallback | `grammar_management/cli.py` `grammar cleanup`: when optional core management is unavailable, a 25-day-old download directory containing source is removed recursively, a recent build fixture remains parseable, and the public command reports one removal and only the changed directory without writing to the isolated home. | Parse the checked-in Python service fixture from the stale directory, then invoke the public Click command with a 20-day cutoff and parse the preserved recent fixtures. Mutation **skip recursive directory removal** must fail because the stale directory remains. Extend the existing fallback CLI contract test as an independent parameter case. |
 | 50 — safe tar extraction | `build/builder.py` `_safe_extract_tar`: a nested ordinary Python source file is extracted byte-for-byte and remains parseable, while POSIX absolute and Windows drive-qualified members are rejected before any archive member is written. | Create tar archives from the checked-in Python service fixture and parse it with the pinned parser before and after valid extraction. Mutation **accept Windows drive-qualified members** must fail because the unsafe archive is no longer rejected. Extend the existing tar extraction contract tests; file any production defect separately. |
 | 51 — Conda package presence | `build/builder.py` `BuildSystem.verify_build`: a Conda-style tar archive with index, file manifest, and parseable Python source under the recipe's noarch `site-packages/` path reports valid with all required components; the same archive without a package payload reports invalid with `package` missing. Platform-mismatch validity and versioned platform-specific package paths are separate defects in treesitter-chunker#300 and treesitter-chunker#302. | Build temporary tar.bz2 archives from the checked-in Python service fixture and parse that payload with the pinned parser. Mutation **omit package presence from artifact validity** must fail because the metadata-only archive is accepted. Extend the tar/build contract tests; keep the product fixes separate. |
+| 52 — compatibility database backup | `languages/compatibility/database.py` `CompatibilityDatabase.backup_database`: a backup captures committed Python language and grammar records, remains selectable after reopening as its own database, excludes records added afterward, and leaves the live database usable. Restoring a valid backup without refreshing the live selection schema is a separate defect in treesitter-chunker#303. | Parse the checked-in Python service fixture with the pinned parser, then use temporary SQLite files and the exported database API. Mutation **skip the backup file copy** must fail because no saved snapshot exists. Extend the existing language compatibility records contract tests; keep restore repair separate. |
 
 `interfaces/stubs.py` remains in the ranked inventory but is not promoted into
 a coverage slice until its consumer contract is confirmed. The node explorer

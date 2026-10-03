@@ -73,6 +73,36 @@ def test_constraints_and_rules_survive_sqlite_reopen(tmp_path: Path) -> None:
         )
 
 
+def test_backup_keeps_persisted_selection_and_live_database_usable(
+    tmp_path: Path,
+) -> None:
+    assert not get_parser("python").parse(FIXTURE.read_bytes()).root_node.has_error
+
+    language = LanguageVersion("python", "3.11")
+    grammar = GrammarVersion("python", "1.0", "python.so")
+    db_path = tmp_path / "compatibility.db"
+    backup_path = tmp_path / "backup.db"
+
+    with CompatibilityDatabase(db_path) as database:
+        assert database.add_language_version(language)
+        assert database.add_grammar_version(grammar)
+        assert database.find_compatible_grammar(language) == grammar
+        database.backup_database(backup_path)
+        assert backup_path.is_file()
+        assert database.find_compatible_grammar(language) == grammar
+        assert database.add_language_version(LanguageVersion("rust", "2021"))
+
+    with CompatibilityDatabase(backup_path) as backup:
+        assert backup.get_language_versions("python") == [language]
+        assert backup.find_compatible_grammar(language) == grammar
+        assert backup.get_language_versions("rust") == []
+
+    with CompatibilityDatabase(db_path) as current:
+        assert current.get_language_versions("rust") == [
+            LanguageVersion("rust", "2021")
+        ]
+
+
 def test_export_import_preserves_language_grammar_rules_and_breaking_changes(
     tmp_path: Path,
 ) -> None:
