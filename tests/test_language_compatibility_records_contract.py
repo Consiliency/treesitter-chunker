@@ -118,14 +118,32 @@ def test_export_import_preserves_language_grammar_rules_and_breaking_changes(
     assert exported["breaking_changes"][0]["description"] == ("Changed pattern syntax")
 
     destination_path = tmp_path / "destination.db"
+    old_language = LanguageVersion("rust", "2021", features=["edition2021"])
+    old_grammar = GrammarVersion(
+        "rust", "1.0", "rust.so", supported_features=["edition2021"]
+    )
+    old_rule = CompatibilityRule(
+        "rust", ">=2021", "1.0", CompatibilityLevel.INCOMPATIBLE
+    )
+    old_breaking = BreakingChange(
+        "rust", "0.9", "1.0", "syntax", "Old Rust syntax", "high"
+    )
     with CompatibilityDatabase(destination_path) as destination:
-        assert destination.add_language_version(LanguageVersion("rust", "2021"))
+        assert destination.add_language_version(old_language)
+        assert destination.add_grammar_version(old_grammar)
+        assert destination.add_compatibility_rule(old_rule)
+        assert destination.add_breaking_change(old_breaking)
         destination.import_database(export_path)
 
     with CompatibilityDatabase(destination_path) as reopened:
         assert reopened.get_language_versions("python") == [python]
         assert reopened.get_language_versions("javascript") == [javascript]
         assert reopened.get_language_versions("rust") == []
+        assert reopened.get_grammar_versions("rust") == []
+        assert reopened.get_compatibility_level(old_language, old_grammar) == (
+            CompatibilityLevel.FULLY_COMPATIBLE
+        )
+        assert reopened.get_breaking_changes("rust", "0.9", "1.0") == []
         assert reopened.get_grammar_versions("python") == [python_grammar]
         assert reopened.get_grammar_versions("javascript") == [javascript_grammar]
         assert reopened.get_compatibility_level(python, python_grammar) == (
