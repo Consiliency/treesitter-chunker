@@ -101,6 +101,16 @@ def test_backup_keeps_persisted_selection_and_live_database_usable(
         assert current.get_language_versions("rust") == [
             LanguageVersion("rust", "2021")
         ]
+        with pytest.raises(FileNotFoundError):
+            current.restore_database(tmp_path / "missing.db")
+        assert current.find_compatible_grammar(language) == grammar
+
+        current.restore_database(backup_path)
+        assert current.get_language_versions("python") == [language]
+        assert current.get_language_versions("rust") == []
+        assert current.find_compatible_grammar(language) == grammar
+        assert current.add_language_version(LanguageVersion("go", "1.22"))
+        assert current.get_language_versions("go") == [LanguageVersion("go", "1.22")]
 
 
 def test_export_import_preserves_language_grammar_rules_and_breaking_changes(

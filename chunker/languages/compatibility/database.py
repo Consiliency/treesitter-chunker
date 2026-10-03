@@ -981,8 +981,8 @@ class CompatibilityDatabase:
             self._conn = sqlite3.connect(str(self.db_path))
             self._conn.row_factory = sqlite3.Row
 
-            # Reinitialize schema
-            self.schema = CompatibilitySchema()
+            # Reload the restored records for live selection.
+            self._load_schema()
 
             logger.info(f"Database restored from {backup_path}")
 
