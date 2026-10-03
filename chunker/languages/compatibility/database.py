@@ -1007,7 +1007,7 @@ class CompatibilityDatabase:
             self._conn.close()
             self._conn = None
 
-    def __del__(self):
+    def __del__(self) -> None:
         """Clean up database connection."""
         self.close()
 
