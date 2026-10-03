@@ -256,7 +256,7 @@ class UserConfig:
             override: dict[str, Any],
         ) -> dict[str, Any]:
             """Recursively merge dictionaries."""
-            result = default.copy()
+            result = deepcopy(default)
 
             for key, value in override.items():
                 if (
