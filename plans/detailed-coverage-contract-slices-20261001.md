@@ -311,6 +311,27 @@ data: 3,589 passed, 4 skipped; 29,514 of 40,201 statements executed
 | 7 | `languages/compatibility/database.py` | 185 / 386 | H |
 | 8 | `languages/compatibility/schema.py` | 181 / 407 | H |
 
+Remeasurement on clean `main` at `8b2280bd` before slice 49 used the full
+suite with coverage and a private workspace temporary directory: 3,589 passed,
+4 skipped, and one timing-sensitive integration failure in
+`tests/test_performance_advanced.py::TestConcurrentPerformance::test_thread_safety_performance`
+(10.53 ms per operation versus its 10 ms limit). The failed test passed when
+rerun alone without coverage. Coverage was 29,530 of 40,202 statements executed
+(73.4541%), 10,672 missed. The private JSON report is
+`/home/viperjuice/workspace/tmp/treesitter-69-slice49/coverage.json`, SHA-256
+`6dfdd24330c61f52b17eb94349d6b0809f1a76bed971b0d46389270b4354fef4`.
+
+| Current rank | Module (`chunker/` prefix omitted) | Missed / statements | Risk |
+| ---: | --- | ---: | :---: |
+| 1 | `interfaces/stubs.py` | 137 / 137 (zero covered) | M |
+| 2 | `grammar_management/cli.py` | 567 / 1,219 | H |
+| 3 | `grammar_management/testing.py` | 421 / 563 | L |
+| 4 | `grammar_management/core.py` | 398 / 736 | H |
+| 5 | `grammar_management/compatibility.py` | 380 / 834 | M |
+| 6 | `build/builder.py` | 298 / 332 | H |
+| 7 | `languages/compatibility/database.py` | 185 / 386 | H |
+| 8 | `languages/compatibility/schema.py` | 181 / 407 | H |
+
 The table ranks **every zero-covered module first**, then the largest remaining
 individual gaps. Risk is the possible consequence of an untested contract, not
 an assertion that the module is in active production use. H means a parser,
@@ -415,6 +436,7 @@ with the original source restored before committing.
 | 46 — grammar list JSON filter | `grammar_management/cli.py` `ComprehensiveGrammarCLI.list_grammars`: the exported list API filters discovered local grammar names case-insensitively and emits only the matching entry as parseable JSON; a miss returns an error without changing isolated home state. | Parse the checked-in Python and JavaScript service fixtures with pinned parsers, install two local library candidates under a temporary cache, and call the exported API without mocking its discovery. Mutation **ignore the language filter** must fail because the JSON contains both entries. Extend the public grammar CLI contract test; file unrelated defects separately. |
 | 47 — validator cache replacement | `grammar_management/core.py` `GrammarValidator.validate_grammar`: an empty local grammar reports invalid, and replacing that path with the pinned working Python grammar produces a valid standard result in the same validator and after cache reload. | Parse the checked-in Python service fixture with the real compiled grammar, replace an invalid temporary candidate with that grammar, and inspect exported validation results. Mutation **omit file metadata from the validation cache key** must fail because the old invalid result is reused. Extend the public validator contract test; keep production defects separate. |
 | 48 — grammar cleanup fallback | `grammar_management/cli.py` `grammar cleanup`: when optional core grammar management is unavailable, a requested 20-day cutoff removes a 25-day-old local download, preserves a 15-day-old one, reports one removal, and leaves the isolated home untouched. The inaccurate report for a later untouched directory is a separate defect in treesitter-chunker#295. | Parse the checked-in Python service fixture before and after invoking the public Click command against a temporary cache with core component availability disabled. Mutation **reverse the fallback age comparison** must fail because the stale fixture remains. Extend the public grammar CLI contract test. |
+| 49 — recursive grammar cleanup fallback | `grammar_management/cli.py` `grammar cleanup`: when optional core management is unavailable, a 25-day-old download directory containing source is removed recursively, a recent build fixture remains parseable, and the public command reports one removal and only the changed directory without writing to the isolated home. | Parse the checked-in Python service fixture from the stale directory, then invoke the public Click command with a 20-day cutoff and parse the preserved recent fixtures. Mutation **skip recursive directory removal** must fail because the stale directory remains. Extend the existing fallback CLI contract test as an independent parameter case. |
 
 `interfaces/stubs.py` remains in the ranked inventory but is not promoted into
 a coverage slice until its consumer contract is confirmed. The node explorer
