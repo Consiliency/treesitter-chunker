@@ -349,17 +349,18 @@ class ComprehensiveGrammarCLI:
                 continue
 
             # Find .so files
-            for so_file in search_path.glob("tree_sitter_*.so"):
-                language = so_file.stem.replace("tree_sitter_", "")
-                if language not in grammars:
-                    grammars[language] = {
-                        "language": language,
-                        "path": str(so_file),
-                        "source": source,
-                        "priority": priority,
-                        "status": self._check_grammar_status(so_file),
-                        "type": "compiled",
-                    }
+            for prefix in ("lib", "tree_sitter_"):
+                for so_file in search_path.glob(f"{prefix}*.so"):
+                    language = so_file.stem[len(prefix) :]
+                    if language not in grammars:
+                        grammars[language] = {
+                            "language": language,
+                            "path": str(so_file),
+                            "source": source,
+                            "priority": priority,
+                            "status": self._check_grammar_status(so_file),
+                            "type": "compiled",
+                        }
 
             # Find source directories
             if search_path.is_dir():

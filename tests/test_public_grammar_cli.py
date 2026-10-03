@@ -159,6 +159,48 @@ def test_click_validate_local_missing_and_invalid_grammars(
     assert not isinstance(invalid.exception, TypeError)
 
 
+def test_click_bulk_validate_discovers_both_compiled_names_with_priority(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source = FIXTURE.read_bytes()
+    assert not get_parser("python").parse(source).root_node.has_error
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "home"))
+
+    cache_dir = tmp_path / "grammar-cache"
+    user_dir = cache_dir / "grammars" / "user"
+    package_dir = cache_dir / "grammars" / "package"
+    fallback_dir = cache_dir / "grammars" / "build"
+    user_dir.mkdir(parents=True)
+    package_dir.mkdir(parents=True)
+    fallback_dir.mkdir(parents=True)
+    (user_dir / "libpython.so").touch()
+    (user_dir / "tree_sitter_python.so").write_bytes(b"not a library")
+    (package_dir / "tree_sitter_python.so").write_bytes(b"not a library")
+    (package_dir / "libjavascript.so").touch()
+    (fallback_dir / "libgo.so").touch()
+
+    grammar_src = Path(__file__).parent.parent / "packages/baml-grammar"
+    baml_dir = user_dir / "baml"
+    (baml_dir / "src").mkdir(parents=True)
+    shutil.copyfile(grammar_src / "src/grammar.js", baml_dir / "grammar.js")
+    shutil.copyfile(grammar_src / "src/parser.c", baml_dir / "src/parser.c")
+
+    result = CliRunner().invoke(
+        grammar_cli, ["--cache-dir", str(cache_dir), "validate"]
+    )
+    assert result.exit_code == 1, result.output
+    assert "Validating 4 grammar(s)" in result.output
+    assert "baml: healthy" in result.output
+    assert "python: corrupted" in result.output
+    assert "javascript: corrupted" in result.output
+    assert "go: corrupted" in result.output
+    assert result.output.count("Grammar file is empty") == 3
+    assert "Valid: 1" in result.output
+    assert "Invalid: 3" in result.output
+    assert not (tmp_path / "home").exists()
+
+
 def test_click_exports_selected_local_grammar(tmp_path: Path, monkeypatch) -> None:
     tree = get_parser("python").parse(FIXTURE.read_bytes())
     assert tree.root_node.type == "module"
