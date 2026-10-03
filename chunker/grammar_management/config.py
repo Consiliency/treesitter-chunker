@@ -34,6 +34,7 @@ validation, and comprehensive functionality as specified in Phase 1.8.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 import json
 import logging
 import os
@@ -50,7 +51,7 @@ import click
 logger = logging.getLogger(__name__)
 
 
-def _walk_files(root: Path):
+def _walk_files(root: Path) -> Iterator[Path]:
     """Yield files while surfacing directory scan failures."""
 
     def onerror(error: OSError) -> None:
