@@ -161,6 +161,54 @@ def test_config_partial_merge_does_not_alias_mutable_defaults(
     assert not isolated_home.exists()
 
 
+def test_config_import_merge_preserves_omitted_settings_and_replace_drops_them(
+    tmp_path: Path, monkeypatch
+) -> None:
+    parser = get_parser("python")
+    source = FIXTURE.read_bytes()
+    assert not parser.parse(source).root_node.has_error
+    isolated_home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(isolated_home))
+    monkeypatch.setenv("USERPROFILE", str(isolated_home))
+
+    config_path = tmp_path / "settings" / "config.json"
+    grammar_root = tmp_path / "grammar-state"
+    config = UserConfig(config_path)
+    config.set("directories.base_dir", str(grammar_root))
+    config.set("cache.max_size_mb", 64)
+    config.set("cache.auto_cleanup", False)
+    retained = DirectoryManager(config).create_structure()["grammars"] / "service.py"
+    retained.write_bytes(source)
+
+    import_path = tmp_path / "partial.json"
+    imported = {
+        "cache": {"max_age_days": 45},
+        "directories": {},
+        "grammar": {},
+        "logging": {"level": "WARNING"},
+    }
+    import_path.write_text(json.dumps(imported), encoding="utf-8")
+    config.import_config(import_path, merge=True)
+    assert config.get("cache.max_size_mb") == 64
+    assert config.get("cache.auto_cleanup") is False
+    assert config.get("cache.max_age_days") == 45
+    assert config.get("logging.level") == "WARNING"
+    assert config.get("directories.base_dir") == str(grammar_root)
+    reloaded = UserConfig(config_path)
+    assert reloaded.get("cache.max_size_mb") == 64
+    assert reloaded.get("cache.max_age_days") == 45
+    assert reloaded.get("directories.base_dir") == str(grammar_root)
+
+    config.import_config(import_path, merge=False)
+    assert not config.has("cache.max_size_mb")
+    assert json.loads(config_path.read_text(encoding="utf-8"))["cache"] == {
+        "max_age_days": 45
+    }
+    assert retained.read_bytes() == source
+    assert not parser.parse(retained.read_bytes()).root_node.has_error
+    assert not isolated_home.exists()
+
+
 def test_config_backup_restores_saved_settings_and_keeps_pre_restore_copy(
     tmp_path: Path, monkeypatch
 ) -> None:
