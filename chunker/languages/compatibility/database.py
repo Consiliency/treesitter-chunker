@@ -746,20 +746,31 @@ class CompatibilityDatabase:
         Args:
             input_path: Path to the import file
         """
+        previous_schema = self.schema
         try:
             input_path = Path(input_path)
 
             with open(input_path) as f:
                 import_data = json.load(f)
 
-            # Clear existing data
+            required_tables = (
+                "language_versions",
+                "grammar_versions",
+                "compatibility_rules",
+                "breaking_changes",
+            )
+            if not isinstance(import_data, dict) or any(
+                not isinstance(import_data.get(table), list)
+                for table in required_tables
+            ):
+                raise ValueError("Import requires all four record arrays")
+
             cursor = self.conn.cursor()
             cursor.execute("DELETE FROM language_versions")
             cursor.execute("DELETE FROM grammar_versions")
             cursor.execute("DELETE FROM compatibility_rules")
             cursor.execute("DELETE FROM breaking_changes")
 
-            # Import language versions
             for data in import_data.get("language_versions", []):
                 cursor.execute(
                     """
@@ -778,7 +789,6 @@ class CompatibilityDatabase:
                     ),
                 )
 
-            # Import grammar versions
             for data in import_data.get("grammar_versions", []):
                 cursor.execute(
                     """
@@ -799,7 +809,6 @@ class CompatibilityDatabase:
                     ),
                 )
 
-            # Import compatibility rules
             for data in import_data.get("compatibility_rules", []):
                 cursor.execute(
                     """
@@ -818,7 +827,6 @@ class CompatibilityDatabase:
                     ),
                 )
 
-            # Import breaking changes
             for data in import_data.get("breaking_changes", []):
                 cursor.execute(
                     """
@@ -840,12 +848,14 @@ class CompatibilityDatabase:
                     ),
                 )
 
+            self._load_schema()
             self.conn.commit()
             logger.info(f"Imported database from {input_path}")
 
         except Exception as e:
             logger.error(f"Error importing database: {e}")
             self.conn.rollback()
+            self.schema = previous_schema
             raise
 
     def validate_database(self) -> list[str]:
