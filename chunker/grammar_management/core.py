@@ -1327,13 +1327,10 @@ class GrammarRegistry:
         if not directory.exists():
             return
 
-        # Look for .so files
-        for grammar_file in directory.glob("lib*.so"):
-            # Extract language name from filename
-            filename = grammar_file.stem
-            if filename.startswith("lib"):
-                language = filename[3:]  # Remove "lib" prefix
-
+        # Look for supported compiled grammar filenames
+        for prefix in ("lib", "tree_sitter_"):
+            for grammar_file in directory.glob(f"{prefix}*.so"):
+                language = grammar_file.stem[len(prefix) :]
                 if language not in grammars:
                     grammars[language] = []
 
