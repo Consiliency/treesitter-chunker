@@ -1,5 +1,7 @@
 """Unit tests for symbol resolvers."""
 
+from pathlib import Path
+
 import pytest
 
 from chunker.context import BaseSymbolResolver, ContextFactory
@@ -127,6 +129,29 @@ result = calculate(5, PI)
 
 class TestJavaScriptSymbolResolver:
     """Test JavaScript-specific symbol resolution."""
+
+    @staticmethod
+    def test_module_declarations_stop_at_child_scopes():
+        """Find declarations at a scope edge without leaking their body locals."""
+        fixture = (
+            Path(__file__).parents[2]
+            / "fixtures/boundary_ir/repos/javascript/service.js"
+        )
+        tree = get_parser("javascript").parse(fixture.read_bytes())
+        root = tree.root_node
+        resolver = ContextFactory.create_symbol_resolver("javascript")
+
+        renderer = resolver.find_symbol_definition("Renderer", root, root)
+        run = resolver.find_symbol_definition("run", root, root)
+        assert renderer is not None and renderer.type == "class_declaration"
+        assert run is not None and run.type == "function_declaration"
+        assert resolver.find_symbol_definition("cleaned", root, root) is None
+        assert resolver.find_symbol_definition("render", root, root) is None
+
+        method = resolver.find_symbol_definition("render", renderer, root)
+        local = resolver.find_symbol_definition("cleaned", run, root)
+        assert method is not None and method.type == "method_definition"
+        assert local is not None and local.type == "variable_declarator"
 
     @staticmethod
     @pytest.fixture
