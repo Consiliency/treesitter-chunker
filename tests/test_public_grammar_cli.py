@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner
 from chunker import get_parser
-from chunker.grammar_management import grammar_cli
+from chunker.grammar_management import ComprehensiveGrammarCLI, grammar_cli
 
 
 FIXTURE = Path(__file__).parent / "fixtures/boundary_ir/repos/python/app/service.py"
@@ -64,6 +64,41 @@ def test_click_lists_local_grammar_and_reports_missing_language(
     missing = runner.invoke(grammar_cli, [*command, "test", "missing", str(FIXTURE)])
     assert missing.exit_code == 1
     assert "Grammar for 'missing' not found" in missing.output
+
+
+def test_exported_grammar_info_json_selects_user_library(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    source = FIXTURE.read_bytes()
+    parser = get_parser("python")
+    assert not parser.parse(source).root_node.has_error
+
+    native_spec = importlib.util.find_spec("tree_sitter_language_pack._native")
+    assert native_spec is not None and native_spec.origin is not None
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    cache_dir = tmp_path / "grammar-cache"
+    user_library = cache_dir / "grammars" / "user" / "libpython.so"
+    package_library = cache_dir / "grammars" / "package" / "libpython.so"
+    user_library.parent.mkdir(parents=True)
+    package_library.parent.mkdir(parents=True)
+    shutil.copyfile(native_spec.origin, user_library)
+    shutil.copyfile(native_spec.origin, package_library)
+
+    result = ComprehensiveGrammarCLI(cache_dir=cache_dir).info_grammar("python", "json")
+    assert result == 0
+    info = json.loads(capsys.readouterr().out)
+    assert info["language"] == "python"
+    assert info["path"] == str(user_library)
+    assert info["priority"] == "USER"
+    assert info["exists"] is True
+    assert info["size"] == user_library.stat().st_size
+    assert isinstance(info["validation"]["is_valid"], bool)
+    assert isinstance(info["validation"]["errors"], list)
+    assert package_library.exists()
+    assert not parser.parse(source).root_node.has_error
+    assert not home.exists()
 
 
 def test_click_versions_reads_tags_from_configured_github_source(
