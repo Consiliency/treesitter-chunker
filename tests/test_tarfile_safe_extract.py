@@ -113,6 +113,48 @@ def test_build_verifier_requires_conda_package_payload(tmp_path, include_package
     assert report["errors"] == []
 
 
+@pytest.mark.parametrize(
+    ("requested_platform", "index", "expected_valid", "expected_match"),
+    [
+        ("win", {"platform": "linux"}, False, False),
+        ("windows", {"platform": "win"}, True, True),
+        ("macos", {"platform": "osx"}, True, True),
+        ("linux", {"platform": "linux"}, True, True),
+        ("linux", {}, True, None),
+        ("linux", {"platform": None, "subdir": "noarch"}, True, None),
+    ],
+)
+def test_build_verifier_rejects_declared_conda_platform_mismatch(
+    tmp_path, requested_platform, index, expected_valid, expected_match
+):
+    source = FIXTURE.read_bytes()
+    assert not get_parser("python").parse(source).root_node.has_error
+
+    payload = "site-packages/chunker/service.py"
+    entries = [
+        ("info/index.json", json.dumps(index).encode("utf-8")),
+        ("info/files", (payload + "\n").encode("utf-8")),
+        (payload, source),
+    ]
+    archive = tmp_path / "fixture.tar.bz2"
+    with tarfile.open(archive, "w:bz2") as tar:
+        for name, data in entries:
+            member = tarfile.TarInfo(name)
+            member.size = len(data)
+            tar.addfile(member, io.BytesIO(data))
+
+    valid, report = BuildSystem().verify_build(archive, requested_platform)
+    assert valid is expected_valid
+    assert report["valid"] is expected_valid
+    assert report["components"]["package"] is True
+    assert report["components"]["platform_match"] is expected_match
+    assert report["errors"] == (
+        ["Conda platform mismatch: expected win, found linux"]
+        if not expected_valid
+        else []
+    )
+
+
 def test_custom_plugin_directory_requires_explicit_trust(tmp_path):
     plugin_dir = tmp_path / "plugins"
     plugin_dir.mkdir()
