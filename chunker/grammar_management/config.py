@@ -380,7 +380,8 @@ class UserConfig:
         Returns:
             True if key exists, False otherwise
         """
-        return self.get(key, object()) is not object()
+        missing = object()
+        return self.get(key, missing) is not missing
 
     def delete(self, key: str) -> None:
         """Delete configuration key using dot notation.
