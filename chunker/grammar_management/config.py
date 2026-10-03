@@ -38,6 +38,7 @@ import json
 import logging
 import shutil
 import time
+from copy import deepcopy
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -173,7 +174,7 @@ class UserConfig:
                 logger.info(f"Configuration loaded from {self.config_path}")
             else:
                 # Create default configuration
-                self._config = self._defaults.copy()
+                self._config = deepcopy(self._defaults)
                 self._config["created"] = datetime.now().isoformat()
                 self._config["modified"] = datetime.now().isoformat()
 
@@ -185,7 +186,7 @@ class UserConfig:
         except Exception as e:
             logger.error(f"Failed to load configuration: {e}")
             # Fall back to defaults
-            self._config = self._defaults.copy()
+            self._config = deepcopy(self._defaults)
             self._config["created"] = datetime.now().isoformat()
             self._config["modified"] = datetime.now().isoformat()
 
@@ -415,7 +416,7 @@ class UserConfig:
     def reset_to_defaults(self) -> None:
         """Reset configuration to default values."""
         try:
-            self._config = self._defaults.copy()
+            self._config = deepcopy(self._defaults)
             self._config["created"] = datetime.now().isoformat()
             self._config["modified"] = datetime.now().isoformat()
 
