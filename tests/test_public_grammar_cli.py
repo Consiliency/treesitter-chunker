@@ -157,6 +157,35 @@ def test_click_versions_reports_empty_tags_and_api_failure(
     assert not isolated_home.exists()
 
 
+def test_click_fetch_unknown_language_suggests_source_without_running_git(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source = FIXTURE.read_bytes()
+    parser = get_parser("python")
+    assert not parser.parse(source).root_node.has_error
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+
+    def forbid_command(*args, **kwargs):
+        raise AssertionError("unknown grammar must not run a command")
+
+    monkeypatch.setattr(subprocess, "run", forbid_command)
+    cache_dir = tmp_path / "grammar-cache"
+    result = CliRunner().invoke(
+        grammar_cli,
+        ["--cache-dir", str(cache_dir), "fetch", "pyth"],
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "No known source for 'pyth' grammar" in result.output
+    assert "Did you mean one of these?" in result.output
+    assert "• python" in result.output
+    assert list((cache_dir / "grammars" / "user").iterdir()) == []
+    assert not parser.parse(source).root_node.has_error
+    assert not home.exists()
+
+
 def test_click_removes_listed_user_library_and_keeps_package_fallback(
     tmp_path: Path, monkeypatch
 ) -> None:
