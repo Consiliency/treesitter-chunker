@@ -1,7 +1,8 @@
-def render(value):
+def render(value=None, **kwargs):
     return value
 
 
 render("call")
-holder.render
+holder = type("Holder", (), {"render": "property"})()
+property_value = holder.render
 render(render="keyword")

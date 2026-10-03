@@ -58,7 +58,7 @@ class TestPythonSymbolResolver:
         ).find_symbol_references("render", root)
         assert [(node.parent.type, node.start_point.row) for node in references] == [
             ("call", 4),
-            ("call", 6),
+            ("call", 7),
         ]
 
     @staticmethod
