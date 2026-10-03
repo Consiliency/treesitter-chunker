@@ -55,6 +55,51 @@ def test_config_reloads_nested_cache_and_directory_settings(
     assert not isolated_home.exists()
 
 
+def test_config_backup_restores_saved_settings_and_keeps_pre_restore_copy(
+    tmp_path: Path, monkeypatch
+) -> None:
+    parser = get_parser("python")
+    source = FIXTURE.read_bytes()
+    assert not parser.parse(source).root_node.has_error
+
+    isolated_home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(isolated_home))
+    monkeypatch.setenv("USERPROFILE", str(isolated_home))
+    config_path = tmp_path / "settings" / "config.json"
+    grammar_root = tmp_path / "grammar-state"
+    changed_root = tmp_path / "changed-state"
+    config = UserConfig(config_path)
+    config.set("directories.base_dir", str(grammar_root))
+    config.set("cache.max_size_mb", 64)
+    grammar_dir = DirectoryManager(config).create_structure()["grammars"]
+    retained = grammar_dir / "service.py"
+    retained.write_bytes(source)
+
+    saved = config.backup("known")
+    assert saved == config_path.parent / "backups" / "known.json"
+    assert json.loads(saved.read_text(encoding="utf-8"))["cache"]["max_size_mb"] == 64
+
+    config.set("directories.base_dir", str(changed_root))
+    config.set("cache.max_size_mb", 128)
+    config.restore(saved)
+    reloaded = UserConfig(config_path)
+    assert reloaded.get("directories.base_dir") == str(grammar_root)
+    assert reloaded.get("cache.max_size_mb") == 64
+
+    pre_restore = json.loads(
+        (config_path.parent / "backups" / "pre_restore_backup.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert pre_restore["directories"]["base_dir"] == str(changed_root)
+    assert pre_restore["cache"]["max_size_mb"] == 128
+    with pytest.raises(FileNotFoundError):
+        config.restore(tmp_path / "missing.json")
+    assert UserConfig(config_path).get("cache.max_size_mb") == 64
+    assert not parser.parse(retained.read_bytes()).root_node.has_error
+    assert not isolated_home.exists()
+
+
 def test_directory_usage_counts_parseable_nested_files_without_creating_missing_dirs(
     tmp_path: Path, monkeypatch
 ) -> None:
