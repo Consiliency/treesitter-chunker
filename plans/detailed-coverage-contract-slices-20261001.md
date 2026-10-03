@@ -174,6 +174,22 @@ classification; slice 38 covers a distinct compatibility database export and
 import contract. Live in-memory selection remaining stale after import is a
 separate defect filed as treesitter-chunker#246.
 
+Remeasurement on clean `main` at `afed17fc` before slice 38 used the same
+representative command: 3,553 passed, 4 skipped; 29,059 of 40,024 statements
+executed (72.6039%), 10,965 missed. The private report is
+`/home/viperjuice/workspace/tmp/treesitter-69-slice38/coverage.json`, SHA-256
+`891104fb9c109d7a999e9e7937c8b71f32ade03892501e3b9e33f072ccf2b573`.
+
+Remeasurement on clean `main` at `28774c09` before slice 39 had 3,554 passed,
+4 skipped, and one existing load-sensitive failure in treesitter-chunker#123:
+five SQLite lock errors caused the small-files test to count 995 of 1,000
+chunks. Its isolated rerun passed. Diagnostic coverage was 29,115 of 40,030
+statements executed (72.7330%), 10,915 missed. The private report is
+`/home/viperjuice/workspace/tmp/treesitter-69-slice39/coverage.json`, SHA-256
+`1d9eee8af5228d7d12e4d1fbc74b99d9ae40e5ecd1a839e5015f75f05e217478`.
+`interfaces/stubs.py` remains the sole wholly uncovered module (137/137);
+the largest remaining gap is `grammar_management/cli.py` (617/1,216).
+
 The table ranks **every zero-covered module first**, then the largest remaining
 individual gaps. Risk is the possible consequence of an untested contract, not
 an assertion that the module is in active production use. H means a parser,
@@ -268,6 +284,7 @@ with the original source restored before committing.
 | 36 — grammar versions fallback | `grammar_management/cli.py` `versions`: an empty tags response reports no tagged versions and suggests the development branch; an API refusal reports the failure and common branch hints while preserving the public command's successful fallback and leaving home untouched. | Parse the checked-in Python fixture with the pinned parser; stub only the external HTTP response while invoking the public Click command. Mutation **drop HTTP failure fallback** (catch only `ValueError` instead of the HTTP error) must fail. Extend the existing grammar CLI contract test file. |
 | 37 — grammar error pattern analysis | `grammar_management/compatibility.py` `GrammarTester.analyze_error_patterns`: one valid Python fixture and two malformed variants report one successful parse, two syntax failures, a two-thirds failure rate, and the ranked error category without writing to home. | Parse the checked-in Python fixture and malformed variants with the pinned parser; pass those same sources through the real validator and tester in isolated temporary directories. Mutation **count failed parses as successes** must fail. Extend the existing grammar compatibility contract test file. |
 | 38 — compatibility database JSON transfer | `languages/compatibility/database.py` `export_database` and `import_database`: a JSON export contains Python and JavaScript language and grammar versions, a Python compatibility rule, and a breaking change; importing it replaces prior records and preserves those relationships after reopening. The live-schema defect is treesitter-chunker#246 and remains outside this slice. | Parse checked-in Python and JavaScript fixtures with pinned parsers before writing representative records to temporary SQLite databases. Mutation **omit compatibility rules from export** must fail. Extend the existing language compatibility records contract test file. |
+| 39 — unknown grammar fetch | `grammar_management/cli.py` `fetch`: a misspelled, unsupported language fails without running Git, suggests the configured Python source, and does not install files or write to the isolated home. | Parse the checked-in Python fixture with the pinned parser, then invoke the public Click command against a temporary grammar cache while forbidding external subprocess calls. Mutation **suppress the similar-language suggestion** must fail. Extend the existing public grammar CLI contract test file. |
 
 `interfaces/stubs.py` remains in the ranked inventory but is not promoted into
 a coverage slice until its consumer contract is confirmed. The node explorer
