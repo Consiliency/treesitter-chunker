@@ -1082,7 +1082,10 @@ class ComprehensiveGrammarCLI:
                 # Try to get versions from GitHub API if it's a GitHub repo
                 if "github.com" in repo_url:
                     api_url = (
-                        repo_url.replace("github.com", "api.github.com/repos") + "/tags"
+                        repo_url.rstrip("/")
+                        .removesuffix(".git")
+                        .replace("github.com", "api.github.com/repos")
+                        + "/tags"
                     )
 
                     try:
