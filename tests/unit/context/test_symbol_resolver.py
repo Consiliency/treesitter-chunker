@@ -131,6 +131,61 @@ class TestJavaScriptSymbolResolver:
     """Test JavaScript-specific symbol resolution."""
 
     @staticmethod
+    def test_definition_cache_tracks_parsed_tree():
+        """A reused resolver must not return another tree's declaration."""
+        fixtures = Path(__file__).parents[2] / "fixtures"
+        with_renderer = (
+            fixtures / "boundary_ir/repos/javascript/service.js"
+        ).read_bytes()
+        without_renderer = (
+            fixtures / "context/javascript_scope_boundaries.js"
+        ).read_bytes()
+        parser = get_parser("javascript")
+        resolver = ContextFactory.create_symbol_resolver("javascript")
+
+        for index in range(4096):
+            root = parser.parse(
+                with_renderer if index % 2 == 0 else without_renderer
+            ).root_node
+            assert not root.has_error
+            found = resolver.find_symbol_definition("Renderer", root, root)
+            if index % 2 == 0:
+                assert found is not None and found.type == "class_declaration"
+            else:
+                assert found is None
+        assert len(resolver._definition_cache) <= 256
+
+    @staticmethod
+    def test_reference_cache_tracks_parsed_tree():
+        """Reference results are bound to the AST passed to the resolver."""
+
+        class TextResolver(BaseSymbolResolver):
+            @staticmethod
+            def _get_node_text(node):
+                return node.text.decode("utf-8") if node.text else ""
+
+        fixtures = Path(__file__).parents[2] / "fixtures"
+        with_renderer = (
+            fixtures / "boundary_ir/repos/javascript/service.js"
+        ).read_bytes()
+        without_renderer = (
+            fixtures / "context/javascript_scope_boundaries.js"
+        ).read_bytes()
+        parser = get_parser("javascript")
+        resolver = TextResolver("javascript")
+
+        for index in range(512):
+            root = parser.parse(
+                with_renderer if index % 2 == 0 else without_renderer
+            ).root_node
+            assert not root.has_error
+            references = resolver.find_symbol_references("Renderer", root)
+            assert [node.text for node in references] == (
+                [b"Renderer"] if index % 2 == 0 else []
+            )
+        assert len(resolver._reference_cache) <= 256
+
+    @staticmethod
     def test_module_declarations_stop_at_child_scopes():
         """Find declarations at a scope edge without leaking their body locals."""
         fixture = (
