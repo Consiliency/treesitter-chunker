@@ -1092,6 +1092,8 @@ class GrammarTester:
 
             # Calculate average performance
             successful_tests = [r for r in performance_results if r["success"]]
+            if len(successful_tests) != len(performance_results):
+                result.success = False
             if successful_tests:
                 avg_throughput = statistics.mean(
                     [r["throughput"] for r in successful_tests],
@@ -1105,6 +1107,7 @@ class GrammarTester:
             )
 
         except Exception as e:
+            result.success = False
             result.sample_results.append({"test_type": "performance", "error": str(e)})
 
     def _run_memory_tests(self, result: TestResult):
