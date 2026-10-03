@@ -55,6 +55,58 @@ def test_config_reloads_nested_cache_and_directory_settings(
     assert not isolated_home.exists()
 
 
+def test_directory_usage_counts_parseable_nested_files_without_creating_missing_dirs(
+    tmp_path: Path, monkeypatch
+) -> None:
+    parser = get_parser("python")
+    source = FIXTURE.read_bytes()
+    assert not parser.parse(source).root_node.has_error
+
+    isolated_home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(isolated_home))
+    monkeypatch.setenv("USERPROFILE", str(isolated_home))
+    config = UserConfig(tmp_path / "settings" / "config.json")
+    root = tmp_path / "grammar-state"
+    config.set("directories.base_dir", str(root))
+    directories = DirectoryManager(config)
+
+    absent = directories.get_disk_usage()
+    assert set(absent) == {"base", "grammars", "cache", "logs", "backups", "temp"}
+    assert all(
+        not entry["exists"] and entry["file_count"] == 0 for entry in absent.values()
+    )
+    assert not root.exists()
+
+    structure = directories.create_structure()
+    grammar = structure["grammars"] / "service.py"
+    cached = structure["cache_downloads"] / "nested" / "service.py"
+    cached.parent.mkdir()
+    for path, size in ((grammar, 128 * 1024), (cached, 256 * 1024)):
+        path.write_bytes(source + b"\n" + b" " * (size - len(source) - 1))
+        assert not parser.parse(path.read_bytes()).root_node.has_error
+
+    usage = directories.get_disk_usage()
+    assert usage["grammars"] == {
+        "size_bytes": 128 * 1024,
+        "size_mb": 0.12,
+        "file_count": 1,
+        "path": str(structure["grammars"]),
+        "exists": True,
+    }
+    assert usage["cache"] == {
+        "size_bytes": 256 * 1024,
+        "size_mb": 0.25,
+        "file_count": 1,
+        "path": str(structure["cache"]),
+        "exists": True,
+    }
+    assert usage["base"]["size_bytes"] == 384 * 1024
+    assert usage["base"]["size_mb"] == 0.38
+    assert usage["base"]["file_count"] == 2
+    assert all(usage[key]["file_count"] == 0 for key in ("logs", "backups", "temp"))
+    assert not isolated_home.exists()
+
+
 def test_cache_cleanup_removes_stale_grammar_files_only(
     tmp_path: Path, monkeypatch
 ) -> None:
