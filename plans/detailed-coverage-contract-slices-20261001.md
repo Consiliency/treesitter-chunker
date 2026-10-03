@@ -293,6 +293,24 @@ that run was discarded and its generated coverage fragments were removed.
 | 7 | `languages/compatibility/database.py` | 185 / 386 | H |
 | 8 | `languages/compatibility/schema.py` | 181 / 407 | H |
 
+Remeasurement on clean `main` at `dcad0fee` before slice 48 used the same
+representative full-suite command with private workspace temporary and coverage
+data: 3,589 passed, 4 skipped; 29,514 of 40,201 statements executed
+(73.4161%), 10,687 missed. The private JSON report is
+`/home/viperjuice/workspace/tmp/treesitter-69-slice48/coverage.json`, SHA-256
+`318bc0784b00c2ac087c975f3cb84ce61d7b1a9545e14853e8ba4b91ff30fda7`.
+
+| Current rank | Module (`chunker/` prefix omitted) | Missed / statements | Risk |
+| ---: | --- | ---: | :---: |
+| 1 | `interfaces/stubs.py` | 137 / 137 (zero covered) | M |
+| 2 | `grammar_management/cli.py` | 585 / 1,218 | H |
+| 3 | `grammar_management/testing.py` | 421 / 563 | L |
+| 4 | `grammar_management/core.py` | 398 / 736 | H |
+| 5 | `grammar_management/compatibility.py` | 380 / 834 | M |
+| 6 | `build/builder.py` | 298 / 332 | H |
+| 7 | `languages/compatibility/database.py` | 185 / 386 | H |
+| 8 | `languages/compatibility/schema.py` | 181 / 407 | H |
+
 The table ranks **every zero-covered module first**, then the largest remaining
 individual gaps. Risk is the possible consequence of an untested contract, not
 an assertion that the module is in active production use. H means a parser,
