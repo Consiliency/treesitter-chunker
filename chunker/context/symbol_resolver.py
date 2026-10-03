@@ -152,10 +152,16 @@ class BaseSymbolResolver(SymbolResolver):
                 if defined_name == symbol_name:
                     return node
             for child in node.children:
-                if not self._creates_new_scope(child) or child == scope_node:
-                    result = search_node(child)
-                    if result:
-                        return result
+                if self._creates_new_scope(child) and child != scope_node:
+                    if (
+                        self._is_definition_node(child)
+                        and self._get_defined_name(child) == symbol_name
+                    ):
+                        return child
+                    continue
+                result = search_node(child)
+                if result:
+                    return result
             return None
 
         return search_node(scope_node)
