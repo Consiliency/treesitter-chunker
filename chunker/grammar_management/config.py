@@ -36,8 +36,11 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import shutil
+import stat
 import time
+from collections.abc import Iterator
 from copy import deepcopy
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
@@ -47,6 +50,45 @@ from typing import Any
 import click
 
 logger = logging.getLogger(__name__)
+
+
+def _directory_exists(path: Path) -> bool:
+    try:
+        info = path.stat()
+    except FileNotFoundError:
+        return False
+    if not stat.S_ISDIR(info.st_mode):
+        raise NotADirectoryError(path)
+    return True
+
+
+def _raise_scan_error(error: OSError) -> None:
+    if not isinstance(error, FileNotFoundError):
+        raise error
+
+
+def _walk_regular_files(root: Path) -> Iterator[tuple[Path, os.stat_result]]:
+    for directory, _, names in os.walk(root, onerror=_raise_scan_error):
+        for name in names:
+            item = Path(directory) / name
+            try:
+                info = item.stat()
+            except FileNotFoundError:
+                continue
+            if stat.S_ISREG(info.st_mode):
+                yield item, info
+
+
+def _walk_directories(root: Path) -> Iterator[Path]:
+    for directory, names, _ in os.walk(root, topdown=False, onerror=_raise_scan_error):
+        for name in names:
+            item = Path(directory) / name
+            try:
+                info = item.lstat()
+            except FileNotFoundError:
+                continue
+            if stat.S_ISDIR(info.st_mode):
+                yield item
 
 
 @dataclass
@@ -706,20 +748,18 @@ class DirectoryManager:
 
         try:
             # Check base directory
-            status["base"] = self.base_dir.exists() and self.base_dir.is_dir()
+            status["base"] = _directory_exists(self.base_dir)
 
             # Check subdirectories
             for dir_type in ["grammars", "cache", "logs", "backups", "temp"]:
                 dir_path = self.get_directory(dir_type)
-                status[dir_type] = dir_path.exists() and dir_path.is_dir()
+                status[dir_type] = _directory_exists(dir_path)
 
             # Check cache subdirectories
             cache_dir = self.get_directory("cache")
             for cache_subdir in ["downloads", "builds"]:
                 subdir_path = cache_dir / cache_subdir
-                status[f"cache_{cache_subdir}"] = (
-                    subdir_path.exists() and subdir_path.is_dir()
-                )
+                status[f"cache_{cache_subdir}"] = _directory_exists(subdir_path)
 
             return status
 
@@ -742,18 +782,13 @@ class DirectoryManager:
                 else:
                     dir_path = self.get_directory(dir_type)
 
-                if dir_path.exists():
+                if _directory_exists(dir_path):
                     total_size = 0
                     file_count = 0
 
-                    for item in dir_path.rglob("*"):
-                        if item.is_file():
-                            try:
-                                total_size += item.stat().st_size
-                                file_count += 1
-                            except (OSError, FileNotFoundError):
-                                # File might have been deleted during scan
-                                pass
+                    for _, info in _walk_regular_files(dir_path):
+                        total_size += info.st_size
+                        file_count += 1
 
                     usage_info[dir_type] = {
                         "size_bytes": total_size,
@@ -786,7 +821,7 @@ class DirectoryManager:
         removed_count = 0
 
         try:
-            if not self.base_dir.exists():
+            if not _directory_exists(self.base_dir):
                 return 0
 
             cache_dir = self.get_directory("cache")
@@ -796,29 +831,20 @@ class DirectoryManager:
             }
 
             # Find empty directories (excluding base directories we want to keep)
-            for dir_path in self.base_dir.rglob("*"):
-                if dir_path.is_dir() and dir_path != self.base_dir:
-                    try:
-                        # Check if directory is empty
-                        if not any(dir_path.iterdir()):
-                            # Don't remove managed structure directories
-                            if (
-                                dir_path.name
-                                not in [
-                                    "grammars",
-                                    "cache",
-                                    "logs",
-                                    "backups",
-                                    "tmp",
-                                ]
-                                and dir_path.resolve() not in managed_cache_dirs
-                            ):
-                                dir_path.rmdir()
-                                removed_count += 1
-                                logger.debug(f"Removed empty directory: {dir_path}")
-                    except (OSError, FileNotFoundError):
-                        # Directory might have been removed or is not empty
-                        pass
+            for dir_path in _walk_directories(self.base_dir):
+                try:
+                    if any(dir_path.iterdir()):
+                        continue
+                    if (
+                        dir_path.name in ["grammars", "cache", "logs", "backups", "tmp"]
+                        or dir_path.resolve() in managed_cache_dirs
+                    ):
+                        continue
+                    dir_path.rmdir()
+                    removed_count += 1
+                    logger.debug(f"Removed empty directory: {dir_path}")
+                except FileNotFoundError:
+                    pass
 
             if removed_count > 0:
                 logger.info(f"Removed {removed_count} empty directories")
@@ -827,7 +853,7 @@ class DirectoryManager:
 
         except Exception as e:
             logger.error(f"Failed to cleanup empty directories: {e}")
-            return 0
+            raise
 
 
 class CacheManager:
@@ -864,26 +890,16 @@ class CacheManager:
             builds_size = 0
 
             # Calculate downloads size
-            if self.downloads_dir.exists():
-                for item in self.downloads_dir.rglob("*"):
-                    if item.is_file():
-                        try:
-                            size = item.stat().st_size
-                            downloads_size += size
-                            total_size += size
-                        except (OSError, FileNotFoundError):
-                            pass
+            if _directory_exists(self.downloads_dir):
+                for _, info in _walk_regular_files(self.downloads_dir):
+                    downloads_size += info.st_size
+                    total_size += info.st_size
 
             # Calculate builds size
-            if self.builds_dir.exists():
-                for item in self.builds_dir.rglob("*"):
-                    if item.is_file():
-                        try:
-                            size = item.stat().st_size
-                            builds_size += size
-                            total_size += size
-                        except (OSError, FileNotFoundError):
-                            pass
+            if _directory_exists(self.builds_dir):
+                for _, info in _walk_regular_files(self.builds_dir):
+                    builds_size += info.st_size
+                    total_size += info.st_size
 
             return {
                 "total_bytes": total_size,
@@ -896,14 +912,7 @@ class CacheManager:
 
         except Exception as e:
             logger.error(f"Failed to calculate cache size: {e}")
-            return {
-                "total_bytes": 0,
-                "total_mb": 0,
-                "downloads_bytes": 0,
-                "downloads_mb": 0,
-                "builds_bytes": 0,
-                "builds_mb": 0,
-            }
+            raise
 
     def is_cleanup_needed(self) -> bool:
         """Check if cache cleanup is needed based on configuration.
@@ -942,33 +951,29 @@ class CacheManager:
 
         try:
             # Clean downloads directory
-            if self.downloads_dir.exists():
-                for item in self.downloads_dir.rglob("*"):
-                    if item.is_file():
+            if _directory_exists(self.downloads_dir):
+                for item, info in _walk_regular_files(self.downloads_dir):
+                    if info.st_mtime < cutoff_time:
                         try:
-                            if item.stat().st_mtime < cutoff_time:
-                                size = item.stat().st_size
-                                item.unlink()
-                                stats["files_removed"] += 1
-                                stats["bytes_freed"] += size
-                                stats["downloads_cleaned"] += 1
-                                logger.debug(f"Removed old download: {item}")
-                        except (OSError, FileNotFoundError):
+                            item.unlink()
+                            stats["files_removed"] += 1
+                            stats["bytes_freed"] += info.st_size
+                            stats["downloads_cleaned"] += 1
+                            logger.debug(f"Removed old download: {item}")
+                        except FileNotFoundError:
                             pass
 
             # Clean builds directory
-            if self.builds_dir.exists():
-                for item in self.builds_dir.rglob("*"):
-                    if item.is_file():
+            if _directory_exists(self.builds_dir):
+                for item, info in _walk_regular_files(self.builds_dir):
+                    if info.st_mtime < cutoff_time:
                         try:
-                            if item.stat().st_mtime < cutoff_time:
-                                size = item.stat().st_size
-                                item.unlink()
-                                stats["files_removed"] += 1
-                                stats["bytes_freed"] += size
-                                stats["builds_cleaned"] += 1
-                                logger.debug(f"Removed old build: {item}")
-                        except (OSError, FileNotFoundError):
+                            item.unlink()
+                            stats["files_removed"] += 1
+                            stats["bytes_freed"] += info.st_size
+                            stats["builds_cleaned"] += 1
+                            logger.debug(f"Removed old build: {item}")
+                        except FileNotFoundError:
                             pass
 
             # Clean up empty directories
@@ -984,7 +989,7 @@ class CacheManager:
 
         except Exception as e:
             logger.error(f"Failed to cleanup old cache files: {e}")
-            return stats
+            raise
 
     def cleanup_by_size(self, target_size_mb: int | None = None) -> dict[str, int]:
         """Clean up cache files to reach target size by removing oldest files first.
@@ -1027,21 +1032,16 @@ class CacheManager:
                 (self.downloads_dir, "downloads"),
                 (self.builds_dir, "builds"),
             ]:
-                if cache_dir.exists():
-                    for item in cache_dir.rglob("*"):
-                        if item.is_file():
-                            try:
-                                stat_info = item.stat()
-                                cache_files.append(
-                                    {
-                                        "path": item,
-                                        "size": stat_info.st_size,
-                                        "mtime": stat_info.st_mtime,
-                                        "type": cache_type,
-                                    },
-                                )
-                            except (OSError, FileNotFoundError):
-                                pass
+                if _directory_exists(cache_dir):
+                    for item, info in _walk_regular_files(cache_dir):
+                        cache_files.append(
+                            {
+                                "path": item,
+                                "size": info.st_size,
+                                "mtime": info.st_mtime,
+                                "type": cache_type,
+                            },
+                        )
 
             # Sort by modification time (oldest first)
             cache_files.sort(key=lambda x: x["mtime"])
@@ -1067,7 +1067,7 @@ class CacheManager:
                         f"Removed cache file for size limit: {file_info['path']}",
                     )
 
-                except (OSError, FileNotFoundError):
+                except FileNotFoundError:
                     pass
 
             # Clean up empty directories
@@ -1083,7 +1083,7 @@ class CacheManager:
 
         except Exception as e:
             logger.error(f"Failed to cleanup cache by size: {e}")
-            return stats
+            raise
 
     def clear_cache(self, cache_type: str = "all") -> dict[str, int]:
         """Clear cache completely or specific type.
@@ -1104,28 +1104,28 @@ class CacheManager:
         try:
             dirs_to_clear = []
 
-            if cache_type in ("all", "downloads") and self.downloads_dir.exists():
+            if cache_type in ("all", "downloads") and _directory_exists(
+                self.downloads_dir
+            ):
                 dirs_to_clear.append((self.downloads_dir, "downloads"))
 
-            if cache_type in ("all", "builds") and self.builds_dir.exists():
+            if cache_type in ("all", "builds") and _directory_exists(self.builds_dir):
                 dirs_to_clear.append((self.builds_dir, "builds"))
 
             for cache_dir, dir_type in dirs_to_clear:
-                for item in cache_dir.rglob("*"):
-                    if item.is_file():
-                        try:
-                            size = item.stat().st_size
-                            item.unlink()
-                            stats["files_removed"] += 1
-                            stats["bytes_freed"] += size
+                for item, info in _walk_regular_files(cache_dir):
+                    try:
+                        item.unlink()
+                        stats["files_removed"] += 1
+                        stats["bytes_freed"] += info.st_size
 
-                            if dir_type == "downloads":
-                                stats["downloads_cleaned"] += 1
-                            else:
-                                stats["builds_cleaned"] += 1
+                        if dir_type == "downloads":
+                            stats["downloads_cleaned"] += 1
+                        else:
+                            stats["builds_cleaned"] += 1
 
-                        except (OSError, FileNotFoundError):
-                            pass
+                    except FileNotFoundError:
+                        pass
 
             # Clean up empty directories
             self.dir_manager.cleanup_empty_directories()
@@ -1140,7 +1140,7 @@ class CacheManager:
 
         except Exception as e:
             logger.error(f"Failed to clear cache: {e}")
-            return stats
+            raise
 
     def auto_cleanup(self) -> dict[str, int]:
         """Perform automatic cache cleanup based on configuration.
