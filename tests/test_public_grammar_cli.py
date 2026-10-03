@@ -548,8 +548,9 @@ def test_click_cleanup_honors_requested_age_and_reports_removal(
     assert not isolated_home.exists()
 
 
+@pytest.mark.parametrize("stale_directory", [False, True])
 def test_click_cleanup_fallback_preserves_recent_local_fixture(
-    tmp_path: Path, monkeypatch
+    tmp_path: Path, monkeypatch, stale_directory: bool
 ) -> None:
     source = FIXTURE.read_bytes()
     parser = get_parser("python")
@@ -567,10 +568,16 @@ def test_click_cleanup_fallback_preserves_recent_local_fixture(
     builds = cache_dir / "builds"
     downloads.mkdir(parents=True)
     builds.mkdir(parents=True)
-    stale = downloads / "stale.py"
+    stale = downloads / ("stale" if stale_directory else "stale.py")
     recent = downloads / "recent.py"
     recent_build = builds / "recent.py"
-    stale.write_bytes(source)
+    if stale_directory:
+        stale.mkdir()
+        nested = stale / "service.py"
+        nested.write_bytes(source)
+        assert not parser.parse(nested.read_bytes()).root_node.has_error
+    else:
+        stale.write_bytes(source)
     recent.write_bytes(source)
     recent_build.write_bytes(source)
     old_time = time.time() - 25 * 24 * 60 * 60
