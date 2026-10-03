@@ -378,13 +378,25 @@ class PythonScopeAnalyzer(BaseScopeAnalyzer):
                 "list_splat_pattern",
                 "dictionary_splat_pattern",
                 "parameters",
-                "typed_parameter",
-                "default_parameter",
-                "typed_default_parameter",
                 "as_pattern_target",
             }:
                 for child in node.named_children:
                     collect_targets(child)
+            elif node.type in {
+                "typed_parameter",
+                "default_parameter",
+                "typed_default_parameter",
+            }:
+                target = node.child_by_field_name("name") or next(
+                    (
+                        child
+                        for child in node.named_children
+                        if child.type == "identifier"
+                    ),
+                    None,
+                )
+                if target:
+                    collect_targets(target)
 
         def collect_imports(node: Node, depth: int = 0) -> None:
             if depth > 0 and self._is_scope_node(node):

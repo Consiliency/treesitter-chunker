@@ -20,7 +20,7 @@ class Container:
             local = Path("nested")
             return local
 
-    def read(self):
+    def read(self, default=class_value, typed: int = class_value):
         read = Path("item")
         return read
 

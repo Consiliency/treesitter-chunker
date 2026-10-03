@@ -96,13 +96,13 @@ def test_python_scope_reports_imports_and_local_definitions() -> None:
     method_names = ContextFactory.create_scope_analyzer("python").get_visible_symbols(
         method_body, root
     )
-    assert {"Container", "Path", "read"} <= method_names
+    assert {"Container", "Path", "read", "default", "typed"} <= method_names
     assert {"class_sqrt", "class_value", "Nested"}.isdisjoint(method_names)
 
     method_scope_names = ContextFactory.create_scope_analyzer(
         "python"
     ).get_visible_symbols(method, root)
-    assert "read" in method_scope_names
+    assert {"read", "default", "typed"} <= method_scope_names
     assert {"class_sqrt", "class_value", "Nested"}.isdisjoint(method_scope_names)
 
     build_body = definitions["build"].child_by_field_name("body")
