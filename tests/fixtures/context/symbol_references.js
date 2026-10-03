@@ -10,3 +10,8 @@ function* generate() {
   yield formatName("generator call");
 }
 generate();
+
+async function asyncRun() {
+  return "done";
+}
+asyncRun();

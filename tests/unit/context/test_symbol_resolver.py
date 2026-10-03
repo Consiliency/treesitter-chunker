@@ -175,6 +175,10 @@ class TestJavaScriptSymbolResolver:
             node.parent.type
             for node in resolver.find_symbol_references("generate", root)
         ] == ["call_expression"]
+        assert [
+            node.parent.type
+            for node in resolver.find_symbol_references("asyncRun", root)
+        ] == ["call_expression"]
 
     @staticmethod
     def test_definition_cache_tracks_parsed_tree():
