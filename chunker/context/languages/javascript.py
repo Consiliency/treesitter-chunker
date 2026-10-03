@@ -334,6 +334,7 @@ class JavaScriptSymbolResolver(BaseSymbolResolver):
         """Get mapping from AST node types to symbol types."""
         return {
             "function_declaration": "function",
+            "generator_function_declaration": "function",
             "function_expression": "function",
             "arrow_function": "function",
             "class_declaration": "class",
@@ -355,6 +356,7 @@ class JavaScriptSymbolResolver(BaseSymbolResolver):
         """Check if a node defines a symbol."""
         return node.type in {
             "function_declaration",
+            "generator_function_declaration",
             "class_declaration",
             "variable_declarator",
             "const_declaration",
@@ -379,6 +381,7 @@ class JavaScriptSymbolResolver(BaseSymbolResolver):
             return None
         if node.type in {
             "function_declaration",
+            "generator_function_declaration",
             "class_declaration",
             "variable_declarator",
             "method_definition",

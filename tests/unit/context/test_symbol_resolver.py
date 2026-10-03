@@ -178,6 +178,26 @@ class TestJavaScriptSymbolResolver:
             assert resolver.find_symbol_definition(name, root, root) is None
 
     @staticmethod
+    def test_generator_declaration_is_module_definition_without_body_local_leak():
+        fixture = (
+            Path(__file__).parents[2]
+            / "fixtures/context/javascript_scope_boundaries.js"
+        )
+        root = get_parser("javascript").parse(fixture.read_bytes()).root_node
+        assert not root.has_error
+        resolver = ContextFactory.create_symbol_resolver("javascript")
+
+        generator = resolver.find_symbol_definition("gen", root, root)
+        assert generator is not None
+        assert generator.type == "generator_function_declaration"
+        name = generator.child_by_field_name("name")
+        assert name is not None
+        assert resolver.get_symbol_type(name) == "function"
+        assert resolver.find_symbol_definition("generatorLocal", root, root) is None
+        local = resolver.find_symbol_definition("generatorLocal", generator, root)
+        assert local is not None and local.type == "variable_declarator"
+
+    @staticmethod
     @pytest.mark.parametrize(
         "prefix",
         [
