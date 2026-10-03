@@ -62,6 +62,65 @@ def test_click_lists_local_grammar_and_reports_missing_language(
     assert "Grammar for 'missing' not found" in missing.output
 
 
+def test_click_removes_listed_user_library_and_keeps_package_fallback(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source = FIXTURE.read_bytes()
+    assert not get_parser("python").parse(source).root_node.has_error
+    native_spec = importlib.util.find_spec("tree_sitter_language_pack._native")
+    assert native_spec is not None and native_spec.origin is not None
+
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "home"))
+    cache_dir = tmp_path / "grammar-cache"
+    user_dir = cache_dir / "grammars" / "user"
+    package_dir = cache_dir / "grammars" / "package"
+    user_dir.mkdir(parents=True)
+    package_dir.mkdir(parents=True)
+    user_library = user_dir / "libpython.so"
+    package_library = package_dir / "libpython.so"
+    shutil.copyfile(native_spec.origin, user_library)
+    shutil.copyfile(native_spec.origin, package_library)
+
+    runner = CliRunner()
+    command = ["--cache-dir", str(cache_dir)]
+    before = runner.invoke(grammar_cli, [*command, "list"])
+    assert before.exit_code == 0
+    assert "User-installed grammars" in before.output
+
+    removed = runner.invoke(grammar_cli, [*command, "remove", "python", "--no-confirm"])
+    assert removed.exit_code == 0, removed.output
+    assert not user_library.exists()
+    assert package_library.exists()
+    after = runner.invoke(grammar_cli, [*command, "list"])
+    assert after.exit_code == 0
+    assert "Package-bundled grammars" in after.output
+    info = runner.invoke(grammar_cli, [*command, "info", "python"])
+    assert info.exit_code == 0
+    assert f"Path: {package_library}" in info.output
+
+
+def test_click_remove_rejects_path_as_language(tmp_path: Path) -> None:
+    outside_dir = tmp_path / "outside"
+    outside_dir.mkdir()
+    marker = outside_dir / "keep.txt"
+    marker.write_text("keep", encoding="utf-8")
+
+    result = CliRunner().invoke(
+        grammar_cli,
+        [
+            "--cache-dir",
+            str(tmp_path / "grammar-cache"),
+            "remove",
+            str(outside_dir),
+            "--no-confirm",
+        ],
+    )
+    assert result.exit_code == 1
+    assert "Invalid grammar language" in result.output
+    assert marker.read_text(encoding="utf-8") == "keep"
+
+
 def test_click_exports_selected_local_grammar(tmp_path: Path, monkeypatch) -> None:
     tree = get_parser("python").parse(FIXTURE.read_bytes())
     assert tree.root_node.type == "module"
