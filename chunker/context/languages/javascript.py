@@ -461,7 +461,7 @@ class JavaScriptScopeAnalyzer(BaseScopeAnalyzer):
         for child in import_node.children:
             if child.type == "import_clause":
                 names.update(
-                    JavaScriptContextExtractor._extract_from_import_clause(child),
+                    JavaScriptScopeAnalyzer._extract_from_import_clause(child),
                 )
         return names
 
@@ -476,11 +476,11 @@ class JavaScriptScopeAnalyzer(BaseScopeAnalyzer):
             elif child.type == "namespace_import":
                 # Namespace import: import * as foo from 'module'
                 names.update(
-                    JavaScriptContextExtractor._extract_namespace_import(child),
+                    JavaScriptScopeAnalyzer._extract_namespace_import(child),
                 )
             elif child.type == "named_imports":
                 # Named imports: import { foo, bar } from 'module'
-                names.update(JavaScriptContextExtractor._extract_named_imports(child))
+                names.update(JavaScriptScopeAnalyzer._extract_named_imports(child))
         return names
 
     @staticmethod
@@ -498,13 +498,11 @@ class JavaScriptScopeAnalyzer(BaseScopeAnalyzer):
         names = set()
         for child in named_imports_node.children:
             if child.type == "import_specifier":
-                # Get the local name (or imported name if no 'as' clause)
-                for spec_child in child.children:
-                    if spec_child.type == "identifier":
-                        names.add(
-                            spec_child.text.decode("utf-8") if spec_child.text else "",
-                        )
-                        break  # Only need the first identifier (imported name)
+                local_name = child.child_by_field_name(
+                    "alias"
+                ) or child.child_by_field_name("name")
+                if local_name and local_name.text:
+                    names.add(local_name.text.decode("utf-8"))
         return names
 
 
