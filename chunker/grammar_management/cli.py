@@ -1684,6 +1684,14 @@ if __name__ == "__main__":
             Exit code (0 for success, 1 for error)
         """
         try:
+            if (
+                not language
+                or Path(language).name != language
+                or language in {".", ".."}
+            ):
+                click.echo("❌ Invalid grammar language")
+                return 1
+
             click.echo(f"🗑️ Removing Grammar: {language}")
             click.echo("=" * 50)
 
@@ -1694,6 +1702,11 @@ if __name__ == "__main__":
             user_source = self.user_grammars_dir / language
             if user_source.exists():
                 locations_to_remove.append(("source directory", user_source))
+
+            for filename in (f"lib{language}.so", f"tree_sitter_{language}.so"):
+                user_library = self.user_grammars_dir / filename
+                if user_library.is_file():
+                    locations_to_remove.append(("user-installed grammar", user_library))
 
             # Check compiled grammar
             compiled_grammar = self.build_dir / f"tree_sitter_{language}.so"
