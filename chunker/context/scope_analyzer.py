@@ -129,12 +129,12 @@ class BaseScopeAnalyzer(ScopeAnalyzer):
 
         def collect_definitions(node: Node, depth: int = 0):
             """Recursively collect symbol definitions."""
-            if depth > 0 and self._is_scope_node(node):
-                return
             if self._is_definition_node(node):
                 name = self._get_defined_name(node)
                 if name:
                     symbols.add(name)
+            if depth > 0 and self._is_scope_node(node):
+                return
             for child in node.children:
                 collect_definitions(child, depth + 1)
 
