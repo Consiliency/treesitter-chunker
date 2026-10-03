@@ -49,6 +49,19 @@ class TestPythonSymbolResolver:
     """Test Python-specific symbol resolution."""
 
     @staticmethod
+    def test_real_parsed_references_exclude_properties_and_keyword_names():
+        fixture = Path(__file__).parents[2] / "fixtures/context/symbol_references.py"
+        root = get_parser("python").parse(fixture.read_bytes()).root_node
+        assert not root.has_error
+        references = ContextFactory.create_symbol_resolver(
+            "python"
+        ).find_symbol_references("render", root)
+        assert [(node.parent.type, node.start_point.row) for node in references] == [
+            ("call", 4),
+            ("call", 6),
+        ]
+
+    @staticmethod
     def test_real_parsed_import_references_exclude_import_binding():
         fixture = (
             Path(__file__).parents[2]
