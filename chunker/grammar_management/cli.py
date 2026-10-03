@@ -2515,6 +2515,7 @@ if __name__ == "__main__":
         for cache_dir in cache_dirs:
             if cache_dir.exists():
                 try:
+                    removed_before = stats["files_removed"]
                     for item in cache_dir.iterdir():
                         try:
                             item_stat = item.stat()
@@ -2534,7 +2535,7 @@ if __name__ == "__main__":
                         except Exception as e:
                             stats["errors"].append(f"Failed to clean {item}: {e}")
 
-                    if stats["files_removed"] > 0:
+                    if stats["files_removed"] > removed_before:
                         stats["directories_cleaned"].append(cache_dir.name)
 
                 except Exception as e:
