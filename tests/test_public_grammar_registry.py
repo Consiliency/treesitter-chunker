@@ -58,3 +58,30 @@ def test_registry_selects_user_package_then_fallback(
         assert registry.get_grammar_path("missing") is None
         assert registry.get_language_info("missing") is None
         path.unlink()
+
+
+def test_registry_prefers_lib_when_both_names_exist_in_user_directory(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source = FIXTURE.read_bytes()
+    assert not get_parser("python").parse(source).root_node.has_error
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+
+    native_spec = importlib.util.find_spec("tree_sitter_language_pack._native")
+    assert native_spec is not None and native_spec.origin is not None
+    user_dir = tmp_path / "user"
+    package_dir = tmp_path / "package"
+    user_dir.mkdir()
+    package_dir.mkdir()
+    lib = user_dir / "libpython.so"
+    alternate = user_dir / "tree_sitter_python.so"
+    shutil.copyfile(native_spec.origin, lib)
+    shutil.copyfile(native_spec.origin, alternate)
+
+    registry = GrammarRegistry(user_dir=user_dir, package_dir=package_dir)
+    assert registry.discover_grammars()["python"] == [
+        (lib, GrammarPriority.USER),
+        (alternate, GrammarPriority.USER),
+    ]
+    assert registry.get_grammar_path("python") == (lib, GrammarPriority.USER)
