@@ -14,11 +14,16 @@ from chunker.grammar_management.compatibility import (
     CompatibilityDatabase,
     CompatibilityLevel,
     CompatibilityResult,
+    GrammarTester,
     SelectionCriterion,
     SmartSelector,
     TestResult as GrammarTestResult,
 )
-from chunker.grammar_management.core import GrammarManager, load_compiled_grammar
+from chunker.grammar_management.core import (
+    GrammarManager,
+    GrammarValidator,
+    load_compiled_grammar,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -37,6 +42,40 @@ def test_supported_fixture_parsers_accept_real_source(
     source = (ROOT / fixture).read_bytes()
     tree = get_parser(language).parse(source)
     assert not tree.root_node.has_error
+
+
+def test_error_pattern_analysis_counts_real_python_parse_failures(
+    tmp_path: Path, monkeypatch
+) -> None:
+    valid = (ROOT / "tests/fixtures/boundary_ir/repos/python/app/service.py").read_text(
+        encoding="utf-8"
+    )
+    samples = [valid, valid + "\ndef broken(\n", valid + "\nclass Broken(:\n"]
+    parser = get_parser("python")
+    assert not parser.parse(samples[0].encode()).root_node.has_error
+    assert all(
+        parser.parse(sample.encode()).root_node.has_error for sample in samples[1:]
+    )
+
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    manager = GrammarManager(
+        user_dir=tmp_path / "user",
+        package_dir=tmp_path / "package",
+        cache_dir=tmp_path / "cache",
+    )
+    tester = GrammarTester(manager, GrammarValidator(tmp_path / "validation"))
+    analysis = tester.analyze_error_patterns("python", samples)
+
+    assert analysis["language"] == "python"
+    assert analysis["total_samples"] == 3
+    assert analysis["successful_parses"] == 1
+    assert analysis["failed_parses"] == 2
+    assert analysis["failure_rate"] == pytest.approx(2 / 3)
+    assert analysis["error_patterns"] == {"syntax_error": 2}
+    assert analysis["common_errors"] == [("syntax_error", 2)]
+    assert not home.exists()
 
 
 def test_compatibility_reason_score_selection_and_history(
