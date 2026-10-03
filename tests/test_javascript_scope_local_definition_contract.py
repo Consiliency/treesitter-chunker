@@ -53,7 +53,16 @@ def test_javascript_scope_keeps_block_and_object_method_names_contained() -> Non
 
     analyzer = ContextFactory.create_scope_analyzer("javascript")
     module_names = analyzer.get_visible_symbols(root, root)
-    assert {"obj", "Foo", "run", "hoisted", "switchVar"} <= module_names
+    assert {
+        "obj",
+        "Foo",
+        "StaticHost",
+        "generatorValue",
+        "run",
+        "gen",
+        "hoisted",
+        "switchVar",
+    } <= module_names
     assert {
         "method",
         "helper",
@@ -63,6 +72,10 @@ def test_javascript_scope_keeps_block_and_object_method_names_contained() -> Non
         "local",
         "innerVar",
         "innerLet",
+        "generatorLocal",
+        "generatorExpressionLocal",
+        "staticPrivate",
+        "staticLexical",
     }.isdisjoint(module_names)
 
     block = next(
@@ -88,3 +101,15 @@ def test_javascript_scope_keeps_block_and_object_method_names_contained() -> Non
     ).get_visible_symbols(body, root)
     assert "innerVar" in function_names
     assert "innerLet" not in function_names
+
+    static_host = next(
+        node
+        for node in root.children
+        if node.type == "class_declaration"
+        and node.child_by_field_name("name").text == b"StaticHost"
+    )
+    class_names = ContextFactory.create_scope_analyzer(
+        "javascript"
+    ).get_visible_symbols(static_host, root)
+    assert "read" in class_names
+    assert {"staticPrivate", "staticLexical"}.isdisjoint(class_names)

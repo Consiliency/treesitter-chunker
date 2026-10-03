@@ -355,6 +355,7 @@ class JavaScriptSymbolResolver(BaseSymbolResolver):
         """Check if a node defines a symbol."""
         return node.type in {
             "function_declaration",
+            "generator_function_declaration",
             "class_declaration",
             "variable_declarator",
             "const_declaration",
@@ -375,6 +376,7 @@ class JavaScriptSymbolResolver(BaseSymbolResolver):
         """Get the name being defined by a definition node."""
         if node.type in {
             "function_declaration",
+            "generator_function_declaration",
             "class_declaration",
             "variable_declarator",
             "method_definition",
@@ -402,17 +404,23 @@ class JavaScriptSymbolResolver(BaseSymbolResolver):
             in {
                 "function_declaration",
                 "function_expression",
+                "generator_function_declaration",
+                "generator_function",
                 "arrow_function",
                 "method_definition",
+                "class_static_block",
             }
         ):
             return False
         return node.type in {
             "function_declaration",
             "function_expression",
+            "generator_function_declaration",
+            "generator_function",
             "arrow_function",
             "class_declaration",
             "class",
+            "class_static_block",
             "method_definition",
             "for_statement",
             "for_in_statement",
@@ -438,9 +446,12 @@ class JavaScriptScopeAnalyzer(BaseScopeAnalyzer):
             "program": "module",
             "function_declaration": "function",
             "function_expression": "function",
+            "generator_function_declaration": "function",
+            "generator_function": "function",
             "arrow_function": "arrow",
             "class_declaration": "class",
             "class": "class",
+            "class_static_block": "block",
             "method_definition": "method",
             "for_statement": "block",
             "for_in_statement": "block",
@@ -460,8 +471,11 @@ class JavaScriptScopeAnalyzer(BaseScopeAnalyzer):
             in {
                 "function_declaration",
                 "function_expression",
+                "generator_function_declaration",
+                "generator_function",
                 "arrow_function",
                 "method_definition",
+                "class_static_block",
             }
         ):
             return False
@@ -492,10 +506,13 @@ class JavaScriptScopeAnalyzer(BaseScopeAnalyzer):
             if depth > 0 and node.type in {
                 "function_declaration",
                 "function_expression",
+                "generator_function_declaration",
+                "generator_function",
                 "arrow_function",
                 "method_definition",
                 "class_declaration",
                 "class",
+                "class_static_block",
             }:
                 return
             if (

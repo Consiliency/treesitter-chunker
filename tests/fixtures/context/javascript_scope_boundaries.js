@@ -1,6 +1,12 @@
 const obj = { method() {} };
 const Foo = class { helper() {} };
 export default class { other() {} };
+const generatorValue = function* () { var generatorExpressionLocal = 1; };
+
+class StaticHost {
+    static { var staticPrivate = 1; const staticLexical = 2; }
+    read() {}
+}
 
 if (true) {
     const hidden = 1;
@@ -22,3 +28,5 @@ function run() {
     }
     return local;
 }
+
+function* gen() { var generatorLocal = 1; }
