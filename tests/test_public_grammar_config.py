@@ -1,5 +1,6 @@
 """Contract tests for exported grammar configuration and directories."""
 
+import errno
 import json
 import os
 import shutil
@@ -295,6 +296,50 @@ def test_public_config_reports_unreadable_cache_file(
     assert not parser.parse(cache_file.read_bytes()).root_node.has_error
 
 
+def test_public_config_reports_unreadable_cache_root(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source = FIXTURE.read_bytes()
+    parser = get_parser("python")
+    assert not parser.parse(source).root_node.has_error
+    isolated_home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(isolated_home))
+    monkeypatch.setenv("USERPROFILE", str(isolated_home))
+    config = UserConfig()
+    config.set("directories.base_dir", str(tmp_path / "grammar-state"))
+    directory_manager = DirectoryManager(config)
+    downloads = directory_manager.create_structure()["cache_downloads"]
+    cache_file = downloads / "service.py"
+    cache_file.write_bytes(source)
+    original_stat = Path.stat
+
+    def deny_cache_root_stat(path, *args, **kwargs):
+        if path == downloads:
+            raise PermissionError("simulated unreadable cache root")
+        return original_stat(path, *args, **kwargs)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "stat", deny_cache_root_stat)
+        with pytest.raises(PermissionError, match="unreadable cache root"):
+            CacheManager(config, directory_manager).get_cache_size()
+        with pytest.raises(PermissionError, match="unreadable cache root"):
+            CacheManager(config, directory_manager).cleanup_by_size(0)
+        for command, answer in (
+            (["cleanup", "downloads"], "y\n"),
+            (["cleanup", "auto"], None),
+            (["cache-info"], None),
+            (["dirs"], None),
+            (["validate"], None),
+        ):
+            result = CliRunner().invoke(config_cli, command, input=answer)
+            assert result.exit_code == 1, (command, result.output)
+            assert "cache cleared" not in result.output
+            assert "Healthy" not in result.output
+
+    assert cache_file.read_bytes() == source
+    assert not parser.parse(cache_file.read_bytes()).root_node.has_error
+
+
 def test_public_config_cleanup_reports_failed_file_deletion(
     tmp_path: Path, monkeypatch
 ) -> None:
@@ -358,20 +403,25 @@ def test_public_config_cleanup_reports_empty_directory_removal_failure(
     empty.mkdir()
     original_rmdir = Path.rmdir
 
-    def deny_empty_rmdir(path):
-        if path == empty:
-            raise PermissionError("simulated directory removal failure")
-        return original_rmdir(path)
+    for failure in (
+        PermissionError("simulated directory removal failure"),
+        OSError(errno.ENOTEMPTY, "simulated concurrent directory entry"),
+    ):
 
-    with monkeypatch.context() as patch:
-        patch.setattr(Path, "rmdir", deny_empty_rmdir)
-        for command, answer in (
-            (["cleanup", "downloads"], "y\n"),
-            (["cleanup", "auto"], None),
-        ):
-            result = CliRunner().invoke(config_cli, command, input=answer)
-            assert result.exit_code == 1, (command, result.output)
-            assert "cache cleared" not in result.output
+        def deny_empty_rmdir(path):
+            if path == empty:
+                raise failure
+            return original_rmdir(path)
+
+        with monkeypatch.context() as patch:
+            patch.setattr(Path, "rmdir", deny_empty_rmdir)
+            for command, answer in (
+                (["cleanup", "downloads"], "y\n"),
+                (["cleanup", "auto"], None),
+            ):
+                result = CliRunner().invoke(config_cli, command, input=answer)
+                assert result.exit_code == 1, (command, result.output)
+                assert "cache cleared" not in result.output
 
     assert empty.is_dir()
     assert retained.read_bytes() == source
