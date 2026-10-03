@@ -1330,7 +1330,7 @@ class ConfigurationCLI:
             click.echo(f"✅ Configuration exported to: {export_path}")
 
         except Exception as e:
-            click.echo(f"❌ Failed to export configuration: {e}", err=True)
+            raise click.ClickException(f"Failed to export configuration: {e}") from e
 
     def import_config(self, import_path: str, merge: bool = True) -> None:
         """Import configuration from file."""

@@ -245,6 +245,12 @@ def test_public_config_export_writes_live_settings_to_requested_nested_path(
     exported_config = UserConfig(export_path)
     assert exported_config.get("directories.base_dir") == str(grammar_root)
     assert exported_config.get("cache.max_size_mb") == 64
+
+    failed = CliRunner().invoke(config_cli, ["export", str(export_path.parent)])
+    assert failed.exit_code == 1
+    assert "Failed to export configuration" in failed.output
+    assert "Configuration exported to" not in failed.output
+    assert json.loads(export_path.read_text(encoding="utf-8")) == exported
     assert config.config_path.read_bytes() == active_bytes
     assert retained.read_bytes() == source
     assert not parser.parse(retained.read_bytes()).root_node.has_error
