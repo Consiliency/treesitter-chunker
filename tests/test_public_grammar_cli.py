@@ -7,6 +7,8 @@ import shutil
 import subprocess
 import sys
 import time
+import urllib.request
+from io import BytesIO
 from pathlib import Path
 
 import pytest
@@ -61,6 +63,54 @@ def test_click_lists_local_grammar_and_reports_missing_language(
     missing = runner.invoke(grammar_cli, [*command, "test", "missing", str(FIXTURE)])
     assert missing.exit_code == 1
     assert "Grammar for 'missing' not found" in missing.output
+
+
+def test_click_versions_reads_tags_from_configured_github_source(
+    tmp_path: Path, monkeypatch
+) -> None:
+    source = FIXTURE.read_bytes()
+    parser = get_parser("python")
+    assert not parser.parse(source).root_node.has_error
+    isolated_home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(isolated_home))
+    monkeypatch.setenv("USERPROFILE", str(isolated_home))
+    requested = []
+    tags = [{"name": f"v{number}"} for number in range(12, 0, -1)]
+
+    def read_tags(url, timeout):
+        requested.append((url, timeout))
+        return BytesIO(json.dumps(tags).encode("utf-8"))
+
+    monkeypatch.setattr(urllib.request, "urlopen", read_tags)
+    result = CliRunner().invoke(
+        grammar_cli,
+        [
+            "--cache-dir",
+            str(tmp_path / "grammar-cache"),
+            "--verbose",
+            "versions",
+            "python",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert requested == [
+        ("https://api.github.com/repos/tree-sitter/tree-sitter-python/tags", 10)
+    ]
+    assert (
+        "Repository: https://github.com/tree-sitter/tree-sitter-python.git"
+        in result.output
+    )
+    assert "Available Versions (Tags):" in result.output
+    for number in range(12, 2, -1):
+        assert f"• v{number}" in result.output
+    shown = {line.strip() for line in result.output.splitlines()}
+    assert "• v2" not in shown
+    assert "• v1" not in shown
+    assert "... and 2 more" in result.output
+    assert "• main (default)" in result.output
+    assert not parser.parse(source).root_node.has_error
+    assert not isolated_home.exists()
 
 
 def test_click_removes_listed_user_library_and_keeps_package_fallback(
