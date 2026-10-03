@@ -224,3 +224,56 @@ def test_cache_clear_downloads_recursively_preserves_builds(
     }
     assert retained_build.exists()
     assert not isolated_home.exists()
+
+
+def test_cache_info_reports_parseable_sizes_and_cleanup_settings(
+    tmp_path: Path, monkeypatch
+) -> None:
+    parser = get_parser("python")
+    source = FIXTURE.read_bytes()
+    assert not parser.parse(source).root_node.has_error
+
+    isolated_home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(isolated_home))
+    monkeypatch.setenv("USERPROFILE", str(isolated_home))
+
+    config = UserConfig(tmp_path / "settings" / "config.json")
+    config.set("directories.base_dir", str(tmp_path / "grammar-state"))
+    config.set("cache.max_size_mb", 2)
+    config.set("cache.cleanup_threshold_mb", 1)
+    directory_manager = DirectoryManager(config)
+    directories = directory_manager.create_structure()
+    download = directories["cache_downloads"] / "nested" / "service.py"
+    download.parent.mkdir()
+    build = directories["cache_builds"] / "service.py"
+    for path, size in ((download, 512 * 1024), (build, 768 * 1024)):
+        path.write_bytes(source + b"\n" + b" " * (size - len(source) - 1))
+        assert not parser.parse(path.read_bytes()).root_node.has_error
+
+    cache_manager = CacheManager(config, directory_manager)
+    info = cache_manager.get_cache_info()
+    assert info["size"] == {
+        "total_bytes": 1280 * 1024,
+        "total_mb": 1.25,
+        "downloads_bytes": 512 * 1024,
+        "downloads_mb": 0.5,
+        "builds_bytes": 768 * 1024,
+        "builds_mb": 0.75,
+    }
+    assert info["limits"]["max_size_mb"] == 2
+    assert info["limits"]["cleanup_threshold_mb"] == 1
+    assert info["status"] == {"cleanup_needed": True, "usage_percentage": 62.5}
+
+    config.set("cache.auto_cleanup", False)
+    assert cache_manager.get_cache_info()["status"] == {
+        "cleanup_needed": False,
+        "usage_percentage": 62.5,
+    }
+    config.set("cache.auto_cleanup", True)
+    config.set("cache.cleanup_threshold_mb", 2)
+    assert cache_manager.get_cache_info()["status"] == {
+        "cleanup_needed": False,
+        "usage_percentage": 62.5,
+    }
+    assert not parser.parse(build.read_bytes()).root_node.has_error
+    assert not isolated_home.exists()

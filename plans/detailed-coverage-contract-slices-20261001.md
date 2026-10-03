@@ -67,6 +67,15 @@ coverage data: 3,514 passed, 4 skipped; 28,502 of 39,993 statements executed
 still has 437 of 773 statements uncovered, so slice 26 covers the independent
 selective cache-clearing contract.
 
+Remeasurement on merged `main` at `dcf127f72125c8eb947742a19b3e3bbf1c3a0f88`
+used the same representative command with private workspace temporary and
+coverage data: 3,516 passed, 4 skipped, and one known load-sensitive timing
+failure in treesitter-chunker#130; 28,559 of 40,000 statements executed
+(71.3975%), 11,441 missed. The report is
+`/tmp/treesitter-69-current-main-dcf127f7.json`. Grammar configuration
+still has 413 of 773 statements uncovered, so slice 27 covers cache size,
+limit, and automatic-cleanup information as one observable contract.
+
 The table ranks **every zero-covered module first**, then the largest remaining
 individual gaps. Risk is the possible consequence of an untested contract, not
 an assertion that the module is in active production use. H means a parser,
@@ -149,6 +158,7 @@ with the original source restored before committing.
 | 24 — compatibility performance trends | `grammar_management/compatibility.py` `CompatibilityDatabase.get_performance_trends`: recent Python records from real parsed fixtures aggregate throughput and memory in chronological order, excluding an older Python record and a recent JavaScript record. | Parse checked-in Python and JavaScript fixtures with pinned parsers, then store their language labels and deterministic metrics in a temporary SQLite database. Insert the newer Python record first. Mutations **invert language filter**, **reverse trend chronology**, and **omit trend ordering** must fail. Extend the existing grammar compatibility contract test file. |
 | 25 — compatibility database statistics | `grammar_management/compatibility.py` `CompatibilityDatabase.get_database_stats`: after reopening a temporary SQLite database, statistics count two persisted compatibility records and one test result from parsed Python and JavaScript fixtures, report a nonempty file, and retain the oldest/newest timestamps and two-day span. | Parse checked-in Python and JavaScript fixtures with pinned parsers before storing records. Mutations **count test results from the compatibility table** and **use oldest as newest timestamp** must fail. Extend the existing grammar compatibility contract test file. Keep the cleanup defect in treesitter-chunker#205 separate. |
 | 26 — selective grammar cache clear | `grammar_management/config.py` `CacheManager.clear_cache`: clearing downloads removes a nested parseable fixture file with accurate counts and bytes, leaves a parseable build file intact, preserves the managed download directory, and a repeated clear removes nothing. | Parse the checked-in Python fixture with the pinned parser, then copy it into temporary nested downloads and builds. Mutations **clear builds during downloads selection** and **omit recursive cache walk** must fail. Extend the existing grammar config contract test file. |
+| 27 — grammar cache information | `grammar_management/config.py` `CacheManager.get_cache_info` and `is_cleanup_needed`: parseable nested download/build fixtures produce exact separate and total byte/MB sizes, percentage against the configured limit, and a cleanup-needed signal that follows the threshold and auto-cleanup switch. | Parse checked-in Python fixture copies padded to 512 KiB and 768 KiB with the pinned parser. Mutations **omit download bytes from total** and **ignore auto-cleanup setting** must fail. Extend the existing grammar config contract test file. |
 
 `interfaces/stubs.py` remains in the ranked inventory but is not promoted into
 a coverage slice until its consumer contract is confirmed. The node explorer
