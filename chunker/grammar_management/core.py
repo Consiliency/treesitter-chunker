@@ -501,6 +501,8 @@ class GrammarValidator:
         key_data = (
             f"{grammar_path}:{language}:{level.value}:{stat.st_mtime}:{stat.st_size}"
         )
+        if level == ValidationLevel.EXTENSIVE:
+            key_data += ":selected-grammar-v1"
         return hashlib.sha256(key_data.encode()).hexdigest()
 
     def _load_validation_cache(self) -> dict[str, Any]:
