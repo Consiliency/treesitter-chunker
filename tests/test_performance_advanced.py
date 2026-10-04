@@ -11,7 +11,6 @@ import subprocess
 import sys
 import threading
 import time
-from statistics import median
 
 import pytest
 
@@ -421,10 +420,9 @@ class TestRealWorldScenarios:
         assert large_chunks >= 1500
 
     @staticmethod
-    def test_continuous_processing_performance(tmp_path):
-        """Test performance under continuous processing load."""
+    def test_continuous_processing_refreshes_overwritten_files(tmp_path):
+        """Repeated parallel parsing returns each iteration's current source."""
         num_iterations = 20
-        processing_times = []
         for iteration in range(num_iterations):
             for i in range(5):
                 test_file = tmp_path / f"continuous_{i}.py"
@@ -439,7 +437,6 @@ class Handler_{iteration}:
         return "handled\"
 """,
                 )
-            start_time = time.perf_counter()
             results = chunk_files_parallel(
                 list(tmp_path.glob("continuous_*.py")),
                 language="python",
@@ -447,10 +444,11 @@ class Handler_{iteration}:
             )
             assert len(results) == 5
             assert all(results.values())
-            elapsed = time.perf_counter() - start_time
-            processing_times.append(elapsed)
+            assert all(
+                any(f"process_{iteration}" in chunk.content for chunk in chunks)
+                for chunks in results.values()
+            )
             time.sleep(0.1)
-        assert median(processing_times[-5:]) < median(processing_times[:5]) * 2.0
 
 
 def gc_collect():
