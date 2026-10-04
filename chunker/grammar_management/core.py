@@ -1699,19 +1699,19 @@ class GrammarManager:
         try:
             for item in directory.iterdir():
                 try:
-                    item_stat = item.stat()
-                    if item_stat.st_mtime < cutoff_time:
-                        if item.is_file():
-                            stats["bytes_freed"] += item_stat.st_size
-                            item.unlink()
-                            stats["files_removed"] += 1
-                        elif item.is_dir():
-                            dir_size = sum(
-                                f.stat().st_size for f in item.rglob("*") if f.is_file()
-                            )
-                            stats["bytes_freed"] += dir_size
-                            shutil.rmtree(item)
-                            stats["files_removed"] += 1
+                    item_stat = item.lstat()
+                    if item.is_dir() and not item.is_symlink():
+                        cleaned = self._cleanup_directory(item, cutoff_time)
+                        stats["files_removed"] += cleaned["files_removed"]
+                        stats["bytes_freed"] += cleaned["bytes_freed"]
+                        if item_stat.st_mtime < cutoff_time and not any(item.iterdir()):
+                            item.rmdir()
+                            if cleaned["files_removed"] == 0:
+                                stats["files_removed"] += 1
+                    elif item_stat.st_mtime < cutoff_time:
+                        stats["bytes_freed"] += item_stat.st_size
+                        item.unlink()
+                        stats["files_removed"] += 1
 
                 except Exception as e:
                     logger.warning(f"Failed to clean {item}: {e}")

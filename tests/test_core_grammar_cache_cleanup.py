@@ -1,0 +1,77 @@
+"""Core grammar cache cleanup preserves recent files inside stale directories."""
+
+import os
+import time
+from pathlib import Path
+
+from chunker.grammar_management.core import GrammarManager
+from chunker.parser import get_parser
+
+
+FIXTURE = (
+    Path(__file__).resolve().parent / "fixtures/boundary_ir/repos/python/app/service.py"
+)
+
+
+def test_old_cache_directory_keeps_recent_parseable_child(tmp_path: Path) -> None:
+    source = FIXTURE.read_bytes()
+    parser = get_parser("python")
+    assert not parser.parse(source).root_node.has_error
+
+    cache_dir = tmp_path / "cache"
+    old_directory = cache_dir / "downloads" / "old-directory"
+    old_directory.mkdir(parents=True)
+    stale_source = old_directory / "stale.py"
+    recent_source = old_directory / "recent.py"
+    stale_source.write_bytes(source)
+    recent_source.write_bytes(source)
+    old_time = time.time() - 25 * 86400
+    recent_time = time.time() - 15 * 86400
+    os.utime(stale_source, (old_time, old_time))
+    os.utime(recent_source, (recent_time, recent_time))
+    os.utime(old_directory, (old_time, old_time))
+
+    manager = GrammarManager(
+        user_dir=tmp_path / "user",
+        package_dir=tmp_path / "package",
+        cache_dir=cache_dir,
+    )
+    result = manager.cleanup_cache(older_than_days=20)
+
+    assert result["errors"] == []
+    assert result["files_removed"] == 1
+    assert result["bytes_freed"] == len(source)
+    assert result["directories_cleaned"] == ["downloads"]
+    assert not stale_source.exists()
+    assert recent_source.read_bytes() == source
+    assert not parser.parse(recent_source.read_bytes()).root_node.has_error
+
+
+def test_entirely_old_cache_directory_is_removed_with_accurate_file_count(
+    tmp_path: Path,
+) -> None:
+    source = FIXTURE.read_bytes()
+    assert not get_parser("python").parse(source).root_node.has_error
+
+    cache_dir = tmp_path / "cache"
+    old_directory = cache_dir / "downloads" / "old-directory"
+    old_directory.mkdir(parents=True)
+    old_time = time.time() - 25 * 86400
+    for filename in ("first.py", "second.py"):
+        old_source = old_directory / filename
+        old_source.write_bytes(source)
+        os.utime(old_source, (old_time, old_time))
+    os.utime(old_directory, (old_time, old_time))
+
+    manager = GrammarManager(
+        user_dir=tmp_path / "user",
+        package_dir=tmp_path / "package",
+        cache_dir=cache_dir,
+    )
+    result = manager.cleanup_cache(older_than_days=20)
+
+    assert result["errors"] == []
+    assert result["files_removed"] == 2
+    assert result["bytes_freed"] == 2 * len(source)
+    assert result["directories_cleaned"] == ["downloads"]
+    assert not old_directory.exists()
