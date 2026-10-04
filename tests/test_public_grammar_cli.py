@@ -799,3 +799,60 @@ def test_click_parses_with_selected_local_grammar(tmp_path: Path, monkeypatch) -
     )
     assert wrong_grammar.exit_code == 1
     assert "tree_sitter_javascript" in wrong_grammar.output
+
+
+@pytest.mark.skipif(
+    sys.platform != "linux", reason="Local shared-library build is Linux-only"
+)
+def test_click_build_cancel_preserves_compiled_local_grammar(
+    tmp_path: Path, monkeypatch
+) -> None:
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    cache_dir = tmp_path / "grammar-cache"
+    grammar_dir = cache_dir / "grammars"
+    source_dir = grammar_dir / "user" / "baml"
+    (source_dir / "src").mkdir(parents=True)
+    grammar_src = Path(__file__).parent.parent / "packages/baml-grammar/src"
+    shutil.copyfile(grammar_src / "grammar.js", source_dir / "grammar.js")
+    shutil.copyfile(grammar_src / "parser.c", source_dir / "src/parser.c")
+    build_dir = grammar_dir / "build"
+    build_dir.mkdir()
+    compiled = build_dir / "tree_sitter_baml.so"
+    subprocess.run(
+        [
+            "cc",
+            "-shared",
+            "-fPIC",
+            "-O2",
+            "-I",
+            str(grammar_src),
+            str(grammar_src / "parser.c"),
+            "-o",
+            str(compiled),
+        ],
+        check=True,
+        capture_output=True,
+    )
+    fixture = BAML_FIXTURE.read_bytes()
+    assert (
+        not load_compiled_grammar(compiled, "baml").parse(fixture).root_node.has_error
+    )
+    original = compiled.read_bytes()
+
+    empty_path = tmp_path / "no-tools"
+    empty_path.mkdir()
+    monkeypatch.setenv("PATH", str(empty_path))
+    result = CliRunner().invoke(
+        grammar_cli,
+        ["--cache-dir", str(cache_dir), "build", "baml"],
+        input="n\n",
+    )
+    assert result.exit_code == 0, result.output
+    assert "Build cancelled" in result.output
+    assert compiled.read_bytes() == original
+    assert (
+        not load_compiled_grammar(compiled, "baml").parse(fixture).root_node.has_error
+    )
+    assert not home.exists()
